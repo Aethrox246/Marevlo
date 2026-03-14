@@ -1,7 +1,8 @@
-import React, { useMemo, memo, useState } from 'react';
+import React, { useMemo, memo, useState, useEffect } from 'react';
 import { ThumbsUp, ThumbsDown, Lock, Unlock, ChevronRight, Lightbulb, Code, CheckCircle2 } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 import TabBar from './TabBar';
+import alienDictionaryData from '../../assets/alien-dictionary-full.json';
 
 // Sample approaches data - in production, this would come from problem.approaches
 const getSampleApproaches = (problemTitle) => [
@@ -72,27 +73,56 @@ const getSampleApproaches = (problemTitle) => [
     }
 ];
 
+const approachDataBySlug = {
+    'alien-dictionary-full': alienDictionaryData
+};
+
+const normalizeApproaches = (raw) => {
+    if (!raw || !Array.isArray(raw.solution_approaches)) return [];
+    return raw.solution_approaches.map((approach) => ({
+        id: approach.approach_id,
+        name: approach.name,
+        complexity: {
+            time: approach.overall_complexity?.time || 'N/A',
+            space: approach.overall_complexity?.space || 'N/A'
+        },
+        ladder: (approach.ladders || []).map((step) => ({
+            level: parseInt(String(step.step_id || '').replace('L', ''), 10) || 1,
+            type: 'hint',
+            title: step.title || `Level ${step.step_id}`,
+            content: step.instruction || ''
+        }))
+    }));
+};
+
 /**
  * ProblemPanel - Theme-aware problem description panel with Approaches & Ladder
  */
 const ProblemPanel = memo(({ problem, onBack }) => {
     const [activeTab, setActiveTab] = useState('description');
     const [selectedApproach, setSelectedApproach] = useState(0);
-    const [unlockedLevels, setUnlockedLevels] = useState({ 
-        'brute-force': 1, 
-        'two-pointer': 1,
-        'hash-map': 1, 
-        'sorting': 1,
-        'divide-conquer': 1 
-    });
+    const [unlockedLevels, setUnlockedLevels] = useState({});
     
     const tabs = [
         { id: 'description', label: 'Description' },
         { id: 'approaches', label: 'Approaches' }
     ];
     
-    // Get approaches for current problem (sample data for now)
-    const approaches = useMemo(() => getSampleApproaches(problem?.title), [problem?.title]);
+    // Get approaches for current problem
+    const approaches = useMemo(() => {
+        if (!problem) return [];
+        const raw = approachDataBySlug[problem.slug];
+        const normalized = normalizeApproaches(raw);
+        return normalized.length > 0 ? normalized : getSampleApproaches(problem?.title);
+    }, [problem]);
+
+    useEffect(() => {
+        if (!approaches.length) return;
+        const initial = {};
+        approaches.forEach(a => { initial[a.id] = 1; });
+        setUnlockedLevels(initial);
+        setSelectedApproach(0);
+    }, [approaches]);
 
     const fullDescription = useMemo(() => {
         if (!problem) return "";

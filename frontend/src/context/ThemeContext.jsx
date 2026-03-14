@@ -5,7 +5,7 @@ const ThemeContext = createContext(null);
 export function ThemeProvider({ children }) {
     const [isDark, setIsDark] = useState(() => {
         if (typeof window !== 'undefined') {
-            const saved = localStorage.getItem('marevlo-theme');
+            const saved = localStorage.getItem('algosphere-theme');
             return saved === 'dark';
         }
         return false;
@@ -23,7 +23,7 @@ export function ThemeProvider({ children }) {
             root.style.colorScheme = 'light';
         }
         
-        localStorage.setItem('marevlo-theme', isDark ? 'dark' : 'light');
+        localStorage.setItem('algosphere-theme', isDark ? 'dark' : 'light');
     }, [isDark]);
 
     // Apply theme immediately on page load (before React hydrates)

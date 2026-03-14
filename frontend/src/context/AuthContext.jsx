@@ -9,15 +9,15 @@ export function AuthProvider({ children }) {
 
     useEffect(() => {
         // Load user from localStorage on mount
-        const storedUser = localStorage.getItem('marevlo_user');
-        const storedPoints = localStorage.getItem('marevlo_points');
+        const storedUser = localStorage.getItem('algosphere_user');
+        const storedPoints = localStorage.getItem('algosphere_points');
 
         if (storedUser) {
             try {
                 setUser(JSON.parse(storedUser));
             } catch (error) {
                 console.error("Failed to parse stored user", error);
-                localStorage.removeItem('marevlo_user');
+                localStorage.removeItem('algosphere_user');
             }
         }
 
@@ -40,18 +40,18 @@ export function AuthProvider({ children }) {
         };
 
         setUser(userObj);
-        localStorage.setItem('marevlo_user', JSON.stringify(userObj));
+        localStorage.setItem('algosphere_user', JSON.stringify(userObj));
     };
 
     const logout = () => {
         setUser(null);
-        localStorage.removeItem('marevlo_user');
+        localStorage.removeItem('algosphere_user');
     };
 
     const addPoints = (points = 50) => {
         setUserPoints(prev => {
             const newPoints = prev + points;
-            localStorage.setItem('marevlo_points', newPoints.toString());
+            localStorage.setItem('algosphere_points', newPoints.toString());
             return newPoints;
         });
     };
@@ -59,7 +59,7 @@ export function AuthProvider({ children }) {
     const updateUser = (updates) => {
         setUser(prevUser => {
             const updatedUser = { ...prevUser, ...updates };
-            localStorage.setItem('marevlo_user', JSON.stringify(updatedUser));
+            localStorage.setItem('algosphere_user', JSON.stringify(updatedUser));
             return updatedUser;
         });
     };

@@ -15,6 +15,7 @@ const Network = React.lazy(() => import('./pages/Network'));
 const Messages = React.lazy(() => import('./pages/Messages'));
 const Courses = React.lazy(() => import('./pages/Courses'));
 const CourseContent = React.lazy(() => import('./pages/CourseContent'));
+const LearningPath = React.lazy(() => import('./pages/LearningPath'));
 const JobBoard = React.lazy(() => import('./pages/JobBoard'));
 const Profile = React.lazy(() => import('./pages/Profile'));
 const Login = React.lazy(() => import('./pages/Login'));
@@ -52,7 +53,7 @@ function Navigation() {
                         <Layers size={20} style={{ color: isDark ? '#000000' : '#ffffff' }} />
                     </div>
                     <span className="text-lg font-bold tracking-tight" style={{ color: 'var(--color-primary-text)' }}>
-                        Marevlo
+                        AlgoSphere
                     </span>
                 </div>
 
@@ -276,6 +277,7 @@ export default function App() {
                             <Route path="/messages" element={<Messages />} />
                             <Route path="/courses" element={<Courses />} />
                             <Route path="/course/:id" element={<CourseContent />} />
+                            <Route path="/learning-path" element={<LearningPath />} />
                             <Route path="/jobs" element={<JobBoard />} />
                             <Route path="/plan" element={<Plan />} />
                             <Route path="/profile" element={<Profile />} />
