@@ -63,7 +63,7 @@ const CodeToolbar = ({ selectedLanguage, onLanguageChange, languages = [], onCop
                     <div style={{ width: 22, height: 22, background: '#10b981', borderRadius: 5, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                         <span style={{ color: '#fff', fontWeight: 700, fontSize: 11 }}>A</span>
                     </div>
-                    <span style={{ fontWeight: 600, color: 'var(--color-primary-text)', fontSize: 13 }}>Marevlo</span>
+                    <span style={{ fontWeight: 600, color: 'var(--color-primary-text)', fontSize: 13 }}>AlgoSphere</span>
                 </div>
 
                 <div style={{ width: 1, height: 14, background: 'var(--color-border)' }} />

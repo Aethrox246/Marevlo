@@ -8,6 +8,7 @@ from redis import Redis
 
 from app.core.dependencies import get_db
 from app.auth.models.user import User
+from app.auth.models.session import UserSession
 from app.auth.models.email_otp import EmailOTP
 from app.auth.schemas.user import UserCreate, UserOut
 from app.auth.schemas.auth import Token, ForgotPasswordRequest, ResetPasswordRequest
@@ -50,6 +51,14 @@ def login(
     redis.setex(f"refresh:{jti}", 30 * 24 * 3600, user.id)
 
     user.last_login_at = datetime.now(timezone.utc)
+    ip_address = request.client.host if request.client else None
+    user_agent = request.headers.get("user-agent")
+    session = UserSession(
+        user_id=user.id,
+        ip_address=ip_address,
+        device=(user_agent[:100] if user_agent else None),
+    )
+    db.add(session)
     db.commit()
 
     return {
@@ -109,10 +118,21 @@ def refresh(
 def logout(
     request: Request,
     token: str = Depends(oauth2_scheme),
+    db: Session = Depends(get_db),
 ):
     payload = decode_token(token)
     jti = payload["jti"]
     redis.delete(f"refresh:{jti}")
+    user_id = int(payload["sub"])
+    # Best-effort: mark latest session as logged out
+    session = db.execute(
+        select(UserSession)
+        .where(UserSession.user_id == user_id)
+        .order_by(UserSession.login_time.desc())
+    ).scalar_one_or_none()
+    if session and session.logout_time is None:
+        session.logout_time = datetime.now(timezone.utc)
+        db.commit()
     return {"message": "Logged out successfully"}
 
 

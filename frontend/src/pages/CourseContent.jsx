@@ -52,7 +52,6 @@ MemoizedProseContent.displayName = "MemoizedProseContent";
 const COURSE_HTML_MAP = {
   "prompt-engineering-0": "/courses/Prompt_Engineering_Moduless.html",
   "video-processing-0": "/courses/videoingestion.html",
-  "vectorless-rag": "/courses/videoingestion.html",
 };
 
 /**
