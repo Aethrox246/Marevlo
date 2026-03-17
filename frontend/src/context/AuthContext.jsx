@@ -2,7 +2,7 @@ import React, { createContext, useContext, useState, useEffect, useCallback } fr
 
 const AuthContext = createContext();
 
-const API_BASE = 'http://localhost:8000';
+const API_BASE = 'https://marevlo-backend.onrender.com/api';
 
 export function AuthProvider({ children }) {
     const [user, setUser] = useState(null);

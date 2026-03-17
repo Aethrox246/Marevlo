@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Layers, ArrowRight, Github, Code2, Cpu, Globe, X } from 'lucide-react';
 
-const API = import.meta.env.VITE_API_URL || 'http://localhost:8000';
+const API = import.meta.env.VITE_API_URL;
 
 export default function Login({ onLogin, onSignup }) {
     const [email, setEmail] = useState('');

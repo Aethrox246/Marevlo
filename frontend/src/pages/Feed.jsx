@@ -8,7 +8,7 @@ import MessengerWidget from '../components/feed/MessengerWidget';
 import { useAuth } from '../context/AuthContext';
 
 const INITIAL_POSTS = [];
-const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:8000';
+const API_BASE = import.meta.env.VITE_API_URL;
 
 export default function Feed({ setView }) {
     const { user } = useAuth();

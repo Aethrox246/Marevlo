@@ -4,7 +4,7 @@ import { useAuth } from '../context/AuthContext';
 import ChatWindow from '../components/chat/ChatWindow';
 import UserSearch from '../components/chat/UserSearch';
 
-const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:8000';
+const API_BASE = import.meta.env.VITE_API_URL;
 
 export default function Messages({ setView }) {
     const { user } = useAuth();

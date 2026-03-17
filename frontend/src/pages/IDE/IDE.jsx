@@ -18,7 +18,7 @@ const starterCodes = {
     javascript: "console.log('Hello');"
 };
 
-const API = import.meta.env.VITE_API_URL || 'http://localhost:8000';
+const API = import.meta.env.VITE_API_URL;
 
 const getRunnerEndpoint = () => {
     if (import.meta.env.VITE_RUNNER_URL) {
