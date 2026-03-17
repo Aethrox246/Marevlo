@@ -1,4 +1,4 @@
-﻿import React, { useState, useEffect, useRef, useCallback } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { Play, Upload, Code, FileText, Terminal } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 
@@ -132,7 +132,42 @@ function useDrag(initial = 40, min = 20, max = 75, direction = 'horizontal') {
  * IDE - Main Integrated Development Environment component (LeetCode Style)
  * Orchestrates all sub-components and manages state
  */
-export default function IDE({ problem, onBack, onNext, onSolved }) {
+/**
+ * Convert a structured JSON test case input object to a stdin string.
+ * Example: { nums: [2,7,11,15], target: 9 } → "[2, 7, 11, 15]\n9"
+ */
+const testCaseInputToStdin = (input) => {
+    if (typeof input === 'string') return input;
+    if (input === null || input === undefined) return '';
+    // Always JSON-serialize each field value — one per line.
+    // This gives a consistent, predictable stdin format the user can parse.
+    return Object.values(input).map(v => JSON.stringify(v)).join('\n');
+};
+
+/**
+ * Normalize output for comparison:
+ * - trim whitespace
+ * - normalize JSON formatting (remove extra spaces)
+ * - handle None vs null
+ */
+const normalizeOutput = (output) => {
+    if (output === null || output === undefined) return '';
+    let s = String(output).trim();
+    // Normalize Python None → null, True → true, False → false
+    s = s.replace(/\bNone\b/g, 'null');
+    s = s.replace(/\bTrue\b/g, 'true');
+    s = s.replace(/\bFalse\b/g, 'false');
+    // Try to parse as JSON and re-stringify for canonical form
+    try {
+        const parsed = JSON.parse(s);
+        s = JSON.stringify(parsed);
+    } catch (e) {
+        // Not valid JSON, keep as-is but remove trailing newlines
+    }
+    return s;
+};
+
+export default function IDE({ problem, judgeTestCases = [], onBack, onNext, onSolved }) {
     const { user } = useAuth();
     // State management
     const [selectedLanguage, setSelectedLanguage] = useState('java'); // Default to Java
@@ -208,9 +243,19 @@ export default function IDE({ problem, onBack, onNext, onSolved }) {
         setActiveTestTab('testcase');
         setTestResults([]);
 
-        // Use examples as display-only testcases
+        // Build testcase rows from the problem schema used in assets.
+        // Prefer direct input/output fields, with fallback to legacy example_text parsing.
         if (problem && problem.examples && problem.examples.length > 0) {
-            setTestcases(problem.examples.map(ex => parseExampleText(ex.example_text)));
+            setTestcases(problem.examples.map((ex) => {
+                if (ex && (ex.input !== undefined || ex.output !== undefined || ex.explanation !== undefined)) {
+                    return {
+                        input: String(ex.input ?? '').trim(),
+                        expected_output: String(ex.output ?? '').trim(),
+                        explanation: String(ex.explanation ?? '').trim(),
+                    };
+                }
+                return parseExampleText(ex?.example_text);
+            }));
         } else {
             setTestcases([]);
         }
@@ -249,13 +294,6 @@ export default function IDE({ problem, onBack, onNext, onSolved }) {
             return;
         }
 
-        // Validate we have test cases for submission
-        if (isSubmission && testcases.length === 0) {
-            setOutput("Error: No test cases available for this problem.");
-            setStatus('error');
-            return;
-        }
-
         setIsRunning(true);
         setStatus('running');
         setOutput("Running code...");
@@ -263,13 +301,35 @@ export default function IDE({ problem, onBack, onNext, onSolved }) {
         setTestResults([]);
 
         try {
-            if (isSubmission && testcases.length > 0) {
+            if (isSubmission) {
+                // ─── SUBMIT MODE: Judge against structured test cases ───
+                // Use judgeTestCases from problem files first, fallback to example-parsed testcases
+                const casesToJudge = judgeTestCases.length > 0 ? judgeTestCases : testcases;
+
+                if (casesToJudge.length === 0) {
+                    setOutput("Error: No test cases available for this problem.");
+                    setStatus('error');
+                    setIsRunning(false);
+                    return;
+                }
+
                 let allPassed = true;
                 const results = [];
 
-                for (let i = 0; i < testcases.length; i++) {
-                    const tc = testcases[i];
-                    const stdinValue = useCustomInput ? stdin : (tc.input || '');
+                for (let i = 0; i < casesToJudge.length; i++) {
+                    const tc = casesToJudge[i];
+
+                    // Determine stdin: if using structured judge test cases, convert input object to stdin string
+                    let stdinValue;
+                    if (useCustomInput) {
+                        stdinValue = stdin;
+                    } else if (judgeTestCases.length > 0 && tc.input) {
+                        // Structured test case from problem file
+                        stdinValue = testCaseInputToStdin(tc.input);
+                    } else {
+                        // Fallback to example-parsed input
+                        stdinValue = tc.input || '';
+                    }
 
                     const { response, result } = await runSingle(stdinValue);
 
@@ -297,31 +357,39 @@ export default function IDE({ problem, onBack, onNext, onSolved }) {
                         continue;
                     }
 
-                    const expected = (tc.expected_output || '').trim();
+                    // Determine expected output
+                    let expectedRaw;
+                    if (judgeTestCases.length > 0) {
+                        // Structured test case — expected_output is a JSON value
+                        expectedRaw = typeof tc.expected_output === 'string'
+                            ? tc.expected_output
+                            : JSON.stringify(tc.expected_output);
+                    } else {
+                        expectedRaw = tc.expected_output || '';
+                    }
 
-                    // If expected output is empty but we got output, consider it wrong
-                    if (!expected && stdout) {
+                    const normalizedExpected = normalizeOutput(expectedRaw);
+                    const normalizedActual = normalizeOutput(stdout);
+
+                    if (!normalizedExpected) {
+                        // No expected output defined — treat as failure, never auto-accept
                         results.push({
                             passed: false,
-                            message: `Expected empty output but got:\n${stdout.substring(0, 100)}${stdout.length > 100 ? '...' : ''}`,
+                            message: 'No expected output defined for this test case.',
+                            category: 'no-expected'
+                        });
+                        allPassed = false;
+                    } else if (normalizedActual !== normalizedExpected) {
+                        results.push({
+                            passed: false,
+                            message: `Expected:\n${expectedRaw}\n\nGot:\n${stdout.substring(0, 200) || '(no output)'}`,
                             category: 'mismatch'
                         });
                         allPassed = false;
-                    }
-                    // If expected output exists but stdout doesn't match
-                    else if (expected && stdout !== expected) {
-                        results.push({
-                            passed: false,
-                            message: `Expected:\n${expected.substring(0, 100)}${expected.length > 100 ? '...' : ''}\n\nGot:\n${stdout.substring(0, 100)}${stdout.length > 100 ? '...' : ''}`,
-                            category: 'mismatch'
-                        });
-                        allPassed = false;
-                    }
-                    // Passed case
-                    else {
+                    } else {
                         results.push({
                             passed: true,
-                            message: stdout ? `Output:\n${stdout.substring(0, 200)}${stdout.length > 200 ? '...' : ''}` : '(empty output - as expected)',
+                            message: `Output:\n${stdout.substring(0, 200)}`,
                             category: 'success'
                         });
                     }
@@ -359,7 +427,7 @@ export default function IDE({ problem, onBack, onNext, onSolved }) {
                 return;
             }
 
-            // Single test case execution (Run mode, not Submit)
+            // ─── RUN MODE: Just execute code and show output, NO verdict ───
             const activeTc = testcases[activeTestcase];
             const stdinValue = useCustomInput ? stdin : (activeTc?.input || '');
             const { response, result } = await runSingle(stdinValue);
@@ -368,7 +436,6 @@ export default function IDE({ problem, onBack, onNext, onSolved }) {
                 const msg = result?.error || result?.stderr || `Request failed (${response.status})`;
                 setOutput(`Error: ${msg}`);
                 setStatus('error');
-                if (isSubmission) handleSubmissionResult(false);
                 return;
             }
 
@@ -378,21 +445,18 @@ export default function IDE({ problem, onBack, onNext, onSolved }) {
             if (stderr) {
                 setOutput(stderr);
                 setStatus('error');
-                if (isSubmission) handleSubmissionResult(false);
             } else if (!stdout) {
                 setOutput("No output generated.");
                 setStatus('idle');
-                if (isSubmission) handleSubmissionResult(false);
             } else {
                 setOutput(stdout);
-                setStatus('success');
-                if (isSubmission) handleSubmissionResult(true);
+                // Run mode: set to 'idle' — no verdict popup
+                setStatus('idle');
             }
         } catch (error) {
             const errorMsg = error?.message || 'Unknown error occurred';
             setOutput(`Error: ${errorMsg}`);
             setStatus('error');
-            if (isSubmission) handleSubmissionResult(false);
         } finally {
             setIsRunning(false);
         }

@@ -84,14 +84,14 @@ export default function LandingPage({ onStart, onExplore }) {
             </section>
 
 
-            {/*"Why AlgoSphere?" */}
+            {/*"Why Marevlo?" */}
             <section className="py-24 relative overflow-hidden bg-white/50">
                 {/* Section Specific Background */}
                 <div className="absolute inset-0 bg-white/50 skew-y-3 transform origin-bottom-left -z-10 border-y border-neutral-200 backdrop-blur-3xl"></div>
 
                 <div className="max-w-7xl mx-auto px-4 relative">
                     <div className="text-center mb-16">
-                        <h2 className="text-4xl font-bold text-primary-text mb-4">The AlgoSphere Ecosystem</h2>
+                        <h2 className="text-4xl font-bold text-primary-text mb-4">The Marevlo Ecosystem</h2>
                         <p className="text-muted-text max-w-2xl mx-auto text-lg">We've reimagined the coding interview prep experience. It's not just about solving problems; it's about evolving your mindset.</p>
                     </div>
 

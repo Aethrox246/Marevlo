@@ -1,12 +1,7 @@
 from fastapi.security import OAuth2PasswordBearer
-
-
-class _NoopLimiter:
-    def limit(self, _rate: str):
-        def decorator(func):
-            return func
-        return decorator
+from slowapi import Limiter
+from slowapi.util import get_remote_address
 
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/auth/login")
-limiter = _NoopLimiter()
+limiter = Limiter(key_func=get_remote_address)

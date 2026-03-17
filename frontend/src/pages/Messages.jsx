@@ -1,150 +1,291 @@
-import React, { useState } from 'react';
-import { Search, Send, MoreVertical, Phone, Video, Smile, Paperclip, MessageSquare } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { Search, Send, X, MessageCircle, Clock, AlertCircle } from 'lucide-react';
+import { useAuth } from '../context/AuthContext';
+import ChatWindow from '../components/chat/ChatWindow';
+import UserSearch from '../components/chat/UserSearch';
 
-const MESSAGES = [];
+const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:8000';
 
-export default function Messages() {
-    const [selectedId, setSelectedId] = useState(null);
-    const activeMsg = MESSAGES.find(m => m.id === selectedId);
+export default function Messages({ setView }) {
+    const { user } = useAuth();
+    const [chats, setChats] = useState([]);
+    const [selectedChatId, setSelectedChatId] = useState(null);
+    const [selectedUserId, setSelectedUserId] = useState(null);
+    const [searchQuery, setSearchQuery] = useState('');
+    const [loading, setLoading] = useState(false);
+    const [showUserSearch, setShowUserSearch] = useState(false);
+    const [error, setError] = useState(null);
+    const [page, setPage] = useState(1);
+    const token = localStorage.getItem('access_token');
+
+    // Fetch chats
+    useEffect(() => {
+        fetchChats();
+        const interval = setInterval(fetchChats, 5000); // Refresh every 5 seconds
+        return () => clearInterval(interval);
+    }, [page]);
+
+    const fetchChats = async () => {
+        try {
+            setLoading(true);
+            const response = await fetch(
+                `${API_BASE}/chat/chats?page=${page}&limit=20`,
+                {
+                    headers: {
+                        'Authorization': `Bearer ${token}`,
+                        'Content-Type': 'application/json'
+                    }
+                }
+            );
+            if (response.ok) {
+                const data = await response.json();
+                setChats(data.chats);
+            }
+        } catch (err) {
+            setError('Failed to load chats');
+            console.error(err);
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const handleSelectChat = (chatId, userId) => {
+        setSelectedChatId(chatId);
+        setSelectedUserId(userId);
+        setShowUserSearch(false);
+    };
+
+    const handleUserSelected = (userId) => {
+        setSelectedUserId(userId);
+        setShowUserSearch(false);
+    };
+
+    const handleBackToList = () => {
+        setSelectedChatId(null);
+        setSelectedUserId(null);
+        fetchChats(); // Refresh chats when returning
+    };
+
+    // Filter chats by search query
+    const filteredChats = chats.filter(chat => {
+        const otherUserName = chat.user_1_id === user?.id 
+            ? chat.user_2_username 
+            : chat.user_1_username;
+        return otherUserName.toLowerCase().includes(searchQuery.toLowerCase());
+    });
 
     return (
-        <div className="h-full flex text-primary-text overflow-hidden">
-            {/* Sidebar List */}
-            <div className={`${selectedId ? 'hidden md:flex' : 'flex'} w-full md:w-80 flex-col border-r border-neutral-200 bg-white`}>
-                <div className="p-4 border-b border-neutral-200">
-                    <h2 className="text-xl font-bold text-primary-text mb-4">Messages</h2>
-                    <div className="relative">
-                        <Search className="absolute left-3 top-2.5 text-muted-text" size={18} />
-                        <input
-                            type="text"
-                            placeholder="Search messages..."
-                            className="w-full bg-neutral-50 border border-neutral-200 rounded-lg py-2 pl-9 pr-4 text-sm focus:border-black outline-none text-primary-text"
-                        />
-                    </div>
-                </div>
-
-                <div className="flex-1 overflow-y-auto">
-                    {MESSAGES.length > 0 ? (
-                        MESSAGES.map(msg => (
-                            <div
-                                key={msg.id}
-                                onClick={() => setSelectedId(msg.id)}
-                                className={`p-4 hover:bg-neutral-50 cursor-pointer transition-colors border-b border-neutral-100 ${selectedId === msg.id ? 'bg-neutral-100' : ''}`}
-                            >
-                                <div className="flex gap-3">
-                                    <div className="relative">
-                                        <div className="w-12 h-12 rounded-full bg-black flex items-center justify-center font-bold text-white shadow-sm">
-                                            {msg.avatar}
-                                        </div>
-                                        {msg.unread > 0 && (
-                                            <div className="absolute -top-1 -right-1 w-5 h-5 bg-white rounded-full flex items-center justify-center text-xs font-bold text-black border-2 border-white shadow-sm">
-                                                {msg.unread}
-                                            </div>
-                                        )}
-                                    </div>
-                                    <div className="flex-1 min-w-0">
-                                        <div className="flex justify-between items-start mb-1">
-                                            <h3 className="font-bold text-primary-text truncate">{msg.name}</h3>
-                                            <span className="text-xs text-muted-text">{msg.time}</span>
-                                        </div>
-                                        <p className={`text-sm truncate ${msg.unread > 0 ? 'text-primary-text font-bold' : 'text-muted-text'}`}>
-                                            {msg.lastMessage}
-                                        </p>
-                                    </div>
-                                </div>
-                            </div>
-                        ))
-                    ) : (
-                        <div className="p-8 text-center text-muted-text">
-                            <p>No messages found.</p>
-                        </div>
-                    )}
-                </div>
+        <div
+            className="min-h-screen w-full flex overflow-hidden custom-scrollbar"
+            style={{
+                backgroundColor: 'var(--color-app-bg)',
+                color: 'var(--color-primary-text)',
+                transition: 'background-color 0.3s ease'
+            }}
+        >
+            {/* ── Animated ambient background orbs ── */}
+            <div className="fixed inset-0 z-0 pointer-events-none overflow-hidden">
+                <div className="feed-orb feed-orb-1" />
+                <div className="feed-orb feed-orb-2" />
+                <div className="feed-orb feed-orb-3" />
             </div>
 
-            {/* Chat Area */}
-            <div className={`${selectedId ? 'flex' : 'hidden md:flex'} flex-1 flex-col bg-app-bg`}>
-                {activeMsg ? (
-                    <>
-                        {/* Chat Header */}
-                        <div className="p-4 border-b border-neutral-200 flex justify-between items-center bg-white shadow-sm">
-                            <div className="flex items-center gap-3">
-                                <button
-                                    onClick={() => setSelectedId(null)}
-                                    className="md:hidden text-muted-text hover:text-primary-text"
-                                >
-                                    ←
-                                </button>
-                                <div className="w-10 h-10 rounded-full bg-black flex items-center justify-center font-bold text-white shadow-sm">
-                                    {activeMsg.avatar}
-                                </div>
-                                <div>
-                                    <h3 className="font-bold text-primary-text">{activeMsg.name}</h3>
-                                    <div className="flex items-center gap-1.5">
-                                        <div className="w-2 h-2 rounded-full bg-black"></div>
-                                        <span className="text-xs text-muted-text">Online</span>
-                                    </div>
-                                </div>
-                            </div>
-                            <div className="flex gap-4 text-muted-text">
-                                <Phone size={20} className="hover:text-primary-text cursor-pointer" />
-                                <Video size={20} className="hover:text-primary-text cursor-pointer" />
-                                <MoreVertical size={20} className="hover:text-primary-text cursor-pointer" />
-                            </div>
-                        </div>
-
-                        {/* Messages List - Placeholder content */}
-                        <div className="flex-1 p-4 overflow-y-auto space-y-4 bg-app-bg/50">
-                            <div className="flex justify-center my-4">
-                                <span className="text-xs text-muted-text bg-neutral-200 px-2 py-1 rounded-full">Today</span>
-                            </div>
-                            {/* In a real app, map through activeMsg.history */}
-                            <div className="flex justify-end">
-                                <div className="bg-black text-white px-4 py-2 rounded-2xl rounded-tr-sm max-w-[80%] shadow-md">
-                                    <p>Hey! How's the project going?</p>
-                                    <span className="text-[10px] text-white/70 block text-right mt-1">10:42 AM</span>
-                                </div>
-                            </div>
-                            <div className="flex justify-start">
-                                <div className="bg-white border border-neutral-200 text-primary-text px-4 py-2 rounded-2xl rounded-tl-sm max-w-[80%] shadow-sm">
-                                    <p>Making good progress! Just updating the color palette now.</p>
-                                    <span className="text-[10px] text-muted-text block text-right mt-1">10:45 AM</span>
-                                </div>
-                            </div>
-                        </div>
-
-                        {/* Input Area */}
-                        <div className="p-4 bg-white border-t border-neutral-200">
-                            <div className="flex gap-3 items-center">
-                                <button className="text-muted-text hover:text-primary-text p-2 hover:bg-neutral-100 rounded-full transition-colors">
-                                    <Paperclip size={20} />
-                                </button>
-                                <div className="flex-1 relative">
+            <div className="relative z-10 w-full max-w-6xl mx-auto">
+                <div className="grid grid-cols-1 lg:grid-cols-[340px_1fr] gap-0 h-screen">
+                    
+                    {/* ══════════════ CHATS LIST PANEL ══════════════ */}
+                    {!selectedChatId && !selectedUserId && (
+                        <div className="lg:col-span-1 flex flex-col h-screen border-r" style={{ borderColor: 'var(--color-border)' }}>
+                            {/* Header */}
+                            <div className="p-5 border-b" style={{ borderColor: 'var(--color-border)' }}>
+                                <h1 className="text-2xl font-bold mb-4" style={{ color: 'var(--color-primary-text)' }}>
+                                    Messages
+                                </h1>
+                                
+                                {/* Search Box */}
+                                <div className="relative mb-3">
+                                    <Search size={18} className="absolute left-3 top-3" style={{ color: 'var(--color-muted-text)' }} />
                                     <input
                                         type="text"
-                                        placeholder="Type a message..."
-                                        className="w-full bg-neutral-50 border border-neutral-200 rounded-full py-3 pl-4 pr-10 text-primary-text focus:border-black outline-none"
+                                        placeholder="Search chats..."
+                                        value={searchQuery}
+                                        onChange={(e) => setSearchQuery(e.target.value)}
+                                        className="w-full pl-10 pr-4 py-2.5 rounded-xl text-sm focus:outline-none transition-all"
+                                        style={{
+                                            backgroundColor: 'var(--color-surface-hover)',
+                                            color: 'var(--color-primary-text)',
+                                            border: `1.5px solid ${searchQuery ? '#6366f1' : 'var(--color-border)'}`
+                                        }}
                                     />
-                                    <button className="absolute right-3 top-3 text-muted-text hover:text-black">
-                                        <Smile size={20} />
-                                    </button>
                                 </div>
-                                <button className="p-3 bg-black hover:bg-neutral-800 text-white rounded-full transition-colors shadow-lg">
-                                    <Send size={20} />
+
+                                {/* New Chat Button */}
+                                <button
+                                    onClick={() => setShowUserSearch(true)}
+                                    className="w-full py-2.5 rounded-xl font-semibold text-white text-sm transition-all duration-200 flex items-center justify-center gap-2"
+                                    style={{
+                                        background: 'linear-gradient(135deg, #6366f1, #8b5cf6)',
+                                        boxShadow: '0 4px 12px rgba(99,102,241,0.3)'
+                                    }}
+                                    onMouseEnter={e => e.currentTarget.style.transform = 'translateY(-2px)'}
+                                    onMouseLeave={e => e.currentTarget.style.transform = 'translateY(0)'}
+                                >
+                                    <MessageCircle size={16} /> New Chat
                                 </button>
                             </div>
+
+                            {/* Chats List */}
+                            <div className="flex-1 overflow-y-auto custom-scrollbar">
+                                {loading && !chats.length && (
+                                    <div className="p-4 text-center" style={{ color: 'var(--color-muted-text)' }}>
+                                        <div className="animate-spin inline-block w-5 h-5 border-2 border-current border-t-transparent rounded-full"></div>
+                                    </div>
+                                )}
+
+                                {error && (
+                                    <div className="m-3 p-3 rounded-lg flex items-center gap-2" style={{ backgroundColor: 'rgba(239, 68, 68, 0.1)', color: '#ef4444' }}>
+                                        <AlertCircle size={16} />
+                                        <span className="text-xs">{error}</span>
+                                    </div>
+                                )}
+
+                                {filteredChats.length === 0 && !loading ? (
+                                    <div className="p-6 text-center">
+                                        <MessageCircle size={40} className="mx-auto mb-3 opacity-30" />
+                                        <p style={{ color: 'var(--color-muted-text)' }} className="text-sm">
+                                            {searchQuery ? 'No chats found' : 'No chats yet. Start a new one!'}
+                                        </p>
+                                    </div>
+                                ) : (
+                                    <div className="space-y-1 p-2">
+                                        {filteredChats.map((chat) => {
+                                            const otherUserId = chat.user_1_id === user?.id ? chat.user_2_id : chat.user_1_id;
+                                            const otherUsername = chat.user_1_id === user?.id ? chat.user_2_username : chat.user_1_username;
+                                            const avatar = otherUsername[0].toUpperCase();
+
+                                            return (
+                                                <div
+                                                    key={chat.id}
+                                                    onClick={() => handleSelectChat(chat.id, otherUserId)}
+                                                    className="p-3 rounded-xl cursor-pointer transition-all duration-200 flex items-center gap-3"
+                                                    style={{ backgroundColor: 'var(--color-surface)' }}
+                                                    onMouseEnter={e => e.currentTarget.style.backgroundColor = 'rgba(99,102,241,0.1)'}
+                                                    onMouseLeave={e => e.currentTarget.style.backgroundColor = 'var(--color-surface)'}
+                                                >
+                                                    {/* Avatar */}
+                                                    <div
+                                                        className="w-12 h-12 rounded-full flex items-center justify-center flex-shrink-0 text-sm font-bold text-white"
+                                                        style={{ background: 'linear-gradient(135deg, #6366f1, #8b5cf6)' }}
+                                                    >
+                                                        {avatar}
+                                                    </div>
+
+                                                    {/* Chat Info */}
+                                                    <div className="flex-1 min-w-0">
+                                                        <h3 className="font-semibold text-sm truncate">
+                                                            {otherUsername}
+                                                        </h3>
+                                                        <p 
+                                                            className="text-xs truncate"
+                                                            style={{ color: 'var(--color-muted-text)' }}
+                                                        >
+                                                            {chat.last_message_preview || 'No messages yet'}
+                                                        </p>
+                                                    </div>
+
+                                                    {/* Time & Unread */}
+                                                    <div className="flex flex-col items-end gap-1">
+                                                        <span 
+                                                            className="text-xs"
+                                                            style={{ color: 'var(--color-muted-text)' }}
+                                                        >
+                                                            {chat.last_message_at}
+                                                        </span>
+                                                        {chat.unread_count > 0 && (
+                                                            <span 
+                                                                className="px-2 py-1 rounded-full text-xs font-bold text-white"
+                                                                style={{ background: '#ef4444' }}
+                                                            >
+                                                                {chat.unread_count}
+                                                            </span>
+                                                        )}
+                                                    </div>
+                                                </div>
+                                            );
+                                        })}
+                                    </div>
+                                )}
+                            </div>
                         </div>
-                    </>
-                ) : (
-                    <div className="flex-1 flex flex-col items-center justify-center text-muted-text bg-app-bg">
-                        <div className="w-20 h-20 bg-neutral-200 rounded-full flex items-center justify-center mb-4">
-                            <MessageSquare size={32} className="text-neutral-400" />
-                        </div>
-                        <h3 className="text-xl font-bold text-primary-text mb-2">Select a message</h3>
-                        <p>Choose from your existing conversations or start a new one.</p>
+                    )}
+
+                    {/* ══════════════ CHAT WINDOW OR SELECT SCREEN ══════════════ */}
+                    <div className="lg:col-span-1 flex flex-col h-screen">
+                        {selectedChatId && selectedUserId ? (
+                            <ChatWindow
+                                chatId={selectedChatId}
+                                userId={selectedUserId}
+                                onBack={handleBackToList}
+                            />
+                        ) : selectedUserId && !selectedChatId ? (
+                            <ChatWindow
+                                userId={selectedUserId}
+                                onBack={handleBackToList}
+                            />
+                        ) : showUserSearch ? (
+                            <UserSearch
+                                onUserSelected={handleUserSelected}
+                                onBack={() => setShowUserSearch(false)}
+                            />
+                        ) : (
+                            <div className="hidden lg:flex flex-col items-center justify-center h-full">
+                                <MessageCircle size={64} className="mb-4 opacity-30" />
+                                <h2 className="text-xl font-bold mb-2">Select a chat to start messaging</h2>
+                                <p style={{ color: 'var(--color-muted-text)' }}>
+                                    Choose an existing chat or start a new one
+                                </p>
+                            </div>
+                        )}
                     </div>
-                )}
+                </div>
             </div>
+
+            <style>{`
+                @keyframes feedSlideIn {
+                    from { transform: translateY(120%) scale(0.9); opacity: 0; }
+                    to   { transform: translateY(0) scale(1); opacity: 1; }
+                }
+                @keyframes feedOrbFloat {
+                    0%, 100% { transform: translate(0, 0) scale(1); }
+                    33% { transform: translate(30px, -40px) scale(1.08); }
+                    66% { transform: translate(-20px, 20px) scale(0.94); }
+                }
+                .feed-orb {
+                    position: absolute;
+                    border-radius: 50%;
+                    filter: blur(80px);
+                    pointer-events: none;
+                    animation: feedOrbFloat 10s ease-in-out infinite;
+                }
+                .feed-orb-1 {
+                    width: 400px; height: 400px;
+                    background: radial-gradient(circle, rgba(99,102,241,0.18), transparent 70%);
+                    top: -100px; left: -100px;
+                    animation-delay: 0s;
+                }
+                .feed-orb-2 {
+                    width: 350px; height: 350px;
+                    background: radial-gradient(circle, rgba(6,182,212,0.15), transparent 70%);
+                    bottom: 10%; right: -80px;
+                    animation-delay: -4s;
+                }
+                .feed-orb-3 {
+                    width: 250px; height: 250px;
+                    background: radial-gradient(circle, rgba(244,63,94,0.12), transparent 70%);
+                    top: 40%; left: 40%;
+                    animation-delay: -7s;
+                }
+            `}</style>
         </div>
     );
 }

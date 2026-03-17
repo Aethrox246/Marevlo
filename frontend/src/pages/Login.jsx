@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Layers, ArrowRight, Github, Code2, Cpu, Globe } from 'lucide-react';
+import { Layers, ArrowRight, Github, Code2, Cpu, Globe, X } from 'lucide-react';
 
 const API = import.meta.env.VITE_API_URL || 'http://localhost:8000';
 
@@ -8,6 +8,15 @@ export default function Login({ onLogin, onSignup }) {
     const [password, setPassword] = useState('');
 
     const [error, setError] = useState('');
+    const [forgotOpen, setForgotOpen] = useState(false);
+    const [forgotStep, setForgotStep] = useState('email'); // email | verify
+    const [forgotEmail, setForgotEmail] = useState('');
+    const [otp, setOtp] = useState('');
+    const [newPassword, setNewPassword] = useState('');
+    const [confirmNewPassword, setConfirmNewPassword] = useState('');
+    const [forgotMsg, setForgotMsg] = useState('');
+    const [forgotError, setForgotError] = useState('');
+    const [forgotLoading, setForgotLoading] = useState(false);
 
     const handleSubmit = async (e) => {
         e.preventDefault();
@@ -29,7 +38,11 @@ export default function Login({ onLogin, onSignup }) {
 
             const data = await response.json();
             const token = data.access_token;
-            localStorage.setItem('token', token);
+            const refreshToken = data.refresh_token;
+            localStorage.setItem('access_token', token);
+            if (refreshToken) {
+                localStorage.setItem('refresh_token', refreshToken);
+            }
 
             // Fetch user details
             const userResponse = await fetch(`${API}/auth/me`, {
@@ -58,6 +71,82 @@ export default function Login({ onLogin, onSignup }) {
             username: `user_${provider.toLowerCase()}`,
         };
         onLogin(mockUser);
+    };
+
+    const resetForgotState = () => {
+        setForgotStep('email');
+        setForgotEmail('');
+        setOtp('');
+        setNewPassword('');
+        setConfirmNewPassword('');
+        setForgotMsg('');
+        setForgotError('');
+        setForgotLoading(false);
+    };
+
+    const handleSendOtp = async () => {
+        setForgotError('');
+        setForgotMsg('');
+        if (!forgotEmail) {
+            setForgotError('Please enter your email.');
+            return;
+        }
+        setForgotLoading(true);
+        try {
+            const response = await fetch(`${API}/auth/password/forgot`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ email: forgotEmail }),
+            });
+            if (!response.ok) {
+                const errData = await response.json().catch(() => ({}));
+                throw new Error(errData.detail || 'Failed to send OTP');
+            }
+            setForgotMsg('If the email exists, an OTP has been sent.');
+            setForgotStep('verify');
+        } catch (err) {
+            setForgotError(err.message);
+        } finally {
+            setForgotLoading(false);
+        }
+    };
+
+    const handleResetPassword = async () => {
+        setForgotError('');
+        setForgotMsg('');
+        if (!otp || !newPassword || !confirmNewPassword) {
+            setForgotError('Please fill all fields.');
+            return;
+        }
+        if (newPassword !== confirmNewPassword) {
+            setForgotError('Passwords do not match.');
+            return;
+        }
+        setForgotLoading(true);
+        try {
+            const response = await fetch(`${API}/auth/password/reset`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    email: forgotEmail,
+                    otp,
+                    new_password: newPassword,
+                }),
+            });
+            if (!response.ok) {
+                const errData = await response.json().catch(() => ({}));
+                throw new Error(errData.detail || 'Failed to reset password');
+            }
+            setForgotMsg('Password reset successful. Please log in.');
+            setForgotOpen(false);
+            setEmail(forgotEmail);
+            setPassword('');
+            resetForgotState();
+        } catch (err) {
+            setForgotError(err.message);
+        } finally {
+            setForgotLoading(false);
+        }
     };
 
     return (
@@ -107,9 +196,13 @@ export default function Login({ onLogin, onSignup }) {
                                     Password
                                 </label>
                                 <div className="text-sm">
-                                    <a href="#" className="font-semibold text-neutral-600 hover:text-black">
+                                    <button
+                                        type="button"
+                                        onClick={() => { resetForgotState(); setForgotEmail(email); setForgotOpen(true); }}
+                                        className="font-semibold text-neutral-600 hover:text-black"
+                                    >
                                         Forgot password?
-                                    </a>
+                                    </button>
                                 </div>
                             </div>
                             <div className="mt-2">
@@ -223,6 +316,103 @@ export default function Login({ onLogin, onSignup }) {
                     </div>
                 </div>
             </div>
+
+            {forgotOpen && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center p-4 backdrop-blur-sm"
+                    style={{ backgroundColor: 'rgba(0,0,0,0.45)' }}>
+                    <div className="w-full max-w-md rounded-2xl bg-white border border-neutral-200 shadow-2xl">
+                        <div className="p-5 border-b border-neutral-200 flex items-center justify-between">
+                            <h3 className="text-lg font-bold text-primary-text">Reset Password</h3>
+                            <button
+                                type="button"
+                                onClick={() => { setForgotOpen(false); resetForgotState(); }}
+                                className="p-2 rounded-lg hover:bg-neutral-100"
+                            >
+                                <X size={18} />
+                            </button>
+                        </div>
+                        <div className="p-5 space-y-4">
+                            {forgotMsg && (
+                                <div className="p-3 rounded-lg bg-emerald-50 border border-emerald-200 text-emerald-700 text-sm">
+                                    {forgotMsg}
+                                </div>
+                            )}
+                            {forgotError && (
+                                <div className="p-3 rounded-lg bg-red-50 border border-red-200 text-red-600 text-sm">
+                                    {forgotError}
+                                </div>
+                            )}
+
+                            <div>
+                                <label className="block text-sm font-medium text-neutral-700">Email address</label>
+                                <input
+                                    type="email"
+                                    value={forgotEmail}
+                                    onChange={(e) => setForgotEmail(e.target.value)}
+                                    className="mt-2 block w-full rounded-xl border-0 bg-white py-3 px-4 text-primary-text shadow-sm ring-1 ring-inset ring-neutral-300 placeholder:text-neutral-400 focus:ring-2 focus:ring-inset focus:ring-black sm:text-sm sm:leading-6 transition-all"
+                                    placeholder="you@example.com"
+                                />
+                            </div>
+
+                            {forgotStep === 'verify' && (
+                                <>
+                                    <div>
+                                        <label className="block text-sm font-medium text-neutral-700">OTP</label>
+                                        <input
+                                            type="text"
+                                            value={otp}
+                                            onChange={(e) => setOtp(e.target.value)}
+                                            className="mt-2 block w-full rounded-xl border-0 bg-white py-3 px-4 text-primary-text shadow-sm ring-1 ring-inset ring-neutral-300 placeholder:text-neutral-400 focus:ring-2 focus:ring-inset focus:ring-black sm:text-sm sm:leading-6 transition-all"
+                                            placeholder="6-digit code"
+                                        />
+                                    </div>
+
+                                    <div>
+                                        <label className="block text-sm font-medium text-neutral-700">New Password</label>
+                                        <input
+                                            type="password"
+                                            value={newPassword}
+                                            onChange={(e) => setNewPassword(e.target.value)}
+                                            className="mt-2 block w-full rounded-xl border-0 bg-white py-3 px-4 text-primary-text shadow-sm ring-1 ring-inset ring-neutral-300 placeholder:text-neutral-400 focus:ring-2 focus:ring-inset focus:ring-black sm:text-sm sm:leading-6 transition-all"
+                                        />
+                                    </div>
+
+                                    <div>
+                                        <label className="block text-sm font-medium text-neutral-700">Confirm New Password</label>
+                                        <input
+                                            type="password"
+                                            value={confirmNewPassword}
+                                            onChange={(e) => setConfirmNewPassword(e.target.value)}
+                                            className="mt-2 block w-full rounded-xl border-0 bg-white py-3 px-4 text-primary-text shadow-sm ring-1 ring-inset ring-neutral-300 placeholder:text-neutral-400 focus:ring-2 focus:ring-inset focus:ring-black sm:text-sm sm:leading-6 transition-all"
+                                        />
+                                    </div>
+                                </>
+                            )}
+                        </div>
+                        <div className="p-5 border-t border-neutral-200 flex gap-3 justify-end">
+                            {forgotStep === 'email' ? (
+                                <button
+                                    type="button"
+                                    onClick={handleSendOtp}
+                                    disabled={forgotLoading}
+                                    className="px-5 py-2.5 rounded-xl text-sm font-semibold text-white bg-black hover:bg-neutral-800 transition-all disabled:opacity-60"
+                                >
+                                    {forgotLoading ? 'Sending...' : 'Send OTP'}
+                                </button>
+                            ) : (
+                                <button
+                                    type="button"
+                                    onClick={handleResetPassword}
+                                    disabled={forgotLoading}
+                                    className="px-5 py-2.5 rounded-xl text-sm font-semibold text-white bg-black hover:bg-neutral-800 transition-all disabled:opacity-60"
+                                >
+                                    {forgotLoading ? 'Resetting...' : 'Reset Password'}
+                                </button>
+                            )}
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     );
 }

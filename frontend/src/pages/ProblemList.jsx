@@ -1,104 +1,244 @@
-import React, { useMemo } from 'react';
-import { CheckCircle, Circle, ArrowRight, Lock, List } from 'lucide-react';
-import problemsData from '../assets/graph_problems.json';
+import React, { useState, useEffect } from 'react';
+import { ArrowRight, ChevronDown, BookOpen, Zap, Target } from 'lucide-react';
+import { loadAllTopics } from '../utils/topicsLoader';
+
+const difficultyConfig = {
+    Easy:   { label: 'Easy',   classes: 'bg-green-100 text-green-700 border border-green-200' },
+    Medium: { label: 'Medium', classes: 'bg-amber-100 text-amber-700 border border-amber-200' },
+    Hard:   { label: 'Hard',   classes: 'bg-red-100   text-red-700   border border-red-200'   },
+};
+
+// Two-colour gradient pairs per topic (cycles if more topics than pairs)
+const topicAccents = [
+    '#6366f1', '#06b6d4', '#8b5cf6', '#ec4899',
+    '#f59e0b', '#10b981', '#ef4444', '#3b82f6',
+];
+// Paired end-colors for the gradient line
+const topicAccentPairs = [
+    ['#6366f1', '#06b6d4'], // indigo → cyan
+    ['#06b6d4', '#10b981'], // cyan → emerald
+    ['#8b5cf6', '#ec4899'], // violet → pink
+    ['#ec4899', '#f59e0b'], // pink → amber
+    ['#f59e0b', '#ef4444'], // amber → red
+    ['#10b981', '#6366f1'], // emerald → indigo
+    ['#ef4444', '#8b5cf6'], // red → violet
+    ['#3b82f6', '#06b6d4'], // blue → cyan
+];
+
+function SkeletonCard() {
+    return (
+        <div className="rounded-2xl border border-neutral-100 overflow-hidden animate-pulse mb-3">
+            <div className="p-5 flex items-center justify-between">
+                <div className="flex items-center gap-4">
+                    <div className="w-10 h-10 rounded-xl bg-neutral-100" />
+                    <div className="w-40 h-4 rounded-full bg-neutral-100" />
+                </div>
+                <div className="w-20 h-6 rounded-full bg-neutral-100" />
+            </div>
+        </div>
+    );
+}
 
 export default function ProblemList({ onSelect }) {
-    // Process and group problems by difficulty
-    const groupedProblems = useMemo(() => {
-        const groups = {
-            Easy: [],
-            Medium: [],
-            Hard: []
-        };
+    const [topics, setTopics]               = useState([]);
+    const [expandedTopics, setExpandedTopics] = useState({ arrays: true });
+    const [loading, setLoading]             = useState(true);
 
-        problemsData.forEach(p => {
-            if (groups[p.difficulty]) {
-                groups[p.difficulty].push({
-                    ...p,
-                    status: 'open', // Default status
-                    acceptance: 'N/A'
-                });
-            }
-        });
-
-        // Convert to array for rendering
-        return [
-            {
-                id: 'easy',
-                level: "Easy Problems",
-                desc: "Start here to build your fundamentals.",
-                difficulty: "Easy",
-                problems: groups.Easy
-            },
-            {
-                id: 'medium',
-                level: "Medium Problems",
-                desc: "Challenge yourself with more complex patterns.",
-                difficulty: "Medium",
-                problems: groups.Medium
-            },
-            {
-                id: 'hard',
-                level: "Hard Problems",
-                desc: "Master the most difficult algorithms.",
-                difficulty: "Hard",
-                problems: groups.Hard
-            }
-        ];
+    useEffect(() => {
+        loadAllTopics()
+            .then(setTopics)
+            .catch((err) => console.error('Failed to load topics:', err))
+            .finally(() => setLoading(false));
     }, []);
 
-    return (
-        <div className="flex-1 overflow-y-auto custom-scrollbar p-8">
-            <div className="max-w-4xl mx-auto space-y-8">
-                <div>
-                    <h1 className="text-3xl font-bold text-primary-text mb-2">Practice Problems</h1>
-                    <p className="text-muted-text">Total Problems: {problemsData.length}</p>
-                </div>
+    const toggleTopic = (id) =>
+        setExpandedTopics((prev) => ({ ...prev, [id]: !prev[id] }));
 
-                {groupedProblems.map((level) => (
-                    <div key={level.id} className="bg-surface rounded-xl border border-neutral-200 overflow-hidden shadow-sm hover:border-neutral-300 transition-colors">
-                        <div className="p-6 border-b border-neutral-200 bg-neutral-50">
-                            <div className="flex items-center gap-3 mb-2">
-                                <div className={`p-2 rounded-lg bg-white border border-neutral-200 text-black`}>
-                                    <List size={20} />
-                                </div>
-                                <h2 className="text-xl font-bold text-primary-text shadow-sm">{level.level}</h2>
+    const totalProblems = topics.reduce((s, t) => s + (t.problems?.length || 0), 0);
+
+    return (
+        <div className="flex-1 overflow-y-auto custom-scrollbar">
+            {/* ── Hero Header ─────────────────────────────────────────── */}
+            <div
+                className="relative overflow-hidden border-b"
+                style={{ borderColor: 'var(--color-border)', background: 'var(--color-surface)' }}
+            >
+                {/* Dot-grid background */}
+                <div
+                    className="absolute inset-0 pointer-events-none opacity-30"
+                    style={{
+                        backgroundImage: 'radial-gradient(circle, var(--color-border) 1px, transparent 1px)',
+                        backgroundSize: '20px 20px',
+                    }}
+                />
+                {/* Blurred orbs */}
+                <div className="absolute -top-16 -left-16 w-64 h-64 rounded-full opacity-10 pointer-events-none"
+                    style={{ background: 'radial-gradient(circle, #6366f1, #8b5cf6)', filter: 'blur(60px)' }} />
+                <div className="absolute -bottom-10 right-0 w-48 h-48 rounded-full opacity-10 pointer-events-none"
+                    style={{ background: 'radial-gradient(circle, #06b6d4, #0ea5e9)', filter: 'blur(50px)' }} />
+
+                <div className="relative max-w-4xl mx-auto px-8 py-10">
+                    <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-bold uppercase tracking-widest mb-4"
+                        style={{ background: 'var(--color-surface-hover)', border: '1px solid var(--color-border)', color: 'var(--color-muted-text)' }}>
+                        <Zap size={11} style={{ color: '#6366f1' }} />
+                        Algorithm Practice
+                    </div>
+
+                    <h1
+                        className="text-4xl font-extrabold tracking-tight mb-3"
+                        style={{
+                            background: 'linear-gradient(135deg, var(--color-primary-text) 40%, #6366f1 100%)',
+                            WebkitBackgroundClip: 'text',
+                            WebkitTextFillColor: 'transparent',
+                            backgroundClip: 'text',
+                        }}
+                    >
+                        Practice Problems
+                    </h1>
+                    <p className="text-sm mb-6" style={{ color: 'var(--color-muted-text)' }}>
+                        Master data structures and algorithms — one problem at a time.
+                    </p>
+
+                    {/* Stat chips */}
+                    <div className="flex flex-wrap items-center gap-3">
+                        {[
+                            { icon: <BookOpen size={13} />, label: `${loading ? '—' : totalProblems} Problems` },
+                            { icon: <Target    size={13} />, label: `${loading ? '—' : topics.length} Topics`   },
+                        ].map(({ icon, label }) => (
+                            <div key={label}
+                                className="inline-flex items-center gap-2 px-4 py-2 rounded-full text-sm font-semibold transition-transform hover:-translate-y-0.5"
+                                style={{ background: 'var(--color-surface-hover)', border: '1px solid var(--color-border)', color: 'var(--color-primary-text)' }}>
+                                {icon}{label}
                             </div>
-                            <p className="text-muted-text text-sm ml-11">{level.desc}</p>
-                        </div>
-                        {/* Show first 50 problems per category to avoid rendering issues */}
-                        <div className="divide-y divide-neutral-100">
-                            {level.problems.slice(0, 20).map((problem) => (
+                        ))}
+                    </div>
+                </div>
+            </div>
+
+            {/* ── Topic list ──────────────────────────────────────────── */}
+            <div className="max-w-4xl mx-auto px-8 py-8 space-y-3">
+                {loading
+                    ? Array.from({ length: 5 }).map((_, i) => <SkeletonCard key={i} />)
+                    : topics.map((topic, ti) => {
+                        const accent  = topicAccents[ti % topicAccents.length];
+                        const isOpen  = !!expandedTopics[topic.id];
+                        const count   = topic.problems?.length || 0;
+
+                        return (
+                            <div
+                                key={topic.id}
+                                className="rounded-2xl overflow-hidden transition-all duration-200"
+                                style={{
+                                    background:   'var(--color-surface)',
+                                    border:       `1px solid ${isOpen ? accent + '55' : 'var(--color-border)'}`,
+                                    boxShadow:    isOpen ? `0 4px 24px ${accent}18` : '0 1px 4px rgba(0,0,0,0.04)',
+                                }}
+                            >
+                                {/* Gradient accent line */}
+                                {(() => {
+                                    const [c1, c2] = topicAccentPairs[ti % topicAccentPairs.length];
+                                    return (
+                                        <div style={{
+                                            height: '3px',
+                                            background: `linear-gradient(90deg, ${c1}, ${c2})`,
+                                        }} />
+                                    );
+                                })()}
+                                {/* Topic header */}
                                 <button
-                                    key={problem.id}
-                                    onClick={() => onSelect(problem)}
-                                    className="w-full p-4 flex items-center justify-between hover:bg-neutral-50 transition-colors group text-left"
+                                    onClick={() => toggleTopic(topic.id)}
+                                    className="w-full p-5 flex items-center justify-between text-left group transition-colors"
+                                    style={{ background: isOpen ? accent + '08' : 'transparent' }}
                                 >
                                     <div className="flex items-center gap-4">
-                                        <Circle size={18} className="text-neutral-400 group-hover:text-black transition-colors" />
-                                        <span className="font-medium text-primary-text group-hover:text-black font-bold">
-                                            {problem.id}. {problem.title}
-                                        </span>
+                                        {/* Icon box */}
+                                        <div
+                                            className="w-10 h-10 rounded-xl flex items-center justify-center text-lg font-bold flex-shrink-0 transition-transform group-hover:scale-110"
+                                            style={{ background: accent + '20', color: accent }}
+                                        >
+                                            {topic.icon || '📁'}
+                                        </div>
+                                        <div>
+                                            <span className="font-bold text-base block" style={{ color: 'var(--color-primary-text)' }}>
+                                                {topic.name}
+                                            </span>
+                                            <span className="text-xs" style={{ color: 'var(--color-muted-text)' }}>
+                                                {count} problem{count !== 1 ? 's' : ''}
+                                            </span>
+                                        </div>
                                     </div>
-                                    <div className="flex items-center gap-6">
-                                        <span className={`text-xs px-2 py-1 rounded font-medium ${problem.difficulty === 'Easy' ? 'bg-neutral-100 text-neutral-700 border border-neutral-200' :
-                                            problem.difficulty === 'Medium' ? 'bg-neutral-200 text-neutral-800 border border-neutral-300' :
-                                                'bg-black text-white'
-                                            }`}>
-                                            {problem.difficulty}
+
+                                    <div className="flex items-center gap-3">
+                                        <span
+                                            className="text-xs px-3 py-1 rounded-full font-bold hidden sm:inline-block"
+                                            style={{ background: accent + '18', color: accent }}
+                                        >
+                                            {count}
                                         </span>
-                                        <ArrowRight size={16} className="text-neutral-400 group-hover:text-black group-hover:translate-x-1 transition-all" />
+                                        <ChevronDown
+                                            size={18}
+                                            className="transition-transform duration-300 flex-shrink-0"
+                                            style={{ color: 'var(--color-muted-text)', transform: isOpen ? 'rotate(0deg)' : 'rotate(-90deg)' }}
+                                        />
                                     </div>
                                 </button>
-                            ))}
-                            {level.problems.length > 20 && (
-                                <div className="p-4 text-center text-muted-text text-xs italic">
-                                    And {level.problems.length - 20} more...
-                                </div>
-                            )}
-                        </div>
-                    </div>
-                ))}
+
+                                {/* Problem rows */}
+                                {isOpen && (
+                                    <div style={{ borderTop: `1px solid ${accent}33` }}>
+                                        {count > 0 ? topic.problems.map((problem, idx) => {
+                                            const dc = difficultyConfig[problem.difficulty] || difficultyConfig.Hard;
+                                            return (
+                                                <button
+                                                    key={problem.id}
+                                                    onClick={() => onSelect(problem)}
+                                                    className="w-full flex items-center justify-between px-5 py-3.5 text-left group transition-all"
+                                                    style={{
+                                                        borderTop: idx > 0 ? '1px solid var(--color-border)' : 'none',
+                                                        paddingLeft: '4.5rem',
+                                                    }}
+                                                    onMouseEnter={(e) => { e.currentTarget.style.background = 'var(--color-surface-hover)'; }}
+                                                    onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent'; }}
+                                                >
+                                                    <div className="flex items-center gap-3">
+                                                        {/* Index badge */}
+                                                        <span
+                                                            className="w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold flex-shrink-0"
+                                                            style={{ background: 'var(--color-surface-hover)', color: 'var(--color-muted-text)', border: '1px solid var(--color-border)' }}
+                                                        >
+                                                            {idx + 1}
+                                                        </span>
+                                                        <span
+                                                            className="font-medium text-sm"
+                                                            style={{ color: 'var(--color-primary-text)' }}
+                                                        >
+                                                            {problem.title}
+                                                        </span>
+                                                    </div>
+
+                                                    <div className="flex items-center gap-4 flex-shrink-0">
+                                                        <span className={`text-xs px-2.5 py-0.5 rounded-full font-semibold ${dc.classes}`}>
+                                                            {dc.label}
+                                                        </span>
+                                                        <ArrowRight
+                                                            size={15}
+                                                            className="transition-transform duration-200 group-hover:translate-x-1"
+                                                            style={{ color: 'var(--color-muted-text)' }}
+                                                        />
+                                                    </div>
+                                                </button>
+                                            );
+                                        }) : (
+                                            <div className="px-5 py-6 pl-20 text-sm italic" style={{ color: 'var(--color-muted-text)' }}>
+                                                No problems found for this topic yet.
+                                            </div>
+                                        )}
+                                    </div>
+                                )}
+                            </div>
+                        );
+                    })
+                }
             </div>
         </div>
     );

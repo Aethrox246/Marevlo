@@ -11,17 +11,17 @@ const LandingPage = React.lazy(() => import('./pages/LandingPage'));
 const ProblemList = React.lazy(() => import('./pages/ProblemList'));
 const IDE = React.lazy(() => import('./pages/IDE'));
 const Feed = React.lazy(() => import('./pages/Feed'));
-const Network = React.lazy(() => import('./pages/Network'));
 const Messages = React.lazy(() => import('./pages/Messages'));
+const Network = React.lazy(() => import('./pages/Network'));
 const Courses = React.lazy(() => import('./pages/Courses'));
 const CourseContent = React.lazy(() => import('./pages/CourseContent'));
-const LearningPath = React.lazy(() => import('./pages/LearningPath'));
 const JobBoard = React.lazy(() => import('./pages/JobBoard'));
 const Profile = React.lazy(() => import('./pages/Profile'));
 const Login = React.lazy(() => import('./pages/Login'));
 const Signup = React.lazy(() => import('./pages/Signup'));
 const Plan = React.lazy(() => import('./pages/Plan'));
-import problemsData from './assets/graph_problems.json';
+
+import { loadAllTopics } from './utils/topicsLoader';
 
 function Navigation() {
     const { user, userPoints, logout } = useAuth();
@@ -53,14 +53,14 @@ function Navigation() {
                         <Layers size={20} style={{ color: isDark ? '#000000' : '#ffffff' }} />
                     </div>
                     <span className="text-lg font-bold tracking-tight" style={{ color: 'var(--color-primary-text)' }}>
-                        AlgoSphere
+                        Marevlo
                     </span>
                 </div>
 
                 {user ? (
                     <div className="hidden md:flex items-center gap-6">
                         <div className="flex items-center gap-6">
-                            <NavItem label="Network" to="/network" />
+                            <NavItem label="Project" to="/network" />
                             <NavItem label="Jobs" to="/jobs" />
                             <NavItem label="Feed" to="/feed" />
                         </div>
@@ -69,6 +69,7 @@ function Navigation() {
                             <NavItem label="Plan" to="/plan" />
                             <NavItem label="Courses" to="/courses" />
                             <NavItem label="Problems" to="/problems" />
+                            <NavItem label="SQL" to="/sql" />
                         </div>
                     </div>
                 ) : (
@@ -232,17 +233,25 @@ function IDEWrapper() {
     const { addPoints } = useAuth();
     const navigate = useNavigate();
     const { id } = useParams();
+    const [problem, setProblem] = React.useState(null);
+    const [allProblems, setAllProblems] = React.useState([]);
+    const [loading, setLoading] = React.useState(true);
 
-    // Find the problem from the data
-    const problem = problemsData.find(p => p.id === parseInt(id));
-
-    // Find next problem
-    const currentIndex = problemsData.findIndex(p => p.id === parseInt(id));
-    const nextProblem = currentIndex >= 0 && currentIndex < problemsData.length - 1
-        ? problemsData[currentIndex + 1]
-        : null;
+    React.useEffect(() => {
+        loadAllTopics().then(topics => {
+            const flat = topics.flatMap(t => t.problems);
+            setAllProblems(flat);
+            const found = flat.find(p => String(p.id) === id);
+            setProblem(found ? found._raw : null);
+            setLoading(false);
+        }).catch(() => setLoading(false));
+    }, [id]);
 
     const handleNext = () => {
+        const currentIndex = allProblems.findIndex(p => String(p.id) === id);
+        const nextProblem = currentIndex >= 0 && currentIndex < allProblems.length - 1
+            ? allProblems[currentIndex + 1]
+            : null;
         if (nextProblem) {
             navigate(`/ide/${nextProblem.id}`);
         } else {
@@ -250,8 +259,24 @@ function IDEWrapper() {
         }
     };
 
+    // Build judgeTestCases from examples in the raw problem
+    const judgeTestCases = React.useMemo(() => {
+        if (!problem?.examples) return [];
+        return problem.examples
+            .filter(ex => ex.output)
+            .map(ex => ({
+                input: ex.input || '',
+                expected_output: ex.output,
+            }));
+    }, [problem]);
+
+    if (loading) {
+        return <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', color: 'var(--color-muted-text)' }}>Loading problem...</div>;
+    }
+
     return <IDE
         problem={problem}
+        judgeTestCases={judgeTestCases}
         onBack={() => navigate('/problems')}
         onSolved={() => addPoints(50)}
         onNext={handleNext}
@@ -273,11 +298,10 @@ export default function App() {
                             <Route path="/ide" element={<IDEWrapper />} />
                             <Route path="/ide/:id" element={<IDEWrapper />} />
                             <Route path="/feed" element={<FeedWrapper />} />
+                            <Route path="/messages" element={<MessagesWrapper />} />
                             <Route path="/network" element={<Network />} />
-                            <Route path="/messages" element={<Messages />} />
                             <Route path="/courses" element={<Courses />} />
                             <Route path="/course/:id" element={<CourseContent />} />
-                            <Route path="/learning-path" element={<LearningPath />} />
                             <Route path="/jobs" element={<JobBoard />} />
                             <Route path="/plan" element={<Plan />} />
                             <Route path="/profile" element={<Profile />} />
@@ -317,4 +341,10 @@ function FeedWrapper() {
     const navigate = useNavigate();
     // Feed expected 'user' and 'setView'.
     return <Feed user={user} setView={(view) => navigate('/' + view)} />;
+}
+
+function MessagesWrapper() {
+    const { user } = useAuth();
+    const navigate = useNavigate();
+    return <Messages user={user} setView={(view) => navigate('/' + view)} />;
 }

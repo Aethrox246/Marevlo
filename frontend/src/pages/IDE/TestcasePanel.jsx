@@ -88,12 +88,6 @@ const TestcasePanel = ({
                                 <div style={s.label}>Expected Output</div>
                                 <div style={s.codeBox}>{testcases[activeTestcase].expected_output || '(empty)'}</div>
                             </div>
-                            {testcases[activeTestcase].explanation && (
-                                <div>
-                                    <div style={s.label}>Explanation</div>
-                                    <div style={{ ...s.codeBox, fontFamily: 'inherit' }}>{testcases[activeTestcase].explanation}</div>
-                                </div>
-                            )}
                         </>
                     ) : (
                         <div style={{ color: 'var(--color-muted-text)', fontSize: 13, textAlign: 'center', paddingTop: 32 }}>
@@ -114,7 +108,7 @@ const TestcasePanel = ({
                                     </span>
                                     {r.category && (
                                         <span style={{ fontSize: 11, color: 'var(--color-muted-text)' }}>
-                                            {r.category === 'error' ? '(Runtime Error)' : r.category === 'stderr' ? '(Exec Error)' : r.category === 'mismatch' ? '(Mismatch)' : ''}
+                                            {r.category === 'error' ? '(Runtime Error)' : r.category === 'stderr' ? '(Exec Error)' : r.category === 'mismatch' ? '(Wrong Answer)' : r.category === 'no-expected' ? '(No Expected Output)' : ''}
                                         </span>
                                     )}
                                 </div>

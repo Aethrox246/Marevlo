@@ -9,8 +9,12 @@ RUN apt-get update \
   && ln -s /usr/bin/python3 /usr/local/bin/python \
   && rm -rf /var/lib/apt/lists/*
 
-RUN npm install
+RUN npm install -g typescript && npm install --include=dev
 
 COPY . .
 
-CMD ["npm", "run", "dev"]
+RUN npm run build
+
+EXPOSE 4002
+
+CMD ["npm", "start"]

@@ -52,6 +52,20 @@ MemoizedProseContent.displayName = "MemoizedProseContent";
 const COURSE_HTML_MAP = {
   "prompt-engineering-0": "/courses/Prompt_Engineering_Moduless.html",
   "video-processing-0": "/courses/videoingestion.html",
+  "vectorless-rag": "/courses/videoingestion.html",
+  "docformer": "/courses/ingerstion/docformer_enhanced (1).html",
+  "doc-to-image": "/courses/ingerstion/document_to_image (2).html",
+  "infonce": "/courses/ingerstion/InfoNCE (Noise-Contrastive Estimation) (1).html",
+  "max-seq": "/courses/ingerstion/maxiamal_sequential_pattern (1).html",
+  "ocr-layout": "/courses/ingerstion/ocr_Text_layout_Recognition (1).html",
+  "ocr-text": "/courses/ingerstion/ocr_Text_Recognition (1).html",
+  "video-ingestion": "/courses/ingerstion/Videoingestion.html",
+  "rag-intro": "/courses/Introduction.html",
+  "rag-phases": "/courses/Phases of RAG.html",
+  "rag-database": "/courses/Database.html",
+  "rag-prompt-eng": "/courses/Prompt_Engineering_Moduless.html",
+  "rag-api": "/courses/mastering the llm and apis.html",
+  "clustering-part4": "/courses/clustering/CLUSTERING PART 4.html",
 };
 
 /**
