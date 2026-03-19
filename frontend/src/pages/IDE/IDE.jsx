@@ -505,13 +505,23 @@ export default function IDE({ problem, judgeTestCases = [], onBack, onNext, onSo
                         <ProblemPanel problem={problem} onBack={onBack} />
                     </div>
 
-                    {/* ↔ Horizontal drag handle */}
+                    {/* ↔ Horizontal drag handle (Ghost Hitbox) */}
                     <div
                         onMouseDown={hDrag.onMouseDown}
-                        style={{ width: 4, flexShrink: 0, background: 'var(--color-border)', cursor: 'col-resize', position: 'relative', zIndex: 10, transition: 'background 0.2s' }}
-                        onMouseEnter={e => e.currentTarget.style.background = '#10b981'}
-                        onMouseLeave={e => e.currentTarget.style.background = 'var(--color-border)'}
-                        title="Drag to resize"
+                        style={{ 
+                            width: 13,          /* 1px visible line + 6px invisible drag zone on both sides */
+                            margin: '0 -6px',   /* Offsets the width layout hit perfectly back down to 1px footprint */
+                            flexShrink: 0, 
+                            borderLeft: '6px solid transparent', 
+                            borderRight: '6px solid transparent',
+                            background: 'var(--color-border)', 
+                            backgroundClip: 'padding-box',
+                            cursor: 'col-resize', position: 'relative', zIndex: 10, 
+                            transition: 'background-color 0.2s ease'
+                        }}
+                        onMouseEnter={e => { e.currentTarget.style.backgroundColor = '#818cf8'; }}
+                        onMouseLeave={e => { e.currentTarget.style.backgroundColor = 'var(--color-border)'; }}
+                        title="Drag to resize left/right"
                     />
 
                     {/* Right Panel — Editor + Testcase */}
@@ -521,16 +531,26 @@ export default function IDE({ problem, judgeTestCases = [], onBack, onNext, onSo
                     >
                         {/* Code Editor (top) */}
                         <div style={{ height: `${vDrag.size}%`, minHeight: '80px', overflow: 'hidden', position: 'relative' }}>
-                            <CodeEditor code={code} onChange={setCode} />
+                            <CodeEditor code={code} onChange={setCode} language={selectedLanguage} />
                         </div>
 
-                        {/* ↕ Vertical drag handle */}
+                        {/* ↕ Vertical drag handle (Ghost Hitbox) */}
                         <div
                             onMouseDown={vDrag.onMouseDown}
-                            style={{ height: 4, flexShrink: 0, background: 'var(--color-border)', cursor: 'row-resize', position: 'relative', transition: 'background 0.2s' }}
-                            onMouseEnter={e => e.currentTarget.style.background = '#10b981'}
-                            onMouseLeave={e => e.currentTarget.style.background = 'var(--color-border)'}
-                            title="Drag to resize"
+                            style={{ 
+                                height: 13,         /* 1px visible line + 6px invisible drag zone on both top and bottom */
+                                margin: '-6px 0',   /* Offsets the height layout hit perfectly back down to 1px footprint */
+                                flexShrink: 0, 
+                                borderTop: '6px solid transparent', 
+                                borderBottom: '6px solid transparent',
+                                background: 'var(--color-border)', 
+                                backgroundClip: 'padding-box',
+                                cursor: 'row-resize', position: 'relative', zIndex: 10, 
+                                transition: 'background-color 0.2s ease' 
+                            }}
+                            onMouseEnter={e => { e.currentTarget.style.backgroundColor = '#818cf8'; }}
+                            onMouseLeave={e => { e.currentTarget.style.backgroundColor = 'var(--color-border)'; }}
+                            title="Drag to resize top/bottom"
                         />
 
                         {/* Testcase + Console (bottom) */}
@@ -573,7 +593,7 @@ export default function IDE({ problem, judgeTestCases = [], onBack, onNext, onSo
                     )}
                     {activeMobileTab === 'editor' && (
                         <div className="flex-1 overflow-hidden w-full">
-                            <CodeEditor code={code} onChange={setCode} />
+                            <CodeEditor code={code} onChange={setCode} language={selectedLanguage} />
                         </div>
                     )}
                     {activeMobileTab === 'testcases' && (

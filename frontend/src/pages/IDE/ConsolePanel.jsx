@@ -36,8 +36,9 @@ const ConsolePanel = ({
                     width: '100%', height: 48, flexShrink: 0,
                     padding: '0 20px',
                     display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-                    background: 'transparent', border: 'none', cursor: 'pointer',
-                    color: 'var(--color-primary-text)'
+                    background: 'color-mix(in srgb, var(--color-surface) 60%, transparent)', backdropFilter: 'blur(12px)', WebkitBackdropFilter: 'blur(12px)', border: 'none', cursor: 'pointer',
+                    color: 'var(--color-primary-text)',
+                    borderBottom: isExpanded ? '1px solid var(--color-border)' : 'none'
                 }}
                 aria-label={isExpanded ? "Collapse console" : "Expand console"}
             >
@@ -58,15 +59,17 @@ const ConsolePanel = ({
 
             {/* Output body */}
             {isExpanded && (
-                <div style={{ flex: 1, overflowY: 'auto', padding: '0 20px 16px' }}>
+                <div className="premium-scrollbar" style={{ flex: 1, overflowY: 'auto', padding: '16px 20px', background: 'var(--color-surface)', display: 'flex', flexDirection: 'column' }}>
                     {output ? (
-                        <pre style={{ fontFamily: 'monospace', fontSize: 13, color: getOutputColor(), whiteSpace: 'pre-wrap', margin: 0 }}>
-                            {output}
-                        </pre>
+                        <div style={{ flex: 1, minHeight: 60 }}>
+                            <pre style={{ fontFamily: 'monospace', fontSize: 13, color: getOutputColor(), whiteSpace: 'pre-wrap', margin: 0, lineHeight: 1.5 }}>
+                                {output}
+                            </pre>
+                        </div>
                     ) : (
-                        <div style={{ height: 80, display: 'flex', alignItems: 'center', justifyContent: 'center', flexDirection: 'column', gap: 6, color: 'var(--color-muted-text)' }}>
-                            <Terminal size={22} style={{ opacity: 0.4 }} />
-                            <p style={{ fontSize: 13, margin: 0 }}>Run your code to see output here</p>
+                        <div style={{ height: 80, display: 'flex', alignItems: 'center', justifyContent: 'center', flexDirection: 'column', gap: 10, color: 'var(--color-muted-text)', flex: 1 }}>
+                            <Terminal size={26} style={{ opacity: 0.3 }} />
+                            <p style={{ fontSize: 13, margin: 0, fontWeight: 500 }}>Run your code to see output here</p>
                         </div>
                     )}
 
@@ -85,19 +88,26 @@ const ConsolePanel = ({
                             </div>
                         </div>
                         <textarea
+                            className="premium-scrollbar"
                             value={stdin}
                             onChange={e => onStdinChange?.(e.target.value)}
                             disabled={!useCustomInput}
                             placeholder="Enter input for the program (passed as STDIN)"
                             style={{
-                                width: '100%', height: 80, borderRadius: 8,
+                                width: '100%', height: 100, borderRadius: 12,
                                 border: '1px solid var(--color-border)',
-                                background: 'var(--color-input-bg)',
+                                background: 'color-mix(in srgb, var(--color-primary-text) 3%, var(--color-surface))',
                                 color: 'var(--color-primary-text)',
                                 fontSize: 13, fontFamily: 'monospace',
-                                padding: 8, resize: 'none', outline: 'none',
-                                boxSizing: 'border-box'
+                                padding: 16, resize: 'none', outline: 'none',
+                                boxSizing: 'border-box',
+                                boxShadow: 'inset 0 2px 4px rgba(0,0,0,0.1)',
+                                lineHeight: 1.5,
+                                transition: 'border-color 0.2s, box-shadow 0.2s',
+                                opacity: useCustomInput ? 1 : 0.6
                             }}
+                            onFocus={e => { if (useCustomInput) { e.currentTarget.style.borderColor = '#818cf8'; e.currentTarget.style.boxShadow = '0 0 0 3px rgba(129, 140, 248, 0.15)'; } }}
+                            onBlur={e => { if (useCustomInput) { e.currentTarget.style.borderColor = 'var(--color-border)'; e.currentTarget.style.boxShadow = 'inset 0 2px 4px rgba(0,0,0,0.1)'; } }}
                         />
                     </div>
                 </div>

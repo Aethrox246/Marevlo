@@ -1,112 +1,106 @@
-import React, { useRef } from 'react';
-
-// Auto-close pairs
-const PAIRS = { '{': '}', '(': ')', '[': ']', '"': '"', "'": "'", '`': '`' };
+import React, { useMemo } from 'react';
+import CodeMirror from '@uiw/react-codemirror';
+import { javascript } from '@codemirror/lang-javascript';
+import { python } from '@codemirror/lang-python';
+import { java } from '@codemirror/lang-java';
+import { cpp } from '@codemirror/lang-cpp';
+import { dracula } from '@uiw/codemirror-theme-dracula';
+import { githubLight } from '@uiw/codemirror-theme-github';
+import { useTheme } from '../../context/ThemeContext';
 
 /**
- * CodeEditor - Theme-aware editor with:
- * - Auto-close brackets/quotes
- * - Tab → 4 spaces
- * - Explicit height fill for drag-resize parents
+ * CodeEditor - Premium CodeMirror-based editor with syntax highlighting,
+ * auto-closing pairs, line numbers, and dark mode theming out of the box.
  */
-const CodeEditor = ({ code, onChange }) => {
-    const textareaRef = useRef(null);
+const CodeEditor = ({ code, onChange, language }) => {
+    const { isDark } = useTheme();
 
-    const handleKeyDown = (e) => {
-        const ta = textareaRef.current;
-        const { selectionStart: start, selectionEnd: end, value } = ta;
-
-        // ── Tab → insert spaces ──────────────────────────────────────
-        if (e.key === 'Tab') {
-            e.preventDefault();
-            const spaces = '    ';
-            const next = value.slice(0, start) + spaces + value.slice(end);
-            onChange(next);
-            requestAnimationFrame(() => {
-                ta.selectionStart = ta.selectionEnd = start + spaces.length;
-            });
-            return;
+    // Map the string language to the actual CodeMirror extension
+    const langExtension = useMemo(() => {
+        switch (language?.toLowerCase()) {
+            case 'javascript':
+            case 'js':
+                return javascript({ jsx: true });
+            case 'python':
+            case 'py':
+                return python();
+            case 'java':
+                return java();
+            case 'cpp':
+            case 'c++':
+                return cpp();
+            default:
+                return javascript();
         }
-
-        // ── Auto-close brackets / quotes ─────────────────────────────
-        if (PAIRS[e.key]) {
-            e.preventDefault();
-            const close = PAIRS[e.key];
-            // If same char (quote) and next char is the closing quote, just move cursor
-            if (e.key === close && value[start] === close) {
-                ta.selectionStart = ta.selectionEnd = start + 1;
-                return;
-            }
-            const next = value.slice(0, start) + e.key + close + value.slice(end);
-            onChange(next);
-            requestAnimationFrame(() => {
-                ta.selectionStart = ta.selectionEnd = start + 1;
-            });
-            return;
-        }
-
-        // ── Backspace: remove matching pair if cursor is between them ─
-        if (e.key === 'Backspace' && start === end) {
-            const prev = value[start - 1];
-            const next = value[start];
-            if (prev && PAIRS[prev] === next) {
-                e.preventDefault();
-                const newVal = value.slice(0, start - 1) + value.slice(start + 1);
-                onChange(newVal);
-                requestAnimationFrame(() => {
-                    ta.selectionStart = ta.selectionEnd = start - 1;
-                });
-            }
-        }
-    };
+    }, [language]);
 
     return (
-        <div style={{ width: '100%', height: '100%', position: 'relative', background: 'var(--color-surface)', overflow: 'hidden' }}>
-            {/* Line numbers gutter */}
-            <div style={{
-                position: 'absolute', left: 0, top: 0, bottom: 0, width: '48px',
-                background: 'var(--color-surface)',
-                borderRight: '1px solid var(--color-border)',
-                display: 'flex', flexDirection: 'column', paddingTop: '16px',
-                textAlign: 'right', paddingRight: '8px',
-                userSelect: 'none', pointerEvents: 'none', overflow: 'hidden', zIndex: 1
-            }}>
-                {(code || '').split('\n').map((_, i) => (
-                    <div key={i} style={{
-                        fontSize: '12px',
-                        color: 'var(--color-muted-text)',
-                        lineHeight: '24px',
-                        fontFamily: "'Consolas', 'Monaco', monospace"
-                    }}>
-                        {i + 1}
-                    </div>
-                ))}
+        <div style={{ width: '100%', height: '100%', display: 'flex', flexDirection: 'column', background: 'var(--color-surface)', overflow: 'hidden' }}>
+            <div style={{ flex: 1, minHeight: 0 }}>
+                <CodeMirror
+                    value={code || ''}
+                    height="100%"
+                    theme={isDark ? dracula : githubLight}
+                    extensions={[langExtension]}
+                    onChange={(val) => onChange(val)}
+                    className="premium-editor h-full"
+                    basicSetup={{
+                        lineNumbers: true,
+                        highlightActiveLineGutter: true,
+                        highlightSpecialChars: true,
+                        history: true,
+                        foldGutter: true,
+                        drawSelection: true,
+                        dropCursor: true,
+                        allowMultipleSelections: true,
+                        indentOnInput: true,
+                        syntaxHighlighting: true,
+                        bracketMatching: true,
+                        closeBrackets: true,
+                        autocompletion: true,
+                        rectangularSelection: true,
+                        crosshairCursor: true,
+                        highlightActiveLine: true,
+                        highlightSelectionMatches: true,
+                        closeBracketsKeymap: true,
+                        defaultKeymap: true,
+                        searchKeymap: true,
+                        historyKeymap: true,
+                        foldKeymap: true,
+                        completionKeymap: true,
+                        lintKeymap: true,
+                        tabSize: 4
+                    }}
+                    style={{
+                        fontSize: '14px',
+                        fontFamily: "'JetBrains Mono', 'Fira Code', 'Consolas', monospace",
+                        height: '100%'
+                    }}
+                />
             </div>
-
-            {/* Editor textarea */}
-            <textarea
-                ref={textareaRef}
-                value={code}
-                onChange={(e) => onChange(e.target.value)}
-                onKeyDown={handleKeyDown}
-                spellCheck="false"
-                placeholder="// Write your code here..."
-                aria-label="Code editor"
-                style={{
-                    position: 'absolute', inset: 0,
-                    width: '100%', height: '100%',
-                    background: 'var(--color-surface)',
-                    color: 'var(--color-primary-text)',
-                    fontFamily: "'Consolas', 'Monaco', 'Courier New', monospace",
-                    fontSize: '14px', lineHeight: '24px',
-                    padding: '16px 16px 16px 64px',
-                    border: 'none', outline: 'none', resize: 'none',
-                    caretColor: 'var(--color-primary-text)',
-                    tabSize: 4,
-                    overflowY: 'auto', overflowX: 'auto',
-                    boxSizing: 'border-box',
-                }}
-            />
+            
+            {/* Some CSS overrides to ensure the editor spans full height seamlessly */}
+            <style>{`
+                .premium-editor.cm-theme-light, .premium-editor.cm-theme-dark {
+                    height: 100%;
+                }
+                .premium-editor .cm-scroller {
+                    font-family: 'JetBrains Mono', 'Fira Code', Consolas, Monaco, monospace !important;
+                    line-height: 1.6;
+                }
+                .premium-editor .cm-gutters {
+                    background-color: transparent !important;
+                    color: var(--color-muted-text) !important;
+                    border-right: 1px solid var(--color-border) !important;
+                }
+                .premium-editor .cm-activeLineGutter {
+                    background-color: rgba(255, 255, 255, 0.05) !important;
+                    color: var(--color-primary-text) !important;
+                }
+                .premium-editor .cm-activeLine {
+                    background-color: transparent !important;
+                }
+            `}</style>
         </div>
     );
 };
