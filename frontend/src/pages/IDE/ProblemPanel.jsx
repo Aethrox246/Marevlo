@@ -81,6 +81,20 @@ const ProblemPanel = memo(({ problem, onBack }) => {
     const toggleLadder = (key) =>
         setExpandedLadder(prev => ({ ...prev, [key]: !prev[key] }));
 
+    // Format hint text: insert line breaks before step markers if data has none
+    const formatHint = (text) => {
+        if (!text) return text;
+        // If text already has newlines, just return it as-is
+        if (text.includes('\n')) return text;
+        // Insert newline before "Step N:", "Result:", "Compare N with", "Check element"
+        return text
+            .replace(/(\s)(Step \d+:)/g, '\n$2')
+            .replace(/(\s)(Result:)/g, '\n\n$2')
+            .replace(/(\s)(Compare )/g, '\n  $2')
+            .replace(/(\s)(Check element)/g, '\n$2')
+            .trim();
+    };
+
     const handleVote = (type) => {
         // Here you would also call your backend API: api.post(`/problem/${problem.id}/vote`, { type })
         setVote(prev => prev === type ? null : type);
@@ -258,9 +272,16 @@ const ProblemPanel = memo(({ problem, onBack }) => {
                                             {ex.explanation && (
                                                 <>
                                                     <div style={{ height: 1, background: 'var(--color-border)', borderStyle: 'dashed' }} />
-                                                    <div style={{ display: 'flex', gap: 16 }}>
-                                                        <span style={{ fontSize: 14, fontWeight: 600, color: 'var(--color-muted-text)', width: '60px', flexShrink: 0 }}>Hint:</span>
-                                                        <span style={{ fontSize: 14, color: 'var(--color-primary-text)', lineHeight: 1.6, flex: 1, opacity: 0.9 }}>{ex.explanation}</span>
+                                                    <div style={{ display: 'flex', gap: 16, alignItems: 'flex-start' }}>
+                                                        <span style={{ fontSize: 14, fontWeight: 600, color: 'var(--color-muted-text)', width: '60px', flexShrink: 0, paddingTop: 2 }}>Hint:</span>
+                                                        <div style={{
+                                                            fontSize: 13, lineHeight: 1.7, color: 'var(--color-primary-text)',
+                                                            background: 'var(--color-surface-hover)', borderRadius: 8,
+                                                            padding: '10px 12px', whiteSpace: 'pre-wrap', fontFamily: 'inherit',
+                                                            flex: 1, opacity: 0.9, wordBreak: 'break-word'
+                                                        }}>
+                                                            {formatHint(ex.explanation)}
+                                                        </div>
                                                     </div>
                                                 </>
                                             )}
@@ -462,8 +483,9 @@ const ProblemPanel = memo(({ problem, onBack }) => {
                                                             fontSize: 13, lineHeight: 1.7, color: 'var(--color-primary-text)',
                                                             background: 'var(--color-surface-hover)', borderRadius: 8,
                                                             padding: '12px', whiteSpace: 'pre-wrap', fontFamily: 'inherit',
+                                                            wordBreak: 'break-word',
                                                         }}>
-                                                            {rung.explanation}
+                                                            {formatHint(rung.explanation)}
                                                         </div>
                                                     )}
                                                 </div>
