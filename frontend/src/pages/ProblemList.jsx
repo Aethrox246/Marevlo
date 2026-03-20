@@ -115,6 +115,108 @@ export default function ProblemList({ onSelect }) {
                 </div>
             </div>
 
+            {/* ── Approaches & Ladder Feature Callout ─────────────────── */}
+            <div className="max-w-4xl mx-auto px-8 pt-8 pb-2">
+                <div
+                    className="rounded-2xl overflow-hidden"
+                    style={{ background: 'var(--color-surface)', border: '1px solid var(--color-border)' }}
+                >
+                    {/* Gradient top bar */}
+                    <div style={{ height: 3, background: 'linear-gradient(90deg, #6366f1, #06b6d4, #10b981)' }} />
+
+                    <div className="p-6">
+                        {/* Header */}
+                        <div className="flex items-center gap-2 mb-1">
+                            <span style={{ fontSize: 18 }}>🧠</span>
+                            <h2 className="text-base font-bold" style={{ color: 'var(--color-primary-text)' }}>
+                                Learn Smarter, Not Faster
+                            </h2>
+                        </div>
+                        <p className="text-sm mb-5" style={{ color: 'var(--color-muted-text)', lineHeight: 1.6 }}>
+                            Every problem comes with multiple solution approaches. Instead of handing you the answer, our <strong style={{ color: 'var(--color-primary-text)' }}>Ladder system</strong> guides you there — one level at a time.
+                        </p>
+
+                        {/* Ladder Visual Stepper */}
+                        <div
+                            className="rounded-xl p-4 mb-5"
+                            style={{ background: 'var(--color-surface-hover)', border: '1px solid var(--color-border)' }}
+                        >
+                            <div className="text-xs font-semibold mb-3" style={{ color: 'var(--color-muted-text)', letterSpacing: '0.05em', textTransform: 'uppercase' }}>
+                                Hint Ladder — Progressive Unlock
+                            </div>
+                            <div className="flex items-center gap-1 overflow-x-auto pb-1">
+                                {[
+                                    { label: 'L0', type: 'Full Problem',     unlocked: true  },
+                                    { label: 'L1', type: 'Sub-routine',      unlocked: true  },
+                                    { label: 'L2', type: 'Hint',             unlocked: true  },
+                                    { label: 'L3', type: 'Pseudocode',       unlocked: false },
+                                    { label: 'L4', type: 'Partial Solution', unlocked: false },
+                                ].map((rung, i, arr) => (
+                                    <React.Fragment key={rung.label}>
+                                        <div className="flex flex-col items-center gap-1 flex-shrink-0">
+                                            <div style={{
+                                                width: 32, height: 32, borderRadius: '50%',
+                                                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                                fontSize: 11, fontWeight: 700,
+                                                background: rung.unlocked ? '#10b981' : 'var(--color-border)',
+                                                color: rung.unlocked ? '#fff' : 'var(--color-muted-text)',
+                                                border: rung.unlocked ? 'none' : '1.5px dashed var(--color-muted-text)',
+                                                transition: 'all 0.3s',
+                                            }}>
+                                                {rung.unlocked ? '✓' : '🔒'}
+                                            </div>
+                                            <span className="text-center" style={{ fontSize: 9, color: rung.unlocked ? '#10b981' : 'var(--color-muted-text)', fontWeight: 600, maxWidth: 56, lineHeight: 1.3 }}>
+                                                {rung.label}<br />{rung.type}
+                                            </span>
+                                        </div>
+                                        {i < arr.length - 1 && (
+                                            <div style={{ flex: 1, height: 2, minWidth: 12, background: rung.unlocked ? '#10b981' : 'var(--color-border)', borderRadius: 2 }} />
+                                        )}
+                                    </React.Fragment>
+                                ))}
+                            </div>
+                        </div>
+
+                        {/* 3 Feature cards */}
+                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                            {[
+                                {
+                                    icon: '💡',
+                                    title: 'Multiple Approaches',
+                                    desc: 'Brute Force, Optimal, Space-efficient — see every angle of a problem.',
+                                    color: '#6366f1',
+                                },
+                                {
+                                    icon: '🔓',
+                                    title: 'Progressive Unlocking',
+                                    desc: 'Reveal hints one level at a time — only when you\'re truly stuck.',
+                                    color: '#10b981',
+                                },
+                                {
+                                    icon: '⏱️',
+                                    title: 'Complexity Analysis',
+                                    desc: 'Time & Space complexity shown clearly for every approach.',
+                                    color: '#f59e0b',
+                                },
+                            ].map(({ icon, title, desc, color }) => (
+                                <div
+                                    key={title}
+                                    className="rounded-xl p-4 transition-all duration-200 hover:-translate-y-0.5"
+                                    style={{
+                                        background: `color-mix(in srgb, ${color} 6%, var(--color-surface))`,
+                                        border: `1px solid color-mix(in srgb, ${color} 25%, var(--color-border))`,
+                                    }}
+                                >
+                                    <div className="text-xl mb-2">{icon}</div>
+                                    <div className="text-sm font-bold mb-1" style={{ color: 'var(--color-primary-text)' }}>{title}</div>
+                                    <div className="text-xs leading-relaxed" style={{ color: 'var(--color-muted-text)' }}>{desc}</div>
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+                </div>
+            </div>
+
             {/* ── Topic list ──────────────────────────────────────────── */}
             <div className="max-w-4xl mx-auto px-8 py-8 space-y-3">
                 {loading

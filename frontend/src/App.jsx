@@ -20,6 +20,7 @@ const Profile = React.lazy(() => import('./pages/Profile'));
 const Login = React.lazy(() => import('./pages/Login'));
 const Signup = React.lazy(() => import('./pages/Signup'));
 const Plan = React.lazy(() => import('./pages/Plan'));
+const AboutUs = React.lazy(() => import('./pages/AboutUs'));
 
 import { loadAllTopics } from './utils/topicsLoader';
 
@@ -167,6 +168,19 @@ function Navigation() {
                                                     e.currentTarget.style.color = 'var(--color-muted-text)';
                                                 }}
                                             >Settings</div>
+                                            <div
+                                                onClick={() => { navigate('/about'); setShowProfileMenu(false); }}
+                                                className="w-full text-left px-4 py-2 text-sm cursor-pointer transition-colors"
+                                                style={{ color: 'var(--color-muted-text)' }}
+                                                onMouseEnter={(e) => {
+                                                    e.currentTarget.style.backgroundColor = 'var(--color-surface-hover)';
+                                                    e.currentTarget.style.color = 'var(--color-primary-text)';
+                                                }}
+                                                onMouseLeave={(e) => {
+                                                    e.currentTarget.style.backgroundColor = 'transparent';
+                                                    e.currentTarget.style.color = 'var(--color-muted-text)';
+                                                }}
+                                            >About Us</div>
                                             <div className="h-px my-1" style={{ backgroundColor: 'var(--color-border)' }}></div>
                                             <button onClick={() => { logout(); navigate('/'); }} className="w-full text-left px-4 py-2 text-sm text-red-500 hover:bg-red-500/10 transition-colors">Sign Out</button>
                                         </div>
@@ -211,10 +225,10 @@ function Navigation() {
 
 function Layout() {
     return (
-        <div className="h-screen flex flex-col font-sans transition-colors duration-200 overflow-hidden" style={{ backgroundColor: 'var(--color-app-bg)', color: 'var(--color-primary-text)' }}>
+        <div className="h-screen flex flex-col font-sans transition-colors duration-200 overflow-auto" style={{ backgroundColor: 'var(--color-app-bg)', color: 'var(--color-primary-text)' }}>
             <Navigation />
             <div className="h-[68px] shrink-0"></div> {/* Spacer matching exact nav height */}
-            <main className="flex-1 overflow-hidden h-[calc(100vh-68px)]">
+            <main className="flex-1 overflow-auto h-[calc(100vh-68px)]">
                 <Suspense fallback={<div className="flex items-center justify-center h-full w-full">Loading...</div>}>
                     <Outlet />
                 </Suspense>
@@ -305,6 +319,7 @@ export default function App() {
                             <Route path="/jobs" element={<JobBoard />} />
                             <Route path="/plan" element={<Plan />} />
                             <Route path="/profile" element={<Profile />} />
+                            <Route path="/about" element={<AboutUs />} />
                         </Route>
                     </Routes>
                 </Router>
