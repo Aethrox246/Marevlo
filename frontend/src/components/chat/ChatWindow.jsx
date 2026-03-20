@@ -14,14 +14,51 @@ export default function ChatWindow({ chatId, userId, onBack }) {
     const messagesEndRef = useRef(null);
     const token = localStorage.getItem('access_token');
 
-    // Fetch chat or create new one
+    // Fetch chat initial load
     useEffect(() => {
         if (userId) {
             fetchChat();
-            const interval = setInterval(fetchChat, 3000); // Poll every 3 seconds
-            return () => clearInterval(interval);
         }
     }, [userId]);
+
+    // WebSocket listener
+    useEffect(() => {
+        const handleWsMessage = (event) => {
+            const data = event.detail;
+            if (data.type === 'new_message') {
+                // If it's for this chat, append it and mark as read
+                if (data.chat_id === chatId || data.message.sender_id === userId || Number(data.chat_id) === Number(chatId)) {
+                    // Prevent duplicates
+                    setMessages(prev => {
+                        if (prev.find(m => m.id === data.message.id)) return prev;
+                        return [...prev, data.message];
+                    });
+                    
+                    // Mark as read if I am the receiver
+                    if (data.message.sender_id !== user?.id) {
+                        try {
+                            fetch(`${API_BASE}/chat/chats/${data.chat_id}/messages/${data.message.id}/read`, {
+                                method: 'POST',
+                                headers: {
+                                    'Authorization': `Bearer ${token}`,
+                                    'Content-Type': 'application/json'
+                                }
+                            });
+                        } catch(e) {}
+                    }
+                }
+            } else if (data.type === 'status_update') {
+                if (data.user_id === userId) {
+                    setOtherUser(prev => prev ? { ...prev, isOnline: data.status === 'online' } : prev);
+                }
+            } else if (data.type === 'read_receipt') {
+                 // Update the read status of a message if needed
+            }
+        };
+
+        window.addEventListener('ws_message', handleWsMessage);
+        return () => window.removeEventListener('ws_message', handleWsMessage);
+    }, [userId, chatId, user]);
 
     // Auto scroll to bottom
     useEffect(() => {
@@ -139,8 +176,11 @@ export default function ChatWindow({ chatId, userId, onBack }) {
 
                     <div>
                         <h2 className="font-semibold text-base">{otherUser?.username || 'User'}</h2>
-                        <p className="text-xs" style={{ color: 'var(--color-muted-text)' }}>
-                            Active now
+                        <p className="text-xs flex items-center gap-1" style={{ color: otherUser?.isOnline ? '#10b981' : 'var(--color-muted-text)' }}>
+                            {otherUser?.isOnline && (
+                                <span className="w-2 h-2 rounded-full" style={{ backgroundColor: '#10b981' }}></span>
+                            )}
+                            {otherUser?.isOnline ? 'Online now' : 'Offline'}
                         </p>
                     </div>
                 </div>

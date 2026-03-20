@@ -1,4 +1,5 @@
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
+import { useWebSocket } from '../utils/useWebSocket';
 
 const AuthContext = createContext();
 
@@ -13,6 +14,8 @@ export function AuthProvider({ children }) {
 
     // Derived: userPoints alias for backwards compat
     const userPoints = profileStats.xp;
+
+    useWebSocket(user);
 
     /** Make an authenticated API call */
     const apiCall = useCallback(async (path, options = {}) => {

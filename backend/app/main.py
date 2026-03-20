@@ -48,7 +48,9 @@ app.include_router(run_router, prefix="/execute", tags=["execute"])
 app.include_router(auth_router)
 
 # Chat router
+from app.chat.routers.ws import router as chat_ws_router
 app.include_router(chat_router)
+app.include_router(chat_ws_router)
 
 # Feed router
 app.include_router(feed_router)

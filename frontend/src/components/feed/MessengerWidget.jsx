@@ -14,14 +14,27 @@ export default function MessengerWidget() {
     const { user } = useAuth();
     const token = localStorage.getItem('access_token');
 
-    // Fetch chats
+    // Fetch initial chats
     useEffect(() => {
-        if (isOpen && token) {
+        if (token) {
             fetchChats();
-            const interval = setInterval(fetchChats, 5000);
-            return () => clearInterval(interval);
         }
-    }, [isOpen, token]);
+    }, [token]);
+
+    // Listen to WebSocket events to refresh chats
+    useEffect(() => {
+        const handleWsMessage = (event) => {
+            const data = event.detail;
+            if (data.type === 'new_message' || data.type === 'read_receipt') {
+                if (token) {
+                    fetchChats();
+                }
+            }
+        };
+
+        window.addEventListener('ws_message', handleWsMessage);
+        return () => window.removeEventListener('ws_message', handleWsMessage);
+    }, [token]);
 
     const fetchChats = async () => {
         try {

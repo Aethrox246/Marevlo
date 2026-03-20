@@ -12,6 +12,8 @@ from app.chat.models.chat import Chat, Message, MessageRead, Follow
 from app.core.activity_model import ActivityLog
 from datetime import datetime, timezone
 from typing import Optional
+import asyncio
+from app.chat.websocket_manager import manager
 
 
 def format_message_time(dt: datetime) -> str:
@@ -220,8 +222,8 @@ def send_message(
     
     db.commit()
     db.refresh(new_message)
-    
-    return MessageResponse(
+
+    msg_response = MessageResponse(
         id=new_message.id,
         sender_id=new_message.sender_id,
         sender_username=current_user.username,
@@ -232,6 +234,17 @@ def send_message(
         session_id=new_message.session_id,
         log_id=new_message.log_id
     )
+
+    ws_msg = {
+        "type": "new_message",
+        "chat_id": chat_id,
+        "message": msg_response.model_dump()
+    }
+    other_user_id = chat.user_1_id if chat.user_2_id == current_user.id else chat.user_2_id
+    asyncio.create_task(manager.send_personal_message(ws_msg, other_user_id))
+    asyncio.create_task(manager.send_personal_message(ws_msg, current_user.id))
+
+    return msg_response
 
 
 @router.post("/chats/{chat_id}/messages/{message_id}/read")
@@ -258,6 +271,14 @@ def mark_message_as_read(
         message_read = MessageRead(message_id=message_id, reader_id=current_user.id)
         db.add(message_read)
         db.commit()
+
+        ws_msg = {
+            "type": "read_receipt",
+            "chat_id": chat_id,
+            "message_id": message_id,
+            "reader_id": current_user.id
+        }
+        asyncio.create_task(manager.send_personal_message(ws_msg, message.sender_id))
     
     return {"message": "Message marked as read"}
 
