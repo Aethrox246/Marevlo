@@ -1,10 +1,9 @@
-from fastapi import APIRouter, WebSocket, WebSocketDisconnect, Depends, Query, HTTPException
+from fastapi import APIRouter, WebSocket, WebSocketDisconnect, Depends, Query
 from sqlalchemy.orm import Session
-from jose import JWTError, jwt
-from app.core.database import get_db
+from jose import jwt
+from app.core.dependencies import get_db
 from app.auth.models.user import User
-from app.auth.models.session import UserSession
-from app.core.config import settings
+from app.core.config import JWT_SECRET, ALGORITHM
 from app.chat.websocket_manager import manager
 from typing import Optional
 
@@ -12,7 +11,7 @@ router = APIRouter(prefix="/chat", tags=["chat_ws"])
 
 async def get_current_user_ws(token: str, db: Session) -> User:
     try:
-        payload = jwt.decode(token, settings.JWT_SECRET, algorithms=[settings.JWT_ALGORITHM])
+        payload = jwt.decode(token, JWT_SECRET, algorithms=[ALGORITHM])
         user_id: str = payload.get("sub")
         if user_id is None:
             raise Exception("Invalid token format")

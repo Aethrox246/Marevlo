@@ -70,22 +70,47 @@ def update_profile(db: Session, user_id: str, data: dict) -> UserProfile:
 
 
 def save_resume(db: Session, user_id: str, filename: str, content_b64: str) -> str:
-    """Decode base64 resume, save to /uploads, return relative URL."""
-    upload_dir = "/app/uploads"
-    os.makedirs(upload_dir, exist_ok=True)
-    ext = os.path.splitext(filename)[1] or ".pdf"
-    safe_name = f"{user_id}_{uuid.uuid4().hex[:8]}{ext}"
-    file_path = os.path.join(upload_dir, safe_name)
+    """Save resume to GCS (if configured) or local /uploads fallback."""
+    import uuid, os, base64
 
     file_bytes = base64.b64decode(content_b64)
-    with open(file_path, "wb") as f:
-        f.write(file_bytes)
+    ext = os.path.splitext(filename)[1] or ".pdf"
+    safe_name = f"{user_id}_{uuid.uuid4().hex[:8]}{ext}"
 
-    resume_url = f"/uploads/{safe_name}"
+    bucket_name = os.getenv("GCS_BUCKET_NAME")
+    if bucket_name:
+        # ── GCS upload path ────────────────────────────────────────────────
+        try:
+            from google.cloud import storage as gcs_storage
+            gcs_client = gcs_storage.Client()
+            bucket = gcs_client.bucket(bucket_name)
+            blob = bucket.blob(f"resumes/{safe_name}")
+            blob.upload_from_string(file_bytes, content_type="application/octet-stream")
+            blob.make_public()
+            resume_url = blob.public_url
+        except Exception as e:
+            # Graceful degradation: if GCS fails log and fall back
+            import logging
+            logging.warning(f"GCS upload failed, falling back to local storage: {e}")
+            resume_url = _save_locally(safe_name, file_bytes)
+    else:
+        # ── Local fallback (development) ───────────────────────────────────
+        resume_url = _save_locally(safe_name, file_bytes)
+
     profile = get_or_create_profile(db, user_id)
     profile.resume_url = resume_url
     db.commit()
     return resume_url
+
+
+def _save_locally(safe_name: str, file_bytes: bytes) -> str:
+    """Write resume bytes to /app/uploads and return the relative URL."""
+    import os
+    upload_dir = "/app/uploads"
+    os.makedirs(upload_dir, exist_ok=True)
+    with open(os.path.join(upload_dir, safe_name), "wb") as fh:
+        fh.write(file_bytes)
+    return f"/uploads/{safe_name}"
 
 
 # ---------------------------------------------------------------------------

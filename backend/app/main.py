@@ -1,7 +1,6 @@
 import os
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.staticfiles import StaticFiles
 from slowapi import Limiter
 from slowapi.util import get_remote_address
 from slowapi.errors import RateLimitExceeded
@@ -32,11 +31,14 @@ app.add_exception_handler(RateLimitExceeded, lambda request, exc: JSONResponse(
     content={"detail": "Rate limit exceeded"}
 ))
 
+# CORS: restrict to known frontend URL(s)
+_raw_origins = os.getenv("FRONTEND_URL", "http://localhost:5173")
+_allow_origins = [o.strip() for o in _raw_origins.split(",") if o.strip()]
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
-    allow_origin_regex=None,
-    allow_credentials=False,
+    allow_origins=_allow_origins,
+    allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
@@ -58,9 +60,7 @@ app.include_router(feed_router)
 # Profile router
 app.include_router(profile_router)
 
-# Serve uploaded resumes
-os.makedirs("/app/uploads", exist_ok=True)
-app.mount("/uploads", StaticFiles(directory="/app/uploads"), name="uploads")
+
 
 @app.get("/")
 def root():

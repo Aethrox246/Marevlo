@@ -1,4 +1,4 @@
-FROM node:20
+FROM node:20-alpine
 
 WORKDIR /app
 
@@ -10,6 +10,10 @@ COPY . .
 
 RUN npm run build
 
+# Create non-root user
+RUN addgroup -S appgroup && adduser -S appuser -G appgroup
+USER appuser
+
 EXPOSE 4000
 
-CMD ["npm", "start"]
+CMD sh -c "npm start"
