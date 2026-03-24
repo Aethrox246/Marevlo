@@ -40,9 +40,10 @@ function SkeletonCard() {
 }
 
 export default function ProblemList({ onSelect }) {
-    const [topics, setTopics]               = useState([]);
+    const [topics, setTopics]                 = useState([]);
     const [expandedTopics, setExpandedTopics] = useState({ arrays: true });
-    const [loading, setLoading]             = useState(true);
+    const [visibleCounts, setVisibleCounts]   = useState({ arrays: 10 });
+    const [loading, setLoading]               = useState(true);
 
     useEffect(() => {
         loadAllTopics()
@@ -51,8 +52,12 @@ export default function ProblemList({ onSelect }) {
             .finally(() => setLoading(false));
     }, []);
 
-    const toggleTopic = (id) =>
+    const toggleTopic = (id) => {
         setExpandedTopics((prev) => ({ ...prev, [id]: !prev[id] }));
+        if (!visibleCounts[id]) {
+            setVisibleCounts((prev) => ({ ...prev, [id]: 10 }));
+        }
+    };
 
     const totalProblems = topics.reduce((s, t) => s + (t.problems?.length || 0), 0);
 
@@ -288,9 +293,11 @@ export default function ProblemList({ onSelect }) {
                                 {/* Problem rows */}
                                 {isOpen && (
                                     <div style={{ borderTop: `1px solid ${accent}33` }}>
-                                        {count > 0 ? topic.problems.map((problem, idx) => {
-                                            const dc = difficultyConfig[problem.difficulty] || difficultyConfig.Hard;
-                                            return (
+                                        {count > 0 ? (
+                                            <>
+                                                {topic.problems.slice(0, visibleCounts[topic.id] || 10).map((problem, idx) => {
+                                                    const dc = difficultyConfig[problem.difficulty] || difficultyConfig.Hard;
+                                                    return (
                                                 <button
                                                     key={problem.id}
                                                     onClick={() => onSelect(problem)}
@@ -330,7 +337,30 @@ export default function ProblemList({ onSelect }) {
                                                     </div>
                                                 </button>
                                             );
-                                        }) : (
+                                        })}
+                                        {(visibleCounts[topic.id] || 10) < count && (
+                                            <button
+                                                onClick={(e) => {
+                                                    e.stopPropagation();
+                                                    setVisibleCounts(prev => ({ 
+                                                        ...prev, 
+                                                        [topic.id]: (prev[topic.id] || 10) + 10 
+                                                    }));
+                                                }}
+                                                className="w-full text-center py-4 text-sm font-semibold transition-colors flex justify-center items-center gap-2 group"
+                                                style={{ color: accent, background: accent + '08', borderTop: '1px solid var(--color-border)' }}
+                                                onMouseEnter={(e) => { e.currentTarget.style.background = accent + '15'; }}
+                                                onMouseLeave={(e) => { e.currentTarget.style.background = accent + '08'; }}
+                                            >
+                                                <span>Load Next {Math.min(10, count - (visibleCounts[topic.id] || 10))} Problems</span>
+                                                <span style={{ fontSize: '0.75rem', opacity: 0.7, fontWeight: 'normal' }}>
+                                                    ({count - (visibleCounts[topic.id] || 10)} total remaining)
+                                                </span>
+                                                <ChevronDown size={14} className="transition-transform group-hover:translate-y-0.5" />
+                                            </button>
+                                        )}
+                                        </>
+                                        ) : (
                                             <div className="px-5 py-6 pl-20 text-sm italic" style={{ color: 'var(--color-muted-text)' }}>
                                                 No problems found for this topic yet.
                                             </div>

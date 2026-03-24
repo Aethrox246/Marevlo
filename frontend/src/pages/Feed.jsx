@@ -4,6 +4,7 @@ import {
 } from 'lucide-react';
 import FeedPost from '../components/feed/FeedPost';
 import CreatePostWidget from '../components/feed/CreatePostWidget';
+import TrendingProblems from '../components/TrendingProblems';
 import MessengerWidget from '../components/feed/MessengerWidget';
 import { useAuth } from '../context/AuthContext';
 
@@ -458,64 +459,7 @@ export default function Feed({ setView }) {
                     <aside className="hidden lg:flex flex-col gap-5 h-fit sticky top-24">
 
                         {/* ── Trending Problems Card ── */}
-                        <div className="rounded-2xl overflow-hidden transition-all duration-300 hover:shadow-xl" style={{
-                            border: '1px solid var(--color-border)',
-                            backgroundColor: 'var(--color-surface)',
-                        }}>
-                            {/* Color top stripe */}
-                            <div style={{ height: 4, background: 'linear-gradient(90deg, #6366f1, #06b6d4)' }} />
-                            <div className="p-5 sm:p-6">
-                                <h3 className="text-sm font-bold flex items-center gap-2 mb-4">
-                                    <span style={{
-                                        display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
-                                        width: 30, height: 30, borderRadius: '50%',
-                                        background: 'linear-gradient(135deg, #6366f1, #8b5cf6)',
-                                        color: '#fff'
-                                    }}>
-                                        <Flame size={15} />
-                                    </span>
-                                    <span style={{ color: 'var(--color-primary-text)' }}>Trending Problems</span>
-                                </h3>
-                                <div className="space-y-3">
-                                    {[
-                                        { num: '#1', title: 'Two Sum', diff: 'Easy', color: '#10b981' },
-                                        { num: '#2', title: 'LRU Cache', diff: 'Hard', color: '#ef4444' },
-                                        { num: '#3', title: 'Binary Tree Paths', diff: 'Medium', color: '#f59e0b' },
-                                    ].map(({ num, title, diff, color }) => (
-                                        <div key={num} className="flex items-center justify-between py-2 px-3 rounded-xl transition-all duration-200" style={{
-                                            backgroundColor: 'var(--color-surface-hover)',
-                                            cursor: 'pointer'
-                                        }}
-                                            onMouseEnter={e => e.currentTarget.style.backgroundColor = 'rgba(99,102,241,0.1)'}
-                                            onMouseLeave={e => e.currentTarget.style.backgroundColor = 'var(--color-surface-hover)'}
-                                        >
-                                            <div className="flex items-center gap-2">
-                                                <span style={{ color: 'var(--color-muted-text)', fontSize: '0.7rem', fontWeight: 700, width: 24 }}>{num}</span>
-                                                <span style={{ color: 'var(--color-primary-text)', fontSize: '0.82rem', fontWeight: 600 }}>{title}</span>
-                                            </div>
-                                            <span style={{
-                                                fontSize: '0.65rem', fontWeight: 700, letterSpacing: '0.05em',
-                                                color, background: `${color}18`, padding: '2px 8px', borderRadius: 999
-                                            }}>
-                                                {diff}
-                                            </span>
-                                        </div>
-                                    ))}
-                                </div>
-                                <button
-                                    className="w-full mt-4 text-xs font-bold py-2.5 rounded-xl transition-all duration-200 flex items-center justify-center gap-1"
-                                    style={{
-                                        background: 'linear-gradient(135deg, rgba(99,102,241,0.12), rgba(139,92,246,0.12))',
-                                        color: '#6366f1',
-                                        border: '1px solid rgba(99,102,241,0.25)'
-                                    }}
-                                    onMouseEnter={e => e.currentTarget.style.background = 'linear-gradient(135deg,#6366f1,#8b5cf6)' || (e.currentTarget.style.color = '#fff')}
-                                    onMouseLeave={e => e.currentTarget.style.background = 'linear-gradient(135deg, rgba(99,102,241,0.12), rgba(139,92,246,0.12))' || (e.currentTarget.style.color = '#6366f1')}
-                                >
-                                    View all problems <ArrowRight size={13} />
-                                </button>
-                            </div>
-                        </div>
+                        <TrendingProblems />
 
                         {/* ── Suggested People Card (Empty State for Backend) ── */}
                         <div className="rounded-2xl overflow-hidden transition-all duration-300 hover:shadow-xl" style={{

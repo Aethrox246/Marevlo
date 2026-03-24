@@ -12,7 +12,7 @@ const ProblemList = React.lazy(() => import('./pages/ProblemList'));
 const IDE = React.lazy(() => import('./pages/IDE'));
 const Feed = React.lazy(() => import('./pages/Feed'));
 const Messages = React.lazy(() => import('./pages/Messages'));
-const Network = React.lazy(() => import('./pages/Network'));
+const Project = React.lazy(() => import('./pages/Project'));
 const Courses = React.lazy(() => import('./pages/Courses'));
 const CourseContent = React.lazy(() => import('./pages/CourseContent'));
 const JobBoard = React.lazy(() => import('./pages/JobBoard'));
@@ -61,7 +61,7 @@ function Navigation() {
                 {user ? (
                     <div className="hidden md:flex items-center gap-6">
                         <div className="flex items-center gap-6">
-                            <NavItem label="Project" to="/network" />
+                            <NavItem label="Project" to="/project" />
                             <NavItem label="Jobs" to="/jobs" />
                             <NavItem label="Feed" to="/feed" />
                         </div>
@@ -70,7 +70,6 @@ function Navigation() {
                             <NavItem label="Plan" to="/plan" />
                             <NavItem label="Courses" to="/courses" />
                             <NavItem label="Problems" to="/problems" />
-                            <NavItem label="SQL" to="/sql" />
                         </div>
                     </div>
                 ) : (
@@ -313,7 +312,7 @@ export default function App() {
                             <Route path="/ide/:id" element={<IDEWrapper />} />
                             <Route path="/feed" element={<FeedWrapper />} />
                             <Route path="/messages" element={<MessagesWrapper />} />
-                            <Route path="/network" element={<Network />} />
+                            <Route path="/project" element={<Project />} />
                             <Route path="/courses" element={<Courses />} />
                             <Route path="/course/:id" element={<CourseContent />} />
                             <Route path="/jobs" element={<JobBoard />} />
