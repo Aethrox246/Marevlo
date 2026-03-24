@@ -1,0 +1,37 @@
+version: "3.9"
+
+services:
+
+  runner:
+    build: ./runner
+    ports:
+      - "4002:4002"
+    environment:
+      PORT:               4002
+      PYTHON_POOL_SIZE:   6         # one fork-worker per logical CPU is a safe start
+      MAX_CONCURRENT:     20        # throttle total simultaneous executions
+      COMPILE_CACHE_DIR:  /cache/compile
+    volumes:
+      - compile_cache:/cache        # persist compiled binaries across restarts
+    restart: unless-stopped
+
+  api-server:
+    build: ./api-server
+    ports:
+      - "4000:4000"
+    environment:
+      JUPYTER_URL:        http://jupyter:8888
+      KERNEL_POOL_SIZE:   4         # 4 warm kernels, adjust to RAM
+    depends_on:
+      - jupyter
+    restart: unless-stopped
+
+  jupyter:
+    image: jupyter/base-notebook:latest
+    environment:
+      JUPYTER_TOKEN: ""
+      JUPYTER_ALLOW_ORIGIN: "*"
+    restart: unless-stopped
+
+volumes:
+  compile_cache:    # survives container restarts; clear manually to invalidate

@@ -348,7 +348,7 @@ function LoginWrapper() {
 function SignupWrapper() {
     const { login } = useAuth();
     const navigate = useNavigate();
-    return <Signup onLogin={() => navigate('/login')} onSignupSuccess={(u) => { login(u); navigate('/feed'); }} />;
+    return <Signup onLogin={() => navigate('/login')} onSignupSuccess={(u) => { alert('Signup successful! Please log in.'); navigate('/login'); }} />;
 }
 
 function FeedWrapper() {
