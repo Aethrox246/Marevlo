@@ -3,7 +3,7 @@ import { useWebSocket } from '../utils/useWebSocket';
 
 const AuthContext = createContext();
 
-const API_BASE = 'https://marevlo-backend.onrender.com/api';
+const API_BASE = import.meta.env.VITE_API_URL;
 
 export function AuthProvider({ children }) {
     const [user, setUser] = useState(null);
