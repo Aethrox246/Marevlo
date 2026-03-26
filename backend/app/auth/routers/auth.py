@@ -13,7 +13,7 @@ from app.auth.models.user import User
 from app.auth.models.session import UserSession
 from app.auth.models.email_otp import EmailOTP
 from app.auth.schemas.user import UserCreate, UserOut
-from app.auth.schemas.auth import Token, ForgotPasswordRequest, ResetPasswordRequest
+from app.auth.schemas.auth import Token, ForgotPasswordRequest, ResetPasswordRequest, GoogleLoginRequest
 from app.auth.utils.security import (
     verify_password,
     create_access_token,
@@ -24,6 +24,7 @@ from app.auth.utils.security import (
 from app.auth.utils.email import send_otp_email
 from app.auth.dependencies import oauth2_scheme, limiter
 from app.core.config import REDIS_URL
+from app.core.firebase import verify_firebase_id_token
 
 
 router = APIRouter(prefix="/auth", tags=["auth"])
@@ -265,3 +266,102 @@ def signup(
     db.refresh(new_user)
 
     return new_user
+
+
+@router.post("/google", response_model=Token)
+@limiter.limit("10/minute")
+def google_login(
+    request: Request,
+    body: GoogleLoginRequest,
+    db: Session = Depends(get_db),
+):
+    """
+    Verify a Firebase Google ID token and return system-issued JWT tokens.
+
+    Flow:
+      1. Verify the Firebase ID token (Google identity).
+      2. Lookup user by google_uid.
+      3. If not found, lookup by email (account linking for existing email/password users).
+      4. If still not found, create a new user (no password — Google-only account).
+      5. Issue a session, access token, and refresh token — exactly as for normal login.
+    """
+    # 1. Verify identity via Firebase Admin SDK
+    claims = verify_firebase_id_token(body.id_token)
+    google_uid: str = claims["uid"]
+    email: str = claims.get("email", "")
+    name: str = claims.get("name", "")
+
+    if not email:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Google account must have an email address.",
+        )
+
+    # 2. Try to find user by google_uid
+    user = db.execute(
+        select(User).where(User.google_uid == google_uid)
+    ).scalar_one_or_none()
+
+    # 3. Try to find by email (account linking)
+    if user is None:
+        user = db.execute(
+            select(User).where(User.email == email)
+        ).scalar_one_or_none()
+        if user is not None:
+            # Link this Google account to the existing email/password user
+            user.google_uid = google_uid
+            db.commit()
+            db.refresh(user)
+
+    # 4. Create a new user (Google-only account)
+    if user is None:
+        # Auto-generate a safe username from the email local-part
+        base_username = email.split("@")[0].replace(".", "_").replace("+", "_")[:40]
+        username = base_username
+        suffix = 1
+        while db.execute(select(User).where(User.username == username)).scalar_one_or_none():
+            username = f"{base_username}_{suffix}"
+            suffix += 1
+
+        user = User(
+            username=username,
+            email=email,
+            password_hash=None,     # No password for Google-only accounts
+            google_uid=google_uid,
+            is_active=True,
+        )
+        db.add(user)
+        db.commit()
+        db.refresh(user)
+
+    # Guard: account must be active
+    if not user.is_active or (user.suspended_until and user.suspended_until > datetime.now(timezone.utc)) or user.deleted_at:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Account inactive, suspended, or deleted")
+
+    # 5. Create a DB session and issue our own JWTs (identical to normal login)
+    user.last_login_at = datetime.now(timezone.utc)
+    ip_address = request.client.host if request.client else None
+    user_agent = request.headers.get("user-agent")
+    session = UserSession(
+        user_id=user.id,
+        ip_address=ip_address,
+        device=(user_agent[:100] if user_agent else None),
+    )
+    db.add(session)
+    db.commit()
+    db.refresh(session)
+
+    access_token = create_access_token({"sub": str(user.id), "sid": str(session.id)})
+    refresh_token = create_refresh_token({"sub": str(user.id), "sid": str(session.id)})
+
+    jti = decode_token(refresh_token)["jti"]
+    try:
+        redis.setex(f"refresh:{jti}", 30 * 24 * 3600, user.id)
+    except RedisError as exc:
+        logger.warning("Redis unavailable during google login; skipping refresh token storage: %s", exc)
+
+    return {
+        "access_token": access_token,
+        "refresh_token": refresh_token,
+        "token_type": "bearer",
+    }

@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query, BackgroundTasks
 from sqlalchemy.orm import Session
 from sqlalchemy import or_, and_
 from app.core.dependencies import get_db, get_current_user
@@ -175,6 +175,7 @@ def get_or_create_chat(
 def send_message(
     chat_id: int,
     message_data: MessageCreate,
+    background_tasks: BackgroundTasks,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
@@ -241,8 +242,8 @@ def send_message(
         "message": msg_response.model_dump()
     }
     other_user_id = chat.user_1_id if chat.user_2_id == current_user.id else chat.user_2_id
-    asyncio.create_task(manager.send_personal_message(ws_msg, other_user_id))
-    asyncio.create_task(manager.send_personal_message(ws_msg, current_user.id))
+    background_tasks.add_task(manager.send_personal_message, ws_msg, other_user_id)
+    background_tasks.add_task(manager.send_personal_message, ws_msg, current_user.id)
 
     return msg_response
 
@@ -251,6 +252,7 @@ def send_message(
 def mark_message_as_read(
     chat_id: int,
     message_id: int,
+    background_tasks: BackgroundTasks,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
@@ -278,7 +280,7 @@ def mark_message_as_read(
             "message_id": message_id,
             "reader_id": current_user.id
         }
-        asyncio.create_task(manager.send_personal_message(ws_msg, message.sender_id))
+        background_tasks.add_task(manager.send_personal_message, ws_msg, message.sender_id)
     
     return {"message": "Message marked as read"}
 

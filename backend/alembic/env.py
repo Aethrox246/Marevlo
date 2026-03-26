@@ -85,6 +85,6 @@ from app.auth.models.user import User
 from app.profile.models.profile import UserProfile
 from app.problems.models.problem import Problem
 from app.problems.models.testcase import TestCase
-from app.submissions.models.submission import Submission
+from app.submissions.models.submission import ProblemSubmission
 
 target_metadata = Base.metadata

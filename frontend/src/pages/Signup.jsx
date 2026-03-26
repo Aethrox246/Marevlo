@@ -1,5 +1,7 @@
 import React, { useState } from 'react';
 import { Layers, ArrowRight, User, Mail, Lock, X, Github, Globe } from 'lucide-react';
+import { signInWithPopup } from 'firebase/auth';
+import { auth, googleProvider } from '../lib/firebase';
 
 const API = import.meta.env.VITE_API_URL;
 
@@ -69,14 +71,49 @@ export default function Signup({ onLogin, onSignupSuccess }) {
         }
     };
 
-    const handleMockSocialSignup = (provider) => {
-        const mockData = {
-            id: Date.now(),
-            email: `user_${provider.toLowerCase()}@example.com`,
-            name: `User`,
-            username: `user_${provider.toLowerCase()}`,
-        };
-        onSignupSuccess(mockData);
+    const [googleLoading, setGoogleLoading] = useState(false);
+
+    const handleGoogleSignup = async () => {
+        setPasswordError('');
+        setGoogleLoading(true);
+        try {
+            const result = await signInWithPopup(auth, googleProvider);
+            const idToken = await result.user.getIdToken();
+
+            const response = await fetch(`${API}/auth/google`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ id_token: idToken }),
+            });
+
+            if (!response.ok) {
+                const errData = await response.json().catch(() => ({}));
+                throw new Error(errData.detail || 'Google signup failed');
+            }
+
+            const data = await response.json();
+            localStorage.setItem('access_token', data.access_token);
+            localStorage.setItem('refresh_token', data.refresh_token);
+
+            const userResponse = await fetch(`${API}/auth/me`, {
+                headers: { Authorization: `Bearer ${data.access_token}` },
+            });
+
+            if (userResponse.ok) {
+                const userData = await userResponse.json();
+                onSignupSuccess(userData);
+            } else {
+                onSignupSuccess();
+            }
+
+            await auth.signOut();
+        } catch (err) {
+            if (err.code !== 'auth/popup-closed-by-user') {
+                setPasswordError(err.message);
+            }
+        } finally {
+            setGoogleLoading(false);
+        }
     };
 
     const getInitials = (name) => {
@@ -239,11 +276,12 @@ export default function Signup({ onLogin, onSignupSuccess }) {
                             </button>
                             <button
                                 type="button"
-                                onClick={() => handleMockSocialSignup('Google')}
-                                className="flex w-full items-center justify-center gap-3 rounded-xl bg-white px-3 py-2.5 text-primary-text hover:bg-neutral-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-black border border-neutral-200 transition-all hover:border-neutral-300 shadow-sm"
+                                onClick={handleGoogleSignup}
+                                disabled={googleLoading}
+                                className="flex w-full items-center justify-center gap-3 rounded-xl bg-white px-3 py-2.5 text-primary-text hover:bg-neutral-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-black border border-neutral-200 transition-all hover:border-neutral-300 shadow-sm disabled:opacity-60"
                             >
                                 <Globe size={20} />
-                                <span className="text-sm font-semibold">Google</span>
+                                <span className="text-sm font-semibold">{googleLoading ? 'Signing up...' : 'Google'}</span>
                             </button>
                         </div>
                     </div>

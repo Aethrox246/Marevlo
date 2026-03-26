@@ -15,3 +15,9 @@ class ResetPasswordRequest(BaseModel):
     email: EmailStr
     otp: str
     new_password: str
+
+
+class GoogleLoginRequest(BaseModel):
+    """Request body for the Firebase Google authentication endpoint."""
+    id_token: str
+

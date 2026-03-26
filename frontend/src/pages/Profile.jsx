@@ -670,7 +670,7 @@ export default function Profile() {
                                     background: `${accent.cyan}12`, border: `1px solid ${accent.cyan}30`,
                                 }}>
                                     <a
-                                        href={`http://localhost:8000${dp.resumeUrl}`}
+                                        href={`${import.meta.env.VITE_API_URL.replace(/\/$/, '')}${dp.resumeUrl}`}
                                         target="_blank"
                                         rel="noopener noreferrer"
                                         style={{ display: 'flex', alignItems: 'center', gap: 8, overflow: 'hidden', textDecoration: 'none' }}

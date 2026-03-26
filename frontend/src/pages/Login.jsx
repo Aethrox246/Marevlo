@@ -1,5 +1,7 @@
 import React, { useState } from 'react';
 import { Layers, ArrowRight, Github, Code2, Cpu, Globe, X } from 'lucide-react';
+import { signInWithPopup } from 'firebase/auth';
+import { auth, googleProvider } from '../lib/firebase';
 
 const API = import.meta.env.VITE_API_URL;
 
@@ -63,14 +65,56 @@ export default function Login({ onLogin, onSignup }) {
         }
     };
 
-    const handleMockSocialLogin = (provider) => {
-        const mockUser = {
-            id: Date.now(),
-            email: `user_${provider.toLowerCase()}@example.com`,
-            name: `User`,
-            username: `user_${provider.toLowerCase()}`,
-        };
-        onLogin(mockUser);
+    const [googleLoading, setGoogleLoading] = useState(false);
+
+    const handleGoogleLogin = async () => {
+        setError('');
+        setGoogleLoading(true);
+        try {
+            // 1. Open Google popup via Firebase
+            const result = await signInWithPopup(auth, googleProvider);
+            const idToken = await result.user.getIdToken();
+
+            // 2. Send Firebase ID token to our backend
+            const response = await fetch(`${API}/auth/google`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ id_token: idToken }),
+            });
+
+            if (!response.ok) {
+                const errData = await response.json().catch(() => ({}));
+                throw new Error(errData.detail || 'Google login failed');
+            }
+
+            const data = await response.json();
+            localStorage.setItem('access_token', data.access_token);
+            localStorage.setItem('refresh_token', data.refresh_token);
+
+            // 3. Fetch user details using our system token
+            const userResponse = await fetch(`${API}/auth/me`, {
+                headers: { Authorization: `Bearer ${data.access_token}` },
+            });
+
+            if (userResponse.ok) {
+                const userData = await userResponse.json();
+                onLogin(userData);
+            } else {
+                onLogin();
+            }
+
+            // 4. Sign out of Firebase — we only needed Firebase for the ID token
+            await auth.signOut();
+        } catch (err) {
+            // Handle popup closed by user gracefully
+            if (err.code === 'auth/popup-closed-by-user') {
+                setError('');
+            } else {
+                setError(err.message);
+            }
+        } finally {
+            setGoogleLoading(false);
+        }
     };
 
     const resetForgotState = () => {
@@ -251,11 +295,12 @@ export default function Login({ onLogin, onSignup }) {
                             </button>
                             <button
                                 type="button"
-                                onClick={() => handleMockSocialLogin('Google')}
-                                className="flex w-full items-center justify-center gap-3 rounded-xl bg-white px-3 py-2.5 text-primary-text hover:bg-neutral-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-black border border-neutral-200 transition-all hover:border-neutral-300 shadow-sm"
+                                onClick={handleGoogleLogin}
+                                disabled={googleLoading}
+                                className="flex w-full items-center justify-center gap-3 rounded-xl bg-white px-3 py-2.5 text-primary-text hover:bg-neutral-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-black border border-neutral-200 transition-all hover:border-neutral-300 shadow-sm disabled:opacity-60"
                             >
                                 <Globe size={20} />
-                                <span className="text-sm font-semibold">Google</span>
+                                <span className="text-sm font-semibold">{googleLoading ? 'Signing in...' : 'Google'}</span>
                             </button>
                         </div>
                     </div>
