@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { Play, Upload, Code, FileText, Terminal } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 
-
+// Import all separated components
 import ProblemPanel from './ProblemPanel';
 import CodeToolbar from './CodeToolbar';
 import CodeEditor from './CodeEditor';
@@ -86,6 +86,11 @@ const wrapCodeForRun = (language, code, autoWrapReturn) => {
     return code;
 };
 
+/**
+ * useDrag — lightweight drag-to-resize hook (no external deps)
+ * direction: 'horizontal' (left/right %) or 'vertical' (top/bottom %)
+ * min/max: percent limits
+ */
 function useDrag(initial = 40, min = 20, max = 75, direction = 'horizontal') {
     const [size, setSize] = useState(initial);
     const dragging = useRef(false);
@@ -123,24 +128,41 @@ function useDrag(initial = 40, min = 20, max = 75, direction = 'horizontal') {
     return { containerRef, size, onMouseDown };
 }
 
-
+/**
+ * IDE - Main Integrated Development Environment component (LeetCode Style)
+ * Orchestrates all sub-components and manages state
+ */
+/**
+ * Convert a structured JSON test case input object to a stdin string.
+ * Example: { nums: [2,7,11,15], target: 9 } → "[2, 7, 11, 15]\n9"
+ */
 const testCaseInputToStdin = (input) => {
     if (typeof input === 'string') return input;
     if (input === null || input === undefined) return '';
+    // Always JSON-serialize each field value — one per line.
+    // This gives a consistent, predictable stdin format the user can parse.
     return Object.values(input).map(v => JSON.stringify(v)).join('\n');
 };
 
-
+/**
+ * Normalize output for comparison:
+ * - trim whitespace
+ * - normalize JSON formatting (remove extra spaces)
+ * - handle None vs null
+ */
 const normalizeOutput = (output) => {
     if (output === null || output === undefined) return '';
     let s = String(output).trim();
+    // Normalize Python None → null, True → true, False → false
     s = s.replace(/\bNone\b/g, 'null');
     s = s.replace(/\bTrue\b/g, 'true');
     s = s.replace(/\bFalse\b/g, 'false');
+    // Try to parse as JSON and re-stringify for canonical form
     try {
         const parsed = JSON.parse(s);
         s = JSON.stringify(parsed);
     } catch (e) {
+        // Not valid JSON, keep as-is but remove trailing newlines
     }
     return s;
 };
@@ -163,6 +185,7 @@ export default function IDE({ problem, judgeTestCases = [], onBack, onNext, onSo
     const [activeTestTab, setActiveTestTab] = useState('testcase');
     const [testResults, setTestResults] = useState([]);
     const [activeLadder, setActiveLadder] = useState(null); // Current ladder from Approaches tab
+    const [solvedLadders, setSolvedLadders] = useState({}); // { approachId: { ladderIndex: true } }
     const languages = [
         { id: 'cpp', name: 'C++' },
         { id: 'java', name: 'Java' },
@@ -173,18 +196,18 @@ export default function IDE({ problem, judgeTestCases = [], onBack, onNext, onSo
     const [activeMobileTab, setActiveMobileTab] = useState('problem'); // 'problem', 'editor', 'testcases'
 
     // When ProblemPanel selects a ladder in Approaches tab, bridge its testCases here
-    const handleActiveLadderChange = (ladder) => {
-        setActiveLadder(ladder);
-        if (ladder && ladder.testCases && ladder.testCases.length > 0) {
-            setTestcases(ladder.testCases.map(tc => ({
+    const handleActiveLadderChange = (data) => {
+        if (data && data.ladder && data.ladder.testCases && data.ladder.testCases.length > 0) {
+            setActiveLadder(data); // { ladder, approachId, ladderIndex }
+            setTestcases(data.ladder.testCases.map(tc => ({
                 input: String(tc.input ?? '').trim(),
                 expected_output: String(tc.expected ?? tc.expected_output ?? '').trim(),
             })));
             setActiveTestcase(0);
             setTestResults([]);
             setActiveTestTab('testcase');
-        } else if (!ladder && problem?.examples?.length > 0) {
-            // Revert to problem examples when switching to Description tab
+        } else if (!data && problem?.examples?.length > 0) {
+            setActiveLadder(null);
             setTestcases(problem.examples.map(ex => ({
                 input: String(ex.input ?? '').trim(),
                 expected_output: String(ex.output ?? '').trim(),
@@ -193,6 +216,8 @@ export default function IDE({ problem, judgeTestCases = [], onBack, onNext, onSo
             setActiveTestcase(0);
             setTestResults([]);
             setActiveTestTab('testcase');
+        } else {
+            setActiveLadder(data || null);
         }
     };
 
@@ -226,12 +251,12 @@ export default function IDE({ problem, judgeTestCases = [], onBack, onNext, onSo
 
     // ── Reset to starter code
     const handleReset = () => {
-        setCode(starterCodes[selectedLanguage]);
+        setCode(getStarterCode(problem, selectedLanguage));
     };
 
     const handleLanguageChange = (lang) => {
         setSelectedLanguage(lang);
-        setCode(starterCodes[lang]);
+        setCode(getStarterCode(problem, lang));
     };
 
     // Initialize code when problem changes or language changes
@@ -246,6 +271,7 @@ export default function IDE({ problem, judgeTestCases = [], onBack, onNext, onSo
         setActiveTestTab('testcase');
         setTestResults([]);
         setActiveLadder(null);
+        setSolvedLadders({});
 
         // Build testcase rows from the problem schema used in assets.
         // Prefer direct input/output fields, with fallback to legacy example_text parsing.
@@ -472,6 +498,16 @@ export default function IDE({ problem, judgeTestCases = [], onBack, onNext, onSo
     const handleSubmissionResult = (isSuccess) => {
         if (isSuccess) {
             setStatus('success');
+            // Mark the current ladder as solved
+            if (activeLadder && activeLadder.approachId != null && activeLadder.ladderIndex != null) {
+                setSolvedLadders(prev => ({
+                    ...prev,
+                    [activeLadder.approachId]: {
+                        ...(prev[activeLadder.approachId] || {}),
+                        [activeLadder.ladderIndex]: true,
+                    },
+                }));
+            }
             if (onSolved) onSolved();
         } else {
             setStatus('error');
@@ -506,7 +542,7 @@ export default function IDE({ problem, judgeTestCases = [], onBack, onNext, onSo
                 >
                     {/* Left Panel — Problem Description */}
                     <div style={{ width: `${hDrag.size}%`, minWidth: '240px', height: '100%', flexShrink: 0, overflow: 'hidden', borderRight: '1px solid var(--color-border)' }}>
-                        <ProblemPanel problem={problem} onBack={onBack} onActiveLadderChange={handleActiveLadderChange} />
+                        <ProblemPanel problem={problem} onBack={onBack} onActiveLadderChange={handleActiveLadderChange} solvedLadders={solvedLadders} />
                     </div>
 
                     {/* ↔ Horizontal drag handle (Ghost Hitbox) */}
@@ -592,7 +628,7 @@ export default function IDE({ problem, judgeTestCases = [], onBack, onNext, onSo
                 <div className={`lg:hidden flex-1 flex flex-col h-full`}>
                     {activeMobileTab === 'problem' && (
                         <div className="flex-1 overflow-hidden w-full">
-                            <ProblemPanel problem={problem} onBack={onBack} onActiveLadderChange={handleActiveLadderChange} />
+                            <ProblemPanel problem={problem} onBack={onBack} onActiveLadderChange={handleActiveLadderChange} solvedLadders={solvedLadders} />
                         </div>
                     )}
                     {activeMobileTab === 'editor' && (

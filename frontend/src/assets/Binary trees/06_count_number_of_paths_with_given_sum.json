@@ -288,7 +288,8 @@
             "commonMistakes": [
               "using a global sum variable that doesn't reset properly for different paths",
               "not passing the sum as a parameter to recursive calls",
-              "incorrectly updating the sum before or after recursion"
+              "incorrectly updating the sum before",
+              "after recursion"
             ],
             "codePattern": null,
             "algorithm": null,
@@ -529,7 +530,7 @@
             "commonMistakes": [
               "not backtracking properly (leaving stale entries)",
               "forgetting to initialize map with {0:1}",
-              "or misunderstanding downward path constraint. This approach efficiently counts all valid paths by leveraging cumulative sums to avoid recomputation"
+              "misunderstanding downward path constraint. This approach efficiently counts all valid paths by leveraging cumulative sums to avoid recomputation"
             ],
             "codePattern": null,
             "algorithm": null,
@@ -603,9 +604,8 @@
             "timeComplexity": null,
             "spaceComplexity": null,
             "commonMistakes": [
-              "forgetting to remove prefix sum after recursion (causing cross-branch contamination), or not handling frequency correctly. Real pattern: def dfs(node, prefix, target, map): if not node: return; prefix += node.val; count = map.get(prefix-target",
-              "; map[prefix] = map.get(prefix",
-              "+1; count += dfs(node.left,prefix,target,map) + dfs(node.right,prefix,target,map); map[prefix] -= 1; if map[prefix]==0: del map[prefix]; return count"
+              "forgetting to remove prefix sum after recursion (causing cross-branch contamination)",
+              "not handling frequency correctly. Real pattern: def dfs(node, prefix, target, map): if not node: return; prefix += node.val; count = map.get(prefix-target,0); map[prefix] = map.get(prefix,0)+1; count += dfs(node.left,prefix,target,map) + dfs(node.right,prefix,target,map); map[prefix] -= 1; if map[prefix]==0: del map[prefix]; return count"
             ],
             "codePattern": null,
             "algorithm": null,
@@ -679,11 +679,9 @@
             "timeComplexity": null,
             "spaceComplexity": null,
             "commonMistakes": [
-              "not initializing map with {0:1} (to handle case where path starts at root, i.e., j=-1 with prefix sum",
-              ", or misunderstanding that path must be downward (ensured by only checking ancestors via backtracking). Real pattern: count += map.get(prefix-target",
-              "; map[prefix] = map.get(prefix",
-              "+",
-              "This logic transforms a path sum problem into a prefix sum lookup problem, similar to subarray sum equals K in arrays"
+              "not initializing map with {0:1} (to handle case where path starts at root, i.e., j=-1 with prefix sum 0)",
+              "misunderstanding that path must be downward (ensured by only checking ancestors via backtracking). Real pattern: count += map.get(prefix-target, 0); map[prefix] = map.get(prefix,0)+1. This logic transforms a path sum problem into a prefix sum lookup problem",
+              "similar to subarray sum equals K in arrays"
             ],
             "codePattern": null,
             "algorithm": null,
@@ -757,11 +755,8 @@
             "timeComplexity": null,
             "spaceComplexity": null,
             "commonMistakes": [
-              "forgetting to initialize map with {0:1} (to handle subarray starting at index",
-              ", or not handling negative numbers (works fine). Real pattern: for num in arr: prefix += num; count += map.get(prefix-target",
-              "; map[prefix] = map.get(prefix",
-              "+",
-              "This concept is foundational for many sum-related problems"
+              "forgetting to initialize map with {0:1} (to handle subarray starting at index 0)",
+              "not handling negative numbers (works fine). Real pattern: for num in arr: prefix += num; count += map.get(prefix-target,0); map[prefix] = map.get(prefix,0)+1. This concept is foundational for many sum-related problems"
             ],
             "codePattern": null,
             "algorithm": null,
@@ -835,9 +830,8 @@
             "timeComplexity": null,
             "spaceComplexity": null,
             "commonMistakes": [
-              "not handling missing keys gracefully (use get with default), or not removing keys properly during backtracking leading to incorrect counts. Real pattern in Python: map = {}; lookup: map.get(key",
-              "; insert: map[key] = map.get(key",
-              "+1; delete: map[key] -= 1; if map[key]==0: del map[key]. This operation is fundamental for many algorithms requiring frequency counting"
+              "not handling missing keys gracefully (use get with default)",
+              "not removing keys properly during backtracking leading to incorrect counts. Real pattern in Python: map = {}; lookup: map.get(key, 0); insert: map[key] = map.get(key,0)+1; delete: map[key] -= 1; if map[key]==0: del map[key]. This operation is fundamental for many algorithms requiring frequency counting"
             ],
             "codePattern": null,
             "algorithm": null,
@@ -912,8 +906,7 @@
             "spaceComplexity": null,
             "commonMistakes": [
               "off-by-one errors in indices",
-              "or not handling empty array. Real pattern: prefix = 0; for num in arr: prefix += num; use prefix. This foundational concept is used in many areas like statistics",
-              "finance",
+              "not handling empty array. Real pattern: prefix = 0; for num in arr: prefix += num; use prefix. This foundational concept is used in many areas like statistics",
               "algorithm design"
             ],
             "codePattern": null,
@@ -999,7 +992,7 @@
             "commonMistakes": [
               "Forgetting to backtrack (causes path contamination between branches)",
               "not handling empty tree",
-              "or misunderstanding downward path constraint"
+              "misunderstanding downward path constraint"
             ],
             "codePattern": "def count_paths(root, target): count = 0; path = []; def dfs(node): nonlocal count; if not node: return; path.append(node.val); curr_sum = 0; for i in range(len(path)-1, -1, -1): curr_sum += path[i]; if curr_sum == target: count += 1; dfs(node.left); dfs(node.right); path.pop(); dfs(root); return count",
             "algorithm": null,
@@ -1059,8 +1052,388 @@
               "expected": "3"
             }
           ]
+        },
+        {
+          "level": 1,
+          "title": "Key Sub-routine — Backward Summation from Current Node",
+          "desc": "At each node, iterate backwards through path list to count subpaths ending here with target sum.",
+          "explanation": {
+            "prose": "This subroutine is the core computational step in the full solution. Intuition: When we reach a node during DFS, we have a list representing the path from root to this node. Any downward path ending at this node must be a contiguous subarray of this list. By iterating backwards from the current node to the start, we can efficiently check all possible ending subpaths. This works because we maintain a running sum as we go backwards, allowing us to detect when the sum of a suffix of the path equals the target. Step-by-step: 1. Input: current_path list (values from root to current node), target integer. 2. Initialize count_for_node = 0 and running_sum = 0. 3. For i from len(current_path)-1 down to 0: running_sum += current_path[i]; if running_sum == target: count_for_node++. 4. Return count_for_node. Time: O(k) where k is length of current_path (at most O(n)). Space: O(1) extra.",
+            "connectsTo": {
+              "level": "L0",
+              "reason": "This is called at every node in DFS to accumulate total count"
+            },
+            "timeComplexity": null,
+            "spaceComplexity": null,
+            "commonMistakes": [
+              "Off-by-one errors in loop bounds",
+              "not resetting running_sum for each node (but here we compute fresh each time)",
+              "misunderstanding that we must iterate backwards (starting from current node ensures we only consider paths ending at current node)"
+            ],
+            "codePattern": "def count_ending_paths(path, target): cnt = 0; curr_sum = 0; for i in range(len(path)-1, -1, -1): curr_sum += path[i]; if curr_sum == target: cnt += 1; return cnt",
+            "algorithm": null,
+            "summary": null
+          },
+          "examples": [
+            {
+              "input": "path=[10,5,3], target=8",
+              "output": "1",
+              "trace": "Start with curr_sum=0. i=2: path[2]=3, curr_sum=3, 3≠8. i=1: path[1]=5, curr_sum=8, 8==8→cnt=1. i=0: path[0]=10, curr_sum=18, 18≠8. Total cnt=1."
+            },
+            {
+              "input": "path=[1,2,3,4], target=6",
+              "output": "1",
+              "trace": "Start curr_sum=0. i=3: 4, curr_sum=4≠6. i=2: 3, curr_sum=7≠6. i=1: 2, curr_sum=9≠6. i=0: 1, curr_sum=10≠6. Wait, this misses? Actually, we need to check: The subpath [2,3,4]? But that doesn't end at last node? Let's correct: path represents root to current node, so current node is 4. We check suffixes: [4] sum=4≠6, [3,4] sum=7≠6, [2,3,4] sum=9≠6, [1,2,3,4] sum=10≠6. So output 0. But if target was 7, then [3,4] gives 7→1. Let's use target=7 for example. Input: path=[1,2,3,4], target=7. Trace: i=3: 4, sum=4≠7; i=2: 3, sum=7==7→cnt=1; i=1: 2, sum=9≠7; i=0: 1, sum=10≠7. Output: 1."
+            }
+          ],
+          "testCases": [
+            {
+              "input": "path=[], target=5",
+              "expected": "0"
+            },
+            {
+              "input": "path=[5], target=5",
+              "expected": "1"
+            },
+            {
+              "input": "path=[1,2,3], target=3",
+              "expected": "2"
+            },
+            {
+              "input": "path=[10,5,3], target=8",
+              "expected": "1"
+            },
+            {
+              "input": "path=[1,-2,3], target=1",
+              "expected": "1"
+            },
+            {
+              "input": "path=[0,1,1], target=1",
+              "expected": "2"
+            },
+            {
+              "input": "path=[2,2,2], target=4",
+              "expected": "2"
+            },
+            {
+              "input": "path=[1,2,3,4], target=6",
+              "expected": "1"
+            },
+            {
+              "input": "path=[5,4,3,2,1], target=9",
+              "expected": "1"
+            },
+            {
+              "input": "path=[-1,2,-3,4], target=1",
+              "expected": "1"
+            }
+          ]
+        },
+        {
+          "level": 2,
+          "title": "Core Logic — DFS Traversal with Path Maintenance",
+          "desc": "Depth-first search that maintains current path list and backtracks after subtree processing.",
+          "explanation": {
+            "prose": "This level focuses on the traversal framework that enables path checking. Intuition: To examine all downward paths, we need to explore every root-to-leaf route while keeping track of nodes visited. DFS is ideal because it naturally follows a single path deep into the tree before backtracking. By maintaining a list of node values along the current DFS path, we capture all possible sequences from root to current node. Backtracking—removing the current node from the list after processing its children—is crucial to ensure the list correctly represents the path for sibling branches. This mimics a stack behavior: push node when entering, pop when leaving. Step-by-step: 1. Initialize empty path list. 2. Define recursive function dfs(node): if node is null, return; path.append(node.val); // process node here (e.g., call backward summation); dfs(node.left); dfs(node.right); path.pop(). 3. Call dfs(root). Time: O(n) visits each node once, but processing per node may add cost. Space: O(n) for recursion stack and path list in worst-case skewed tree.",
+            "connectsTo": {
+              "level": "L1",
+              "reason": "This traversal provides the path list to the backward summation subroutine"
+            },
+            "timeComplexity": null,
+            "spaceComplexity": null,
+            "commonMistakes": [
+              "Forgetting to pop after recursion (leads to incorrect path accumulation)",
+              "not handling null nodes",
+              "using BFS which doesn't naturally maintain a single path"
+            ],
+            "codePattern": "path = []; def dfs(node): if not node: return; path",
+            "algorithm": null,
+            "summary": null
+          },
+          "examples": [
+            {
+              "input": "Tree: [1,2,3], traverse and record path at each node",
+              "output": "Path sequences: [1], [1,2], [1,3]",
+              "trace": "Start dfs(1): path=[1]. dfs(2): path=[1,2]. dfs(2.left): null, return; dfs(2.right): null, return; pop 2, path=[1]. dfs(3): path=[1,3]. dfs(3.left): null; dfs(3.right): null; pop 3, path=[1]. Done."
+            },
+            {
+              "input": "Tree: [A,B,C,D], where A=1, B=2, C=3, D=4 with structure: root A, left B, B left D, right C",
+              "output": "Path sequences: [1], [1,2], [1,2,4], [1,3]",
+              "trace": "dfs(1): path=[1]. dfs(2): path=[1,2]. dfs(4): path=[1,2,4]. dfs(4.left): null; dfs(4.right): null; pop 4, path=[1,2]. dfs(2.right): null; pop 2, path=[1]. dfs(3): path=[1,3]. dfs(3.left): null; dfs(3.right): null; pop 3, path=[1]."
+            }
+          ],
+          "testCases": [
+            {
+              "input": "Tree: [], traverse",
+              "expected": "No paths"
+            },
+            {
+              "input": "Tree: [5], traverse",
+              "expected": "Path: [5]"
+            },
+            {
+              "input": "Tree: [1,2,null], traverse",
+              "expected": "Paths: [1], [1,2]"
+            },
+            {
+              "input": "Tree: [1,null,3], traverse",
+              "expected": "Paths: [1], [1,3]"
+            },
+            {
+              "input": "Tree: [1,2,3], traverse",
+              "expected": "Paths: [1], [1,2], [1,3]"
+            },
+            {
+              "input": "Tree: [1,2,3,4,5], complete tree depth 2",
+              "expected": "Paths: [1], [1,2], [1,2,4], [1,2,5], [1,3], [1,3,6], [1,3,7] (assuming 4,5,6,7 values)"
+            },
+            {
+              "input": "Tree: [1,2,null,3], traverse",
+              "expected": "Paths: [1], [1,2], [1,2,3]"
+            },
+            {
+              "input": "Tree: [A,B,C,D,E] with A=10, B=5, C=-3, D=3, E=2, structure as in problem",
+              "expected": "Paths: [10], [10,5], [10,5,3], [10,5,2], [10,-3]"
+            },
+            {
+              "input": "Tree: [0,1,1], traverse",
+              "expected": "Paths: [0], [0,1], [0,1]"
+            },
+            {
+              "input": "Tree: skewed [1,2,null,3,null,4], traverse",
+              "expected": "Paths: [1], [1,2], [1,2,3], [1,2,3,4]"
+            }
+          ]
+        },
+        {
+          "level": 3,
+          "title": "Building Block — Tree Node Structure and Recursion",
+          "desc": "Understanding binary tree node representation and recursive function calls.",
+          "explanation": {
+            "prose": "This level covers the fundamental data structure and control flow needed for the DFS approach. Intuition: A binary tree is composed of nodes, each with a value and references to left and right children. Recursion is a natural way to traverse trees because each subtree is itself a tree, allowing us to define operations in terms of the current node and its children. This divide-and-conquer mindset simplifies complex traversals. Step-by-step: 1. Define TreeNode class with attributes: val, left, right. 2. Recursive function to process a tree: base case if node is null, do nothing; otherwise, process node.val, then recursively call on node.left and node.right. 3. Example: def traverse(node): if node is None: return; print(node.val); traverse(node.left); traverse(node.right). Time: O(n) visits each node once. Space: O(h) recursion stack where h is tree height.",
+            "connectsTo": {
+              "level": "L2",
+              "reason": "This provides the basic recursive skeleton that DFS with path maintenance builds upon"
+            },
+            "timeComplexity": null,
+            "spaceComplexity": null,
+            "commonMistakes": [
+              "Not handling null nodes (leads to errors)",
+              "infinite recursion if base case missing",
+              "misunderstanding tree structure (e.g., assuming balanced)"
+            ],
+            "codePattern": "class TreeNode: def __init__(self, val=0, left=None, right=None): self.val = val; self.left = left; self.right = right. def dfs(node): if not node: return; # process; dfs(node.left); dfs(node.right)",
+            "algorithm": null,
+            "summary": null
+          },
+          "examples": [
+            {
+              "input": "Tree: [1,2,3] as nodes: root=1, left=2, right=3",
+              "output": "Recursive calls: dfs(1) -> dfs(2) -> dfs(null) -> dfs(null) -> back to dfs(1) -> dfs(3) -> dfs(null) -> dfs(null)",
+              "trace": "Call dfs(1): node not null, process val=1. Call dfs(2): process val=2. Call dfs(2.left): null, return. Call dfs(2.right): null, return. Return to dfs(1). Call dfs(3): process val=3. Call dfs(3.left): null. Call dfs(3.right): null. Return."
+            },
+            {
+              "input": "Tree: [5] single node",
+              "output": "Recursive calls: dfs(5) -> dfs(null) -> dfs(null)",
+              "trace": "Call dfs(5): process val=5. Call dfs(5.left): null, return. Call dfs(5.right): null, return."
+            }
+          ],
+          "testCases": [
+            {
+              "input": "Tree: [], call dfs",
+              "expected": "No recursive calls beyond initial null check"
+            },
+            {
+              "input": "Tree: [10], dfs prints values",
+              "expected": "Output: 10"
+            },
+            {
+              "input": "Tree: [1,2,null], dfs prints",
+              "expected": "Output: 1, 2"
+            },
+            {
+              "input": "Tree: [1,null,3], dfs prints",
+              "expected": "Output: 1, 3"
+            },
+            {
+              "input": "Tree: [1,2,3], dfs prints",
+              "expected": "Output: 1, 2, 3"
+            },
+            {
+              "input": "Tree: [A,B,C] with A=5, B=3, C=8, dfs prints",
+              "expected": "Output: 5, 3, 8"
+            },
+            {
+              "input": "Tree: [0,1,1], dfs prints",
+              "expected": "Output: 0, 1, 1"
+            },
+            {
+              "input": "Tree: [2,1,3], inorder traversal via recursion",
+              "expected": "Output: 1, 2, 3 (if inorder)"
+            },
+            {
+              "input": "Tree: [1,2,3,4,5], preorder traversal",
+              "expected": "Output: 1, 2, 4, 5, 3"
+            },
+            {
+              "input": "Tree: skewed [1,2,null,3], dfs prints",
+              "expected": "Output: 1, 2, 3"
+            }
+          ]
+        },
+        {
+          "level": 4,
+          "title": "Basic Operation — List Manipulation for Path Tracking",
+          "desc": "Using a list to store current path and updating it with append/pop operations.",
+          "explanation": {
+            "prose": "This level focuses on the simple list operations that enable path maintenance during traversal. Intuition: A list (or array) serves as a dynamic container to record the sequence of node values from root to current node. As we move down the tree, we append new nodes; as we backtrack, we remove the last node to revert to the previous state. This mimics a stack LIFO behavior, which aligns with DFS recursion. Step-by-step: 1. Initialize empty list: path = []. 2. When entering a node: path.append(node.val). 3. When leaving a node (after processing children): path.pop(). 4. The list always represents the current path from root to current node. Time: O(1) for append and pop amortized. Space: O(n) for list storage.",
+            "connectsTo": {
+              "level": "L3",
+              "reason": "This list is used within the recursive tree traversal to track state"
+            },
+            "timeComplexity": null,
+            "spaceComplexity": null,
+            "commonMistakes": [
+              "Using incorrect list methods (e.g., remove instead of pop)",
+              "not popping in correct order",
+              "modifying list while iterating"
+            ],
+            "codePattern": "path = []; path",
+            "algorithm": null,
+            "summary": null
+          },
+          "examples": [
+            {
+              "input": "Start path=[], operations: append(1), append(2), pop(), append(3)",
+              "output": "Final path=[1,3]",
+              "trace": "Initial: []. Append 1: [1]. Append 2: [1,2]. Pop: removes 2, [1]. Append 3: [1,3]."
+            },
+            {
+              "input": "path=[10,5], operations: append(3), pop(), append(2)",
+              "output": "Final path=[10,5,2]",
+              "trace": "Start [10,5]. Append 3: [10,5,3]. Pop: removes 3, [10,5]. Append 2: [10,5,2]."
+            }
+          ],
+          "testCases": [
+            {
+              "input": "path=[], append(5), pop()",
+              "expected": "Error or empty list"
+            },
+            {
+              "input": "path=[], append(1), append(2), pop()",
+              "expected": "[1]"
+            },
+            {
+              "input": "path=[3], append(4), append(5), pop(), pop()",
+              "expected": "[3]"
+            },
+            {
+              "input": "path=[10], append(20), append(30), pop(), append(40)",
+              "expected": "[10,40]"
+            },
+            {
+              "input": "path=[1,2,3], pop(), pop()",
+              "expected": "[1]"
+            },
+            {
+              "input": "path=[], append(-1), append(0), append(1), pop()",
+              "expected": "[-1,0]"
+            },
+            {
+              "input": "path=[100], append(200), pop(), append(300)",
+              "expected": "[100,300]"
+            },
+            {
+              "input": "path=[5,10], append(15), pop(), append(20)",
+              "expected": "[5,10,20]"
+            },
+            {
+              "input": "path=[], append(2), append(3), append(5), pop(), pop()",
+              "expected": "[2]"
+            },
+            {
+              "input": "path=[0], append(1), append(2), pop(), append(3), pop()",
+              "expected": "[0,1]"
+            }
+          ]
+        },
+        {
+          "level": 5,
+          "title": "Concept Foundation — Summation and Equality Check",
+          "desc": "Basic arithmetic: adding numbers and comparing to a target value.",
+          "explanation": {
+            "prose": "This is the simplest prerequisite, involving fundamental math operations. Intuition: To determine if a path sums to a target, we need to add up the values along the path and check if the total equals the target. This requires iteration over numbers, accumulation with addition, and comparison using equality. Step-by-step: 1. Start with a list of numbers, e.g., [3, 5, 2]. 2. Initialize sum = 0. 3. For each number in list: sum = sum + number. 4. After loop, check if sum == target. 5. Alternatively, check during iteration for partial sums. Time: O(k) for k numbers. Space: O(1).",
+            "connectsTo": {
+              "level": "L4",
+              "reason": "This summation is used within list manipulation to compute path sums"
+            },
+            "timeComplexity": null,
+            "spaceComplexity": null,
+            "commonMistakes": [
+              "Not initializing sum to 0",
+              "off-by-one in loops",
+              "using wrong comparison operator"
+            ],
+            "codePattern": "numbers = [3,5,2]; target = 8; total = 0; for num in numbers: total += num; if total == target: print('Found')",
+            "algorithm": null,
+            "summary": null
+          },
+          "examples": [
+            {
+              "input": "numbers=[3,1,4], target=8",
+              "output": "Sum=8, matches",
+              "trace": "total=0. num=3: total=3. num=1: total=4. num=4: total=8. 8==8 → true."
+            },
+            {
+              "input": "numbers=[2,2,2], target=5",
+              "output": "Sum=6, no match",
+              "trace": "total=0. num=2: total=2. num=2: total=4. num=2: total=6. 6≠5 → false."
+            }
+          ],
+          "testCases": [
+            {
+              "input": "numbers=[], target=0",
+              "expected": "true"
+            },
+            {
+              "input": "numbers=[5], target=5",
+              "expected": "true"
+            },
+            {
+              "input": "numbers=[10], target=5",
+              "expected": "false"
+            },
+            {
+              "input": "numbers=[1,2,3], target=6",
+              "expected": "true"
+            },
+            {
+              "input": "numbers=[-1,1], target=0",
+              "expected": "true"
+            },
+            {
+              "input": "numbers=[2,3,5], target=10",
+              "expected": "true"
+            },
+            {
+              "input": "numbers=[0,0,0], target=0",
+              "expected": "true"
+            },
+            {
+              "input": "numbers=[4,5,6], target=15",
+              "expected": "true"
+            },
+            {
+              "input": "numbers=[1,1,1,1], target=3",
+              "expected": "false"
+            },
+            {
+              "input": "numbers=[10,-5,5], target=10",
+              "expected": "true"
+            }
+          ]
         }
-]
-}
-]
+      ]
+    }
+  ]
 }

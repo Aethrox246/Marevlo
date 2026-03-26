@@ -1,6 +1,15 @@
 import React, { useRef, useEffect, useState } from 'react';
 import { Play, Upload, ChevronLeft, ChevronRight, Check, X } from 'lucide-react';
 
+/**
+ * TestcasePanel — Premium scrollable test case panel.
+ * Props:
+ *   testcases: [{ input, expected_output|expected }]
+ *   activeTestcase, onTestcaseChange
+ *   activeTab ('testcase'|'result'), onTabChange
+ *   testResults: [{ passed, message, category }]
+ *   onRun, onSubmit, isRunning
+ */
 const TestcasePanel = ({
     testcases = [], activeTestcase = 0, onTestcaseChange,
     activeTab = 'testcase', onTabChange, testResults = [],

@@ -529,7 +529,7 @@
             "commonMistakes": [
               "not handling unreachable nodes",
               "using a max-heap instead of min-heap",
-              "or not skipping already-processed nodes in the heap (which can cause O(E log E) time). This directly implements the described approach"
+              "not skipping already-processed nodes in the heap (which can cause O(E log E) time). This directly implements the described approach"
             ],
             "codePattern": "adjacency list from times array, distances array initialized to infinity except source=0, heap = [(0, source)], while heap: pop (delay, node), if delay > distances[node]: continue, for neighbor, weight in graph[node]: new_delay = delay + weight, if new_delay < distances[neighbor]: update distances and push to heap, finally return max(distances) or -1 if any infinity",
             "algorithm": null,
@@ -606,7 +606,8 @@
               "note": "for adjacency list and heap"
             },
             "commonMistakes": [
-              "not skipping outdated heap entries (leading to O(E log E) time) or using a list instead of a heap for O(V²) time. This feeds into L0 by providing the core distance computation; L0 adds the max-finding",
+              "not skipping outdated heap entries (leading to O(E log E) time)",
+              "using a list instead of a heap for O(V²) time. This feeds into L0 by providing the core distance computation; L0 adds the max-finding",
               "unreachable check"
             ],
             "codePattern": "distances = [inf]*n, distances[source]=0, heap = [(0, source)], while heap: dist, node = heappop(heap), if dist > distances[node]: continue, for neighbor, weight in graph[node]: new_dist = dist + weight, if new_dist < distances[neighbor]: distances[neighbor] = new_dist, heappush(heap, (new_dist, neighbor))",
@@ -831,7 +832,7 @@
             "spaceComplexity": null,
             "commonMistakes": [
               "using 0-based vs 1-based indexing",
-              "or not handling missing nodes. This feeds into L3 by providing the graph structure for heap operations"
+              "not handling missing nodes. This feeds into L3 by providing the graph structure for heap operations"
             ],
             "codePattern": "graph = {i: [] for i in range(1, n+1)} or graph = [[] for _ in range(n+1)], for u, v, w in edges: graph[u]",
             "algorithm": null,
@@ -902,7 +903,8 @@
             "timeComplexity": null,
             "spaceComplexity": null,
             "commonMistakes": [
-              "confusing directed vs undirected edges or misinterpreting weights. This feeds into L4 by providing the input format for adjacency list construction"
+              "confusing directed vs undirected edges",
+              "misinterpreting weights. This feeds into L4 by providing the input format for adjacency list construction"
             ],
             "codePattern": "nodes = set of integers, edges = list of (u, v, w)",
             "algorithm": null,
@@ -1050,8 +1052,404 @@
               "expected": "0"
             }
           ]
+        },
+        {
+          "level": 1,
+          "title": "Key Sub-routine — Edge Relaxation in Bellman-Ford",
+          "desc": "The core operation of checking and updating shortest path estimates through a single edge",
+          "explanation": {
+            "prose": "Edge relaxation is the fundamental operation in Bellman-Ford that progressively improves distance estimates. The intuition is simple: if we find a path to node v through node u that's shorter than our current best estimate to v, we update v's distance. Mathematically, for an edge from u to v with weight w, if dist[u] + w < dist[v], then dist[v] = dist[u] + w. This works because we're essentially testing whether going through u provides a better path to v. The step-by-step process: 1) Check if dist[u] is not infinity (meaning u is reachable). 2) Calculate candidate distance = dist[u] + w. 3) If candidate < dist[v], update dist[v] to candidate. Time complexity per relaxation is O(1), .",
+            "connectsTo": {
+              "level": "L0",
+              "reason": "as Bellman-Ford applies this relaxation to all edges repeatedly"
+            },
+            "timeComplexity": null,
+            "spaceComplexity": {
+              "value": "O(1)",
+              "note": null
+            },
+            "commonMistakes": [
+              "relaxing edges in wrong direction for directed graphs",
+              "not checking for infinity before addition (which could cause overflow)",
+              "updating distances incorrectly"
+            ],
+            "codePattern": "if dist[u] != float('inf') and dist[u] + w < dist[v]: dist[v] = dist[u] + w",
+            "algorithm": null,
+            "summary": null
+          },
+          "examples": [
+            {
+              "input": "dist = [0, 5, inf], edge = (1,2,2) (0-indexed, edge from node 1 to 2 with weight 2)",
+              "output": "dist = [0, 5, 7]",
+              "trace": "Current distances: node 0: 0, node 1: 5, node 2: inf. Edge from node 1 to 2 with weight 2. Check: dist[1] = 5 (not inf). Candidate = 5 + 2 = 7. Compare: 7 < inf (True). Update dist[2] = 7. New distances: [0, 5, 7]."
+            },
+            {
+              "input": "dist = [0, inf, 3], edge = (2,1,1) (0-indexed, edge from node 2 to 1 with weight 1)",
+              "output": "dist = [0, 4, 3]",
+              "trace": "Current distances: node 0: 0, node 1: inf, node 2: 3. Edge from node 2 to 1 with weight 1. Check: dist[2] = 3 (not inf). Candidate = 3 + 1 = 4. Compare: 4 < inf (True). Update dist[1] = 4. New distances: [0, 4, 3]."
+            }
+          ],
+          "testCases": [
+            {
+              "input": "dist = [0, inf, inf], edge = (0,1,5)",
+              "expected": "[0, 5, inf]"
+            },
+            {
+              "input": "dist = [0, 3, inf], edge = (1,2,2)",
+              "expected": "[0, 3, 5]"
+            },
+            {
+              "input": "dist = [0, inf, 4], edge = (2,1,1)",
+              "expected": "[0, 5, 4]"
+            },
+            {
+              "input": "dist = [0, 5, 8], edge = (0,2,3)",
+              "expected": "[0, 5, 3]"
+            },
+            {
+              "input": "dist = [0, inf, inf], edge = (1,0,2)",
+              "expected": "[0, inf, inf]"
+            },
+            {
+              "input": "dist = [0, 2, 6], edge = (1,2,3)",
+              "expected": "[0, 2, 5]"
+            },
+            {
+              "input": "dist = [inf, 0, inf], edge = (1,2,4)",
+              "expected": "[inf, 0, 4]"
+            },
+            {
+              "input": "dist = [0, 4, 7], edge = (0,2,10)",
+              "expected": "[0, 4, 7]"
+            },
+            {
+              "input": "dist = [0, 1, inf], edge = (0,2,5)",
+              "expected": "[0, 1, 5]"
+            },
+            {
+              "input": "dist = [0, 3, 6], edge = (2,1,2)",
+              "expected": "[0, 3, 6]"
+            }
+          ]
+        },
+        {
+          "level": 2,
+          "title": "Core Logic — Iterative Relaxation for Shortest Paths",
+          "desc": "The principle that repeating edge relaxation V-1 times guarantees shortest path convergence",
+          "explanation": {
+            "prose": "The core insight of Bellman-Ford is that repeating the relaxation process V-1 times (where V is number of vertices) guarantees finding all shortest paths in a graph without negative cycles. The intuition: any simple shortest path (without cycles) can have at most V-1 edges. By relaxing all edges once, we guarantee that all shortest paths of length 1 are found. By relaxing all edges twice, we guarantee all shortest paths of length 2 are found, and so on. After V-1 iterations, we've covered all possible simple path lengths.",
+            "connectsTo": {
+              "level": "L1",
+              "reason": "as we're applying edge relaxation repeatedly"
+            },
+            "timeComplexity": {
+              "value": "O(VE)",
+              "note": "since we do V-1 iterations over E edges"
+            },
+            "spaceComplexity": {
+              "value": "O(V)",
+              "note": null
+            },
+            "commonMistakes": [
+              "stopping too early (less than V-1 iterations)",
+              "not understanding why V-1 iterations suffice",
+              "incorrect iteration counting"
+            ],
+            "codePattern": "for i in range(n-1): for u,v,w in edges: relax(u,v,w)",
+            "algorithm": [
+              "1) Initialize distances",
+              "2) For i = 1 to V-1: for each edge (u,v,w), relax edge (u,v,w)",
+              "3) Optional: check for negative cycles by doing one more iteration."
+            ],
+            "summary": null
+          },
+          "examples": [
+            {
+              "input": "V=3, edges=[(0,1,2),(1,2,3),(0,2,6)], source=0",
+              "output": "distances after V-1=2 iterations: [0,2,5]",
+              "trace": "Initial: dist=[0,inf,inf]. Iteration 1: Edge (0,1,2): relax → dist[1]=2. Edge (1,2,3): dist[1]=inf? No, dist[1]=2 → candidate=5 < inf → dist[2]=5. Edge (0,2,6): candidate=6 > 5 → no change. After iteration 1: [0,2,5]. Iteration 2: Edge (0,1,2): 0+2=2 = dist[1]=2 → no change. Edge (1,2,3): 2+3=5 = dist[2]=5 → no change. Edge (0,2,6): 0+6=6 > 5 → no change. Final: [0,2,5]."
+            },
+            {
+              "input": "V=4, edges=[(0,1,1),(1,2,1),(2,3,1)], source=0",
+              "output": "distances after V-1=3 iterations: [0,1,2,3]",
+              "trace": "Initial: dist=[0,inf,inf,inf]. Iteration 1: Edge (0,1,1): relax → dist[1]=1. Others: no change (dist[1]=inf). After iter1: [0,1,inf,inf]. Iteration 2: Edge (1,2,1): dist[1]=1 → candidate=2 < inf → dist[2]=2. Others: no change. After iter2: [0,1,2,inf]. Iteration 3: Edge (2,3,1): dist[2]=2 → candidate=3 < inf → dist[3]=3. Final: [0,1,2,3]."
+            }
+          ],
+          "testCases": [
+            {
+              "input": "V=2, edges=[(0,1,5)], source=0",
+              "expected": "[0,5]"
+            },
+            {
+              "input": "V=3, edges=[(0,1,2),(1,2,3)], source=0",
+              "expected": "[0,2,5]"
+            },
+            {
+              "input": "V=3, edges=[(0,1,4),(0,2,5)], source=0",
+              "expected": "[0,4,5]"
+            },
+            {
+              "input": "V=4, edges=[(0,1,1),(1,2,2),(2,3,3)], source=0",
+              "expected": "[0,1,3,6]"
+            },
+            {
+              "input": "V=3, edges=[(0,1,1),(1,2,1),(0,2,3)], source=0",
+              "expected": "[0,1,2]"
+            },
+            {
+              "input": "V=4, edges=[(0,1,2),(1,2,3),(2,3,4),(0,3,10)], source=0",
+              "expected": "[0,2,5,9]"
+            },
+            {
+              "input": "V=2, edges=[(1,0,3)], source=0",
+              "expected": "[0,inf]"
+            },
+            {
+              "input": "V=3, edges=[(0,1,5),(1,2,2),(0,2,8)], source=0",
+              "expected": "[0,5,7]"
+            },
+            {
+              "input": "V=4, edges=[(0,1,1),(1,2,1),(2,3,1),(0,3,5)], source=0",
+              "expected": "[0,1,2,3]"
+            },
+            {
+              "input": "V=3, edges=[(0,1,2),(1,0,1)], source=0",
+              "expected": "[0,2,inf]"
+            }
+          ]
+        },
+        {
+          "level": 3,
+          "title": "Building Block — Graph Representation for Edge Iteration",
+          "desc": "Representing a weighted directed graph to enable efficient iteration over all edges",
+          "explanation": {
+            "prose": "To apply Bellman-Ford, we need a graph representation that allows us to iterate through all edges efficiently. The most straightforward representation for Bellman-Ford is an edge list: a list of tuples (u, v, w) where u is source, v is destination, and w is weight. The intuition: Bellman-Ford doesn't need complex adjacency structures because it processes every edge in each iteration regardless of connectivity. An edge list provides O(1) access to each edge and simple iteration. Alternative representations like adjacency lists or matrices work too, but edge list is simplest for Bellman-Ford's needs. Step-by-step: 1) Parse input into list of edges. 2) Ensure nodes are 0-indexed if input is 1-indexed. 3) Store as list of (u,v,w). Time complexity to build is O(E), .",
+            "connectsTo": {
+              "level": "L2",
+              "reason": "as we need this representation to iterate edges during relaxation"
+            },
+            "timeComplexity": null,
+            "spaceComplexity": {
+              "value": "O(E)",
+              "note": null
+            },
+            "commonMistakes": [
+              "incorrect indexing (1 vs 0-indexed)",
+              "not handling directed vs undirected edges properly",
+              "inefficient representations"
+            ],
+            "codePattern": "edges = []; for u,v,w in times: edges",
+            "algorithm": null,
+            "summary": null
+          },
+          "examples": [
+            {
+              "input": "times = [[1,2,5],[2,3,3],[1,3,10]], n=3",
+              "output": "Edge list: [(0,1,5),(1,2,3),(0,2,10)]",
+              "trace": "Input uses 1-indexed nodes. Convert to 0-indexed: [1,2,5] → (0,1,5), [2,3,3] → (1,2,3), [1,3,10] → (0,2,10). Result is list of 3 tuples."
+            },
+            {
+              "input": "times = [[2,1,1],[2,3,1],[3,4,1]], n=4",
+              "output": "Edge list: [(1,0,1),(1,2,1),(2,3,1)]",
+              "trace": "Convert 1-indexed to 0-indexed: [2,1,1] → (1,0,1), [2,3,1] → (1,2,1), [3,4,1] → (2,3,1). Note: node numbers decrease by 1."
+            }
+          ],
+          "testCases": [
+            {
+              "input": "times = [[1,2,1]], n=2",
+              "expected": "[(0,1,1)]"
+            },
+            {
+              "input": "times = [[1,2,2],[2,3,3]], n=3",
+              "expected": "[(0,1,2),(1,2,3)]"
+            },
+            {
+              "input": "times = [[2,1,5]], n=2",
+              "expected": "[(1,0,5)]"
+            },
+            {
+              "input": "times = [[1,3,4],[3,2,1]], n=3",
+              "expected": "[(0,2,4),(2,1,1)]"
+            },
+            {
+              "input": "times = [[1,1,0]], n=1",
+              "expected": "[(0,0,0)]"
+            },
+            {
+              "input": "times = [[1,2,1],[2,1,2]], n=2",
+              "expected": "[(0,1,1),(1,0,2)]"
+            },
+            {
+              "input": "times = [[3,1,4],[1,2,5],[2,3,6]], n=3",
+              "expected": "[(2,0,4),(0,1,5),(1,2,6)]"
+            },
+            {
+              "input": "times = [[1,2,7],[2,3,8],[3,4,9]], n=4",
+              "expected": "[(0,1,7),(1,2,8),(2,3,9)]"
+            },
+            {
+              "input": "times = [[2,4,3],[4,1,2]], n=4",
+              "expected": "[(1,3,3),(3,0,2)]"
+            },
+            {
+              "input": "times = [], n=5",
+              "expected": "[]"
+            }
+          ]
+        },
+        {
+          "level": 4,
+          "title": "Basic Operation — Initializing and Updating Distance Arrays",
+          "desc": "Creating and modifying an array to track shortest distance estimates from source",
+          "explanation": {
+            "prose": "The distance array is fundamental to shortest path algorithms. It stores the current best-known distance from the source node to each node. The intuition: we start with unknown distances (infinity) except the source (0), then progressively improve estimates as we find better paths. Initialization: create array of size V, set all to infinity, set source to 0. Updating: when we find a better path to node v, update dist[v] to the new shorter distance. The array enables O(1) access and update. Step-by-step: 1) dist = [float('inf')] * n. 2) dist[source] = 0. 3) When relaxing edge (u,v,w): if dist[u] + w < dist[v]: dist[v] = dist[u] + w. Time per update O(1), space O(V).",
+            "connectsTo": {
+              "level": "L3",
+              "reason": "as we need this array to work with the graph representation"
+            },
+            "timeComplexity": null,
+            "spaceComplexity": null,
+            "commonMistakes": [
+              "using wrong initial values",
+              "not using a large enough value for infinity",
+              "incorrect indexing"
+            ],
+            "codePattern": "dist = [float('inf')] * n; dist[k-1] = 0",
+            "algorithm": null,
+            "summary": null
+          },
+          "examples": [
+            {
+              "input": "n=3, source=0",
+              "output": "Initial array: [0, inf, inf]",
+              "trace": "Create array of length 3: [inf, inf, inf]. Set index 0 (source) to 0. Result: [0, inf, inf]."
+            },
+            {
+              "input": "Current array: [0, 5, inf], update node 2 with value 7",
+              "output": "Updated array: [0, 5, 7]",
+              "trace": "Original: [0, 5, inf]. Update index 2 (node 2) to 7. Since 7 < inf, update is valid. New array: [0, 5, 7]."
+            }
+          ],
+          "testCases": [
+            {
+              "input": "n=4, source=1",
+              "expected": "[inf, 0, inf, inf]"
+            },
+            {
+              "input": "array=[0,3,inf], update node2 with 5",
+              "expected": "[0,3,5]"
+            },
+            {
+              "input": "n=2, source=0",
+              "expected": "[0,inf]"
+            },
+            {
+              "input": "array=[0,inf,8], update node1 with 4",
+              "expected": "[0,4,8]"
+            },
+            {
+              "input": "array=[0,2,6], update node2 with 5",
+              "expected": "[0,2,5]"
+            },
+            {
+              "input": "n=5, source=3",
+              "expected": "[inf,inf,inf,0,inf]"
+            },
+            {
+              "input": "array=[inf,0,inf], update node0 with 3",
+              "expected": "[3,0,inf]"
+            },
+            {
+              "input": "array=[0,7,10], update node1 with 7",
+              "expected": "[0,7,10]"
+            },
+            {
+              "input": "array=[0,inf,inf], update node1 with 5",
+              "expected": "[0,5,inf]"
+            },
+            {
+              "input": "array=[0,4,9], update node2 with 12",
+              "expected": "[0,4,9]"
+            }
+          ]
+        },
+        {
+          "level": 5,
+          "title": "Concept Foundation — Understanding Infinity in Distance Context",
+          "desc": "Using a special value to represent 'unknown' or 'unreachable' distances in pathfinding",
+          "explanation": {
+            "prose": "In shortest path algorithms, we need a way to represent that we don't yet know the distance to a node, or that a node is unreachable. We use a special value called 'infinity' (often a very large number) for this purpose. The intuition: infinity represents an upper bound larger than any possible actual distance. When we initialize, all nodes except the source get infinity because we haven't found any path to them yet. As we discover paths, we replace infinity with actual distances. Mathematically, we treat infinity as a value that's greater than any real number, so any actual distance will be less than infinity. In code, we use float('inf') in Python or a large constant like 10^9. Step-by-step: 1) Choose an infinity value. 2) Initialize distances with infinity. 3) When comparing, treat infinity as larger than any real number. 4) After algorithm, nodes still with infinity are unreachable. Time/space: using infinity adds no overhead.",
+            "connectsTo": {
+              "level": "L4",
+              "reason": "as we need infinity to initialize distance arrays"
+            },
+            "timeComplexity": null,
+            "spaceComplexity": null,
+            "commonMistakes": [
+              "using too small an infinity value (causing incorrect comparisons)",
+              "not handling infinity in arithmetic (inf + number = inf)",
+              "confusing infinity with other sentinel values"
+            ],
+            "codePattern": "INF = float('inf'); dist = [INF] * n",
+            "algorithm": null,
+            "summary": null
+          },
+          "examples": [
+            {
+              "input": "Initialize distances for 3 nodes, source is node 0",
+              "output": "[0, inf, inf]",
+              "trace": "We need to represent unknown distances. Use inf for nodes 1 and 2. Source node 0 gets distance 0. Result: [0, inf, inf]."
+            },
+            {
+              "input": "Compare: current distance to node is inf, candidate distance is 5",
+              "output": "Update to 5",
+              "trace": "Current dist = inf, candidate = 5. Since 5 < inf (inf is treated as larger than any real number), we update distance to 5."
+            }
+          ],
+          "testCases": [
+            {
+              "input": "Is 10 < inf?",
+              "expected": "True"
+            },
+            {
+              "input": "Is inf < 5?",
+              "expected": "False"
+            },
+            {
+              "input": "inf + 3",
+              "expected": "inf"
+            },
+            {
+              "input": "Initialize 2 nodes, source 1",
+              "expected": "[inf, 0]"
+            },
+            {
+              "input": "Compare: inf vs 100",
+              "expected": "100 < inf"
+            },
+            {
+              "input": "Compare: 50 vs inf",
+              "expected": "50 < inf"
+            },
+            {
+              "input": "inf == inf",
+              "expected": "True"
+            },
+            {
+              "input": "inf > 1000",
+              "expected": "True"
+            },
+            {
+              "input": "Initialize 4 nodes, no source",
+              "expected": "[inf, inf, inf, inf]"
+            },
+            {
+              "input": "inf - 10",
+              "expected": "inf"
+            }
+          ]
         }
-]
-}
-]
+      ]
+    }
+  ]
 }

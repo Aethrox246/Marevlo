@@ -18,7 +18,6 @@ import {
   Menu,
   Dot,
 } from "lucide-react";
-import QuizModal from "../components/QuizModal";
 
 /* ── Performance Optimization: Memoized HTML Content ── */
 const MemoizedProseContent = memo(({ html, innerRef }) => (
@@ -53,49 +52,19 @@ MemoizedProseContent.displayName = "MemoizedProseContent";
 const COURSE_HTML_MAP = {
   "prompt-engineering-0": "/courses/Prompt_Engineering_Moduless.html",
   "video-processing-0": "/courses/videoingestion.html",
-  "vectorless-rag": "/cources/generative-ai/vectorless-rag/vector_less_rag.html",
-  "mcp": "/cources/generative-ai/mcp/MCP.html",
+  "vectorless-rag": "/courses/videoingestion.html",
   "docformer": "/courses/ingerstion/docformer_enhanced (1).html",
-  "doc-to-image": "/cources/generative-ai/RAG/document-ingestion/document_to_image.html",
-  "infonce": "/cources/generative-ai/RAG/document-ingestion/InfoNCE (Noise-Contrastive Estimation).html",
-  "max-seq": "/cources/generative-ai/RAG/document-ingestion/maxiamal_sequential_pattern.html",
-  "ocr-layout": "/cources/generative-ai/RAG/document-ingestion/ocr_Text_layout_Recognition.html",
-  "ocr-text": "/cources/generative-ai/RAG/document-ingestion/ocr_Text_Recognition.html",
+  "doc-to-image": "/courses/ingerstion/document_to_image (2).html",
+  "infonce": "/courses/ingerstion/InfoNCE (Noise-Contrastive Estimation) (1).html",
+  "max-seq": "/courses/ingerstion/maxiamal_sequential_pattern (1).html",
+  "ocr-layout": "/courses/ingerstion/ocr_Text_layout_Recognition (1).html",
+  "ocr-text": "/courses/ingerstion/ocr_Text_Recognition (1).html",
   "video-ingestion": "/courses/ingerstion/Videoingestion.html",
-  "rag-intro": "/cources/generative-ai/RAG/rag_introduction.html",
-  "rag-phases": "/cources/generative-ai/RAG/phases_of_rag.html",
-  "rag-database": "/cources/generative-ai/RAG/database.html",
+  "rag-intro": "/courses/Introduction.html",
+  "rag-phases": "/courses/Phases of RAG.html",
+  "rag-database": "/courses/Database.html",
   "rag-prompt-eng": "/courses/Prompt_Engineering_Moduless.html",
-  "rag-api": "/cources/generative-ai/RAG/mastering the llm and apis.html",
-  "ds-python": "/cources/Data_Science/python.html",
-  "multimodal-rag": "/cources/generative-ai/Multi-modal-rag/Introduction to Multimodal AI.html",
-  "pytorch-tensors": "/cources/Data_Science/pytorch/module1_tensors.html",
-  "pytorch-autograd": "/cources/Data_Science/pytorch/module2_autograd.html",
-  "pytorch-neural-network": "/cources/Data_Science/pytorch/module3_nn_module.html",
-  "pytorch-training-loop": "/cources/Data_Science/pytorch/module4_training_loop.html",
-  "pytorch-data-pipeline": "/cources/Data_Science/pytorch/module5_data_pipelines.html",
-  "pytorch-evaluation": "/cources/Data_Science/pytorch/module6_evaluation.html",
-  "pytorch-cnn": "/cources/Data_Science/pytorch/module7_cnns.html",
-  "pytorch-sequence-models": "/cources/Data_Science/pytorch/module8_sequence_models.html",
-  "pytorch-training-tricks": "/cources/Data_Science/pytorch/module9_training_tricks.html",
-  "pytorch-debugging": "/cources/Data_Science/pytorch/module10_debugging.html",
-  "pytorch-distributed": "/cources/Data_Science/pytorch/module11_distributed.html",
-  "pytorch-deployment": "/cources/Data_Science/pytorch/module12_deployment.html",
-  "ds-static-propability": "/cources/Data_Science/stats-prob/module_1_and_2.html",
-  "dl-preliminaries": "/cources/Data_Science/DL/Preliminaries.html",
-  "dl-perceptron": "/cources/Data_Science/DL/perceptronFF.html",
-  "dl-rnn": "/cources/Data_Science/DL/RNN_.html",
-  "dl-attention": "/cources/Data_Science/DL/Attention_transformers_with_examples.html",
-  "dl-gan": "/cources/Data_Science/DL/GAN.html",
-  "dl-linear-reg": "/cources/Data_Science/DL/Linear_regresssion_DL.html",
-  "dl-gaussian": "/cources/Data_Science/DL/GaussianProcesses.html",
-  "dl-comp-perf": "/cources/Data_Science/DL/Computational_Performance.html",
-  "dl-opt-techniques": "/cources/Data_Science/DL/Optimization_technique.html",
-  "dl-classification": "/cources/Data_Science/DL/Classification_with_examples.html",
-  "dl-cv-blog": "/cources/Data_Science/DL/CNN.html",
-  "dl-builder-guide": "/cources/Data_Science/DL/builderGuide_with_examples.html",
-  "dl-ml-blog": "/cources/Data_Science/DL/NLP.html",
-  "clustering-part1": "/courses/clustering/CLUSTERING_PART_0_3.html",
+  "rag-api": "/courses/mastering the llm and apis.html",
   "clustering-part4": "/courses/clustering/CLUSTERING PART 4.html",
 };
 
@@ -233,73 +202,8 @@ function processHtml(rawHtml) {
     }
   });
 
-  // ── Step 1.5: Fix Squished Code Blocks from Mammoth Tables ──
-  doc.querySelectorAll("table").forEach((table) => {
-    const rawHtml = table.innerHTML;
-    // Heuristic: If it has zero <th>, and contains dense python keywords or <strong>def</strong>
-    const hasTh = table.querySelector("th") !== null;
-    const isCode = !hasTh && (
-      /importtorch|<strong>def<\/strong>|import |def |class |for |while |return |loss\.|opt\.|model\(|torch\.|nn\./i.test(rawHtml)
-    );
-
-    if (isCode) {
-      const tempDiv = doc.createElement("div");
-      tempDiv.innerHTML = rawHtml
-        .replace(/<br\s*\/?>/gi, "\n")
-        .replace(/<\/p>/gi, "\n\n");
-      
-      let codeText = tempDiv.textContent || "";
-      codeText = codeText
-        .replace(/importtorch/g, "import torch ")
-        .replace(/fromtorch/g, "from torch ")
-        .replace(/importmatplotlib/g, "import matplotlib ")
-        .replace(/importmath/g, "import math ")
-        .replace(/deftrain/g, "def train")
-        .replace(/defevaluate/g, "def evaluate")
-        .replace(/defdebug/g, "def debug")
-        .replace(/classHR/g, "class HR")
-        .replace(/classEarly/g, "class Early")
-        .replace(/forX_/g, "for X_")
-        .replace(/fory_/g, "for y_")
-        .replace(/for_/g, "for _ ")
-        .replace(/returnself/g, "return self")
-        .replace(/returntotal/g, "return total")
-        .replace(/optimizer\.step\(\)/g, "optimizer.step()\n")
-        .replace(/loss\.backward\(\)/g, "loss.backward()\n")
-        .replace(/opt\.zero_grad\(\)/g, "opt.zero_grad()\n")
-        .replace(/model\.train\(\)/g, "model.train()\n")
-        .replace(/model\.eval\(\)/g, "model.eval()\n")
-        .replace(/\n\s*\n\s*\n/g, "\n\n")
-        .trim();
-
-      // Basic regex syntax highlighting
-      const highlighted = codeText
-        .replace(/</g, "&lt;").replace(/>/g, "&gt;")
-        .replace(/\b(def|class|import|from|return|for|in|if|else|elif|with|as|pass|break|continue)\b/g, '<span class="text-pink-400">$1</span>')
-        .replace(/\b(self|True|False|None)\b/g, '<span class="text-indigo-400">$1</span>')
-        .replace(/\b(torch|nn|F|optim|plt|math)\b/g, '<span class="text-emerald-400">$1</span>')
-        .replace(/([a-zA-Z_]+)(?=\()/g, '<span class="text-sky-400">$1</span>')
-        .replace(/(#.*)/g, '<span class="text-slate-500 italic">$1</span>');
-
-      const wrapper = doc.createElement("div");
-      wrapper.className = "my-8 rounded-xl overflow-hidden bg-[#0d1117] border border-slate-800 shadow-2xl font-mono text-sm";
-      wrapper.innerHTML = `
-        <div class="flex items-center px-4 py-2.5 bg-[#161b22] border-b border-slate-800">
-          <div class="flex space-x-2">
-            <div class="w-3 h-3 rounded-full bg-rose-500/80"></div>
-            <div class="w-3 h-3 rounded-full bg-amber-500/80"></div>
-            <div class="w-3 h-3 rounded-full bg-emerald-500/80"></div>
-          </div>
-          <span class="ml-4 text-xs tracking-wider text-slate-400 font-sans capitalize">Code Snippet</span>
-        </div>
-        <pre class="p-5 overflow-x-auto text-slate-300 leading-relaxed whitespace-pre-wrap">${highlighted}</pre>
-      `;
-      
-      table.replaceWith(wrapper);
-    }
-  });
-
   // ── Step 2: Determine which heading tags are "main topic" vs "sub topic" ──
+  // Strategy: if doc has h2s → use h2=topic, h3/h4=sub. If only h1s → use h1=topic, h2=sub.
   const hasH2 = doc.querySelector("h2") !== null;
   const [TOPIC_TAG, SUB_TAG] = hasH2 ? ["h2", "h3,h4"] : ["h1", "h2,h3"];
 
@@ -505,8 +409,6 @@ export default function CourseContent() {
   const [expandedLesson, setExpanded] = useState(activeLessons[0]?.id ?? 1);
   const [sidebarOpen, setSidebar] = useState(false);
   const [focusMode, setFocusMode] = useState(false);
-  const [showQuiz, setShowQuiz] = useState(false);
-  const [quizData, setQuizData] = useState(null);
 
   /* ── Reader enhancements ── */
   const [tocItems, setTocItems] = useState([]); // nested toc items for sidebar
@@ -540,8 +442,6 @@ export default function CourseContent() {
     milestoneShownRef.current.clear();
     setChapterCard({ visible: false, title: "", index: 0 });
     setToast({ visible: false, icon: "", msg: "" });
-    setShowQuiz(false);
-    setQuizData(null);
   }, [id]);
 
   /* ── HTML-doc course support ── */
@@ -557,46 +457,18 @@ export default function CourseContent() {
       .then((raw) => {
         const { html, toc, rawToc, readTime: rt } = processHtml(raw);
         setDocHtml(html);
-        
-        const quizFilePath = htmlFile.replace('.html', '_quiz.json');
-        fetch(quizFilePath)
-          .then(res => {
-            if (res.ok) return res.json();
-            throw new Error('No quiz');
-          })
-          .then(qJson => {
-            setQuizData(qJson);
-            const quizLesson = {
-              id: "module-quiz",
-              title: "Module Quiz",
-              duration: "10m",
-              type: "Practice",
-              completed: false,
-              subTopics: [],
-              isQuiz: true
-            };
-            const updatedToc = [...toc, quizLesson];
-            setTocItems(updatedToc);
-            setLessons(updatedToc);
-            if (toc.length > 0) {
-              setLesson(toc[0].id);
-              setExpanded(toc[0].id);
-            }
-          })
-          .catch(() => {
-            setQuizData(null);
-            setTocItems(toc);
-            setLessons(toc);
-            if (toc.length > 0) {
-              setLesson(toc[0].id);
-              setExpanded(toc[0].id);
-            }
-          })
-          .finally(() => {
-            setRawTocItems(rawToc);
-            setReadTime(rt);
-            setDocLoading(false);
-          });
+        setTocItems(toc);     // Extracted dynamic lessons array
+        setRawTocItems(rawToc); // Raw list of headings
+        setReadTime(rt);
+        setLessons(toc); // Override lessons with the TOC dynamically extracted
+
+        // Auto-select first lesson
+        if (toc.length > 0) {
+          setLesson(toc[0].id);
+          setExpanded(toc[0].id);
+        }
+
+        setDocLoading(false);
       })
       .catch(() => { setDocHtml("<p>Failed to load content.</p>"); setDocLoading(false); });
   }, [htmlFile]);
@@ -803,10 +675,6 @@ export default function CourseContent() {
 
   /* When a lesson row is clicked: select it + toggle its accordion */
   const handleLessonClick = (l) => {
-    if (l.isQuiz) {
-      setShowQuiz(true);
-      return;
-    }
     setLesson(l.id);
     setSubTopic(null);
     setExpanded((prev) => (prev === l.id ? null : l.id)); // toggle
@@ -1463,7 +1331,6 @@ export default function CourseContent() {
           </div>
         )}
       </main>
-      {showQuiz && <QuizModal quizData={quizData} onClose={() => setShowQuiz(false)} />}
     </div>
   );
 }

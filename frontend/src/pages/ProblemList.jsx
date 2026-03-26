@@ -138,47 +138,54 @@ export default function ProblemList({ onSelect }) {
                             </h2>
                         </div>
                         <p className="text-sm mb-5" style={{ color: 'var(--color-muted-text)', lineHeight: 1.6 }}>
-                            Every problem comes with multiple solution approaches. Instead of handing you the answer, our <strong style={{ color: 'var(--color-primary-text)' }}>Ladder system</strong> guides you there — one level at a time.
+                            Every problem comes with multiple solution approaches. Each approach breaks down into <strong style={{ color: 'var(--color-primary-text)' }}>6 ladder levels</strong> — from the full problem (L0) down to the foundational concept (L5). Each level is its own coding problem with test cases.
                         </p>
 
-                        {/* Ladder Visual Stepper */}
+                        {/* Ladder System Visual */}
                         <div
                             className="rounded-xl p-4 mb-5"
                             style={{ background: 'var(--color-surface-hover)', border: '1px solid var(--color-border)' }}
                         >
                             <div className="text-xs font-semibold mb-3" style={{ color: 'var(--color-muted-text)', letterSpacing: '0.05em', textTransform: 'uppercase' }}>
-                                Hint Ladder — Progressive Unlock
+                                Ladder System — Each level is a coding problem
                             </div>
                             <div className="flex items-center gap-1 overflow-x-auto pb-1">
                                 {[
-                                    { label: 'L0', type: 'Full Problem',     unlocked: true  },
-                                    { label: 'L1', type: 'Sub-routine',      unlocked: true  },
-                                    { label: 'L2', type: 'Hint',             unlocked: true  },
-                                    { label: 'L3', type: 'Pseudocode',       unlocked: false },
-                                    { label: 'L4', type: 'Partial Solution', unlocked: false },
+                                    { label: 'L0', type: 'Full Problem',      color: '#818cf8', state: 'solved'   },
+                                    { label: 'L1', type: 'Key Sub-routine',   color: '#10b981', state: 'solved'   },
+                                    { label: 'L2', type: 'Core Logic',        color: '#f59e0b', state: 'unlocked' },
+                                    { label: 'L3', type: 'Building Block',    color: '#ec4899', state: 'locked'   },
+                                    { label: 'L4', type: 'Basic Operation',   color: '#06b6d4', state: 'locked'   },
+                                    { label: 'L5', type: 'Concept Foundation',color: '#8b5cf6', state: 'locked'   },
                                 ].map((rung, i, arr) => (
                                     <React.Fragment key={rung.label}>
                                         <div className="flex flex-col items-center gap-1 flex-shrink-0">
                                             <div style={{
                                                 width: 32, height: 32, borderRadius: '50%',
                                                 display: 'flex', alignItems: 'center', justifyContent: 'center',
-                                                fontSize: 11, fontWeight: 700,
-                                                background: rung.unlocked ? '#10b981' : 'var(--color-border)',
-                                                color: rung.unlocked ? '#fff' : 'var(--color-muted-text)',
-                                                border: rung.unlocked ? 'none' : '1.5px dashed var(--color-muted-text)',
+                                                fontSize: 10, fontWeight: 800,
+                                                background: rung.state === 'solved' ? '#f59e0b' : rung.state === 'unlocked' ? '#10b981' : 'var(--color-surface)',
+                                                color: rung.state === 'locked' ? 'var(--color-muted-text)' : '#fff',
+                                                border: rung.state === 'locked' ? '1.5px dashed var(--color-muted-text)' : 'none',
+                                                boxShadow: rung.state === 'solved' ? '0 0 10px rgba(245,158,11,0.3)' : 'none',
                                                 transition: 'all 0.3s',
                                             }}>
-                                                {rung.unlocked ? '✓' : '🔒'}
+                                                {rung.state === 'solved' ? '✓' : rung.state === 'unlocked' ? rung.label : '🔒'}
                                             </div>
-                                            <span className="text-center" style={{ fontSize: 9, color: rung.unlocked ? '#10b981' : 'var(--color-muted-text)', fontWeight: 600, maxWidth: 56, lineHeight: 1.3 }}>
+                                            <span className="text-center" style={{ fontSize: 8, color: rung.state === 'solved' ? '#f59e0b' : rung.state === 'unlocked' ? '#10b981' : 'var(--color-muted-text)', fontWeight: 600, maxWidth: 64, lineHeight: 1.3 }}>
                                                 {rung.label}<br />{rung.type}
                                             </span>
                                         </div>
                                         {i < arr.length - 1 && (
-                                            <div style={{ flex: 1, height: 2, minWidth: 12, background: rung.unlocked ? '#10b981' : 'var(--color-border)', borderRadius: 2 }} />
+                                            <div style={{ flex: 1, height: 2, minWidth: 8, background: rung.state === 'solved' ? '#f59e0b' : rung.state === 'unlocked' ? '#10b981' : 'var(--color-border)', borderRadius: 2 }} />
                                         )}
                                     </React.Fragment>
                                 ))}
+                            </div>
+                            <div className="mt-3 flex items-center gap-4" style={{ fontSize: 10, color: 'var(--color-muted-text)' }}>
+                                <span className="flex items-center gap-1"><span style={{ width: 8, height: 8, borderRadius: '50%', background: '#f59e0b', display: 'inline-block' }} /> Solved</span>
+                                <span className="flex items-center gap-1"><span style={{ width: 8, height: 8, borderRadius: '50%', background: '#10b981', display: 'inline-block' }} /> Unlocked</span>
+                                <span className="flex items-center gap-1"><span style={{ width: 8, height: 8, borderRadius: '50%', border: '1.5px dashed var(--color-muted-text)', display: 'inline-block' }} /> Locked</span>
                             </div>
                         </div>
 
@@ -188,19 +195,19 @@ export default function ProblemList({ onSelect }) {
                                 {
                                     icon: '💡',
                                     title: 'Multiple Approaches',
-                                    desc: 'Brute Force, Optimal, Space-efficient — see every angle of a problem.',
+                                    desc: 'Brute Force, Optimal, Divide & Conquer — solve each problem multiple ways.',
                                     color: '#6366f1',
                                 },
                                 {
-                                    icon: '🔓',
-                                    title: 'Progressive Unlocking',
-                                    desc: 'Reveal hints one level at a time — only when you\'re truly stuck.',
+                                    icon: '🪜',
+                                    title: '6-Level Ladder',
+                                    desc: 'Each approach has 6 sub-problems — from full solution down to basic concepts.',
                                     color: '#10b981',
                                 },
                                 {
-                                    icon: '⏱️',
-                                    title: 'Complexity Analysis',
-                                    desc: 'Time & Space complexity shown clearly for every approach.',
+                                    icon: '🎯',
+                                    title: '10 Test Cases Per Level',
+                                    desc: 'Every ladder level has its own examples, explanations, and 10 test cases.',
                                     color: '#f59e0b',
                                 },
                             ].map(({ icon, title, desc, color }) => (

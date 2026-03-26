@@ -71,42 +71,37 @@ export default function Login({ onLogin, onSignup }) {
         setError('');
         setGoogleLoading(true);
         try {
-            // 1. Open Google popup via Firebase
             const result = await signInWithPopup(auth, googleProvider);
             const idToken = await result.user.getIdToken();
-
-            // 2. Send Firebase ID token to our backend
+            
             const response = await fetch(`${API}/auth/google`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ id_token: idToken }),
             });
-
+            
             if (!response.ok) {
                 const errData = await response.json().catch(() => ({}));
                 throw new Error(errData.detail || 'Google login failed');
             }
-
+            
             const data = await response.json();
             localStorage.setItem('access_token', data.access_token);
             localStorage.setItem('refresh_token', data.refresh_token);
-
-            // 3. Fetch user details using our system token
+            
             const userResponse = await fetch(`${API}/auth/me`, {
                 headers: { Authorization: `Bearer ${data.access_token}` },
             });
-
+            
             if (userResponse.ok) {
                 const userData = await userResponse.json();
                 onLogin(userData);
             } else {
                 onLogin();
             }
-
-            // 4. Sign out of Firebase — we only needed Firebase for the ID token
+            
             await auth.signOut();
         } catch (err) {
-            // Handle popup closed by user gracefully
             if (err.code === 'auth/popup-closed-by-user') {
                 setError('');
             } else {

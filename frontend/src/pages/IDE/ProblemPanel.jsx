@@ -8,7 +8,9 @@ import {
 import ReactMarkdown from 'react-markdown';
 import TabBar from './TabBar';
 
-
+/* ════════════════════════════════════════════════════════════════
+   EXPLANATION PARSER — extracts every section from the raw text
+   ════════════════════════════════════════════════════════════════ */
 function parseExplanation(text) {
     if (!text) return null;
     const result = {
@@ -29,18 +31,29 @@ function parseExplanation(text) {
         else mainProse += '\n\n' + b;
     }
 
-    // Extract "connects to Lx"
-    const connMatch = mainProse.match(/This\s+(?:\w+\s+)?connects?\s+to\s+(L\d)\s*([^.]*)\./i);
+    // Extract "connects to Lx" — multiple formats
+    const connMatch = mainProse.match(/This\s+(?:\w+\s+)?connects?\s+to\s+(L\d)\s*([^.]*)\./i)
+        || mainProse.match(/Connection to\s+(L\d)\s*:\s*([^.]*)\./i);
     if (connMatch) {
         result.connectsTo = { level: connMatch[1], reason: connMatch[2]?.trim() || '' };
         mainProse = mainProse.replace(connMatch[0], '');
+    } else {
+        const connAlt = mainProse.match(/Connection to\s+(?:higher level|level above)[:\s]*([^.]*)\./i);
+        if (connAlt) {
+            result.connectsTo = { level: null, reason: connAlt[1]?.trim() || '' };
+            mainProse = mainProse.replace(connAlt[0], '');
+        }
     }
 
-    // Extract inline Time/Space complexity
-    const timeMatch = mainProse.match(/Time complexity is (O\([^)]+\))([^.]*)\./i);
-    if (timeMatch) { result.timeComplexity = { value: timeMatch[1], note: timeMatch[2]?.trim() }; mainProse = mainProse.replace(timeMatch[0], ''); }
-    const spaceMatch = mainProse.match(/Space complexity is (O\([^)]+\))([^.]*)\./i);
-    if (spaceMatch) { result.spaceComplexity = { value: spaceMatch[1], note: spaceMatch[2]?.trim() }; mainProse = mainProse.replace(spaceMatch[0], ''); }
+    // Extract inline Time complexity — multiple formats
+    const timeMatch = mainProse.match(/Time complexity\s*(?:is|of|:)\s*(O\([^)]+\))\s*[-–—]?\s*([^.]*)\./i)
+        || mainProse.match(/(?:with|is|has)\s+(O\([^)]+\))\s+time(?:\s+complexity)?([^.]*)\./i);
+    if (timeMatch) { result.timeComplexity = { value: timeMatch[1], note: timeMatch[2]?.trim()?.replace(/^[-–— ]+/, '') }; mainProse = mainProse.replace(timeMatch[0], ''); }
+
+    // Extract inline Space complexity — multiple formats
+    const spaceMatch = mainProse.match(/Space complexity\s*(?:is|of|:)\s*(O\([^)]+\))\s*[-–—]?\s*([^.]*)\./i)
+        || mainProse.match(/(?:with|is|has|and)\s+(O\([^)]+\))\s+space(?:\s+complexity)?([^.]*)\./i);
+    if (spaceMatch) { result.spaceComplexity = { value: spaceMatch[1], note: spaceMatch[2]?.trim()?.replace(/^[-–— ]+/, '') }; mainProse = mainProse.replace(spaceMatch[0], ''); }
 
     // Extract common mistakes
     const mistMatch = mainProse.match(/Common mistakes include:\s*(.*?)(?=\.\s*The real code|$)/is);
@@ -72,16 +85,189 @@ function parseExplanation(text) {
 }
 
 /* ════════════════════════════════════════════════════════════════
+   INLINE CODE HIGHLIGHTER — wraps technical terms in code style
+   ════════════════════════════════════════════════════════════════ */
+const InlineCode = ({ children }) => (
+    <code style={{
+        background: 'color-mix(in srgb, var(--color-primary-text) 6%, var(--color-surface))',
+        padding: '1px 5px', borderRadius: 4, fontSize: '0.88em',
+        fontFamily: "'JetBrains Mono', monospace",
+        border: '1px solid color-mix(in srgb, var(--color-primary-text) 8%, transparent)',
+        whiteSpace: 'nowrap',
+    }}>{children}</code>
+);
+
+/** Highlight technical terms within a sentence */
+const formatSentence = (text) => {
+    if (!text) return text;
+    // Split on patterns that should be code-styled, preserve them
+    const parts = text.split(/(O\([^)]+\)|array\[\w+\]|\w+\[\w+\]|n[\-\+\*\/]\d+|n²|n\^2|log\s*n|True|False|None|null|is_max|max_val|candidate_index|candidate_value|temp|arr\[\w*\]|start|end|mid|left_max|right_max|i\s*[!=<>]+\s*j)/g);
+    return parts.map((part, i) => {
+        if (/^(O\(|array\[|\w+\[|n[\-\+\*\/]|n²|n\^2|log\s*n|True$|False$|None$|null$|is_max|max_val|candidate_|temp$|arr\[|start$|end$|mid$|left_max|right_max|i\s*[!=<>])/.test(part)) {
+            return <InlineCode key={i}>{part}</InlineCode>;
+        }
+        return part;
+    });
+};
+
+/* ════════════════════════════════════════════════════════════════
+   PROSE RENDERER — transforms wall of text into semantic sections
+   ════════════════════════════════════════════════════════════════ */
+const ProseRenderer = ({ text }) => {
+    if (!text) return null;
+
+    // Split into sentences (handle abbreviations like e.g., i.e.)
+    const raw = text.replace(/([.!?])\s+/g, '$1|||').split('|||').filter(s => s.trim().length > 5);
+
+    // Classify each sentence
+    const classified = raw.map(sentence => {
+        const s = sentence.trim();
+        if (/^(The intuition|Intuitively)/i.test(s))
+            return { type: 'intuition', text: s };
+        if (/^(The key insight|The core insight)/i.test(s))
+            return { type: 'insight', text: s };
+        if (/^(This works because|This is possible because|This is because)/i.test(s))
+            return { type: 'reason', text: s };
+        if (/^(The algorithm |The technique |The method )/i.test(s))
+            return { type: 'mechanism', text: s };
+        if (/^(In the context|This is used|This connects|This feeds|This enables)/i.test(s))
+            return { type: 'context', text: s };
+        return { type: 'body', text: s };
+    });
+
+    // Group consecutive same-type sentences
+    const groups = [];
+    for (const item of classified) {
+        const last = groups[groups.length - 1];
+        if (last && last.type === item.type) {
+            last.sentences.push(item.text);
+        } else {
+            groups.push({ type: item.type, sentences: [item.text] });
+        }
+    }
+
+    // Merge small body groups with neighbors
+    const merged = [];
+    for (const g of groups) {
+        if (g.type === 'body' && merged.length > 0 && merged[merged.length - 1].type === 'body') {
+            merged[merged.length - 1].sentences.push(...g.sentences);
+        } else {
+            merged.push(g);
+        }
+    }
+
+    return (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+            {merged.map((group, gi) => {
+                const joinedText = group.sentences.join(' ');
+
+                // ── Intuition callout ──
+                if (group.type === 'intuition' || group.type === 'insight') {
+                    return (
+                        <div key={gi} style={{
+                            borderRadius: 8, padding: '12px 14px',
+                            background: 'color-mix(in srgb, #f59e0b 5%, var(--color-surface))',
+                            borderLeft: '3px solid #f59e0b',
+                            display: 'flex', gap: 10, alignItems: 'flex-start',
+                        }}>
+                            <span style={{ fontSize: 15, flexShrink: 0, marginTop: 1 }}>💡</span>
+                            <div>
+                                <div style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', color: '#f59e0b', marginBottom: 4 }}>
+                                    {group.type === 'insight' ? 'Key Insight' : 'Intuition'}
+                                </div>
+                                <p style={{ fontSize: 13, lineHeight: 1.7, color: 'var(--color-primary-text)', margin: 0 }}>
+                                    {formatSentence(joinedText.replace(/^(The intuition is( simple)?:?\s*|Intuitively,?\s*|The key insight is:?\s*)/i, ''))}
+                                </p>
+                            </div>
+                        </div>
+                    );
+                }
+
+                // ── Mechanism callout ──
+                if (group.type === 'mechanism') {
+                    return (
+                        <div key={gi} style={{
+                            borderRadius: 8, padding: '12px 14px',
+                            background: 'color-mix(in srgb, #818cf8 5%, var(--color-surface))',
+                            borderLeft: '3px solid #818cf8',
+                            display: 'flex', gap: 10, alignItems: 'flex-start',
+                        }}>
+                            <span style={{ fontSize: 15, flexShrink: 0, marginTop: 1 }}>⚙️</span>
+                            <div>
+                                <div style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', color: '#818cf8', marginBottom: 4 }}>How It Works</div>
+                                <p style={{ fontSize: 13, lineHeight: 1.7, color: 'var(--color-primary-text)', margin: 0 }}>
+                                    {formatSentence(joinedText)}
+                                </p>
+                            </div>
+                        </div>
+                    );
+                }
+
+                // ── Reason callout ──
+                if (group.type === 'reason') {
+                    return (
+                        <div key={gi} style={{
+                            borderRadius: 8, padding: '12px 14px',
+                            background: 'color-mix(in srgb, #10b981 5%, var(--color-surface))',
+                            borderLeft: '3px solid #10b981',
+                            display: 'flex', gap: 10, alignItems: 'flex-start',
+                        }}>
+                            <span style={{ fontSize: 15, flexShrink: 0, marginTop: 1 }}>✅</span>
+                            <div>
+                                <div style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', color: '#10b981', marginBottom: 4 }}>Why This Works</div>
+                                <p style={{ fontSize: 13, lineHeight: 1.7, color: 'var(--color-primary-text)', margin: 0 }}>
+                                    {formatSentence(joinedText.replace(/^(This works because|This is possible because)\s*/i, ''))}
+                                </p>
+                            </div>
+                        </div>
+                    );
+                }
+
+                // ── Context (connection to bigger picture) ──
+                if (group.type === 'context') {
+                    return (
+                        <p key={gi} style={{ fontSize: 12.5, lineHeight: 1.7, color: 'var(--color-muted-text)', margin: 0, fontStyle: 'italic' }}>
+                            {formatSentence(joinedText)}
+                        </p>
+                    );
+                }
+
+                // ── Default body text ──
+                return (
+                    <p key={gi} style={{ fontSize: 13.5, lineHeight: 1.8, color: 'var(--color-primary-text)', margin: 0 }}>
+                        {formatSentence(joinedText)}
+                    </p>
+                );
+            })}
+        </div>
+    );
+};
+
+/* ════════════════════════════════════════════════════════════════
    EXPLANATION RENDERER — beautiful visual cards for each section
    ════════════════════════════════════════════════════════════════ */
 const ExplanationView = ({ text }) => {
-    const s = parseExplanation(text);
-    if (!s) return null;
+    // Support both formats: string (old/fallback) → parse with regex, object (new structured) → use directly
+    const raw = (typeof text === 'string') ? parseExplanation(text) : text;
+    if (!raw) return null;
+
+    // Normalize field names: new JSON uses commonMistakes/summary, parser uses mistakes/summaryTime
+    const s = {
+        prose: raw.prose || null,
+        connectsTo: raw.connectsTo || null,
+        timeComplexity: raw.timeComplexity || null,
+        spaceComplexity: raw.spaceComplexity || null,
+        mistakes: raw.mistakes || raw.commonMistakes || [],
+        codePattern: raw.codePattern || null,
+        algorithm: raw.algorithm || [],
+        summaryTime: raw.summaryTime || raw.summary?.time || null,
+        summarySpace: raw.summarySpace || raw.summary?.space || null,
+    };
 
     return (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-            {/* Prose */}
-            {s.prose && <p style={{ fontSize: 13.5, lineHeight: 1.8, color: 'var(--color-primary-text)', margin: 0 }}>{s.prose}</p>}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+            {/* ── Smart Prose Renderer ── */}
+            {s.prose && <ProseRenderer text={s.prose} />}
 
             {/* Connects To */}
             {s.connectsTo && (
@@ -180,7 +366,9 @@ const ExplanationView = ({ text }) => {
     );
 };
 
-
+/* ════════════════════════════════════════════════════════════════
+   CONSTANTS
+   ════════════════════════════════════════════════════════════════ */
 const LADDER_META = [
     { label: 'Full Problem', icon: BookOpen, color: '#818cf8' },
     { label: 'Key Sub-routine', icon: Puzzle, color: '#10b981' },
@@ -210,8 +398,10 @@ const getApproachIcon = (name = '') => {
 
 const getDifficultyColor = (d) => ({ Easy: '#10b981', Medium: '#f59e0b', Hard: '#ef4444' }[d] || 'var(--color-muted-text)');
 
-
-const ProblemPanel = memo(({ problem, onBack, onActiveLadderChange }) => {
+/* ════════════════════════════════════════════════════════════════
+   PROBLEM PANEL
+   ════════════════════════════════════════════════════════════════ */
+const ProblemPanel = memo(({ problem, onBack, onActiveLadderChange, solvedLadders = {} }) => {
     const [activeTab, setActiveTab] = useState('description');
     const [selectedApproach, setSelectedApproach] = useState(0);
     const [unlockedLevels, setUnlockedLevels] = useState({});
@@ -244,10 +434,10 @@ const ProblemPanel = memo(({ problem, onBack, onActiveLadderChange }) => {
     const meta = lad ? (LADDER_META[lad.level] || LADDER_META[0]) : LADDER_META[0];
     const LIcon = meta.icon;
 
-    // Emit active ladder's test cases to parent (IDE.jsx)
+    // Emit active ladder data to parent (IDE.jsx) including approach context
     useEffect(() => {
         if (onActiveLadderChange && lad && activeTab === 'approaches') {
-            onActiveLadderChange(lad);
+            onActiveLadderChange({ ladder: lad, approachId: approach?.id, ladderIndex: activeLadder });
         } else if (onActiveLadderChange && activeTab === 'description') {
             onActiveLadderChange(null);
         }
@@ -416,33 +606,50 @@ const ProblemPanel = memo(({ problem, onBack, onActiveLadderChange }) => {
 
                         {/* ═══ LADDER PROGRESS: L0 → L5 ═══ */}
                         <div style={{ padding: '14px 18px', borderBottom: '1px solid var(--color-border)' }}>
-                            <div style={{ fontSize: 10, fontWeight: 700, color: 'var(--color-muted-text)', marginBottom: 10, textTransform: 'uppercase', letterSpacing: '0.06em' }}>
+                            <div style={{ fontSize: 10, fontWeight: 700, color: 'var(--color-muted-text)', marginBottom: 10, textTransform: 'uppercase', letterSpacing: '0.06em', display: 'flex', alignItems: 'center', gap: 8 }}>
                                 Ladder Progress · <span style={{ color: '#10b981' }}>{current}</span>/{ladders.length}
+                                {(() => {
+                                    const solvedSet = solvedLadders[approach?.id] || {};
+                                    const solvedCount = Object.keys(solvedSet).filter(k => solvedSet[k]).length;
+                                    return solvedCount > 0 ? (
+                                        <span style={{ fontSize: 9, fontWeight: 700, padding: '2px 7px', borderRadius: 4, background: 'color-mix(in srgb, #f59e0b 12%, transparent)', color: '#f59e0b', border: '1px solid color-mix(in srgb, #f59e0b 20%, transparent)' }}>
+                                            {solvedCount} solved
+                                        </span>
+                                    ) : null;
+                                })()}
                             </div>
                             <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
                                 {ladders.map((l, i) => {
                                     const u = (i + 1) <= current;
                                     const isNext = (i + 1) === current + 1;
                                     const isActive = activeLadder === i;
+                                    const isSolved = !!(solvedLadders[approach?.id] || {})[i];
                                     const m = LADDER_META[l.level] || LADDER_META[0];
+
+                                    // 3 states: solved (gold) > unlocked (green) > locked (gray)
+                                    const dotBg = isSolved ? '#f59e0b' : u ? (isActive ? m.color : '#10b981') : 'var(--color-surface-hover)';
+                                    const dotColor = (isSolved || u) ? '#fff' : 'var(--color-muted-text)';
+                                    const dotBorder = isActive && !isSolved ? `2px solid ${m.color}` : isSolved ? '2px solid #f59e0b' : u ? 'none' : '1px solid var(--color-border)';
+                                    const dotShadow = isSolved
+                                        ? (isActive ? '0 0 0 3px rgba(245,158,11,0.2), 0 0 10px rgba(245,158,11,0.25)' : '0 0 8px rgba(245,158,11,0.2)')
+                                        : isActive ? `0 0 0 3px color-mix(in srgb, ${m.color} 22%, transparent)` : u ? '0 0 8px rgba(16,185,129,.15)' : 'none';
+                                    const lineBg = isSolved ? '#f59e0b' : u ? '#10b981' : 'var(--color-border)';
+
                                     return (
                                         <Fragment key={i}>
                                             <div
                                                 onClick={() => selectLadder(i)}
-                                                title={`L${l.level}: ${m.label}`}
+                                                title={`L${l.level}: ${m.label}${isSolved ? ' ✓ Solved' : ''}`}
                                                 style={{
                                                     width: 30, height: 30, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center',
-                                                    fontSize: 10, fontWeight: 800, cursor: u ? 'pointer' : 'default', transition: 'all .2s', position: 'relative', flexShrink: 0,
-                                                    background: u ? (isActive ? m.color : '#10b981') : 'var(--color-surface-hover)',
-                                                    color: u ? '#fff' : 'var(--color-muted-text)',
-                                                    border: isActive ? `2px solid ${m.color}` : u ? 'none' : '1px solid var(--color-border)',
-                                                    boxShadow: isActive ? `0 0 0 3px color-mix(in srgb, ${m.color} 22%, transparent)` : u ? '0 0 8px rgba(16,185,129,.15)' : 'none',
+                                                    fontSize: 10, fontWeight: 800, cursor: u ? 'pointer' : 'default', transition: 'all .25s', position: 'relative', flexShrink: 0,
+                                                    background: dotBg, color: dotColor, border: dotBorder, boxShadow: dotShadow,
                                                 }}
                                             >
                                                 {isNext && <div style={{ position: 'absolute', inset: -4, borderRadius: '50%', border: '2px solid #10b981', animation: 'pp-pulse 2s infinite' }} />}
-                                                <span style={{ zIndex: 1 }}>{u ? `L${l.level}` : <Lock size={10} />}</span>
+                                                <span style={{ zIndex: 1 }}>{isSolved ? '✓' : u ? `L${l.level}` : <Lock size={10} />}</span>
                                             </div>
-                                            {i < ladders.length - 1 && <div style={{ flex: 1, height: 2, borderRadius: 1, background: u ? '#10b981' : 'var(--color-border)', transition: 'background .3s' }} />}
+                                            {i < ladders.length - 1 && <div style={{ flex: 1, height: 2, borderRadius: 1, background: lineBg, transition: 'background .3s' }} />}
                                         </Fragment>
                                     );
                                 })}
@@ -450,17 +657,34 @@ const ProblemPanel = memo(({ problem, onBack, onActiveLadderChange }) => {
                         </div>
 
                         {/* ═══ ACTIVE LADDER CONTENT ═══ */}
-                        {lad && (activeLadder + 1) <= current && (
+                        {lad && (activeLadder + 1) <= current && (() => {
+                            const isThisSolved = !!(solvedLadders[approach?.id] || {})[activeLadder];
+                            return (
                             <div className="pp-float" key={`${approach?.id}-${activeLadder}`} style={{ padding: 16 }}>
 
                                 {/* Ladder Header Card */}
-                                <div style={{ borderRadius: 9, border: `1px solid color-mix(in srgb, ${meta.color} 22%, transparent)`, overflow: 'hidden', marginBottom: 16 }}>
-                                    <div style={{ padding: '11px 14px', background: `color-mix(in srgb, ${meta.color} 5%, transparent)`, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                                <div style={{ borderRadius: 9, border: `1px solid ${isThisSolved ? 'color-mix(in srgb, #f59e0b 30%, transparent)' : `color-mix(in srgb, ${meta.color} 22%, transparent)`}`, overflow: 'hidden', marginBottom: 16 }}>
+                                    {/* Solved gold bar */}
+                                    {isThisSolved && <div style={{ height: 3, background: 'linear-gradient(90deg, #f59e0b, #eab308)' }} />}
+                                    <div style={{ padding: '11px 14px', background: isThisSolved ? 'color-mix(in srgb, #f59e0b 5%, transparent)' : `color-mix(in srgb, ${meta.color} 5%, transparent)`, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                                         <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                                            <div style={{ width: 34, height: 34, borderRadius: 8, display: 'flex', alignItems: 'center', justifyContent: 'center', background: `color-mix(in srgb, ${meta.color} 14%, transparent)`, color: meta.color, border: `1px solid color-mix(in srgb, ${meta.color} 22%, transparent)`, fontSize: 13, fontWeight: 800 }}>L{lad.level}</div>
+                                            <div style={{
+                                                width: 34, height: 34, borderRadius: 8, display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                                fontSize: 13, fontWeight: 800,
+                                                background: isThisSolved ? 'color-mix(in srgb, #f59e0b 14%, transparent)' : `color-mix(in srgb, ${meta.color} 14%, transparent)`,
+                                                color: isThisSolved ? '#f59e0b' : meta.color,
+                                                border: `1px solid ${isThisSolved ? 'color-mix(in srgb, #f59e0b 22%, transparent)' : `color-mix(in srgb, ${meta.color} 22%, transparent)`}`,
+                                            }}>
+                                                {isThisSolved ? '✓' : `L${lad.level}`}
+                                            </div>
                                             <div>
-                                                <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--color-primary-text)' }}>{lad.title}</div>
-                                                <div style={{ fontSize: 10, color: meta.color, fontWeight: 600, marginTop: 1, display: 'flex', alignItems: 'center', gap: 4 }}>
+                                                <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--color-primary-text)', display: 'flex', alignItems: 'center', gap: 6 }}>
+                                                    {lad.title}
+                                                    {isThisSolved && (
+                                                        <span style={{ fontSize: 9, fontWeight: 700, padding: '2px 7px', borderRadius: 4, background: 'color-mix(in srgb, #f59e0b 12%, transparent)', color: '#f59e0b', border: '1px solid color-mix(in srgb, #f59e0b 22%, transparent)', textTransform: 'uppercase', letterSpacing: '0.04em' }}>Solved</span>
+                                                    )}
+                                                </div>
+                                                <div style={{ fontSize: 10, color: isThisSolved ? '#f59e0b' : meta.color, fontWeight: 600, marginTop: 1, display: 'flex', alignItems: 'center', gap: 4 }}>
                                                     <LIcon size={10} />{meta.label}
                                                     {lad.testCases && <span style={{ color: 'var(--color-muted-text)', fontWeight: 400 }}>· {lad.testCases.length} test cases</span>}
                                                 </div>
@@ -515,7 +739,7 @@ const ProblemPanel = memo(({ problem, onBack, onActiveLadderChange }) => {
                                     </div>
                                 )}
                             </div>
-                        )}
+                        );})()}
 
                         {/* Unlock button */}
                         {current < ladders.length && (

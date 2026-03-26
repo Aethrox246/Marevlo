@@ -79,33 +79,33 @@ export default function Signup({ onLogin, onSignupSuccess }) {
         try {
             const result = await signInWithPopup(auth, googleProvider);
             const idToken = await result.user.getIdToken();
-
+            
             const response = await fetch(`${API}/auth/google`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ id_token: idToken }),
             });
-
+            
             if (!response.ok) {
                 const errData = await response.json().catch(() => ({}));
                 throw new Error(errData.detail || 'Google signup failed');
             }
-
+            
             const data = await response.json();
             localStorage.setItem('access_token', data.access_token);
             localStorage.setItem('refresh_token', data.refresh_token);
-
+            
             const userResponse = await fetch(`${API}/auth/me`, {
                 headers: { Authorization: `Bearer ${data.access_token}` },
             });
-
+            
             if (userResponse.ok) {
                 const userData = await userResponse.json();
                 onSignupSuccess(userData);
             } else {
                 onSignupSuccess();
             }
-
+            
             await auth.signOut();
         } catch (err) {
             if (err.code !== 'auth/popup-closed-by-user') {
