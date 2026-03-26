@@ -1,869 +1,563 @@
-import React, { useMemo, memo, useState } from 'react';
-import { ThumbsUp, ThumbsDown, Lock, Unlock, ChevronDown, ChevronRight, Lightbulb, Code, CheckCircle2, BookOpen, Clock, HardDrive, Sparkles, Zap, BrainCircuit, Bug, Maximize2, ArrowLeft } from 'lucide-react';
+import React, { useMemo, memo, useState, useEffect, Fragment } from 'react';
+import {
+    ThumbsUp, ThumbsDown, Lock, ChevronDown, Lightbulb, Code,
+    BookOpen, Clock, HardDrive, Sparkles, Zap, BrainCircuit, Bug,
+    Maximize2, ArrowLeft, Eye, Layers, Target, AlertTriangle,
+    Link2, ListOrdered, Hash, Cpu, GraduationCap, Puzzle, ArrowRight
+} from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 import TabBar from './TabBar';
 
-/**
- * ProblemPanel - Renders problem description and approaches from JSON data
- */
-const ProblemPanel = memo(({ problem, onBack }) => {
+
+function parseExplanation(text) {
+    if (!text) return null;
+    const result = {
+        prose: '', connectsTo: null, timeComplexity: null, spaceComplexity: null,
+        mistakes: [], codePattern: null, algorithm: null,
+        summaryTime: null, summarySpace: null,
+    };
+
+    const blocks = text.split(/\n\n/);
+    let mainProse = blocks[0] || '';
+    let algoBlock = '';
+    let summaryBlock = '';
+
+    for (let i = 1; i < blocks.length; i++) {
+        const b = blocks[i].trim();
+        if (/^Step-by-step algorithm/i.test(b)) algoBlock = b;
+        else if (/^Time:|^Space:/i.test(b)) summaryBlock = b;
+        else mainProse += '\n\n' + b;
+    }
+
+    // Extract "connects to Lx"
+    const connMatch = mainProse.match(/This\s+(?:\w+\s+)?connects?\s+to\s+(L\d)\s*([^.]*)\./i);
+    if (connMatch) {
+        result.connectsTo = { level: connMatch[1], reason: connMatch[2]?.trim() || '' };
+        mainProse = mainProse.replace(connMatch[0], '');
+    }
+
+    // Extract inline Time/Space complexity
+    const timeMatch = mainProse.match(/Time complexity is (O\([^)]+\))([^.]*)\./i);
+    if (timeMatch) { result.timeComplexity = { value: timeMatch[1], note: timeMatch[2]?.trim() }; mainProse = mainProse.replace(timeMatch[0], ''); }
+    const spaceMatch = mainProse.match(/Space complexity is (O\([^)]+\))([^.]*)\./i);
+    if (spaceMatch) { result.spaceComplexity = { value: spaceMatch[1], note: spaceMatch[2]?.trim() }; mainProse = mainProse.replace(spaceMatch[0], ''); }
+
+    // Extract common mistakes
+    const mistMatch = mainProse.match(/Common mistakes include:\s*(.*?)(?=\.\s*The real code|$)/is);
+    if (mistMatch) {
+        result.mistakes = mistMatch[1].split(/\d+\)/).filter(Boolean).map(s => s.replace(/,\s*$/, '').trim());
+        mainProse = mainProse.replace(mistMatch[0], '');
+    }
+
+    // Extract code pattern
+    const codeMatch = mainProse.match(/The real code pattern\s+(?:is|involves)\s+(.*?)\.(?:\s|$)/is);
+    if (codeMatch) { result.codePattern = codeMatch[1].trim(); mainProse = mainProse.replace(codeMatch[0], ''); }
+
+    result.prose = mainProse.replace(/\.\s*\./g, '.').replace(/\s{2,}/g, ' ').trim();
+
+    // Parse algorithm block
+    if (algoBlock) {
+        result.algorithm = algoBlock.split('\n').slice(1).filter(l => l.trim());
+    }
+
+    // Parse summary block
+    if (summaryBlock) {
+        const tM = summaryBlock.match(/Time:\s*(O\([^)]+\))\s*[-–]\s*(.*)/i);
+        const sM = summaryBlock.match(/Space:\s*(O\([^)]+\))\s*[-–]\s*(.*)/i);
+        if (tM) result.summaryTime = { value: tM[1], note: tM[2].trim() };
+        if (sM) result.summarySpace = { value: sM[1], note: sM[2].trim() };
+    }
+
+    return result;
+}
+
+/* ════════════════════════════════════════════════════════════════
+   EXPLANATION RENDERER — beautiful visual cards for each section
+   ════════════════════════════════════════════════════════════════ */
+const ExplanationView = ({ text }) => {
+    const s = parseExplanation(text);
+    if (!s) return null;
+
+    return (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+            {/* Prose */}
+            {s.prose && <p style={{ fontSize: 13.5, lineHeight: 1.8, color: 'var(--color-primary-text)', margin: 0 }}>{s.prose}</p>}
+
+            {/* Connects To */}
+            {s.connectsTo && (
+                <div style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '6px 12px', borderRadius: 7, background: 'color-mix(in srgb, #818cf8 8%, transparent)', border: '1px solid color-mix(in srgb, #818cf8 18%, transparent)', alignSelf: 'flex-start' }}>
+                    <Link2 size={12} style={{ color: '#818cf8' }} />
+                    <span style={{ fontSize: 12, fontWeight: 600, color: '#818cf8' }}>Connects to {s.connectsTo.level}</span>
+                    {s.connectsTo.reason && <span style={{ fontSize: 11, color: 'var(--color-muted-text)' }}>{s.connectsTo.reason}</span>}
+                </div>
+            )}
+
+            {/* Complexity Badges */}
+            {(s.timeComplexity || s.spaceComplexity) && (
+                <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                    {s.timeComplexity && (
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '6px 12px', borderRadius: 7, background: 'color-mix(in srgb, #10b981 8%, transparent)', border: '1px solid color-mix(in srgb, #10b981 18%, transparent)' }}>
+                            <Clock size={12} style={{ color: '#10b981' }} />
+                            <span style={{ fontSize: 12, fontWeight: 700, color: '#10b981', fontFamily: 'monospace' }}>{s.timeComplexity.value}</span>
+                            {s.timeComplexity.note && <span style={{ fontSize: 11, color: 'var(--color-muted-text)' }}>{s.timeComplexity.note}</span>}
+                        </div>
+                    )}
+                    {s.spaceComplexity && (
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '6px 12px', borderRadius: 7, background: 'color-mix(in srgb, #f59e0b 8%, transparent)', border: '1px solid color-mix(in srgb, #f59e0b 18%, transparent)' }}>
+                            <HardDrive size={12} style={{ color: '#f59e0b' }} />
+                            <span style={{ fontSize: 12, fontWeight: 700, color: '#f59e0b', fontFamily: 'monospace' }}>{s.spaceComplexity.value}</span>
+                            {s.spaceComplexity.note && <span style={{ fontSize: 11, color: 'var(--color-muted-text)' }}>{s.spaceComplexity.note}</span>}
+                        </div>
+                    )}
+                </div>
+            )}
+
+            {/* Common Mistakes */}
+            {s.mistakes.length > 0 && (
+                <div style={{ borderRadius: 8, overflow: 'hidden', border: '1px solid color-mix(in srgb, #ef4444 15%, transparent)' }}>
+                    <div style={{ padding: '8px 12px', background: 'color-mix(in srgb, #ef4444 6%, transparent)', borderBottom: '1px solid color-mix(in srgb, #ef4444 12%, transparent)', display: 'flex', alignItems: 'center', gap: 6 }}>
+                        <AlertTriangle size={12} style={{ color: '#ef4444' }} />
+                        <span style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', color: '#ef4444' }}>Common Mistakes</span>
+                    </div>
+                    <div style={{ padding: '10px 12px', display: 'flex', flexDirection: 'column', gap: 6 }}>
+                        {s.mistakes.map((m, i) => (
+                            <div key={i} style={{ display: 'flex', gap: 8, alignItems: 'flex-start' }}>
+                                <span style={{ width: 18, height: 18, borderRadius: 5, background: 'color-mix(in srgb, #ef4444 10%, transparent)', color: '#ef4444', fontSize: 10, fontWeight: 800, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, marginTop: 1 }}>{i + 1}</span>
+                                <span style={{ fontSize: 13, color: 'var(--color-primary-text)', lineHeight: 1.55 }}>{m}</span>
+                            </div>
+                        ))}
+                    </div>
+                </div>
+            )}
+
+            {/* Code Pattern */}
+            {s.codePattern && (
+                <div style={{ borderRadius: 8, overflow: 'hidden', border: '1px solid var(--color-border)' }}>
+                    <div style={{ padding: '8px 12px', background: 'var(--color-surface-hover)', borderBottom: '1px solid var(--color-border)', display: 'flex', alignItems: 'center', gap: 6 }}>
+                        <Code size={12} style={{ color: 'var(--color-muted-text)' }} />
+                        <span style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', color: 'var(--color-muted-text)' }}>Code Pattern</span>
+                    </div>
+                    <div style={{ padding: '10px 12px', fontFamily: "'JetBrains Mono', monospace", fontSize: 12.5, lineHeight: 1.6, color: 'var(--color-primary-text)' }}>{s.codePattern}</div>
+                </div>
+            )}
+
+            {/* Step-by-Step Algorithm */}
+            {s.algorithm && s.algorithm.length > 0 && (
+                <div style={{ borderRadius: 8, overflow: 'hidden', border: '1px solid color-mix(in srgb, #818cf8 15%, transparent)' }}>
+                    <div style={{ padding: '8px 12px', background: 'color-mix(in srgb, #818cf8 6%, transparent)', borderBottom: '1px solid color-mix(in srgb, #818cf8 12%, transparent)', display: 'flex', alignItems: 'center', gap: 6 }}>
+                        <ListOrdered size={12} style={{ color: '#818cf8' }} />
+                        <span style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', color: '#818cf8' }}>Step-by-Step Algorithm</span>
+                    </div>
+                    <div style={{ padding: '10px 12px', display: 'flex', flexDirection: 'column', gap: 4 }}>
+                        {s.algorithm.map((line, i) => {
+                            const indent = line.search(/\S/);
+                            const numMatch = line.trim().match(/^(\d+)\./);
+                            const isSubStep = indent >= 3;
+                            return (
+                                <div key={i} style={{ display: 'flex', gap: 6, alignItems: 'flex-start', paddingLeft: Math.min(indent * 4, 32) }}>
+                                    {numMatch && !isSubStep && (
+                                        <span style={{ width: 18, height: 18, borderRadius: 5, background: 'color-mix(in srgb, #818cf8 12%, transparent)', color: '#818cf8', fontSize: 10, fontWeight: 800, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, marginTop: 2 }}>{numMatch[1]}</span>
+                                    )}
+                                    {!numMatch && !isSubStep && <span style={{ width: 4, height: 4, borderRadius: '50%', background: 'var(--color-muted-text)', flexShrink: 0, marginTop: 7, opacity: 0.4 }} />}
+                                    <span style={{ fontSize: 13, lineHeight: 1.6, color: 'var(--color-primary-text)', fontFamily: /[={}()\[\]|><!]/.test(line) ? "'JetBrains Mono', monospace" : 'inherit' }}>
+                                        {line.replace(/^\s*\d+\.\s*/, '').trim()}
+                                    </span>
+                                </div>
+                            );
+                        })}
+                    </div>
+                </div>
+            )}
+
+            {/* Summary Complexity */}
+            {(s.summaryTime || s.summarySpace) && (
+                <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                    {s.summaryTime && <div style={{ padding: '5px 10px', borderRadius: 6, fontSize: 11, fontWeight: 600, fontFamily: 'monospace', background: 'color-mix(in srgb, #10b981 8%, transparent)', color: '#10b981', border: '1px solid color-mix(in srgb, #10b981 18%, transparent)' }}>Time: {s.summaryTime.value} — {s.summaryTime.note}</div>}
+                    {s.summarySpace && <div style={{ padding: '5px 10px', borderRadius: 6, fontSize: 11, fontWeight: 600, fontFamily: 'monospace', background: 'color-mix(in srgb, #f59e0b 8%, transparent)', color: '#f59e0b', border: '1px solid color-mix(in srgb, #f59e0b 18%, transparent)' }}>Space: {s.summarySpace.value} — {s.summarySpace.note}</div>}
+                </div>
+            )}
+        </div>
+    );
+};
+
+
+const LADDER_META = [
+    { label: 'Full Problem', icon: BookOpen, color: '#818cf8' },
+    { label: 'Key Sub-routine', icon: Puzzle, color: '#10b981' },
+    { label: 'Core Logic', icon: Lightbulb, color: '#f59e0b' },
+    { label: 'Building Block', icon: Cpu, color: '#ec4899' },
+    { label: 'Basic Operation', icon: Hash, color: '#06b6d4' },
+    { label: 'Concept Foundation', icon: GraduationCap, color: '#8b5cf6' },
+];
+
+const getApproachColor = (name = '') => {
+    const l = name.toLowerCase();
+    if (l.includes('brute')) return '#ef4444';
+    if (l.includes('optimal') || l.includes('linear')) return '#10b981';
+    if (l.includes('dynamic') || l.includes('memo')) return '#8b5cf6';
+    if (l.includes('divide')) return '#f59e0b';
+    return '#818cf8';
+};
+
+const getApproachIcon = (name = '') => {
+    const l = name.toLowerCase();
+    if (l.includes('brute')) return <Bug size={13} />;
+    if (l.includes('optimal') || l.includes('linear')) return <Zap size={13} />;
+    if (l.includes('dynamic') || l.includes('memo')) return <BrainCircuit size={13} />;
+    if (l.includes('divide')) return <Layers size={13} />;
+    return <Lightbulb size={13} />;
+};
+
+const getDifficultyColor = (d) => ({ Easy: '#10b981', Medium: '#f59e0b', Hard: '#ef4444' }[d] || 'var(--color-muted-text)');
+
+
+const ProblemPanel = memo(({ problem, onBack, onActiveLadderChange }) => {
     const [activeTab, setActiveTab] = useState('description');
     const [selectedApproach, setSelectedApproach] = useState(0);
     const [unlockedLevels, setUnlockedLevels] = useState({});
-    const [expandedLadder, setExpandedLadder] = useState({});
-    const [vote, setVote] = useState(null); // 'up' | 'down' | null
-    const [shakeRung, setShakeRung] = useState(null);
-    const [showConfetti, setShowConfetti] = useState(false);
-    const [readerModeRung, setReaderModeRung] = useState(null); // { rung, index, approach }
-
-    const getApproachIcon = (name) => {
-        const lower = name.toLowerCase();
-        if (lower.includes('brute')) return <Bug size={14} />;
-        if (lower.includes('optimal')) return <Zap size={14} />;
-        if (lower.includes('dynamic') || lower.includes('memo')) return <BrainCircuit size={14} />;
-        return <Lightbulb size={14} />;
-    };
+    const [activeLadder, setActiveLadder] = useState(0);
+    const [vote, setVote] = useState(null);
+    const [readerMode, setReaderMode] = useState(null);
 
     const tabs = [
         { id: 'description', label: 'Description' },
         { id: 'approaches', label: 'Approaches' },
     ];
 
-    // Use real approaches from the JSON, fallback to empty
     const approaches = useMemo(() => problem?.approaches || [], [problem]);
 
-    // Initialize unlocked levels when approaches load
-    React.useEffect(() => {
+    useEffect(() => {
         if (approaches.length > 0) {
             const init = {};
             approaches.forEach(a => { init[a.id] = 1; });
             setUnlockedLevels(init);
+            setActiveLadder(0);
+            setSelectedApproach(0);
+            setReaderMode(null);
         }
     }, [approaches]);
 
-    // Build the description markdown from real JSON fields
-    const fullDescription = useMemo(() => {
-        if (!problem) return '';
-        let desc = `${problem.description || ''}\n\n`;
+    const approach = approaches[selectedApproach];
+    const ladders = approach?.ladders || [];
+    const current = unlockedLevels[approach?.id] || 1;
+    const lad = ladders[activeLadder] || null;
+    const meta = lad ? (LADDER_META[lad.level] || LADDER_META[0]) : LADDER_META[0];
+    const LIcon = meta.icon;
 
-        desc += `### Judge Input Format\n\n`;
-        desc += `> Each test case field is passed as **one JSON-serialized line** on stdin.\n`;
-        desc += `> Your code must read from **stdin** and print the answer to **stdout**.\n`;
-        desc += `> Click **Submit** to run against all test cases. Click **Run** to test with custom input.\n`;
-
-        return desc;
-    }, [problem]);
-
-    const getDifficultyColor = (difficulty) => {
-        switch (difficulty) {
-            case 'Easy': return '#10b981';
-            case 'Medium': return '#f59e0b';
-            case 'Hard': return '#ef4444';
-            default: return 'var(--color-muted-text)';
+    // Emit active ladder's test cases to parent (IDE.jsx)
+    useEffect(() => {
+        if (onActiveLadderChange && lad && activeTab === 'approaches') {
+            onActiveLadderChange(lad);
+        } else if (onActiveLadderChange && activeTab === 'description') {
+            onActiveLadderChange(null);
         }
-    };
-
-    const getLevelTypeIcon = (level, isUnlocked) => {
-        if (!isUnlocked) return <Lock size={14} />;
-        if (level === 0) return <BookOpen size={14} />;
-        if (level <= 2) return <Lightbulb size={14} />;
-        return <Code size={14} />;
-    };
-
-    const getLevelTypeLabel = (level) => {
-        if (level === 0) return 'Full Problem';
-        if (level === 1) return 'Key Sub-routine';
-        if (level === 2) return 'Hint';
-        if (level === 3) return 'Pseudocode';
-        if (level === 4) return 'Partial Solution';
-        return 'Deep Dive';
-    };
+    }, [activeLadder, selectedApproach, activeTab, lad]);
 
     const unlockNext = () => {
-        const approach = approaches[selectedApproach];
-        if (!approach) return;
-        const total = approach.ladders?.length || 0;
-        const current = unlockedLevels[approach.id] || 1;
-        if (current < total) {
+        if (current < ladders.length) {
             setUnlockedLevels(prev => ({ ...prev, [approach.id]: current + 1 }));
         }
     };
 
-    const toggleLadder = (key) =>
-        setExpandedLadder(prev => ({ ...prev, [key]: !prev[key] }));
-
-    // Smart explanation renderer — splits text into visual sections
-    const ExplanationRenderer = ({ text }) => {
-        if (!text) return null;
-
-        // Split on double newlines first, then detect section types
-        const rawSections = text.split(/\n{2,}/);
-
-        const sections = rawSections.map((section, i) => {
-            const trimmed = section.trim();
-
-            // Step-by-step algorithm section
-            if (/^step-by-step algorithm/i.test(trimmed)) {
-                const lines = trimmed.split('\n');
-                const steps = lines.slice(1).filter(l => l.trim());
-                return (
-                    <div key={i} style={{
-                        background: 'var(--color-surface-hover)',
-                        borderRadius: 12, padding: '16px',
-                        border: '1px solid var(--color-border)',
-                        marginTop: 8
-                    }}>
-                        <div style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em', color: 'var(--color-muted-text)', marginBottom: 10 }}>Step-by-Step Algorithm</div>
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-                            {steps.map((step, si) => {
-                                const isSubStep = /^\s{3,}/.test(step);
-                                const isNumbered = /^\s*\d+\./.test(step);
-                                return (
-                                    <div key={si} style={{
-                                        display: 'flex', gap: 8, alignItems: 'flex-start',
-                                        paddingLeft: isSubStep ? 20 : 0,
-                                    }}>
-                                        {isNumbered && !isSubStep && (
-                                            <span style={{
-                                                flexShrink: 0, width: 20, height: 20, borderRadius: '50%',
-                                                background: 'color-mix(in srgb, var(--color-primary-text) 15%, transparent)',
-                                                color: 'var(--color-primary-text)',
-                                                fontSize: 10, fontWeight: 800,
-                                                display: 'flex', alignItems: 'center', justifyContent: 'center',
-                                                marginTop: 2
-                                            }}>
-                                                {step.trim().match(/^(\d+)/)?.[1]}
-                                            </span>
-                                        )}
-                                        {!isNumbered && !isSubStep && (
-                                            <span style={{ flexShrink: 0, width: 6, height: 6, borderRadius: '50%', background: 'var(--color-muted-text)', marginTop: 7 }} />
-                                        )}
-                                        <span style={{ fontSize: 13, lineHeight: 1.6, color: 'var(--color-primary-text)', fontFamily: /[={}()|]/.test(step) ? 'monospace' : 'inherit' }}>
-                                            {step.replace(/^\s*\d+\.\s*/, '').trim()}
-                                        </span>
-                                    </div>
-                                );
-                            })}
-                        </div>
-                    </div>
-                );
-            }
-
-            // Time/Space complexity standalone line
-            if (/^time:|^space:/i.test(trimmed) || /^time: O\(/i.test(trimmed)) {
-                const lines = trimmed.split('\n').filter(l => l.trim());
-                return (
-                    <div key={i} style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginTop: 8 }}>
-                        {lines.map((line, li) => {
-                            const isTime = /time/i.test(line);
-                            return (
-                                <span key={li} style={{
-                                    display: 'inline-flex', alignItems: 'center', gap: 6,
-                                    padding: '4px 10px', borderRadius: 20, fontSize: 12, fontWeight: 600,
-                                    background: isTime ? 'color-mix(in srgb, #10b981 12%, var(--color-surface))' : 'color-mix(in srgb, #f59e0b 12%, var(--color-surface))',
-                                    color: isTime ? '#10b981' : '#f59e0b',
-                                    border: isTime ? '1px solid color-mix(in srgb, #10b981 30%, transparent)' : '1px solid color-mix(in srgb, #f59e0b 30%, transparent)',
-                                    fontFamily: 'monospace'
-                                }}>
-                                    {line.trim()}
-                                </span>
-                            );
-                        })}
-                    </div>
-                );
-            }
-
-            // Standalone code block starting with def/function
-            if (/^(real code pattern|def |function |class )/i.test(trimmed) || /`{3}/.test(trimmed)) {
-                const codeLines = trimmed.replace(/^real code pattern[:\s]*/i, '');
-                return (
-                    <div key={i} style={{
-                        background: 'var(--color-surface)',
-                        border: '1px solid var(--color-border)',
-                        borderRadius: 10, overflow: 'hidden', marginTop: 8
-                    }}>
-                        <div style={{ padding: '6px 12px', fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em', color: 'var(--color-muted-text)', borderBottom: '1px solid var(--color-border)', background: 'var(--color-surface-hover)' }}>Code Pattern</div>
-                        <pre style={{ margin: 0, padding: '12px', fontSize: 12, lineHeight: 1.7, color: 'var(--color-primary-text)', overflowX: 'auto', whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>{codeLines}</pre>
-                    </div>
-                );
-            }
-
-            // Standalone Common mistakes section
-            if (/^common mistakes/i.test(trimmed)) {
-                const lines = trimmed.split('\n');
-                const mistakes = lines.slice(1).filter(l => l.trim());
-                return (
-                    <div key={i} style={{
-                        background: 'color-mix(in srgb, #ef4444 5%, var(--color-surface))',
-                        border: '1px solid color-mix(in srgb, #ef4444 20%, transparent)',
-                        borderRadius: 10, padding: '14px', marginTop: 8
-                    }}>
-                        <div style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em', color: '#ef4444', marginBottom: 8 }}>⚠ Common Mistakes</div>
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
-                            {mistakes.map((m, mi) => (
-                                <div key={mi} style={{ fontSize: 13, color: 'var(--color-primary-text)', lineHeight: 1.6, display: 'flex', gap: 8, alignItems: 'flex-start' }}>
-                                    <span style={{ color: '#ef4444', flexShrink: 0, marginTop: 2 }}>•</span>
-                                    <span>{m.replace(/^\d+\)\s*/, '').trim()}</span>
-                                </div>
-                            ))}
-                        </div>
-                    </div>
-                );
-            }
-
-            // Default paragraph: robustly split out embedded sections
-            if (trimmed) {
-                // We use a unique separator '|||' to cleanly split the paragraph into typed blocks.
-                // This ensures we never drop or orphan text like "The".
-                const parsedText = trimmed
-                    // Extract Time & Space complexity sentences
-                    .replace(/(Time(?:\s*complexity is|:)\s*O\([^)]+\)[^.]*\.\s*Space(?:\s*complexity is|:)\s*O\([^)]+\)[^.]*\.?)/gi, '|||COMPLEXITY:$1|||')
-                    // Extract Common mistakes section
-                    .replace(/(Common mistakes include:?\s*)/gi, '|||MISTAKES:')
-                    // Extract Code pattern sentence, deliberately swallowing "The " to prevent orphans!
-                    .replace(/(The real code pattern(?: involves| is)?:?\s*|Real code pattern:?\s*)/gi, '|||CODE:');
-
-                const parts = parsedText.split('|||');
-
-                const subParts = parts.map((part, pIdx) => {
-                    if (!part.trim()) return null;
-
-                    if (part.startsWith('COMPLEXITY:')) {
-                        const content = part.replace('COMPLEXITY:', '').trim();
-                        const timePart = content.match(/Time.*?O\([^)]+\)[^.]*/i)?.[0];
-                        const spacePart = content.match(/Space.*?O\([^)]+\)[^.]*/i)?.[0];
-                        return (
-                            <div key={`comp-${pIdx}`} style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginTop: 12, marginBottom: 12 }}>
-                                {timePart && <span style={{ padding: '4px 12px', borderRadius: 20, fontSize: 12, fontWeight: 600, background: 'color-mix(in srgb, #10b981 12%, var(--color-surface))', color: '#10b981', border: '1px solid color-mix(in srgb, #10b981 30%, transparent)', fontFamily: 'monospace' }}>{timePart.trim()}</span>}
-                                {spacePart && <span style={{ padding: '4px 12px', borderRadius: 20, fontSize: 12, fontWeight: 600, background: 'color-mix(in srgb, #f59e0b 12%, var(--color-surface))', color: '#f59e0b', border: '1px solid color-mix(in srgb, #f59e0b 30%, transparent)', fontFamily: 'monospace' }}>{spacePart.trim()}</span>}
-                            </div>
-                        );
-                    }
-
-                    if (part.startsWith('MISTAKES:')) {
-                        const content = part.replace('MISTAKES:', '').trim();
-                        // Split by "1) ", "2) " etc.
-                        const items = content.split(/(?=\d+\))/).filter(Boolean);
-                        return (
-                            <div key={`mistakes-${pIdx}`} style={{
-                                background: 'color-mix(in srgb, #ef4444 5%, var(--color-surface))',
-                                border: '1px solid color-mix(in srgb, #ef4444 20%, transparent)',
-                                borderRadius: 10, padding: '14px', marginTop: 12, marginBottom: 12
-                            }}>
-                                <div style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em', color: '#ef4444', marginBottom: 10 }}>⚠ Common Mistakes</div>
-                                <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                                    {items.map((item, mi) => (
-                                        <div key={mi} style={{ display: 'flex', gap: 10, alignItems: 'flex-start' }}>
-                                            <span style={{ flexShrink: 0, width: 22, height: 22, borderRadius: '50%', background: 'color-mix(in srgb, #ef4444 15%, transparent)', color: '#ef4444', fontSize: 11, fontWeight: 800, display: 'flex', alignItems: 'center', justifyContent: 'center', marginTop: 1 }}>{mi + 1}</span>
-                                            <span style={{ fontSize: 13, color: 'var(--color-primary-text)', lineHeight: 1.65 }}>{item.replace(/^\d+\)\s*/, '').trim()}</span>
-                                        </div>
-                                    ))}
-                                </div>
-                            </div>
-                        );
-                    }
-
-                    if (part.startsWith('CODE:')) {
-                        const content = part.replace('CODE:', '').trim();
-                        return (
-                            <div key={`code-${pIdx}`} style={{ background: 'var(--color-surface)', border: '1px solid var(--color-border)', borderRadius: 10, overflow: 'hidden', marginTop: 12, marginBottom: 12 }}>
-                                <div style={{ padding: '6px 12px', fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em', color: 'var(--color-muted-text)', borderBottom: '1px solid var(--color-border)', background: 'var(--color-surface-hover)' }}>Code Pattern</div>
-                                <pre style={{ margin: 0, padding: '12px', fontSize: 12, lineHeight: 1.7, color: 'var(--color-primary-text)', overflowX: 'auto', whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>{content}</pre>
-                            </div>
-                        );
-                    }
-
-                    // Otherwise, it's just regular prose
-                    return (
-                        <p key={`prose-${pIdx}`} style={{ fontSize: 13.5, lineHeight: 1.75, color: 'var(--color-primary-text)', margin: '8px 0' }}>
-                            {part.trim()}
-                        </p>
-                    );
-                });
-
-                return (
-                    <div key={i} style={{ display: 'flex', flexDirection: 'column' }}>
-                        {subParts}
-                    </div>
-                );
-            }
-            return null;
-        }).filter(Boolean);
-
-        return <div style={{ display: 'flex', flexDirection: 'column' }}>{sections}</div>;
+    const selectLadder = (i) => {
+        if ((i + 1) <= current) setActiveLadder(i);
     };
 
-    // Format hint text: insert line breaks before step markers if data has none
+    const handleVote = (type) => setVote(prev => prev === type ? null : type);
+
+    const dc = getDifficultyColor(problem?.difficulty);
+
+    const fullDescription = useMemo(() => {
+        if (!problem) return '';
+        return `${problem.description || ''}\n\n### Judge Input Format\n\n> Each test case field is passed as **one JSON-serialized line** on stdin.\n> Your code must read from **stdin** and print the answer to **stdout**.\n> Click **Submit** to run against all test cases. Click **Run** to test with custom input.\n`;
+    }, [problem]);
+
     const formatHint = (text) => {
         if (!text) return text;
         if (text.includes('\n')) return text;
-        return text
-            .replace(/(\s)(Step \d+:)/g, '\n$2')
-            .replace(/(\s)(Result:)/g, '\n\n$2')
-            .replace(/(\s)(Compare )/g, '\n  $2')
-            .replace(/(\s)(Check element)/g, '\n$2')
-            .trim();
-    };
-
-    const handleVote = (type) => {
-        // Here you would also call your backend API: api.post(`/problem/${problem.id}/vote`, { type })
-        setVote(prev => prev === type ? null : type);
+        return text.replace(/(\s)(Step \d+:)/g, '\n$2').replace(/(\s)(Result:)/g, '\n\n$2').replace(/(\s)(Compare )/g, '\n  $2').trim();
     };
 
     if (!problem) {
-        return (
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', color: 'var(--color-muted-text)' }}>
-                Select a problem to begin
-            </div>
-        );
+        return <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', color: 'var(--color-muted-text)', fontSize: 14 }}>Select a problem to begin</div>;
     }
 
     return (
         <div style={{ width: '100%', height: '100%', display: 'flex', flexDirection: 'column', borderRight: '1px solid var(--color-border)', background: 'var(--color-surface)' }}>
             <style>{`
-                /* Floating Capsule with Dynamic Expansion */
-                .premium-scrollbar::-webkit-scrollbar {
-                    width: 10px; /* Slimmer hit-box area */
-                    height: 10px;
-                }
-                .premium-scrollbar::-webkit-scrollbar-track {
-                    background: transparent; /* No ugly background gutter */
-                }
-                .premium-scrollbar::-webkit-scrollbar-thumb {
-                    /* The actual visible portion sits inside invisible borders */
-                    background-color: var(--color-border);
-                    border-radius: 10px;
-                    border: 3px solid transparent; /* 10px width - (3px * 2) = 4px visible thumb */
-                    background-clip: padding-box; 
-                }
-                .premium-scrollbar::-webkit-scrollbar-thumb:hover {
-                    /* On hover, shrink the invisible borders, causing the visible color to organically swell */
-                    background-color: var(--color-primary-text);
-                    opacity: 0.8;
-                    border: 1px solid transparent; /* 10px width - (1px * 2) = 8px visible thumb */
-                }
-
-                @keyframes pulse-ring {
-                    0% { transform: scale(0.85); box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.4); }
-                    70% { transform: scale(1); box-shadow: 0 0 0 6px rgba(16, 185, 129, 0); }
-                    100% { transform: scale(0.85); box-shadow: 0 0 0 0 rgba(16, 185, 129, 0); }
-                }
-
-                @keyframes shake {
-                    0%, 100% { transform: translateX(0); }
-                    25% { transform: translateX(-3px); }
-                    75% { transform: translateX(3px); }
-                }
-
-                .shake-animation {
-                    animation: shake 0.2s ease-in-out;
-                }
-                
-                @keyframes float-up {
-                    0% { opacity: 0; transform: translateY(10px); }
-                    100% { opacity: 1; transform: translateY(0); }
-                }
+                .pp-scroll::-webkit-scrollbar{width:6px} .pp-scroll::-webkit-scrollbar-track{background:transparent}
+                .pp-scroll::-webkit-scrollbar-thumb{background-color:var(--color-border);border-radius:6px;border:1px solid transparent;background-clip:padding-box}
+                .pp-scroll::-webkit-scrollbar-thumb:hover{background-color:var(--color-muted-text)}
+                @keyframes pp-pulse{0%{transform:scale(.85);box-shadow:0 0 0 0 rgba(16,185,129,.4)}70%{transform:scale(1);box-shadow:0 0 0 5px rgba(16,185,129,0)}100%{transform:scale(.85);box-shadow:0 0 0 0 rgba(16,185,129,0)}}
+                @keyframes pp-up{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:translateY(0)}}
+                .pp-float{animation:pp-up .3s ease-out forwards}
+                details>summary{list-style:none} details>summary::-webkit-details-marker{display:none}
             `}</style>
-            {/* Tab Bar (Hidden in Reader Mode) */}
-            {!readerModeRung && <TabBar activeTab={activeTab} onTabChange={setActiveTab} tabs={tabs} />}
 
-            {/* Problem Header (Hidden in Reader Mode to save vertical space) */}
-            {!readerModeRung && (
-                <div style={{
-                    position: 'sticky', top: 0, zIndex: 10,
-                    padding: '16px 24px', borderBottom: '1px solid var(--color-border)', flexShrink: 0,
-                    background: 'color-mix(in srgb, var(--color-surface) 85%, transparent)',
-                    backdropFilter: 'blur(16px)',
-                    WebkitBackdropFilter: 'blur(16px)',
-                    boxShadow: '0 4px 24px -4px rgba(0,0,0,0.1)',
-                    transition: 'all 0.3s ease',
-                    display: 'flex', flexDirection: 'column', gap: 10
-                }}>
-                    {/* Row 1: Title & Actions */}
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 16 }}>
-                        <h1 style={{ fontSize: 18, fontWeight: 700, color: 'var(--color-primary-text)', margin: 0, lineHeight: 1.3 }}>
-                            {problem.title}
-                        </h1>
-                        
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0 }}>
-                            <button 
-                                onClick={() => handleVote('up')}
-                                style={{ 
-                                    display: 'flex', alignItems: 'center', gap: 6, 
-                                    background: vote === 'up' ? '#10b98120' : 'var(--color-surface-hover)', 
-                                    color: vote === 'up' ? '#10b981' : 'var(--color-muted-text)',
-                                    border: '1px solid', borderColor: vote === 'up' ? '#10b98150' : 'var(--color-border)',
-                                    padding: '4px 10px', borderRadius: '6px', fontSize: 12, fontWeight: 600,
-                                    cursor: 'pointer', transition: 'all 0.2s', outline: 'none'
-                                }}
-                            >
-                                <ThumbsUp size={14} fill={vote === 'up' ? 'currentColor' : 'none'} /> 
-                                {(problem.likes || 0) + (vote === 'up' ? 1 : 0)}
-                            </button>
-                            <button 
-                                onClick={() => handleVote('down')}
-                                style={{ 
-                                    display: 'flex', alignItems: 'center', gap: 6, 
-                                    background: vote === 'down' ? '#ef444420' : 'var(--color-surface-hover)', 
-                                    color: vote === 'down' ? '#ef4444' : 'var(--color-muted-text)',
-                                    border: '1px solid', borderColor: vote === 'down' ? '#ef444450' : 'var(--color-border)',
-                                    padding: '4px 10px', borderRadius: '6px', fontSize: 12, fontWeight: 600,
-                                    cursor: 'pointer', transition: 'all 0.2s', outline: 'none'
-                                }}
-                            >
-                                <ThumbsDown size={14} fill={vote === 'down' ? 'currentColor' : 'none'} /> 
-                                {(problem.dislikes || 0) + (vote === 'down' ? 1 : 0)}
-                            </button>
+            {/* Tabs */}
+            {!readerMode && <TabBar activeTab={activeTab} onTabChange={(t) => { setActiveTab(t); setReaderMode(null); }} tabs={tabs} />}
+
+            {/* Sticky Header */}
+            {!readerMode && (
+                <div style={{ padding: '12px 20px', borderBottom: '1px solid var(--color-border)', background: 'color-mix(in srgb, var(--color-surface) 88%, transparent)', backdropFilter: 'blur(16px)', WebkitBackdropFilter: 'blur(16px)', display: 'flex', flexDirection: 'column', gap: 8, flexShrink: 0 }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 12 }}>
+                        <h1 style={{ fontSize: 16, fontWeight: 700, color: 'var(--color-primary-text)', margin: 0, lineHeight: 1.35 }}>{problem.title}</h1>
+                        <div style={{ display: 'flex', gap: 5, flexShrink: 0 }}>
+                            {[{ type: 'up', icon: ThumbsUp, color: '#10b981', count: problem.likes || 0 }, { type: 'down', icon: ThumbsDown, color: '#ef4444', count: problem.dislikes || 0 }].map(({ type, icon: Icon, color, count }) => {
+                                const isActive = vote === type;
+                                return (
+                                    <button key={type} onClick={() => handleVote(type)} style={{ display: 'flex', alignItems: 'center', gap: 4, background: isActive ? `color-mix(in srgb, ${color} 14%, transparent)` : 'var(--color-surface-hover)', color: isActive ? color : 'var(--color-muted-text)', border: `1px solid ${isActive ? `color-mix(in srgb, ${color} 30%, transparent)` : 'var(--color-border)'}`, padding: '3px 9px', borderRadius: 6, fontSize: 11, fontWeight: 600, cursor: 'pointer', outline: 'none' }}>
+                                        <Icon size={12} fill={isActive ? 'currentColor' : 'none'} />{count + (isActive ? 1 : 0)}
+                                    </button>
+                                );
+                            })}
                         </div>
                     </div>
-
-                    {/* Row 2: Micro Metadata Pills */}
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
-                        <span style={{ fontSize: 11, fontWeight: 700, color: getDifficultyColor(problem.difficulty), padding: '2px 8px', background: `color-mix(in srgb, ${getDifficultyColor(problem.difficulty)} 15%, transparent)`, borderRadius: '4px', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-                            {problem.difficulty}
-                        </span>
-                        
-                        {problem.tags && problem.tags.length > 0 && <div style={{ width: 4, height: 4, borderRadius: '50%', background: 'var(--color-border)' }} />}
-                        
-                        {problem.tags && problem.tags.map(tag => (
-                            <span key={tag} style={{
-                                padding: '2px 8px', borderRadius: 4, fontSize: 12, fontWeight: 500,
-                                background: 'var(--color-surface-hover)',
-                                color: 'var(--color-muted-text)',
-                                border: '1px solid var(--color-border)'
-                            }}>
-                                {tag}
-                            </span>
-                        ))}
+                    <div style={{ display: 'flex', gap: 5, flexWrap: 'wrap' }}>
+                        <span style={{ fontSize: 10, fontWeight: 700, padding: '2px 8px', borderRadius: 4, color: dc, background: `color-mix(in srgb, ${dc} 12%, transparent)`, border: `1px solid color-mix(in srgb, ${dc} 22%, transparent)`, textTransform: 'uppercase', letterSpacing: '0.04em' }}>{problem.difficulty}</span>
+                        {problem.tags?.map(tag => <span key={tag} style={{ padding: '2px 8px', borderRadius: 4, fontSize: 11, fontWeight: 500, background: 'var(--color-surface-hover)', color: 'var(--color-muted-text)', border: '1px solid var(--color-border)' }}>{tag}</span>)}
                     </div>
                 </div>
             )}
 
-            {/* ─── Description Tab ─── */}
-            {activeTab === 'description' && !readerModeRung && (
-                <div className="problem-tab-content premium-scrollbar" style={{ flex: 1, overflowY: 'auto', padding: '24px 32px', scrollBehavior: 'smooth' }}>
-                    <div style={{ color: 'var(--color-primary-text)', fontSize: 15, lineHeight: 1.8 }}>
-                        <ReactMarkdown
-                            components={{
-                                code({node, inline, className, children, ...props}) {
-                                    const match = /language-(\w+)/.exec(className || '');
-                                    return !inline && match ? (
-                                        <div style={{ background: 'color-mix(in srgb, var(--color-primary-text) 4%, var(--color-surface))', borderRadius: '12px', overflow: 'hidden', margin: '20px 0', border: '1px solid var(--color-border)', boxShadow: '0 4px 12px rgba(0,0,0,0.15)' }}>
-                                            <div style={{ background: 'color-mix(in srgb, var(--color-primary-text) 8%, var(--color-surface))', padding: '8px 16px', fontSize: '12px', color: 'var(--color-muted-text)', borderBottom: '1px solid var(--color-border)', display: 'flex', alignItems: 'center', gap: 6 }}>
-                                                <Code size={14} /> {match[1]}
-                                            </div>
-                                            <pre style={{ margin: 0, padding: '16px', overflowX: 'auto', fontSize: '14px', lineHeight: 1.5, color: 'var(--color-primary-text)' }}>
-                                                <code className={className} {...props}>
-                                                    {children}
-                                                </code>
-                                            </pre>
-                                        </div>
-                                    ) : (
-                                        <code style={{ 
-                                            background: 'var(--color-surface-hover)', 
-                                            color: 'var(--color-primary-text)', 
-                                            padding: '3px 6px', 
-                                            borderRadius: '6px', 
-                                            fontSize: '0.9em',
-                                            fontFamily: 'monospace',
-                                            border: '1px solid var(--color-border)'
-                                        }} {...props}>
-                                            {children}
-                                        </code>
-                                    )
-                                }
-                            }}
-                        >
-                            {fullDescription}
-                        </ReactMarkdown>
-                    </div>
+            {/* ═══════ SCROLLABLE CONTENT ═══════ */}
+            <div className="pp-scroll" style={{ flex: 1, overflowY: 'auto', scrollBehavior: 'smooth' }}>
 
-                    {/* Tabular Examples */}
-                    {problem.examples?.length > 0 && (
-                        <div style={{ marginTop: 40 }}>
-                            <h3 style={{ fontSize: 18, fontWeight: 700, color: 'var(--color-primary-text)', marginBottom: 20 }}>Examples</h3>
-                            <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
+                {/* ─── DESCRIPTION TAB ─── */}
+                {activeTab === 'description' && !readerMode && (
+                    <div style={{ padding: '24px 26px' }}>
+                        <div style={{ color: 'var(--color-primary-text)', fontSize: 14.5, lineHeight: 1.8 }}>
+                            <ReactMarkdown components={{
+                                code({ inline, className, children, ...props }) {
+                                    return <code style={{ background: 'var(--color-surface-hover)', padding: '2px 6px', borderRadius: 5, fontSize: '0.88em', fontFamily: "'JetBrains Mono', monospace", border: '1px solid var(--color-border)' }} {...props}>{children}</code>;
+                                }
+                            }}>{fullDescription}</ReactMarkdown>
+                        </div>
+
+                        {/* Examples */}
+                        {problem.examples?.length > 0 && (
+                            <div style={{ marginTop: 32 }}>
+                                <h3 style={{ fontSize: 15, fontWeight: 700, marginBottom: 14, display: 'flex', alignItems: 'center', gap: 7 }}>
+                                    <span style={{ width: 3, height: 16, borderRadius: 1, background: '#818cf8' }} /> Examples
+                                </h3>
                                 {problem.examples.map((ex, i) => (
-                                    <div key={i} style={{
-                                        background: 'var(--color-surface)',
-                                        border: '1px solid var(--color-border)',
-                                        borderRadius: 16, overflow: 'hidden',
-                                        boxShadow: '0 4px 20px -4px rgba(0,0,0,0.05)'
-                                    }}>
-                                        <div style={{ padding: '10px 20px', background: 'var(--color-surface-hover)', borderBottom: '1px solid var(--color-border)', fontSize: 14, fontWeight: 600, color: 'var(--color-primary-text)' }}>
-                                            Example {i + 1}
-                                        </div>
-                                        <div style={{ padding: '20px', display: 'flex', flexDirection: 'column', gap: 16 }}>
-                                            <div style={{ display: 'flex', gap: 16 }}>
-                                                <span style={{ fontSize: 14, fontWeight: 600, color: 'var(--color-muted-text)', width: '60px', flexShrink: 0 }}>Input:</span>
-                                                <code style={{ fontFamily: 'monospace', fontSize: 14, color: 'var(--color-primary-text)', whiteSpace: 'pre-wrap', flex: 1 }}>{ex.input}</code>
+                                    <div key={i} style={{ border: '1px solid var(--color-border)', borderRadius: 10, overflow: 'hidden', marginBottom: 12 }}>
+                                        <div style={{ padding: '7px 14px', background: 'var(--color-surface-hover)', borderBottom: '1px solid var(--color-border)', fontSize: 12, fontWeight: 600, color: 'var(--color-muted-text)' }}>Example {i + 1}</div>
+                                        <div style={{ padding: 14, display: 'flex', flexDirection: 'column', gap: 10 }}>
+                                            <div style={{ display: 'flex', gap: 10, alignItems: 'baseline' }}>
+                                                <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--color-muted-text)', width: 50, textTransform: 'uppercase', letterSpacing: '0.04em' }}>Input</span>
+                                                <code style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 13, flex: 1, background: 'color-mix(in srgb, var(--color-primary-text) 3%, var(--color-surface))', padding: '5px 10px', borderRadius: 6, border: '1px solid var(--color-border)' }}>{ex.input}</code>
                                             </div>
-                                            <div style={{ height: 1, background: 'var(--color-border)' }} />
-                                            <div style={{ display: 'flex', gap: 16 }}>
-                                                <span style={{ fontSize: 14, fontWeight: 600, color: 'var(--color-muted-text)', width: '60px', flexShrink: 0 }}>Output:</span>
-                                                <code style={{ fontFamily: 'monospace', fontSize: 14, color: 'var(--color-primary-text)', whiteSpace: 'pre-wrap', flex: 1 }}>{ex.output}</code>
+                                            <div style={{ display: 'flex', gap: 10, alignItems: 'baseline' }}>
+                                                <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--color-muted-text)', width: 50, textTransform: 'uppercase', letterSpacing: '0.04em' }}>Output</span>
+                                                <code style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 13, color: '#10b981', flex: 1, background: 'color-mix(in srgb, #10b981 5%, var(--color-surface))', padding: '5px 10px', borderRadius: 6, border: '1px solid color-mix(in srgb, #10b981 15%, transparent)' }}>{ex.output}</code>
                                             </div>
                                             {ex.explanation && (
-                                                <>
-                                                    <div style={{ height: 1, background: 'var(--color-border)', borderStyle: 'dashed' }} />
-                                                    <div style={{ display: 'flex', gap: 16, alignItems: 'flex-start' }}>
-                                                        <span style={{ fontSize: 14, fontWeight: 600, color: 'var(--color-muted-text)', width: '60px', flexShrink: 0, paddingTop: 2 }}>Hint:</span>
-                                                        <div style={{
-                                                            fontSize: 13, lineHeight: 1.7, color: 'var(--color-primary-text)',
-                                                            background: 'var(--color-surface-hover)', borderRadius: 8,
-                                                            padding: '10px 12px', whiteSpace: 'pre-wrap', fontFamily: 'inherit',
-                                                            flex: 1, opacity: 0.9, wordBreak: 'break-word'
-                                                        }}>
-                                                            {formatHint(ex.explanation)}
-                                                        </div>
-                                                    </div>
-                                                </>
+                                                <details style={{ marginTop: 2 }}>
+                                                    <summary style={{ fontSize: 11, fontWeight: 600, color: '#818cf8', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4 }}><Eye size={12} /> Show trace</summary>
+                                                    <pre style={{ marginTop: 6, fontSize: 11, lineHeight: 1.6, background: 'var(--color-surface-hover)', borderRadius: 6, padding: '8px 10px', whiteSpace: 'pre-wrap', fontFamily: "'JetBrains Mono', monospace", border: '1px solid var(--color-border)', maxHeight: 240, overflow: 'auto' }}>{formatHint(ex.explanation)}</pre>
+                                                </details>
                                             )}
                                         </div>
                                     </div>
                                 ))}
                             </div>
-                        </div>
-                    )}
+                        )}
 
-                    {/* Constraints Pills */}
-                    {problem.constraints?.length > 0 && (
-                        <div style={{ marginTop: 40 }}>
-                            <h3 style={{ fontSize: 18, fontWeight: 700, color: 'var(--color-primary-text)', marginBottom: 20 }}>Constraints</h3>
-                            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 12 }}>
-                                {problem.constraints.map((c, i) => (
-                                    <div key={i} style={{
-                                        padding: '8px 16px',
-                                        background: 'color-mix(in srgb, var(--color-surface-hover) 50%, transparent)',
-                                        border: '1px solid var(--color-border)',
-                                        borderRadius: 24,
-                                        fontSize: 14,
-                                        fontFamily: 'monospace',
-                                        color: 'var(--color-primary-text)',
-                                        boxShadow: '0 2px 8px rgba(0,0,0,0.05)',
-                                        transition: 'transform 0.2s',
-                                        cursor: 'default'
-                                    }}
-                                    onMouseEnter={e => e.currentTarget.style.transform = 'translateY(-2px)'}
-                                    onMouseLeave={e => e.currentTarget.style.transform = 'translateY(0)'}
-                                    >
-                                        {c}
-                                    </div>
-                                ))}
-                            </div>
-                        </div>
-                    )}
-                </div>
-            )}
-
-            {/* ─── Approaches Tab ─── */}
-            {activeTab === 'approaches' && (
-                <div className="premium-scrollbar" style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column', scrollBehavior: 'smooth' }}>
-                    
-                    {/* Reader Mode View (Full Screen Content) */}
-                    {readerModeRung ? (
-                        <div style={{ display: 'flex', flexDirection: 'column', flex: 1, background: 'var(--color-surface)', height: '100%', animation: 'float-up 0.3s ease-out' }}>
-                            <div style={{ position: 'sticky', top: 0, zIndex: 10, padding: '16px 24px', background: 'color-mix(in srgb, var(--color-surface) 90%, transparent)', backdropFilter: 'blur(12px)', borderBottom: '1px solid var(--color-border)', display: 'flex', alignItems: 'center', gap: 16 }}>
-                                <button
-                                    onClick={() => setReaderModeRung(null)}
-                                    style={{
-                                        width: 32, height: 32, borderRadius: 8, background: 'var(--color-surface-hover)', 
-                                        border: '1px solid var(--color-border)', color: 'var(--color-primary-text)',
-                                        display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', transition: 'all 0.2s', outline: 'none'
-                                    }}
-                                    onMouseEnter={e => Object.assign(e.currentTarget.style, { background: 'color-mix(in srgb, var(--color-surface-hover) 80%, var(--color-primary-text))' })}
-                                    onMouseLeave={e => Object.assign(e.currentTarget.style, { background: 'var(--color-surface-hover)' })}
-                                >
-                                    <ArrowLeft size={16} />
-                                </button>
-                                <div>
-                                    <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--color-muted-text)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-                                        {readerModeRung.approach.name} • Step {readerModeRung.index + 1}
-                                    </div>
-                                    <div style={{ fontSize: 18, fontWeight: 700, color: 'var(--color-primary-text)' }}>
-                                        {readerModeRung.rung.title}
-                                    </div>
-                                </div>
-                            </div>
-                            
-                            <div style={{ padding: '32px 40px', maxWidth: '800px', margin: '0' }}>
-                                {readerModeRung.rung.desc && (
-                                    <p style={{ fontSize: 15, color: 'var(--color-muted-text)', marginBottom: 24, lineHeight: 1.8 }}>
-                                        {readerModeRung.rung.desc}
-                                    </p>
-                                )}
-                                {readerModeRung.rung.explanation && (
-                                    <div style={{ fontSize: 15, lineHeight: 1.8 }}>
-                                        <ExplanationRenderer text={readerModeRung.rung.explanation} />
-                                    </div>
-                                )}
-                            </div>
-                        </div>
-                    ) : approaches.length === 0 ? (
-                        <div style={{ padding: 32, textAlign: 'center', color: 'var(--color-muted-text)', fontSize: 14 }}>
-                            No approaches available for this problem yet.
-                        </div>
-                    ) : (
-                        <>
-                            {/* Approach selector (Segmented Control style) */}
-                            <div style={{ padding: '16px', borderBottom: '1px solid var(--color-border)', background: 'var(--color-surface)' }}>
-                                <div style={{
-                                    display: 'flex', background: 'var(--color-surface-hover)', borderRadius: '12px', padding: 4,
-                                    position: 'relative', overflowX: 'auto', gap: 4
-                                }} className="premium-scrollbar">
-                                    {approaches.map((approach, index) => (
-                                        <button
-                                            key={approach.id}
-                                            onClick={() => setSelectedApproach(index)}
-                                            style={{
-                                                flex: 1, minWidth: 'max-content', padding: '10px 16px', borderRadius: '8px',
-                                                fontSize: 13, fontWeight: 600, border: 'none', cursor: 'pointer',
-                                                display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
-                                                transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
-                                                background: selectedApproach === index ? 'var(--color-surface)' : 'transparent',
-                                                color: selectedApproach === index ? 'var(--color-primary-text)' : 'var(--color-muted-text)',
-                                                boxShadow: selectedApproach === index ? '0 2px 12px rgba(0,0,0,0.08)' : 'none',
-                                                zIndex: 1
-                                            }}
-                                        >
-                                            <span style={{ color: selectedApproach === index ? 'var(--color-primary-text)' : 'currentColor' }}>
-                                                {getApproachIcon(approach.name)}
-                                            </span>
-                                            {approach.name}
-                                        </button>
+                        {/* Constraints */}
+                        {problem.constraints?.length > 0 && (
+                            <div style={{ marginTop: 28, paddingBottom: 24 }}>
+                                <h3 style={{ fontSize: 15, fontWeight: 700, marginBottom: 14, display: 'flex', alignItems: 'center', gap: 7 }}>
+                                    <span style={{ width: 3, height: 16, borderRadius: 1, background: '#f59e0b' }} /> Constraints
+                                </h3>
+                                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 7 }}>
+                                    {problem.constraints.map((c, i) => (
+                                        <div key={i} style={{ padding: '5px 12px', borderRadius: 7, background: 'var(--color-surface-hover)', border: '1px solid var(--color-border)', fontSize: 13, fontFamily: "'JetBrains Mono', monospace", color: 'var(--color-primary-text)' }}>{c}</div>
                                     ))}
                                 </div>
                             </div>
+                        )}
+                    </div>
+                )}
 
-                            {/* Complexity row (Visual Metric Cards) */}
-                            {approaches[selectedApproach] && (
-                                <div style={{
-                                    padding: '16px', borderBottom: '1px solid var(--color-border)',
-                                    display: 'flex', gap: 16, flexWrap: 'wrap', background: 'color-mix(in srgb, var(--color-surface-hover) 30%, transparent)'
-                                }}>
-                                    <div style={{
-                                        flex: 1, minWidth: 140, padding: '12px 16px', borderRadius: 12,
-                                        background: 'color-mix(in srgb, #10b981 8%, var(--color-surface))',
-                                        border: '1px solid color-mix(in srgb, #10b981 20%, transparent)',
-                                        display: 'flex', alignItems: 'center', gap: 12
-                                    }}>
-                                        <div style={{ width: 32, height: 32, borderRadius: 8, background: '#10b98120', color: '#10b981', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                                            <Clock size={16} />
-                                        </div>
-                                        <div>
-                                            <div style={{ fontSize: 11, color: 'var(--color-muted-text)', textTransform: 'uppercase', letterSpacing: '0.05em', fontWeight: 600 }}>Time</div>
-                                            <div style={{ color: '#10b981', fontWeight: 700, fontSize: 14, fontFamily: 'monospace' }}>{approaches[selectedApproach].timeComplexity}</div>
-                                        </div>
-                                    </div>
-                                    <div style={{
-                                        flex: 1, minWidth: 140, padding: '12px 16px', borderRadius: 12,
-                                        background: 'color-mix(in srgb, #f59e0b 8%, var(--color-surface))',
-                                        border: '1px solid color-mix(in srgb, #f59e0b 20%, transparent)',
-                                        display: 'flex', alignItems: 'center', gap: 12
-                                    }}>
-                                        <div style={{ width: 32, height: 32, borderRadius: 8, background: '#f59e0b20', color: '#f59e0b', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                                            <HardDrive size={16} />
-                                        </div>
-                                        <div>
-                                            <div style={{ fontSize: 11, color: 'var(--color-muted-text)', textTransform: 'uppercase', letterSpacing: '0.05em', fontWeight: 600 }}>Space</div>
-                                            <div style={{ color: '#f59e0b', fontWeight: 700, fontSize: 14, fontFamily: 'monospace' }}>{approaches[selectedApproach].spaceComplexity}</div>
-                                        </div>
-                                    </div>
-                                </div>
-                            )}
-
-                            {/* Summary */}
-                            {approaches[selectedApproach]?.summary && (
-                                <div style={{ padding: '20px 24px', fontSize: 14, color: 'var(--color-primary-text)', lineHeight: 1.6, borderBottom: '1px solid var(--color-border)' }}>
-                                    {approaches[selectedApproach].summary}
-                                </div>
-                            )}
-
-                            {/* Progress bar across ladder levels */}
-                            {approaches[selectedApproach] && (
-                                <div style={{ padding: '20px 24px', borderBottom: '1px solid var(--color-border)', background: 'var(--color-surface)' }}>
-                                    <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--color-primary-text)', marginBottom: 16 }}>
-                                        Journey Progress (<span style={{ color: '#10b981' }}>{unlockedLevels[approaches[selectedApproach].id] || 1}</span> / {approaches[selectedApproach].ladders?.length || 0})
-                                    </div>
-                                    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                                        {(approaches[selectedApproach].ladders || []).map((_, i) => {
-                                            const current = unlockedLevels[approaches[selectedApproach].id] || 1;
-                                            const isUnlocked = (i + 1) <= current;
-                                            const isNext = (i + 1) === current + 1;
-                                            
-                                            return (
-                                                <React.Fragment key={i}>
-                                                    <div style={{
-                                                        width: 28, height: 28, borderRadius: '50%',
-                                                        display: 'flex', alignItems: 'center', justifyContent: 'center',
-                                                        fontSize: 12, fontWeight: 700,
-                                                        background: isUnlocked ? '#10b981' : 'var(--color-surface-hover)',
-                                                        color: isUnlocked ? '#fff' : 'var(--color-muted-text)',
-                                                        border: isUnlocked ? 'none' : '1px solid var(--color-border)',
-                                                        boxShadow: isUnlocked ? '0 0 12px rgba(16,185,129,0.3)' : 'none',
-                                                        transition: 'all 0.4s cubic-bezier(0.4, 0, 0.2, 1)',
-                                                        flexShrink: 0,
-                                                        position: 'relative'
-                                                    }}>
-                                                        {isNext && (
-                                                            <div style={{
-                                                                position: 'absolute', inset: -4, borderRadius: '50%', border: '2px solid #10b981',
-                                                                animation: 'pulse-ring 2s infinite cubic-bezier(0.25, 0.8, 0.25, 1)'
-                                                            }}></div>
-                                                        )}
-                                                        <span style={{ zIndex: 1 }}>{isUnlocked ? '✓' : i + 1}</span>
-                                                    </div>
-                                                    {i < (approaches[selectedApproach].ladders?.length - 1) && (
-                                                        <div style={{ 
-                                                            flex: 1, height: 3, borderRadius: 2,
-                                                            background: isUnlocked ? '#10b981' : 'var(--color-border)', 
-                                                            transition: 'background 0.4s ease',
-                                                            boxShadow: isUnlocked ? '0 0 8px rgba(16,185,129,0.2)' : 'none'
-                                                        }} />
-                                                    )}
-                                                </React.Fragment>
-                                            );
-                                        })}
-                                    </div>
-                                </div>
-                            )}
-
-                            {/* Ladder rungs */}
-                            <div style={{ flex: 1, padding: '24px', display: 'flex', flexDirection: 'column', gap: 16 }}>
-                                {(approaches[selectedApproach]?.ladders || []).map((rung, i) => {
-                                    const approachId = approaches[selectedApproach].id;
-                                    const current = unlockedLevels[approachId] || 1;
-                                    const isUnlocked = (i + 1) <= current;
-                                    const isNext = (i + 1) === current + 1;
-                                    const expandKey = `${approachId}-${i}`;
-                                    const isExpanded = expandedLadder[expandKey];
-                                    const isShaking = shakeRung === expandKey;
-
+                {/* ─── APPROACHES TAB ─── */}
+                {activeTab === 'approaches' && !readerMode && approaches.length > 0 && (
+                    <div>
+                        {/* Approach Selector */}
+                        <div style={{ padding: '12px 16px', borderBottom: '1px solid var(--color-border)' }}>
+                            <div style={{ display: 'flex', gap: 6, overflowX: 'auto' }} className="pp-scroll">
+                                {approaches.map((a, i) => {
+                                    const isA = selectedApproach === i;
+                                    const c = getApproachColor(a.name);
                                     return (
-                                        <div key={i} style={{
-                                            borderRadius: 16, border: '1px solid var(--color-border)',
-                                            background: isUnlocked ? 'var(--color-surface)' : 'color-mix(in srgb, var(--color-surface-hover) 40%, transparent)',
-                                            backdropFilter: isUnlocked ? 'none' : 'blur(4px)',
-                                            transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
-                                            transform: isUnlocked && isExpanded ? 'scale(1.01)' : 'scale(1)',
-                                            boxShadow: isUnlocked && isExpanded ? '0 12px 32px -8px rgba(0,0,0,0.12)' : 'none',
-                                            overflow: 'hidden',
-                                        }}>
-                                            {/* Rung header */}
-                                            <div
-                                                onClick={() => {
-                                                    if (isUnlocked) toggleLadder(expandKey);
-                                                    else {
-                                                        setShakeRung(expandKey);
-                                                        setTimeout(() => setShakeRung(null), 300);
-                                                    }
-                                                }}
-                                                style={{
-                                                    width: '100%', padding: '16px', display: 'flex', alignItems: 'center', gap: 12,
-                                                    background: 'none', border: 'none', cursor: isUnlocked ? 'pointer' : 'not-allowed', textAlign: 'left',
-                                                    opacity: isUnlocked ? 1 : 0.7
-                                                }}
-                                            >
-                                                <div style={{
-                                                    width: 36, height: 36, borderRadius: 10, flexShrink: 0,
-                                                    display: 'flex', alignItems: 'center', justifyContent: 'center',
-                                                    background: isUnlocked ? '#10b98120' : 'var(--color-surface-hover)',
-                                                    color: isUnlocked ? '#10b981' : 'var(--color-muted-text)',
-                                                    border: isUnlocked ? '1px solid #10b98130' : '1px solid var(--color-border)'
-                                                }}>
-                                                    {getLevelTypeIcon(rung.level, isUnlocked)}
-                                                </div>
-                                                <div style={{ flex: 1 }}>
-                                                    <div style={{ fontSize: 14, fontWeight: 700, color: isUnlocked ? 'var(--color-primary-text)' : 'var(--color-muted-text)' }}>
-                                                        Step {i + 1}: {rung.title}
-                                                    </div>
-                                                    <div style={{ fontSize: 12, color: 'var(--color-muted-text)', marginTop: 2 }}>
-                                                        {getLevelTypeLabel(rung.level)}
-                                                    </div>
-                                                </div>
-                                                {isUnlocked && (
-                                                    <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
-                                                        <button
-                                                            onClick={(e) => {
-                                                                e.stopPropagation();
-                                                                setReaderModeRung({ rung, index: i, approach: approaches[selectedApproach] });
-                                                            }}
-                                                            style={{
-                                                                width: 28, height: 28, borderRadius: '8px', background: 'transparent',
-                                                                border: '1px solid var(--color-border)', color: 'var(--color-muted-text)',
-                                                                display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
-                                                                cursor: 'pointer', transition: 'all 0.2s'
-                                                            }}
-                                                            title="Read in Focus Mode"
-                                                            onMouseEnter={el => { el.currentTarget.style.color = 'var(--color-primary-text)'; el.currentTarget.style.background = 'var(--color-surface)'; }}
-                                                            onMouseLeave={el => { el.currentTarget.style.color = 'var(--color-muted-text)'; el.currentTarget.style.background = 'transparent'; }}
-                                                        >
-                                                            <Maximize2 size={13} />
-                                                        </button>
-                                                        <div style={{
-                                                            width: 28, height: 28, borderRadius: '50%', background: 'var(--color-surface-hover)',
-                                                            display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
-                                                            transform: isExpanded ? 'rotate(180deg)' : 'rotate(0deg)', transition: 'transform 0.3s ease'
-                                                        }}>
-                                                            <ChevronDown size={14} style={{ color: 'var(--color-primary-text)' }} />
-                                                        </div>
-                                                    </div>
-                                                )}
-                                                {!isUnlocked && (
-                                                    <Lock size={16} className={isShaking ? "shake-animation" : ""} style={{ color: 'var(--color-muted-text)', flexShrink: 0 }} />
-                                                )}
-                                            </div>
-
-                                            {/* Rung content (collapsible) */}
-                                            {isUnlocked && isExpanded && (
-                                                <div style={{ padding: '0 16px 20px 16px', animation: 'float-up 0.4s ease forwards' }}>
-                                                    {rung.desc && (
-                                                        <p style={{ fontSize: 13, color: 'var(--color-muted-text)', marginBottom: 12, lineHeight: 1.6 }}>
-                                                            {rung.desc}
-                                                        </p>
-                                                    )}
-                                                    {rung.explanation && (
-                                                        <div style={{ padding: '4px 0' }}>
-                                                            <ExplanationRenderer text={rung.explanation} />
-                                                        </div>
-                                                    )}
-                                                </div>
-                                            )}
-
-                                            {/* Unlock button for the next locked rung */}
-                                            {isNext && (
-                                                <div style={{ padding: '0 16px 16px', borderTop: '1px solid color-mix(in srgb, var(--color-border) 40%, transparent)', paddingTop: 16, marginTop: isExpanded ? 0 : 4 }}>
-                                                    <button
-                                                        onClick={() => {
-                                                            setShowConfetti(true);
-                                                            setTimeout(() => setShowConfetti(false), 1500);
-                                                            unlockNext();
-                                                        }}
-                                                        style={{
-                                                            width: '100%', padding: '12px 16px', borderRadius: 10, border: 'none',
-                                                            background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)',
-                                                            color: '#fff', fontSize: 13, fontWeight: 700, cursor: 'pointer',
-                                                            display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
-                                                            transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
-                                                            boxShadow: '0 4px 12px rgba(16,185,129,0.3)',
-                                                            position: 'relative', overflow: 'hidden'
-                                                        }}
-                                                        onMouseEnter={e => { e.currentTarget.style.transform = 'translateY(-2px)'; e.currentTarget.style.boxShadow = '0 6px 16px rgba(16,185,129,0.4)'; }}
-                                                        onMouseLeave={e => { e.currentTarget.style.transform = 'translateY(0)'; e.currentTarget.style.boxShadow = '0 4px 12px rgba(16,185,129,0.3)'; }}
-                                                    >
-                                                        <Sparkles size={16} /> 
-                                                        Unlock Step {i + 1}
-                                                    </button>
-                                                </div>
-                                            )}
-                                        </div>
+                                        <button key={a.id} onClick={() => { setSelectedApproach(i); setActiveLadder(0); }}
+                                            style={{ flex: '0 0 auto', padding: '8px 14px', borderRadius: 8, fontSize: 12, fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6, transition: 'all 0.2s', background: isA ? `color-mix(in srgb, ${c} 10%, var(--color-surface))` : 'var(--color-surface-hover)', color: isA ? c : 'var(--color-muted-text)', border: isA ? `1.5px solid color-mix(in srgb, ${c} 35%, transparent)` : '1px solid var(--color-border)', boxShadow: isA ? `0 2px 10px color-mix(in srgb, ${c} 12%, transparent)` : 'none' }}>
+                                            {getApproachIcon(a.name)} {a.name}
+                                        </button>
                                     );
                                 })}
                             </div>
-                        </>
-                    )}
-                </div>
-            )}
+                        </div>
+
+                        {/* Complexity Cards */}
+                        {approach && (
+                            <div style={{ padding: '12px 16px', borderBottom: '1px solid var(--color-border)', display: 'flex', gap: 10 }}>
+                                {[{ l: 'Time', v: approach.timeComplexity, c: '#10b981', I: Clock }, { l: 'Space', v: approach.spaceComplexity, c: '#f59e0b', I: HardDrive }].map(({ l, v, c, I }) => (
+                                    <div key={l} style={{ flex: 1, padding: '10px 12px', borderRadius: 8, background: `color-mix(in srgb, ${c} 5%, var(--color-surface))`, border: `1px solid color-mix(in srgb, ${c} 15%, transparent)`, display: 'flex', alignItems: 'center', gap: 8 }}>
+                                        <div style={{ width: 28, height: 28, borderRadius: 7, background: `${c}14`, color: c, display: 'flex', alignItems: 'center', justifyContent: 'center' }}><I size={14} /></div>
+                                        <div><div style={{ fontSize: 9, textTransform: 'uppercase', letterSpacing: '0.06em', fontWeight: 700, color: 'var(--color-muted-text)' }}>{l}</div><div style={{ color: c, fontWeight: 700, fontSize: 13, fontFamily: 'monospace' }}>{v}</div></div>
+                                    </div>
+                                ))}
+                            </div>
+                        )}
+
+                        {/* Summary */}
+                        {approach?.summary && <div style={{ padding: '12px 18px', fontSize: 13, lineHeight: 1.65, borderBottom: '1px solid var(--color-border)', color: 'var(--color-muted-text)' }}>{approach.summary}</div>}
+
+                        {/* ═══ LADDER PROGRESS: L0 → L5 ═══ */}
+                        <div style={{ padding: '14px 18px', borderBottom: '1px solid var(--color-border)' }}>
+                            <div style={{ fontSize: 10, fontWeight: 700, color: 'var(--color-muted-text)', marginBottom: 10, textTransform: 'uppercase', letterSpacing: '0.06em' }}>
+                                Ladder Progress · <span style={{ color: '#10b981' }}>{current}</span>/{ladders.length}
+                            </div>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                                {ladders.map((l, i) => {
+                                    const u = (i + 1) <= current;
+                                    const isNext = (i + 1) === current + 1;
+                                    const isActive = activeLadder === i;
+                                    const m = LADDER_META[l.level] || LADDER_META[0];
+                                    return (
+                                        <Fragment key={i}>
+                                            <div
+                                                onClick={() => selectLadder(i)}
+                                                title={`L${l.level}: ${m.label}`}
+                                                style={{
+                                                    width: 30, height: 30, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                                    fontSize: 10, fontWeight: 800, cursor: u ? 'pointer' : 'default', transition: 'all .2s', position: 'relative', flexShrink: 0,
+                                                    background: u ? (isActive ? m.color : '#10b981') : 'var(--color-surface-hover)',
+                                                    color: u ? '#fff' : 'var(--color-muted-text)',
+                                                    border: isActive ? `2px solid ${m.color}` : u ? 'none' : '1px solid var(--color-border)',
+                                                    boxShadow: isActive ? `0 0 0 3px color-mix(in srgb, ${m.color} 22%, transparent)` : u ? '0 0 8px rgba(16,185,129,.15)' : 'none',
+                                                }}
+                                            >
+                                                {isNext && <div style={{ position: 'absolute', inset: -4, borderRadius: '50%', border: '2px solid #10b981', animation: 'pp-pulse 2s infinite' }} />}
+                                                <span style={{ zIndex: 1 }}>{u ? `L${l.level}` : <Lock size={10} />}</span>
+                                            </div>
+                                            {i < ladders.length - 1 && <div style={{ flex: 1, height: 2, borderRadius: 1, background: u ? '#10b981' : 'var(--color-border)', transition: 'background .3s' }} />}
+                                        </Fragment>
+                                    );
+                                })}
+                            </div>
+                        </div>
+
+                        {/* ═══ ACTIVE LADDER CONTENT ═══ */}
+                        {lad && (activeLadder + 1) <= current && (
+                            <div className="pp-float" key={`${approach?.id}-${activeLadder}`} style={{ padding: 16 }}>
+
+                                {/* Ladder Header Card */}
+                                <div style={{ borderRadius: 9, border: `1px solid color-mix(in srgb, ${meta.color} 22%, transparent)`, overflow: 'hidden', marginBottom: 16 }}>
+                                    <div style={{ padding: '11px 14px', background: `color-mix(in srgb, ${meta.color} 5%, transparent)`, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                                            <div style={{ width: 34, height: 34, borderRadius: 8, display: 'flex', alignItems: 'center', justifyContent: 'center', background: `color-mix(in srgb, ${meta.color} 14%, transparent)`, color: meta.color, border: `1px solid color-mix(in srgb, ${meta.color} 22%, transparent)`, fontSize: 13, fontWeight: 800 }}>L{lad.level}</div>
+                                            <div>
+                                                <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--color-primary-text)' }}>{lad.title}</div>
+                                                <div style={{ fontSize: 10, color: meta.color, fontWeight: 600, marginTop: 1, display: 'flex', alignItems: 'center', gap: 4 }}>
+                                                    <LIcon size={10} />{meta.label}
+                                                    {lad.testCases && <span style={{ color: 'var(--color-muted-text)', fontWeight: 400 }}>· {lad.testCases.length} test cases</span>}
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <button onClick={() => setReaderMode({ lad, i: activeLadder })} style={{ width: 26, height: 26, borderRadius: 6, background: 'transparent', border: '1px solid var(--color-border)', color: 'var(--color-muted-text)', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', outline: 'none' }} title="Focus Mode"><Maximize2 size={12} /></button>
+                                    </div>
+                                </div>
+
+                                {/* Description */}
+                                {lad.desc && <p style={{ fontSize: 13, color: 'var(--color-muted-text)', lineHeight: 1.65, margin: '0 0 16px' }}>{lad.desc}</p>}
+
+                                {/* Examples */}
+                                {lad.examples && lad.examples.length > 0 && (
+                                    <div style={{ marginBottom: 16 }}>
+                                        <div style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', color: 'var(--color-muted-text)', marginBottom: 8, display: 'flex', alignItems: 'center', gap: 5 }}>
+                                            <span style={{ width: 3, height: 12, borderRadius: 1, background: meta.color }} /> Examples
+                                        </div>
+                                        {lad.examples.map((ex, ei) => (
+                                            <div key={ei} style={{ borderRadius: 8, border: '1px solid var(--color-border)', overflow: 'hidden', marginBottom: 8 }}>
+                                                <div style={{ padding: '10px 12px', display: 'flex', flexDirection: 'column', gap: 8 }}>
+                                                    <div style={{ display: 'flex', gap: 8 }}>
+                                                        <span style={{ fontSize: 10, fontWeight: 700, color: 'var(--color-muted-text)', width: 44, textTransform: 'uppercase', flexShrink: 0 }}>Input</span>
+                                                        <code style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 12, flex: 1, wordBreak: 'break-word', color: 'var(--color-primary-text)' }}>{ex.input}</code>
+                                                    </div>
+                                                    <div style={{ display: 'flex', gap: 8 }}>
+                                                        <span style={{ fontSize: 10, fontWeight: 700, color: 'var(--color-muted-text)', width: 44, textTransform: 'uppercase', flexShrink: 0 }}>Output</span>
+                                                        <code style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 12, color: '#10b981', flex: 1 }}>{ex.output}</code>
+                                                    </div>
+                                                    {ex.trace && (
+                                                        <details>
+                                                            <summary style={{ fontSize: 11, fontWeight: 600, color: meta.color, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4 }}><Eye size={11} /> Trace</summary>
+                                                            <pre style={{ marginTop: 6, fontSize: 11, lineHeight: 1.6, background: 'var(--color-surface-hover)', borderRadius: 6, padding: '8px 10px', whiteSpace: 'pre-wrap', fontFamily: "'JetBrains Mono', monospace", border: '1px solid var(--color-border)', maxHeight: 180, overflow: 'auto' }}>{ex.trace}</pre>
+                                                        </details>
+                                                    )}
+                                                </div>
+                                            </div>
+                                        ))}
+                                    </div>
+                                )}
+
+                                {/* ═══ FULL EXPLANATION — parsed into sections ═══ */}
+                                {lad.explanation && <ExplanationView text={lad.explanation} />}
+
+                                {/* Test Cases indicator */}
+                                {lad.testCases && lad.testCases.length > 0 && (
+                                    <div style={{ marginTop: 14, padding: '8px 12px', borderRadius: 7, background: `color-mix(in srgb, ${meta.color} 5%, transparent)`, border: `1px solid color-mix(in srgb, ${meta.color} 14%, transparent)`, display: 'flex', alignItems: 'center', gap: 6, fontSize: 11 }}>
+                                        <Target size={11} style={{ color: meta.color }} />
+                                        <span style={{ fontWeight: 600, color: meta.color }}>{lad.testCases.length} test cases</span>
+                                        <ArrowRight size={10} style={{ color: 'var(--color-muted-text)' }} />
+                                        <span style={{ color: 'var(--color-muted-text)' }}>in testcase panel</span>
+                                    </div>
+                                )}
+                            </div>
+                        )}
+
+                        {/* Unlock button */}
+                        {current < ladders.length && (
+                            <div style={{ padding: '0 16px 16px' }}>
+                                <button onClick={unlockNext} style={{ width: '100%', padding: '11px', borderRadius: 8, border: 'none', background: 'linear-gradient(135deg, #10b981, #059669)', color: '#fff', fontSize: 13, fontWeight: 700, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 7, boxShadow: '0 3px 12px rgba(16,185,129,.25)' }}
+                                    onMouseEnter={e => { e.currentTarget.style.transform = 'translateY(-1px)'; e.currentTarget.style.boxShadow = '0 5px 16px rgba(16,185,129,.35)'; }}
+                                    onMouseLeave={e => { e.currentTarget.style.transform = 'translateY(0)'; e.currentTarget.style.boxShadow = '0 3px 12px rgba(16,185,129,.25)'; }}
+                                >
+                                    <Sparkles size={15} /> Unlock L{ladders[current]?.level}
+                                </button>
+                            </div>
+                        )}
+                    </div>
+                )}
+
+                {/* ─── READER MODE ─── */}
+                {readerMode && (
+                    <div className="pp-float">
+                        <div style={{ position: 'sticky', top: 0, zIndex: 10, padding: '12px 20px', borderBottom: '1px solid var(--color-border)', display: 'flex', alignItems: 'center', gap: 12, background: 'color-mix(in srgb, var(--color-surface) 92%, transparent)', backdropFilter: 'blur(12px)' }}>
+                            <button onClick={() => setReaderMode(null)} style={{ width: 28, height: 28, borderRadius: 7, background: 'var(--color-surface-hover)', border: '1px solid var(--color-border)', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: 'var(--color-primary-text)' }}><ArrowLeft size={14} /></button>
+                            <div>
+                                <div style={{ fontSize: 10, fontWeight: 600, color: 'var(--color-muted-text)', textTransform: 'uppercase', letterSpacing: '0.04em' }}>{approach?.name} · L{readerMode.lad.level}</div>
+                                <div style={{ fontSize: 15, fontWeight: 700, color: 'var(--color-primary-text)' }}>{readerMode.lad.title}</div>
+                            </div>
+                        </div>
+                        <div style={{ padding: '24px 28px' }}>
+                            {readerMode.lad.desc && <p style={{ fontSize: 14, color: 'var(--color-muted-text)', lineHeight: 1.8, marginBottom: 20 }}>{readerMode.lad.desc}</p>}
+                            {readerMode.lad.examples?.map((ex, i) => (
+                                <div key={i} style={{ marginBottom: 14, borderRadius: 8, border: '1px solid var(--color-border)', overflow: 'hidden' }}>
+                                    <div style={{ padding: '6px 12px', background: 'var(--color-surface-hover)', fontSize: 11, fontWeight: 600, color: 'var(--color-muted-text)' }}>Example {i + 1}</div>
+                                    <div style={{ padding: 12, display: 'flex', flexDirection: 'column', gap: 6 }}>
+                                        <div><strong style={{ fontSize: 10, color: 'var(--color-muted-text)', textTransform: 'uppercase' }}>Input: </strong><code style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 12 }}>{ex.input}</code></div>
+                                        <div><strong style={{ fontSize: 10, color: 'var(--color-muted-text)', textTransform: 'uppercase' }}>Output: </strong><code style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 12, color: '#10b981' }}>{ex.output}</code></div>
+                                        {ex.trace && <pre style={{ marginTop: 6, fontSize: 11, background: 'var(--color-surface-hover)', padding: '8px 10px', borderRadius: 6, whiteSpace: 'pre-wrap', fontFamily: "'JetBrains Mono', monospace", lineHeight: 1.6, border: '1px solid var(--color-border)' }}>{ex.trace}</pre>}
+                                    </div>
+                                </div>
+                            ))}
+                            {readerMode.lad.explanation && <ExplanationView text={readerMode.lad.explanation} />}
+                        </div>
+                    </div>
+                )}
+            </div>
         </div>
     );
 });
