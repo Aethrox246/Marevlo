@@ -114,24 +114,42 @@ export default function Feed({ setView }) {
                 `${API_BASE}/feed/posts/${postId}/like`,
                 {
                     method: 'POST',
-                    headers: {
-                        'Authorization': `Bearer ${token}`,
-                        'Content-Type': 'application/json'
-                    }
+                    headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' }
                 }
             );
-            if (!response.ok) {
-                throw new Error('Failed to like post');
-            }
+            if (!response.ok) throw new Error('Failed to like post');
             const data = await response.json();
-            setPosts(prev => prev.map(post => (
+            setPosts(prev => prev.map(post =>
                 post.id === postId
-                    ? { ...post, likes: data.likes, likedByMe: data.likedByMe }
+                    ? { ...post, likes: data.likes, dislikes: data.dislikes ?? post.dislikes, likedByMe: data.likedByMe, dislikedByMe: data.dislikedByMe ?? false }
                     : post
-            )));
+            ));
         } catch (err) {
             console.error(err);
             showToast('Failed to like post', 'error');
+        }
+    };
+
+    const handleDislike = async (postId) => {
+        if (!token) return;
+        try {
+            const response = await fetch(
+                `${API_BASE}/feed/posts/${postId}/dislike`,
+                {
+                    method: 'POST',
+                    headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' }
+                }
+            );
+            if (!response.ok) throw new Error('Failed to dislike post');
+            const data = await response.json();
+            setPosts(prev => prev.map(post =>
+                post.id === postId
+                    ? { ...post, likes: data.likes, dislikes: data.dislikes, likedByMe: data.likedByMe ?? false, dislikedByMe: data.dislikedByMe }
+                    : post
+            ));
+        } catch (err) {
+            console.error(err);
+            showToast('Failed to dislike post', 'error');
         }
     };
 
@@ -169,6 +187,41 @@ export default function Feed({ setView }) {
         );
         if (repost) {
             setPosts(prev => prev.map(p => p.id === post.id ? { ...p, reposts: (p.reposts || 0) + 1 } : p));
+        }
+    };
+
+    const handleFollowToggle = async (postAuthorUsername, isCurrentlyFollowing) => {
+        if (!token) return;
+        try {
+            // Search for user ID
+            const searchRes = await fetch(`${API_BASE}/chat/users/search?q=${postAuthorUsername}`, {
+                headers: { 'Authorization': `Bearer ${token}` }
+            });
+            if (!searchRes.ok) throw new Error('Failed to search user');
+            const users = await searchRes.json();
+            const targetUser = users.find(u => u.username === postAuthorUsername);
+            if (!targetUser) {
+                console.error('User not found:', postAuthorUsername);
+                return;
+            }
+
+            const method = isCurrentlyFollowing ? 'DELETE' : 'POST';
+            const followRes = await fetch(`${API_BASE}/chat/users/${targetUser.id}/follow`, {
+                method,
+                headers: { 'Authorization': `Bearer ${token}` }
+            });
+            if (!followRes.ok) throw new Error('Failed to toggle follow');
+
+            // Update local state
+            setPosts(prev => prev.map(p => 
+                p.author === postAuthorUsername 
+                    ? { ...p, isFollowing: !isCurrentlyFollowing } 
+                    : p
+            ));
+            showToast(isCurrentlyFollowing ? 'Unfollowed' : 'Following', 'success');
+        } catch (err) {
+            console.error(err);
+            showToast('Failed to toggle follow', 'error');
         }
     };
 
@@ -446,8 +499,10 @@ export default function Feed({ setView }) {
                                             <FeedPost
                                                 post={{ ...post, onAddComment: handleAddComment }}
                                                 onLike={handleLike}
+                                                onDislike={handleDislike}
                                                 onDelete={handleDeletePost}
                                                 onRepost={handleRepost}
+                                                onFollowToggle={handleFollowToggle}
                                             />
                                         </div>
                                     ))

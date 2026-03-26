@@ -260,7 +260,11 @@ export default function ChatWindow({ chatId, userId, onBack }) {
                                         : 'var(--color-muted-text)'
                                 }}
                             >
-                                {message.time_ago}
+                                {message.time_ago && message.time_ago !== 'null'
+                                    ? message.time_ago
+                                    : message.created_at
+                                        ? new Date(message.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+                                        : ''}
                             </p>
                         </div>
                     </div>

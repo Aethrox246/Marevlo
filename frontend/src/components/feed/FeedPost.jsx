@@ -1,11 +1,11 @@
 import React, { useState } from 'react';
 import {
-    MoreHorizontal, ThumbsUp, MessageSquare, Repeat, Send,
+    MoreHorizontal, ThumbsUp, ThumbsDown, MessageSquare, Repeat, Send,
     Trash2, Calendar, MapPin, Globe
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 
-export default function FeedPost({ post, onLike, onDelete, onRepost }) {
+export default function FeedPost({ post, onLike, onDislike, onDelete, onRepost, onFollowToggle }) {
     const { user } = useAuth();
     const [isCommentsExpanded, setIsCommentsExpanded] = useState(false);
     const [commentInput, setCommentInput] = useState("");
@@ -29,8 +29,8 @@ export default function FeedPost({ post, onLike, onDelete, onRepost }) {
                     {post.avatar}
                 </div>
                 <div className="flex-1 min-w-0">
-                    <div className="flex justify-between items-start">
-                        <div>
+                    <div className="flex justify-between items-start gap-2">
+                        <div className="flex-1 min-w-0">
                             <h3 className="text-sm font-bold text-primary-text hover:text-black cursor-pointer hover:underline transition-colors truncate">
                                 {post.author}
                             </h3>
@@ -41,6 +41,18 @@ export default function FeedPost({ post, onLike, onDelete, onRepost }) {
                                 <Globe size={10} />
                             </div>
                         </div>
+                        {post.author !== user?.username && (
+                            <button
+                                onClick={() => onFollowToggle && onFollowToggle(post.author, post.isFollowing)}
+                                style={{
+                                    fontSize: '0.65rem', fontWeight: 700, padding: '2px 8px',
+                                    borderRadius: '99px', cursor: 'pointer', flexShrink: 0, marginTop: 2,
+                                    background: post.isFollowing ? 'transparent' : 'var(--color-primary-text)',
+                                    color: post.isFollowing ? 'var(--color-muted-text)' : 'var(--color-surface)',
+                                    border: '1px solid var(--color-border)'
+                                }}
+                            >{post.isFollowing ? 'Following' : '+ Follow'}</button>
+                        )}
                         <div className="relative">
                             <button
                                 onClick={() => setActiveDropdown(!activeDropdown)}
@@ -110,11 +122,19 @@ export default function FeedPost({ post, onLike, onDelete, onRepost }) {
 
             {/* Engagement Stats */}
             <div className="px-5 py-3 flex items-center justify-between border-b border-neutral-100 text-xs text-muted-text">
-                <div className="flex items-center gap-1 hover:text-black hover:underline cursor-pointer transition-colors">
-                    <div className={`p-1 rounded-full ${post.likedByMe ? 'bg-neutral-100' : 'bg-white'}`}>
-                        <ThumbsUp size={10} className={post.likedByMe ? "text-black fill-black" : "text-muted-text"} />
+                <div className="flex items-center gap-3">
+                    <div className="flex items-center gap-1 hover:text-black hover:underline cursor-pointer transition-colors">
+                        <div className={`p-1 rounded-full ${post.likedByMe ? 'bg-blue-50' : 'bg-white'}`}>
+                            <ThumbsUp size={10} className={post.likedByMe ? "text-blue-600 fill-blue-600" : "text-muted-text"} />
+                        </div>
+                        <span>{post.likes || 0} likes</span>
                     </div>
-                    <span>{post.likes} likes</span>
+                    {(post.dislikes || 0) > 0 && (
+                        <div className="flex items-center gap-1">
+                            <ThumbsDown size={10} className={post.dislikedByMe ? "text-red-500 fill-red-500" : "text-muted-text"} />
+                            <span>{post.dislikes}</span>
+                        </div>
+                    )}
                 </div>
                 <div className="flex gap-4">
                     <span onClick={() => setIsCommentsExpanded(!isCommentsExpanded)} className="hover:text-primary-text hover:underline cursor-pointer transition-colors">{post.comments} comments</span>
@@ -126,11 +146,19 @@ export default function FeedPost({ post, onLike, onDelete, onRepost }) {
             <div className="px-3 py-1.5 flex items-center justify-between">
                 <button
                     onClick={() => onLike && onLike(post.id)}
-                    className={`flex-1 flex items-center justify-center gap-2 py-3 rounded-lg hover:bg-neutral-50 transition-all group ${post.likedByMe ? 'text-black' : 'text-muted-text hover:text-primary-text'}`}
+                    className={`flex-1 flex items-center justify-center gap-2 py-3 rounded-lg hover:bg-blue-50 transition-all group ${post.likedByMe ? 'text-blue-600' : 'text-muted-text hover:text-blue-600'}`}
                 >
-                    <ThumbsUp size={18} className={`group-hover:scale-110 transition-transform ${post.likedByMe ? 'fill-black' : ''}`} />
+                    <ThumbsUp size={18} className={`group-hover:scale-110 transition-transform ${post.likedByMe ? 'fill-blue-600' : ''}`} />
                     <span className="text-sm font-medium">Like</span>
                 </button>
+                <button
+                    onClick={() => onDislike && onDislike(post.id)}
+                    className={`flex-1 flex items-center justify-center gap-2 py-3 rounded-lg hover:bg-red-50 transition-all group ${post.dislikedByMe ? 'text-red-500' : 'text-muted-text hover:text-red-500'}`}
+                >
+                    <ThumbsDown size={18} className={`group-hover:scale-110 transition-transform ${post.dislikedByMe ? 'fill-red-500' : ''}`} />
+                    <span className="text-sm font-medium">Dislike</span>
+                </button>
+
                 <button
                     onClick={() => setIsCommentsExpanded(!isCommentsExpanded)}
                     className="flex-1 flex items-center justify-center gap-2 py-3 rounded-lg hover:bg-neutral-50 text-muted-text hover:text-primary-text transition-all group"

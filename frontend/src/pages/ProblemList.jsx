@@ -44,6 +44,7 @@ export default function ProblemList({ onSelect }) {
     const [expandedTopics, setExpandedTopics] = useState({ arrays: true });
     const [visibleCounts, setVisibleCounts]   = useState({ arrays: 10 });
     const [loading, setLoading]               = useState(true);
+    const [reactions, setReactions]           = useState({});
 
     useEffect(() => {
         loadAllTopics()
@@ -53,9 +54,57 @@ export default function ProblemList({ onSelect }) {
     }, []);
 
     const toggleTopic = (id) => {
-        setExpandedTopics((prev) => ({ ...prev, [id]: !prev[id] }));
+        setExpandedTopics((prev) => {
+            const willOpen = !prev[id];
+            if (willOpen) {
+                // Fetch reactions for all problems in this topic when expanding
+                const topic = topics.find(t => t.id === id);
+                if (topic && topic.problems) {
+                    topic.problems.forEach(p => {
+                        if (!reactions[p.id]) {
+                            fetchReactions(p.id);
+                        }
+                    });
+                }
+            }
+            return { ...prev, [id]: willOpen };
+        });
         if (!visibleCounts[id]) {
             setVisibleCounts((prev) => ({ ...prev, [id]: 10 }));
+        }
+    };
+
+    const fetchReactions = async (problemId) => {
+        try {
+            const token = localStorage.getItem('access_token');
+            if (!token) return;
+            
+            const res = await fetch(`${import.meta.env.VITE_API_URL}/problems/${problemId}/reactions`, {
+                headers: { 'Authorization': `Bearer ${token}` }
+            });
+            if (!res.ok) throw new Error('Failed to fetch reactions');
+            const data = await res.json();
+            setReactions(prev => ({ ...prev, [problemId]: data }));
+        } catch (err) {
+            console.error(`Failed to fetch reactions for problem ${problemId}:`, err);
+        }
+    };
+
+    const handleReact = async (problemId, type) => {
+        try {
+            const token = localStorage.getItem('access_token');
+            if (!token) return;
+            
+            const res = await fetch(`${import.meta.env.VITE_API_URL}/problems/${problemId}/react`, {
+                method: 'POST',
+                headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
+                body: JSON.stringify({ type })
+            });
+            if (!res.ok) throw new Error('Failed to react to problem');
+            const data = await res.json();
+            setReactions(prev => ({ ...prev, [problemId]: { ...prev[problemId], myReaction: data.reaction, likes: data.likes, dislikes: data.dislikes } }));
+        } catch (err) {
+            console.error(`Failed to react to problem ${problemId}:`, err);
         }
     };
 
@@ -333,6 +382,18 @@ export default function ProblemList({ onSelect }) {
                                                     </div>
 
                                                     <div className="flex items-center gap-4 flex-shrink-0">
+                                                        <div className="flex items-center gap-1" onClick={e => e.stopPropagation()}>
+                                                            <button
+                                                                onClick={() => handleReact(problem.id, 'like')}
+                                                                title="Like"
+                                                                style={{ color: reactions[problem.id]?.myReaction === 'like' ? '#3b82f6' : 'var(--color-muted-text)', background: 'none', border: 'none', cursor: 'pointer', padding: '2px 4px', fontSize: '0.75rem', fontWeight: 600 }}
+                                                            >👍 {reactions[problem.id]?.likes ?? ''}</button>
+                                                            <button
+                                                                onClick={() => handleReact(problem.id, 'dislike')}
+                                                                title="Dislike"
+                                                                style={{ color: reactions[problem.id]?.myReaction === 'dislike' ? '#ef4444' : 'var(--color-muted-text)', background: 'none', border: 'none', cursor: 'pointer', padding: '2px 4px', fontSize: '0.75rem', fontWeight: 600 }}
+                                                            >👎 {reactions[problem.id]?.dislikes ?? ''}</button>
+                                                        </div>
                                                         <span className={`text-xs px-2.5 py-0.5 rounded-full font-semibold ${dc.classes}`}>
                                                             {dc.label}
                                                         </span>

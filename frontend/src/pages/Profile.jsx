@@ -169,7 +169,7 @@ function SkillBar({ label, pct, color }) {
 /* ════════════════════════════════════════════
    LINK ROW
    ════════════════════════════════════════════ */
-function LinkRow({ label, href, color }) {
+function LinkRow({ label, href, color, icon: Icon }) {
     const [hov, setHov] = useState(false);
     if (!href) return (
         <div style={{ padding: '10px 14px', borderRadius: 12, color: 'var(--color-muted-text)', fontSize: '0.8rem', fontStyle: 'italic', background: 'var(--color-surface-hover)' }}>
@@ -188,7 +188,7 @@ function LinkRow({ label, href, color }) {
                 transition: 'all 0.2s',
             }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                <div style={{ width: 8, height: 8, borderRadius: '50%', background: color, flexShrink: 0 }} />
+                {Icon ? <Icon size={16} style={{ color: hov ? color : 'var(--color-primary-text)', transition: 'color 0.2s', flexShrink: 0 }} /> : <div style={{ width: 8, height: 8, borderRadius: '50%', background: color, flexShrink: 0 }} />}
                 <span style={{ fontSize: '0.85rem', fontWeight: 600, color: hov ? color : 'var(--color-primary-text)' }}>{label}</span>
             </div>
             <ArrowUpRight size={14} style={{ color: hov ? color : 'var(--color-muted-text)', transition: 'color 0.2s' }} />
@@ -280,6 +280,7 @@ export default function Profile() {
     const [saveLoading, setSaveLoading] = useState(false);
     const [resumeLoading, setResumeLoading] = useState(false);
     const [activeTab, setActiveTab] = useState('overview');
+    const [stats, setStats] = useState(null);
     const fileRef = useRef(null);
     const resumeRef = useRef(null);
 
@@ -311,6 +312,32 @@ export default function Profile() {
                 .catch(() => setActivityData([]));
         }
     }, [user?.id, apiCall]);
+
+    // Fetch profile stats
+    useEffect(() => {
+        const fetchStats = async () => {
+            try {
+                const token = localStorage.getItem('access_token');
+                if (!token) return;
+                
+                setStatsLoading(true);
+                const res = await fetch(`${import.meta.env.VITE_API_URL}/profile/stats`, {
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+                if (!res.ok) throw new Error('Failed to fetch stats');
+                const data = await res.json();
+                setStats(data);
+            } catch (err) {
+                console.error('Failed to fetch profile stats:', err);
+                // Fallback to profileStats from context if API fails
+                if (profileStats) setStats(profileStats);
+            } finally {
+                setStatsLoading(false);
+            }
+        };
+        
+        fetchStats();
+    }, [profileStats]);
 
     const set = (key, val) => setForm(f => ({ ...f, [key]: val }));
 
@@ -367,7 +394,7 @@ export default function Profile() {
 
     const dp = form; // display profile
     const initials = dp.name?.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase() || 'U';
-    const stats = profileStats;
+    const displayStats = stats || profileStats || { xp: 0, level: 1, streak: 0, rank: '—', courses_completed: 0, problems_solved: 0 };
 
     const memberYear = user?.id
         ? (profileData?.created_at ? new Date(profileData.created_at).getFullYear() : new Date().getFullYear())
@@ -520,18 +547,18 @@ export default function Profile() {
 
                         {/* XP bar */}
                         <div style={{ marginTop: 24, paddingTop: 20, borderTop: '1px solid var(--color-border)' }}>
-                            <XpBar xp={stats.xp} level={stats.level} />
+                            <XpBar xp={displayStats.xp} level={displayStats.level} />
                         </div>
                     </div>
                 </div>
 
                 {/* ━━━━━━━ STAT ROW ━━━━━━━ */}
                 <div className="profile-fade-in-delay" style={{ display: 'flex', gap: 12, marginBottom: 24, flexWrap: 'wrap' }}>
-                    <StatPill icon={Zap} value={stats.xp} label="XP" color={accent.amber} />
-                    <StatPill icon={Flame} value={stats.streak > 0 ? `${stats.streak}d` : '0d'} label="Streak" color={accent.rose} />
-                    <StatPill icon={Trophy} value={stats.rank != null ? `#${stats.rank}` : '—'} label="Rank" color={accent.indigo} />
-                    <StatPill icon={BookOpen} value={stats.courses_completed} label="Courses" color={accent.cyan} />
-                    <StatPill icon={CheckCircle} value={stats.problems_solved} label="Solved" color={accent.green} />
+                    <StatPill icon={Zap} value={displayStats.xp} label="XP" color={accent.amber} />
+                    <StatPill icon={Flame} value={displayStats.streak > 0 ? `${displayStats.streak}d` : '0d'} label="Streak" color={accent.rose} />
+                    <StatPill icon={Trophy} value={displayStats.rank != null ? `#${displayStats.rank}` : '—'} label="Rank" color={accent.indigo} />
+                    <StatPill icon={BookOpen} value={displayStats.courses_completed} label="Courses" color={accent.cyan} />
+                    <StatPill icon={CheckCircle} value={displayStats.problems_solved} label="Solved" color={accent.green} />
                 </div>
 
                 {/* ━━━━━━━ TAB BAR ━━━━━━━ */}
@@ -622,8 +649,8 @@ export default function Profile() {
                                         <InlineInput value={form.linkedin || ''} onChange={e => set('linkedin', e.target.value)} placeholder="LinkedIn profile URL" />
                                     </div>
                                     : <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-                                        <LinkRow label="GitHub" href={dp.github} color="#333" />
-                                        <LinkRow label="LinkedIn" href={dp.linkedin} color="#0077b5" />
+                                        <LinkRow label="GitHub" href={dp.github} color="#333333" icon={Github} />
+                                        <LinkRow label="LinkedIn" href={dp.linkedin} color="#0077b5" icon={Linkedin} />
                                     </div>
                                 }
                             </SectionCard>

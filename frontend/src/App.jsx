@@ -1,4 +1,4 @@
-import React, { useState, Suspense } from 'react';
+import React, { useState, useEffect, useRef, Suspense } from 'react';
 import { BrowserRouter as Router, Routes, Route, useNavigate, useLocation, useParams, Outlet, Navigate } from 'react-router-dom';
 import { Layers, Zap, Sun, Moon } from 'lucide-react';
 
@@ -30,6 +30,19 @@ function Navigation() {
     const navigate = useNavigate();
     const location = useLocation();
     const [showProfileMenu, setShowProfileMenu] = useState(false);
+    const profileMenuRef = useRef(null);
+
+    // Close dropdown when clicking anywhere outside
+    useEffect(() => {
+        if (!showProfileMenu) return;
+        const handleClickOutside = (e) => {
+            if (profileMenuRef.current && !profileMenuRef.current.contains(e.target)) {
+                setShowProfileMenu(false);
+            }
+        };
+        document.addEventListener('mousedown', handleClickOutside);
+        return () => document.removeEventListener('mousedown', handleClickOutside);
+    }, [showProfileMenu]);
 
     const getInitials = (name) => {
         return name
@@ -115,9 +128,9 @@ function Navigation() {
                                 <span className="font-mono font-bold text-xs">{userPoints} XP</span>
                             </div>
 
-                            <div className="relative">
+                            <div className="relative" ref={profileMenuRef}>
                                 <button
-                                    onClick={() => setShowProfileMenu(!showProfileMenu)}
+                                    onClick={() => setShowProfileMenu(prev => !prev)}
                                     className="w-10 h-10 rounded-full flex items-center justify-center font-bold shadow-lg hover:ring-2 transition-all"
                                     style={{
                                         backgroundColor: isDark ? '#ffffff' : '#000000',
@@ -129,15 +142,13 @@ function Navigation() {
 
                                 {/* Profile Dropdown */}
                                 {showProfileMenu && (
-                                    <>
-                                        <div className="fixed inset-0 z-40" onClick={() => setShowProfileMenu(false)}></div>
-                                        <div
-                                            className="absolute right-0 top-12 w-48 rounded-xl shadow-2xl py-2 z-50"
-                                            style={{
-                                                backgroundColor: 'var(--color-surface)',
-                                                border: '1px solid var(--color-border)'
-                                            }}
-                                        >
+                                    <div
+                                        className="absolute right-0 top-12 w-48 rounded-xl shadow-2xl py-2 z-50"
+                                        style={{
+                                            backgroundColor: 'var(--color-surface)',
+                                            border: '1px solid var(--color-border)'
+                                        }}
+                                    >
                                             <div className="px-4 py-2 mb-1" style={{ borderBottom: '1px solid var(--color-border)' }}>
                                                 <p className="text-sm font-bold truncate" style={{ color: 'var(--color-primary-text)' }}>{user.name}</p>
                                                 <p className="text-xs truncate" style={{ color: 'var(--color-muted-text)' }}>{user.handle || user.email}</p>
@@ -182,8 +193,7 @@ function Navigation() {
                                             >About Us</div>
                                             <div className="h-px my-1" style={{ backgroundColor: 'var(--color-border)' }}></div>
                                             <button onClick={() => { logout(); navigate('/'); }} className="w-full text-left px-4 py-2 text-sm text-red-500 hover:bg-red-500/10 transition-colors">Sign Out</button>
-                                        </div>
-                                    </>
+                                    </div>
                                 )}
                             </div>
                         </>
