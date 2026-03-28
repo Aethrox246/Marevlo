@@ -100,9 +100,9 @@ const ZoomableImage = ({ src, alt }) => {
   );
 };
 
-/* ── Performance Optimization: Memoized HTML Content ── */
+/* ── Performance Optimization: Memoized HTML Content with Enhanced Styling ── */
 const MemoizedProseContent = memo(({ html, innerRef }) => {
-  // Supported IDE tag names → language id
+  // Supported IDE tag names -> language id
   const IDE_TAGS = { python: 'python', sql: 'sql', code: 'code', javascript: 'javascript' };
 
   const getText = (node) => {
@@ -111,29 +111,136 @@ const MemoizedProseContent = memo(({ html, innerRef }) => {
     return '';
   };
 
+  // Check if text contains keywords for callout boxes
+  const isCalloutText = (text) => {
+    const lower = text.toLowerCase();
+    if (lower.startsWith('tip:') || lower.startsWith('pro tip:')) return 'tip';
+    if (lower.startsWith('warning:') || lower.startsWith('caution:')) return 'warning';
+    if (lower.startsWith('note:') || lower.startsWith('info:')) return 'info';
+    if (lower.startsWith('important:')) return 'important';
+    return null;
+  };
+
   const options = {
     replace: (domNode) => {
       // 1. Handle IDE Tags (matches actual <python> tags)
       const lang = IDE_TAGS[domNode.name];
       if (lang) {
         const codeContent = (domNode.children || []).map(getText).join('').trim();
-        return <InteractiveCodeBlock initialCode={codeContent} language={lang} key={codeContent.slice(0, 20)} />;
+        return (
+          <div className="animate-fade-in-up" style={{ animationDelay: '0.1s' }}>
+            <InteractiveCodeBlock initialCode={codeContent} language={lang} key={codeContent.slice(0, 20)} />
+          </div>
+        );
       }
 
       // 2. Clear out raw marker strings that were converted to text (e.g. <python> or </python>)
-      // This often happens in mammoth conversion when using text-based markers.
       if (domNode.type === 'tag' && domNode.name === 'p') {
         const text = getText(domNode).trim().toLowerCase();
         const isMarker = text === '<python>' || text === '</python>' || 
                         text === '<code>' || text === '</code>' ||
                         text === '<sql>' || text === '</sql>';
-        if (isMarker) return <></>; // Don't render marker-only paragraphs
+        if (isMarker) return <></>;
+        
+        // Convert callout paragraphs to styled callout boxes
+        const calloutType = isCalloutText(text);
+        if (calloutType) {
+          const calloutIcons = {
+            tip: { icon: '💡', color: '#10b981', bg: 'rgba(16, 185, 129, 0.08)' },
+            warning: { icon: '⚠️', color: '#f59e0b', bg: 'rgba(245, 158, 11, 0.08)' },
+            info: { icon: 'ℹ️', color: '#6366f1', bg: 'rgba(99, 102, 241, 0.08)' },
+            important: { icon: '🔥', color: '#ef4444', bg: 'rgba(239, 68, 68, 0.08)' },
+          };
+          const config = calloutIcons[calloutType];
+          return (
+            <div 
+              className="callout-box animate-fade-in-up" 
+              style={{ 
+                background: config.bg,
+                borderColor: `${config.color}33`,
+                borderLeft: `4px solid ${config.color}`,
+                animationDelay: '0.15s'
+              }}
+            >
+              <span className="absolute left-4 top-4 text-xl">{config.icon}</span>
+              <div className="pl-8">
+                {domToReact(domNode.children)}
+              </div>
+            </div>
+          );
+        }
       }
 
-      // 3. Handle Zoomable Images
+      // 3. Handle Zoomable Images with animation
       if (domNode.name === 'img') {
         const { src, alt } = domNode.attribs;
-        return <ZoomableImage src={src} alt={alt || 'Course graphic'} key={src?.slice(0, 30)} />;
+        return (
+          <div className="animate-scale-in" style={{ animationDelay: '0.2s' }}>
+            <ZoomableImage src={src} alt={alt || 'Course graphic'} key={src?.slice(0, 30)} />
+          </div>
+        );
+      }
+
+      // 4. Enhanced headings with visual decorations
+      if (domNode.name === 'h2') {
+        return (
+          <h2 
+            className="animate-fade-in-left group cursor-pointer" 
+            style={{ animationDelay: '0.1s' }}
+            id={getText(domNode).toLowerCase().replace(/\s+/g, '-').slice(0, 40)}
+          >
+            <span className="group-hover:text-indigo-500 transition-colors">
+              {domToReact(domNode.children)}
+            </span>
+          </h2>
+        );
+      }
+
+      if (domNode.name === 'h3') {
+        return (
+          <h3 
+            className="animate-fade-in-left" 
+            style={{ animationDelay: '0.15s' }}
+          >
+            {domToReact(domNode.children)}
+          </h3>
+        );
+      }
+
+      // 5. Enhanced lists
+      if (domNode.name === 'ul' || domNode.name === 'ol') {
+        return React.createElement(
+          domNode.name,
+          { className: 'animate-fade-in-up', style: { animationDelay: '0.2s' } },
+          domToReact(domNode.children, options)
+        );
+      }
+
+      // 6. Enhanced blockquotes
+      if (domNode.name === 'blockquote') {
+        return (
+          <blockquote 
+            className="animate-fade-in-right content-section-card" 
+            style={{ 
+              animationDelay: '0.15s',
+              borderLeft: '4px solid #6366f1',
+              paddingLeft: '1.5rem',
+              fontStyle: 'italic',
+              background: 'linear-gradient(135deg, rgba(99, 102, 241, 0.05) 0%, rgba(139, 92, 246, 0.03) 100%)'
+            }}
+          >
+            {domToReact(domNode.children)}
+          </blockquote>
+        );
+      }
+
+      // 7. Enhanced tables
+      if (domNode.name === 'table') {
+        return (
+          <div className="animate-scale-in overflow-x-auto" style={{ animationDelay: '0.2s' }}>
+            <table>{domToReact(domNode.children, options)}</table>
+          </div>
+        );
       }
     }
   };
@@ -141,7 +248,7 @@ const MemoizedProseContent = memo(({ html, innerRef }) => {
   return (
     <div
       ref={innerRef}
-      className="prose-content prose-card selectable-text"
+      className="prose-content prose-card selectable-text prose-content-animated"
     >
       {parse(html, options)}
     </div>
