@@ -1,1 +1,215 @@
-<p><strong>Module5—DataPipelines:Dataset, DataLoader,Performance</strong></p><p><strong>BuildPipelinesThatAreNevertheBottleneck</strong></p><p>PyTorchforDataScience</p><p><strong>ModuleGoal:</strong>Buildefficient,production-gradedatapipelinesinPyTorch.Un-derstandwhentouseDatasetvsIterableDataset,writesmartcollatefunctions forvariable-lengthsequences,andtuneyourDataLoadersoit’sneverthetraining bottleneck.EndwithalogdatasetloaderbuiltforAIOps.</p><p><strong>1.DatasetvsIterableDataset</strong></p><p><strong>TheTwoModesofDataLoading</strong></p><table><tr><td></td><td><p>Dataset</p></td><td><p>IterableDataset</p></td></tr><tr><td rowspan="5"><p><strong>Access pat-</strong><br /><strong>tern </strong><br /><strong>Must </strong><br /><strong>know </strong><br /><strong>length? Shuf-</strong><br /><strong>fling </strong><br /><strong>Best </strong><br /><strong>for</strong></p></td><td><p>Randomaccessvia</p></td><td><p>Sequentialstream</p></td></tr><tr><td><p>__getitem__(i)</p></td><td rowspan="2"><p>No</p></td></tr><tr><td><p>Yes(__len__required)</p></td></tr><tr><td rowspan="2"><p>Free—DataLoaderhandles it <br />Filesondisk,databases, <br />in-memorydata</p></td><td><p>Mustimplementmanually</p></td></tr><tr><td><p>Streaminglogs,largefiles,networkdata</p></td></tr></table><p>1</p><p><strong>Real-WorldAnalogy</strong></p><p>Datasetislikea<strong>library</strong>—youcanwalktoanyshelfandgrabbooknumber247.</p><p>IterableDatasetislikea<strong>conveyorbelt</strong>—itemscometoyouinorder,andyouprocess themastheyarrive.</p><p><strong>Map-StyleDataset</strong></p><table><tr><td><p>importtorch <br />fromtorch.utils.dataimportDataset,DataLoader importnumpyasnp</p></td></tr></table><table><tr><td colspan="2"><p><strong>class</strong>TabularDataset(Dataset): <br />""" <br />AreusableDatasetfortabulardatastoredastensorsornumpyarrays. Appliesoptionalper-featurenormalisation.</p><p>"""</p><p><strong>def</strong>__init__(self,X:torch.Tensor,y:torch.Tensor,transform=None): 	<strong>assert</strong>len(X)==len(y),"Xandymusthavethesamenumberofsamples"</p></td></tr><tr><td><p>self.X</p></td><td><p>=X.float()</p></td></tr><tr><td><p>self.y</p></td><td><p>=y</p></td></tr><tr><td colspan="2"><p>self.transform=transform</p></td></tr></table><table><tr><td><p><strong>def</strong>__len__(self)-&gt;int: <br />	<strong>return</strong>len(self.X)</p></td></tr></table><table><tr><td><p><strong>def</strong>__getitem__(self,idx:int): 	x=self.X[idx] <br />	<strong>if</strong>self.transform: <br />	x=self.transform(x) 	<strong>return</strong>x,self.y[idx]</p></td></tr></table><table><tr><td><p>#Usage <br />torch.manual_seed(42) <br />X_raw=torch.randn(1000,8) <br />y_raw=(X_raw[:,0]+X_raw[:,1]&gt;0).long()</p></td></tr></table><p>dataset=TabularDataset(X_raw,y_raw)</p><p>2</p><table><tr><td><p>print(f"Datasetlength:{len(dataset)}") <br />print(f"Sample0:Xshape={dataset[0][0].shape},y={dataset[0][1].item()}")</p></td></tr></table><p>Datasetlength:1000 <br />Sample0:Xshape=torch.Size([8]),y=1</p><p><strong>IterableDataset—ForLargeLogFiles</strong></p><table><tr><td><p>fromtorch.utils.dataimportIterableDataset importitertools</p></td></tr></table><table><tr><td colspan="4"><p><strong>class</strong>LogFileDataset(IterableDataset): <br />""" <br />StreamsloglinesfromoneormorefileswithoutloadingeverythingintoRAM. Yields(token_ids,label)tuples.</p><p>Eachlineisaspace-separatedsequenceoftokenIDsfollowedbyalabel.</p><p>"""</p><p><strong>def</strong>__init__(self,filepaths:list,max_seq_len:int=64):</p></td></tr><tr><td colspan="2"><p>self.filepaths</p></td><td colspan="2"><p>=filepaths</p></td></tr><tr><td colspan="4"><p>	self.max_seq_len=max_seq_len <br /><strong>def</strong>_parse_line(self,line:str): <br />	tokens=list(map(int,line.strip().split()))</p></td></tr><tr><td><p>label</p></td><td colspan="3"><p>=tokens[-1]</p></td></tr><tr><td><p>seq</p></td><td colspan="2"><p>=tokens[:-1][:self.max_seq_len]</p></td><td><p>#Truncatetomax_seq_len</p></td></tr><tr><td colspan="4"><p><strong>return</strong>torch.tensor(seq,dtype=torch.long),label</p></td></tr></table><table><tr><td><p><strong>def</strong>__iter__(self): <br />worker_info=torch.utils.data.get_worker_info() files=self.filepaths</p></td></tr></table><table><tr><td><p>#Distributefilesacrossworkersifmulti-workerloading <strong>if</strong>worker_info<strong>isnot</strong>None: <br />files=[f<strong>for</strong>i,f<strong>in</strong>enumerate(files) <br />	<strong>if</strong>i%worker_info.num_workers==worker_info.id]</p></td></tr></table><table><tr><td><p><strong>for</strong>filepath<strong>in</strong>files: <br /><strong>with</strong>open(filepath,'r')asf: 	<strong>for</strong>line<strong>in</strong>f:</p></td></tr></table><p>3</p><table><tr><td><p><strong>if</strong>line.strip(): <br />	<strong>yield</strong>self._parse_line(line)</p></td></tr></table><table><tr><td colspan="2"><p>#Simulatewritingafakelogfilefordemonstration importtempfile,os</p><p>fake_log=tempfile.NamedTemporaryFile(mode='w',suffix='.txt',delete=False) <strong>for</strong>i<strong>in</strong>range(200):</p></td></tr><tr><td><p>seq</p></td><td><p>=''.join([str(np.random.randint(1,50))<strong>for</strong>_<strong>in</strong>range(np.random.randint(5,20))</p></td></tr><tr><td><p>label</p></td><td><p>=np.random.randint(0,2)</p></td></tr><tr><td colspan="2"><p>	fake_log.write(f"{seq}{label}\n") <br />fake_log.close()</p></td></tr></table><table><tr><td colspan="2"><p>log_ds=LogFileDataset([fake_log.name],max_seq_len=16) #Can'tuseshuffle=TruewithIterableDataset <br />log_dl=DataLoader(log_ds,batch_size=8,collate_fn=None)</p><p>sample_seq,sample_label=next(iter(log_ds)) print(f"Samplesequence:{sample_seq}")</p></td></tr><tr><td><p>print(f"Samplelabel:</p></td><td><p>{sample_label}")</p></td></tr><tr><td><p>print(f"Seqlength:</p></td><td><p>{len(sample_seq)}")</p></td></tr></table><table><tr><td colspan="2"><p>os.unlink(fake_log.name)</p></td><td rowspan="4"><p>1,34,34,</p></td><td rowspan="4"><p>2,49,32,15,38])</p></td></tr><tr><td colspan="2"><p>Samplesequence:tensor([7,35,22,45,</p></td></tr><tr><td><p>Samplelabel:</p></td><td><p>0</p></td></tr><tr><td><p>Seqlength:</p></td><td><p>12</p></td></tr><tr><td colspan="4"></td></tr></table><p><strong>2.CollateFunctions—HandlingVariable-LengthSequences </strong><br /><strong>TheProblem </strong><br />By default, DataLoader tries to stack samples into a single tensor.This works when all samples havethesameshape.Butlogsequences,text,ortime-serieswindowsoftenhave<strong>variable length</strong>—stackingfails.</p><p>4</p><table><tr><td><p>#ThisFAILSbecausesequenceshavedifferentlengths sequences=[ <br />	torch.tensor([1,2,3]), <br />	torch.tensor([4,5]), <br />	torch.tensor([6,7,8,9]) <br />]</p></td></tr></table><table><tr><td><p><strong>try</strong>: <br />	torch.stack(sequences) <br /><strong>except</strong>RuntimeErrorase: <br />	print("Error:",e)</p></td></tr></table><p>Error:stackexpectseachtensortobeequalsize,butgot[3]atentry0and[2]atentry1</p><p><strong>PaddingCollateFunction</strong></p><table><tr><td><p>fromtorch.nn.utils.rnnimportpad_sequence</p></td></tr></table><table><tr><td colspan="4"><p><strong>def</strong>collate_variable_length(batch): <br />""" <br />Collateabatchof(sequence,label)tupleswithvariable-lengthsequences. Padssequencestothelongestinthebatch.</p><p>Returns: <br />	sequences:(B,T_max)paddedtensor</p></td></tr><tr><td colspan="2"><p>lengths:</p></td><td><p>(B,)</p></td><td><p>originallengths(neededbyLSTM)</p></td></tr><tr><td colspan="2"><p>labels:</p></td><td><p>(B,)</p></td><td><p>labels</p></td></tr><tr><td colspan="4"><p>""" <br />sequences,labels=zip(*batch)</p></td></tr><tr><td><p>lengths</p></td><td colspan="3"><p>=torch.tensor([len(s)<strong>for</strong>s<strong>in</strong>sequences])</p></td></tr><tr><td><p>padded</p></td><td colspan="3"><p>=pad_sequence(sequences,batch_first=True,padding_value=0)</p></td></tr><tr><td><p>labels</p></td><td colspan="3"><p>=torch.tensor(labels)</p></td></tr></table><table><tr><td colspan="2"><p><strong>return</strong>padded,lengths,labels</p><p>#Testit</p><p>batch=[</p></td></tr><tr><td><p>(torch.tensor([1,2,3]),</p></td><td><p>0),</p></td></tr></table><p>5</p><table><tr><td colspan="2"><p>(torch.tensor([4,5]),</p></td><td><p>1),</p></td></tr><tr><td colspan="3"><table><tr><td><p>]</p></td><td><p>(torch.tensor([6,7,8,9]),0),</p></td></tr></table><p>padded,lengths,labels=collate_variable_length(batch) print("Paddedsequences:\n",padded) <br />print("Originallengths:",lengths)</p></td></tr><tr><td><p>print("Labels:</p></td><td colspan="2"><p>",labels)</p></td></tr><tr><td colspan="3"><p>Paddedsequences: <br />	tensor([[1,2,3,0], <br />		[4,5,0,0], <br />		[6,7,8,9]]) <br />Originallengths:tensor([3,2,4])</p></td></tr><tr><td><p>Labels:</p></td><td colspan="2"><p>tensor([0,1,0])</p></td></tr></table><p><strong>Truncate+PadCollateforFixedBucketSize</strong></p><table><tr><td colspan="2"><p><strong>def</strong>make_collate_fn(max_len:int=32,pad_value:int=0): <br />	"""Returnsacollate_fnthattruncatestomax_lenthenpads."""</p><p><strong>def</strong>collate(batch): <br />sequences,labels=zip(*batch) <br />truncated=[s[:max_len]<strong>for</strong>s<strong>in</strong>sequences]</p></td></tr><tr><td><p>lengths</p></td><td><p>=torch.tensor([len(s)<strong>for</strong>s<strong>in</strong>truncated])</p></td></tr><tr><td><p>padded</p></td><td><p>=pad_sequence(truncated,batch_first=True,padding_value=pad_value)</p></td></tr><tr><td colspan="2"><p><strong>return</strong>padded,lengths,torch.tensor(labels)</p></td></tr></table><table><tr><td><p><strong>return</strong>collate</p></td></tr></table><table><tr><td><p>#UseinDataLoader <br />collate_fn=make_collate_fn(max_len=16)</p></td></tr></table><p>6</p><p><strong>3.DataLoaderPerformance </strong><br /><strong>KeyParameters</strong></p><table><tr><td><p>#Buildadatasetforperformancetesting</p></td></tr></table><p>dataset=TabularDataset(torch.randn(50000,128),torch.randint(0,10,(50000,)))</p><table><tr><td><p>#Default—slow(singleprocess,noprefetch) slow_dl=DataLoader(dataset,batch_size=256)</p></td></tr></table><table><tr><td colspan="2"><p>#Optimised</p><p>#Usenum_workers=0onWindows;setto4+onLinux/Macserversforrealspeedups.</p><p>importplatform <br />n_workers=0<strong>if</strong>platform.system()=="Windows"<strong>else</strong>4</p><p>fast_dl=DataLoader( <br />dataset, <br />batch_size=256,</p></td></tr><tr><td><p>num_workers=n_workers,</p></td><td><p>#0onWindowsnotebooks;4+onLinux/Mac</p></td></tr><tr><td><p>pin_memory=False,</p></td><td><p>#TrueonlywhenaGPUisavailable</p></td></tr><tr><td colspan="2"><table><tr><td><p>)</p></td><td><p>shuffle=True</p></td></tr></table></td></tr></table><p>#NOTE:OnWindows,num_workers&gt;0requiresa__main__guard(doesn'tworkinnotebooks).</p><table><tr><td><p>print("FastDataLoaderconfigured.") <br />print(f"Estimatedbatchesperepoch:{len(fast_dl)}")</p></td></tr></table><p>FastDataLoaderconfigured.</p><p>Estimatedbatchesperepoch:196 <br /><strong>TimingComparison</strong></p><table><tr><td colspan="2"><p>importtime <br /><strong>def</strong>time_dataloader(dl,n_batches=50): <br />	start=time.time() <br />	<strong>for</strong>i,(X,y)<strong>in</strong>enumerate(dl):</p></td></tr><tr><td><p>_=X.shape</p></td><td><p>#Simulateminimalprocessing</p></td></tr><tr><td colspan="2"><p><strong>if</strong>i&gt;=n_batches:</p></td></tr></table><p>7</p><table><tr><td><p><strong>break </strong><br /><strong>return</strong>time.time()-start</p></td></tr></table><table><tr><td colspan="3"><p>slow_time=time_dataloader(slow_dl) fast_time=time_dataloader(fast_dl)</p><p>print(f"Single-workertime(50batches):{slow_time:.3f}s")</p></td></tr><tr><td colspan="2"><p>print(f"Multi-workertime</p></td><td><p>(50batches):{fast_time:.3f}s")</p></td></tr><tr><td colspan="3"><p>print(f"Speedup:{slow_time/fast_time:.1f}x")</p><p>Single-workertime(50batches):0.098s</p></td></tr><tr><td><p>Multi-workertime</p></td><td colspan="2"><p>(50batches):0.089s</p></td></tr><tr><td colspan="3"><p>Speedup:1.1x</p></td></tr></table><p><strong>TuningGuidelines</strong></p><table><tr><td><p>Parameter</p></td><td><p>Recommendation</p></td></tr></table><p>num_workers <br />pin_memory <br />prefetch_factor <br />persistent_workers batch_size</p><p>Startwith4;tuneuptocpu_count()//2 <br />TrueiftrainingonGPU,FalseforCPU <br />2(default);increaseifGPUutilisationdipsbetween batches <br />Trueforlargedatasetstoavoidworkerrespawn overhead <br />LargestsizethatfitsinGPUmemory;powersof2 (64,128,256)</p><table><tr><td><table><tr><td><p>Exclamation-TriangleWarning</p></td></tr></table></td></tr></table><table><tr><td><p><strong>pin_memory=TruewithCPU-onlytraining</strong> will slightly slow things down.Only enable itwhenyouaremovingtensorstoaGPU.</p></td></tr></table><p>8</p><p><strong>4.StreamingLargeDatasets </strong><br /><strong>TheMemoryProblem </strong><br />Alargelogfile(100GB+)cannotbeloadedintoRAM.Solutions: 	1.<strong>IterableDataset</strong>—streamlinebyline.</p><p>2.<strong>Memory-mappedfiles</strong>—np.memmaportorch.frombufferforbinarydata. 3.<strong>ChunkedHDF5/Parquet</strong>—loadoneshardatatime.</p><p>importstruct</p><table><tr><td colspan="2"><p>#Memory-mappedbinarydataset <br /><strong>class</strong>BinarySequenceDataset(Dataset): <br />	""" <br />	Readsfixed-lengthsequencesfromabinaryfileusingmemorymapping. 	Format:eachrecord=[n_tokensint32][tokensint32*seq_len][labelint32] 	"""</p><p><strong>def</strong>__init__(self,filepath:str,seq_len:int,dtype=np.float32):</p></td></tr><tr><td><p>self.seq_len</p></td><td><p>=seq_len</p></td></tr><tr><td><p>self.data</p></td><td><p>=np.memmap(filepath,dtype=dtype,mode='r')</p></td></tr><tr><td colspan="2"><p>self.n_samples=len(self.data)//(seq_len+1)</p></td></tr></table><table><tr><td colspan="4"><p><strong>def</strong>__len__(self): <br />	<strong>return</strong>self.n_samples</p><p><strong>def</strong>__getitem__(self,idx): <br />	start=idx*(self.seq_len+1)</p></td></tr><tr><td colspan="2"><p>row</p></td><td colspan="2"><p>=self.data[start:start+self.seq_len+1]</p></td></tr><tr><td colspan="2"><p>x</p></td><td colspan="2"><p>=torch.tensor(row[:-1],dtype=torch.float32)</p></td></tr><tr><td colspan="2"><p>y</p></td><td colspan="2"><p>=int(row[-1])</p></td></tr><tr><td colspan="4"><p><strong>return</strong>x,y</p><p>#Writeafakebinaryfile—tempfileworksonallplatforms(Windows,Linux,Mac)</p><p>importtempfile,os</p><p>n,seq=5000,16</p></td></tr><tr><td><p>arr</p></td><td colspan="3"><p>=np.random.randn(n*(seq+1)).astype(np.float32)</p></td></tr><tr><td colspan="3"><p>arr[seq::seq+1]=np.random.randint(0,2,n).astype(np.float32)</p></td><td><p>#Labels</p></td></tr></table><p><strong>with</strong>tempfile.NamedTemporaryFile(suffix='.dat',delete=False)asf:</p><p>9</p><table><tr><td colspan="3"><p>fake_path=f.name <br />arr.tofile(f)</p></td></tr><tr><td><p>bin_ds</p></td><td colspan="2"><p>=BinarySequenceDataset(fake_path,seq_len=seq)</p></td></tr><tr><td><p>bin_dl</p></td><td colspan="2"><p>=DataLoader(bin_ds,batch_size=128,num_workers=0)</p></td></tr><tr><td colspan="3"><p>X_b,y_b=next(iter(bin_dl)) <br />print(f"Memory-mappeddataset:{len(bin_ds)}samples") print(f"Batchshapes:X={X_b.shape},yshape={len(y_b)}")</p><p>#Windowsrequiresclosingthememmapbeforedeletingthefile</p></td></tr><tr><td colspan="2"><p><strong>del</strong>bin_ds,bin_dl</p></td><td><p>#Releasememmaphandle</p></td></tr><tr><td colspan="3"><p>os.unlink(fake_path)</p></td></tr></table><p>Memory-mappeddataset:5000samples <br />Batchshapes:X=torch.Size([128,16]),yshape=128</p><p><strong>5.DataLeakageandSplitStrategies </strong><br /><strong>TheGoldenRule</strong></p><p><strong>Fitnothingontestdata. imputer.</strong></p><p><strong>Notthescaler,nottheencoder,notthe</strong></p><table><tr><td colspan="2"><p>fromtorch.utils.dataimportrandom_split,Subset <br />#Strategy1:Randomsplit(tabular,i.i.d.data) <br />dataset=TabularDataset(torch.randn(1000,8),torch.randint(0,2,(1000,)))</p></td></tr><tr><td><p>n</p></td><td><p>=len(dataset)</p></td></tr><tr><td colspan="2"><p>train_ds,val_ds,test_ds=random_split( <br />	dataset, <br />	[int(0.7*n),int(0.15*n),n-int(0.7*n)-int(0.15*n)], <br />	generator=torch.Generator().manual_seed(42) <br />) <br />print(f"Randomsplit—Train:{len(train_ds)},Val:{len(val_ds)},Test:{len(test_ds)}")</p><p>#Strategy2:Temporalsplit(timeseries—NEVERshuffle!)</p></td></tr><tr><td><p>n_ts</p></td><td><p>=1000</p></td></tr><tr><td colspan="2"><p>indices=list(range(n_ts))</p></td></tr></table><p>10</p><table><tr><td colspan="2"><p>train_idx=indices[:700]</p></td></tr><tr><td><p>val_idx</p></td><td><p>=indices[700:850]</p></td></tr><tr><td><p>test_idx</p></td><td><p>=indices[850:]</p></td></tr><tr><td colspan="2"><p>train_ts=Subset(dataset,train_idx)</p></td></tr><tr><td><p>val_ts</p></td><td><p>=Subset(dataset,val_idx)</p></td></tr><tr><td><p>test_ts</p></td><td><p>=Subset(dataset,test_idx)</p></td></tr><tr><td colspan="2"><p>print(f"Temporalsplit—Train:{len(train_ts)},Val:{len(val_ts)},Test:{len(test_ts)}")</p></td></tr></table><p>Randomsplit—Train:700,Val:150,Test:150 Temporalsplit—Train:700,Val:150,Test:150</p><table><tr><td colspan="7"><p>#Correctnormalisation—fitONLYontrain,applytoall X_full=torch.randn(1000,8) <br />train_X=X_full[:700]</p></td></tr><tr><td colspan="2"><p>val_X</p></td><td colspan="5"><p>=X_full[700:850]</p></td></tr><tr><td colspan="2"><p>test_X</p></td><td colspan="5"><p>=X_full[850:]</p></td></tr><tr><td colspan="7"><p>#FitstatsonTRAINonly <br />mean=train_X.mean(dim=0)</p></td></tr><tr><td><p>std</p></td><td colspan="6"><p>=train_X.std(dim=0)</p></td></tr><tr><td colspan="7"><p>std[std&lt;1e-6]=1.0 <br />#Applytoallsplits <br />train_X_norm=(train_X-mean)/std</p></td></tr><tr><td colspan="3"><p>val_X_norm</p></td><td><p>=(val_X</p></td><td><p>-mean)/std</p></td><td colspan="2"><p>#←usetrainstats,notvalstats</p></td></tr><tr><td colspan="3"><p>test_X_norm</p></td><td><p>=(test_X</p></td><td><p>-mean)/std</p></td><td colspan="2"><p>#←usetrainstats,notteststats</p></td></tr><tr><td colspan="7"><p>print("Normalisationappliedusingtrain-setstatisticsonly.")</p></td></tr><tr><td colspan="3"><p>print(f"Val</p></td><td colspan="4"><p>mean(not0,that'sfine):{val_X_norm.mean(0)[:3].round(decimals=3)}")</p></td></tr><tr><td colspan="7"><p>Normalisationappliedusingtrain-setstatisticsonly.</p></td></tr><tr><td><p>Val</p></td><td colspan="5"><p>mean(not0,that'sfine):tensor([-0.0200,-0.0360,</p></td><td><p>0.0920])</p></td></tr><tr><td colspan="7"></td></tr></table><table><tr><td><table><tr><td><p>ExclamationImportant</p></td></tr></table></td></tr></table><table><tr><td><p><strong>Dataleakagechecklist:</strong>-Nevercomputemean/std/quantilesonthefulldatasetbefore splitting.-Neverincludefutureinformationintime-seriesfeatures.-Neverletvalidation samplesinfluencetrainingaugmentationparameters.</p></td></tr></table><p>11</p><p><strong>Lab:LogDatasetLoaderforAIOps</strong></p><p><strong>Buildacompletelogsequenceloaderwithwindowingandanomalylabels</strong></p><p>importhashlib</p><table><tr><td><p>#Simulaterawlogdata <br />#InrealAIOps,thiswouldbeparsedfromsyslog/ELK/Splunk #Here:each"event"isalogtemplateID(0-99),withtimestamps</p></td></tr></table><table><tr><td colspan="3"><p>torch.manual_seed(99) <br />np.random.seed(99)</p><p><strong>def</strong>generate_log_stream(n_events:int=5000,vocab_size:int=50, 		anomaly_rate:float=0.05): <br />	""" <br />	Simulatealogstream.</p><p>Normal:Markov-ishtransitionsbetweencommontemplates. Anomaly:randomraretemplatesinjected.</p><p>"""</p></td></tr><tr><td><p>events</p></td><td colspan="2"><p>=[]</p></td></tr><tr><td><p>labels</p></td><td><p>=[]</p></td><td><p>#1=anomalywindow,0=normalwindow</p></td></tr><tr><td colspan="3"><p>templates=np.arange(vocab_size)</p></td></tr></table><table><tr><td><p>#Buildatransitionmatrix(normalbehaviour) <br />trans=np.random.dirichlet(np.ones(vocab_size)*0.3,size=vocab_size)</p></td></tr></table><table><tr><td><p>current=0 <br /><strong>for</strong>i<strong>in</strong>range(n_events): <br />	is_anomaly=np.random.rand()&lt;anomaly_rate <br />	<strong>if</strong>is_anomaly: <br />	#Raretemplate—highID <br />	event=np.random.randint(40,vocab_size) <br />	<strong>else</strong>: <br />	event=np.random.choice(templates,p=trans[current]) 	events.append(event) <br />	labels.append(int(is_anomaly)) <br />	current=event</p></td></tr></table><p><strong>return</strong>np.array(events),np.array(labels)</p><p>12</p><table><tr><td><p>log_events,event_labels=generate_log_stream(5000) print(f"Logstream:{len(log_events)}events") <br />print(f"Anomalyrate:{event_labels.mean():.3f}")</p></td></tr></table><p>Logstream:5000events <br />Anomalyrate:0.052</p><table><tr><td colspan="4"><p><strong>class</strong>LogWindowDataset(Dataset): <br />""" <br />Sliding-windowdatasetfromalogeventstream.</p><p>Eachsample=windowof`window_size`events→label=1ifanyanomalyinwindow.</p><p>"""</p><p><strong>def</strong>__init__(self,events:np.ndarray,labels:np.ndarray, 		window_size:int=20,stride:int=1): 	self.window_size=window_size</p></td></tr><tr><td colspan="2"><p>self.stride</p></td><td colspan="2"><p>=stride</p></td></tr><tr><td><p>windows</p></td><td colspan="3"><p>=[]</p></td></tr><tr><td colspan="4"><p>win_labels=[]</p><p><strong>for</strong>start<strong>in</strong>range(0,len(events)-window_size,stride): end=start+window_size <br />windows.append(events[start:end])</p></td></tr><tr><td colspan="3"><p>win_labels.append(int(labels[start:end].any()))</p></td><td><p>#1ifANYanomaly</p></td></tr></table><table><tr><td><p>self.X=torch.tensor(np.array(windows),dtype=torch.long) self.y=torch.tensor(win_labels,dtype=torch.long)</p></td></tr></table><table><tr><td><p><strong>def</strong>__len__(self): <br />	<strong>return</strong>len(self.X)</p></td></tr></table><table><tr><td><p><strong>def</strong>__getitem__(self,idx): <br />	<strong>return</strong>self.X[idx],self.y[idx]</p></td></tr></table><table><tr><td><p>log_dataset=LogWindowDataset(log_events,event_labels,window_size=20,stride=5)</p></td></tr></table><table><tr><td><p>print(f"Windowdataset:{len(log_dataset)}windows") <br />print(f"Xshape:{log_dataset.X.shape}") <br />print(f"Anomalywindowrate:{log_dataset.y.float().mean():.3f}")</p></td></tr></table><p>13</p><table><tr><td><p>#Checkclassimbalance <br />pos=log_dataset.y.sum().item() <br />neg=len(log_dataset)-pos <br />print(f"Normalwindows:{neg},Anomalywindows:{pos}")</p></td></tr></table><p>Windowdataset:996windows <br />Xshape:torch.Size([996,20]) <br />Anomalywindowrate:0.634 <br />Normalwindows:365,Anomalywindows:631</p><table><tr><td colspan="3"><p>#Temporalsplit(noshuffleforsequencedata)</p></td></tr><tr><td><p>n</p></td><td colspan="2"><p>=len(log_dataset)</p></td></tr><tr><td colspan="3"><p>split1=int(0.7*n) <br />split2=int(0.85*n)</p><p>train_ids=list(range(0,split1))</p></td></tr><tr><td colspan="2"><p>val_ids</p></td><td><p>=list(range(split1,split2))</p></td></tr><tr><td colspan="2"><p>test_ids</p></td><td><p>=list(range(split2,n))</p></td></tr></table><table><tr><td colspan="2"><p>fromtorch.utils.dataimportSubset <br />train_log=Subset(log_dataset,train_ids)</p></td></tr><tr><td><p>val_log</p></td><td><p>=Subset(log_dataset,val_ids)</p></td></tr><tr><td><p>test_log</p></td><td><p>=Subset(log_dataset,test_ids)</p></td></tr></table><table><tr><td colspan="2"><p>#Weightedsamplertohandleclassimbalance fromtorch.utils.dataimportWeightedRandomSampler</p><p>train_labels=log_dataset.y[train_ids] class_counts=torch.bincount(train_labels)</p></td></tr><tr><td><p>weights</p></td><td><p>=1.0/class_counts.float()</p></td></tr><tr><td colspan="2"><p>sample_weights=weights[train_labels]</p></td></tr></table><table><tr><td colspan="3"><p>sampler=WeightedRandomSampler( <br />	weights=sample_weights, <br />	num_samples=len(train_log), <br />	replacement=True <br />)</p><p>train_dl_log=DataLoader(train_log,batch_size=64,sampler=sampler)</p></td></tr><tr><td><p>val_dl_log</p></td><td><p>=DataLoader(val_log,</p></td><td><p>batch_size=256,shuffle=False)</p></td></tr></table><p>14</p><table><tr><td colspan="2"><p>X_b,y_b=next(iter(train_dl_log)) <br />print(f"\nBatchfromlogDataLoader:")</p></td></tr><tr><td><p>print(f"</p></td><td><p>Xshape:{X_b.shape}")</p></td></tr><tr><td><p>print(f"</p></td><td><p>ydistributioninbatch:{y_b.bincount()}")</p></td></tr></table><p>BatchfromlogDataLoader: <br />Xshape:torch.Size([64,20]) <br />ydistributioninbatch:tensor([37,27])</p><p><strong>ModuleSummary</strong></p><table><tr><td><p>Concept</p></td><td><p>KeyTakeaway</p></td></tr></table><p><strong>Dataset </strong><br /><strong>IterableDataset </strong><br /><strong>collate_fn </strong><br /><strong>num_workers </strong><br /><strong>pin_memory </strong><br /><strong>Temporalsplit </strong><br /><strong>Dataleakage </strong><br /><strong>WeightedRandomSampler</strong></p><p>Implement__len__and__getitem__.Usefor random-accessdata.</p><p>Implement__iter__.Useforstreaming/largefiles. Handlemulti-workermanually.</p><p>Writecustomcollateforvariable-lengthsequences. Usepad_sequence.</p><p>Startat4;tunetocpu_count()//2.Single-process= trainingbottleneck.</p><p>EnableonlywhenmovingbatchestoGPU.</p><p>Nevershuffletime-series.Splitchronologically.</p><p>Fitnormalisationstatsontrainonly.Applysame statstoval/test.</p><p>Combatclassimbalanceatthedataloadinglevel.</p><p><strong>What’sNext </strong><br /><strong>Module6—Evaluation&amp;ExperimentDiscipline</strong>coverstherightwaytoevaluate modelsoncethey’retrained.Properevalloops,calibration,PR/ROCcurvesforimbalanced tasks,cross-validation,andtheerroranalysisworkflowyouusewhenresultsarebad.</p><p>15</p>
+<p><strong>Module5—DataPipelines:Dataset, DataLoader,Performance</strong></p><p><strong>BuildPipelinesThatAreNevertheBottleneck</strong></p><p>PyTorchforDataScience</p><p><strong>ModuleGoal:</strong>Buildefficient,production-gradedatapipelinesinPyTorch.Un-derstandwhentouseDatasetvsIterableDataset,writesmartcollatefunctions forvariable-lengthsequences,andtuneyourDataLoadersoit’sneverthetraining bottleneck.EndwithalogdatasetloaderbuiltforAIOps.</p><p><strong>1.DatasetvsIterableDataset</strong></p><p><strong>TheTwoModesofDataLoading</strong></p><python>Dataset
+IterableDataset
+Access pat-tern Must know length? Shuf-fling Best for
+Randomaccessvia
+Sequentialstream
+__getitem__(i)
+No
+Yes(__len__required)
+Free—DataLoaderhandles it Filesondisk,databases, in-memorydata
+Mustimplementmanually
+Streaminglogs,largefiles,networkdata</python><p>1</p><p><strong>Real-WorldAnalogy</strong></p><p>Datasetislikea<strong>library</strong>—youcanwalktoanyshelfandgrabbooknumber247.</p><p>IterableDatasetislikea<strong>conveyorbelt</strong>—itemscometoyouinorder,andyouprocess themastheyarrive.</p><p><strong>Map-StyleDataset</strong></p><p>&lt;python&gt;</p><python>importtorch fromtorch.utils.dataimportDataset,DataLoader importnumpyasnp</python><python>classTabularDataset(Dataset): """ AreusableDatasetfortabulardatastoredastensorsornumpyarrays. Appliesoptionalper-featurenormalisation.
+"""
+def__init__(self,X:torch.Tensor,y:torch.Tensor,transform=None): 	assertlen(X)==len(y),"Xandymusthavethesamenumberofsamples"
+self.X
+=X.float()
+self.y
+=y
+self.transform=transform</python><python>def__len__(self)->int: 	returnlen(self.X)</python><python>def__getitem__(self,idx:int): 	x=self.X[idx] 	ifself.transform: 	x=self.transform(x) 	returnx,self.y[idx]</python><python>#Usage torch.manual_seed(42) X_raw=torch.randn(1000,8) y_raw=(X_raw[:,0]+X_raw[:,1]>0).long()</python><p>dataset=TabularDataset(X_raw,y_raw)</p><p>2</p><python>print(f"Datasetlength:{len(dataset)}") print(f"Sample0:Xshape={dataset[0][0].shape},y={dataset[0][1].item()}")</python><p>Datasetlength:1000 <br />Sample0:Xshape=torch.Size([8]),y=1</p><p>&lt;python&gt;</p><p><strong>IterableDataset—ForLargeLogFiles</strong></p><p>&lt;python&gt;</p><python>fromtorch.utils.dataimportIterableDataset importitertools</python><python>classLogFileDataset(IterableDataset): """ StreamsloglinesfromoneormorefileswithoutloadingeverythingintoRAM. Yields(token_ids,label)tuples.
+Eachlineisaspace-separatedsequenceoftokenIDsfollowedbyalabel.
+"""
+def__init__(self,filepaths:list,max_seq_len:int=64):
+self.filepaths
+=filepaths
+	self.max_seq_len=max_seq_len def_parse_line(self,line:str): 	tokens=list(map(int,line.strip().split()))
+label
+=tokens[-1]
+seq
+=tokens[:-1][:self.max_seq_len]
+#Truncatetomax_seq_len
+returntorch.tensor(seq,dtype=torch.long),label</python><python>def__iter__(self): worker_info=torch.utils.data.get_worker_info() files=self.filepaths</python><python>#Distributefilesacrossworkersifmulti-workerloading ifworker_infoisnotNone: files=[ffori,finenumerate(files) 	ifi%worker_info.num_workers==worker_info.id]</python><python>forfilepathinfiles: withopen(filepath,'r')asf: 	forlineinf:</python><p>3</p><python>ifline.strip(): 	yieldself._parse_line(line)</python><python>#Simulatewritingafakelogfilefordemonstration importtempfile,os
+fake_log=tempfile.NamedTemporaryFile(mode='w',suffix='.txt',delete=False) foriinrange(200):
+seq
+=''.join([str(np.random.randint(1,50))for_inrange(np.random.randint(5,20))
+label
+=np.random.randint(0,2)
+	fake_log.write(f"{seq}{label}\n") fake_log.close()</python><python>log_ds=LogFileDataset([fake_log.name],max_seq_len=16) #Can'tuseshuffle=TruewithIterableDataset log_dl=DataLoader(log_ds,batch_size=8,collate_fn=None)
+sample_seq,sample_label=next(iter(log_ds)) print(f"Samplesequence:{sample_seq}")
+print(f"Samplelabel:
+{sample_label}")
+print(f"Seqlength:
+{len(sample_seq)}")</python><python>os.unlink(fake_log.name)
+1,34,34,
+2,49,32,15,38])
+Samplesequence:tensor([7,35,22,45,
+Samplelabel:
+0
+Seqlength:
+12
+<python></python><p><strong>2.CollateFunctions—HandlingVariable-LengthSequences </strong><br /><strong>TheProblem </strong><br />By default, DataLoader tries to stack samples into a single tensor.This works when all samples havethesameshape.Butlogsequences,text,ortime-serieswindowsoftenhave<strong>variable length</strong>—stackingfails.</p><p>4</p><p>&lt;python&gt;</p><python>#ThisFAILSbecausesequenceshavedifferentlengths sequences=[ 	torch.tensor([1,2,3]), 	torch.tensor([4,5]), 	torch.tensor([6,7,8,9]) ]</python><python>try: 	torch.stack(sequences) exceptRuntimeErrorase: 	print("Error:",e)</python><p>Error:stackexpectseachtensortobeequalsize,butgot[3]atentry0and[2]atentry1</p><p>&lt;python&gt;</p><p><strong>PaddingCollateFunction</strong></p><p>&lt;python&gt;</p><python>fromtorch.nn.utils.rnnimportpad_sequence</python><python>defcollate_variable_length(batch): """ Collateabatchof(sequence,label)tupleswithvariable-lengthsequences. Padssequencestothelongestinthebatch.
+Returns: 	sequences:(B,T_max)paddedtensor
+lengths:
+(B,)
+originallengths(neededbyLSTM)
+labels:
+(B,)
+labels
+""" sequences,labels=zip(*batch)
+lengths
+=torch.tensor([len(s)forsinsequences])
+padded
+=pad_sequence(sequences,batch_first=True,padding_value=0)
+labels
+=torch.tensor(labels)</python><python>returnpadded,lengths,labels
+#Testit
+batch=[
+(torch.tensor([1,2,3]),
+0),</python><p>5</p><python>(torch.tensor([4,5]),
+1),
+]
+(torch.tensor([6,7,8,9]),0),</python><p>padded,lengths,labels=collate_variable_length(batch) print("Paddedsequences:\n",padded) <br />print("Originallengths:",lengths)</p></td></tr><tr><td><p>print("Labels:</p></td><td colspan="2"><p>",labels)</p></td></tr><tr><td colspan="3"><p>Paddedsequences: <br />	tensor([[1,2,3,0], <br />		[4,5,0,0], <br />		[6,7,8,9]]) <br />Originallengths:tensor([3,2,4])</p></td></tr><tr><td><p>Labels:</p></td><td colspan="2"><p>tensor([0,1,0])</p></td></tr></table><p><strong>Truncate+PadCollateforFixedBucketSize</strong></p><python>defmake_collate_fn(max_len:int=32,pad_value:int=0): 	"""Returnsacollate_fnthattruncatestomax_lenthenpads."""
+defcollate(batch): sequences,labels=zip(*batch) truncated=[s[:max_len]forsinsequences]
+lengths
+=torch.tensor([len(s)forsintruncated])
+padded
+=pad_sequence(truncated,batch_first=True,padding_value=pad_value)
+returnpadded,lengths,torch.tensor(labels)</python><python>returncollate</python><python>#UseinDataLoader collate_fn=make_collate_fn(max_len=16)
+<python></python><p>6</p><p><strong>3.DataLoaderPerformance </strong><br /><strong>KeyParameters</strong></p><p>&lt;python&gt;</p><python>#Buildadatasetforperformancetesting</python><p>dataset=TabularDataset(torch.randn(50000,128),torch.randint(0,10,(50000,)))</p><python>#Default—slow(singleprocess,noprefetch) slow_dl=DataLoader(dataset,batch_size=256)</python><python>#Optimised
+#Usenum_workers=0onWindows;setto4+onLinux/Macserversforrealspeedups.
+importplatform n_workers=0ifplatform.system()=="Windows"else4
+fast_dl=DataLoader( dataset, batch_size=256,
+num_workers=n_workers,
+#0onWindowsnotebooks;4+onLinux/Mac
+pin_memory=False,
+#TrueonlywhenaGPUisavailable
+)
+shuffle=True</python></td></tr></table><p>#NOTE:OnWindows,num_workers&gt;0requiresa__main__guard(doesn'tworkinnotebooks).</p><python>print("FastDataLoaderconfigured.") print(f"Estimatedbatchesperepoch:{len(fast_dl)}")</python><p>FastDataLoaderconfigured.</p><p>Estimatedbatchesperepoch:196 <br /><strong>TimingComparison</strong></p><python>importtime deftime_dataloader(dl,n_batches=50): 	start=time.time() 	fori,(X,y)inenumerate(dl):
+_=X.shape
+#Simulateminimalprocessing
+ifi>=n_batches:</python><p>7</p><python>break returntime.time()-start</python><python>slow_time=time_dataloader(slow_dl) fast_time=time_dataloader(fast_dl)
+print(f"Single-workertime(50batches):{slow_time:.3f}s")
+print(f"Multi-workertime
+(50batches):{fast_time:.3f}s")
+print(f"Speedup:{slow_time/fast_time:.1f}x")
+Single-workertime(50batches):0.098s
+Multi-workertime
+(50batches):0.089s
+Speedup:1.1x
+<python></python><p><strong>TuningGuidelines</strong></p><python>Parameter
+Recommendation</python><p>num_workers <br />pin_memory <br />prefetch_factor <br />persistent_workers batch_size</p><p>Startwith4;tuneuptocpu_count()//2 <br />TrueiftrainingonGPU,FalseforCPU <br />2(default);increaseifGPUutilisationdipsbetween batches <br />Trueforlargedatasetstoavoidworkerrespawn overhead <br />LargestsizethatfitsinGPUmemory;powersof2 (64,128,256)</p><python>Exclamation-TriangleWarning</python></td></tr></table><python>pin_memory=TruewithCPU-onlytraining will slightly slow things down.Only enable itwhenyouaremovingtensorstoaGPU.</python><p>8</p><p><strong>4.StreamingLargeDatasets </strong><br /><strong>TheMemoryProblem </strong><br />Alargelogfile(100GB+)cannotbeloadedintoRAM.Solutions: 	1.<strong>IterableDataset</strong>—streamlinebyline.</p><p>2.<strong>Memory-mappedfiles</strong>—np.memmaportorch.frombufferforbinarydata. 3.<strong>ChunkedHDF5/Parquet</strong>—loadoneshardatatime.</p><p>&lt;python&gt;</p><p>importstruct</p><python>#Memory-mappedbinarydataset classBinarySequenceDataset(Dataset): 	""" 	Readsfixed-lengthsequencesfromabinaryfileusingmemorymapping. 	Format:eachrecord=[n_tokensint32][tokensint32*seq_len][labelint32] 	"""
+def__init__(self,filepath:str,seq_len:int,dtype=np.float32):
+self.seq_len
+=seq_len
+self.data
+=np.memmap(filepath,dtype=dtype,mode='r')
+self.n_samples=len(self.data)//(seq_len+1)</python><python>def__len__(self): 	returnself.n_samples
+def__getitem__(self,idx): 	start=idx*(self.seq_len+1)
+row
+=self.data[start:start+self.seq_len+1]
+x
+=torch.tensor(row[:-1],dtype=torch.float32)
+y
+=int(row[-1])
+returnx,y
+#Writeafakebinaryfile—tempfileworksonallplatforms(Windows,Linux,Mac)
+importtempfile,os
+n,seq=5000,16
+arr
+=np.random.randn(n*(seq+1)).astype(np.float32)
+arr[seq::seq+1]=np.random.randint(0,2,n).astype(np.float32)
+#Labels</python><p><strong>with</strong>tempfile.NamedTemporaryFile(suffix='.dat',delete=False)asf:</p><p>9</p><python>fake_path=f.name arr.tofile(f)
+bin_ds
+=BinarySequenceDataset(fake_path,seq_len=seq)
+bin_dl
+=DataLoader(bin_ds,batch_size=128,num_workers=0)
+X_b,y_b=next(iter(bin_dl)) print(f"Memory-mappeddataset:{len(bin_ds)}samples") print(f"Batchshapes:X={X_b.shape},yshape={len(y_b)}")
+#Windowsrequiresclosingthememmapbeforedeletingthefile
+delbin_ds,bin_dl
+#Releasememmaphandle
+os.unlink(fake_path)</python><p>Memory-mappeddataset:5000samples <br />Batchshapes:X=torch.Size([128,16]),yshape=128</p><p>&lt;python&gt;</p><p><strong>5.DataLeakageandSplitStrategies </strong><br /><strong>TheGoldenRule</strong></p><p><strong>Fitnothingontestdata. imputer.</strong></p><p>&lt;python&gt;</p><p><strong>Notthescaler,nottheencoder,notthe</strong></p><python>fromtorch.utils.dataimportrandom_split,Subset #Strategy1:Randomsplit(tabular,i.i.d.data) dataset=TabularDataset(torch.randn(1000,8),torch.randint(0,2,(1000,)))
+n
+=len(dataset)
+train_ds,val_ds,test_ds=random_split( 	dataset, 	[int(0.7*n),int(0.15*n),n-int(0.7*n)-int(0.15*n)], 	generator=torch.Generator().manual_seed(42) ) print(f"Randomsplit—Train:{len(train_ds)},Val:{len(val_ds)},Test:{len(test_ds)}")
+#Strategy2:Temporalsplit(timeseries—NEVERshuffle!)
+n_ts
+=1000
+indices=list(range(n_ts))</python><p>10</p><python>train_idx=indices[:700]
+val_idx
+=indices[700:850]
+test_idx
+=indices[850:]
+train_ts=Subset(dataset,train_idx)
+val_ts
+=Subset(dataset,val_idx)
+test_ts
+=Subset(dataset,test_idx)
+print(f"Temporalsplit—Train:{len(train_ts)},Val:{len(val_ts)},Test:{len(test_ts)}")</python><p>Randomsplit—Train:700,Val:150,Test:150 Temporalsplit—Train:700,Val:150,Test:150</p><python>#Correctnormalisation—fitONLYontrain,applytoall X_full=torch.randn(1000,8) train_X=X_full[:700]
+val_X
+=X_full[700:850]
+test_X
+=X_full[850:]
+#FitstatsonTRAINonly mean=train_X.mean(dim=0)
+std
+=train_X.std(dim=0)
+std[std<1e-6]=1.0 #Applytoallsplits train_X_norm=(train_X-mean)/std
+val_X_norm
+=(val_X
+-mean)/std
+#←usetrainstats,notvalstats
+test_X_norm
+=(test_X
+-mean)/std
+#←usetrainstats,notteststats
+print("Normalisationappliedusingtrain-setstatisticsonly.")
+print(f"Val
+mean(not0,that'sfine):{val_X_norm.mean(0)[:3].round(decimals=3)}")
+Normalisationappliedusingtrain-setstatisticsonly.
+Val
+mean(not0,that'sfine):tensor([-0.0200,-0.0360,
+0.0920])
+<python></python><python>ExclamationImportant</python></td></tr></table><python>Dataleakagechecklist:-Nevercomputemean/std/quantilesonthefulldatasetbefore splitting.-Neverincludefutureinformationintime-seriesfeatures.-Neverletvalidation samplesinfluencetrainingaugmentationparameters.</python><p>11</p><p><strong>Lab:LogDatasetLoaderforAIOps</strong></p><p><strong>Buildacompletelogsequenceloaderwithwindowingandanomalylabels</strong></p><p>&lt;python&gt;</p><p>importhashlib</p><python>#Simulaterawlogdata #InrealAIOps,thiswouldbeparsedfromsyslog/ELK/Splunk #Here:each"event"isalogtemplateID(0-99),withtimestamps</python><python>torch.manual_seed(99) np.random.seed(99)
+defgenerate_log_stream(n_events:int=5000,vocab_size:int=50, 		anomaly_rate:float=0.05): 	""" 	Simulatealogstream.
+Normal:Markov-ishtransitionsbetweencommontemplates. Anomaly:randomraretemplatesinjected.
+"""
+events
+=[]
+labels
+=[]
+#1=anomalywindow,0=normalwindow
+templates=np.arange(vocab_size)</python><python>#Buildatransitionmatrix(normalbehaviour) trans=np.random.dirichlet(np.ones(vocab_size)*0.3,size=vocab_size)</python><python>current=0 foriinrange(n_events): 	is_anomaly=np.random.rand()<anomaly_rate 	ifis_anomaly: 	#Raretemplate—highID 	event=np.random.randint(40,vocab_size) 	else: 	event=np.random.choice(templates,p=trans[current]) 	events.append(event) 	labels.append(int(is_anomaly)) 	current=event</python><p><strong>return</strong>np.array(events),np.array(labels)</p><p>12</p><python>log_events,event_labels=generate_log_stream(5000) print(f"Logstream:{len(log_events)}events") print(f"Anomalyrate:{event_labels.mean():.3f}")</python><p>Logstream:5000events <br />Anomalyrate:0.052</p><python>classLogWindowDataset(Dataset): """ Sliding-windowdatasetfromalogeventstream.
+Eachsample=windowof`window_size`events→label=1ifanyanomalyinwindow.
+"""
+def__init__(self,events:np.ndarray,labels:np.ndarray, 		window_size:int=20,stride:int=1): 	self.window_size=window_size
+self.stride
+=stride
+windows
+=[]
+win_labels=[]
+forstartinrange(0,len(events)-window_size,stride): end=start+window_size windows.append(events[start:end])
+win_labels.append(int(labels[start:end].any()))
+#1ifANYanomaly</python><python>self.X=torch.tensor(np.array(windows),dtype=torch.long) self.y=torch.tensor(win_labels,dtype=torch.long)</python><python>def__len__(self): 	returnlen(self.X)</python><python>def__getitem__(self,idx): 	returnself.X[idx],self.y[idx]</python><python>log_dataset=LogWindowDataset(log_events,event_labels,window_size=20,stride=5)</python><python>print(f"Windowdataset:{len(log_dataset)}windows") print(f"Xshape:{log_dataset.X.shape}") print(f"Anomalywindowrate:{log_dataset.y.float().mean():.3f}")</python><p>13</p><python>#Checkclassimbalance pos=log_dataset.y.sum().item() neg=len(log_dataset)-pos print(f"Normalwindows:{neg},Anomalywindows:{pos}")</python><p>Windowdataset:996windows <br />Xshape:torch.Size([996,20]) <br />Anomalywindowrate:0.634 <br />Normalwindows:365,Anomalywindows:631</p><python>#Temporalsplit(noshuffleforsequencedata)
+n
+=len(log_dataset)
+split1=int(0.7*n) split2=int(0.85*n)
+train_ids=list(range(0,split1))
+val_ids
+=list(range(split1,split2))
+test_ids
+=list(range(split2,n))</python><python>fromtorch.utils.dataimportSubset train_log=Subset(log_dataset,train_ids)
+val_log
+=Subset(log_dataset,val_ids)
+test_log
+=Subset(log_dataset,test_ids)</python><python>#Weightedsamplertohandleclassimbalance fromtorch.utils.dataimportWeightedRandomSampler
+train_labels=log_dataset.y[train_ids] class_counts=torch.bincount(train_labels)
+weights
+=1.0/class_counts.float()
+sample_weights=weights[train_labels]</python><python>sampler=WeightedRandomSampler( 	weights=sample_weights, 	num_samples=len(train_log), 	replacement=True )
+train_dl_log=DataLoader(train_log,batch_size=64,sampler=sampler)
+val_dl_log
+=DataLoader(val_log,
+batch_size=256,shuffle=False)</python><p>14</p><python>X_b,y_b=next(iter(train_dl_log)) print(f"\nBatchfromlogDataLoader:")
+print(f"
+Xshape:{X_b.shape}")
+print(f"
+ydistributioninbatch:{y_b.bincount()}")</python><p>BatchfromlogDataLoader: <br />Xshape:torch.Size([64,20]) <br />ydistributioninbatch:tensor([37,27])</p><p>&lt;python&gt;</p><p><strong>ModuleSummary</strong></p><python>Concept
+KeyTakeaway</python><p><strong>Dataset </strong><br /><strong>IterableDataset </strong><br /><strong>collate_fn </strong><br /><strong>num_workers </strong><br /><strong>pin_memory </strong><br /><strong>Temporalsplit </strong><br /><strong>Dataleakage </strong><br /><strong>WeightedRandomSampler</strong></p><p>Implement__len__and__getitem__.Usefor random-accessdata.</p><p>Implement__iter__.Useforstreaming/largefiles. Handlemulti-workermanually.</p><p>Writecustomcollateforvariable-lengthsequences. Usepad_sequence.</p><p>Startat4;tunetocpu_count()//2.Single-process= trainingbottleneck.</p><p>EnableonlywhenmovingbatchestoGPU.</p><p>Nevershuffletime-series.Splitchronologically.</p><p>Fitnormalisationstatsontrainonly.Applysame statstoval/test.</p><p>Combatclassimbalanceatthedataloadinglevel.</p><p><strong>What’sNext </strong><br /><strong>Module6—Evaluation&amp;ExperimentDiscipline</strong>coverstherightwaytoevaluate modelsoncethey’retrained.Properevalloops,calibration,PR/ROCcurvesforimbalanced tasks,cross-validation,andtheerroranalysisworkflowyouusewhenresultsarebad.</p><p>15</p>

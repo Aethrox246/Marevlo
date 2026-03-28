@@ -1,1 +1,221 @@
-<p><strong>Module8—SequenceModels:LSTM/GRU→Transformers</strong></p><p><strong>FromRecurrencetoAttention—AppliedtoLogSequences</strong></p><p>PyTorchforDataScience</p><p><strong>ModuleGoal:</strong>Understandwhysequencemodellingrequiresspecialarchitectures. BuildLSTMandTransformermodelsforlogsequences,implementnext-event prediction,andproduceananomalyscoringpipelinedirectlyapplicabletoAIOps.</p><p><strong>1.WhySequenceModellingMattersinDS/AIOps</strong></p><p><strong>TheProblemwithStandardMLPsforSequences</strong></p><p>AnMLPtreatseachinputindependently.Feedit[login,file_read,file_write]and [file_write,login,file_read]—itdoesn’tknowthesehavedifferenttemporalmeaning.</p><p>InAIOps:</p><p>•Apermission_deniedaftersudo_attemptisverydifferentfrompermission_denied 	afterfile_read.</p><p>•The<strong>order</strong>and<strong>context</strong>ofeventsmattersenormouslyforanomalydetection.</p><p><strong>ThreeArchitecturesforSequences</strong></p><table><tr><td><p>Architecture</p></td><td><p>Processesorder?</p></td><td><p>Long-rangedeps?</p></td><td><p>Paralleltraining?</p></td></tr><tr><td><p>MLP <br />LSTM/GRU Transformer</p></td><td><p>No <br />Yes <br />Yes</p></td><td><p>No <br />Partially <br />Yes</p></td><td><p>Yes <br />No(sequential) Yes</p></td></tr></table><p>1</p><p><strong>2.LSTMandGRU:WhenTheyStillWin </strong><br /><strong>TheLSTMCellIntuition </strong><br />AnLSTMmaintainstwostates:-<strong>Cellstatec_t</strong>—long-termmemory(the“conveyorbelt”).-<strong>Hiddenstateh_t</strong>—short-termworkingmemory.</p><p>Threegatescontrolwhattokeep,forget,andwrite:</p><p>Forgetgate:f_t=(W_f·[h_{t-1},x_t]+b_f) Input 	gate:i_t=(W_i·[h_{t-1},x_t]+b_i) Outputgate:o_t=(W_o·[h_{t-1},x_t]+b_o)</p><p>←whattoforget<br />←whattowrite<br />←whattooutput</p><table><tr><td><p>importtorch <br />importtorch.nnasnn <br />importnumpyasnp</p></td></tr></table><table><tr><td colspan="7"><p>torch.manual_seed(42) <br />#BasicLSTMusage <br />lstm=nn.LSTM(</p></td></tr><tr><td colspan="3"><p>input_size=32,</p></td><td colspan="4"><p>#Featuredimpertimestep</p></td></tr><tr><td colspan="3"><p>hidden_size=64,</p></td><td colspan="4"><p>#Hiddenstatesize</p></td></tr><tr><td colspan="3"><p>num_layers=2,</p></td><td colspan="4"><p>#StackedLSTM</p></td></tr><tr><td colspan="4"><p>batch_first=True,</p></td><td colspan="3"><p>#(B,T,features)—alwaysusethis</p></td></tr><tr><td colspan="3"><p>dropout=0.2,</p></td><td colspan="4"><p>#Betweenlayers(notappliedtofinallayer)</p></td></tr><tr><td colspan="7"><table><tr><td><p>)</p></td><td><p>bidirectional=False</p></td></tr></table><p>#Input:(batch,seq_len,input_size)</p></td></tr><tr><td colspan="5"><p>x=torch.randn(8,20,32)</p></td><td colspan="2"><p>#8sequences,20timesteps,32features</p></td></tr><tr><td colspan="7"><p>output,(h_n,c_n)=lstm(x)</p></td></tr><tr><td colspan="2"><p>print("Input</p></td><td colspan="5"><p>shape:",x.shape)</p></td></tr><tr><td colspan="6"><p>print("Outputshape:",output.shape)</p></td><td><p>#(8,20,64)—hiddenstateateachtimestep</p></td></tr><tr><td colspan="3"><p>print("h_nshape:</p></td><td colspan="2"><p>",h_n.shape)</p></td><td colspan="2"><p>#(num_layers,8,64)—finalhiddenstate</p></td></tr><tr><td colspan="3"><p>print("c_nshape:</p></td><td colspan="2"><p>",c_n.shape)</p></td><td colspan="2"><p>#(num_layers,8,64)—finalcellstate</p></td></tr><tr><td><p>Input</p></td><td colspan="6"><p>shape:torch.Size([8,20,32])</p></td></tr><tr><td colspan="7"><p>Outputshape:torch.Size([8,20,64])</p></td></tr><tr><td colspan="2"><p>h_nshape:</p></td><td colspan="5"><p>torch.Size([2,8,64])</p></td></tr><tr><td colspan="2"><p>c_nshape:</p></td><td colspan="5"><p>torch.Size([2,8,64])</p></td></tr></table><p>2</p><table><tr><td colspan="5"><p>#GRU—simplerthanLSTM(2gatesinsteadof3),oftencomparableperformance gru=nn.GRU( <br />	input_size=32, <br />	hidden_size=64, <br />	num_layers=2, <br />	batch_first=True, <br />	dropout=0.2 <br />)</p></td></tr><tr><td><p>x</p></td><td colspan="4"><p>=torch.randn(8,20,32)</p></td></tr><tr><td><p>out,h</p></td><td colspan="4"><p>=gru(x)</p></td></tr><tr><td colspan="4"><p>print("GRUoutput:",out.shape)</p></td><td><p>#(8,20,64)</p></td></tr><tr><td colspan="3"><p>print("GRUh_n:</p></td><td><p>",h.shape)</p></td><td><p>#(num_layers,8,64)</p></td></tr><tr><td colspan="5"><p>GRUoutput:torch.Size([8,20,64])</p></td></tr><tr><td colspan="2"><p>GRUh_n:</p></td><td colspan="3"><p>torch.Size([2,8,64])</p></td></tr></table><p><strong>WhenLSTM/GRUBeatTransformers</strong></p><p>LSTMs still win when:-<strong> Sequences are very long</strong> (&gt; 10k tokens) and attention is prohibitively expensive.-<strong>Online/streaminginference</strong>—processonetokenatatimewithconstant memory.-<strong>Tinydatasets</strong>—Transformersneedmoredatatogeneralise.-<strong>Deployment constraints</strong>—LSTMsaresimplertoexportandrunonedgedevices.</p><p><strong>3.AttentionIntuition</strong></p><p><strong>TheCoreIdea</strong></p><p>Insteadofcompressingtheentiresequenceintoafixed-sizehiddenstate,attentionletsthe model<strong>lookbackatanyposition</strong>inthesequencewhencomputingeachoutput.</p><p><strong>Real-WorldAnalogy:</strong>Readingalogtodetectananomaly.Ratherthansummarisingall 1000eventsintoasinglevector,attentionletsthemodelsay:<em>“Tounderstandevent850,let mefocusonevents10,200,and847—they’rethemostrelevantcontext.”</em></p><p>3</p><table><tr><td colspan="3"><p>#Scaleddot-productattention—theheartoftheTransformer <strong>def</strong>scaled_dot_product_attention(Q,K,V,mask=None): <br />	"""</p></td><td rowspan="7"><p>#Scale</p></td></tr><tr><td colspan="2"><p>Q:(B,heads,T,d_k)</p></td><td><p>—queries</p></td></tr><tr><td colspan="2"><p>K:(B,heads,T,d_k)</p></td><td><p>—keys</p></td></tr><tr><td colspan="2"><p>V:(B,heads,T,d_v)</p></td><td><p>—values</p></td></tr><tr><td colspan="3"><p>Returns:attendedvalues+attentionweights """</p></td></tr><tr><td><p>d_k</p></td><td colspan="2"><p>=Q.shape[-1]</p></td></tr><tr><td colspan="3"><p>scores=torch.matmul(Q,K.transpose(-2,-1))/(d_k**0.5)</p></td></tr></table><table><tr><td colspan="3"><p><strong>if</strong>mask<strong>isnot</strong>None: <br />	scores=scores.masked_fill(mask==0,float('-inf'))</p></td></tr><tr><td colspan="2"><p>weights=torch.softmax(scores,dim=-1)</p></td><td><p>#(B,heads,T,T)</p></td></tr><tr><td><p>output</p></td><td><p>=torch.matmul(weights,V)</p></td><td><p>#(B,heads,T,d_v)</p></td></tr><tr><td colspan="3"><p><strong>return</strong>output,weights</p></td></tr></table><table><tr><td colspan="2"><p>#Demo:4heads,seq_len=5,d_k=8 <br />B,heads,T,d_k=2,4,5,8 <br />Q=torch.randn(B,heads,T,d_k) <br />K=torch.randn(B,heads,T,d_k) <br />V=torch.randn(B,heads,T,d_k)</p><p>out,weights=scaled_dot_product_attention(Q,K,V)</p></td></tr><tr><td><p>print("Attentionoutputshape:",out.shape)</p></td><td><p>#(2,4,5,8)</p></td></tr><tr><td colspan="2"><p>print("Attentionweightsshape:",weights.shape)#(2,4,5,5)—eachtokenattendstoall print("Attentionweightssum(shouldbe1.0):",weights[0,0,0].sum().item())</p></td></tr></table><p>Attentionoutputshape:torch.Size([2,4,5,8]) Attentionweightsshape:torch.Size([2,4,5,5]) Attentionweightssum(shouldbe1.0):1.0</p><p>4</p><p><strong>4.Transformers:Embeddings,PositionalEncodings</strong></p><p><strong>LogEventTransformerforAIOps</strong></p><table><tr><td><p><strong>class</strong>PositionalEncoding(nn.Module): <br />""" <br />Sinusoidalpositionalencoding.</p><p>Addspositioninformationtoembeddingssothemodelknowstokenorder.</p><p>"""</p></td></tr></table><table><tr><td colspan="3"><p><strong>def</strong>__init__(self,d_model:int,max_seq_len:int=512,dropout:float=0.1): super().__init__() <br />self.dropout=nn.Dropout(dropout)</p><p>#Buildthepositionalencodingmatrix</p></td></tr><tr><td><p>pe</p></td><td colspan="2"><p>=torch.zeros(max_seq_len,d_model)</p></td></tr><tr><td colspan="3"><p>pos=torch.arange(0,max_seq_len).unsqueeze(1).float() div=torch.exp(torch.arange(0,d_model,2).float()*	-(np.log(10000.0)/d_model))</p><p>pe[:,0::2]=torch.sin(pos*div) <br />pe[:,1::2]=torch.cos(pos*div)</p></td></tr><tr><td colspan="2"><p>pe=pe.unsqueeze(0)</p></td><td><p>#(1,max_seq_len,d_model)</p></td></tr><tr><td colspan="2"><p>self.register_buffer('pe',pe)</p></td><td><p>#Non-trainablebuffer</p></td></tr></table><table><tr><td><p><strong>def</strong>forward(self,x:torch.Tensor)-&gt;torch.Tensor: #x:(B,T,d_model) <br />x=x+self.pe[:,:x.size(1),:] <br /><strong>return</strong>self.dropout(x)</p></td></tr></table><table><tr><td><p><strong>class</strong>LogTransformer(nn.Module): <br />""" <br />Transformerencoderforlogeventsequences.</p><p>Input:sequenceoflogeventIDs <br />Output:per-tokenrepresentationsORsequence-levelrepresentation """</p></td></tr></table><table><tr><td><p><strong>def</strong>__init__(self,vocab_size:int,d_model:int=128,n_heads:int=4, n_layers:int=3,d_ff:int=256,dropout:float=0.1, max_seq_len:int=64):</p></td></tr></table><p>5</p><table><tr><td colspan="5"><p>super().__init__() <br />self.embedding=nn.Embedding(vocab_size,d_model,padding_idx=0)</p></td></tr><tr><td colspan="2"><p>self.pos_enc</p></td><td colspan="3"><p>=PositionalEncoding(d_model,max_seq_len,dropout)</p></td></tr><tr><td colspan="2"><p>encoder_layer</p></td><td colspan="3"><p>=nn.TransformerEncoderLayer(</p></td></tr><tr><td colspan="5"><p>d_model=d_model,nhead=n_heads,dim_feedforward=d_ff,</p></td></tr><tr><td colspan="4"><p>dropout=dropout,batch_first=True,norm_first=True</p></td><td><p>#Pre-norm:morestable</p></td></tr><tr><td colspan="5"><p>)</p></td></tr><tr><td colspan="2"><p>self.encoder</p></td><td colspan="3"><p>=nn.TransformerEncoder(encoder_layer,num_layers=n_layers)</p></td></tr><tr><td colspan="2"><p>self.norm</p></td><td colspan="3"><p>=nn.LayerNorm(d_model)</p></td></tr><tr><td colspan="5"><p><strong>def</strong>forward(self,token_ids:torch.Tensor, <br />	padding_mask:torch.Tensor=None)-&gt;torch.Tensor: 	"""</p></td></tr><tr><td colspan="2"><p>token_ids:</p></td><td colspan="3"><p>(B,T)—integereventIDs</p></td></tr><tr><td colspan="5"><p>padding_mask:(B,T)—Truewheretokensarepadding</p></td></tr><tr><td colspan="2"><p>Returns:</p></td><td colspan="3"><p>(B,T,d_model)—contextualrepresentations</p></td></tr><tr><td colspan="5"><p>""" <br />x=self.pos_enc(self.embedding(token_ids)) <br />x=self.encoder(x,src_key_padding_mask=padding_mask) <strong>return</strong>self.norm(x)</p><p>#Test <br />VOCAB_SIZE=100 <br />model_t=LogTransformer(vocab_size=VOCAB_SIZE,d_model=128,n_heads=4,n_layers=3)</p></td></tr><tr><td><p>tokens</p></td><td colspan="2"><p>=torch.randint(0,VOCAB_SIZE,(8,32))</p></td><td colspan="2"><p>#Batch=8,seq_len=32</p></td></tr><tr><td colspan="5"><p>pad_mask=(tokens==0) <br />output=model_t(tokens,pad_mask)</p></td></tr><tr><td colspan="3"><p>print("Transformeroutputshape:",output.shape)</p></td><td colspan="2"><p>#(8,32,128)</p></td></tr><tr><td colspan="5"><p>print("Params:",sum(p.numel()<strong>for</strong>p<strong>in</strong>model_t.parameters()))</p></td></tr></table><p>C:\Users\ujanp\AppData\Local\Temp\ipykernel_32208\3218122914.py:46:UserWarning: <br />enable_nested_tensorisTrue,butself.use_nested_tensorisFalsebecauseencoder_layer.norm_ Transformeroutputshape:torch.Size([8,32,128]) <br />Params:410496</p><p>6</p><p><strong>5.TrainingTips:Masking,Padding,TeacherForcing PaddingMask</strong></p><table><tr><td colspan="2"><p>fromtorch.nn.utils.rnnimportpad_sequence</p><p><strong>def</strong>make_padding_mask(sequences:list,pad_id:int=0)-&gt;torch.Tensor: """Createapaddingmask:Truewheretokensarepadding.""" <br />padded=pad_sequence(sequences,batch_first=True,padding_value=pad_id)</p></td></tr><tr><td><p>mask</p></td><td><p>=(padded==pad_id)</p></td></tr><tr><td colspan="2"><p><strong>return</strong>padded,mask</p></td></tr></table><table><tr><td colspan="9"><p>seqs=[ <br />	torch.tensor([3,7,12,5]), <br />	torch.tensor([8,2]), <br />	torch.tensor([1,9,4,7,3,11]) <br />] <br />padded,mask=make_padding_mask(seqs) <br />print("Padded:\n",padded) <br />print("Paddingmask(True=pad):\n",mask)</p><p>Padded:</p></td></tr><tr><td><p>tensor([[3,</p></td><td colspan="2"><p>7,12,</p></td><td colspan="2"><p>5,</p></td><td><p>0,</p></td><td colspan="3"><p>0],</p></td></tr><tr><td><p>[8,</p></td><td><p>2,</p></td><td><p>0,</p></td><td colspan="2"><p>0,</p></td><td><p>0,</p></td><td colspan="3"><p>0],</p></td></tr><tr><td><p>[1,</p></td><td><p>9,</p></td><td><p>4,</p></td><td colspan="2"><p>7,</p></td><td colspan="4"><p>3,11]])</p></td></tr><tr><td colspan="9"><p>Paddingmask(True=pad):</p></td></tr><tr><td colspan="7"><p>tensor([[False,False,False,False,</p></td><td><p>True,</p></td><td><p>True],</p></td></tr><tr><td colspan="4"><p>[False,False,</p></td><td colspan="2"><p>True,</p></td><td><p>True,</p></td><td><p>True,</p></td><td><p>True],</p></td></tr><tr><td colspan="9"><p>[False,False,False,False,False,False]])</p></td></tr></table><p><strong>CausalMaskforAutoregressiveGeneration</strong></p><table><tr><td><p><strong>def</strong>make_causal_mask(seq_len:int)-&gt;torch.Tensor: <br />""" <br />Upper-triangularmaskforautoregressive(causal)attention. Positionicanonlyattendtopositions0..i(notfuturetokens).</p><p>""" <br />#InPyTorchTransformerDecoder:Truemeans'ignorethisposition'</p></td></tr></table><p>7</p><table><tr><td><p>mask=torch.triu(torch.ones(seq_len,seq_len),diagonal=1).bool() <strong>return</strong>mask</p></td></tr></table><table><tr><td><p>mask=make_causal_mask(6) <br />print("Causalmask(True=masked):") print(mask.int())</p></td></tr></table><p>Causalmask(True=masked): <br />tensor([[0,1,1,1,1,1], <br />	[0,0,1,1,1,1], <br />	[0,0,0,1,1,1], <br />	[0,0,0,0,1,1], <br />	[0,0,0,0,0,1], <br />	[0,0,0,0,0,0]],dtype=torch.int32)</p><p><strong>Project:Log-SequencePrediction+AnomalyScoring</strong></p><p><strong>Twotasksinonemodel:</strong></p><p>1.<strong>Nexteventprediction</strong>—predictthenextlogeventIDgivenpreviousevents. 2.<strong>Anomalyscoring</strong>—highlossonasequence=anomaloussequence.</p><table><tr><td colspan="2"><p>#Dataset <br />torch.manual_seed(77) <br />np.random.seed(77)</p><p><strong>def</strong>generate_log_sequences(n_seqs=2000,vocab_size=50,seq_len=20, 		anomaly_rate=0.1): <br />	""" <br />	Normalsequences:Markovchainoverevents1-30.</p><p>Anomaloussequences:randomeventsfromfullvocab(includingrare31-49).</p><p>""" <br />sequences,labels=[],[]</p></td></tr><tr><td><p>trans=np.random.dirichlet(np.ones(30)*0.5,size=30)</p></td><td><p>#Transitionmatrix</p></td></tr></table><table><tr><td><p><strong>for</strong>_<strong>in</strong>range(n_seqs): <br />is_anomaly=np.random.rand()&lt;anomaly_rate seq=[]</p></td></tr></table><p>8</p><table><tr><td><p>state=np.random.randint(0,30) <br /><strong>for</strong>_<strong>in</strong>range(seq_len): <br /><strong>if</strong>is_anomaly: <br />	event=np.random.randint(1,vocab_size) <br /><strong>else</strong>: <br />	event=int(np.random.choice(30,p=trans[state]))+1 <br />seq.append(event) <br />state=event-1<strong>ifnot</strong>is_anomaly<strong>else</strong>np.random.randint(0,30) sequences.append(torch.tensor(seq,dtype=torch.long)) <br />labels.append(int(is_anomaly))</p></td></tr></table><table><tr><td><p><strong>return</strong>sequences,torch.tensor(labels)</p></td></tr></table><table><tr><td><p>seqs,labels=generate_log_sequences(2000,vocab_size=50,seq_len=20) print(f"Sequences:{len(seqs)},Anomalyrate:{labels.float().mean():.3f}")</p></td></tr></table><p>Sequences:2000,Anomalyrate:0.086</p><p>fromtorch.utils.dataimportDataset,DataLoader</p><table><tr><td colspan="2"><p><strong>class</strong>NextEventDataset(Dataset): <br />	"""Eachsample:input=seq[:-1],target=seq[1:](nexteventprediction)."""</p><p><strong>def</strong>__init__(self,sequences:list,labels:torch.Tensor): 	self.sequences=sequences</p></td></tr><tr><td><p>self.labels</p></td><td><p>=labels</p></td></tr></table><table><tr><td><p><strong>def</strong>__len__(self):<strong>return</strong>len(self.sequences)</p></td></tr></table><table><tr><td><p><strong>def</strong>__getitem__(self,idx): <br />seq=self.sequences[idx] <br /><strong>return</strong>seq[:-1],seq[1:],self.labels[idx]</p></td></tr></table><table><tr><td colspan="2"><p>dataset=NextEventDataset(seqs,labels)</p></td></tr><tr><td><p>split</p></td><td><p>=int(0.8*len(dataset))</p></td></tr><tr><td colspan="2"><p>train_ds=torch.utils.data.Subset(dataset,range(split))</p></td></tr><tr><td><p>val_ds</p></td><td><p>=torch.utils.data.Subset(dataset,range(split,len(dataset)))</p></td></tr></table><p>9</p><table><tr><td colspan="3"><p>train_dl=DataLoader(train_ds,batch_size=64,shuffle=True)</p></td></tr><tr><td><p>val_dl</p></td><td><p>=DataLoader(val_ds,</p></td><td><p>batch_size=128)</p></td></tr></table><table><tr><td><p>x_s,y_s,lbl_s=next(iter(train_dl)) <br />print(f"Batch:input={x_s.shape},target={y_s.shape},labels={lbl_s.shape}")</p></td></tr></table><p>Batch:input=torch.Size([64,19]),target=torch.Size([64,19]),labels=torch.Size([64])</p><table><tr><td colspan="4"><p>#Next-eventpredictionmodel <br /><strong>class</strong>NextEventPredictor(nn.Module):</p><p><strong>def</strong>__init__(self,vocab_size=50,d_model=64,n_heads=4,n_layers=2): super().__init__() <br />self.transformer=LogTransformer(</p></td></tr><tr><td colspan="3"><p>vocab_size=vocab_size+1,</p></td><td><p>#+1forpadding</p></td></tr><tr><td colspan="4"><p>d_model=d_model,n_heads=n_heads,n_layers=n_layers, d_ff=128,max_seq_len=32 <br />) <br />self.head=nn.Linear(d_model,vocab_size+1)</p><p><strong>def</strong>forward(self,x): <br />	#Causalmask:eachpositiononlyattendstopreviouspositions</p></td></tr><tr><td><p>T</p></td><td colspan="3"><p>=x.size(1)</p></td></tr><tr><td colspan="4"><p>mask=torch.triu(torch.ones(T,T,device=x.device),diagonal=1).bool()</p></td></tr><tr><td><p>h</p></td><td colspan="3"><p>=self.transformer.embedding(x)</p></td></tr><tr><td><p>h</p></td><td colspan="3"><p>=self.transformer.pos_enc(h)</p></td></tr><tr><td><p>h</p></td><td colspan="3"><p>=self.transformer.encoder(h,mask=mask)</p></td></tr><tr><td><p>h</p></td><td colspan="3"><p>=self.transformer.norm(h)</p></td></tr><tr><td colspan="2"><p><strong>return</strong>self.head(h)</p></td><td colspan="2"><p>#(B,T,vocab_size)</p></td></tr><tr><td colspan="4"><p>pred_model=NextEventPredictor(vocab_size=50)</p></td></tr><tr><td><p>opt</p></td><td colspan="3"><p>=torch.optim.AdamW(pred_model.parameters(),lr=1e-3)</p></td></tr><tr><td><p>criterion</p></td><td colspan="3"><p>=nn.CrossEntropyLoss(ignore_index=0)</p></td></tr><tr><td><p>sched</p></td><td colspan="3"><p>=torch.optim.lr_scheduler.CosineAnnealingLR(opt,T_max=30)</p></td></tr></table><p>print(f"Predictorparams:{sum(p.numel()<strong>for</strong>p<strong>in</strong>pred_model.parameters()):,}")</p><p>C:\Users\ujanp\AppData\Local\Temp\ipykernel_32208\3218122914.py:46:UserWarning:</p><p>enable_nested_tensorisTrue,butself.use_nested_tensorisFalsebecauseencoder_layer.norm_</p><p>10</p><p>Predictorparams:73,651</p><table><tr><td colspan="3"><p>#Training <br /><strong>for</strong>epoch<strong>in</strong>range(30): <br />	pred_model.train() <br />	total_loss=0 <br />	<strong>for</strong>x_b,y_b,_<strong>in</strong>train_dl: <br />		opt.zero_grad()</p></td></tr><tr><td colspan="2"><p>logits=pred_model(x_b)</p></td><td><p>#(B,T,vocab)</p></td></tr><tr><td colspan="3"><p>#ReshapeforCrossEntropyLoss:(B*T,vocab),(B*T,)</p></td></tr><tr><td><p>loss</p></td><td colspan="2"><p>=criterion(logits.reshape(-1,logits.size(-1)),y_b.reshape(-1))</p></td></tr><tr><td colspan="3"><p>	loss.backward() <br />	torch.nn.utils.clip_grad_norm_(pred_model.parameters(),1.0) 	opt.step() <br />	total_loss+=loss.item() <br />sched.step()</p></td></tr></table><table><tr><td><p><strong>if</strong>epoch%10==0: <br />	print(f"Epoch{epoch}:loss={total_loss/len(train_dl):.4f}")</p></td></tr></table><p>Epoch0:loss=3.6606 <br />Epoch10:loss=2.8994 <br />Epoch20:loss=2.8619</p><table><tr><td colspan="4"><p>#Anomalyscoringviareconstructionloss <br /><strong>def</strong>anomaly_score(model:nn.Module,sequences:torch.Tensor)-&gt;torch.Tensor: 	""" <br />	Computeper-sequenceanomalyscore=meancross-entropyloss.</p><p>Highloss→sequenceisunusualrelativetotrainingdistribution→anomaly.</p><p>""" <br />model.eval() <br /><strong>with</strong>torch.no_grad():</p></td></tr><tr><td><p>x</p></td><td colspan="3"><p>=sequences[:,:-1]</p></td></tr><tr><td><p>y</p></td><td colspan="3"><p>=sequences[:,1:]</p></td></tr><tr><td colspan="2"><p>logits</p></td><td colspan="2"><p>=model(x)</p></td></tr><tr><td colspan="4"><p>#Per-tokenloss</p></td></tr><tr><td colspan="2"><p>losses</p></td><td colspan="2"><p>=nn.CrossEntropyLoss(reduction='none')(</p></td></tr><tr><td colspan="4"><p>logits.reshape(-1,logits.size(-1)), <br />y.reshape(-1) <br />).reshape(sequences.size(0),-1)</p></td></tr><tr><td colspan="3"><p><strong>return</strong>losses.mean(dim=1)</p></td><td><p>#Per-sequencemeanloss</p></td></tr></table><p>11</p><table><tr><td colspan="6"><p>#Scorevalidationsequences</p></td></tr><tr><td><p>val_seqs</p></td><td colspan="5"><p>=torch.stack([seqs[i]<strong>for</strong>i<strong>in</strong>range(split,len(seqs))])</p></td></tr><tr><td colspan="6"><p>val_labels=labels[split:] <br />scores=anomaly_score(pred_model,val_seqs)</p></td></tr><tr><td colspan="5"><p>print(f"Normalseqmeanscore:</p></td><td><p>{scores[val_labels==0].mean():.4f}")</p></td></tr><tr><td colspan="6"><p>print(f"Anomalousseqmeanscore:{scores[val_labels==1].mean():.4f}") #Choosethresholdonvalset(e.g.,95thpercentileofnormalscores) normal_scores=scores[val_labels==0]</p></td></tr><tr><td><p>threshold</p></td><td colspan="5"><p>=normal_scores.quantile(0.95).item()</p></td></tr><tr><td colspan="2"><p>predictions</p></td><td colspan="4"><p>=(scores&gt;threshold).long()</p></td></tr><tr><td colspan="2"><p>precision_a</p></td><td colspan="4"><p>=((predictions==1)&amp;(val_labels==1)).sum().float()/(predictions==1).s</p></td></tr><tr><td><p>recall_a</p></td><td colspan="5"><p>=((predictions==1)&amp;(val_labels==1)).sum().float()/(val_labels==1).su</p></td></tr><tr><td colspan="6"><p>print(f"\nAnomalydetection@95th-pctthreshold({threshold:.3f}):")</p></td></tr><tr><td><p>print(f"</p></td><td colspan="5"><p>Precision:{precision_a:.3f}")</p></td></tr><tr><td><p>print(f"</p></td><td colspan="2"><p>Recall:</p></td><td colspan="3"><p>{recall_a:.3f}")</p></td></tr><tr><td colspan="4"><p>Normalseqmeanscore:</p></td><td colspan="2"><p>2.7605</p></td></tr><tr><td colspan="6"><p>Anomalousseqmeanscore:4.1569 <br />Anomalydetection@95th-pctthreshold(3.127): 	Precision:0.714</p></td></tr><tr><td><p>Recall:</p></td><td colspan="5"><p>1.000</p></td></tr></table><p><strong>ModuleSummary</strong></p><table><tr><td><p>Concept</p></td><td><p>KeyTakeaway</p></td></tr><tr><td><p><strong>LSTM/GRU </strong><br /><strong>Attention </strong><br /><strong>Positionalencoding Paddingmask</strong></p></td><td><p>Sequential;gatescontrolmemory.Use batch_first=Truealways.</p><p>Dot-productsimilaritybetweenQandK;softmax givesweightsoverV.</p><p>TellsTransformerwhereinthesequenceeachtoken lives.</p><p>Passtoencodersopaddedpositionsdon’tinfluence realones.</p></td></tr></table><p>12</p><table><tr><td><p>Concept</p></td><td><p>KeyTakeaway</p></td></tr><tr><td><p><strong>Causalmask </strong><br /><strong>Anomalyscoring</strong></p></td><td><p>Preventspositionifromattendingtoi+1..T(for autoregressivetasks).</p><p>Highreconstructionloss=modelsurprisedby sequence=potentialanomaly.</p></td></tr></table><p><strong>What’sNext</strong></p><p><strong>Module9—ModernTrainingTricks</strong> covers the regularisation and optimisation techniques thatseparate“modeltrainsbutdoesn’tgeneralise”from“modeltrainsandgeneraliseswell.”Focallossforclassimbalance,labelsmoothing,mixup,contrastivelearning,andOptuna-style hyperparametertuning.</p><p>13</p>
+<p><strong>Module8—SequenceModels:LSTM/GRU→Transformers</strong></p><p><strong>FromRecurrencetoAttention—AppliedtoLogSequences</strong></p><p>PyTorchforDataScience</p><p><strong>ModuleGoal:</strong>Understandwhysequencemodellingrequiresspecialarchitectures. BuildLSTMandTransformermodelsforlogsequences,implementnext-event prediction,andproduceananomalyscoringpipelinedirectlyapplicabletoAIOps.</p><p><strong>1.WhySequenceModellingMattersinDS/AIOps</strong></p><p><strong>TheProblemwithStandardMLPsforSequences</strong></p><p>AnMLPtreatseachinputindependently.Feedit[login,file_read,file_write]and [file_write,login,file_read]—itdoesn’tknowthesehavedifferenttemporalmeaning.</p><p>InAIOps:</p><p>•Apermission_deniedaftersudo_attemptisverydifferentfrompermission_denied 	afterfile_read.</p><p>•The<strong>order</strong>and<strong>context</strong>ofeventsmattersenormouslyforanomalydetection.</p><p><strong>ThreeArchitecturesforSequences</strong></p><python>Architecture
+Processesorder?
+Long-rangedeps?
+Paralleltraining?
+MLP LSTM/GRU Transformer
+No Yes Yes
+No Partially Yes
+Yes No(sequential) Yes</python><p>1</p><p><strong>2.LSTMandGRU:WhenTheyStillWin </strong><br /><strong>TheLSTMCellIntuition </strong><br />AnLSTMmaintainstwostates:-<strong>Cellstatec_t</strong>—long-termmemory(the“conveyorbelt”).-<strong>Hiddenstateh_t</strong>—short-termworkingmemory.</p><p>Threegatescontrolwhattokeep,forget,andwrite:</p><p>Forgetgate:f_t=(W_f·[h_{t-1},x_t]+b_f) Input 	gate:i_t=(W_i·[h_{t-1},x_t]+b_i) Outputgate:o_t=(W_o·[h_{t-1},x_t]+b_o)</p><p>←whattoforget<br />←whattowrite<br />←whattooutput</p><p>&lt;python&gt;</p><python>importtorch importtorch.nnasnn importnumpyasnp</python><python>torch.manual_seed(42) #BasicLSTMusage lstm=nn.LSTM(
+input_size=32,
+#Featuredimpertimestep
+hidden_size=64,
+#Hiddenstatesize
+num_layers=2,
+#StackedLSTM
+batch_first=True,
+#(B,T,features)—alwaysusethis
+dropout=0.2,
+#Betweenlayers(notappliedtofinallayer)
+)
+bidirectional=False</python><p>#Input:(batch,seq_len,input_size)</p></td></tr><tr><td colspan="5"><p>x=torch.randn(8,20,32)</p></td><td colspan="2"><p>#8sequences,20timesteps,32features</p></td></tr><tr><td colspan="7"><p>output,(h_n,c_n)=lstm(x)</p></td></tr><tr><td colspan="2"><p>print("Input</p></td><td colspan="5"><p>shape:",x.shape)</p></td></tr><tr><td colspan="6"><p>print("Outputshape:",output.shape)</p></td><td><p>#(8,20,64)—hiddenstateateachtimestep</p></td></tr><tr><td colspan="3"><p>print("h_nshape:</p></td><td colspan="2"><p>",h_n.shape)</p></td><td colspan="2"><p>#(num_layers,8,64)—finalhiddenstate</p></td></tr><tr><td colspan="3"><p>print("c_nshape:</p></td><td colspan="2"><p>",c_n.shape)</p></td><td colspan="2"><p>#(num_layers,8,64)—finalcellstate</p></td></tr><tr><td><p>Input</p></td><td colspan="6"><p>shape:torch.Size([8,20,32])</p></td></tr><tr><td colspan="7"><p>Outputshape:torch.Size([8,20,64])</p></td></tr><tr><td colspan="2"><p>h_nshape:</p></td><td colspan="5"><p>torch.Size([2,8,64])</p></td></tr><tr><td colspan="2"><p>c_nshape:</p></td><td colspan="5"><p>torch.Size([2,8,64])</p></td></tr></table><p>2</p><python>#GRU—simplerthanLSTM(2gatesinsteadof3),oftencomparableperformance gru=nn.GRU( 	input_size=32, 	hidden_size=64, 	num_layers=2, 	batch_first=True, 	dropout=0.2 )
+x
+=torch.randn(8,20,32)
+out,h
+=gru(x)
+print("GRUoutput:",out.shape)
+#(8,20,64)
+print("GRUh_n:
+",h.shape)
+#(num_layers,8,64)
+GRUoutput:torch.Size([8,20,64])
+GRUh_n:
+torch.Size([2,8,64])
+<python></python><p><strong>&lt;python&gt;</strong></p><p><strong>WhenLSTM/GRUBeatTransformers</strong></p><p>LSTMs still win when:-<strong> Sequences are very long</strong> (&gt; 10k tokens) and attention is prohibitively expensive.-<strong>Online/streaminginference</strong>—processonetokenatatimewithconstant memory.-<strong>Tinydatasets</strong>—Transformersneedmoredatatogeneralise.-<strong>Deployment constraints</strong>—LSTMsaresimplertoexportandrunonedgedevices.</p><p><strong>3.AttentionIntuition</strong></p><p><strong>TheCoreIdea</strong></p><p>Insteadofcompressingtheentiresequenceintoafixed-sizehiddenstate,attentionletsthe model<strong>lookbackatanyposition</strong>inthesequencewhencomputingeachoutput.</p><p><strong>Real-WorldAnalogy:</strong>Readingalogtodetectananomaly.Ratherthansummarisingall 1000eventsintoasinglevector,attentionletsthemodelsay:<em>“Tounderstandevent850,let mefocusonevents10,200,and847—they’rethemostrelevantcontext.”</em></p><p>3</p><p>&lt;python&gt;</p><python>#Scaleddot-productattention—theheartoftheTransformer defscaled_dot_product_attention(Q,K,V,mask=None): 	"""
+#Scale
+Q:(B,heads,T,d_k)
+—queries
+K:(B,heads,T,d_k)
+—keys
+V:(B,heads,T,d_v)
+—values
+Returns:attendedvalues+attentionweights """
+d_k
+=Q.shape[-1]
+scores=torch.matmul(Q,K.transpose(-2,-1))/(d_k**0.5)</python><python>ifmaskisnotNone: 	scores=scores.masked_fill(mask==0,float('-inf'))
+weights=torch.softmax(scores,dim=-1)
+#(B,heads,T,T)
+output
+=torch.matmul(weights,V)
+#(B,heads,T,d_v)
+returnoutput,weights</python><python>#Demo:4heads,seq_len=5,d_k=8 B,heads,T,d_k=2,4,5,8 Q=torch.randn(B,heads,T,d_k) K=torch.randn(B,heads,T,d_k) V=torch.randn(B,heads,T,d_k)
+out,weights=scaled_dot_product_attention(Q,K,V)
+print("Attentionoutputshape:",out.shape)
+#(2,4,5,8)
+print("Attentionweightsshape:",weights.shape)#(2,4,5,5)—eachtokenattendstoall print("Attentionweightssum(shouldbe1.0):",weights[0,0,0].sum().item())</python><p>Attentionoutputshape:torch.Size([2,4,5,8]) Attentionweightsshape:torch.Size([2,4,5,5]) Attentionweightssum(shouldbe1.0):1.0</p><p>&lt;python&gt;</p><p>4</p><p><strong>4.Transformers:Embeddings,PositionalEncodings</strong></p><p><strong>LogEventTransformerforAIOps</strong></p><p>&lt;python&gt;</p><python>classPositionalEncoding(nn.Module): """ Sinusoidalpositionalencoding.
+Addspositioninformationtoembeddingssothemodelknowstokenorder.
+"""</python><python>def__init__(self,d_model:int,max_seq_len:int=512,dropout:float=0.1): super().__init__() self.dropout=nn.Dropout(dropout)
+#Buildthepositionalencodingmatrix
+pe
+=torch.zeros(max_seq_len,d_model)
+pos=torch.arange(0,max_seq_len).unsqueeze(1).float() div=torch.exp(torch.arange(0,d_model,2).float()*	-(np.log(10000.0)/d_model))
+pe[:,0::2]=torch.sin(pos*div) pe[:,1::2]=torch.cos(pos*div)
+pe=pe.unsqueeze(0)
+#(1,max_seq_len,d_model)
+self.register_buffer('pe',pe)
+#Non-trainablebuffer</python><python>defforward(self,x:torch.Tensor)->torch.Tensor: #x:(B,T,d_model) x=x+self.pe[:,:x.size(1),:] returnself.dropout(x)</python><python>classLogTransformer(nn.Module): """ Transformerencoderforlogeventsequences.
+Input:sequenceoflogeventIDs Output:per-tokenrepresentationsORsequence-levelrepresentation """</python><python>def__init__(self,vocab_size:int,d_model:int=128,n_heads:int=4, n_layers:int=3,d_ff:int=256,dropout:float=0.1, max_seq_len:int=64):</python><p>5</p><python>super().__init__() self.embedding=nn.Embedding(vocab_size,d_model,padding_idx=0)
+self.pos_enc
+=PositionalEncoding(d_model,max_seq_len,dropout)
+encoder_layer
+=nn.TransformerEncoderLayer(
+d_model=d_model,nhead=n_heads,dim_feedforward=d_ff,
+dropout=dropout,batch_first=True,norm_first=True
+#Pre-norm:morestable
+)
+self.encoder
+=nn.TransformerEncoder(encoder_layer,num_layers=n_layers)
+self.norm
+=nn.LayerNorm(d_model)
+defforward(self,token_ids:torch.Tensor, 	padding_mask:torch.Tensor=None)->torch.Tensor: 	"""
+token_ids:
+(B,T)—integereventIDs
+padding_mask:(B,T)—Truewheretokensarepadding
+Returns:
+(B,T,d_model)—contextualrepresentations
+""" x=self.pos_enc(self.embedding(token_ids)) x=self.encoder(x,src_key_padding_mask=padding_mask) returnself.norm(x)
+#Test VOCAB_SIZE=100 model_t=LogTransformer(vocab_size=VOCAB_SIZE,d_model=128,n_heads=4,n_layers=3)
+tokens
+=torch.randint(0,VOCAB_SIZE,(8,32))
+#Batch=8,seq_len=32
+pad_mask=(tokens==0) output=model_t(tokens,pad_mask)
+print("Transformeroutputshape:",output.shape)
+#(8,32,128)
+print("Params:",sum(p.numel()forpinmodel_t.parameters()))</python><p>C:\Users\ujanp\AppData\Local\Temp\ipykernel_32208\3218122914.py:46:UserWarning: <br />enable_nested_tensorisTrue,butself.use_nested_tensorisFalsebecauseencoder_layer.norm_ Transformeroutputshape:torch.Size([8,32,128]) <br />Params:410496</p><p>&lt;python&gt;</p><p>6</p><p><strong>5.TrainingTips:Masking,Padding,TeacherForcing PaddingMask</strong></p><p>&lt;python&gt;</p><python>fromtorch.nn.utils.rnnimportpad_sequence
+defmake_padding_mask(sequences:list,pad_id:int=0)->torch.Tensor: """Createapaddingmask:Truewheretokensarepadding.""" padded=pad_sequence(sequences,batch_first=True,padding_value=pad_id)
+mask
+=(padded==pad_id)
+returnpadded,mask</python><python>seqs=[ 	torch.tensor([3,7,12,5]), 	torch.tensor([8,2]), 	torch.tensor([1,9,4,7,3,11]) ] padded,mask=make_padding_mask(seqs) print("Padded:\n",padded) print("Paddingmask(True=pad):\n",mask)
+Padded:
+tensor([[3,
+7,12,
+5,
+0,
+0],
+[8,
+2,
+0,
+0,
+0,
+0],
+[1,
+9,
+4,
+7,
+3,11]])
+Paddingmask(True=pad):
+tensor([[False,False,False,False,
+True,
+True],
+[False,False,
+True,
+True,
+True,
+True],
+[False,False,False,False,False,False]])</python><p><strong>CausalMaskforAutoregressiveGeneration</strong></p><python>defmake_causal_mask(seq_len:int)->torch.Tensor: """ Upper-triangularmaskforautoregressive(causal)attention. Positionicanonlyattendtopositions0..i(notfuturetokens).
+""" #InPyTorchTransformerDecoder:Truemeans'ignorethisposition'</python><p>7</p><python>mask=torch.triu(torch.ones(seq_len,seq_len),diagonal=1).bool() returnmask</python><python>mask=make_causal_mask(6) print("Causalmask(True=masked):") print(mask.int())</python><p>Causalmask(True=masked): <br />tensor([[0,1,1,1,1,1], <br />	[0,0,1,1,1,1], <br />	[0,0,0,1,1,1], <br />	[0,0,0,0,1,1], <br />	[0,0,0,0,0,1], <br />	[0,0,0,0,0,0]],dtype=torch.int32)</p><p>&lt;python&gt;</p><p><strong>Project:Log-SequencePrediction+AnomalyScoring</strong></p><p><strong>Twotasksinonemodel:</strong></p><p>1.<strong>Nexteventprediction</strong>—predictthenextlogeventIDgivenpreviousevents. 2.<strong>Anomalyscoring</strong>—highlossonasequence=anomaloussequence.</p><p>&lt;python&gt;</p><python>#Dataset torch.manual_seed(77) np.random.seed(77)
+defgenerate_log_sequences(n_seqs=2000,vocab_size=50,seq_len=20, 		anomaly_rate=0.1): 	""" 	Normalsequences:Markovchainoverevents1-30.
+Anomaloussequences:randomeventsfromfullvocab(includingrare31-49).
+""" sequences,labels=[],[]
+trans=np.random.dirichlet(np.ones(30)*0.5,size=30)
+#Transitionmatrix</python><python>for_inrange(n_seqs): is_anomaly=np.random.rand()<anomaly_rate seq=[]</python><p>8</p><python>state=np.random.randint(0,30) for_inrange(seq_len): ifis_anomaly: 	event=np.random.randint(1,vocab_size) else: 	event=int(np.random.choice(30,p=trans[state]))+1 seq.append(event) state=event-1ifnotis_anomalyelsenp.random.randint(0,30) sequences.append(torch.tensor(seq,dtype=torch.long)) labels.append(int(is_anomaly))</python><python>returnsequences,torch.tensor(labels)</python><python>seqs,labels=generate_log_sequences(2000,vocab_size=50,seq_len=20) print(f"Sequences:{len(seqs)},Anomalyrate:{labels.float().mean():.3f}")</python><p>Sequences:2000,Anomalyrate:0.086</p><p>fromtorch.utils.dataimportDataset,DataLoader</p><python>classNextEventDataset(Dataset): 	"""Eachsample:input=seq[:-1],target=seq[1:](nexteventprediction)."""
+def__init__(self,sequences:list,labels:torch.Tensor): 	self.sequences=sequences
+self.labels
+=labels</python><python>def__len__(self):returnlen(self.sequences)</python><python>def__getitem__(self,idx): seq=self.sequences[idx] returnseq[:-1],seq[1:],self.labels[idx]</python><python>dataset=NextEventDataset(seqs,labels)
+split
+=int(0.8*len(dataset))
+train_ds=torch.utils.data.Subset(dataset,range(split))
+val_ds
+=torch.utils.data.Subset(dataset,range(split,len(dataset)))</python><p>9</p><python>train_dl=DataLoader(train_ds,batch_size=64,shuffle=True)
+val_dl
+=DataLoader(val_ds,
+batch_size=128)</python><python>x_s,y_s,lbl_s=next(iter(train_dl)) print(f"Batch:input={x_s.shape},target={y_s.shape},labels={lbl_s.shape}")</python><p>Batch:input=torch.Size([64,19]),target=torch.Size([64,19]),labels=torch.Size([64])</p><python>#Next-eventpredictionmodel classNextEventPredictor(nn.Module):
+def__init__(self,vocab_size=50,d_model=64,n_heads=4,n_layers=2): super().__init__() self.transformer=LogTransformer(
+vocab_size=vocab_size+1,
+#+1forpadding
+d_model=d_model,n_heads=n_heads,n_layers=n_layers, d_ff=128,max_seq_len=32 ) self.head=nn.Linear(d_model,vocab_size+1)
+defforward(self,x): 	#Causalmask:eachpositiononlyattendstopreviouspositions
+T
+=x.size(1)
+mask=torch.triu(torch.ones(T,T,device=x.device),diagonal=1).bool()
+h
+=self.transformer.embedding(x)
+h
+=self.transformer.pos_enc(h)
+h
+=self.transformer.encoder(h,mask=mask)
+h
+=self.transformer.norm(h)
+returnself.head(h)
+#(B,T,vocab_size)
+pred_model=NextEventPredictor(vocab_size=50)
+opt
+=torch.optim.AdamW(pred_model.parameters(),lr=1e-3)
+criterion
+=nn.CrossEntropyLoss(ignore_index=0)
+sched
+=torch.optim.lr_scheduler.CosineAnnealingLR(opt,T_max=30)</python><p>print(f"Predictorparams:{sum(p.numel()<strong>for</strong>p<strong>in</strong>pred_model.parameters()):,}")</p><p>C:\Users\ujanp\AppData\Local\Temp\ipykernel_32208\3218122914.py:46:UserWarning:</p><p>enable_nested_tensorisTrue,butself.use_nested_tensorisFalsebecauseencoder_layer.norm_</p><p>10</p><p>Predictorparams:73,651</p><python>#Training forepochinrange(30): 	pred_model.train() 	total_loss=0 	forx_b,y_b,_intrain_dl: 		opt.zero_grad()
+logits=pred_model(x_b)
+#(B,T,vocab)
+#ReshapeforCrossEntropyLoss:(B*T,vocab),(B*T,)
+loss
+=criterion(logits.reshape(-1,logits.size(-1)),y_b.reshape(-1))
+	loss.backward() 	torch.nn.utils.clip_grad_norm_(pred_model.parameters(),1.0) 	opt.step() 	total_loss+=loss.item() sched.step()</python><python>ifepoch%10==0: 	print(f"Epoch{epoch}:loss={total_loss/len(train_dl):.4f}")</python><p>Epoch0:loss=3.6606 <br />Epoch10:loss=2.8994 <br />Epoch20:loss=2.8619</p><python>#Anomalyscoringviareconstructionloss defanomaly_score(model:nn.Module,sequences:torch.Tensor)->torch.Tensor: 	""" 	Computeper-sequenceanomalyscore=meancross-entropyloss.
+Highloss→sequenceisunusualrelativetotrainingdistribution→anomaly.
+""" model.eval() withtorch.no_grad():
+x
+=sequences[:,:-1]
+y
+=sequences[:,1:]
+logits
+=model(x)
+#Per-tokenloss
+losses
+=nn.CrossEntropyLoss(reduction='none')(
+logits.reshape(-1,logits.size(-1)), y.reshape(-1) ).reshape(sequences.size(0),-1)
+returnlosses.mean(dim=1)
+#Per-sequencemeanloss</python><p>11</p><python>#Scorevalidationsequences
+val_seqs
+=torch.stack([seqs[i]foriinrange(split,len(seqs))])
+val_labels=labels[split:] scores=anomaly_score(pred_model,val_seqs)
+print(f"Normalseqmeanscore:
+{scores[val_labels==0].mean():.4f}")
+print(f"Anomalousseqmeanscore:{scores[val_labels==1].mean():.4f}") #Choosethresholdonvalset(e.g.,95thpercentileofnormalscores) normal_scores=scores[val_labels==0]
+threshold
+=normal_scores.quantile(0.95).item()
+predictions
+=(scores>threshold).long()
+precision_a
+=((predictions==1)&(val_labels==1)).sum().float()/(predictions==1).s
+recall_a
+=((predictions==1)&(val_labels==1)).sum().float()/(val_labels==1).su
+print(f"\nAnomalydetection@95th-pctthreshold({threshold:.3f}):")
+print(f"
+Precision:{precision_a:.3f}")
+print(f"
+Recall:
+{recall_a:.3f}")
+Normalseqmeanscore:
+2.7605
+Anomalousseqmeanscore:4.1569 Anomalydetection@95th-pctthreshold(3.127): 	Precision:0.714
+Recall:
+1.000</python><p><strong>&lt;python&gt;</strong></p><p><strong>ModuleSummary</strong></p><python>Concept
+KeyTakeaway
+LSTM/GRU Attention Positionalencoding Paddingmask
+Sequential;gatescontrolmemory.Use batch_first=Truealways.
+Dot-productsimilaritybetweenQandK;softmax givesweightsoverV.
+TellsTransformerwhereinthesequenceeachtoken lives.
+Passtoencodersopaddedpositionsdon’tinfluence realones.</python><p>12</p><python>Concept
+KeyTakeaway
+Causalmask Anomalyscoring
+Preventspositionifromattendingtoi+1..T(for autoregressivetasks).
+Highreconstructionloss=modelsurprisedby sequence=potentialanomaly.</python><p><strong>What’sNext</strong></p><p><strong>Module9—ModernTrainingTricks</strong> covers the regularisation and optimisation techniques thatseparate“modeltrainsbutdoesn’tgeneralise”from“modeltrainsandgeneraliseswell.”Focallossforclassimbalance,labelsmoothing,mixup,contrastivelearning,andOptuna-style hyperparametertuning.</p><p>13</p>

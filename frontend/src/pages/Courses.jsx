@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import {
     ChevronRight, Play, BookOpen, Layers, Brain,
     Database, FileText, Search, Zap, Globe, Code2,
@@ -328,10 +328,18 @@ const COURSE_TREE = [
         tag: 'New ✨',
         tagColor: '#f43f5e',
         children: [
+            { id: 'clustering-part0', label: 'Part 0', description: 'Course overview, prerequisites, and environment setup for clustering.', icon: Layers, isLeaf: true, duration: '1h', level: 'Beginner' },
             { id: 'clustering-part1', label: 'Part 1', description: 'Introduction to clustering — core concepts, distance metrics, and problem formulation.', icon: BookOpen, isLeaf: true, duration: '1h 30m', level: 'Beginner' },
             { id: 'clustering-part2', label: 'Part 2', description: 'K-Means, K-Medoids, and centroid-based clustering with hands-on implementation.', icon: Cpu, isLeaf: true, duration: '2h', level: 'Intermediate' },
             { id: 'clustering-part3', label: 'Part 3', description: 'Hierarchical clustering, DBSCAN, and density-based methods for complex data shapes.', icon: Network, isLeaf: true, duration: '2h', level: 'Intermediate' },
             { id: 'clustering-part4', label: 'Part 4', description: 'Evaluation metrics, cluster validation, and real-world clustering project.', icon: FlaskConical, isLeaf: true, duration: '2h 30m', level: 'Advanced' },
+            { id: 'clustering-part5', label: 'Part 5', description: 'Gaussian Mixture Models (GMM) and Expectation-Maximization algorithm in depth.', icon: Brain, isLeaf: true, duration: '2h', level: 'Advanced' },
+            { id: 'clustering-part6', label: 'Part 6', description: 'Spectral clustering and graph-based clustering methods.', icon: Network, isLeaf: true, duration: '2h', level: 'Advanced' },
+            { id: 'clustering-part7', label: 'Part 7', description: 'Dimensionality reduction techniques (PCA, t-SNE) paired with clustering.', icon: Sparkles, isLeaf: true, duration: '1h 30m', level: 'Advanced' },
+            { id: 'clustering-part8', label: 'Part 8', description: 'Handling large-scale datasets and scalable clustering algorithms.', icon: ServerCog, isLeaf: true, duration: '2h', level: 'Expert' },
+            { id: 'clustering-part9', label: 'Part 9', description: 'Time series clustering and sequence data grouping.', icon: Clock, isLeaf: true, duration: '1h 30m', level: 'Expert' },
+            { id: 'clustering-part10', label: 'Part 10', description: 'Anomaly detection and outlier removal using unsupervised techniques.', icon: Search, isLeaf: true, duration: '2h', level: 'Advanced' },
+            { id: 'clustering-part11', label: 'Part 11', description: 'Capstone project: building an end-to-end clustering pipeline in production.', icon: Code2, isLeaf: true, duration: '3h', level: 'Expert' },
         ],
     },
 ];
@@ -548,8 +556,9 @@ function Breadcrumb({ path, onNavigate }) {
 // ─────────────────────────────────────────────
 export default function Courses() {
     const navigate = useNavigate();
+    const location = useLocation();
     // pathIds = array of node IDs from root to current folder
-    const [pathIds, setPathIds] = useState([]);
+    const [pathIds, setPathIds] = useState(location.state?.pathIds || []);
 
     // Resolve current items to display
     const getCurrentItems = () => {
@@ -586,7 +595,7 @@ export default function Courses() {
     };
 
     const handleStartLeaf = (node) => {
-        navigate(`/course/${node.id}`);
+        navigate(`/course/${node.id}`, { state: { fromPathIds: pathIds } });
     };
 
     const currentItems = getCurrentItems();

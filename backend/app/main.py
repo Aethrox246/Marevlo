@@ -32,8 +32,13 @@ app.add_exception_handler(RateLimitExceeded, lambda request, exc: JSONResponse(
 ))
 
 # CORS: restrict to known frontend URL(s)
-_raw_origins = os.getenv("FRONTEND_URL", "http://localhost:5173")
+_raw_origins = os.getenv(
+    "FRONTEND_URL",
+    "http://localhost:5173,https://marevlo.vercel.app"
+)
+
 _allow_origins = [o.strip() for o in _raw_origins.split(",") if o.strip()]
+print("CORS ORIGINS:", _allow_origins)
 
 app.add_middleware(
     CORSMiddleware,

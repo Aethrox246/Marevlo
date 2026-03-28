@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback, useMemo, memo } from "react";
-import { useParams, useNavigate } from "react-router-dom";
+import { useParams, useNavigate, useLocation } from "react-router-dom";
 import {
   BookOpen,
   ChevronLeft,
@@ -17,16 +17,136 @@ import {
   Award,
   Menu,
   Dot,
+  StickyNote,
+  Edit3,
+  Trash2,
+  X,
 } from "lucide-react";
 
+import ReactDOM from 'react-dom';
+import parse, { domToReact } from 'html-react-parser';
+import InteractiveCodeBlock from '../components/InteractiveCodeBlock';
+import QuizModal from '../components/QuizModal';
+/* ── Zoomable Image Component — rendered via Portal so it truly covers everything ── */
+const ZoomableImage = ({ src, alt }) => {
+  const [zoomed, setZoomed] = useState(false);
+
+  // Close on Escape key
+  useEffect(() => {
+    if (!zoomed) return;
+    const handler = (e) => { if (e.key === 'Escape') setZoomed(false); };
+    window.addEventListener('keydown', handler);
+    return () => window.removeEventListener('keydown', handler);
+  }, [zoomed]);
+
+  const isDark = document.documentElement.classList.contains('dark');
+  const imgFilter = isDark ? 'invert(1) hue-rotate(180deg)' : 'none';
+
+  const overlay = zoomed ? ReactDOM.createPortal(
+    <div
+      onClick={() => setZoomed(false)}
+      style={{
+        position: 'fixed',
+        inset: 0,
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        background: 'rgba(0,0,0,0.92)',
+        backdropFilter: 'blur(8px)',
+        zIndex: 2147483647,
+        cursor: 'zoom-out',
+        padding: '24px',
+      }}
+    >
+      <img
+        src={src}
+        alt={alt}
+        onClick={(e) => e.stopPropagation()}
+        style={{
+          maxWidth: '90vw',
+          maxHeight: '90vh',
+          objectFit: 'contain',
+          borderRadius: '12px',
+          boxShadow: '0 24px 80px rgba(0,0,0,0.6)',
+          filter: imgFilter,
+        }}
+      />
+      <div style={{
+        position: 'absolute',
+        top: '24px',
+        right: '32px',
+        color: 'rgba(255,255,255,0.6)',
+        fontSize: '13px',
+        fontWeight: 600,
+        letterSpacing: '0.08em',
+        textTransform: 'uppercase',
+      }}>
+        Press Esc or click to close
+      </div>
+    </div>,
+    document.body
+  ) : null;
+
+  return (
+    <>
+      <img
+        src={src}
+        alt={alt}
+        className="zoomable"
+        onClick={() => setZoomed(true)}
+      />
+      {overlay}
+    </>
+  );
+};
+
 /* ── Performance Optimization: Memoized HTML Content ── */
-const MemoizedProseContent = memo(({ html, innerRef }) => (
-  <div
-    ref={innerRef}
-    className="prose-content prose-card selectable-text"
-    dangerouslySetInnerHTML={{ __html: html }}
-  />
-));
+const MemoizedProseContent = memo(({ html, innerRef }) => {
+  // Supported IDE tag names → language id
+  const IDE_TAGS = { python: 'python', sql: 'sql', code: 'code', javascript: 'javascript' };
+
+  const getText = (node) => {
+    if (node.type === 'text') return node.data;
+    if (node.children) return node.children.map(getText).join('');
+    return '';
+  };
+
+  const options = {
+    replace: (domNode) => {
+      // 1. Handle IDE Tags (matches actual <python> tags)
+      const lang = IDE_TAGS[domNode.name];
+      if (lang) {
+        const codeContent = (domNode.children || []).map(getText).join('').trim();
+        return <InteractiveCodeBlock initialCode={codeContent} language={lang} key={codeContent.slice(0, 20)} />;
+      }
+
+      // 2. Clear out raw marker strings that were converted to text (e.g. <python> or </python>)
+      // This often happens in mammoth conversion when using text-based markers.
+      if (domNode.type === 'tag' && domNode.name === 'p') {
+        const text = getText(domNode).trim().toLowerCase();
+        const isMarker = text === '<python>' || text === '</python>' || 
+                        text === '<code>' || text === '</code>' ||
+                        text === '<sql>' || text === '</sql>';
+        if (isMarker) return <></>; // Don't render marker-only paragraphs
+      }
+
+      // 3. Handle Zoomable Images
+      if (domNode.name === 'img') {
+        const { src, alt } = domNode.attribs;
+        return <ZoomableImage src={src} alt={alt || 'Course graphic'} key={src?.slice(0, 30)} />;
+      }
+    }
+  };
+
+  return (
+    <div
+      ref={innerRef}
+      className="prose-content prose-card selectable-text"
+    >
+      {parse(html, options)}
+    </div>
+  );
+});
 // Only re-render if the direct HTML string changes
 MemoizedProseContent.displayName = "MemoizedProseContent";
 
@@ -65,7 +185,18 @@ const COURSE_HTML_MAP = {
   "rag-database": "/courses/Database.html",
   "rag-prompt-eng": "/courses/Prompt_Engineering_Moduless.html",
   "rag-api": "/courses/mastering the llm and apis.html",
-  "clustering-part4": "/courses/clustering/CLUSTERING PART 4.html",
+  "clustering-part0": "/cources/clus/part 0.html",
+  "clustering-part1": "/cources/clus/part1.html",
+  "clustering-part2": "/cources/clus/part 2.html",
+  "clustering-part3": "/cources/clus/part 3.html",
+  "clustering-part4": "/cources/clus/part 4.html",
+  "clustering-part5": "/cources/clus/part 5.html",
+  "clustering-part6": "/cources/clus/part 6.html",
+  "clustering-part7": "/cources/clus/part 7.html",
+  "clustering-part8": "/cources/clus/part 8.html",
+  "clustering-part9": "/cources/clus/part 9.html",
+  "clustering-part10": "/cources/clus/part 10.html",
+  "clustering-part11": "/cources/clus/part 11.html",
 };
 
 /**
@@ -201,6 +332,23 @@ function processHtml(rawHtml) {
       }
     }
   });
+
+  // ── Step 1.5: Fallback for poorly formatted docs (no headings, just bold paragraphs) ──
+  if (!doc.querySelector("h1, h2, h3, h4")) {
+    doc.querySelectorAll("p").forEach((el) => {
+      const strong = el.querySelector("strong, b");
+      if (strong) {
+        const pText = el.textContent.trim();
+        const sText = strong.textContent.trim();
+        // If the paragraph text exactly matches the bold text, it's acting as a heading!
+        if (pText === sText && pText.length > 2) {
+          const newEl = doc.createElement("h2");
+          newEl.innerHTML = el.innerHTML;
+          el.replaceWith(newEl);
+        }
+      }
+    });
+  }
 
   // ── Step 2: Determine which heading tags are "main topic" vs "sub topic" ──
   // Strategy: if doc has h2s → use h2=topic, h3/h4=sub. If only h1s → use h1=topic, h2=sub.
@@ -398,6 +546,8 @@ const LESSONS = [
 export default function CourseContent() {
   const { id } = useParams();
   const navigate = useNavigate();
+  const location = useLocation();
+  const fromPathIds = location.state?.fromPathIds || [];
 
   /* ── Resolve course-specific config (for HTML-backed courses) ── */
   const courseConfig = COURSE_CONFIGS[id] ?? null;
@@ -448,10 +598,131 @@ export default function CourseContent() {
   const htmlFile = COURSE_HTML_MAP[id] ?? null;
   const [docHtml, setDocHtml] = useState("");
   const [docLoading, setDocLoading] = useState(false);
+  const [quizData, setQuizData] = useState(null);
+  const [quizModalOpen, setQuizModalOpen] = useState(false);
+
+  /* ── Interactive Highlights & Notes ── */
+  const [notesState, setNotesState] = useState(() => {
+    try { return JSON.parse(localStorage.getItem(`marevlo_notes_${id}`) || "[]"); }
+    catch { return []; }
+  });
+  const [selectionMenu, setSelectionMenu] = useState(null);
+  const [notesPanelOpen, setNotesPanelOpen] = useState(false);
+
+  // Save notes to localStorage
+  useEffect(() => {
+    if (id) {
+      localStorage.setItem(`marevlo_notes_${id}`, JSON.stringify(notesState));
+    }
+  }, [notesState, id]);
+
+  // Selection listener
+  useEffect(() => {
+    const handleSelection = () => {
+      const selection = window.getSelection();
+      if (!selection || selection.isCollapsed || !proseContentRef.current) {
+        setSelectionMenu(null);
+        return;
+      }
+      if (!proseContentRef.current.contains(selection.anchorNode)) return;
+
+      const text = selection.toString().trim();
+      if (text.length < 3) {
+        setSelectionMenu(null);
+        return;
+      }
+
+      const range = selection.getRangeAt(0);
+      const rect = range.getBoundingClientRect();
+      
+      setSelectionMenu({
+        text,
+        rect: { top: rect.top, left: rect.left, width: rect.width }
+      });
+    };
+
+    document.addEventListener("selectionchange", handleSelection);
+    return () => document.removeEventListener("selectionchange", handleSelection);
+  }, []);
+
+  // Apply highlights when docHtml or notes change
+  useEffect(() => {
+    if (!proseContentRef.current || !docHtml) return;
+    
+    const container = proseContentRef.current;
+    
+    // 1. Un-wrap old highlights
+    const oldMarks = container.querySelectorAll("mark.custom-highlight");
+    oldMarks.forEach(m => {
+       const parent = m.parentNode;
+       while (m.firstChild) parent.insertBefore(m.firstChild, m);
+       parent.removeChild(m);
+    });
+
+    if (notesState.length === 0) return;
+
+    // 2. Apply new highlights using TreeWalker
+    notesState.forEach(note => {
+        const walker = document.createTreeWalker(container, NodeFilter.SHOW_TEXT, null, false);
+        let node;
+        let matchFound = false;
+        
+        while ((node = walker.nextNode()) && !matchFound) {
+            const idx = node.nodeValue.indexOf(note.text);
+            if (idx !== -1) {
+               const matchNode = node.splitText(idx);
+               matchNode.splitText(note.text.length);
+               
+               const mark = document.createElement("mark");
+               mark.className = `custom-highlight ${note.color} rounded px-0.5 cursor-pointer relative group transition-colors`;
+               if (note.note) mark.title = note.note;
+               mark.onclick = () => setNotesPanelOpen(true);
+               
+               matchNode.parentNode.insertBefore(mark, matchNode);
+               mark.appendChild(matchNode);
+               matchFound = true;
+            }
+        }
+    });
+  }, [docHtml, notesState]);
+
+  const handleAddHighlight = (colorClass) => {
+    if (!selectionMenu) return;
+    
+    // Find current lesson title for context
+    const currentLessonData = activeLessons.find(l => l.id === currentLesson);
+    const lessonTitle = currentLessonData?.title || "Course Content";
+
+    const newNote = {
+      id: "note_" + Date.now(),
+      text: selectionMenu.text,
+      color: colorClass,
+      note: "",
+      createdAt: new Date().toISOString(),
+      lessonId: currentLesson,
+      lessonTitle: lessonTitle,
+    };
+    setNotesState(prev => [newNote, ...prev]); // Newest first
+    window.getSelection()?.removeAllRanges();
+    setSelectionMenu(null);
+  };
 
   useEffect(() => {
-    if (!htmlFile) { setDocHtml(""); setTocItems([]); setRawTocItems([]); setReadTime(0); return; }
+    if (!htmlFile) { setDocHtml(""); setTocItems([]); setRawTocItems([]); setReadTime(0); setQuizData(null); return; }
     setDocLoading(true);
+
+    const quizUrl = htmlFile.replace(/\.html$/, '_quiz.json');
+    fetch(quizUrl)
+      .then((r) => r.ok ? r.json() : null)
+      .then((data) => {
+        if (data && data.questions && data.questions.length > 0) {
+          setQuizData(data);
+        } else {
+          setQuizData(null);
+        }
+      })
+      .catch(() => setQuizData(null));
+
     fetch(htmlFile)
       .then((r) => r.text())
       .then((raw) => {
@@ -745,7 +1016,7 @@ export default function CourseContent() {
         {/* Sidebar header */}
         <div className="px-5 pt-6 pb-5 border-b flex-shrink-0" style={S.border}>
           <button
-            onClick={() => navigate("/courses")}
+            onClick={() => navigate("/courses", { state: { pathIds: fromPathIds } })}
             className="flex items-center gap-2 text-sm font-medium mb-5 group transition-colors"
             style={S.muted}
             onMouseEnter={(e) => (e.currentTarget.style.color = "var(--color-primary-text)")}
@@ -791,8 +1062,8 @@ export default function CourseContent() {
         </div>
 
         {/* ── Glassmorphic lesson cards ── */}
-        <div className="flex-1 overflow-y-auto py-5 px-4 custom-scrollbar space-y-4">
-          {lessons.map((l) => {
+        <div className="flex-1 overflow-y-auto py-5 px-4 custom-scrollbar space-y-3">
+          {lessons.map((l, index) => {
             const isActive = l.id === currentLesson;
             const isExpanded = l.id === expandedLesson;
             const hasSubTopics = l.subTopics && l.subTopics.length > 0;
@@ -809,48 +1080,58 @@ export default function CourseContent() {
             return (
               <div
                 key={l.id}
-                className="relative rounded-2xl border overflow-hidden transition-all duration-300"
+                className="relative rounded-2xl border overflow-hidden transition-all duration-300 group"
                 style={{
-                  background: isActive ? "var(--color-surface-hover)" : "var(--color-surface)",
-                  borderColor: isActive ? "var(--color-primary-text)" : "var(--color-border)",
-                  boxShadow: isActive ? "0 8px 30px rgba(0,0,0,0.06)" : "0 2px 10px rgba(0,0,0,0.02)",
-                  transform: isActive ? "scale(1.005)" : "scale(1)"
+                  background: isActive ? "var(--color-surface-hover)" : "rgba(255,255,255,0.015)",
+                  borderColor: isActive ? "rgba(99,102,241,0.5)" : "var(--color-border)",
+                  boxShadow: isActive ? "0 4px 20px rgba(99,102,241,0.15)" : "0 2px 10px rgba(0,0,0,0.02)",
+                  transform: isActive ? "scale(1.01)" : "scale(1)",
+                  opacity: l.completed || isActive ? 1 : 0.75
                 }}
+                onMouseEnter={(e) => { if (!isActive) e.currentTarget.style.background = "var(--color-surface-hover)"; }}
+                onMouseLeave={(e) => { if (!isActive) e.currentTarget.style.background = "rgba(255,255,255,0.015)"; }}
               >
                 {/* ── Main Module Header ── */}
                 <button
                   onClick={() => handleLessonClick(l)}
-                  className="w-full flex items-center gap-4 p-4 text-left transition-colors relative z-10"
+                  className="w-full flex items-center gap-3 p-4 text-left transition-colors relative z-10 w-full hover:bg-transparent"
                 >
+                  <div className="w-5 text-[10px] font-black tracking-widest opacity-30 mt-0.5 text-right flex-shrink-0" style={S.primary}>
+                    {(index + 1).toString().padStart(2, '0')}
+                  </div>
                   {/* Completion Ring */}
-                  <div className="relative flex-shrink-0 flex items-center justify-center w-9 h-9">
+                  <div className="relative flex-shrink-0 flex items-center justify-center w-8 h-8 ml-1">
                     {progressPct === 100 ? (
-                      <CheckCircle2 size={18} style={{ color: "var(--color-primary-text)" }} />
+                      <CheckCircle2 size={18} className="text-emerald-500 shadow-emerald-500/20 drop-shadow-md" />
                     ) : (
                       <>
                         <svg className="absolute inset-0 w-full h-full -rotate-90">
-                          <circle cx="18" cy="18" r="16" stroke="var(--color-border)" strokeWidth="2.5" fill="none" />
+                          <circle cx="16" cy="16" r="14" stroke="var(--color-border)" strokeWidth="2.5" fill="none" />
                           <circle
-                            cx="18" cy="18" r="16" stroke="currentColor" strokeWidth="3" fill="none"
-                            strokeDasharray="100.5" strokeDashoffset={100.5 - (100.5 * progressPct) / 100}
+                            cx="16" cy="16" r="14" stroke="currentColor" strokeWidth="2.5" fill="none"
+                            strokeDasharray="88" strokeDashoffset={88 - (88 * progressPct) / 100}
                             className="transition-all duration-700 ease-out"
                             style={{ color: "var(--color-primary-text)" }}
                           />
                         </svg>
-                        {isActive && <PlayCircle size={14} className="animate-pulse" style={{ color: "var(--color-primary-text)" }} />}
+                        {isActive ? (
+                          <div className="w-2.5 h-2.5 rounded-full animate-pulse shadow-[0_0_8px_rgba(99,102,241,0.8)]" style={{ background: "var(--color-primary-text)" }} />
+                        ) : (
+                          <div className="w-2 h-2 rounded-full opacity-20" style={{ background: "var(--color-muted-text)" }} />
+                        )}
                       </>
                     )}
                   </div>
 
                   {/* Title + Meta */}
-                  <span className="flex-1 min-w-0">
+                  <span className="flex-1 min-w-0 pl-1">
                     <span
                       className="block text-sm font-bold truncate transition-colors duration-200"
                       style={{ color: isActive ? "var(--color-primary-text)" : "var(--color-muted-text)" }}
                     >
                       {l.title}
                     </span>
-                    <span className="flex items-center gap-1.5 mt-1 text-[11px] font-semibold tracking-wide uppercase opacity-70" style={S.muted}>
+                    <span className="flex items-center gap-1.5 mt-1 text-[10px] font-semibold tracking-wide uppercase opacity-70" style={S.muted}>
                       <Clock size={10} /> {l.duration} {l.type ? `· ${l.type}` : ""}
                     </span>
                   </span>
@@ -858,10 +1139,10 @@ export default function CourseContent() {
                   {/* Chevron Toggle */}
                   {hasSubTopics && (
                     <div
-                      className="w-6 h-6 rounded-full flex items-center justify-center transition-all duration-300"
+                      className="w-6 h-6 rounded-full flex items-center justify-center transition-all duration-300 opacity-60 group-hover:opacity-100"
                       style={{
                         background: isExpanded ? "var(--color-primary-text)" : "transparent",
-                        color: isExpanded ? "var(--color-app-bg)" : "var(--color-muted-text)",
+                        color: isExpanded ? "var(--color-app-bg)" : "var(--color-primary-text)",
                         transform: isExpanded ? "rotate(180deg)" : "rotate(0deg)"
                       }}
                     >
@@ -927,7 +1208,31 @@ export default function CourseContent() {
         </div>
 
         {/* Sidebar footer */}
-        <div className="p-4 border-t flex-shrink-0" style={S.border}>
+        <div className="p-4 border-t flex-shrink-0 space-y-4" style={S.border}>
+          {quizData && (
+            <div
+              className="relative overflow-hidden rounded-2xl p-5 border group cursor-pointer transition-all duration-300"
+              style={{ background: "rgba(99,102,241,0.08)", borderColor: "rgba(99,102,241,0.3)" }}
+              onClick={() => setQuizModalOpen(true)}
+              onMouseEnter={(e) => { e.currentTarget.style.background = "rgba(99,102,241,0.15)"; e.currentTarget.style.borderColor = "rgba(99,102,241,0.6)"; e.currentTarget.style.boxShadow = "0 8px 32px rgba(99,102,241,0.2)"; }}
+              onMouseLeave={(e) => { e.currentTarget.style.background = "rgba(99,102,241,0.08)"; e.currentTarget.style.borderColor = "rgba(99,102,241,0.3)"; e.currentTarget.style.boxShadow = "none"; }}
+            >
+              <div className="absolute -top-10 -right-10 w-32 h-32 bg-indigo-500/20 blur-2xl rounded-full pointer-events-none group-hover:bg-indigo-500/40 transition-colors duration-500" />
+              <div className="flex items-start gap-3 relative z-10 w-full">
+                <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center shrink-0 shadow-lg shadow-indigo-500/30">
+                  <Brain size={20} color="#fff" />
+                </div>
+                <div className="flex-1 w-full mt-0.5">
+                  <h3 className="font-bold text-sm text-indigo-400 mb-0.5 tracking-tight group-hover:text-indigo-300 transition-colors">Knowledge Check</h3>
+                  <p className="text-xs text-indigo-200/60 leading-relaxed mb-3">Test what you've learned.</p>
+                  <button className="w-full flex justify-center items-center gap-1.5 text-xs font-bold text-white bg-indigo-500/20 hover:bg-indigo-500/40 px-3 py-2 rounded-lg transition-colors border border-indigo-500/30">
+                    Take Quiz <ChevronRight size={12} />
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+
           <div
             className="flex items-start gap-3 p-4 rounded-2xl border"
             style={{ background: "var(--color-surface-hover)", borderColor: "var(--color-border)" }}
@@ -982,6 +1287,15 @@ export default function CourseContent() {
             style={{ background: "var(--color-surface)", borderColor: "var(--color-border)" }}
           >
             <div className="flex items-center gap-3 min-w-0">
+              {/* Universal Back Button */}
+              <button
+                onClick={() => navigate("/courses", { state: { pathIds: fromPathIds } })}
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold shadow-sm transition-all hover:-translate-x-0.5"
+                style={{ background: "var(--color-primary-text)", color: "var(--color-app-bg)" }}
+              >
+                <ArrowLeft size={13} /> Back
+              </button>
+
               <button
                 className="lg:hidden p-1.5 rounded-lg transition-colors flex-shrink-0"
                 onClick={() => setSidebar(true)}
@@ -994,9 +1308,9 @@ export default function CourseContent() {
               {/* Desktop sidebar toggle for HTML courses */}
               {htmlFile && (
                 <button
-                  className="hidden lg:flex p-1.5 rounded-lg transition-colors flex-shrink-0"
+                  className="hidden lg:flex p-1.5 rounded-lg transition-colors flex-shrink-0 bg-opacity-50"
                   onClick={() => setSidebarCollapsed(v => !v)}
-                  style={S.muted}
+                  style={sidebarCollapsed ? { background: "var(--color-surface-hover)" } : S.muted}
                   title={sidebarCollapsed ? "Show course outline" : "Hide course outline"}
                   onMouseEnter={hoverSurface}
                   onMouseLeave={hoverClear}
@@ -1004,11 +1318,11 @@ export default function CourseContent() {
                   <Menu size={18} />
                 </button>
               )}
-              <div className="flex items-center gap-1.5 text-xs min-w-0" style={S.muted}>
-                <span className="hidden sm:block truncate">Generative AI</span>
-                <ChevronRight size={12} className="hidden sm:block flex-shrink-0" />
+              <div className="hidden md:flex items-center gap-1.5 text-xs min-w-0 px-2 border-l ml-1" style={{ borderColor: 'var(--color-border)', ...S.muted }}>
+                <span className="truncate">Generative AI</span>
+                <ChevronRight size={12} className="flex-shrink-0" />
                 <span className="font-semibold truncate" style={S.primary}>
-                  Lesson {lesson?.title}
+                  {lesson?.title || 'Loading...'}
                   {activeSubTopic && (
                     <span style={S.muted}> › {lesson?.subTopics?.find(s => s.id === activeSubTopic)?.title}</span>
                   )}
@@ -1017,6 +1331,14 @@ export default function CourseContent() {
             </div>
 
             <div className="flex items-center gap-2 flex-shrink-0">
+              <button
+                onClick={() => setNotesPanelOpen(true)}
+                className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold bg-indigo-500/10 text-indigo-400 hover:bg-indigo-500/20 transition-colors border border-indigo-500/20 shadow-[0_0_12px_rgba(99,102,241,0.15)]"
+                title="View Notes & Highlights"
+              >
+                <StickyNote size={13} /> {notesState.length > 0 ? notesState.length : "Notes"}
+              </button>
+
               <button
                 onClick={() => setFocusMode(true)}
                 className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-medium border transition-colors"
@@ -1331,6 +1653,185 @@ export default function CourseContent() {
           </div>
         )}
       </main>
+
+      {/* Quiz Modal Popup */}
+      {quizModalOpen && quizData && (
+        <QuizModal quiz={quizData} onClose={() => setQuizModalOpen(false)} />
+      )}
+
+      {/* Floating Selection Menu */}
+      {selectionMenu && (
+        <div 
+          className="fixed z-[99999] flex items-center gap-2 p-2 rounded-2xl bg-[#0d1117]/80 backdrop-blur-xl border border-white/10 shadow-[0_20px_60px_-15px_rgba(0,0,0,0.5)] animate-in zoom-in-95 duration-200"
+          style={{ 
+             top: Math.max(10, selectionMenu.rect.top - 65), 
+             left: selectionMenu.rect.left + (selectionMenu.rect.width / 2) - 110 
+          }}
+        >
+          <div className="flex bg-black/20 rounded-xl p-1 border border-white/5 backdrop-blur-md">
+             {[
+               { color: "bg-yellow-400", shadow: "rgba(250,204,21,0.5)", class: "bg-yellow-500/30 text-yellow-200" },
+               { color: "bg-emerald-400", shadow: "rgba(52,211,153,0.5)", class: "bg-emerald-500/30 text-emerald-200" },
+               { color: "bg-purple-400", shadow: "rgba(192,132,252,0.5)", class: "bg-purple-500/30 text-purple-200" }
+             ].map((c, i) => (
+               <button 
+                 key={i}
+                 onClick={() => handleAddHighlight(c.class)} 
+                 className="w-8 h-8 rounded-lg hover:bg-white/10 flex items-center justify-center group transition-all active:scale-90"
+               >
+                 <div 
+                   className={`w-3.5 h-3.5 rounded-full ${c.color} shadow-[0_0_12px_${c.shadow}] group-hover:scale-125 transition-transform`} 
+                 />
+               </button>
+             ))}
+          </div>
+          <div className="w-px h-6 bg-white/10 mx-0.5" />
+          <button 
+             onClick={() => { handleAddHighlight("bg-indigo-500/30 text-indigo-200"); setNotesPanelOpen(true); }}
+             className="flex items-center gap-2 px-4 py-2 text-xs font-bold text-white bg-indigo-500 hover:bg-indigo-400 rounded-xl transition-all shadow-lg shadow-indigo-500/30 active:scale-95 group"
+          >
+             <Edit3 size={12} className="group-hover:rotate-12 transition-transform" /> 
+             <span>ADD NOTE</span>
+          </button>
+        </div>
+      )}
+
+      {/* Slide-out Notes Panel */}
+      {notesPanelOpen && (
+        <>
+          <div 
+            className="fixed inset-0 z-[100000] bg-black/60 backdrop-blur-md animate-in fade-in duration-300 pointer-events-auto" 
+            onClick={() => setSelectionMenu(null) || setNotesPanelOpen(false)} 
+          />
+          <div 
+            className="fixed top-0 right-0 bottom-0 w-[420px] max-w-[100vw] z-[100001] backdrop-blur-2xl border-l transition-all duration-500 flex flex-col shadow-[-20px_0_80px_rgba(0,0,0,0.4)] animate-in slide-in-from-right"
+            style={{
+               backgroundColor: isDark ? 'rgba(13, 17, 23, 0.85)' : 'rgba(255, 255, 255, 0.95)',
+               borderColor: isDark ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.08)',
+            }}
+          >
+            {/* Sidebar Header */}
+            <div 
+              className="px-7 py-6 border-b flex items-center justify-between"
+              style={{
+                 backgroundColor: isDark ? 'rgba(255, 255, 255, 0.03)' : 'rgba(0, 0, 0, 0.02)',
+                 borderColor: isDark ? 'rgba(255, 255, 255, 0.05)' : 'rgba(0, 0, 0, 0.05)',
+              }}
+            >
+              <div className="flex items-center gap-4">
+                <div className="w-10 h-10 rounded-xl bg-indigo-500 text-white flex items-center justify-center shadow-lg shadow-indigo-500/20">
+                  <StickyNote size={20} />
+                </div>
+                <div>
+                  <h2 className="text-lg font-black text-white tracking-tight leading-tight">Your Notebook</h2>
+                  <p className="text-[10px] font-bold text-white/30 tracking-widest uppercase">Course Insights & Highlights</p>
+                </div>
+              </div>
+              <button 
+                onClick={() => setNotesPanelOpen(false)} 
+                className="w-10 h-10 rounded-full hover:bg-white/10 text-white/40 hover:text-white transition-all flex items-center justify-center active:scale-90"
+              >
+                <X size={20} />
+              </button>
+            </div>
+
+            {/* Notes List */}
+            <div className="flex-1 overflow-y-auto p-6 space-y-6 custom-scrollbar-premium">
+              {notesState.length === 0 ? (
+                <div className="h-full flex flex-col items-center justify-center text-center px-6">
+                  <div className="w-24 h-24 rounded-3xl bg-white/[0.02] border border-white/5 flex items-center justify-center mb-6 overflow-hidden relative group">
+                    <div className="absolute inset-0 bg-indigo-500/10 opacity-0 group-hover:opacity-100 transition-opacity blur-xl" />
+                    <Brain size={40} className="text-white/10 group-hover:text-indigo-400 group-hover:scale-110 transition-all duration-500" />
+                  </div>
+                  <h3 className="text-base font-bold text-white/60">No insights saved yet</h3>
+                  <p className="text-sm text-white/30 mt-2 leading-relaxed">
+                    Highlight interesting parts of the course to save them here and add your thoughts.
+                  </p>
+                </div>
+              ) : (
+                notesState.map((note) => (
+                  <div 
+                    key={note.id} 
+                    className="rounded-2xl border overflow-hidden transition-all duration-300 hover:shadow-xl group"
+                    style={{
+                       backgroundColor: isDark ? 'rgba(22, 27, 34, 0.6)' : 'rgba(255, 255, 255, 0.5)',
+                       borderColor: isDark ? 'rgba(255, 255, 255, 0.05)' : 'rgba(0, 0, 0, 0.05)',
+                    }}
+                  >
+                    {/* Highlighted Quote Section */}
+                    <div 
+                      className="p-5 border-l-4"
+                      style={{
+                         borderColor: `${note.color.includes('indigo') ? '#6366f1' : note.color.includes('yellow') ? '#fbbf24' : note.color.includes('emerald') ? '#10b981' : '#a855f7'}88`,
+                         backgroundColor: isDark ? 'rgba(99, 102, 241, 0.03)' : 'rgba(99, 102, 241, 0.02)',
+                      }}
+                    >
+                      <div className="flex justify-between items-start gap-3 mb-2">
+                        <span className="text-[10px] font-black tracking-widest uppercase opacity-60" style={{ color: note.color.includes('indigo') ? '#818cf8' : note.color.includes('yellow') ? '#fcd34d' : note.color.includes('emerald') ? '#34d399' : '#c084fc' }}>Highlight</span>
+                        <div className="flex items-center gap-2">
+                          <span className="text-[10px] font-medium opacity-20" style={{ color: isDark ? '#fff' : '#000' }}>
+                            {new Date(note.createdAt).toLocaleDateString(undefined, { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
+                          </span>
+                        </div>
+                      </div>
+                      <p className="text-[13px] leading-relaxed font-medium italic" style={{ color: isDark ? 'rgba(255,255,255,0.8)' : 'rgba(0,0,0,0.7)' }}>
+                        "{note.text}"
+                      </p>
+                    </div>
+
+                    {/* Note Input Section */}
+                    <div className="p-5 flex flex-col gap-4">
+                      <div className="relative">
+                        <textarea
+                          value={note.note}
+                          onChange={(e) => setNotesState(prev => prev.map(n => n.id === note.id ? {...n, note: e.target.value} : n))}
+                          placeholder="What did you learn from this? Add a note..."
+                          className="w-full transition-all outline-none rounded-xl p-4 text-xs resize-none min-h-[100px] leading-relaxed custom-scrollbar shadow-inner"
+                          style={{
+                             backgroundColor: isDark ? 'rgba(0, 0, 0, 0.3)' : 'rgba(0, 0, 0, 0.03)',
+                             border: `1px solid ${isDark ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.1)'}`,
+                             color: isDark ? '#fff' : '#000',
+                          }}
+                        />
+                      </div>
+                      
+                      <div className="flex justify-between items-center pt-1">
+                        <div className="flex items-center gap-1.5 opacity-40 group-hover:opacity-100 transition-opacity">
+                          <div className="w-1.5 h-1.5 rounded-full bg-indigo-500" />
+                          <span className="text-[10px] font-bold tracking-tight uppercase" style={{ color: isDark ? 'rgba(255,255,255,0.4)' : 'rgba(0,0,0,0.5)' }}>
+                             {note.lessonTitle || 'Section Content'}
+                          </span>
+                        </div>
+                        <button 
+                          onClick={() => setNotesState(prev => prev.filter(n => n.id !== note.id))}
+                          className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg hover:bg-red-500/10 transition-all text-[10px] font-black uppercase tracking-wider"
+                          style={{ color: 'rgba(239, 68, 68, 0.5)' }}
+                        >
+                          <Trash2 size={12} /> Delete
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                ))
+              )}
+            </div>
+            
+            {/* Footer Summary */}
+            {notesState.length > 0 && (
+              <div className="px-7 py-4 bg-white/[0.02] border-t border-white/5 flex items-center justify-between">
+                <span className="text-[11px] font-bold text-white/30 uppercase tracking-widest">
+                  Total of {notesState.length} insights
+                </span>
+                <div className="flex -space-x-1.5 overflow-hidden">
+                   {[1, 2, 3].map(i => (
+                     <div key={i} className="w-5 h-5 rounded-full bg-indigo-500/20 border border-[#0d1117]" />
+                   ))}
+                </div>
+              </div>
+            )}
+          </div>
+        </>
+      )}
     </div>
   );
 }
