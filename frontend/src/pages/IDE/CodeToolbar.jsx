@@ -1,27 +1,66 @@
-import React, { useState } from 'react';
-import { Settings, ChevronDown, RotateCcw, Copy, Check } from 'lucide-react';
+import React, { useState, useCallback, useEffect, memo } from 'react';
+import { Settings, ChevronDown, RotateCcw, Copy, Check, Keyboard, Command } from 'lucide-react';
 
 /**
- * CodeToolbar - Theme-aware toolbar with:
- * - Language selector
- * - Copy code button (checkmark 2s feedback)
- * - Reset code button (with confirmation)
- * - Keyboard shortcut hints
+ * KeyboardShortcutBadge - Displays keyboard shortcuts in a clean badge
  */
-const CodeToolbar = ({ selectedLanguage, onLanguageChange, languages = [], onCopy, onReset }) => {
+const KeyboardShortcutBadge = memo(({ keys, className = '' }) => (
+    <span className={`inline-flex items-center gap-0.5 ${className}`} style={{ fontSize: 10 }}>
+        {keys.map((key, i) => (
+            <span key={i} style={{
+                padding: '1px 4px',
+                borderRadius: 3,
+                background: 'color-mix(in srgb, var(--color-primary-text) 8%, transparent)',
+                border: '1px solid color-mix(in srgb, var(--color-primary-text) 12%, transparent)',
+                fontSize: 9,
+                fontWeight: 600,
+                fontFamily: 'system-ui, -apple-system, sans-serif',
+                color: 'var(--color-muted-text)',
+                lineHeight: 1.2,
+            }}>
+                {key}
+            </span>
+        ))}
+    </span>
+));
+
+/**
+ * CodeToolbar - Enhanced theme-aware toolbar with:
+ * - Language selector with icons
+ * - Copy code button with keyboard shortcut hints
+ * - Reset code button with confirmation
+ * - Keyboard shortcut tooltips
+ * - Smooth animations and transitions
+ */
+const CodeToolbar = ({ selectedLanguage, onLanguageChange, languages = [], onCopy, onReset, onShowShortcuts }) => {
     const [isDropdownOpen, setIsDropdownOpen] = useState(false);
     const [copied, setCopied] = useState(false);
     const [confirmReset, setConfirmReset] = useState(false);
+    const [isMac, setIsMac] = useState(false);
+
+    // Detect OS for keyboard shortcut display
+    useEffect(() => {
+        setIsMac(navigator.platform.toUpperCase().indexOf('MAC') >= 0);
+    }, []);
 
     const currentLanguage = languages.find(l => l.id === selectedLanguage) || languages[0] || { name: 'Select' };
 
-    const handleCopy = () => {
+    // Language icons mapping
+    const langIcons = {
+        python: '🐍',
+        javascript: '⚡',
+        java: '☕',
+        cpp: '⚙️',
+        'c++': '⚙️',
+    };
+
+    const handleCopy = useCallback(() => {
         onCopy?.();
         setCopied(true);
         setTimeout(() => setCopied(false), 2000);
-    };
+    }, [onCopy]);
 
-    const handleReset = () => {
+    const handleReset = useCallback(() => {
         if (confirmReset) {
             onReset?.();
             setConfirmReset(false);
@@ -29,86 +68,184 @@ const CodeToolbar = ({ selectedLanguage, onLanguageChange, languages = [], onCop
             setConfirmReset(true);
             setTimeout(() => setConfirmReset(false), 3000);
         }
-    };
+    }, [confirmReset, onReset]);
 
-    const iconBtn = (title, onClick, children) => (
-        <button
-            title={title}
-            onClick={onClick}
-            style={{
-                padding: '5px 8px', borderRadius: 6, background: 'transparent',
-                border: 'none', color: 'var(--color-muted-text)', cursor: 'pointer',
-                display: 'flex', alignItems: 'center', gap: 4, fontSize: 12,
-                transition: 'color 0.15s',
-            }}
-            onMouseEnter={e => e.currentTarget.style.color = 'var(--color-primary-text)'}
-            onMouseLeave={e => e.currentTarget.style.color = 'var(--color-muted-text)'}
-        >
-            {children}
-        </button>
-    );
+    // Handle keyboard shortcuts
+    useEffect(() => {
+        const handler = (e) => {
+            // Ctrl/Cmd + Shift + C = Copy
+            if ((e.ctrlKey || e.metaKey) && e.shiftKey && e.key.toLowerCase() === 'c') {
+                e.preventDefault();
+                handleCopy();
+            }
+        };
+        window.addEventListener('keydown', handler);
+        return () => window.removeEventListener('keydown', handler);
+    }, [handleCopy]);
+
+    const modKey = isMac ? '⌘' : 'Ctrl';
 
     return (
         <div style={{
             display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-            padding: '6px 16px',
+            padding: '8px 16px',
             background: 'var(--color-surface)',
             borderBottom: '1px solid var(--color-border)',
-            flexShrink: 0
+            flexShrink: 0,
+            minHeight: 48,
         }}>
+            {/* Animation styles */}
+            <style>{`
+                @keyframes toolbar-pulse {
+                    0%, 100% { transform: scale(1); }
+                    50% { transform: scale(1.05); }
+                }
+                @keyframes toolbar-check {
+                    0% { transform: scale(0) rotate(-45deg); opacity: 0; }
+                    50% { transform: scale(1.2) rotate(0deg); }
+                    100% { transform: scale(1) rotate(0deg); opacity: 1; }
+                }
+                @keyframes toolbar-shake {
+                    0%, 100% { transform: translateX(0); }
+                    25% { transform: translateX(-2px); }
+                    75% { transform: translateX(2px); }
+                }
+                .toolbar-btn {
+                    padding: 6px 10px;
+                    border-radius: 6px;
+                    background: transparent;
+                    border: 1px solid transparent;
+                    color: var(--color-muted-text);
+                    cursor: pointer;
+                    display: flex;
+                    align-items: center;
+                    gap: 6px;
+                    font-size: 12px;
+                    font-weight: 500;
+                    transition: all 0.15s ease;
+                    position: relative;
+                }
+                .toolbar-btn:hover {
+                    color: var(--color-primary-text);
+                    background: var(--color-surface-hover);
+                    border-color: var(--color-border);
+                }
+                .toolbar-btn:active {
+                    transform: scale(0.97);
+                }
+                .toolbar-btn-success {
+                    color: #10b981 !important;
+                    background: color-mix(in srgb, #10b981 8%, transparent) !important;
+                    border-color: color-mix(in srgb, #10b981 20%, transparent) !important;
+                }
+                .toolbar-btn-danger {
+                    color: #ef4444 !important;
+                    background: color-mix(in srgb, #ef4444 8%, transparent) !important;
+                    border-color: color-mix(in srgb, #ef4444 20%, transparent) !important;
+                    animation: toolbar-shake 0.3s ease;
+                }
+                .lang-dropdown-item {
+                    width: 100%;
+                    text-align: left;
+                    padding: 8px 14px;
+                    font-size: 13px;
+                    background: transparent;
+                    color: var(--color-primary-text);
+                    border: none;
+                    cursor: pointer;
+                    display: flex;
+                    align-items: center;
+                    gap: 8px;
+                    transition: background 0.15s ease;
+                }
+                .lang-dropdown-item:hover {
+                    background: var(--color-surface-hover);
+                }
+                .lang-dropdown-item-active {
+                    background: color-mix(in srgb, #818cf8 10%, transparent);
+                    font-weight: 600;
+                }
+            `}</style>
+
             {/* Left: Logo + Language */}
             <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
                 {/* Logo */}
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                    <div style={{ width: 22, height: 22, background: '#10b981', borderRadius: 5, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                        <span style={{ color: '#fff', fontWeight: 700, fontSize: 11 }}>A</span>
+                    <div style={{ 
+                        width: 24, 
+                        height: 24, 
+                        background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)', 
+                        borderRadius: 6, 
+                        display: 'flex', 
+                        alignItems: 'center', 
+                        justifyContent: 'center',
+                        boxShadow: '0 2px 8px rgba(16, 185, 129, 0.25)',
+                    }}>
+                        <span style={{ color: '#fff', fontWeight: 700, fontSize: 12 }}>M</span>
                     </div>
-                    <span style={{ fontWeight: 600, color: 'var(--color-primary-text)', fontSize: 13 }}>Marevlo</span>
+                    <span style={{ fontWeight: 600, color: 'var(--color-primary-text)', fontSize: 14 }}>Marevlo</span>
                 </div>
 
-                <div style={{ width: 1, height: 14, background: 'var(--color-border)' }} />
+                <div style={{ width: 1, height: 18, background: 'var(--color-border)' }} />
 
                 {/* Language Selector */}
                 <div style={{ position: 'relative' }}>
                     <button
                         onClick={() => setIsDropdownOpen(!isDropdownOpen)}
                         style={{
-                            display: 'flex', alignItems: 'center', gap: 6,
-                            padding: '5px 10px', borderRadius: 6,
+                            display: 'flex', alignItems: 'center', gap: 8,
+                            padding: '6px 12px', borderRadius: 8,
                             background: 'var(--color-surface-hover)',
                             border: '1px solid var(--color-border)',
                             color: 'var(--color-primary-text)',
-                            fontSize: 12, cursor: 'pointer', fontWeight: 500
+                            fontSize: 12, cursor: 'pointer', fontWeight: 500,
+                            transition: 'all 0.15s ease',
+                        }}
+                        onMouseEnter={(e) => {
+                            e.currentTarget.style.borderColor = '#818cf8';
+                            e.currentTarget.style.boxShadow = '0 0 0 2px color-mix(in srgb, #818cf8 15%, transparent)';
+                        }}
+                        onMouseLeave={(e) => {
+                            e.currentTarget.style.borderColor = 'var(--color-border)';
+                            e.currentTarget.style.boxShadow = 'none';
                         }}
                     >
+                        <span style={{ fontSize: 14 }}>{langIcons[selectedLanguage?.toLowerCase()] || '📝'}</span>
                         {currentLanguage.name}
-                        <ChevronDown size={12} style={{ transform: isDropdownOpen ? 'rotate(180deg)' : 'none', transition: '0.2s' }} />
+                        <ChevronDown size={12} style={{ 
+                            transform: isDropdownOpen ? 'rotate(180deg)' : 'none', 
+                            transition: 'transform 0.2s ease',
+                            opacity: 0.6,
+                        }} />
                     </button>
 
                     {isDropdownOpen && (
                         <>
                             <div className="fixed inset-0 z-10" onClick={() => setIsDropdownOpen(false)} />
                             <div style={{
-                                position: 'absolute', top: '100%', left: 0, marginTop: 4,
-                                width: 160, background: 'var(--color-surface)',
+                                position: 'absolute', top: '100%', left: 0, marginTop: 6,
+                                width: 180, background: 'var(--color-surface)',
                                 border: '1px solid var(--color-border)',
-                                borderRadius: 8, boxShadow: '0 8px 24px rgba(0,0,0,0.15)',
-                                zIndex: 20, padding: '4px 0'
+                                borderRadius: 10, 
+                                boxShadow: '0 12px 32px rgba(0,0,0,0.2)',
+                                zIndex: 20, 
+                                padding: '4px',
+                                animation: 'fadeIn 0.15s ease',
                             }}>
                                 {languages.map((lang) => (
                                     <button
                                         key={lang.id}
                                         onClick={() => { onLanguageChange(lang.id); setIsDropdownOpen(false); }}
+                                        className={`lang-dropdown-item ${lang.id === selectedLanguage ? 'lang-dropdown-item-active' : ''}`}
                                         style={{
-                                            width: '100%', textAlign: 'left',
-                                            padding: '7px 14px', fontSize: 13,
-                                            background: lang.id === selectedLanguage ? 'var(--color-surface-hover)' : 'transparent',
-                                            color: 'var(--color-primary-text)',
-                                            fontWeight: lang.id === selectedLanguage ? 600 : 400,
-                                            border: 'none', cursor: 'pointer',
+                                            borderRadius: 6,
                                         }}
                                     >
+                                        <span style={{ fontSize: 14 }}>{langIcons[lang.id?.toLowerCase()] || '📝'}</span>
                                         {lang.name}
+                                        {lang.id === selectedLanguage && (
+                                            <Check size={14} style={{ marginLeft: 'auto', color: '#818cf8' }} />
+                                        )}
                                     </button>
                                 ))}
                             </div>
@@ -117,37 +254,79 @@ const CodeToolbar = ({ selectedLanguage, onLanguageChange, languages = [], onCop
                 </div>
             </div>
 
-            {/* Right: Copy + Reset + Settings */}
-            <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+            {/* Right: Actions + Shortcuts */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                {/* Keyboard Shortcuts Hint */}
+                <div style={{ 
+                    display: 'flex', 
+                    alignItems: 'center', 
+                    gap: 12, 
+                    padding: '4px 10px',
+                    borderRadius: 6,
+                    background: 'color-mix(in srgb, var(--color-primary-text) 3%, transparent)',
+                    marginRight: 8,
+                }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                        <span style={{ fontSize: 10, color: 'var(--color-muted-text)' }}>Run</span>
+                        <KeyboardShortcutBadge keys={[modKey, '↵']} />
+                    </div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                        <span style={{ fontSize: 10, color: 'var(--color-muted-text)' }}>Submit</span>
+                        <KeyboardShortcutBadge keys={[modKey, '⇧', '↵']} />
+                    </div>
+                </div>
+
                 {/* Copy Code */}
-                {iconBtn(
-                    copied ? 'Copied!' : 'Copy code',
-                    handleCopy,
-                    <>
-                        {copied ? <Check size={14} style={{ color: '#10b981' }} /> : <Copy size={14} />}
-                        <span style={{ color: copied ? '#10b981' : 'inherit' }}>{copied ? 'Copied' : 'Copy'}</span>
-                    </>
-                )}
+                <button
+                    title={`Copy code (${modKey}+Shift+C)`}
+                    onClick={handleCopy}
+                    className={`toolbar-btn ${copied ? 'toolbar-btn-success' : ''}`}
+                >
+                    {copied ? (
+                        <Check size={14} style={{ animation: 'toolbar-check 0.3s ease' }} />
+                    ) : (
+                        <Copy size={14} />
+                    )}
+                    <span>{copied ? 'Copied!' : 'Copy'}</span>
+                </button>
 
                 {/* Reset Code */}
-                {iconBtn(
-                    confirmReset ? 'Click again to confirm reset' : 'Reset to starter code',
-                    handleReset,
-                    <>
-                        <RotateCcw size={14} style={{ color: confirmReset ? '#ef4444' : 'inherit' }} />
-                        <span style={{ color: confirmReset ? '#ef4444' : 'inherit' }}>
-                            {confirmReset ? 'Confirm?' : 'Reset'}
-                        </span>
-                    </>
-                )}
+                <button
+                    title={confirmReset ? 'Click again to confirm reset' : 'Reset to starter code'}
+                    onClick={handleReset}
+                    className={`toolbar-btn ${confirmReset ? 'toolbar-btn-danger' : ''}`}
+                >
+                    <RotateCcw size={14} style={{ 
+                        transition: 'transform 0.3s ease',
+                        transform: confirmReset ? 'rotate(-180deg)' : 'none',
+                    }} />
+                    <span>{confirmReset ? 'Confirm?' : 'Reset'}</span>
+                </button>
 
-                <div style={{ width: 1, height: 14, background: 'var(--color-border)', margin: '0 4px' }} />
+                <div style={{ width: 1, height: 18, background: 'var(--color-border)', margin: '0 4px' }} />
 
-                {/* Settings (placeholder) */}
-                {iconBtn('Settings', () => { }, <Settings size={15} />)}
+                {/* Keyboard Shortcuts Button */}
+                <button
+                    title="View all keyboard shortcuts"
+                    onClick={onShowShortcuts}
+                    className="toolbar-btn"
+                    style={{ padding: '6px 8px' }}
+                >
+                    <Keyboard size={15} />
+                </button>
+
+                {/* Settings */}
+                <button
+                    title="Settings"
+                    onClick={() => {}}
+                    className="toolbar-btn"
+                    style={{ padding: '6px 8px' }}
+                >
+                    <Settings size={15} />
+                </button>
             </div>
         </div>
     );
 };
 
-export default CodeToolbar;
+export default memo(CodeToolbar);

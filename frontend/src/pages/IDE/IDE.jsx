@@ -10,6 +10,7 @@ import TestcasePanel from './TestcasePanel';
 import StatusNotification from './StatusNotification';
 import ConsolePanel from './ConsolePanel';
 import EmptyState from './EmptyState';
+import KeyboardShortcuts from './KeyboardShortcuts';
 
 const starterCodes = {
     cpp: "#include <iostream>\nusing namespace std;\n\nint main(){\n    cout << \"Hello\";\n}",
@@ -194,6 +195,7 @@ export default function IDE({ problem, judgeTestCases = [], onBack, onNext, onSo
     ];
 
     const [activeMobileTab, setActiveMobileTab] = useState('problem'); // 'problem', 'editor', 'testcases'
+    const [showKeyboardShortcuts, setShowKeyboardShortcuts] = useState(false);
 
     // When ProblemPanel selects a ladder in Approaches tab, bridge its testCases here
     const handleActiveLadderChange = (data) => {
@@ -229,12 +231,25 @@ export default function IDE({ problem, judgeTestCases = [], onBack, onNext, onSo
     // ── Global keyboard shortcuts
     useEffect(() => {
         const handler = (e) => {
-            if (e.ctrlKey && e.shiftKey && e.key === 'Enter') {
+            // Ctrl/Cmd + Shift + Enter → Submit
+            if ((e.ctrlKey || e.metaKey) && e.shiftKey && e.key === 'Enter') {
                 e.preventDefault();
-                runCode(true);   // Ctrl+Shift+Enter → Submit
-            } else if (e.ctrlKey && e.key === 'Enter') {
+                runCode(true);
+            } 
+            // Ctrl/Cmd + Enter → Run
+            else if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
                 e.preventDefault();
-                runCode(false);  // Ctrl+Enter → Run
+                runCode(false);
+            }
+            // Ctrl/Cmd + / → Show keyboard shortcuts
+            else if ((e.ctrlKey || e.metaKey) && e.key === '/') {
+                e.preventDefault();
+                setShowKeyboardShortcuts(prev => !prev);
+            }
+            // Ctrl/Cmd + Shift + R → Reset code
+            else if ((e.ctrlKey || e.metaKey) && e.shiftKey && e.key.toLowerCase() === 'r') {
+                e.preventDefault();
+                handleReset();
             }
         };
         window.addEventListener('keydown', handler);
@@ -529,6 +544,7 @@ export default function IDE({ problem, judgeTestCases = [], onBack, onNext, onSo
                 onLanguageChange={handleLanguageChange}
                 onCopy={handleCopy}
                 onReset={handleReset}
+                onShowShortcuts={() => setShowKeyboardShortcuts(true)}
             />
 
             {/* Main Content Area */}
@@ -704,6 +720,12 @@ export default function IDE({ problem, judgeTestCases = [], onBack, onNext, onSo
                 attempts={attempts}
                 onNext={onNext}
                 onDismiss={() => setStatus('idle')}
+            />
+
+            {/* Keyboard Shortcuts Modal */}
+            <KeyboardShortcuts
+                isOpen={showKeyboardShortcuts}
+                onClose={() => setShowKeyboardShortcuts(false)}
             />
         </div>
     );
