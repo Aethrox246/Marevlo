@@ -969,12 +969,48 @@ export default function CourseContent() {
       .catch(() => { setDocHtml("<p>Failed to load content.</p>"); setDocLoading(false); });
   }, [htmlFile]);
 
-  /* Auto-dismiss chapter card on Escape */
+  /* Auto-dismiss chapter card on Escape + Keyboard Navigation */
   useEffect(() => {
-    const onKey = (e) => { if (e.key === "Escape") { setFocusMode(false); setChapterCard(c => ({ ...c, visible: false })); } };
+    const onKey = (e) => { 
+      // Escape - exit focus mode / dismiss overlays
+      if (e.key === "Escape") { 
+        setFocusMode(false); 
+        setChapterCard(c => ({ ...c, visible: false })); 
+        setNotesPanelOpen(false);
+      }
+      // Arrow keys for navigation (when not in input)
+      if (document.activeElement?.tagName !== 'INPUT' && document.activeElement?.tagName !== 'TEXTAREA') {
+        if (e.key === "ArrowRight" || e.key === "ArrowDown") {
+          e.preventDefault();
+          goNext();
+        }
+        if (e.key === "ArrowLeft" || e.key === "ArrowUp") {
+          e.preventDefault();
+          goPrev();
+        }
+        // F key for focus mode
+        if (e.key === "f" && !e.ctrlKey && !e.metaKey) {
+          setFocusMode(prev => !prev);
+        }
+        // N key for notes panel
+        if (e.key === "n" && !e.ctrlKey && !e.metaKey) {
+          setNotesPanelOpen(prev => !prev);
+        }
+      }
+    };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, []);
+  }, [currentIndex, flatNodes.length]);
+  
+  /* Confetti celebration on 100% completion */
+  const [showConfetti, setShowConfetti] = useState(false);
+  useEffect(() => {
+    if (progress >= 100 && !showConfetti) {
+      setShowConfetti(true);
+      // Auto-hide confetti after animation
+      setTimeout(() => setShowConfetti(false), 4000);
+    }
+  }, [progress, showConfetti]);
 
   /* Reading progress (direct DOM) + milestone celebrations (rAF throttled) */
   const handleScroll = useCallback((e) => {
@@ -1205,6 +1241,26 @@ export default function CourseContent() {
   return (
     <div className="flex h-screen overflow-hidden" style={S.bg}>
 
+      {/* ── Confetti Celebration (Phase 2) ── */}
+      {showConfetti && (
+        <div className="confetti-container">
+          {Array.from({ length: 50 }).map((_, i) => (
+            <div
+              key={i}
+              className="confetti-piece"
+              style={{
+                left: `${Math.random() * 100}%`,
+                animationDelay: `${Math.random() * 2}s`,
+                animationDuration: `${2 + Math.random() * 2}s`,
+                background: ['#6366f1', '#8b5cf6', '#06b6d4', '#10b981', '#f59e0b', '#ef4444'][Math.floor(Math.random() * 6)],
+                borderRadius: Math.random() > 0.5 ? '50%' : '2px',
+                transform: `rotate(${Math.random() * 360}deg)`,
+              }}
+            />
+          ))}
+        </div>
+      )}
+
       {/* ── Floating "Exit Focus" pill ── */}
       {focusMode && (
         <button
@@ -1215,6 +1271,23 @@ export default function CourseContent() {
         >
           <Minimize2 size={13} /> Exit Focus
         </button>
+      )}
+      
+      {/* ── Floating Mini TOC (Focus Mode) ── */}
+      {focusMode && htmlFile && lessons.length > 0 && (
+        <div className="floating-toc-mini">
+          {lessons.slice(0, 12).map((l) => (
+            <button
+              key={l.id}
+              className={`floating-toc-mini-dot ${l.id === currentLesson ? 'active' : ''}`}
+              onClick={() => {
+                setLesson(l.id);
+                document.getElementById(l.id)?.scrollIntoView({ behavior: "smooth" });
+              }}
+              title={l.title}
+            />
+          ))}
+        </div>
       )}
 
       {/* ════════════════════════════════
@@ -1286,7 +1359,7 @@ export default function CourseContent() {
           </div>
         </div>
 
-        {/* ── Glassmorphic lesson cards ── */}
+        {/* ── Premium Glassmorphic Lesson Cards ── */}
         <div className="flex-1 overflow-y-auto py-5 px-4 custom-scrollbar space-y-3">
           {lessons.map((l, index) => {
             const isActive = l.id === currentLesson;
@@ -1302,19 +1375,31 @@ export default function CourseContent() {
               progressPct = 100;
             }
 
+            // Circumference for the progress ring (r=16, C = 2*PI*r)
+            const circumference = 2 * Math.PI * 16;
+            const strokeOffset = circumference - (circumference * progressPct) / 100;
+
             return (
               <div
                 key={l.id}
-                className="relative rounded-2xl border overflow-hidden transition-all duration-300 group"
+                className={`lesson-card-premium ${isActive ? 'active' : ''}`}
                 style={{
-                  background: isActive ? "var(--color-surface-hover)" : "rgba(255,255,255,0.015)",
-                  borderColor: isActive ? "rgba(99,102,241,0.5)" : "var(--color-border)",
-                  boxShadow: isActive ? "0 4px 20px rgba(99,102,241,0.15)" : "0 2px 10px rgba(0,0,0,0.02)",
-                  transform: isActive ? "scale(1.01)" : "scale(1)",
-                  opacity: l.completed || isActive ? 1 : 0.75
+                  opacity: l.completed || isActive ? 1 : 0.7,
                 }}
-                onMouseEnter={(e) => { if (!isActive) e.currentTarget.style.background = "var(--color-surface-hover)"; }}
-                onMouseLeave={(e) => { if (!isActive) e.currentTarget.style.background = "rgba(255,255,255,0.015)"; }}
+                onMouseEnter={(e) => { 
+                  if (!isActive) {
+                    e.currentTarget.style.background = "linear-gradient(135deg, rgba(99, 102, 241, 0.05) 0%, rgba(6, 182, 212, 0.03) 100%)";
+                    e.currentTarget.style.borderColor = "rgba(99, 102, 241, 0.25)";
+                    e.currentTarget.style.transform = "translateY(-2px)";
+                  }
+                }}
+                onMouseLeave={(e) => { 
+                  if (!isActive) {
+                    e.currentTarget.style.background = "";
+                    e.currentTarget.style.borderColor = "";
+                    e.currentTarget.style.transform = "";
+                  }
+                }}
               >
                 {/* ── Main Module Header ── */}
                 <button
@@ -1324,26 +1409,49 @@ export default function CourseContent() {
                   <div className="w-5 text-[10px] font-black tracking-widest opacity-30 mt-0.5 text-right flex-shrink-0" style={S.primary}>
                     {(index + 1).toString().padStart(2, '0')}
                   </div>
-                  {/* Completion Ring */}
-                  <div className="relative flex-shrink-0 flex items-center justify-center w-8 h-8 ml-1">
+                  {/* Enhanced Animated Progress Ring */}
+                  <div className="progress-ring-container">
                     {progressPct === 100 ? (
-                      <CheckCircle2 size={18} className="text-emerald-500 shadow-emerald-500/20 drop-shadow-md" />
+                      <div className="w-full h-full flex items-center justify-center">
+                        <CheckCircle2 size={22} className="text-emerald-500 drop-shadow-[0_0_8px_rgba(16,185,129,0.5)]" />
+                      </div>
                     ) : (
                       <>
-                        <svg className="absolute inset-0 w-full h-full -rotate-90">
-                          <circle cx="16" cy="16" r="14" stroke="var(--color-border)" strokeWidth="2.5" fill="none" />
+                        <svg className="absolute inset-0 w-full h-full -rotate-90" viewBox="0 0 40 40">
+                          <circle 
+                            cx="20" cy="20" r="16" 
+                            className="progress-ring-bg"
+                            strokeWidth="3" 
+                          />
                           <circle
-                            cx="16" cy="16" r="14" stroke="currentColor" strokeWidth="2.5" fill="none"
-                            strokeDasharray="88" strokeDashoffset={88 - (88 * progressPct) / 100}
-                            className="transition-all duration-700 ease-out"
-                            style={{ color: "var(--color-primary-text)" }}
+                            cx="20" cy="20" r="16"
+                            className={`progress-ring-fill ${isActive ? 'text-indigo-500' : 'text-neutral-400'}`}
+                            strokeWidth="3"
+                            strokeDasharray={circumference}
+                            strokeDashoffset={strokeOffset}
+                            style={{ 
+                              transition: 'stroke-dashoffset 0.8s cubic-bezier(0.4, 0, 0.2, 1)',
+                              filter: isActive ? 'drop-shadow(0 0 6px rgba(99, 102, 241, 0.6))' : 'none'
+                            }}
                           />
                         </svg>
-                        {isActive ? (
-                          <div className="w-2.5 h-2.5 rounded-full animate-pulse shadow-[0_0_8px_rgba(99,102,241,0.8)]" style={{ background: "var(--color-primary-text)" }} />
-                        ) : (
-                          <div className="w-2 h-2 rounded-full opacity-20" style={{ background: "var(--color-muted-text)" }} />
-                        )}
+                        <div className="absolute inset-0 flex items-center justify-center">
+                          {isActive ? (
+                            <div 
+                              className="w-3 h-3 rounded-full animate-pulse" 
+                              style={{ 
+                                background: 'linear-gradient(135deg, #6366f1, #8b5cf6)',
+                                boxShadow: '0 0 12px rgba(99, 102, 241, 0.8)'
+                              }} 
+                            />
+                          ) : progressPct > 0 ? (
+                            <span className="text-[8px] font-bold" style={{ color: 'var(--color-muted-text)' }}>
+                              {Math.round(progressPct)}%
+                            </span>
+                          ) : (
+                            <div className="w-2 h-2 rounded-full opacity-30" style={{ background: 'var(--color-muted-text)' }} />
+                          )}
+                        </div>
                       </>
                     )}
                   </div>
@@ -1483,25 +1591,32 @@ export default function CourseContent() {
           <div ref={progressBarRef} className="reading-progress-bar" style={{ width: "0%" }} />
         )}
 
-        {/* ── Cinematic Chapter Card ── */}
+        {/* ── Enhanced Cinematic Chapter Card ── */}
         {htmlFile && chapterCard.visible && (
           <div
-            className="chapter-card-overlay"
+            className="chapter-card-premium"
             onClick={() => setChapterCard(c => ({ ...c, visible: false }))}
           >
-            <div className="chapter-card-content" onClick={e => e.stopPropagation()}>
-              <span className="chapter-card-label">Section {chapterCard.index}</span>
-              <h2 className="chapter-card-title">{chapterCard.title}</h2>
-              <div className="chapter-card-line" />
+            <div className="chapter-card-premium-content" onClick={e => e.stopPropagation()}>
+              <div className="chapter-card-premium-number">{chapterCard.index}</div>
+              <span className="chapter-card-premium-label">Now Reading</span>
+              <h2 className="chapter-card-premium-title">{chapterCard.title}</h2>
+              <div className="chapter-card-premium-line" />
             </div>
           </div>
         )}
 
-        {/* ── Milestone Toast ── */}
+        {/* ── Enhanced Milestone Toast with Progress ── */}
         {htmlFile && toast.visible && (
-          <div className="milestone-toast" onClick={() => setToast(t => ({ ...t, visible: false }))}>
-            <span className="milestone-toast-icon">{toast.icon}</span>
-            <span className="milestone-toast-msg">{toast.msg}</span>
+          <div className="milestone-toast-premium" onClick={() => setToast(t => ({ ...t, visible: false }))}>
+            <span className="milestone-toast-premium-icon">{toast.icon}</span>
+            <div className="milestone-toast-premium-content">
+              <span className="milestone-toast-premium-title">{toast.msg}</span>
+              <span className="milestone-toast-premium-subtitle">Keep going!</span>
+              <div className="milestone-toast-premium-progress">
+                <div className="milestone-toast-premium-progress-bar" />
+              </div>
+            </div>
           </div>
         )}
 
@@ -1559,9 +1674,10 @@ export default function CourseContent() {
               <button
                 onClick={() => setNotesPanelOpen(true)}
                 className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold bg-indigo-500/10 text-indigo-400 hover:bg-indigo-500/20 transition-colors border border-indigo-500/20 shadow-[0_0_12px_rgba(99,102,241,0.15)]"
-                title="View Notes & Highlights"
+                title="View Notes & Highlights (N)"
               >
                 <StickyNote size={13} /> {notesState.length > 0 ? notesState.length : "Notes"}
+                <span className="kbd-badge">N</span>
               </button>
 
               <button
@@ -1570,10 +1686,11 @@ export default function CourseContent() {
                 style={{ borderColor: "var(--color-border)", ...S.muted, background: "transparent" }}
                 onMouseEnter={hoverSurface}
                 onMouseLeave={hoverClear}
-                title="Enter Focus Mode"
-              >
-                <Maximize2 size={13} /> Focus Mode
-              </button>
+                title="Enter Focus Mode (F)"
+                >
+                <Maximize2 size={13} /> Focus
+                <span className="kbd-badge ml-1">F</span>
+                </button>
 
               <div className="flex items-center gap-0.5 pl-3" style={{ borderLeft: "1px solid var(--color-border)" }}>
                 <button
@@ -1610,40 +1727,80 @@ export default function CourseContent() {
             /* ── Immersive full-screen HTML reader ── */
             <div>
 
-              {/* Hero Banner */}
+              {/* Hero Banner - Premium Visual Enhancement */}
               {!focusMode && courseConfig && (
-                <div className="course-hero-banner">
-                  <div className="hero-orb hero-orb-1" />
-                  <div className="hero-orb hero-orb-2" />
-                  <div className="hero-orb hero-orb-3" />
-                  <div className="relative z-10 max-w-5xl mx-auto px-6 sm:px-12 pt-14 pb-12">
-                    <div className="flex items-center gap-2 mb-4">
-                      <span className="hero-category-pill">✦ {courseConfig.category}</span>
+                <div className="course-hero-premium">
+                  {/* Animated Gradient Mesh Orbs */}
+                  <div className="hero-mesh-orb hero-mesh-orb-1" />
+                  <div className="hero-mesh-orb hero-mesh-orb-2" />
+                  <div className="hero-mesh-orb hero-mesh-orb-3" />
+                  
+                  <div className="relative z-10 max-w-5xl mx-auto px-6 sm:px-12 pt-16 pb-14">
+                    {/* Category Badge with Glow */}
+                    <div className="flex items-center gap-3 mb-6">
+                      <span className="hero-category-badge">
+                        <span className="w-2 h-2 rounded-full bg-current animate-pulse" />
+                        {courseConfig.category}
+                      </span>
+                      {/* Social Proof */}
+                      <div className="social-proof-badge hidden sm:flex">
+                        <div className="social-proof-badge-avatar-stack">
+                          {[1, 2, 3].map((i) => (
+                            <div key={i} className="social-proof-badge-avatar" style={{ animationDelay: `${i * 0.1}s` }} />
+                          ))}
+                        </div>
+                        <span>2.4k+ enrolled</span>
+                      </div>
                     </div>
-                    <h1 className="hero-course-title">{courseConfig.title}</h1>
-                    <p className="hero-course-subtitle">
-                      {courseConfig.subtitle || "An expertly crafted document course — read at your own pace and master every concept."}
+                    
+                    {/* Animated Gradient Title */}
+                    <h1 className="hero-title-premium">{courseConfig.title}</h1>
+                    
+                    {/* Subtitle with better typography */}
+                    <p className="text-base sm:text-lg leading-relaxed max-w-xl" style={{ color: "var(--color-muted-text)" }}>
+                      {courseConfig.subtitle || "An expertly crafted document course. Read at your own pace and master every concept."}
                     </p>
-                    <div className="flex flex-wrap gap-3 mt-6">
+                    
+                    {/* Premium Stat Pills */}
+                    <div className="flex flex-wrap gap-3 mt-8">
                       {[
-                        { icon: "📚", label: `${courseConfig.lessons.length} Section${courseConfig.lessons.length !== 1 ? "s" : ""}` },
-                        { icon: "⏱️", label: readTime > 0 ? `~${readTime} min read` : "Calculating…" },
-                        { icon: "📖", label: "Full Document" },
-                        { icon: "🏆", label: "Certificate Included" },
+                        { icon: <BookOpen size={16} />, label: `${lessons.length || courseConfig.lessons.length} Sections`, accent: "#6366f1" },
+                        { icon: <Clock size={16} />, label: readTime > 0 ? `${readTime} min read` : "Calculating...", accent: "#06b6d4" },
+                        { icon: <Zap size={16} />, label: "Interactive", accent: "#10b981" },
+                        { icon: <Award size={16} />, label: "Certificate", accent: "#f59e0b" },
                       ].map((s) => (
-                        <span key={s.label} className="hero-stat-chip">{s.icon} {s.label}</span>
+                        <span key={s.label} className="hero-stat-pill group">
+                          <span style={{ color: s.accent }}>{s.icon}</span>
+                          {s.label}
+                        </span>
                       ))}
                     </div>
+                    
+                    {/* Streak & XP indicators */}
+                    <div className="flex items-center gap-4 mt-6">
+                      <div className="streak-counter">
+                        <span className="streak-counter-fire">🔥</span>
+                        <span>3 day streak</span>
+                      </div>
+                      <div className="xp-badge">
+                        <span>★</span>
+                        <span>+500 XP</span>
+                      </div>
+                    </div>
+                    
+                    {/* Premium CTA Button */}
                     <button
-                      className="start-reading-btn"
+                      className="hero-cta-button group"
                       onClick={() => {
                         const scrollEl = scrollContainerRef.current;
-                        const banner = scrollEl?.querySelector(".course-hero-banner");
-                        const offset = banner ? banner.offsetHeight : 300;
+                        const banner = scrollEl?.querySelector(".course-hero-premium");
+                        const offset = banner ? banner.offsetHeight : 380;
                         scrollEl?.scrollTo({ top: offset, behavior: "smooth" });
                       }}
                     >
-                      Start Reading ↓
+                      <PlayCircle size={20} className="transition-transform group-hover:scale-110" />
+                      Start Learning
+                      <ChevronDown size={18} className="animate-bounce" />
                     </button>
                   </div>
                 </div>
