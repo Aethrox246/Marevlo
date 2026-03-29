@@ -1,6 +1,7 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { Search, Send, X, MessageCircle, Clock, AlertCircle } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
+import { useSearchParams } from 'react-router-dom';
 import ChatWindow from '../components/chat/ChatWindow';
 import UserSearch from '../components/chat/UserSearch';
 
@@ -8,6 +9,7 @@ const API_BASE = import.meta.env.VITE_API_URL;
 
 export default function Messages({ setView }) {
     const { user } = useAuth();
+    const [searchParams, setSearchParams] = useSearchParams();
     const [chats, setChats] = useState([]);
     const [selectedChatId, setSelectedChatId] = useState(null);
     const [selectedUserId, setSelectedUserId] = useState(null);
@@ -18,14 +20,7 @@ export default function Messages({ setView }) {
     const [page, setPage] = useState(1);
     const token = localStorage.getItem('access_token');
 
-    // Fetch chats
-    useEffect(() => {
-        fetchChats();
-        const interval = setInterval(fetchChats, 5000); // Refresh every 5 seconds
-        return () => clearInterval(interval);
-    }, [page]);
-
-    const fetchChats = async () => {
+    const fetchChats = useCallback(async () => {
         try {
             setLoading(true);
             const response = await fetch(
@@ -40,6 +35,7 @@ export default function Messages({ setView }) {
             if (response.ok) {
                 const data = await response.json();
                 setChats(data.chats);
+                setError(null);
             }
         } catch (err) {
             setError('Failed to load chats');
@@ -47,7 +43,35 @@ export default function Messages({ setView }) {
         } finally {
             setLoading(false);
         }
-    };
+    }, [page, token]);
+
+    // Fetch chats on mount and when page changes
+    useEffect(() => {
+        fetchChats();
+    }, [fetchChats]);
+
+    // Listen to WebSocket events to refresh chat list in real-time
+    useEffect(() => {
+        const handleWsMessage = (event) => {
+            const data = event.detail;
+            if (data.type === 'new_message' || data.type === 'read_receipt') {
+                fetchChats();
+            }
+        };
+
+        window.addEventListener('ws_message', handleWsMessage);
+        return () => window.removeEventListener('ws_message', handleWsMessage);
+    }, [fetchChats]);
+
+    // Handle ?user= URL parameter (from MessengerWidget navigation)
+    useEffect(() => {
+        const userParam = searchParams.get('user');
+        if (userParam) {
+            setSelectedUserId(parseInt(userParam, 10));
+            // Clean the param so it doesn't re-trigger
+            setSearchParams({}, { replace: true });
+        }
+    }, [searchParams, setSearchParams]);
 
     const handleSelectChat = (chatId, userId) => {
         setSelectedChatId(chatId);
@@ -57,6 +81,7 @@ export default function Messages({ setView }) {
 
     const handleUserSelected = (userId) => {
         setSelectedUserId(userId);
+        setSelectedChatId(null); // Will be resolved in ChatWindow
         setShowUserSearch(false);
     };
 
@@ -73,6 +98,9 @@ export default function Messages({ setView }) {
             : chat.user_1_username;
         return otherUserName.toLowerCase().includes(searchQuery.toLowerCase());
     });
+
+    // On mobile, show either the list or the chat — on desktop, show both
+    const showChatPanel = selectedChatId || selectedUserId || showUserSearch;
 
     return (
         <div
@@ -94,141 +122,144 @@ export default function Messages({ setView }) {
                 <div className="grid grid-cols-1 lg:grid-cols-[340px_1fr] gap-0 h-screen">
                     
                     {/* ══════════════ CHATS LIST PANEL ══════════════ */}
-                    {!selectedChatId && !selectedUserId && (
-                        <div className="lg:col-span-1 flex flex-col h-screen border-r" style={{ borderColor: 'var(--color-border)' }}>
-                            {/* Header */}
-                            <div className="p-5 border-b" style={{ borderColor: 'var(--color-border)' }}>
-                                <h1 className="text-2xl font-bold mb-4" style={{ color: 'var(--color-primary-text)' }}>
-                                    Messages
-                                </h1>
-                                
-                                {/* Search Box */}
-                                <div className="relative mb-3">
-                                    <Search size={18} className="absolute left-3 top-3" style={{ color: 'var(--color-muted-text)' }} />
-                                    <input
-                                        type="text"
-                                        placeholder="Search chats..."
-                                        value={searchQuery}
-                                        onChange={(e) => setSearchQuery(e.target.value)}
-                                        className="w-full pl-10 pr-4 py-2.5 rounded-xl text-sm focus:outline-none transition-all"
-                                        style={{
-                                            backgroundColor: 'var(--color-surface-hover)',
-                                            color: 'var(--color-primary-text)',
-                                            border: `1.5px solid ${searchQuery ? '#6366f1' : 'var(--color-border)'}`
-                                        }}
-                                    />
-                                </div>
-
-                                {/* New Chat Button */}
-                                <button
-                                    onClick={() => setShowUserSearch(true)}
-                                    className="w-full py-2.5 rounded-xl font-semibold text-white text-sm transition-all duration-200 flex items-center justify-center gap-2"
+                    {/* On mobile: hide when a chat is open. On desktop: always visible */}
+                    <div
+                        className={`lg:col-span-1 flex flex-col h-screen border-r ${showChatPanel ? 'hidden lg:flex' : 'flex'}`}
+                        style={{ borderColor: 'var(--color-border)' }}
+                    >
+                        {/* Header */}
+                        <div className="p-5 border-b" style={{ borderColor: 'var(--color-border)' }}>
+                            <h1 className="text-2xl font-bold mb-4" style={{ color: 'var(--color-primary-text)' }}>
+                                Messages
+                            </h1>
+                            
+                            {/* Search Box */}
+                            <div className="relative mb-3">
+                                <Search size={18} className="absolute left-3 top-3" style={{ color: 'var(--color-muted-text)' }} />
+                                <input
+                                    type="text"
+                                    placeholder="Search chats..."
+                                    value={searchQuery}
+                                    onChange={(e) => setSearchQuery(e.target.value)}
+                                    className="w-full pl-10 pr-4 py-2.5 rounded-xl text-sm focus:outline-none transition-all"
                                     style={{
-                                        background: 'linear-gradient(135deg, #6366f1, #8b5cf6)',
-                                        boxShadow: '0 4px 12px rgba(99,102,241,0.3)'
+                                        backgroundColor: 'var(--color-surface-hover)',
+                                        color: 'var(--color-primary-text)',
+                                        border: `1.5px solid ${searchQuery ? '#6366f1' : 'var(--color-border)'}`
                                     }}
-                                    onMouseEnter={e => e.currentTarget.style.transform = 'translateY(-2px)'}
-                                    onMouseLeave={e => e.currentTarget.style.transform = 'translateY(0)'}
-                                >
-                                    <MessageCircle size={16} /> New Chat
-                                </button>
+                                />
                             </div>
 
-                            {/* Chats List */}
-                            <div className="flex-1 overflow-y-auto custom-scrollbar">
-                                {loading && !chats.length && (
-                                    <div className="p-4 text-center" style={{ color: 'var(--color-muted-text)' }}>
-                                        <div className="animate-spin inline-block w-5 h-5 border-2 border-current border-t-transparent rounded-full"></div>
-                                    </div>
-                                )}
-
-                                {error && (
-                                    <div className="m-3 p-3 rounded-lg flex items-center gap-2" style={{ backgroundColor: 'rgba(239, 68, 68, 0.1)', color: '#ef4444' }}>
-                                        <AlertCircle size={16} />
-                                        <span className="text-xs">{error}</span>
-                                    </div>
-                                )}
-
-                                {filteredChats.length === 0 && !loading ? (
-                                    <div className="p-6 text-center">
-                                        <MessageCircle size={40} className="mx-auto mb-3 opacity-30" />
-                                        <p style={{ color: 'var(--color-muted-text)' }} className="text-sm">
-                                            {searchQuery ? 'No chats found' : 'No chats yet. Start a new one!'}
-                                        </p>
-                                    </div>
-                                ) : (
-                                    <div className="space-y-1 p-2">
-                                        {filteredChats.map((chat) => {
-                                            const otherUserId = chat.user_1_id === user?.id ? chat.user_2_id : chat.user_1_id;
-                                            const otherUsername = chat.user_1_id === user?.id ? chat.user_2_username : chat.user_1_username;
-                                            const avatar = otherUsername[0].toUpperCase();
-
-                                            return (
-                                                <div
-                                                    key={chat.id}
-                                                    onClick={() => handleSelectChat(chat.id, otherUserId)}
-                                                    className="p-3 rounded-xl cursor-pointer transition-all duration-200 flex items-center gap-3"
-                                                    style={{ backgroundColor: 'var(--color-surface)' }}
-                                                    onMouseEnter={e => e.currentTarget.style.backgroundColor = 'rgba(99,102,241,0.1)'}
-                                                    onMouseLeave={e => e.currentTarget.style.backgroundColor = 'var(--color-surface)'}
-                                                >
-                                                    {/* Avatar */}
-                                                    <div
-                                                        className="w-12 h-12 rounded-full flex items-center justify-center flex-shrink-0 text-sm font-bold text-white"
-                                                        style={{ background: 'linear-gradient(135deg, #6366f1, #8b5cf6)' }}
-                                                    >
-                                                        {avatar}
-                                                    </div>
-
-                                                    {/* Chat Info */}
-                                                    <div className="flex-1 min-w-0">
-                                                        <h3 className="font-semibold text-sm truncate">
-                                                            {otherUsername}
-                                                        </h3>
-                                                        <p 
-                                                            className="text-xs truncate"
-                                                            style={{ color: 'var(--color-muted-text)' }}
-                                                        >
-                                                            {chat.last_message_preview || 'No messages yet'}
-                                                        </p>
-                                                    </div>
-
-                                                    {/* Time & Unread */}
-                                                    <div className="flex flex-col items-end gap-1">
-                                                        <span 
-                                                            className="text-xs"
-                                                            style={{ color: 'var(--color-muted-text)' }}
-                                                        >
-                                                            {chat.last_message_at}
-                                                        </span>
-                                                        {chat.unread_count > 0 && (
-                                                            <span 
-                                                                className="px-2 py-1 rounded-full text-xs font-bold text-white"
-                                                                style={{ background: '#ef4444' }}
-                                                            >
-                                                                {chat.unread_count}
-                                                            </span>
-                                                        )}
-                                                    </div>
-                                                </div>
-                                            );
-                                        })}
-                                    </div>
-                                )}
-                            </div>
+                            {/* New Chat Button */}
+                            <button
+                                onClick={() => setShowUserSearch(true)}
+                                className="w-full py-2.5 rounded-xl font-semibold text-white text-sm transition-all duration-200 flex items-center justify-center gap-2"
+                                style={{
+                                    background: 'linear-gradient(135deg, #6366f1, #8b5cf6)',
+                                    boxShadow: '0 4px 12px rgba(99,102,241,0.3)'
+                                }}
+                                onMouseEnter={e => e.currentTarget.style.transform = 'translateY(-2px)'}
+                                onMouseLeave={e => e.currentTarget.style.transform = 'translateY(0)'}
+                            >
+                                <MessageCircle size={16} /> New Chat
+                            </button>
                         </div>
-                    )}
+
+                        {/* Chats List */}
+                        <div className="flex-1 overflow-y-auto custom-scrollbar">
+                            {loading && !chats.length && (
+                                <div className="p-4 text-center" style={{ color: 'var(--color-muted-text)' }}>
+                                    <div className="animate-spin inline-block w-5 h-5 border-2 border-current border-t-transparent rounded-full"></div>
+                                </div>
+                            )}
+
+                            {error && (
+                                <div className="m-3 p-3 rounded-lg flex items-center gap-2" style={{ backgroundColor: 'rgba(239, 68, 68, 0.1)', color: '#ef4444' }}>
+                                    <AlertCircle size={16} />
+                                    <span className="text-xs">{error}</span>
+                                </div>
+                            )}
+
+                            {filteredChats.length === 0 && !loading ? (
+                                <div className="p-6 text-center">
+                                    <MessageCircle size={40} className="mx-auto mb-3 opacity-30" />
+                                    <p style={{ color: 'var(--color-muted-text)' }} className="text-sm">
+                                        {searchQuery ? 'No chats found' : 'No chats yet. Start a new one!'}
+                                    </p>
+                                </div>
+                            ) : (
+                                <div className="space-y-1 p-2">
+                                    {filteredChats.map((chat) => {
+                                        const otherUserId = chat.user_1_id === user?.id ? chat.user_2_id : chat.user_1_id;
+                                        const otherUsername = chat.user_1_id === user?.id ? chat.user_2_username : chat.user_1_username;
+                                        const avatar = otherUsername?.[0]?.toUpperCase() || '?';
+                                        const isSelected = selectedChatId === chat.id;
+
+                                        return (
+                                            <div
+                                                key={chat.id}
+                                                onClick={() => handleSelectChat(chat.id, otherUserId)}
+                                                className="p-3 rounded-xl cursor-pointer transition-all duration-200 flex items-center gap-3"
+                                                style={{
+                                                    backgroundColor: isSelected
+                                                        ? 'rgba(99,102,241,0.15)'
+                                                        : 'var(--color-surface)'
+                                                }}
+                                                onMouseEnter={e => { if (!isSelected) e.currentTarget.style.backgroundColor = 'rgba(99,102,241,0.1)'; }}
+                                                onMouseLeave={e => { if (!isSelected) e.currentTarget.style.backgroundColor = 'var(--color-surface)'; }}
+                                            >
+                                                {/* Avatar */}
+                                                <div
+                                                    className="w-12 h-12 rounded-full flex items-center justify-center flex-shrink-0 text-sm font-bold text-white"
+                                                    style={{ background: 'linear-gradient(135deg, #6366f1, #8b5cf6)' }}
+                                                >
+                                                    {avatar}
+                                                </div>
+
+                                                {/* Chat Info */}
+                                                <div className="flex-1 min-w-0">
+                                                    <h3 className="font-semibold text-sm truncate">
+                                                        {otherUsername}
+                                                    </h3>
+                                                    <p 
+                                                        className="text-xs truncate"
+                                                        style={{ color: 'var(--color-muted-text)' }}
+                                                    >
+                                                        {chat.last_message_preview || 'No messages yet'}
+                                                    </p>
+                                                </div>
+
+                                                {/* Time & Unread */}
+                                                <div className="flex flex-col items-end gap-1">
+                                                    <span 
+                                                        className="text-xs"
+                                                        style={{ color: 'var(--color-muted-text)' }}
+                                                    >
+                                                        {chat.last_message_at}
+                                                    </span>
+                                                    {chat.unread_count > 0 && (
+                                                        <span 
+                                                            className="px-2 py-1 rounded-full text-xs font-bold text-white"
+                                                            style={{ background: '#ef4444' }}
+                                                        >
+                                                            {chat.unread_count}
+                                                        </span>
+                                                    )}
+                                                </div>
+                                            </div>
+                                        );
+                                    })}
+                                </div>
+                            )}
+                        </div>
+                    </div>
 
                     {/* ══════════════ CHAT WINDOW OR SELECT SCREEN ══════════════ */}
-                    <div className="lg:col-span-1 flex flex-col h-screen">
-                        {selectedChatId && selectedUserId ? (
+                    <div className={`lg:col-span-1 flex flex-col h-screen ${!showChatPanel ? 'hidden lg:flex' : 'flex'}`}>
+                        {(selectedChatId || selectedUserId) && !showUserSearch ? (
                             <ChatWindow
+                                key={selectedUserId || selectedChatId}
                                 chatId={selectedChatId}
-                                userId={selectedUserId}
-                                onBack={handleBackToList}
-                            />
-                        ) : selectedUserId && !selectedChatId ? (
-                            <ChatWindow
                                 userId={selectedUserId}
                                 onBack={handleBackToList}
                             />

@@ -6,8 +6,12 @@ from app.auth.models.user import User
 from app.core.config import JWT_SECRET, ALGORITHM
 from app.chat.websocket_manager import manager
 from typing import Optional
+import logging
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/chat", tags=["chat_ws"])
+
 
 async def get_current_user_ws(token: str, db: Session) -> User:
     try:
@@ -26,6 +30,7 @@ async def get_current_user_ws(token: str, db: Session) -> User:
     except Exception as e:
         raise Exception(f"Token validation failed: {str(e)}")
 
+
 @router.websocket("/ws")
 async def websocket_endpoint(
     websocket: WebSocket,
@@ -35,13 +40,21 @@ async def websocket_endpoint(
     try:
         user = await get_current_user_ws(token, db)
     except Exception as e:
+        # Must accept before we can close with a reason code
+        await websocket.accept()
         await websocket.close(code=1008, reason=str(e))
         return
 
     await manager.connect(websocket, user.id)
     try:
         while True:
-            # Receive basic payload, e.g. typing indicators
+            # Receive and handle client messages (typing indicators, etc.)
             data = await websocket.receive_text()
+            # Could handle typing indicators here in the future:
+            # parsed = json.loads(data)
+            # if parsed.get("type") == "typing": ...
     except WebSocketDisconnect:
+        await manager.disconnect(websocket, user.id)
+    except Exception as e:
+        logger.error(f"WebSocket error for user {user.id}: {e}")
         await manager.disconnect(websocket, user.id)

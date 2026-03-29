@@ -1,6 +1,6 @@
 from fastapi import APIRouter, Depends, HTTPException, Query, BackgroundTasks
 from sqlalchemy.orm import Session
-from sqlalchemy import or_, and_
+from sqlalchemy import or_, and_, func
 from app.core.dependencies import get_db, get_current_user
 from app.chat.schemas.chat import (
     MessageCreate, MessageResponse, ChatResponse, ChatDetailResponse, 
@@ -14,6 +14,9 @@ from datetime import datetime, timezone
 from typing import Optional
 import asyncio
 from app.chat.websocket_manager import manager
+import logging
+
+logger = logging.getLogger(__name__)
 
 
 def format_message_time(dt: datetime) -> str:
@@ -55,15 +58,18 @@ def list_chats(
     """
     query = db.query(Chat).filter(
         or_(Chat.user_1_id == current_user.id, Chat.user_2_id == current_user.id)
-    ).order_by(Chat.last_message_at.desc().nullsfirst())
+    ).order_by(Chat.last_message_at.desc().nullslast())
     
     total = query.count()
     chats = query.offset((page - 1) * limit).limit(limit).all()
     
     chats_response = []
     for chat in chats:
-        other_user_id = chat.user_2_id if chat.user_1_id == current_user.id else chat.user_1_id
-        other_user = db.query(User).filter(User.id == other_user_id).first()
+        user_1 = db.query(User).filter(User.id == chat.user_1_id).first()
+        user_2 = db.query(User).filter(User.id == chat.user_2_id).first()
+        
+        if not user_1 or not user_2:
+            continue
         
         last_message = db.query(Message).filter(
             Message.chat_id == chat.id
@@ -72,16 +78,19 @@ def list_chats(
         last_message_preview = last_message.content[:50] if last_message else None
         last_message_at = format_message_time(chat.last_message_at) if chat.last_message_at else None
         
-        # Count unread messages
-        unread_count = db.query(MessageRead).filter(
-            MessageRead.message_id.in_(
-                db.query(Message.id).filter(Message.chat_id == chat.id, Message.sender_id != current_user.id)
-            ),
-            ~MessageRead.reader_id.in_([current_user.id])
-        ).count()
+        # Count unread messages: messages in this chat NOT sent by me, that I haven't read
+        messages_from_other = db.query(Message.id).filter(
+            Message.chat_id == chat.id,
+            Message.sender_id != current_user.id
+        ).subquery()
         
-        user_1 = db.query(User).filter(User.id == chat.user_1_id).first()
-        user_2 = db.query(User).filter(User.id == chat.user_2_id).first()
+        read_by_me = db.query(MessageRead.message_id).filter(
+            MessageRead.reader_id == current_user.id
+        ).subquery()
+        
+        unread_count = db.query(func.count()).select_from(messages_from_other).filter(
+            messages_from_other.c.id.notin_(read_by_me)
+        ).scalar() or 0
         
         chats_response.append(ChatResponse(
             id=chat.id,
@@ -219,10 +228,12 @@ def send_message(
     db.add(new_message)
     
     # Update chat's last_message_at
-    chat.last_message_at = datetime.utcnow()
+    chat.last_message_at = datetime.now(timezone.utc)
     
     db.commit()
     db.refresh(new_message)
+
+    other_user_id = chat.user_1_id if chat.user_2_id == current_user.id else chat.user_2_id
 
     msg_response = MessageResponse(
         id=new_message.id,
@@ -236,12 +247,20 @@ def send_message(
         log_id=new_message.log_id
     )
 
+    # Build WS payload with receiver_id so the frontend can match
+    # messages even when chatId is not yet known
+    msg_dict = msg_response.model_dump()
+    msg_dict["receiver_id"] = other_user_id
+
     ws_msg = {
         "type": "new_message",
         "chat_id": chat_id,
-        "message": msg_response.model_dump()
+        "message": msg_dict
     }
-    other_user_id = chat.user_1_id if chat.user_2_id == current_user.id else chat.user_2_id
+
+    # Send to BOTH participants so both see real-time updates
+    # The sender gets it to confirm delivery + update other tabs
+    # The receiver gets it to see the new message
     background_tasks.add_task(manager.send_personal_message, ws_msg, other_user_id)
     background_tasks.add_task(manager.send_personal_message, ws_msg, current_user.id)
 

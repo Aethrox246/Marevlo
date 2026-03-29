@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { MessageSquare, ChevronDown, X, Send, Search } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
@@ -14,29 +14,8 @@ export default function MessengerWidget() {
     const { user } = useAuth();
     const token = localStorage.getItem('access_token');
 
-    // Fetch initial chats
-    useEffect(() => {
-        if (token) {
-            fetchChats();
-        }
-    }, [token]);
-
-    // Listen to WebSocket events to refresh chats
-    useEffect(() => {
-        const handleWsMessage = (event) => {
-            const data = event.detail;
-            if (data.type === 'new_message' || data.type === 'read_receipt') {
-                if (token) {
-                    fetchChats();
-                }
-            }
-        };
-
-        window.addEventListener('ws_message', handleWsMessage);
-        return () => window.removeEventListener('ws_message', handleWsMessage);
-    }, [token]);
-
-    const fetchChats = async () => {
+    const fetchChats = useCallback(async () => {
+        if (!token) return;
         try {
             setLoading(true);
             const response = await fetch(
@@ -59,7 +38,25 @@ export default function MessengerWidget() {
         } finally {
             setLoading(false);
         }
-    };
+    }, [token]);
+
+    // Fetch initial chats
+    useEffect(() => {
+        fetchChats();
+    }, [fetchChats]);
+
+    // Listen to WebSocket events to refresh chats in real-time
+    useEffect(() => {
+        const handleWsMessage = (event) => {
+            const data = event.detail;
+            if (data.type === 'new_message' || data.type === 'read_receipt') {
+                fetchChats();
+            }
+        };
+
+        window.addEventListener('ws_message', handleWsMessage);
+        return () => window.removeEventListener('ws_message', handleWsMessage);
+    }, [fetchChats]);
 
     const handleOpenMessages = () => {
         navigate('/messages');
@@ -144,7 +141,7 @@ export default function MessengerWidget() {
                                 {chats.map((chat) => {
                                     const otherUserId = chat.user_1_id === user?.id ? chat.user_2_id : chat.user_1_id;
                                     const otherUsername = chat.user_1_id === user?.id ? chat.user_2_username : chat.user_1_username;
-                                    const avatar = otherUsername[0].toUpperCase();
+                                    const avatar = otherUsername?.[0]?.toUpperCase() || '?';
 
                                     return (
                                         <div

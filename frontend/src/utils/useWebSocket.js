@@ -4,25 +4,37 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 const HTTP_URL = import.meta.env.VITE_API_URL;
 const WS_URL = HTTP_URL ? HTTP_URL.replace('http://', 'ws://').replace('https://', 'wss://') : 'ws://localhost:8000';
 
+const RECONNECT_DELAY = 3000;
+const MAX_RECONNECT_ATTEMPTS = 10;
+
 export function useWebSocket(user) {
-    const [socket, setSocket] = useState(null);
     const [isConnected, setIsConnected] = useState(false);
+    const wsRef = useRef(null);
     const reconnectTimeout = useRef(null);
-    
+    const reconnectAttempts = useRef(0);
+    const isMounted = useRef(true);
+
     const connect = useCallback(() => {
         const token = localStorage.getItem('access_token');
-        if (!token) return null;
+        if (!token || !isMounted.current) return;
 
-        if (socket?.readyState === WebSocket.OPEN) return socket;
+        // Don't create a new connection if one is already open or connecting
+        if (wsRef.current?.readyState === WebSocket.OPEN ||
+            wsRef.current?.readyState === WebSocket.CONNECTING) {
+            return;
+        }
 
         const ws = new WebSocket(`${WS_URL}/chat/ws?token=${token}`);
+        wsRef.current = ws;
 
         ws.onopen = () => {
+            if (!isMounted.current) { ws.close(); return; }
             console.log('WebSocket connected');
+            reconnectAttempts.current = 0;
             setIsConnected(true);
-            setSocket(ws);
             if (reconnectTimeout.current) {
                 clearTimeout(reconnectTimeout.current);
+                reconnectTimeout.current = null;
             }
         };
 
@@ -39,44 +51,53 @@ export function useWebSocket(user) {
         ws.onclose = () => {
             console.log('WebSocket disconnected');
             setIsConnected(false);
-            setSocket(null);
-            // Attempt to reconnect after 3 seconds if user is still logged in
-            if (localStorage.getItem('access_token')) {
-                reconnectTimeout.current = setTimeout(() => {
-                    connect();
-                }, 3000);
+            // Only clear ref if this is still the active socket
+            if (wsRef.current === ws) {
+                wsRef.current = null;
+            }
+            // Reconnect with exponential backoff, only if still mounted and logged in
+            if (isMounted.current &&
+                localStorage.getItem('access_token') &&
+                reconnectAttempts.current < MAX_RECONNECT_ATTEMPTS) {
+                const delay = RECONNECT_DELAY * Math.min(2 ** reconnectAttempts.current, 16);
+                reconnectAttempts.current += 1;
+                console.log(`WebSocket reconnecting in ${delay}ms (attempt ${reconnectAttempts.current}/${MAX_RECONNECT_ATTEMPTS})`);
+                reconnectTimeout.current = setTimeout(connect, delay);
             }
         };
 
         ws.onerror = (error) => {
             console.error('WebSocket Error:', error);
-            ws.close();
+            // Don't call ws.close() — the browser fires onclose automatically after onerror.
+            // Calling close() manually causes double-close and double-reconnect scheduling.
         };
-
-        return ws;
-    }, [socket]);
+    }, []); // No dependencies — stable function identity
 
     useEffect(() => {
-        let ws = null;
+        isMounted.current = true;
+
         if (user) {
-            ws = connect();
+            connect();
         }
 
         return () => {
-            if (ws) {
-                ws.close();
-            }
+            isMounted.current = false;
             if (reconnectTimeout.current) {
                 clearTimeout(reconnectTimeout.current);
+                reconnectTimeout.current = null;
+            }
+            if (wsRef.current) {
+                wsRef.current.close();
+                wsRef.current = null;
             }
         };
     }, [user, connect]);
 
     const sendMessage = useCallback((data) => {
-        if (socket && isConnected) {
-            socket.send(typeof data === 'string' ? data : JSON.stringify(data));
+        if (wsRef.current?.readyState === WebSocket.OPEN) {
+            wsRef.current.send(typeof data === 'string' ? data : JSON.stringify(data));
         }
-    }, [socket, isConnected]);
+    }, []);
 
     return { isConnected, sendMessage };
 }

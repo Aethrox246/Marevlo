@@ -4,7 +4,7 @@ import { useAuth } from '../../context/AuthContext';
 
 const API_BASE = import.meta.env.VITE_API_URL;
 
-export default function ChatWindow({ chatId, userId, onBack }) {
+export default function ChatWindow({ chatId: chatIdProp, userId, onBack }) {
     const { user } = useAuth();
     const [messages, setMessages] = useState([]);
     const [input, setInput] = useState('');
@@ -14,51 +14,81 @@ export default function ChatWindow({ chatId, userId, onBack }) {
     const messagesEndRef = useRef(null);
     const token = localStorage.getItem('access_token');
 
-    // Fetch chat initial load
+    // Mutable ref for chatId so the WS listener always has the latest value
+    // (chatIdProp can be null on first render for new chats)
+    const chatIdRef = useRef(chatIdProp);
+    useEffect(() => { chatIdRef.current = chatIdProp; }, [chatIdProp]);
+
+    // Fetch chat on initial load
     useEffect(() => {
         if (userId) {
             fetchChat();
         }
     }, [userId]);
 
-    // WebSocket listener
+    // WebSocket listener — uses refs, not stale closure values
     useEffect(() => {
         const handleWsMessage = (event) => {
             const data = event.detail;
+
             if (data.type === 'new_message') {
-                // If it's for this chat, append it and mark as read
-                if (data.chat_id === chatId || data.message.sender_id === userId || Number(data.chat_id) === Number(chatId)) {
-                    // Prevent duplicates
-                    setMessages(prev => {
-                        if (prev.find(m => m.id === data.message.id)) return prev;
-                        return [...prev, data.message];
-                    });
-                    
-                    // Mark as read if I am the receiver
-                    if (data.message.sender_id !== user?.id) {
-                        try {
-                            fetch(`${API_BASE}/chat/chats/${data.chat_id}/messages/${data.message.id}/read`, {
-                                method: 'POST',
-                                headers: {
-                                    'Authorization': `Bearer ${token}`,
-                                    'Content-Type': 'application/json'
-                                }
-                            });
-                        } catch(e) {}
-                    }
+                const currentChatId = chatIdRef.current;
+                const msg = data.message;
+
+                // Match if: same chat_id, OR the message involves the user we're chatting with
+                const isThisChat =
+                    (currentChatId && String(data.chat_id) === String(currentChatId)) ||
+                    msg.sender_id === userId ||
+                    msg.receiver_id === userId;
+
+                if (!isThisChat) return;
+
+                // Update chatIdRef if we learned the chat_id (new chat scenario)
+                if (!currentChatId && data.chat_id) {
+                    chatIdRef.current = data.chat_id;
                 }
+
+                setMessages(prev => {
+                    // Skip if we already have this exact message id
+                    if (prev.find(m => m.id === msg.id)) return prev;
+
+                    // If this is our own message echoed back via WS, replace the optimistic version
+                    if (msg.sender_id === user?.id) {
+                        const optimisticIdx = prev.findIndex(m =>
+                            m._optimistic && m.content === msg.content && m.sender_id === msg.sender_id
+                        );
+                        if (optimisticIdx !== -1) {
+                            const updated = [...prev];
+                            updated[optimisticIdx] = msg;
+                            return updated;
+                        }
+                    }
+
+                    return [...prev, msg];
+                });
+
+                // Mark as read if I'm the receiver
+                if (msg.sender_id !== user?.id && data.chat_id) {
+                    fetch(`${API_BASE}/chat/chats/${data.chat_id}/messages/${msg.id}/read`, {
+                        method: 'POST',
+                        headers: {
+                            'Authorization': `Bearer ${token}`,
+                            'Content-Type': 'application/json'
+                        }
+                    }).catch(() => {});
+                }
+
             } else if (data.type === 'status_update') {
                 if (data.user_id === userId) {
                     setOtherUser(prev => prev ? { ...prev, isOnline: data.status === 'online' } : prev);
                 }
-            } else if (data.type === 'read_receipt') {
-                 // Update the read status of a message if needed
             }
+            // read_receipt handling can be added here
         };
 
         window.addEventListener('ws_message', handleWsMessage);
         return () => window.removeEventListener('ws_message', handleWsMessage);
-    }, [userId, chatId, user]);
+    }, [userId, user?.id, token]);
 
     // Auto scroll to bottom
     useEffect(() => {
@@ -80,6 +110,8 @@ export default function ChatWindow({ chatId, userId, onBack }) {
             if (response.ok) {
                 const data = await response.json();
                 setMessages(data.messages);
+                // Store the resolved chatId
+                if (data.id) chatIdRef.current = data.id;
                 setOtherUser({
                     id: data.user_1_id === user?.id ? data.user_2_id : data.user_1_id,
                     username: data.user_1_id === user?.id ? data.user_2_username : data.user_1_username
@@ -99,10 +131,21 @@ export default function ChatWindow({ chatId, userId, onBack }) {
         setInput('');
         setSending(true);
 
+        // Optimistic: show the message immediately
+        const optimisticMsg = {
+            id: `_opt_${Date.now()}`,
+            sender_id: user?.id,
+            content: messageContent,
+            created_at: new Date().toISOString(),
+            time_ago: 'Just now',
+            _optimistic: true,
+        };
+        setMessages(prev => [...prev, optimisticMsg]);
+
         try {
-            // First create chat if it doesn't exist (by fetching)
-            let currentChatId = chatId;
-            
+            // Resolve chatId if we don't have one yet (new chat)
+            let currentChatId = chatIdRef.current;
+
             if (!currentChatId) {
                 const chatResponse = await fetch(
                     `${API_BASE}/chat/chats/${userId}`,
@@ -116,10 +159,11 @@ export default function ChatWindow({ chatId, userId, onBack }) {
                 if (chatResponse.ok) {
                     const chatData = await chatResponse.json();
                     currentChatId = chatData.id;
+                    chatIdRef.current = currentChatId;
                 }
             }
 
-            // Send message
+            // Send message via REST
             const response = await fetch(
                 `${API_BASE}/chat/chats/${currentChatId}/messages`,
                 {
@@ -134,11 +178,19 @@ export default function ChatWindow({ chatId, userId, onBack }) {
 
             if (response.ok) {
                 const newMessage = await response.json();
-                setMessages(prev => [...prev, newMessage]);
+                // Replace optimistic message with the real server response
+                setMessages(prev => prev.map(m =>
+                    m.id === optimisticMsg.id ? newMessage : m
+                ));
+            } else {
+                // Remove optimistic message on failure
+                setMessages(prev => prev.filter(m => m.id !== optimisticMsg.id));
+                setInput(messageContent);
             }
         } catch (err) {
             console.error('Failed to send message:', err);
-            setInput(messageContent); // Restore input on error
+            setMessages(prev => prev.filter(m => m.id !== optimisticMsg.id));
+            setInput(messageContent);
         } finally {
             setSending(false);
         }
@@ -171,7 +223,7 @@ export default function ChatWindow({ chatId, userId, onBack }) {
                         className="w-10 h-10 rounded-full flex items-center justify-center text-sm font-bold text-white"
                         style={{ background: 'linear-gradient(135deg, #6366f1, #8b5cf6)' }}
                     >
-                        {otherUser?.username?.[0].toUpperCase()}
+                        {otherUser?.username?.[0]?.toUpperCase() || '?'}
                     </div>
 
                     <div>
@@ -222,7 +274,7 @@ export default function ChatWindow({ chatId, userId, onBack }) {
                             style={{ background: 'linear-gradient(135deg, #6366f1, #8b5cf6)' }}
                         >
                             <span className="text-2xl font-bold text-white">
-                                {otherUser?.username?.[0].toUpperCase()}
+                                {otherUser?.username?.[0]?.toUpperCase() || '?'}
                             </span>
                         </div>
                         <h3 className="font-semibold mb-1">
@@ -248,7 +300,8 @@ export default function ChatWindow({ chatId, userId, onBack }) {
                                 color: message.sender_id === user?.id ? '#fff' : 'var(--color-primary-text)',
                                 boxShadow: message.sender_id === user?.id
                                     ? '0 4px 12px rgba(99,102,241,0.3)'
-                                    : 'none'
+                                    : 'none',
+                                opacity: message._optimistic ? 0.7 : 1,
                             }}
                         >
                             <p className="break-words text-sm">{message.content}</p>
@@ -260,11 +313,13 @@ export default function ChatWindow({ chatId, userId, onBack }) {
                                         : 'var(--color-muted-text)'
                                 }}
                             >
-                                {message.time_ago && message.time_ago !== 'null'
-                                    ? message.time_ago
-                                    : message.created_at
-                                        ? new Date(message.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
-                                        : ''}
+                                {message._optimistic
+                                    ? 'Sending...'
+                                    : message.time_ago && message.time_ago !== 'null'
+                                        ? message.time_ago
+                                        : message.created_at
+                                            ? new Date(message.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+                                            : ''}
                             </p>
                         </div>
                     </div>
@@ -286,7 +341,7 @@ export default function ChatWindow({ chatId, userId, onBack }) {
                         type="text"
                         value={input}
                         onChange={(e) => setInput(e.target.value)}
-                        onKeyPress={handleKeyPress}
+                        onKeyDown={handleKeyPress}
                         placeholder="Type a message..."
                         className="flex-1 px-4 py-3 rounded-full text-sm focus:outline-none transition-all"
                         style={{

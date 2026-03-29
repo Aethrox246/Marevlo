@@ -52,7 +52,6 @@ class Message(Base):
     sender_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
     session_id = Column(Integer, ForeignKey("user_sessions.id", ondelete="SET NULL"), nullable=True)
     log_id = Column(Integer, ForeignKey("activity_logs.id", ondelete="SET NULL"), nullable=True)
-    session_id = Column(Integer, ForeignKey("user_sessions.id", ondelete="SET NULL"), nullable=True)
     
     content = Column(Text, nullable=False)
     is_edited = Column(Boolean, default=False)
