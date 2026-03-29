@@ -1,133 +1,233 @@
-<p><strong>Module7—CNNsforVision:Practical,Not Academic</strong></p><p><strong>Convolutions,TransferLearning,andProductionInference</strong></p><p>PyTorchforDataScience</p><python>ModuleGoal:Buildpracticalintuitionforconvolutionalnetworks.Learnhow convolutionsdetectfeatures,whatreceptivefieldsare,andhowtoreusepretrained modelstosolverealvisiontaskswithouttrainingfromscratch. 	Endwitha document/defectclassifierusingtransferlearning.</python><p><strong>1.ConvolutionIntuitionandReceptiveField</strong></p><p><strong>WhatisaConvolution?</strong></p><p>Aconvolutionslidesasmall<strong>kernel</strong>(filter)overaninputimage.Ateachposition,itcomputes a<strong>dotproduct</strong>betweenthekernelandthelocalpatchofpixels—producingafeaturemap thathighlightswhereverthatpatternappears.</p><p><strong>Real-WorldAnalogy:AFlashlightScanningaDocument</strong></p><p>Imagine shining a small flashlight across a page and noting how bright each patch is relative to a template.Ahorizontal-edgekernellightsupwhereverhorizontaledgesappear.Avertical-edge kernellightsupwhereverticaledgesappear.Stackenoughkernelsandyoudetecttextures, shapes,andeventuallyobjects.</p><p>&lt;python&gt;</p><python>importtorch importtorch.nnasnn importtorch.nn.functionalasF importnumpyasnp</python><p>1</p><python>#Manualconvolutiontobuildintuition #Edge-detectionkernels(likeSobelfilters) horizontal_edge=torch.tensor([ 	[-1.,-2.,-1.],
-[0.,
-0.,
-0.],
-[1.,
-2.,
-1.]
-]).unsqueeze(0).unsqueeze(0)
-#(out_channels=1,in_channels=1,H=3,W=3)</python><python>vertical_edge=torch.tensor([ 	[-1.,0.,1.], 	[-2.,0.,2.], 	[-1.,0.,1.] ]).unsqueeze(0).unsqueeze(0)</python><python>#Fakegrayscaleimage:abrightrectangleondarkbackground img=torch.zeros(1,1,16,16) img[:,:,4:12,4:12]=1.0
-#Applyconvolutions h_feat=F.conv2d(img,horizontal_edge,padding=1)
-v_feat=F.conv2d(img,vertical_edge,
-padding=1)
-print("Inputshape:
-",img.shape)
-print("H-edgemapshape:",h_feat.shape) print("V-edgemapshape:",v_feat.shape)</python><python>#Checkthatedgesweredetected
-Inputshape:
-torch.Size([1,1,16,16])
-H-edgemapshape:torch.Size([1,1,16,16]) V-edgemapshape:torch.Size([1,1,16,16]) H-edgemax(shouldbeattop/bottomofrectangle):4.0 V-edgemax(shouldbeatleft/rightofrectangle):4.0</python><p>print("H-edgemax(shouldbeattop/bottomofrectangle):",h_feat.abs().max().item()) print("V-edgemax(shouldbeatleft/rightofrectangle):",v_feat.abs().max().item())</p><p>&lt;python&gt;</p><p><strong>ReceptiveField</strong></p><p>The<strong>receptivefield</strong>istheregionoftheinputthatinfluencesasingleoutputneuron.Each convlayerexpandsthereceptivefield.Deepernetworksseelargercontext.</p><p>2</p><p>Layer1(3×3kernel):RF=3×3 Layer2(3×3kernel):RF=5×5 Layer3(3×3kernel):RF=7×7</p><p>&lt;python&gt;</p><p>(eachneuronsees3×3oflayer-1neurons,eachofwhichsees</p><python>defcompute_receptive_field(layers): 	"""Computereceptivefieldgivenalistof(kernel_size,stride)pairs.""" 	rf,stride_so_far=1,1 	fork,sinlayers: 		rf=rf+(k-1)*stride_so_far 		stride_so_far*=s 	returnrf</python><python>#5-layerCNNwith3×3kernels,stride1 layers_3x3=[(3,1)]*5</python><p>print(f"5-layer3×3networkRF:{compute_receptive_field(layers_3x3)}×{compute_receptive_fiel</p><python>#ResNet-stylewithsomestride-2layers resnet_layers=[(7,2),(3,2),(3,2),(3,1),(3,1)] print(f"ResNet-styleRF:{compute_receptive_field(resnet_layers)}")</python><p>5-layer3×3networkRF:11×11 <br />ResNet-styleRF:51</p><p>&lt;python&gt;</p><p><strong>2.BuildingaBasicCNN</strong></p><p>&lt;python&gt;</p><python>classBasicCNN(nn.Module): """ AsimpleCNNforsmallimageclassification.
-Architecture:Conv→BN→ReLU→Pool(repeated)→FChead """</python><python>def__init__(self,in_channels:int=1,n_classes:int=10): 	super().__init__()</python><python>self.features=nn.Sequential( #Block1 nn.Conv2d(in_channels,32,kernel_size=3,padding=1),</python><p>3</p><python>nn.BatchNorm2d(32), nn.ReLU(), nn.MaxPool2d(2,2),
-#Halvespatialdims</python><python>)
-#Block2 nn.Conv2d(32,64,kernel_size=3,padding=1), nn.BatchNorm2d(64), nn.ReLU(), nn.MaxPool2d(2,2),
-#Block3 nn.Conv2d(64,128,kernel_size=3,padding=1), nn.BatchNorm2d(128), nn.ReLU(),
-nn.AdaptiveAvgPool2d((4,4)),
-#Fixedoutputsizeregardlessofinput</python><python>self.classifier=nn.Sequential( nn.Flatten(), nn.Linear(128*4*4,256), nn.ReLU(), nn.Dropout(0.4), nn.Linear(256,n_classes) )</python><python>defforward(self,x): 	returnself.classifier(self.features(x))
-#Testforwardpass
-cnn
-=BasicCNN(in_channels=1,n_classes=10)
-x_img
-=torch.randn(8,1,32,32)
-#Batch=8,grayscale,32×32
-output=cnn(x_img)
-print("CNNoutputshape:",output.shape)
-#(8,10)</python><python>#Parametercount total=sum(p.numel()forpincnn.parameters()) print(f"Parameters:{total:,}")</python><p>CNNoutputshape:torch.Size([8,10]) <br />Parameters:620,234</p><p>&lt;python&gt;</p><p>4</p><p><strong>3.ResNetIntuition</strong></p><p>&lt;python&gt;</p><python>#ThekeyinsightofResNet:skipconnectionsletgradientsflowdirectly #toearlierlayers,solvingvanishinggradientsindeepnetworks</python><python>classResidualBlock(nn.Module): """ AbasicResNetblock:F(x)+x ThenetworklearnstheRESIDUAL(thedifference)ratherthanthefullmapping.
-"""</python><python>def__init__(self,channels:int): 	super().__init__() 	self.block=nn.Sequential( 	nn.Conv2d(channels,channels,3,padding=1,bias=False), 	nn.BatchNorm2d(channels), 	nn.ReLU(), 	nn.Conv2d(channels,channels,3,padding=1,bias=False), 	nn.BatchNorm2d(channels), 	) 	self.relu=nn.ReLU()
-defforward(self,x):
-returnself.relu(self.block(x)+x)
-#←Skipconnection
-#Showthatgradientsflowthroughtheskipconnectionevenifblocksaturates block=ResidualBlock(32)
-x
-=torch.randn(4,32,16,16,requires_grad=True)
-out
-=block(x)
-loss
-=out.sum()
-loss.backward() print("Gradientnormwithskipconnection:",x.grad.norm().item())</python><p>Gradientnormwithskipconnection:154.57020568847656</p><p>&lt;python&gt;</p><p>5</p><p><strong>4.TransferLearning:FreezingandUnfreezing</strong></p><p><strong>TheCoreIdea</strong></p><p>TrainingaCNNfromscratchonsmalldatasetsalmostalwaysfails.Instead:</p><p>1.<strong>Startwithapretrainedmodel</strong>(ImageNet-trainedResNet,EfficientNet,etc.) 2.<strong>Freezethebackbone</strong>—don’tupdatethefeatureextractorweights.</p><p>3.<strong>Trainonlytheclassificationhead</strong>—fast,data-efficient.</p><p>4.<strong>Fine-tune</strong>(optional):unfreezedeeperlayersandtrainend-to-endwithasmallLR.</p><p>&lt;python&gt;</p><python>importtorchvision.modelsasmodels #LoadpretrainedResNet18 backbone=models.resnet18(weights=None)
-#Useweights='IMAGENET1K_V1'inpractice</python><python>#Inspectparametercounts total_params=sum(p.numel()forpinbackbone.parameters()) print(f"TotalResNet18parameters:{total_params:,}")</python><python>#Step1:FreezeALLlayers forparaminbackbone.parameters(): 	param.requires_grad=False</python><python>frozen=sum(p.numel()forpinbackbone.parameters()ifnotp.requires_grad) print(f"Frozenparameters:{frozen:,}")</python><python>#Step2:Replacethehead n_classes=5 backbone.fc=nn.Sequential( 	nn.Linear(backbone.fc.in_features,256), 	nn.ReLU(), 	nn.Dropout(0.3), 	nn.Linear(256,n_classes) )</python><python>trainable=sum(p.numel()forpinbackbone.parameters()ifp.requires_grad) print(f"Trainable(headonly):{trainable:,}")</python><p>TotalResNet18parameters:11,689,512 <br />Frozenparameters:11,689,512 <br />Trainable(headonly):132,613</p><p>6</p><p>#Step3:Fine-tuning—unfreezeprogressively</p><python>defunfreeze_layers(model,n_layers_from_end:int): 	"""Unfreezethelastnconvolutionalblocksforfine-tuning.""" 	all_layers=list(model.children()) 	forlayerinall_layers[-n_layers_from_end:]: 		forparaminlayer.parameters(): 		param.requires_grad=True</python><python>#Phase1:trainheadonly(fast,stable) #...trainingloophere...</python><python>#Phase2:fine-tunelast2blockswithsmallLR unfreeze_layers(backbone,n_layers_from_end=2) trainable_after=sum(p.numel()forpinbackbone.parameters()ifp.requires_grad) print(f"Trainableafterpartialunfreeze:{trainable_after:,}")
-#CRITICAL:useamuchsmallerLRforfine-tuning opt_finetune=torch.optim.AdamW([
-{'params':backbone.fc.parameters(),
-'lr':1e-3},
-#Head:normalLR
-{'params':backbone.layer4.parameters(),'lr':1e-4},
-#Backbone:10×smallerLR
-],weight_decay=1e-4)</python><p>Trainableafterpartialunfreeze:132,613</p><p>&lt;python&gt;</p><python>LIGHTBULBTip</python></td></tr></table><python>TransferLearningRecipe:1.Freezebackbone→trainheadfor5-10epochs.2. Unfreezelast1-2blocks→fine-tuneat1/10ththeLR.3.Unfreezefullbackbone→fine-tuneat1/100ththeLR(optional,onlyifdataislargeenough).</python><p><strong>5.DataAugmentationwithTorchvision</strong></p><p>7</p><p>&lt;python&gt;</p><python>importtorchvision.transforms.v2asT
-#Standardaugmentationpipelinefortraining train_transforms=T.Compose([ 	T.RandomResizedCrop(224,scale=(0.7,1.0)), 	T.RandomHorizontalFlip(p=0.5), 	T.ColorJitter(brightness=0.3,contrast=0.3,saturation=0.2,hue=0.1), 	T.RandomRotation(degrees=15),
-T.ToTensor(),
-#PIL→Tensor,scalesto[0,1]
-T.Normalize(mean=[0.485,0.456,0.406],
-#ImageNetstats
-])
-std=[0.229,0.224,0.225]),</python></td></tr></table><python>#Evaltransforms—NOaugmentation,onlyresize+normalize eval_transforms=T.Compose([ 	T.Resize(256), 	T.CenterCrop(224), 	T.ToTensor(), 	T.Normalize(mean=[0.485,0.456,0.406], 		std=[0.229,0.224,0.225]), ])</python><python>print("Transformsdefined.") #Testonarandomtensor fake_img=torch.randint(0,255,(3,256,256),dtype=torch.uint8)
-#out=train_transforms(fake_img)
-#Uncommentwhenworkingwithrealimages</python><p>Transformsdefined.</p><p>&lt;python&gt;</p><p><strong>6.MetricsforVisionTasks</strong></p><p>&lt;python&gt;</p><python>defclassification_metrics(logits:torch.Tensor,targets:torch.Tensor, 		n_classes:int)->dict: 	"""Per-classprecision,recall,F1andmacro/weightedaverages.""" 	preds=logits.argmax(dim=1) 	metrics={}</python><p>8</p><python>per_class_f1=[] forcinrange(n_classes): 	tp=((preds==c)&(targets==c)).sum().float() 	fp=((preds==c)&(targets!=c)).sum().float() 	fn=((preds!=c)&(targets==c)).sum().float()
-p
-=tp/(tp+fp+1e-8)
-r
-=tp/(tp+fn+1e-8)
-f1=2*p*r/(p+r+1e-8) per_class_f1.append(f1.item()) metrics[f'class_{c}_f1']=f1.item()
-metrics['accuracy']
-=(preds==targets).float().mean().item()
-metrics['macro_f1']
-=np.mean(per_class_f1)</python><python>#Top-kaccuracy top_k=min(3,n_classes) topk_preds=logits.topk(top_k,dim=1).indices</python><p>metrics[f'top{top_k}_acc']=topk_preds.eq(targets.unsqueeze(1)).any(dim=1).float().mean</p><python>returnmetrics
-#Demo
-n_classes=5
-logits
-=torch.randn(100,n_classes)
-targets=torch.randint(0,n_classes,(100,))
-m
-=classification_metrics(logits,targets,n_classes)
-print("Metrics:") fork,vinm.items():
-print(f"
-{k}:{v:.3f}")</python><p>Metrics: <br />class_0_f1:0.333 <br />class_1_f1:0.222 <br />class_2_f1:0.059 <br />class_3_f1:0.400 <br />class_4_f1:0.316 <br />accuracy:0.280 <br />macro_f1:0.266 <br />top3_acc:0.600</p><p>&lt;python&gt;</p><p>9</p><p><strong>Project:Defect/DocumentClassifierwithTransferLearning</strong></p><p>&lt;python&gt;</p><p>importtorchvision.modelsasmodels <br />fromtorch.utils.dataimportDataset,DataLoader</p><python>#Simulateadocumentimagedataset #Inproduction:replacewithrealimagepaths+PILloading</python><python>classSyntheticImageDataset(Dataset): 	"""Syntheticstand-inforarealimagedataset."""</python><python>def__init__(self,n_samples:int=500,n_classes:int=4, 		img_size:int=64): 	self.n_classes=n_classes 	#Simulatefeaturesextractedfromimages(e.g.,texturehistograms) 	self.X=torch.randn(n_samples,3,img_size,img_size) 	self.y=torch.randint(0,n_classes,(n_samples,))</python><p><strong>def</strong>__len__(self):<strong>return</strong>len(self.X)</p><python>def__getitem__(self,idx): 	returnself.X[idx],self.y[idx]</python><python>classTransferLearningClassifier(nn.Module):</python><python>def__init__(self,n_classes:int,backbone_name:str='resnet18'): super().__init__() backbone=models.resnet18(weights=None)
-#Adaptfirstconvforsmallimages(nopretrainedweightshere) backbone.conv1=nn.Conv2d(3,64,kernel_size=3,padding=1,bias=False)
-backbone.maxpool=nn.Identity()
-#Skipmaxpoolforsmallimages
-self.features=nn.Sequential(*list(backbone.children())[:-1])
-#RemoveFC
-self.head
-=nn.Sequential(
-nn.Flatten(), nn.Linear(512,128),nn.ReLU(),nn.Dropout(0.3),</python><p>10</p><python>)
-nn.Linear(128,n_classes)</python><python>defforward(self,x): 	returnself.head(self.features(x))
-N_CLASSES=4
-train_ds
-=SyntheticImageDataset(400,N_CLASSES,img_size=64)
-val_ds
-=SyntheticImageDataset(100,N_CLASSES,img_size=64)
-train_dl
-=DataLoader(train_ds,batch_size=32,shuffle=True)
-val_dl
-=DataLoader(val_ds,
-batch_size=64)
-model
-=TransferLearningClassifier(N_CLASSES)
-opt
-=torch.optim.AdamW(model.parameters(),lr=1e-3)
-criterion=nn.CrossEntropyLoss()
-sched
-=torch.optim.lr_scheduler.OneCycleLR(
-opt,max_lr=1e-2,steps_per_epoch=len(train_dl),epochs=20)</python><python>print(f"Modelparams:{sum(p.numel()forpinmodel.parameters()):,}")</python><p>Modelparams:11,235,012</p><python>#Training best_val_acc,best_state=0.0,None</python><python>forepochinrange(20): 	model.train() 	forX_b,y_bintrain_dl: 		opt.zero_grad() 		loss=criterion(model(X_b),y_b) 		loss.backward() 		torch.nn.utils.clip_grad_norm_(model.parameters(),1.0) 		opt.step() 		sched.step()
-model.eval() withtorch.no_grad(): 	val_logits=torch.cat([model(X)forX,_inval_dl])
-val_labels=torch.cat([y
-for_,yinval_dl])
-val_acc
-=(val_logits.argmax(1)==val_labels).float().mean().item()</python><p>11</p><python>ifval_acc>best_val_acc: best_val_acc=val_acc
-best_state
-={k:v.clone()fork,vinmodel.state_dict().items()}</python><python>ifepoch%5==0: 	print(f"Epoch{epoch:2d}:val_acc={val_acc:.3f}")</python><python>model.load_state_dict(best_state)</python><python>#Finalevaluation model.eval() withtorch.no_grad(): 	all_logits=torch.cat([model(X)forX,_inval_dl]) 	all_labels=torch.cat([yfor_,yinval_dl])</python><python>final_metrics=classification_metrics(all_logits,all_labels,N_CLASSES) print(f"\nFinalmodel:accuracy={final_metrics['accuracy']:.3f}," 	f"macro_f1={final_metrics['macro_f1']:.3f}")
-Epoch
-0:val_acc=0.260
-Epoch
-5:val_acc=0.260
-Epoch10:val_acc=0.220 Epoch15:val_acc=0.250</python><p>Finalmodel:accuracy=0.320,macro_f1=0.208</p><python>#Productioninferencescript defpredict_image_batch(model:nn.Module,images:torch.Tensor, 			class_names:list)->list: 	"""Runinferenceonabatchofimages.""" 	model.eval() 	withtorch.no_grad(): 		logits=model(images)
-probs
-=torch.softmax(logits,dim=1)
-preds
-=probs.argmax(dim=1)
-results=[] foriinrange(len(images)): 	results.append({
-'class':
-class_names[preds[i].item()],
-'confidence':
-probs[i,preds[i]].item(),</python><p>12</p><python>'all_probs':
-{class_names[j]:probs[i,j].item()
-	}) returnresults
-forjinrange(len(class_names))}</python><p>class_names=['scratch','dent','crack','ok']</p></td></tr><tr><td><p>test_imgs</p></td><td colspan="3"><p>=torch.randn(4,3,64,64)</p></td></tr><tr><td><p>results</p></td><td colspan="3"><p>=predict_image_batch(model,test_imgs,class_names)</p></td></tr><tr><td colspan="4"><p>print("\nInferenceresults:") <br /><strong>for</strong>i,r<strong>in</strong>enumerate(results):</p></td></tr><tr><td colspan="2"><p>print(f"</p></td><td colspan="2"><p>Image{i}:{r['class']}(conf={r['confidence']:.3f})")</p></td></tr></table><p>Inferenceresults: <br />Image0:ok(conf=0.945) <br />Image1:scratch(conf=0.998) <br />Image2:ok(conf=0.781) <br />Image3:scratch(conf=0.838)</p><p>&lt;python&gt;</p><p><strong>ModuleSummary</strong></p><python>Concept
-KeyTakeaway</python><p><strong>Convolution </strong><br /><strong>Receptivefield </strong><br /><strong>Skipconnections </strong><br /><strong>Transferlearning </strong><br /><strong>AdaptiveAvgPool2d Augmentation </strong><br /><strong>Top-kaccuracy</strong></p><p>Kernelslidesoverinputcomputinglocaldotproducts; detectslocalpatterns.</p><p>Growswithdepth;deeperlayersseewidercontext. ResNet’skeytrick—gradientsflowdirectly,enabling deepnetworks.</p><p>Startfrozen,trainhead;thenunfreezeandfine-tune atlowerLR.</p><p>Usetodecouplemodelfrominputimagesize.</p><p>Applyonlyduringtraining;evalusesonlyresize+ normalise.</p><p>Reportformulti-classtaskswithmanyclasses.</p><p>13</p><p><strong>What’sNext</strong></p><p><strong>Module8—SequenceModels</strong>movesfromspatialdata(images)totemporaldata(logs, text,time-series).You’llunderstandwhysequentialstructurerequiresadifferentarchitec-ture,implementLSTMandGRU,thenbuilduptotheattentionmechanismthatpowers Transformers.</p><p>14</p>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Module 7 — CNNs for Image Data | PyTorch for Data Science</title>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&family=Outfit:wght@300;400;500;600;700;800;900&family=Source+Serif+4:ital,wght@0,300;0,400;0,600;1,300;1,400&display=swap" rel="stylesheet">
+<style>
+:root{--bg-primary:#0a0a0f;--bg-card:#161622;--bg-code:#0d0d18;--text-primary:#e8e8f0;--text-secondary:#9898b0;--accent-1:#6c5ce7;--accent-2:#00cec9;--accent-3:#fd79a8;--accent-4:#fdcb6e;--accent-5:#55efc4;--gradient-line:linear-gradient(90deg,#6c5ce7,#00cec9,#fd79a8,#fdcb6e);--border-subtle:rgba(255,255,255,0.06);--radius:12px;--radius-sm:8px;}
+*{margin:0;padding:0;box-sizing:border-box;}html{scroll-behavior:smooth;}
+body{background:var(--bg-primary);color:var(--text-primary);font-family:'Outfit',sans-serif;line-height:1.7;overflow-x:hidden;-webkit-font-smoothing:antialiased;}
+.scroll-progress{position:fixed;top:0;left:0;height:3px;z-index:1000;background:var(--gradient-line);width:0%;transition:width 0.1s linear;}
+.hero{min-height:100vh;display:flex;flex-direction:column;justify-content:center;align-items:center;text-align:center;padding:2rem;position:relative;overflow:hidden;}
+.hero::before{content:'';position:absolute;inset:0;background:radial-gradient(ellipse 600px 400px at 30% 40%,rgba(108,92,231,0.12),transparent),radial-gradient(ellipse 500px 350px at 70% 60%,rgba(0,206,201,0.08),transparent);pointer-events:none;}
+.hero-particles{position:absolute;inset:0;pointer-events:none;}
+.hero-particles .dot{position:absolute;width:3px;height:3px;border-radius:50%;background:var(--accent-2);opacity:0;animation:floatDot 6s ease-in-out infinite;}
+@keyframes floatDot{0%,100%{opacity:0;transform:translateY(0);}50%{opacity:0.6;transform:translateY(-40px);}}
+.hero-label{display:inline-flex;align-items:center;gap:8px;background:rgba(108,92,231,0.1);border:1px solid rgba(108,92,231,0.25);border-radius:100px;padding:6px 18px;font-size:0.8rem;font-weight:500;color:var(--accent-1);letter-spacing:1.5px;text-transform:uppercase;margin-bottom:2rem;}
+.dot-indicator{width:6px;height:6px;border-radius:50%;background:var(--accent-2);animation:pulse 2s ease-in-out infinite;}
+@keyframes pulse{0%,100%{opacity:1;}50%{opacity:0.3;}}
+.hero h1{font-size:clamp(2.8rem,6vw,5rem);font-weight:900;line-height:1.1;letter-spacing:-2px;margin-bottom:1.5rem;}
+.gradient-text{background:var(--gradient-line);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;}
+.hero-subtitle{font-family:'Source Serif 4',serif;font-size:clamp(1.05rem,2vw,1.25rem);color:var(--text-secondary);max-width:640px;line-height:1.8;font-weight:300;}
+.hero-scroll-cue{position:absolute;bottom:3rem;display:flex;flex-direction:column;align-items:center;gap:8px;color:var(--text-secondary);font-size:0.75rem;letter-spacing:2px;text-transform:uppercase;}
+.arrow{width:20px;height:20px;border-right:2px solid var(--text-secondary);border-bottom:2px solid var(--text-secondary);transform:rotate(45deg);animation:bounceArrow 2s ease-in-out infinite;}
+@keyframes bounceArrow{0%,100%{transform:rotate(45deg) translateY(0);}50%{transform:rotate(45deg) translateY(6px);}}
+.content-wrapper{max-width:860px;margin:0 auto;padding:0 2rem 6rem;}
+.section{margin-bottom:5rem;opacity:0;transform:translateY(30px);transition:all 0.7s cubic-bezier(0.16,1,0.3,1);}
+.section.visible{opacity:1;transform:translateY(0);}
+.section-number{font-family:'JetBrains Mono',monospace;font-size:0.7rem;color:var(--accent-2);letter-spacing:3px;text-transform:uppercase;margin-bottom:0.75rem;display:flex;align-items:center;gap:10px;}
+.section-number::after{content:'';flex:1;height:1px;background:linear-gradient(90deg,var(--accent-2),transparent);opacity:0.3;}
+h2{font-size:clamp(1.8rem,3.5vw,2.4rem);font-weight:700;letter-spacing:-0.5px;margin-bottom:1.5rem;line-height:1.2;}
+h3{font-size:1.3rem;font-weight:600;margin:2.5rem 0 1rem;}
+p{color:var(--text-secondary);margin-bottom:1.25rem;font-size:1.02rem;}
+p strong{color:var(--text-primary);font-weight:600;}
+.gradient-divider{height:2px;background:var(--gradient-line);border-radius:2px;margin:4rem 0;opacity:0.5;}
+.code-block{background:var(--bg-code);border:1px solid var(--border-subtle);border-radius:var(--radius);overflow:hidden;margin:1.5rem 0;}
+.code-block-header{display:flex;align-items:center;padding:10px 16px;background:rgba(255,255,255,0.02);border-bottom:1px solid var(--border-subtle);}
+.code-lang{font-family:'JetBrains Mono',monospace;font-size:0.7rem;color:var(--accent-2);display:flex;align-items:center;gap:6px;}
+.code-lang::before{content:'●';font-size:8px;}
+.code-block pre{padding:16px 20px;overflow-x:auto;font-family:'JetBrains Mono',monospace;font-size:0.82rem;line-height:1.65;color:#c8c8d8;}
+.kw{color:#c792ea;}.fn{color:#82aaff;}.str{color:#c3e88d;}.num{color:#f78c6c;}.cm{color:#546e7a;font-style:italic;}
+.code-output{border-top:1px solid var(--border-subtle);background:rgba(0,0,0,0.25);}
+.code-output-label{display:flex;align-items:center;gap:6px;padding:8px 16px 0;font-family:'JetBrains Mono',monospace;font-size:0.65rem;color:var(--accent-5);letter-spacing:1px;text-transform:uppercase;}
+.code-output-label::before{content:'▸';font-size:0.7rem;}
+.code-output pre{padding:8px 20px 14px;font-family:'JetBrains Mono',monospace;font-size:0.8rem;line-height:1.6;color:var(--accent-5);opacity:0.85;}
+.formula-card{background:var(--bg-card);border:1px solid var(--border-subtle);border-radius:var(--radius);padding:24px 28px;margin:1.5rem 0;position:relative;overflow:hidden;}
+.formula-card::before{content:'';position:absolute;left:0;top:0;bottom:0;width:3px;background:var(--gradient-line);}
+.formula-label{font-family:'JetBrains Mono',monospace;font-size:0.7rem;color:var(--accent-1);letter-spacing:1.5px;text-transform:uppercase;margin-bottom:12px;}
+.formula-math{font-size:1.1rem;color:var(--text-primary);font-weight:300;margin-bottom:12px;font-family:'Source Serif 4',serif;}
+.formula-explain{font-size:0.88rem;color:var(--text-secondary);line-height:1.6;}
+.formula-explain .var{font-family:'Source Serif 4',serif;font-style:italic;color:var(--accent-4);}
+.insight{background:linear-gradient(135deg,rgba(108,92,231,0.08),rgba(0,206,201,0.05));border:1px solid rgba(108,92,231,0.2);border-radius:var(--radius);padding:20px 24px;margin:2rem 0;position:relative;}
+.insight::before{content:'💡';position:absolute;top:-12px;left:20px;background:var(--bg-primary);padding:0 8px;font-size:1.1rem;}
+.insight p{color:var(--text-primary);font-size:0.95rem;margin:0;}
+.warning{background:linear-gradient(135deg,rgba(253,121,168,0.08),rgba(253,203,110,0.05));border:1px solid rgba(253,121,168,0.2);border-radius:var(--radius);padding:20px 24px;margin:2rem 0;position:relative;}
+.warning::before{content:'⚠️';position:absolute;top:-12px;left:20px;background:var(--bg-primary);padding:0 8px;font-size:1.1rem;}
+.warning p{color:var(--text-primary);font-size:0.95rem;margin:0;}
+</style>
+</head>
+<body>
+<div class="scroll-progress" id="scrollProgress"></div>
+<section class="hero">
+  <div class="hero-particles" id="heroParticles"></div>
+  <div class="hero-label"><span class="dot-indicator"></span> PyTorch · Module 7 of 12</div>
+  <h1>CNNs for <span class="gradient-text">Image Data</span></h1>
+  <p class="hero-subtitle">Learn how convolutional neural networks exploit spatial structure in images. Build a CNN from scratch, understand pooling, receptive fields, and leverage pre-trained models via transfer learning.</p>
+  <div class="hero-scroll-cue"><span>Begin</span><div class="arrow"></div></div>
+</section>
+
+<div class="content-wrapper">
+
+<div class="section" id="sec1">
+  <div class="section-number">01 — Why Convolutions?</div>
+  <h2>The Problem with Flat MLPs on Images</h2>
+  <p>A 224×224 RGB image has 224 × 224 × 3 = <strong>150,528 pixels</strong>. If you flatten it and pass it to a linear layer with 512 hidden units, you already have <strong>77 million parameters</strong> — just for the first layer. Worse, the MLP treats each pixel independently, ignoring the fact that <em>nearby pixels are related</em>.</p>
+
+  <div class="formula-card">
+    <div class="formula-label">Three CNN Inductive Biases</div>
+    <div class="formula-math">Local Connectivity · Weight Sharing · Translation Invariance</div>
+    <div class="formula-explain">
+      <span class="var">Local connectivity</span> — each neuron only sees a small patch of the input, not the whole image &nbsp;·&nbsp;
+      <span class="var">Weight sharing</span> — the same filter is applied at every position (dramatically fewer parameters) &nbsp;·&nbsp;
+      <span class="var">Translation invariance</span> — a cat in the top-left is the same as a cat in the bottom-right
+    </div>
+  </div>
+</div>
+
+<div class="gradient-divider"></div>
+
+<div class="section" id="sec2">
+  <div class="section-number">02 — nn.Conv2d Deep Dive</div>
+  <h2>Understanding the Parameters</h2>
+
+  <div class="formula-card">
+    <div class="formula-label">Output Spatial Size Formula</div>
+    <div class="formula-math">H_out = ⌊(H_in + 2·padding − kernel_size) / stride + 1⌋</div>
+    <div class="formula-explain">
+      <span class="var">H_in</span> = input height &nbsp;·&nbsp;
+      <span class="var">padding</span> = pixels added around border &nbsp;·&nbsp;
+      <span class="var">kernel_size</span> = filter size &nbsp;·&nbsp;
+      <span class="var">stride</span> = step size between filter applications
+    </div>
+  </div>
+
+  <div class="code-block">
+    <div class="code-block-header"><span class="code-lang">Python</span></div>
+    <pre><span class="kw">import</span> torch
+<span class="kw">import</span> torch.nn <span class="kw">as</span> nn
+
+<span class="cm"># Conv2d(in_channels, out_channels, kernel_size, stride, padding)</span>
+conv = nn.<span class="fn">Conv2d</span>(<span class="num">3</span>, <span class="num">64</span>, kernel_size=<span class="num">3</span>, stride=<span class="num">1</span>, padding=<span class="num">1</span>)
+
+<span class="cm"># Input: (batch, channels, height, width)</span>
+x = torch.<span class="fn">randn</span>(<span class="num">8</span>, <span class="num">3</span>, <span class="num">32</span>, <span class="num">32</span>)   <span class="cm"># 8 RGB images 32×32</span>
+out = <span class="fn">conv</span>(x)
+<span class="fn">print</span>(<span class="str">"Input:"</span>, x.shape)    <span class="cm"># (8, 3, 32, 32)</span>
+<span class="fn">print</span>(<span class="str">"Output:"</span>, out.shape) <span class="cm"># (8, 64, 32, 32) -- same spatial, more channels</span>
+
+<span class="cm"># Parameter count: out_ch * (in_ch * k * k + bias)</span>
+params = <span class="fn">sum</span>(p.<span class="fn">numel</span>() <span class="kw">for</span> p <span class="kw">in</span> conv.<span class="fn">parameters</span>())
+<span class="fn">print</span>(<span class="fn">f</span><span class="str">"Params: {params:,}"</span>)  <span class="cm"># 64*(3*3*3 + 1) = 1,792</span>
+
+<span class="cm"># Pooling reduces spatial size</span>
+pool = nn.<span class="fn">MaxPool2d</span>(kernel_size=<span class="num">2</span>, stride=<span class="num">2</span>)
+<span class="fn">print</span>(<span class="str">"After pool:"</span>, <span class="fn">pool</span>(out).shape)  <span class="cm"># (8, 64, 16, 16)</span></pre>
+    <div class="code-output">
+      <div class="code-output-label">Output</div>
+      <pre>Input:  torch.Size([8, 3, 32, 32])
+Output: torch.Size([8, 64, 32, 32])
+Params: 1,792
+After pool: torch.Size([8, 64, 16, 16])</pre>
+    </div>
+  </div>
+</div>
+
+<div class="gradient-divider"></div>
+
+<div class="section" id="sec3">
+  <div class="section-number">03 — Building a CNN from Scratch</div>
+  <h2>A Modern CNN Architecture</h2>
+
+  <div class="code-block">
+    <div class="code-block-header"><span class="code-lang">Python</span></div>
+    <pre><span class="kw">class</span> <span class="fn">ConvBlock</span>(nn.Module):
+    <span class="cm">"""Conv → BatchNorm → ReLU — the standard building block."""</span>
+    <span class="kw">def</span> <span class="fn">__init__</span>(self, in_ch, out_ch, kernel_size=<span class="num">3</span>, stride=<span class="num">1</span>):
+        <span class="fn">super</span>().__init__()
+        self.block = nn.<span class="fn">Sequential</span>(
+            nn.<span class="fn">Conv2d</span>(in_ch, out_ch, kernel_size, stride, padding=<span class="num">1</span>, bias=<span class="kw">False</span>),
+            nn.<span class="fn">BatchNorm2d</span>(out_ch),
+            nn.<span class="fn">ReLU</span>(inplace=<span class="kw">True</span>),
+        )
+    <span class="kw">def</span> <span class="fn">forward</span>(self, x): <span class="kw">return</span> self.<span class="fn">block</span>(x)
+
+
+<span class="kw">class</span> <span class="fn">SimpleCNN</span>(nn.Module):
+    <span class="kw">def</span> <span class="fn">__init__</span>(self, num_classes=<span class="num">10</span>):
+        <span class="fn">super</span>().__init__()
+        self.features = nn.<span class="fn">Sequential</span>(
+            <span class="fn">ConvBlock</span>(<span class="num">3</span>,  <span class="num">32</span>),
+            <span class="fn">ConvBlock</span>(<span class="num">32</span>, <span class="num">32</span>),
+            nn.<span class="fn">MaxPool2d</span>(<span class="num">2</span>),         <span class="cm"># /2</span>
+            <span class="fn">ConvBlock</span>(<span class="num">32</span>, <span class="num">64</span>),
+            <span class="fn">ConvBlock</span>(<span class="num">64</span>, <span class="num">64</span>),
+            nn.<span class="fn">MaxPool2d</span>(<span class="num">2</span>),         <span class="cm"># /4</span>
+            <span class="fn">ConvBlock</span>(<span class="num">64</span>, <span class="num">128</span>),
+            nn.<span class="fn">AdaptiveAvgPool2d</span>(<span class="num">1</span>), <span class="cm"># Global avg pool → (B, 128, 1, 1)</span>
+        )
+        self.head = nn.<span class="fn">Sequential</span>(
+            nn.<span class="fn">Flatten</span>(),
+            nn.<span class="fn">Dropout</span>(<span class="num">0.3</span>),
+            nn.<span class="fn">Linear</span>(<span class="num">128</span>, num_classes),
+        )
+
+    <span class="kw">def</span> <span class="fn">forward</span>(self, x):
+        <span class="kw">return</span> self.<span class="fn">head</span>(self.<span class="fn">features</span>(x))
+
+
+model = <span class="fn">SimpleCNN</span>(num_classes=<span class="num">10</span>)
+x = torch.<span class="fn">randn</span>(<span class="num">16</span>, <span class="num">3</span>, <span class="num">32</span>, <span class="num">32</span>)   <span class="cm"># CIFAR-10 batch</span>
+<span class="fn">print</span>(<span class="str">"Output shape:"</span>, <span class="fn">model</span>(x).shape)
+total = <span class="fn">sum</span>(p.<span class="fn">numel</span>() <span class="kw">for</span> p <span class="kw">in</span> model.<span class="fn">parameters</span>())
+<span class="fn">print</span>(<span class="fn">f</span><span class="str">"Total params: {total:,}"</span>)</pre>
+    <div class="code-output">
+      <div class="code-output-label">Output</div>
+      <pre>Output shape: torch.Size([16, 10])
+Total params: 148,810</pre>
+    </div>
+  </div>
+
+  <h3>Transfer Learning with torchvision</h3>
+  <div class="code-block">
+    <div class="code-block-header"><span class="code-lang">Python</span></div>
+    <pre><span class="kw">import</span> torchvision.models <span class="kw">as</span> models
+
+<span class="cm"># Load pre-trained ResNet50 (ImageNet weights)</span>
+backbone = models.<span class="fn">resnet50</span>(weights=<span class="str">'IMAGENET1K_V1'</span>)
+
+<span class="cm"># Freeze all layers</span>
+<span class="kw">for</span> p <span class="kw">in</span> backbone.<span class="fn">parameters</span>():
+    p.requires_grad = <span class="kw">False</span>
+
+<span class="cm"># Replace final layer for your task (10 classes)</span>
+in_features = backbone.fc.in_features    <span class="cm"># 2048</span>
+backbone.fc = nn.<span class="fn">Sequential</span>(
+    nn.<span class="fn">Dropout</span>(<span class="num">0.3</span>),
+    nn.<span class="fn">Linear</span>(in_features, <span class="num">10</span>)
+)
+
+<span class="cm"># Only the new head is trainable</span>
+trainable = <span class="fn">sum</span>(p.<span class="fn">numel</span>() <span class="kw">for</span> p <span class="kw">in</span> backbone.<span class="fn">parameters</span>() <span class="kw">if</span> p.requires_grad)
+<span class="fn">print</span>(<span class="fn">f</span><span class="str">"Trainable params: {trainable:,}"</span>)  <span class="cm"># Only 20,490</span></pre>
+    <div class="code-output">
+      <div class="code-output-label">Output</div>
+      <pre>Trainable params: 20,490</pre>
+    </div>
+  </div>
+
+  <div class="insight"><p><strong>Transfer Learning Strategy:</strong> (1) Freeze all layers, train only the head for 5–10 epochs. (2) Unfreeze the last few blocks and fine-tune with a very small LR (1e-5 to 1e-4). This "gradual unfreezing" prevents catastrophic forgetting of ImageNet features.</p></div>
+</div>
+
+</div>
+
+<script>
+const sp = document.getElementById('scrollProgress');
+window.addEventListener('scroll', () => { sp.style.width = (window.scrollY / (document.body.scrollHeight - window.innerHeight) * 100) + '%'; });
+document.querySelectorAll('.section').forEach(s => new IntersectionObserver(([e]) => { if (e.isIntersecting) e.target.classList.add('visible'); }, { threshold: 0.08 }).observe(s));
+const c = document.getElementById('heroParticles');
+for (let i = 0; i < 18; i++) { const d = document.createElement('div'); d.className = 'dot'; d.style.cssText = `left:${Math.random()*100}%;top:${Math.random()*100}%;animation-delay:${Math.random()*6}s;animation-duration:${4+Math.random()*4}s`; c.appendChild(d); }
+</script>
+</body>
+</html>

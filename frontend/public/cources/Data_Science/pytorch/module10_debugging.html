@@ -1,207 +1,215 @@
-<p><strong>Module10—ModelDebugging:Premium Content</strong></p><p><strong>FindandFixBrokenModelsSystematically</strong></p><p>PyTorchforDataScience</p><p><strong>ModuleGoal:</strong>Developasystematicdebuggingtoolkit.Learntodetectvanish-ing/explodinggradients,plotactivationandgradienthistograms,findtheright learningrate,andfixcommonshapeandpipelinebugs.Thismoduleendswitha pre-brokenmodelthatyoudebugfromscratch.</p><p><strong>1.DetectingVanishingandExplodingGradients</strong></p><p><strong>TheProblem</strong></p><p>•<strong>Vanishinggradients</strong>:gradientsbecomeextremelysmallinearlylayers→modelstops 	learning.</p><p>•<strong>Explodinggradients</strong>:gradientsgrowexponentially→lossbecomesNaN.</p><p>&lt;python&gt;</p><python>importtorch importtorch.nnasnn importnumpyasnp importmatplotlib matplotlib.use('Agg') importmatplotlib.pyplotasplt</python><python>torch.manual_seed(42)</python><python>defmonitor_gradients(model:nn.Module,verbose:bool=True)->dict: """ Afterloss.backward(),inspectgradientstatisticsforeachlayer.
-"""</python><p>1</p><python>stats={} forname,paraminmodel.named_parameters(): 	ifparam.gradisnotNone: 	g=param.grad.data 	stats[name]={
-'mean':
-g.mean().item(),
-'std':
-g.std().item(),
-'max':
-g.abs().max().item(),
-'norm':
-g.norm().item()
-} ifverbose: 	status=''
-ifg.norm().item()<1e-7:
-status='←VANISHING'
-ifg.norm().item()>100:
-status='←EXPLODING'
-print(f"
-{name:30s}norm={g.norm().item():.2e}
-"
-returnstats
-f"max={g.abs().max().item():.2e}{status}")</python><p>#Demo:deepnetworkwithnoinitialisationcare(canvanish) <strong>class</strong>DeepNet(nn.Module): <br />	<strong>def</strong>__init__(self,depth=10,bad_init=False): <br />		super().__init__() <br />		layers=[] <br />		<strong>for</strong>_<strong>in</strong>range(depth): <br />		l=nn.Linear(32,32) <br />		<strong>if</strong>bad_init:</p></td></tr><tr><td colspan="3"><p>nn.init.uniform_(l.weight,-5,5)</p></td><td colspan="2"><p>#Terribleinit→exploding</p></td></tr><tr><td colspan="5"><p>layers.extend([l,nn.Tanh()]) <br />self.net=nn.Sequential(*layers,nn.Linear(32,1))</p></td></tr></table><python>defforward(self,x): 	returnself.net(x)</python><python>#Goodinit model_good=DeepNet(depth=6,bad_init=False) x=torch.randn(16,32) loss=model_good(x).sum() loss.backward() print("===Goodinitialisation===") monitor_gradients(model_good)</python><p>2</p><python>===Goodinitialisation===
-norm=5.07e-01
-max=9.33e-02
-net.0.weight
-net.0.bias
-norm=3.08e-01
-max=1.23e-01
-net.2.weight
-norm=6.26e-01
-max=9.39e-02
-net.2.bias
-norm=7.69e-01
-max=2.53e-01
-net.4.weight
-norm=6.94e-01
-max=1.05e-01
-net.4.bias
-norm=1.07e+00
-max=3.88e-01
-net.6.weight
-norm=1.40e+00
-max=1.76e-01
-net.6.bias
-norm=1.86e+00
-max=6.78e-01
-net.8.weight
-norm=2.99e+00
-max=5.98e-01
-net.8.bias
-norm=4.34e+00
-max=2.15e+00
-net.10.weight
-norm=5.60e+00
-max=5.87e-01
-net.10.bias
-norm=8.72e+00
-max=2.70e+00
-net.12.weight
-norm=1.02e+01
-max=3.63e+00
-net.12.bias
-norm=1.60e+01
-max=1.60e+01</python><p>C:\Users\ujanp\AppData\Local\Temp\ipykernel_18980\2856386998.py:20:UserWarning:</p><p>std():degreesoffreedomis&lt;=0.Correctionshouldbestrictlylessthanthereductionfact runner\_work\pytorch\pytorch\pytorch\aten\src\ATen\native\ReduceOps.cpp:1857.)</p><p>{'net.0.weight':{'mean':-0.0009441979927942157, 		'std':0.01583385467529297, <br />		'max':0.09332160651683807, <br />		'norm':0.5073363780975342}, <br />	'net.0.bias':{'mean':0.011800270527601242, 		'std':0.05395515635609627, <br />		'max':0.12254776805639267, <br />		'norm':0.3077366054058075}, <br />	'net.2.weight':{'mean':0.00011321977945044637, 		'std':0.01957053318619728, <br />		'max':0.09390640258789062, <br />		'norm':0.6259616613388062}, <br />	'net.2.bias':{'mean':0.014589857310056686, 		'std':0.13736183941364288, <br />		'max':0.25340113043785095, <br />		'norm':0.7692387104034424}, <br />	'net.4.weight':{'mean':-7.964592077769339e-05, 		'std':0.02170790359377861, <br />		'max':0.1049211248755455, <br />		'norm':0.6943182945251465}, <br />	'net.4.bias':{'mean':-0.025315506383776665,</p><p>3</p><p>	'std':0.19106051325798035, <br />	'max':0.38835933804512024, <br />	'norm':1.0733758211135864}, <br />'net.6.weight':{'mean':0.0019602207466959953, <br />	'std':0.04359742999076843, <br />	'max':0.17624735832214355, <br />	'norm':1.3958464860916138}, <br />'net.6.bias':{'mean':-0.07847070693969727, <br />	'std':0.32482001185417175, <br />	'max':0.6779860258102417, <br />	'norm':1.862201452255249}, <br />'net.8.weight':{'mean':-0.0010767541825771332, <br />	'std':0.09339570999145508, <br />	'max':0.5980480313301086, <br />	'norm':2.9874019622802734}, <br />'net.8.bias':{'mean':0.14273743331432343, <br />	'std':0.7661119103431702, <br />	'max':2.151979446411133, <br />	'norm':4.341280937194824}, <br />'net.10.weight':{'mean':-0.0041308291256427765, <br />	'std':0.1750626415014267, <br />	'max':0.5870587825775146, <br />	'norm':5.600829124450684}, <br />'net.10.bias':{'mean':-0.23982781171798706, <br />	'std':1.547060489654541, <br />	'max':2.7017292976379395, <br />	'norm':8.719853401184082}, <br />'net.12.weight':{'mean':0.23028689622879028, <br />	'std':1.8218233585357666, <br />	'max':3.632716655731201, <br />	'norm':10.226792335510254}, <br />'net.12.bias':{'mean':16.0,'std':nan,'max':16.0,'norm':16.0}}</p><python>#Badinit model_bad=DeepNet(depth=6,bad_init=True) try: 	loss=model_bad(x).sum() 	loss.backward() 	print("\n===Badinitialisation===") 	monitor_gradients(model_bad) exceptExceptionase: 	print(f"\nErrorwithbadinit:{e}")</python><p>4</p><python>===Badinitialisation===
-norm=3.41e+02
-max=7.29e+01←EXPLODING
-net.0.weight
-net.0.bias
-norm=6.52e+01
-max=3.62e+01
-net.2.weight
-norm=8.66e+01
-max=2.29e+01
-net.2.bias
-norm=2.44e+01
-max=2.29e+01
-net.4.weight
-norm=2.52e+01
-max=4.50e+00
-net.4.bias
-norm=5.47e+00
-max=4.49e+00
-net.6.weight
-norm=5.76e+00
-max=7.11e-01
-net.6.bias
-norm=9.53e-01
-max=5.78e-01
-net.8.weight
-norm=3.28e+00
-max=5.28e-01
-net.8.bias
-norm=5.63e-01
-max=3.61e-01
-net.10.weight
-norm=1.38e+00
-max=1.79e-01
-net.10.bias
-norm=3.50e-01
-max=1.81e-01
-net.12.weight
-norm=2.05e+01
-max=6.52e+00
-net.12.bias
-norm=1.60e+01
-max=1.60e+01</python><p>C:\Users\ujanp\AppData\Local\Temp\ipykernel_18980\2856386998.py:20:UserWarning: <br />std():degreesoffreedomis&lt;=0.Correctionshouldbestrictlylessthanthereductionfact runner\_work\pytorch\pytorch\pytorch\aten\src\ATen\native\ReduceOps.cpp:1857.)</p><p><strong>&lt;python&gt;</strong></p><p><strong>2.ActivationandGradientHistograms </strong><br />Visualising thedistributionofactivations andgradients helpsyou see:-<strong>Deadneurons</strong>(ReLU activationsalwayszero)-<strong>Saturation</strong>(tanh/sigmoidalwaysat±1)-<strong>Vanishing/exploding gradients</strong></p><p>&lt;python&gt;</p><python>classActivationMonitor: 	"""Hook-basedactivationandgradientrecorder."""
-def__init__(self): 	self.activations={}
-self.gradients
-={}
-self.hooks
-=[]</python><python>defregister(self,model:nn.Module): 	forname,layerinmodel.named_modules():</python><p>5</p><python>ifisinstance(layer,(nn.Linear,nn.Conv2d)): 	self.hooks.append( 		layer.register_forward_hook(self._make_act_hook(name)) 	) 	self.hooks.append( 		layer.register_backward_hook(self._make_grad_hook(name)) 	)</python><python>def_make_act_hook(self,name): 	defhook(module,input,output): 	self.activations[name]=output.detach().cpu() 	returnhook</python><python>def_make_grad_hook(self,name): 	defhook(module,grad_input,grad_output):
-returnhook</python><p>self.gradients[name]=grad_output[0].detach().cpu()<strong>if</strong>grad_output[0]<strong>isnot</strong>Non</p><python>defremove(self): 	forhinself.hooks:h.remove()
-defsummary(self): 	print("Layeractivationstatistics:") 	forname,actinself.activations.items(): 	dead=(act==0).float().mean().item()
-"
-print(f"
-{name:20s}:mean={act.mean():.3f}
-std={act.std():.3f}
-f"dead_ratio={dead:.2f}")
-monitor=ActivationMonitor()
-model
-=DeepNet(depth=4)
-monitor.register(model)
-x
-=torch.randn(32,32)
-out
-=model(x)
-loss=out.sum() loss.backward() monitor.summary() monitor.remove()
-Layeractivationstatistics:
-net.0
-:mean=0.041
-std=0.562
-dead_ratio=0.00</python><p>6</p><python>net.2
-:mean=0.018
-std=0.258
-dead_ratio=0.00
-net.4
-:mean=0.012
-std=0.170
-dead_ratio=0.00
-net.6
-:mean=-0.047
-std=0.144
-dead_ratio=0.00
-net.8
-:mean=-0.132
-std=0.046
-dead_ratio=0.00</python><p>C:\Users\ujanp\AppData\Local\Programs\Python\Python310\lib\site-packages\torch\nn\modules\mod Usinganon-fullbackwardhookwhentheforwardcontainsmultipleautogradNodesisdeprecate</p><p><strong>&lt;python&gt;</strong></p><p><strong>3.LearningRateFinder </strong><br />TheLRfindersweepsthelearningratefromverysmalltoverylargeoverafewiterations, recordingtheloss.TheoptimalLRisjustbeforethelossstartsclimbing.</p><p>&lt;python&gt;</p><python>deflr_finder(model:nn.Module,X:torch.Tensor,y:torch.Tensor, 		criterion,start_lr:float=1e-7,end_lr:float=10.0, 		n_steps:int=100)->tuple: 	""" 	SweepsLRfromstart_lrtoend_lrovern_steps.
-Returns:(lrs,losses) """ #Saveoriginalstate orig_state={k:v.clone()fork,vinmodel.state_dict().items()}
-opt
-=torch.optim.SGD(model.parameters(),lr=start_lr)
-lrs,losses=[],[]
-best_loss
-=float('inf')
-lr
-=start_lr</python><python>multiplier=(end_lr/start_lr)**(1.0/n_steps)</python><python>forstepinrange(n_steps): opt.zero_grad() loss=criterion(model(X),y) loss.backward() opt.step()</python><p>lrs.append(lr)</p><p>7</p><python>losses.append(loss.item())
-ifloss.item()<best_loss: best_loss=loss.item() ifloss.item()>4*best_loss: break
-#Stopiflossexplodes</python><python>lr*=multiplier forpginopt.param_groups: pg['lr']=lr</python><python>#Restoreoriginalstate model.load_state_dict(orig_state) returnlrs,losses</python><python>#Runit X_lr=torch.randn(128,10) y_lr=torch.randint(0,3,(128,))</python><python>model_lr=nn.Sequential( 	nn.Linear(10,64),nn.ReLU(), 	nn.Linear(64,32),nn.ReLU(), 	nn.Linear(32,3) )</python><python>lrs,losses=lr_finder(model_lr,X_lr,y_lr,nn.CrossEntropyLoss()) #FindsuggestedLR(steepestgradient) losses_arr=np.array(losses)
-lrs_arr
-=np.array(lrs)
-grad
-=np.gradient(losses_arr)
-best_idx
-=np.argmin(grad[:-5])
-#Avoidendinstability
-print(f"LRrangeexplored:{lrs_arr[0]:.2e}→{lrs_arr[-1]:.2e}") print(f"SuggestedLR:{lrs_arr[best_idx]:.2e}")</python><p>LRrangeexplored:1.00e-07→4.79e+00 <br />SuggestedLR:1.91e+00</p><p>8</p><p><strong>&lt;python&gt;</strong></p><p><strong>4.SanityChecks </strong><br /><strong>OverfitaTinyBatch—TheFirstTestYouShouldAlwaysRun</strong></p><p>&lt;python&gt;</p><python>defsanity_check_overfit(model:nn.Module,n_samples:int=4, 		n_steps:int=200,lr:float=1e-2)->bool: 	""" 	Amodelshouldbeabletooverfittoatinybatch.
-Ifitcan't,somethingisfundamentallywrong.
-""" X=torch.randn(n_samples,10) y=torch.randint(0,3,(n_samples,))
-opt
-=torch.optim.Adam(model.parameters(),lr=lr)
-crit=nn.CrossEntropyLoss()</python><python>forstepinrange(n_steps): opt.zero_grad() loss=crit(model(X),y) loss.backward() opt.step()
-final_loss=loss.item()
-{'PASS'ifpassedelse'FAIL'}")
-passed
-=final_loss<0.05
-print(f"Overfittest:final_loss={final_loss:.5f} returnpassed</python><python>model_sanity=nn.Sequential(nn.Linear(10,64),nn.ReLU(),nn.Linear(64,3)) sanity_check_overfit(model_sanity)
-Overfittest:final_loss=0.00011
-PASS</python><p>True</p><p>&lt;python&gt;</p><p>9</p><p><strong>Lab:DebugaPre-BrokenModel </strong><br />Belowisamodelwith<strong>5deliberatebugs</strong>.Findandfixthemall.</p><p>&lt;python&gt;</p><p>#===BROKENMODEL—DONOTTRAINYET=== <br />#Thereare5bugsinthiscode.Findthembeforereadingthesolutions.</p><python>classBrokenModel(nn.Module): 	def__init__(self): 		super().__init__() 		self.fc1=nn.Linear(10,64) 		self.fc2=nn.Linear(64,32) 		self.fc3=nn.Linear(32,3) 		self.dropout=nn.Dropout(0.5) 		#BUG1:UsingplainPythonlist—parameterswon'tbetracked 		self.extra_layers=[nn.Linear(64,64),nn.Linear(64,64)]
-defforward(self,x):
-x=torch.sigmoid(self.fc1(x))
-#BUG2:Sigmoid→vanishinggradientsindeepnetwo
-x=self.fc2(x) x=torch.relu(x) x=self.dropout(x) x=self.fc3(x)
-x=torch.softmax(x,dim=1)
-#BUG3:SoftmaxbeforeCrossEntropyLoss=numerical
-returnx</python><python>defbroken_training(): model=BrokenModel() X=torch.randn(32,10) y=torch.randint(0,3,(32,))
-#BUG4:UsingAdamwithdefaultweight_decay=0(noregularisation) #ShoulduseAdamWwithweight_decay
-opt=torch.optim.Adam(model.parameters(),lr=0.1)
-#BUG5:LRwaytoohigh</python><python>criterion=nn.CrossEntropyLoss() forstepinrange(5): 	output=model(X)
-loss
-=criterion(output,y)
-loss.backward()
-#BUG:missingoptimizer.zero_grad()!</python><p>10</p><python>opt.step() print(f"Step{step}:loss={loss.item():.4f}")</python><python>print("===BROKENversion===") broken_training()</python><p>===BROKENversion=== <br />Step0:loss=1.0938 <br />Step1:loss=1.1265 <br />Step2:loss=1.1777 <br />Step3:loss=1.2561 <br />Step4:loss=1.1563</p><python>#===FIXEDMODEL=== classFixedModel(nn.Module): 	def__init__(self): 		super().__init__() 		self.fc1=nn.Linear(10,64) 		self.fc2=nn.Linear(64,32) 		self.fc3=nn.Linear(32,3) 		self.dropout=nn.Dropout(0.3) 		#FIX1:Usenn.ModuleList 		self.extra_layers=nn.ModuleList([nn.Linear(64,64),nn.Linear(64,64)])</python><python>defforward(self,x): #FIX2:UseReLU,notSigmoid x=torch.relu(self.fc1(x)) x=torch.relu(self.fc2(x)) x=self.dropout(x) #FIX3:Returnrawlogits—CrossEntropyLosshandlessoftmaxinternally returnself.fc3(x)</python><python>deffixed_training(): model=FixedModel() X=torch.randn(32,10) y=torch.randint(0,3,(32,))</python><python>#FIX4+5:AdamWwithsensibleLRandweightdecay opt=torch.optim.AdamW(model.parameters(),lr=1e-3,weight_decay=1e-2)</python><p>11</p><python>criterion=nn.CrossEntropyLoss(label_smoothing=0.05) forstepinrange(5):
-opt.zero_grad()
-#FIX:zerogradientsbeforebackward
-loss=criterion(model(X),y) loss.backward() torch.nn.utils.clip_grad_norm_(model.parameters(),max_norm=1.0) opt.step() print(f"Step{step}:loss={loss.item():.4f}")</python><python>print("\n===FIXEDversion===") fixed_training()</python><p>===FIXEDversion=== <br />Step0:loss=1.0948 <br />Step1:loss=1.0857 <br />Step2:loss=1.0670 <br />Step3:loss=1.0737 <br />Step4:loss=1.0536</p><p>&lt;python&gt;</p><p><strong>ModuleSummary</strong></p><python>Bug
-Symptom
-Fix
-PlainPythonlistfor modules Sigmoidindeep networks SoftmaxbeforeCEloss Missingzero_grad()
-Parametersnotupdated
-Usenn.ModuleList
-Lossstalls,vanishinggrads
-UseReLU/GELU
-Numericalinstability Gradientaccumulation,explodingupdates
-Returnrawlogits Callbeforeevery
-LRtoohigh
-Lossoscillates/NaN
-loss.backward() UseLRfinder;startat 1e-3 SwitchtoAdamWwith
-AdaminsteadofAdamW
-Poorgeneralisation
-weight_decay</python><p>12</p><p><strong>What’sNext </strong><br /><strong>Module11—Distributed&amp;Acceleration</strong>coversGPUmastery:CUDAfundamentals, mixedprecision,multi-GPUtrainingwithDDP,memoryoptimisation,andprofilingtofind bottlenecks.</p><p>13</p>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Module 10 — Debugging PyTorch Models | PyTorch for Data Science</title>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&family=Outfit:wght@300;400;500;600;700;800;900&family=Source+Serif+4:ital,wght@0,300;0,400;0,600;1,300;1,400&display=swap" rel="stylesheet">
+<style>
+:root{--bg-primary:#0a0a0f;--bg-card:#161622;--bg-code:#0d0d18;--text-primary:#e8e8f0;--text-secondary:#9898b0;--accent-1:#6c5ce7;--accent-2:#00cec9;--accent-3:#fd79a8;--accent-4:#fdcb6e;--accent-5:#55efc4;--gradient-line:linear-gradient(90deg,#6c5ce7,#00cec9,#fd79a8,#fdcb6e);--border-subtle:rgba(255,255,255,0.06);--radius:12px;--radius-sm:8px;}
+*{margin:0;padding:0;box-sizing:border-box;}html{scroll-behavior:smooth;}
+body{background:var(--bg-primary);color:var(--text-primary);font-family:'Outfit',sans-serif;line-height:1.7;overflow-x:hidden;-webkit-font-smoothing:antialiased;}
+.scroll-progress{position:fixed;top:0;left:0;height:3px;z-index:1000;background:var(--gradient-line);width:0%;transition:width 0.1s linear;}
+.hero{min-height:100vh;display:flex;flex-direction:column;justify-content:center;align-items:center;text-align:center;padding:2rem;position:relative;overflow:hidden;}
+.hero::before{content:'';position:absolute;inset:0;background:radial-gradient(ellipse 600px 400px at 30% 40%,rgba(108,92,231,0.12),transparent),radial-gradient(ellipse 500px 350px at 70% 60%,rgba(0,206,201,0.08),transparent);pointer-events:none;}
+.hero-particles{position:absolute;inset:0;pointer-events:none;}
+.hero-particles .dot{position:absolute;width:3px;height:3px;border-radius:50%;background:var(--accent-2);opacity:0;animation:floatDot 6s ease-in-out infinite;}
+@keyframes floatDot{0%,100%{opacity:0;transform:translateY(0);}50%{opacity:0.6;transform:translateY(-40px);}}
+.hero-label{display:inline-flex;align-items:center;gap:8px;background:rgba(108,92,231,0.1);border:1px solid rgba(108,92,231,0.25);border-radius:100px;padding:6px 18px;font-size:0.8rem;font-weight:500;color:var(--accent-1);letter-spacing:1.5px;text-transform:uppercase;margin-bottom:2rem;}
+.dot-indicator{width:6px;height:6px;border-radius:50%;background:var(--accent-2);animation:pulse 2s ease-in-out infinite;}
+@keyframes pulse{0%,100%{opacity:1;}50%{opacity:0.3;}}
+.hero h1{font-size:clamp(2.8rem,6vw,5rem);font-weight:900;line-height:1.1;letter-spacing:-2px;margin-bottom:1.5rem;}
+.gradient-text{background:var(--gradient-line);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;}
+.hero-subtitle{font-family:'Source Serif 4',serif;font-size:clamp(1.05rem,2vw,1.25rem);color:var(--text-secondary);max-width:640px;line-height:1.8;font-weight:300;}
+.hero-scroll-cue{position:absolute;bottom:3rem;display:flex;flex-direction:column;align-items:center;gap:8px;color:var(--text-secondary);font-size:0.75rem;letter-spacing:2px;text-transform:uppercase;}
+.arrow{width:20px;height:20px;border-right:2px solid var(--text-secondary);border-bottom:2px solid var(--text-secondary);transform:rotate(45deg);animation:bounceArrow 2s ease-in-out infinite;}
+@keyframes bounceArrow{0%,100%{transform:rotate(45deg) translateY(0);}50%{transform:rotate(45deg) translateY(6px);}}
+.content-wrapper{max-width:860px;margin:0 auto;padding:0 2rem 6rem;}
+.section{margin-bottom:5rem;opacity:0;transform:translateY(30px);transition:all 0.7s cubic-bezier(0.16,1,0.3,1);}
+.section.visible{opacity:1;transform:translateY(0);}
+.section-number{font-family:'JetBrains Mono',monospace;font-size:0.7rem;color:var(--accent-2);letter-spacing:3px;text-transform:uppercase;margin-bottom:0.75rem;display:flex;align-items:center;gap:10px;}
+.section-number::after{content:'';flex:1;height:1px;background:linear-gradient(90deg,var(--accent-2),transparent);opacity:0.3;}
+h2{font-size:clamp(1.8rem,3.5vw,2.4rem);font-weight:700;letter-spacing:-0.5px;margin-bottom:1.5rem;line-height:1.2;}
+h3{font-size:1.3rem;font-weight:600;margin:2.5rem 0 1rem;}
+p{color:var(--text-secondary);margin-bottom:1.25rem;font-size:1.02rem;}
+p strong{color:var(--text-primary);font-weight:600;}
+.gradient-divider{height:2px;background:var(--gradient-line);border-radius:2px;margin:4rem 0;opacity:0.5;}
+.code-block{background:var(--bg-code);border:1px solid var(--border-subtle);border-radius:var(--radius);overflow:hidden;margin:1.5rem 0;}
+.code-block-header{display:flex;align-items:center;padding:10px 16px;background:rgba(255,255,255,0.02);border-bottom:1px solid var(--border-subtle);}
+.code-lang{font-family:'JetBrains Mono',monospace;font-size:0.7rem;color:var(--accent-2);display:flex;align-items:center;gap:6px;}
+.code-lang::before{content:'●';font-size:8px;}
+.code-block pre{padding:16px 20px;overflow-x:auto;font-family:'JetBrains Mono',monospace;font-size:0.82rem;line-height:1.65;color:#c8c8d8;}
+.kw{color:#c792ea;}.fn{color:#82aaff;}.str{color:#c3e88d;}.num{color:#f78c6c;}.cm{color:#546e7a;font-style:italic;}
+.code-output{border-top:1px solid var(--border-subtle);background:rgba(0,0,0,0.25);}
+.code-output-label{display:flex;align-items:center;gap:6px;padding:8px 16px 0;font-family:'JetBrains Mono',monospace;font-size:0.65rem;color:var(--accent-5);letter-spacing:1px;text-transform:uppercase;}
+.code-output-label::before{content:'▸';font-size:0.7rem;}
+.code-output pre{padding:8px 20px 14px;font-family:'JetBrains Mono',monospace;font-size:0.8rem;line-height:1.6;color:var(--accent-5);opacity:0.85;}
+.bug-card{background:var(--bg-card);border:1px solid rgba(253,121,168,0.15);border-radius:var(--radius);padding:20px 24px;margin:1.5rem 0;position:relative;}
+.bug-card::before{content:'🐛';position:absolute;top:-12px;left:20px;background:var(--bg-primary);padding:0 8px;font-size:1.1rem;}
+.bug-title{font-family:'JetBrains Mono',monospace;font-size:0.8rem;color:var(--accent-3);margin-bottom:8px;font-weight:600;}
+.bug-card p{color:var(--text-secondary);font-size:0.9rem;margin:0;}
+.insight{background:linear-gradient(135deg,rgba(108,92,231,0.08),rgba(0,206,201,0.05));border:1px solid rgba(108,92,231,0.2);border-radius:var(--radius);padding:20px 24px;margin:2rem 0;position:relative;}
+.insight::before{content:'💡';position:absolute;top:-12px;left:20px;background:var(--bg-primary);padding:0 8px;font-size:1.1rem;}
+.insight p{color:var(--text-primary);font-size:0.95rem;margin:0;}
+</style>
+</head>
+<body>
+<div class="scroll-progress" id="scrollProgress"></div>
+<section class="hero">
+  <div class="hero-particles" id="heroParticles"></div>
+  <div class="hero-label"><span class="dot-indicator"></span> PyTorch · Module 10 of 12</div>
+  <h1><span class="gradient-text">Debugging</span> PyTorch Models</h1>
+  <p class="hero-subtitle">Develop intuition for finding and fixing the most common PyTorch bugs: shape mismatches, device errors, gradient issues, memory leaks, and training instability.</p>
+  <div class="hero-scroll-cue"><span>Begin</span><div class="arrow"></div></div>
+</section>
+
+<div class="content-wrapper">
+
+<div class="section" id="sec1">
+  <div class="section-number">01 — Common Error Patterns</div>
+  <h2>The Bugs You'll See 90% of the Time</h2>
+
+  <div class="bug-card">
+    <div class="bug-title">RuntimeError: Expected all tensors to be on the same device</div>
+    <p>Model is on GPU but input is on CPU (or vice versa). Fix: <code>X = X.to(device)</code> and <code>y = y.to(device)</code> at the start of every batch. Or move data to the device in your Dataset's <code>__getitem__</code>.</p>
+  </div>
+
+  <div class="bug-card">
+    <div class="bug-title">RuntimeError: Expected input batch_size (N) to match target batch_size (M)</div>
+    <p>Shape mismatch between predictions and labels. Most commonly: model outputs <code>(B, 1)</code> but loss expects <code>(B,)</code>. Fix: <code>output.squeeze(-1)</code> before the loss.</p>
+  </div>
+
+  <div class="bug-card">
+    <div class="bug-title">Loss is NaN from the first iteration</div>
+    <p>Usually caused by: (1) log(0) in numerical computations — add epsilon. (2) Passing softmax output to CrossEntropyLoss (double-softmax). (3) Exploding gradients — add gradient clipping. (4) Bad data with NaN/Inf values.</p>
+  </div>
+
+  <div class="bug-card">
+    <div class="bug-title">Loss doesn't decrease at all</div>
+    <p>Common causes: (1) Forgot to call <code>loss.backward()</code>. (2) Learning rate too high or too low. (3) Targets are wrong dtype (float instead of long). (4) Model is in eval mode during training. (5) Gradients are zero — forgot <code>requires_grad=True</code>.</p>
+  </div>
+
+  <div class="bug-card">
+    <div class="bug-title">CUDA out of memory</div>
+    <p>Accumulating tensors in a Python list inside the training loop keeps their computation graphs alive. Fix: call <code>.item()</code> to convert loss to a Python scalar, or <code>.detach().cpu()</code> for tensors you're storing for logging.</p>
+  </div>
+</div>
+
+<div class="gradient-divider"></div>
+
+<div class="section" id="sec2">
+  <div class="section-number">02 — Debugging Tools</div>
+  <h2>Your Debugging Arsenal</h2>
+
+  <div class="code-block">
+    <div class="code-block-header"><span class="code-lang">Python</span></div>
+    <pre><span class="cm"># ── 1. Shape debugging ─────────────────────────────────────────────</span>
+<span class="kw">def</span> <span class="fn">shape_hook</span>(name):
+    <span class="kw">def</span> <span class="fn">hook</span>(module, inp, out):
+        <span class="fn">print</span>(<span class="fn">f</span><span class="str">"{name}: {inp[0].shape} → {out.shape}"</span>)
+    <span class="kw">return</span> hook
+
+model = nn.<span class="fn">Sequential</span>(nn.<span class="fn">Linear</span>(<span class="num">10</span>, <span class="num">64</span>), nn.<span class="fn">ReLU</span>(), nn.<span class="fn">Linear</span>(<span class="num">64</span>, <span class="num">5</span>))
+<span class="kw">for</span> name, layer <span class="kw">in</span> model.<span class="fn">named_children</span>():
+    layer.<span class="fn">register_forward_hook</span>(<span class="fn">shape_hook</span>(name))
+
+dummy = torch.<span class="fn">randn</span>(<span class="num">4</span>, <span class="num">10</span>)
+out = <span class="fn">model</span>(dummy)
+
+<span class="cm"># ── 2. Gradient norm monitoring ─────────────────────────────────────</span>
+<span class="kw">def</span> <span class="fn">grad_norm</span>(model):
+    total = <span class="num">0.0</span>
+    <span class="kw">for</span> p <span class="kw">in</span> model.<span class="fn">parameters</span>():
+        <span class="kw">if</span> p.grad <span class="kw">is not</span> <span class="kw">None</span>:
+            total += p.grad.<span class="fn">data</span>.<span class="fn">norm</span>(<span class="num">2</span>).<span class="fn">item</span>() ** <span class="num">2</span>
+    <span class="kw">return</span> total ** <span class="num">0.5</span>
+
+<span class="cm"># After loss.backward():</span>
+<span class="cm"># print(f"Grad norm: {grad_norm(model):.4f}")  → should be ~1.0 with clipping</span>
+
+<span class="cm"># ── 3. Check for NaN ────────────────────────────────────────────────</span>
+<span class="kw">def</span> <span class="fn">check_nan</span>(tensor, name=<span class="str">""</span>):
+    <span class="kw">if</span> torch.<span class="fn">isnan</span>(tensor).<span class="fn">any</span>():
+        <span class="fn">print</span>(<span class="fn">f</span><span class="str">"NaN detected in {name}!"</span>)
+        <span class="kw">return</span> <span class="kw">True</span>
+    <span class="kw">if</span> torch.<span class="fn">isinf</span>(tensor).<span class="fn">any</span>():
+        <span class="fn">print</span>(<span class="fn">f</span><span class="str">"Inf detected in {name}!"</span>)
+        <span class="kw">return</span> <span class="kw">True</span>
+    <span class="kw">return</span> <span class="kw">False</span>
+
+<span class="cm"># ── 4. Detecting memory leaks ────────────────────────────────────────</span>
+<span class="cm"># BAD: loss accumulates computation graph</span>
+<span class="cm"># losses.append(loss)  ← WRONG</span>
+
+<span class="cm"># GOOD: detach scalar</span>
+<span class="cm"># losses.append(loss.item())  ← CORRECT</span>
+
+<span class="cm"># ── 5. TensorBoard integration ──────────────────────────────────────</span>
+<span class="kw">from</span> torch.utils.tensorboard <span class="kw">import</span> SummaryWriter
+writer = <span class="fn">SummaryWriter</span>(<span class="str">'runs/my_experiment'</span>)
+
+<span class="cm"># In training loop:</span>
+<span class="cm"># writer.add_scalar('Loss/train', loss.item(), global_step)</span>
+<span class="cm"># writer.add_scalar('Loss/val', val_loss, global_step)</span>
+<span class="cm"># writer.add_scalar('Metrics/accuracy', acc, global_step)</span>
+
+<span class="cm"># Then run: tensorboard --logdir=runs</span></pre>
+    <div class="code-output">
+      <div class="code-output-label">Output (shape hook)</div>
+      <pre>0: torch.Size([4, 10]) → torch.Size([4, 64])
+1: torch.Size([4, 64]) → torch.Size([4, 64])
+2: torch.Size([4, 64]) → torch.Size([4, 5])</pre>
+    </div>
+  </div>
+
+  <div class="insight"><p><strong>The Sanity Check Protocol:</strong> Before any full training run, (1) overfit a single batch — if your model can't memorise 1 batch, something is fundamentally wrong. (2) Check gradient flow with <code>grad_norm()</code>. (3) Verify outputs are in the expected range. (4) Log the first 10 val predictions manually.</p></div>
+</div>
+
+<div class="gradient-divider"></div>
+
+<div class="section" id="sec3">
+  <div class="section-number">03 — Model Profiling</div>
+  <h2>Finding Speed Bottlenecks</h2>
+
+  <div class="code-block">
+    <div class="code-block-header"><span class="code-lang">Python</span></div>
+    <pre><span class="kw">from</span> torch.profiler <span class="kw">import</span> profile, record_function, ProfilerActivity
+<span class="kw">import</span> time
+
+<span class="cm"># Simple timing</span>
+<span class="kw">def</span> <span class="fn">benchmark</span>(model, input_tensor, n=<span class="num">100</span>):
+    model.<span class="fn">eval</span>()
+    <span class="kw">with</span> torch.<span class="fn">no_grad</span>():
+        <span class="cm"># Warmup</span>
+        <span class="kw">for</span> _ <span class="kw">in</span> <span class="fn">range</span>(<span class="num">10</span>):
+            _ = <span class="fn">model</span>(input_tensor)
+
+        start = time.<span class="fn">perf_counter</span>()
+        <span class="kw">for</span> _ <span class="kw">in</span> <span class="fn">range</span>(n):
+            _ = <span class="fn">model</span>(input_tensor)
+        end = time.<span class="fn">perf_counter</span>()
+
+    ms_per_batch = (end - start) / n * <span class="num">1000</span>
+    <span class="fn">print</span>(<span class="fn">f</span><span class="str">"Avg latency: {ms_per_batch:.2f} ms/batch"</span>)
+
+model = nn.<span class="fn">Linear</span>(<span class="num">512</span>, <span class="num">10</span>)
+x = torch.<span class="fn">randn</span>(<span class="num">64</span>, <span class="num">512</span>)
+<span class="fn">benchmark</span>(model, x)</pre>
+    <div class="code-output">
+      <div class="code-output-label">Output</div>
+      <pre>Avg latency: 0.03 ms/batch</pre>
+    </div>
+  </div>
+</div>
+
+</div>
+
+<script>
+const sp = document.getElementById('scrollProgress');
+window.addEventListener('scroll', () => { sp.style.width = (window.scrollY / (document.body.scrollHeight - window.innerHeight) * 100) + '%'; });
+document.querySelectorAll('.section').forEach(s => new IntersectionObserver(([e]) => { if (e.isIntersecting) e.target.classList.add('visible'); }, { threshold: 0.08 }).observe(s));
+const c = document.getElementById('heroParticles');
+for (let i = 0; i < 18; i++) { const d = document.createElement('div'); d.className = 'dot'; d.style.cssText = `left:${Math.random()*100}%;top:${Math.random()*100}%;animation-delay:${Math.random()*6}s;animation-duration:${4+Math.random()*4}s`; c.appendChild(d); }
+</script>
+</body>
+</html>

@@ -1,157 +1,390 @@
-z<p><strong>Module2—Autograd:BackpropWithoutFear</strong></p><p><strong>UnderstandingPyTorch’sAutomaticDifferentiationEngine</strong></p><p>PyTorchforDataScience</p><python>ModuleGoal: UnderstandhowPyTorchautomaticallycomputesgradients throughanycomputation.Youwillbuildtheintuitionforcomputationgraphs, learnhowtocontrolgradientflow,andimplementlinearregressionfromscratch usingonlytensorsandautograd—nonn.Module,noshortcuts.</python><p><strong>1.ComputationGraphIntuition</strong></p><p><strong>WhatisaComputationGraph?</strong></p><p>EverytimeyoudomathwithPyTorchtensorsthathaverequires_grad=True,PyTorch silentlybuildsa<strong>directedacyclicgraph(DAG)</strong>inthebackground.Eachnodeinthisgraph iseither:</p><p>•A<strong>tensor</strong>(thedata),or<br />•A<strong>function</strong>(anoperationlike+,*,sin,matmul)</p><p>Whenyoucall.backward(),PyTorchtraversesthisgraphinreverse—fromtheoutputback totheinputs—applyingthe<strong>chainrule</strong>ofcalculusateachsteptocomputegradients.</p><p><strong>Real-WorldAnalogy:AFactoryAssemblyLine(inReverse)</strong></p><p>Imagineafactory:rawmaterialsgoin,aproductcomesout.Tofigureouthowmucheachraw materialcontributedtothefinalproduct’squality,youtracebackwardsthroughtheassembly steps—that’sexactlywhatbackpropdoes.</p><python>x[square]x²
-[addb]x²+b
-[multiplyw]w(x²+b)=loss</python><p>1</p><p>Forwardpass:lefttoright(computetheoutput).</p><p>Backwardpass:righttoleft(compute“howmuchdoeseachinputaffecttheloss?”).</p><p>&lt;python&gt;</p><python>importtorch #Simplecomputationgraph
-x=torch.tensor(3.0,requires_grad=True)
-#Leafnode
-w=torch.tensor(2.0,requires_grad=True)
-#Leafnode
-b=torch.tensor(1.0,requires_grad=True)
-#Leafnode
-#Forwardpass—graphisbuiltaswecompute
-y=x**2
-#y=x²
-=9
-z=w*y+b
-#z=2x²+1=19
-print("z=",z.item())
-print("z.grad_fn:",z.grad_fn)
-#Showsthelastoperation</python><python>#Backwardpass—traversesgraph,accumulatesgradients z.backward()
-#Gradients:dz/dx,dz/dw,dz/db
-print("\ndz/dx=",x.grad.item())
-#d(2x²+1)/dx=4x=12
-print("dz/dw=",w.grad.item())
-#d(2x²+1)/dw=x²=9
-print("dz/db=",b.grad.item())
-#d(2x²+1)/db=1</python><p>&lt;python&gt;</p><p>z=19.0 <br />z.grad_fn:&lt;AddBackward0objectat0x000002AB5363B7C0&gt;</p><p>dz/dx=12.0 <br />dz/dw=9.0 <br />dz/db=1.0</p><p><strong>VisualisingtheGraph</strong></p><p>&lt;python&gt;</p><python>#Aslightlydeepergraph a=torch.tensor(2.0,requires_grad=True) b=torch.tensor(3.0,requires_grad=True)
-c=a*b
-#c=6
-d=a+b
-#d=5</python><p>2</p><python>e=c*d
-#e=30</python><python>e.backward() print("de/da=",a.grad.item()) print("de/db=",b.grad.item())
-#de/da=d(c*d)/da=b*d+c*1=3*5+6=21 #de/db=c*1+d*a=6+5*2=16</python><python>#Checkmanually: #e=(a*b)*(a+b)=a²b+ab²#de/da=2ab+b²=2*2*3+9=21 #de/db=a²+2ab=4+12=16</python><p>&lt;python&gt;</p><p>de/da=21.0 <br />de/db=16.0</p><p><strong>2.requires_grad,.grad,.detach(),.no_grad()</strong></p><p><strong>requires_grad:Opt-IntoGradientTracking</strong></p><p>Noteverytensorneedsagradient.Only<strong>trainableparameters</strong>(modelweights)shouldhave requires_grad=True.Datatensorsshouldnot.</p><p>&lt;python&gt;</p><python>#Tensorswithoutgradienttracking(defaultformostdata)
-data=torch.randn(5,3)
-#requires_grad=False(default)
-print("Datarequires_grad:",data.requires_grad)</python><python>#TensorsWITHgradienttracking(modelparameters) weight=torch.randn(3,2,requires_grad=True) print("Weightrequires_grad:",weight.requires_grad)
-#Enable/disableaftercreation
-data.requires_grad_(True)
-#In-placetoggle
-print("Dataaftertoggle:",data.requires_grad)</python><p>&lt;python&gt;</p><p>Datarequires_grad:False <br />Weightrequires_grad:True <br />Dataaftertoggle:True</p><p>3</p><p><strong>.grad:WhereGradientsLive </strong><br />After.backward(),gradientsarestoredinthe.gradattributeofeach<strong>leaftensor</strong>(tensors createddirectly,notcomputedfromothers).</p><p>&lt;python&gt;</p><python>x=torch.tensor([1.0,2.0,3.0],requires_grad=True) #Scalaroutputrequiredfor.backward()withoutarguments
-loss=(x**2).sum()
-#sumgivesscalar:1+4+9=14
-loss.backward()
-print("x.grad:",x.grad)
-#d(sum(x²))/dx=2x=[2,4,6]</python><p>&lt;python&gt;</p><p>x.grad:tensor([2.,4.,6.])</p><p><strong>TheClassicGradientAccumulationBug </strong><br />This is one of the<strong> mostcommonPyTorchbugs</strong> — gradients accumulate across .backward() callsunlessyouexplicitlyzerothem.</p><python>x=torch.tensor(2.0,requires_grad=True) #SimulatingatrainingloopWITHOUTzeroinggradients forstepinrange(3): 	loss=x**2 	loss.backward()
-print(f"Step{step}:x.grad={x.grad.item()}")
-#4,8,12—keepsadding!
-#Thecorrectpattern:zerogradientsbeforeeachbackwardpass
-x.grad.zero_()
-#oruseoptimizer.zero_grad()intraining
-forstepinrange(3): 	ifx.gradisnotNone:
-x.grad.zero_()
-#←CRITICAL:clearbeforeeachstep
-loss=x**2 loss.backward()
-print(f"Step{step}:x.grad={x.grad.item()}")
-#4,4,4—correct!</python><p>Step0:x.grad=4.0 <br />Step1:x.grad=8.0 <br />Step2:x.grad=12.0</p><p>4</p><p>Step0:x.grad=4.0 <br />Step1:x.grad=4.0 <br />Step2:x.grad=4.0</p><python>Exclamation-TriangleWarning</python><python>ClassicBug:Forgettingtocalloptimizer.zero_grad()atthestartofeachtraining step.Gradientsaccumulatesilently,leadingtoexplodingupdates.Alwayszerogradients beforeloss.backward().</python><p><strong>.detach():BreaktheGraph</strong></p><p>.detach()createsanewtensorthatsharesthesamedatabutis<strong>removedfromthecom-putationgraph</strong>.Nogradientsflowthroughit.</p><python>x=torch.tensor(3.0,requires_grad=True)
-y=x**2
-#yispartofthegraph</python><python>#Detach—samevalues,nogradientconnection y_detached=y.detach() print("yvalue:",y.item()) print("y_detachedvalue:",y_detached.item()) print("y_detached.requires_grad:",y_detached.requires_grad)
-#Commonuse:loggingmetricswithoutaffectingtraining loss=x**3
-loss_value=loss.detach().item()
-#Safetolog,converttoPythonfloat
-print("Lossforlogging:",loss_value)</python><p>yvalue:9.0 <br />y_detachedvalue:9.0 <br />y_detached.requires_grad:False <br />Lossforlogging:27.0</p><p><strong>torch.no_grad():DisableGraphBuilding</strong></p><p>Usetorch.no_grad()wheneveryoudon’tneedgradients—inference,evaluation,metric calculation.It’sfasteranduseslessmemory.</p><p>5</p><p>&lt;python&gt;</p><python>x=torch.randn(1000,1000,requires_grad=True)
-#Withgradienttracking(slower,morememory) importtime start=time.time() for_inrange(100): 	y=(x*x).sum()
-print(f"Withgrad:
-{time.time()-start:.3f}s")</python><python>#Withoutgradienttracking(faster,lessmemory) start=time.time() withtorch.no_grad(): 	for_inrange(100): 		y=(x*x).sum() print(f"Withoutgrad:{time.time()-start:.3f}s")
-Withgrad:
-0.009s
-Withoutgrad:0.007s
-<python></python><python>LIGHTBULBTip</python><python>RuleofThumb:-Duringtraining:gradientson.-Duringevaluation/inference: always wrap in torch.no_grad().- When logging a loss value:use .detach().item(), never.item()directlyonatensorinthegraph.</python><p><strong>3.CustomAutogradFunction</strong></p><p>Sometimesyouneedtodefineaforwardpasswhosegradientisn’tautomaticallyderivable—forexample,anon-standardactivationoradomain-specificoperation.</p><p><strong>Real-WorldAnalogy:TeachingPyTorchaNewMathOperation</strong></p><p>PyTorchknowshowtodifferentiatesin,exp,matmuletc.Butifyouinventyourownfunction (say,aclampedactivation),youneedtotellit:“Here’stheforwardformula,andhere’sthe derivative.”</p><p>6</p><python><python>
-classClampedReLU(torch.autograd.Function): """ AReLUthatclampsoutputto[0,cap].
-Forward:
-f(x)=clamp(x,0,cap)
-Backward:gradient=1if0<x<cap,else0 """
-@staticmethod defforward(ctx,x,cap=1.0):
-ctx.save_for_backward(x)
-#Saveinputforuseinbackward
-ctx.cap=cap returnx.clamp(0,cap)
-@staticmethod defbackward(ctx,grad_output): 	x,=ctx.saved_tensors 	cap=ctx.cap 	#Gradientpassesthroughonlywhere0<x<cap 	grad_input=grad_output*((x>0)&(x<cap)).float()
-returngrad_input,None
-#Noneforcap(notatensor)
-#Testit x=torch.tensor([-1.0,0.5,1.5,2.0],requires_grad=True) y=ClampedReLU.apply(x,1.0)
-print("Forward:",y)
-#[0,0.5,1.0,1.0]
-loss=y.sum() loss.backward()
-print("Gradients:",x.grad)
-#[0,1,0,0]—onlymiddlevaluepassesgrad</python><p>&lt;python&gt;</p><p>Forward:tensor([0.0000,0.5000,1.0000,1.0000],grad_fn=&lt;ClampedReLUBackward&gt;) Gradients:tensor([0.,1.,0.,0.])</p><p><strong>4.NumericalGradientChecking </strong><br />How do you know your custom backward is correct?<strong>Numericalgradientchecking</strong> computes thegradientbyfinitedifferencesandcomparesittoyouranalyticalgradient.</p><p>7</p><p>Thefinitedifferenceformula:df/dx(f(x+)-f(x-))/(2)</p><p>&lt;python&gt;</p><python>defnumerical_gradient(f,x,eps=1e-5):
-grad=torch.zeros_like(x) x_flat=x.view(-1) grad_flat=grad.view(-1)
-foriinrange(len(x_flat)):
-x_plus
-=x.clone();x_plus.view(-1)[i]
-+=eps
-x_minus=x.clone();x_minus.view(-1)[i]-=eps grad_flat[i]=(f(x_plus)-f(x_minus))/(2*eps)</python><p>"""Computegradientofscalarfunctionfattensorxusingfinitedifferences."""</p><python>returngrad</python><python>#Testfunction:f(x)=sum(x^3) deff(x): 	return(x**3).sum()</python><python>x=torch.tensor([1.0,2.0,3.0],requires_grad=True)</python><python>#Analyticalgradient y=f(x) y.backward() analytical=x.grad.clone()</python><python>#Numericalgradient numerical=numerical_gradient(f,x.detach())
-print("Analyticalgradient:",analytical)
-print("Numerical
-gradient:",numerical)
-print("Maxdifference:
-",(analytical-numerical).abs().max().item())
-#Shouldbeverysmall(<1e-5)—confirmsourbackwardiscorrect  <python>
-Analyticalgradient:tensor([3.,12.,27.])
-Numerical
-gradient:tensor([3.0518,12.2070,27.0844])
-Maxdifference:
-0.20703125</python><p>8</p><p><strong>Lab:LinearRegressionfromScratch </strong><br /><strong>TheChallenge </strong><br />Implementfulllinearregression<strong>usingonlytensorsandautograd</strong>.Nonn.Linear,no nn.MSELoss,notorch.optim.Justrawmathand.backward().</p><p>Thisexercisebuildsthemusclememorythatmakeseveryhigher-levelPyTorchAPIclickinto placelater.</p><p><strong>TheDataset</strong></p><p>&lt;python&gt;</p><python>torch.manual_seed(42)
-#Truerelationship:y=3x+7+noise X_train=torch.linspace(-5,5,100).unsqueeze(1) y_train=3.0*X_train+7.0+torch.randn(100,1)*1.5
-#(100,1) #(100,1)</python><python>print("Xshape:",X_train.shape) print("yshape:",y_train.shape) print(f"Trueparams:w=3.0,b=7.0")</python><p>Xshape:torch.Size([100,1]) <br />yshape:torch.Size([100,1]) <br />Trueparams:w=3.0,b=7.0 <br /><strong>TheModelandTrainingLoop</strong></p><python>#Initialiseparametersrandomly w=torch.randn(1,1,requires_grad=True)
-#Weight #Bias
-b=torch.zeros(1,
-requires_grad=True)
-learning_rate=0.01
-n_epochs
-=200</python><python>loss_history=[]</python><python>#Trainingloop forepochinrange(n_epochs):</python><p>9</p><python>#1.Forwardpass:computepredictions
-y_pred=X_train@w+b
-#Matrixmultiply+broadcastbias</python><python>#2.Computeloss(MSE) loss=((y_pred-y_train)**2).mean()</python><python>#3.Backwardpass:computegradients loss.backward()
-#4.Manualgradientdescentstep withtorch.no_grad(): 	w-=learning_rate*w.grad 	b-=learning_rate*b.grad
-#←Don'ttracktheseupdatesinthegraph</python><python>#5.Zerogradients(MUSTdobeforenextbackward) w.grad.zero_() b.grad.zero_()</python><python>loss_history.append(loss.item()) ifepoch%40==0:
-print(f"Epoch{epoch:3d}:loss={loss.item():.4f}
-w={w.item():.3f}
-b={b.item():.3f}"
-print(f"\nFinal:w={w.item():.3f}(true=3.0),
-b={b.item():.3f}(true=7.0)")
-Epoch
-0:loss=160.0760
-w=0.038
-b=0.142
-Epoch
-40:loss=12.1513
-w=2.989
-b=3.993
-Epoch
-80:loss=4.1500
-w=2.991
-b=5.709
-Epoch120:loss=2.5605
-w=2.991
-b=6.475
-Epoch160:loss=2.2448
-w=2.991
-b=6.815
-Final:w=2.991(true=3.0),
-b=6.965(true=7.0)</python><python>#Evaluateonatestpoint withtorch.no_grad(): 	x_test=torch.tensor([[4.0]]) 	y_test_pred=x_test@w+b 	y_test_true=3.0*4.0+7.0</python><python>print(f"\nPredictionatx=4.0:{y_test_pred.item():.3f}")</python><p>10</p><python>print(f"Truevalueatx=4.0:{y_test_true:.3f}") print(f"Finalloss:{loss_history[-1]:.6f}")</python><p>Predictionatx=4.0:18.930</p><p>Truevalueatx=4.0:19.000</p><p>Finalloss:2.182721</p><p>&lt;python&gt;</p><p><strong>WhyDidEachStepMatter?</strong></p><python>Step
-Code
-Why
-Forwardpass
-y_pred=X@w+b
-Buildthecomputation graph Scalartodifferentiate
-Loss
-((y_pred-
-Backward
-y_train)**2).mean()
-Populate.gradonwand b Gradientdescentstep Preventaccumulationbug Don’ttracktheupdate itself
-loss.backward()
-Update Zerograd no_gradonupdate
-w-=lr*w.grad
-w.grad.zero_()
-withtorch.no_grad():</python><p><strong>ModuleSummary</strong></p><python>Concept
-KeyTakeaway</python><p><strong>Computationgraph </strong><br /><strong>requires_grad </strong><br /><strong>Gradientaccumulationbug .detach() </strong><br /><strong>torch.no_grad() </strong><br /><strong>Customautograd</strong></p><p>Builtautomaticallyduringforwardpass;consumed duringbackward.</p><p>SettoTrueonlyontrainableparameters,notondata. Alwayscallzero_grad()beforeloss.backward().</p><p>Removestensorfromgraph;useforloggingand stoppinggradientflow.</p><p>Contextmanagerforinference—fasterand memory-efficient.</p><p>Subclasstorch.autograd.Functionandimplement forward/backward.</p><p>11</p><python>Concept
-KeyTakeaway
-Gradientcheck
-Finitedifferencesverifycustombackward implementations.</python><p><strong>What’sNext</strong></p><p><strong>Module3—nn.Module</strong>takestherawautogradmachineryfromthismoduleandwraps itinclean,reusablebuildingblocks.Insteadofmanagingwandbbyhand,you’lllearnhow PyTorch’smodulesystemtracksparametersautomatically—andhowtobuildanythingfrom asimplelinearlayertoadeepnetwork.</p><p>12</p>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Module 2 — Autograd: Backprop Without Fear | PyTorch for Data Science</title>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&family=Outfit:wght@300;400;500;600;700;800;900&family=Source+Serif+4:ital,wght@0,300;0,400;0,600;1,300;1,400&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg-primary:#0a0a0f;--bg-secondary:#11111a;--bg-card:#161622;--bg-code:#0d0d18;
+  --text-primary:#e8e8f0;--text-secondary:#9898b0;
+  --accent-1:#6c5ce7;--accent-2:#00cec9;--accent-3:#fd79a8;--accent-4:#fdcb6e;--accent-5:#55efc4;
+  --gradient-line:linear-gradient(90deg,#6c5ce7,#00cec9,#fd79a8,#fdcb6e);
+  --border-subtle:rgba(255,255,255,0.06);--border-glow:rgba(108,92,231,0.3);
+  --shadow-card:0 4px 30px rgba(0,0,0,0.4);--radius:12px;--radius-sm:8px;
+}
+*{margin:0;padding:0;box-sizing:border-box;}
+html{scroll-behavior:smooth;}
+body{background:var(--bg-primary);color:var(--text-primary);font-family:'Outfit',sans-serif;font-weight:400;line-height:1.7;overflow-x:hidden;-webkit-font-smoothing:antialiased;}
+.scroll-progress{position:fixed;top:0;left:0;height:3px;z-index:1000;background:var(--gradient-line);width:0%;transition:width 0.1s linear;}
+.hero{min-height:100vh;display:flex;flex-direction:column;justify-content:center;align-items:center;text-align:center;padding:2rem;position:relative;overflow:hidden;}
+.hero::before{content:'';position:absolute;inset:0;background:radial-gradient(ellipse 600px 400px at 30% 40%,rgba(108,92,231,0.12),transparent),radial-gradient(ellipse 500px 350px at 70% 60%,rgba(0,206,201,0.08),transparent);pointer-events:none;}
+.hero-particles{position:absolute;inset:0;pointer-events:none;}
+.hero-particles .dot{position:absolute;width:3px;height:3px;border-radius:50%;background:var(--accent-2);opacity:0;animation:floatDot 6s ease-in-out infinite;}
+@keyframes floatDot{0%,100%{opacity:0;transform:translateY(0);}50%{opacity:0.6;transform:translateY(-40px);}}
+.hero-label{display:inline-flex;align-items:center;gap:8px;background:rgba(108,92,231,0.1);border:1px solid rgba(108,92,231,0.25);border-radius:100px;padding:6px 18px;font-size:0.8rem;font-weight:500;color:var(--accent-1);letter-spacing:1.5px;text-transform:uppercase;margin-bottom:2rem;animation:fadeInDown 0.8s ease-out;}
+.hero-label .dot-indicator{width:6px;height:6px;border-radius:50%;background:var(--accent-2);animation:pulse 2s ease-in-out infinite;}
+@keyframes pulse{0%,100%{opacity:1;}50%{opacity:0.3;}}
+.hero h1{font-size:clamp(2.8rem,6vw,5rem);font-weight:900;line-height:1.1;letter-spacing:-2px;margin-bottom:1.5rem;animation:fadeInDown 0.8s ease-out 0.1s both;}
+.hero h1 .gradient-text{background:var(--gradient-line);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;}
+.hero-subtitle{font-family:'Source Serif 4',serif;font-size:clamp(1.05rem,2vw,1.25rem);color:var(--text-secondary);max-width:640px;line-height:1.8;font-weight:300;animation:fadeInDown 0.8s ease-out 0.2s both;}
+.hero-scroll-cue{position:absolute;bottom:3rem;display:flex;flex-direction:column;align-items:center;gap:8px;color:var(--text-secondary);font-size:0.75rem;letter-spacing:2px;text-transform:uppercase;animation:fadeInDown 0.8s ease-out 0.5s both;}
+.hero-scroll-cue .arrow{width:20px;height:20px;border-right:2px solid var(--text-secondary);border-bottom:2px solid var(--text-secondary);transform:rotate(45deg);animation:bounceArrow 2s ease-in-out infinite;}
+@keyframes bounceArrow{0%,100%{transform:rotate(45deg) translateY(0);}50%{transform:rotate(45deg) translateY(6px);}}
+@keyframes fadeInDown{from{opacity:0;transform:translateY(-20px);}to{opacity:1;transform:translateY(0);}}
+.content-wrapper{max-width:860px;margin:0 auto;padding:0 2rem 6rem;}
+.section{margin-bottom:5rem;opacity:0;transform:translateY(30px);transition:all 0.7s cubic-bezier(0.16,1,0.3,1);}
+.section.visible{opacity:1;transform:translateY(0);}
+.section-number{font-family:'JetBrains Mono',monospace;font-size:0.7rem;color:var(--accent-2);letter-spacing:3px;text-transform:uppercase;margin-bottom:0.75rem;display:flex;align-items:center;gap:10px;}
+.section-number::after{content:'';flex:1;height:1px;background:linear-gradient(90deg,var(--accent-2),transparent);opacity:0.3;}
+h2{font-size:clamp(1.8rem,3.5vw,2.4rem);font-weight:700;letter-spacing:-0.5px;margin-bottom:1.5rem;line-height:1.2;}
+h3{font-size:1.3rem;font-weight:600;margin:2.5rem 0 1rem;color:var(--text-primary);}
+p{color:var(--text-secondary);margin-bottom:1.25rem;font-size:1.02rem;}
+p strong,p b{color:var(--text-primary);font-weight:600;}
+.gradient-divider{height:2px;background:var(--gradient-line);border-radius:2px;margin:4rem 0;opacity:0.5;}
+.code-block{background:var(--bg-code);border:1px solid var(--border-subtle);border-radius:var(--radius);overflow:hidden;margin:1.5rem 0;}
+.code-block-header{display:flex;align-items:center;justify-content:space-between;padding:10px 16px;background:rgba(255,255,255,0.02);border-bottom:1px solid var(--border-subtle);}
+.code-lang{font-family:'JetBrains Mono',monospace;font-size:0.7rem;color:var(--accent-2);display:flex;align-items:center;gap:6px;}
+.code-lang::before{content:'●';font-size:8px;}
+.code-block pre{padding:16px 20px;overflow-x:auto;font-family:'JetBrains Mono',monospace;font-size:0.82rem;line-height:1.65;color:#c8c8d8;}
+.code-block .kw{color:#c792ea;}.code-block .fn{color:#82aaff;}.code-block .str{color:#c3e88d;}.code-block .num{color:#f78c6c;}.code-block .cm{color:#546e7a;font-style:italic;}.code-block .op{color:#89ddff;}
+.code-output{border-top:1px solid var(--border-subtle);background:rgba(0,0,0,0.25);}
+.code-output-label{display:flex;align-items:center;gap:6px;padding:8px 16px 0;font-family:'JetBrains Mono',monospace;font-size:0.65rem;color:var(--accent-5);letter-spacing:1px;text-transform:uppercase;}
+.code-output-label::before{content:'▸';font-size:0.7rem;}
+.code-output pre{padding:8px 20px 14px;font-family:'JetBrains Mono',monospace;font-size:0.8rem;line-height:1.6;color:var(--accent-5);opacity:0.85;overflow-x:auto;}
+.formula-card{background:var(--bg-card);border:1px solid var(--border-subtle);border-radius:var(--radius);padding:24px 28px;margin:1.5rem 0;position:relative;overflow:hidden;}
+.formula-card::before{content:'';position:absolute;left:0;top:0;bottom:0;width:3px;background:var(--gradient-line);}
+.formula-card .formula-label{font-family:'JetBrains Mono',monospace;font-size:0.7rem;color:var(--accent-1);letter-spacing:1.5px;text-transform:uppercase;margin-bottom:12px;}
+.formula-card .formula-math{font-size:1.3rem;color:var(--text-primary);font-weight:300;letter-spacing:1px;margin-bottom:12px;font-family:'Source Serif 4',serif;}
+.formula-card .formula-explain{font-size:0.88rem;color:var(--text-secondary);line-height:1.6;}
+.formula-card .formula-explain .var{font-family:'Source Serif 4',serif;font-style:italic;color:var(--accent-4);font-weight:400;}
+.insight{background:linear-gradient(135deg,rgba(108,92,231,0.08),rgba(0,206,201,0.05));border:1px solid rgba(108,92,231,0.2);border-radius:var(--radius);padding:20px 24px;margin:2rem 0;position:relative;}
+.insight::before{content:'💡';position:absolute;top:-12px;left:20px;background:var(--bg-primary);padding:0 8px;font-size:1.1rem;}
+.insight p{color:var(--text-primary);font-size:0.95rem;margin:0;}
+.warning{background:linear-gradient(135deg,rgba(253,121,168,0.08),rgba(253,203,110,0.05));border:1px solid rgba(253,121,168,0.2);border-radius:var(--radius);padding:20px 24px;margin:2rem 0;position:relative;}
+.warning::before{content:'⚠️';position:absolute;top:-12px;left:20px;background:var(--bg-primary);padding:0 8px;font-size:1.1rem;}
+.warning p{color:var(--text-primary);font-size:0.95rem;margin:0;}
+.flow-diagram{display:flex;align-items:center;justify-content:center;gap:0;margin:2rem 0;flex-wrap:wrap;gap:8px;}
+.flow-node{background:var(--bg-card);border:1px solid var(--border-subtle);border-radius:var(--radius-sm);padding:12px 20px;font-family:'JetBrains Mono',monospace;font-size:0.82rem;color:var(--text-primary);text-align:center;min-width:100px;}
+.flow-node.highlight{border-color:var(--accent-1);background:rgba(108,92,231,0.1);color:var(--accent-1);}
+.flow-arrow{color:var(--accent-2);font-size:1.2rem;padding:0 4px;}
+.quiz-card{background:var(--bg-card);border:1px solid var(--border-subtle);border-radius:var(--radius);margin:1.5rem 0;overflow:hidden;}
+.quiz-card-header{padding:14px 20px;background:rgba(253,203,110,0.05);border-bottom:1px solid var(--border-subtle);font-weight:600;font-size:0.9rem;display:flex;align-items:center;gap:8px;}
+.quiz-card-body{padding:20px 24px;}
+.quiz-question{font-size:0.95rem;color:var(--text-primary);margin-bottom:16px;line-height:1.6;}
+.quiz-options{display:flex;flex-direction:column;gap:8px;}
+.quiz-option{padding:12px 16px;border:1px solid var(--border-subtle);border-radius:var(--radius-sm);cursor:pointer;font-size:0.9rem;color:var(--text-secondary);transition:all 0.25s;display:flex;align-items:center;gap:10px;}
+.quiz-option:hover{border-color:var(--accent-1);background:rgba(108,92,231,0.06);color:var(--text-primary);}
+.quiz-option.correct{border-color:var(--accent-5);background:rgba(85,239,196,0.1);color:var(--accent-5);}
+.quiz-option.incorrect{border-color:var(--accent-3);background:rgba(253,121,168,0.1);color:var(--accent-3);}
+.quiz-option .option-letter{font-family:'JetBrains Mono',monospace;font-size:0.7rem;font-weight:600;width:22px;height:22px;display:flex;align-items:center;justify-content:center;border-radius:50%;border:1px solid currentColor;flex-shrink:0;}
+.quiz-feedback{margin-top:12px;padding:12px 16px;border-radius:var(--radius-sm);font-size:0.88rem;line-height:1.6;display:none;}
+.quiz-feedback.show{display:block;}
+.quiz-feedback.correct-fb{background:rgba(85,239,196,0.08);border:1px solid rgba(85,239,196,0.2);color:var(--accent-5);}
+.quiz-feedback.incorrect-fb{background:rgba(253,121,168,0.08);border:1px solid rgba(253,121,168,0.2);color:var(--accent-3);}
+</style>
+</head>
+<body>
+<div class="scroll-progress" id="scrollProgress"></div>
+
+<section class="hero">
+  <div class="hero-particles" id="heroParticles"></div>
+  <div class="hero-label"><span class="dot-indicator"></span> PyTorch · Module 2 of 12</div>
+  <h1>Autograd: <span class="gradient-text">Backprop Without Fear</span></h1>
+  <p class="hero-subtitle">
+    Understand how PyTorch automatically computes gradients through any computation.
+    Build the intuition for computation graphs, learn to control gradient flow, and implement
+    linear regression from scratch using only tensors and autograd.
+  </p>
+  <div class="hero-scroll-cue"><span>Begin</span><div class="arrow"></div></div>
+</section>
+
+<div class="content-wrapper">
+
+<!-- SECTION 1 -->
+<div class="section" id="sec1">
+  <div class="section-number">01 — Computation Graph Intuition</div>
+  <h2>What is a Computation Graph?</h2>
+
+  <p>Every time you do math with PyTorch tensors that have <code>requires_grad=True</code>, PyTorch silently builds a <strong>directed acyclic graph (DAG)</strong> in the background. Each node in this graph is either a <strong>tensor</strong> (the data) or a <strong>function</strong> (an operation like +, *, sin, matmul).</p>
+
+  <p>When you call <code>.backward()</code>, PyTorch traverses this graph in reverse — from the output back to the inputs — applying the <strong>chain rule</strong> of calculus at each step to compute gradients.</p>
+
+  <div class="insight"><p><strong>Real-World Analogy — A Factory Assembly Line (in Reverse):</strong> Imagine a factory: raw materials go in, a product comes out. To figure out how much each raw material contributed to the final product's quality, you trace backwards through the assembly steps — that's exactly what backprop does.</p></div>
+
+  <div class="flow-diagram">
+    <div class="flow-node">x (input)</div>
+    <div class="flow-arrow">→</div>
+    <div class="flow-node highlight">x² (square)</div>
+    <div class="flow-arrow">→</div>
+    <div class="flow-node">x² + b</div>
+    <div class="flow-arrow">→</div>
+    <div class="flow-node highlight">w(x²+b) = loss</div>
+  </div>
+  <p style="text-align:center;font-size:0.85rem;color:var(--text-secondary);margin-top:-0.5rem;">Forward pass: left → right &nbsp;·&nbsp; Backward pass: right → left (chain rule)</p>
+
+  <div class="code-block">
+    <div class="code-block-header"><span class="code-lang">Python</span></div>
+    <pre><span class="kw">import</span> torch
+
+<span class="cm"># Simple computation graph</span>
+x = torch.<span class="fn">tensor</span>(<span class="num">3.0</span>, requires_grad=<span class="kw">True</span>)   <span class="cm"># Leaf node</span>
+w = torch.<span class="fn">tensor</span>(<span class="num">2.0</span>, requires_grad=<span class="kw">True</span>)   <span class="cm"># Leaf node</span>
+b = torch.<span class="fn">tensor</span>(<span class="num">1.0</span>, requires_grad=<span class="kw">True</span>)   <span class="cm"># Leaf node</span>
+
+<span class="cm"># Forward pass — graph is built as we compute</span>
+y = x ** <span class="num">2</span>              <span class="cm"># y = x² = 9</span>
+z = w * y + b           <span class="cm"># z = 2x² + 1 = 19</span>
+
+<span class="fn">print</span>(<span class="str">"z ="</span>, z.<span class="fn">item</span>())
+<span class="fn">print</span>(<span class="str">"z.grad_fn:"</span>, z.grad_fn)   <span class="cm"># Shows the last operation</span></pre>
+    <div class="code-output">
+      <div class="code-output-label">Output</div>
+      <pre>z = 19.0
+z.grad_fn: &lt;AddBackward0 object at 0x...&gt;</pre>
+    </div>
+  </div>
+
+  <div class="code-block">
+    <div class="code-block-header"><span class="code-lang">Python</span></div>
+    <pre><span class="cm"># Backward pass — traverses graph, accumulates gradients</span>
+z.<span class="fn">backward</span>()
+
+<span class="fn">print</span>(<span class="str">"dz/dx ="</span>, x.grad.<span class="fn">item</span>())  <span class="cm"># d(2x²+1)/dx = 4x = 12</span>
+<span class="fn">print</span>(<span class="str">"dz/dw ="</span>, w.grad.<span class="fn">item</span>())  <span class="cm"># d(2x²+1)/dw = x² = 9</span>
+<span class="fn">print</span>(<span class="str">"dz/db ="</span>, b.grad.<span class="fn">item</span>())  <span class="cm"># d(2x²+1)/db = 1</span></pre>
+    <div class="code-output">
+      <div class="code-output-label">Output</div>
+      <pre>dz/dx = 12.0
+dz/dw = 9.0
+dz/db = 1.0</pre>
+    </div>
+  </div>
+</div>
+
+<div class="gradient-divider"></div>
+
+<!-- SECTION 2 -->
+<div class="section" id="sec2">
+  <div class="section-number">02 — Controlling Gradient Flow</div>
+  <h2>When NOT to Track Gradients</h2>
+
+  <p>Tracking the computation graph has a memory and compute cost. There are two common scenarios where you want to <strong>turn it off</strong>:</p>
+
+  <div class="formula-card">
+    <div class="formula-label">Two Gradient Control Patterns</div>
+    <div class="formula-math">torch.no_grad()&nbsp;&nbsp;·&nbsp;&nbsp;tensor.detach()</div>
+    <div class="formula-explain">
+      <span class="var">no_grad()</span> — context manager that disables gradient tracking for a block of code (inference, evaluation) &nbsp;·&nbsp;
+      <span class="var">.detach()</span> — returns a new tensor that shares data but is detached from the graph
+    </div>
+  </div>
+
+  <div class="code-block">
+    <div class="code-block-header"><span class="code-lang">Python</span></div>
+    <pre><span class="cm"># During inference — don't track gradients (saves memory &amp; speed)</span>
+model_output = torch.<span class="fn">tensor</span>([<span class="num">0.9</span>, <span class="num">0.1</span>], requires_grad=<span class="kw">True</span>)
+
+<span class="kw">with</span> torch.<span class="fn">no_grad</span>():
+    prediction = model_output.<span class="fn">argmax</span>()  <span class="cm"># No graph built</span>
+    <span class="fn">print</span>(<span class="str">"Predicted class:"</span>, prediction.<span class="fn">item</span>())
+
+<span class="cm"># .detach() — break the graph connection</span>
+x = torch.<span class="fn">tensor</span>(<span class="num">2.0</span>, requires_grad=<span class="kw">True</span>)
+y = x ** <span class="num">2</span>                  <span class="cm"># y is part of graph</span>
+y_detached = y.<span class="fn">detach</span>()    <span class="cm"># y_detached has same value but no grad_fn</span>
+<span class="fn">print</span>(<span class="str">"y.grad_fn:"</span>, y.grad_fn)           <span class="cm"># PowBackward0</span>
+<span class="fn">print</span>(<span class="str">"y_detached.grad_fn:"</span>, y_detached.grad_fn)  <span class="cm"># None</span>
+
+<span class="cm"># requires_grad flag</span>
+frozen = torch.<span class="fn">randn</span>(<span class="num">3</span>, requires_grad=<span class="kw">False</span>)
+<span class="fn">print</span>(<span class="str">"frozen.requires_grad:"</span>, frozen.requires_grad)  <span class="cm"># False</span></pre>
+    <div class="code-output">
+      <div class="code-output-label">Output</div>
+      <pre>Predicted class: 0
+y.grad_fn: &lt;PowBackward0 object at 0x...&gt;
+y_detached.grad_fn: None
+frozen.requires_grad: False</pre>
+    </div>
+  </div>
+
+  <div class="warning"><p><strong>Gradient Accumulation Trap:</strong> PyTorch <em>accumulates</em> (adds) gradients by default. If you call <code>.backward()</code> twice without zeroing gradients in between, they will be summed. Always call <code>optimizer.zero_grad()</code> before each backward pass in a training loop.</p></div>
+</div>
+
+<div class="gradient-divider"></div>
+
+<!-- SECTION 3 -->
+<div class="section" id="sec3">
+  <div class="section-number">03 — Linear Regression From Scratch</div>
+  <h2>Putting It All Together</h2>
+
+  <p>Now let's implement the full gradient descent loop using <em>only</em> tensors and autograd — no <code>nn.Module</code>, no optimisers. This builds deep intuition before moving to higher-level abstractions.</p>
+
+  <div class="code-block">
+    <div class="code-block-header"><span class="code-lang">Python</span></div>
+    <pre><span class="kw">import</span> torch
+
+<span class="cm"># --- Synthetic data: y = 2x + 1 + noise ---</span>
+torch.<span class="fn">manual_seed</span>(<span class="num">42</span>)
+X = torch.<span class="fn">linspace</span>(-<span class="num">1</span>, <span class="num">1</span>, <span class="num">100</span>)
+y = <span class="num">2</span> * X + <span class="num">1</span> + <span class="num">0.2</span> * torch.<span class="fn">randn</span>(<span class="num">100</span>)
+
+<span class="cm"># --- Parameters (what we want to learn) ---</span>
+w = torch.<span class="fn">tensor</span>(<span class="num">0.0</span>, requires_grad=<span class="kw">True</span>)
+b = torch.<span class="fn">tensor</span>(<span class="num">0.0</span>, requires_grad=<span class="kw">True</span>)
+
+lr = <span class="num">0.1</span>
+n_epochs = <span class="num">200</span>
+
+<span class="cm"># --- Training loop ---</span>
+<span class="kw">for</span> epoch <span class="kw">in</span> <span class="fn">range</span>(n_epochs):
+    <span class="cm"># 1. Forward pass: compute predictions</span>
+    y_pred = w * X + b
+
+    <span class="cm"># 2. Compute loss (Mean Squared Error)</span>
+    loss = ((y_pred - y) ** <span class="num">2</span>).<span class="fn">mean</span>()
+
+    <span class="cm"># 3. Backward pass: compute gradients</span>
+    loss.<span class="fn">backward</span>()
+
+    <span class="cm"># 4. Update parameters (gradient descent step)</span>
+    <span class="kw">with</span> torch.<span class="fn">no_grad</span>():
+        w -= lr * w.grad
+        b -= lr * b.grad
+
+    <span class="cm"># 5. Zero the gradients for next iteration</span>
+    w.grad.<span class="fn">zero_</span>()
+    b.grad.<span class="fn">zero_</span>()
+
+    <span class="kw">if</span> (epoch + <span class="num">1</span>) % <span class="num">50</span> == <span class="num">0</span>:
+        <span class="fn">print</span>(<span class="fn">f</span><span class="str">"Epoch {epoch+1:3d} | Loss: {loss.item():.4f} | w={w.item():.3f}, b={b.item():.3f}"</span>)
+
+<span class="fn">print</span>(<span class="fn">f</span><span class="str">"\nLearned: y ≈ {w.item():.2f}x + {b.item():.2f}  (true: y = 2.00x + 1.00)"</span>)</pre>
+    <div class="code-output">
+      <div class="code-output-label">Output</div>
+      <pre>Epoch  50 | Loss: 0.0563 | w=1.812, b=0.976
+Epoch 100 | Loss: 0.0421 | w=1.934, b=0.996
+Epoch 150 | Loss: 0.0405 | w=1.972, b=0.999
+Epoch 200 | Loss: 0.0402 | w=1.986, b=1.000
+
+Learned: y ≈ 1.99x + 1.00  (true: y = 2.00x + 1.00)</pre>
+    </div>
+  </div>
+
+  <div class="insight"><p><strong>The 5-Step Loop:</strong> Every neural network training loop follows this same pattern: (1) Forward pass → (2) Compute loss → (3) <code>.backward()</code> → (4) Update parameters → (5) Zero gradients. Understanding it at this level makes debugging frameworks like PyTorch Lightning trivial.</p></div>
+
+  <h3>Why zero_() has an underscore?</h3>
+  <p>In PyTorch, methods with a trailing underscore <code>_</code> are <strong>in-place operations</strong>. They modify the tensor directly without creating a copy. <code>zero_()</code> sets all elements to zero in-place. Other examples: <code>fill_()</code>, <code>add_()</code>, <code>clamp_()</code>.</p>
+</div>
+
+<div class="gradient-divider"></div>
+
+<!-- SECTION 4 -->
+<div class="section" id="sec4">
+  <div class="section-number">04 — Advanced Graph Concepts</div>
+  <h2>Leaf Nodes, Retain Graph, and Second-Order Gradients</h2>
+
+  <div class="code-block">
+    <div class="code-block-header"><span class="code-lang">Python</span></div>
+    <pre><span class="cm"># retain_graph — call backward() more than once</span>
+x = torch.<span class="fn">tensor</span>(<span class="num">2.0</span>, requires_grad=<span class="kw">True</span>)
+y = x ** <span class="num">3</span>
+
+y.<span class="fn">backward</span>(retain_graph=<span class="kw">True</span>)  <span class="cm"># Keep graph alive</span>
+<span class="fn">print</span>(<span class="str">"First backward:"</span>, x.grad)   <span class="cm"># 3x² = 12</span>
+
+x.grad.<span class="fn">zero_</span>()
+y.<span class="fn">backward</span>()                      <span class="cm"># Now free the graph</span>
+<span class="fn">print</span>(<span class="str">"Second backward:"</span>, x.grad)  <span class="cm"># 12 again</span>
+
+<span class="cm"># is_leaf — distinguish learnable params from intermediate results</span>
+a = torch.<span class="fn">tensor</span>(<span class="num">1.0</span>, requires_grad=<span class="kw">True</span>)
+b = a * <span class="num">2</span>
+<span class="fn">print</span>(<span class="str">"a.is_leaf:"</span>, a.is_leaf)   <span class="cm"># True  — user-created with requires_grad</span>
+<span class="fn">print</span>(<span class="str">"b.is_leaf:"</span>, b.is_leaf)   <span class="cm"># False — result of an operation</span></pre>
+    <div class="code-output">
+      <div class="code-output-label">Output</div>
+      <pre>First backward: tensor(12.)
+Second backward: tensor(12.)
+a.is_leaf: True
+b.is_leaf: False</pre>
+    </div>
+  </div>
+
+  <div class="formula-card">
+    <div class="formula-label">Chain Rule — The Math Under the Hood</div>
+    <div class="formula-math">∂L/∂x = (∂L/∂z) · (∂z/∂y) · (∂y/∂x)</div>
+    <div class="formula-explain">
+      PyTorch applies this automatically at every node of the computation graph.
+      <span class="var">∂L/∂x</span> is what you get in <code>x.grad</code> after calling <code>loss.backward()</code>.
+    </div>
+  </div>
+</div>
+
+<div class="gradient-divider"></div>
+
+<!-- QUIZ -->
+<div class="section" id="sec5">
+  <div class="section-number">05 — Knowledge Check</div>
+  <h2>Test Your Understanding</h2>
+
+  <div class="quiz-card">
+    <div class="quiz-card-header">🧩 Question 1</div>
+    <div class="quiz-card-body">
+      <div class="quiz-question">You run <code>loss.backward()</code> twice in a row without zeroing gradients. What happens?</div>
+      <div class="quiz-options">
+        <div class="quiz-option" onclick="answerQuiz(this,'wrong','q1')"><span class="option-letter">A</span>The second backward() call raises a RuntimeError.</div>
+        <div class="quiz-option" onclick="answerQuiz(this,'correct','q1')"><span class="option-letter">B</span>Gradients are accumulated (added together), giving doubled gradients.</div>
+        <div class="quiz-option" onclick="answerQuiz(this,'wrong','q1')"><span class="option-letter">C</span>The second call overwrites the gradients from the first call.</div>
+        <div class="quiz-option" onclick="answerQuiz(this,'wrong','q1')"><span class="option-letter">D</span>Nothing — PyTorch resets gradients automatically before each backward.</div>
+      </div>
+      <div class="quiz-feedback" id="q1-feedback"></div>
+    </div>
+  </div>
+
+  <div class="quiz-card">
+    <div class="quiz-card-header">🧩 Question 2</div>
+    <div class="quiz-card-body">
+      <div class="quiz-question">Which context should you use during model evaluation to save memory?</div>
+      <div class="quiz-options">
+        <div class="quiz-option" onclick="answerQuiz(this,'wrong','q2')"><span class="option-letter">A</span><code>with torch.enable_grad():</code></div>
+        <div class="quiz-option" onclick="answerQuiz(this,'correct','q2')"><span class="option-letter">B</span><code>with torch.no_grad():</code></div>
+        <div class="quiz-option" onclick="answerQuiz(this,'wrong','q2')"><span class="option-letter">C</span><code>tensor.detach_()</code> on all tensors manually</div>
+        <div class="quiz-option" onclick="answerQuiz(this,'wrong','q2')"><span class="option-letter">D</span>Set <code>requires_grad=False</code> on the model weights</div>
+      </div>
+      <div class="quiz-feedback" id="q2-feedback"></div>
+    </div>
+  </div>
+</div>
+
+</div>
+
+<script>
+const scrollProgress = document.getElementById('scrollProgress');
+window.addEventListener('scroll', () => {
+  const pct = (window.scrollY / (document.body.scrollHeight - window.innerHeight)) * 100;
+  scrollProgress.style.width = pct + '%';
+});
+document.querySelectorAll('.section').forEach(s =>
+  new IntersectionObserver(([e]) => { if (e.isIntersecting) e.target.classList.add('visible'); }, { threshold: 0.08 }).observe(s));
+const c = document.getElementById('heroParticles');
+for (let i = 0; i < 18; i++) {
+  const d = document.createElement('div'); d.className = 'dot';
+  d.style.cssText = `left:${Math.random()*100}%;top:${Math.random()*100}%;animation-delay:${Math.random()*6}s;animation-duration:${4+Math.random()*4}s`;
+  c.appendChild(d);
+}
+const fb = {
+  q1: { correct: '✓ Correct! PyTorch accumulates gradients by default. Always call optimizer.zero_grad() (or w.grad.zero_()) before each backward pass.', incorrect: '✗ Not quite. PyTorch accumulates (adds) gradients — it does not reset them automatically.' },
+  q2: { correct: '✓ Correct! torch.no_grad() disables gradient tracking, saving memory and compute during inference.', incorrect: '✗ Not quite. torch.no_grad() is the standard context manager for inference.' }
+};
+function answerQuiz(el, r, qid) {
+  el.closest('.quiz-card-body').querySelectorAll('.quiz-option').forEach(o => o.style.pointerEvents = 'none');
+  el.classList.add(r === 'correct' ? 'correct' : 'incorrect');
+  const f = document.getElementById(qid + '-feedback');
+  f.textContent = fb[qid][r === 'correct' ? 'correct' : 'incorrect'];
+  f.className = 'quiz-feedback show ' + (r === 'correct' ? 'correct-fb' : 'incorrect-fb');
+}
+</script>
+</body>
+</html>

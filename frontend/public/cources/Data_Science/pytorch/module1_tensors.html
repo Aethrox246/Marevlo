@@ -1,556 +1,669 @@
-<p><strong>Module1—Tensors&amp;TensorThinking</strong></p><p><strong>TheRealFoundationofPyTorch</strong></p><p>PyTorchforDataScience</p><p><strong>ModuleGoal:</strong>Bytheendofthismodule,youwillbecompletelycomfortable creating,inspecting,andtransformingtensors—thesingledatastructurethat everythinginPyTorchisbuilton.Nomoreshapepanics.Nomoremysterious broadcasterrors.Nomore.view()vs.reshape()confusion.</p><p><strong>1.TensorCreation,dtype,device,shape</strong></p><p><strong>WhatisaTensor?</strong></p><p>A<strong>tensor</strong>isjustamulti-dimensionalarray—ageneralisationofscalars,vectors,andmatrices intoanynumberofdimensions.ThinkofitasNumPy’sndarray,butwithtwosuperpowers:</p><p>1.Itcanliveona<strong>GPU</strong>anddomillionsofoperationsinparallel.</p><p>2.Itknowshowto<strong>trackgradients</strong>forautomaticdifferentiation(wecoverthisinModule 	2).</p><python>Name
-Dimensions
-Example
-Scalar
-0-D
-Asingletemperaturereading:
-Vector
-1-D
-38.5 Dailytemperaturesforaweek:
-Matrix
-2-D
-[38,37,39,40,36,35,
-38] Temperaturesfor7days×5 cities Temperaturesfor7days×5 cities×24hours
-Tensor
-N-D</python><p>1</p><p><strong>TheThreePropertiesYouMustAlwaysKnow</strong></p><p>Everytensorhasthreepropertiesyoushouldcheckimmediatelywhendebugging:</p><p>•<strong>shape</strong>—howmanyelementsineachdimension(e.g.,torch.Size([32,128]))•<strong>dtype</strong>—whatkindofnumbersarestored(float32,int64,bool,etc.)<br />•<strong>device</strong>—wherethetensorlives(cpuorcuda:0)</p><p><strong>Real-WorldAnalogy</strong></p><p>Imagineyoumanageachainofcoffeeshops.Youtrackdailysalesfor<strong>5items</strong>across<strong>3 branches</strong> for<strong> 30days</strong>.That’s a 3-D tensor of shape (30,3,5).The dtype tells you whether thosenumbersarewholeunitssold(int64)orrevenueindollars(float32).Thedevicetells youwhetherthatdataissittinginyourlaptop’sRAM(CPU)orbeingprocessedatlightning speedonaGPU.</p><python>importtorch #---Scalars,Vectors,Matrices,Tensors---
-scalar
-=torch.tensor(38.5)
-#0-D
-vector
-=torch.tensor([38.0,37,39,40,36,35,38])
-#1-D:7days
-matrix
-=torch.zeros(7,5)
-#2-D:7days×5cities
-tensor3=torch.zeros(30,3,5)
-#3-D:30days×3branches×5items</python><python>print("Shapes:",scalar.shape,vector.shape,matrix.shape,tensor3.shape) print("Dimensions:",scalar.ndim,vector.ndim,matrix.ndim,tensor3.ndim)</python><p>Shapes:torch.Size([])torch.Size([7])torch.Size([7,5])torch.Size([30,3,5])</p><p>Dimensions:0123</p><p><strong>CommonCreationFunctions</strong></p><python>#Fromdata
-a=torch.tensor([1.0,2.0,3.0])
-#Infersfloat32
-b=torch.tensor([1,2,3])
-#Infersint64
-#Filledtensors zeros=torch.zeros(3,4)
-ones
-=torch.ones(3,4)
-full
-=torch.full((3,4),fill_value=7.0)</python><p>2</p><python>#Ranges(likePython'srange/np.arange)
-r=torch.arange(0,10,step=2)
-#[0,2,4,6,8]
-l=torch.linspace(0,1,steps=5)
-#[0.0,0.25,0.5,0.75,1.0]
-#Random
-rand
-=torch.rand(3,4)
-#Uniform[0,1)
-randn
-=torch.randn(3,4)
-#StandardNormal(mean=0,std=1)
-randint=torch.randint(0,10,(3,4))
-#Randomintegersin[0,10)
-#Like-functions(sameshape/deviceasanothertensor) x=torch.randn(3,4)
-y=torch.zeros_like(x)
-#Zeroswithsameshape&dtypeasx
-z=torch.ones_like(x)</python><python>print(r) print(l)</python><p>tensor([0,2,4,6,8]) <br />tensor([0.0000,0.2500,0.5000,0.7500,1.0000])</p><p><strong>dtype:ChoosingtheRightNumberType</strong></p><python>#Defaultdtypes
-f32=torch.tensor([1.0,2.0])
-#float32—defaultforfloats
-i64=torch.tensor([1,2])
-#int64—defaultforints
-#Explicitdtype
-f16=torch.tensor([1.0,2.0],dtype=torch.float16)
-#Halfprecision(savesmemory)
-f64=torch.tensor([1.0,2.0],dtype=torch.float64)
-#Doubleprecision
-i32=torch.tensor([1,2],
-dtype=torch.int32)
-boo=torch.tensor([True,False,True],
-dtype=torch.bool)
-#Casting(convertingbetweendtypes) x=torch.tensor([1.7,2.9,3.1])
-print(x.to(torch.int32))
-#Truncates:tensor([1,2,3])
-print(x.float())
-#Staysfloat32
-print(x.half())
-#Convertstofloat16</python><python>#Whydoesdtypematter?</python><p>3</p><python>#float32→standardfortrainingneuralnetworks #float16→halfthememory;usedinmixed-precisiontraining
-#int64
-→usedforclasslabels,indices
-#bool
-→usedformasks(whichelementstokeep/ignore)</python><p>tensor([1,2,3],dtype=torch.int32) <br />tensor([1.7000,2.9000,3.1000]) <br />tensor([1.7002,2.9004,3.0996],dtype=torch.float16)</p><python>LIGHTBULBTip</python></td></tr></table><python>RuleofThumb:Usefloat32formodelweightsandactivations.Useint64forclass labels.Useboolformasksandconditions.</python><p><strong>device:CPUvsGPU</strong></p><python>#CheckifaGPUisavailable device="cuda"iftorch.cuda.is_available()else"cpu" print(f"Usingdevice:{device}")
-#Createtensorsonaspecificdevice
-x_cpu
-=torch.randn(3,4)
-#AlwaysonCPU
-x_gpu
-=torch.randn(3,4,device="cuda")iftorch.cuda.is_available()elsex_cpu
-#Moveexistingtensorsbetweendevices x_cpu_2=x_cpu.to("cpu")
-#x_gpu_2=x_cpu.to("cuda")
-#uncommentifGPUavailable
-#CRITICALRULE:BothtensorsmustbeontheSAMEdevicebeforeanyoperation
-#x_cpu+x_gpu
-#←ThiswillCRASHwithRuntimeError</python><p>Usingdevice:cpu</p><python>Exclamation-TriangleWarning</python></td></tr></table><python>TheMostCommonBeginnerCrash:RuntimeError:Expectedalltensorsto beonthesamedevice.Alwaysensureoperandsareonthesamedevicebeforearith-metic.</python><p>4</p><p><strong>2.BroadcastingRules</strong></p><p><strong>WhatisBroadcasting?</strong></p><p><strong>Broadcasting</strong>letsPyTorchdoarithmeticontensorsof<em>differentshapes</em>by<strong>virtuallystretch-ing</strong>thesmallertensor—withoutactuallycopyingdatainmemory.It’swhatmakesvectorised codebothfastandreadable.</p><p><strong>TheTwoBroadcastingRules</strong></p><p>PyTorchchecksshapes<strong>right-to-left</strong>,dimensionbydimension.Twodimensionsarecompatible if:</p><p>1.Theyare<strong>equal</strong>,OR <br />2.Oneofthemis<strong>exactly1</strong>(thatdimensiongetsstretched)</p><p>Ifthetensorshavedifferentnumbersofdimensions,theshapewithfewerdimsis<strong>padded with1sontheleft</strong>.</p><p><strong>Real-WorldAnalogy:StudentBonuses</strong></p><p>Youhave3students.Eachstudentcompleted4exercises.Youwanttoadda<strong>subject-specific bonus</strong>of[10,20,30,40]toeverystudent’sscores.</p><p>•MatrixAis(3,4)—3students,4exercises.•Bonusvectorbis(4,)—onebonusperexercise.</p><p>PyTorch checks:right dimension 4==4 .PyTorch<em> virtually</em>stretches b to (3,4) by repeating it.</p><python>MatrixA(3×4)
-Vectorb→stretchedto(3×4)
-Result
-[0,
-1,
-2,
-3]
-[10,20,30,40]
-[10,21,32,43]
-[4,
-5,
-6,
-7]
-+
-[10,20,30,40]
-=
-[14,25,36,47]
-[8,
-9,10,11]
-[10,20,30,40]
-[18,29,40,51]
-A=torch.arange(12).reshape(3,4).float()
-b=torch.tensor([10.0,20.0,30.0,40.0])
-#Shape(4,)</python><python>C=A+b print("Ashape:",A.shape) print("bshape:",b.shape)</python><p>5</p><python>print("Cshape:",C.shape) print(C)</python><p>Ashape:torch.Size([3,4]) <br />bshape:torch.Size([4]) <br />Cshape:torch.Size([3,4]) <br />tensor([[10.,21.,32.,43.], <br />	[14.,25.,36.,47.], <br />	[18.,29.,40.,51.]])</p><p><strong>BroadcastinginPractice:FeatureNormalisation</strong></p><python>#Normaliseadataset—themostcommonreal-worlduse
-X=torch.randn(100,5)
-#100samples,5features
-mu
-=X.mean(dim=0)
-#Shape(5,)
-—meanperfeature
-sigma=X.std(dim=0)
-#Shape(5,)
-—stdperfeature
-X_norm=(X-mu)/sigma
-#(100,5)-(5,)=broadcastoverrows
-print("Meanafternormalise(should0):",X_norm.mean(dim=0).round(decimals=2))
-print("Std
-afternormalise(should1):",X_norm.std(dim=0).round(decimals=2))
-Meanafternormalise(should0):tensor([-0.,-0.,-0.,-0.,0.])
-Std
-afternormalise(should1):tensor([1.,1.,1.,1.,1.])</python><p><strong>ShapeIncompatibility:WhenBroadcastingFails</strong></p><python>#Shapealignment—readRIGHTtoLEFT #(3,4)vs(3,)
-#
-4vs
-3
-←NOTequal,neitheris1→ERROR
-try: 	a=torch.ones(3,4)
-b=torch.ones(3)
-#Wrong!Shouldbe(4,)or(1,4)or(3,1)
-	result=a+b exceptRuntimeErrorase:</python><p>6</p><python>	print("Error:",e) #Fix1:reshapebtoacolumnvector
-b_col=torch.ones(3).unsqueeze(1)
-#Shape(3,1)
-result=a+b_col
-#(3,4)+(3,1)→broadcastsovercolumns
-print("Fixedshape:",result.shape)</python><p>Error:Thesizeoftensora(4)mustmatchthesizeoftensorb(3)atnon-singletondimension1 <br />Fixedshape:torch.Size([3,4])</p><python>INFONote</python></td></tr></table><python>TheBroadcastingMentalModel:
-ShapeA:
-(
-3,
-4)
-Shapeb:
-(
-4
-)
-←padleftwith1s:(1,4)
----------
-Result:
-(
-3,
-4)
-←1stretchesto3</python><p><strong>CommonBroadcastingPatternsinDataScience</strong></p><python>#Pattern1:Addabiastermtoabatchofvectors
-batch
-=torch.randn(32,128)
-#32samples,128features
-bias
-=torch.randn(128)
-#onebiasperfeature
-result=batch+bias
-#(32,128)+(128,)
-#Pattern2:Scaleeachsampledifferently
-scale
-=torch.rand(32,1)
-#onescalefactorpersample
-result=batch*scale
-#(32,128)*(32,1)
-#Pattern3:Pairwisedistances(outersubtraction)
-A=torch.randn(5,3)
-#5pointsin3Dspace
-B=torch.randn(7,3)
-#7pointsin3Dspace
-diff=A.unsqueeze(1)-B.unsqueeze(0)
-#(5,1,3)-(1,7,3)=(5,7,3)
-dist=diff.pow(2).sum(dim=-1).sqrt()
-#(5,7)—pairwisedistances
-print("Pairwisedistancematrixshape:",dist.shape)</python><p>Pairwisedistancematrixshape:torch.Size([5,7])</p><p>7</p><p><strong>3.Indexing,Slicing,Masking,Scatter/Gather </strong><br /><strong>BasicIndexingandSlicing </strong><br />Tensor indexing follows NumPy conventions closely.The golden rule:<strong>each comma represents onedimension</strong>.</p><p>&lt;python&gt;</p><python>X=torch.arange(24).reshape(4,6).float() print("X:\n",X)
-#Singleelement
-print("\nX[1,3]
-=",X[1,3])
-#Row1,col3
-#Slices
-print("X[0,:]
-=",X[0,:])
-#Entirefirstrow
-print("X[:,2]
-=",X[:,2])
-#Entirethirdcolumn
-print("X[1:3,:]=\n",X[1:3,:])
-#Rows1and2
-#Stepslicing
-print("X[::2,::3]=\n",X[::2,::3])
-#Every2ndrow,every3rdcol
-<python>  X:
-tensor([[0.,
-1.,
-2.,
-3.,
-4.,
-5.],
-[6.,
-7.,
-8.,
-9.,10.,11.],
-[12.,13.,14.,15.,16.,17.], [18.,19.,20.,21.,22.,23.]])
-X[1,3]
-=tensor(9.)
-X[0,:]
-=tensor([0.,1.,2.,3.,4.,5.])
-X[:,2]
-=tensor([2.,
-8.,14.,20.])
-X[1:3,:]=
-tensor([[6.,
-7.,
-8.,
-9.,10.,11.],
-	[12.,13.,14.,15.,16.,17.]]) X[::2,::3]=
-tensor([[0.,
-3.],
-[12.,15.]])</python><p>8</p><p><strong>BooleanMasking </strong><br /><strong>Masking</strong>letsyouselectelementsbycondition,notposition.Thisishowyoufilterout anomalies,handlemissingvalues,orapplyoperationstospecificsubsetofdata.</p><p><strong>Real-WorldAnalogy:</strong>Youhaveserverresponsetimes.Youwanttofindonlytheslow responses(&gt;200ms)toinvestigatefurther.</p><python>#Simulatedserverresponsetimes(ms)for10requests response_times=torch.tensor([45.0,210.0,88.0,350.0,120.0, 	195.0,412.0,67.0,230.0,99.0])
-#Createabooleanmask
-slow_mask=response_times>200
-#Shape(10,),dtype=bool
-print("Mask:
-",slow_mask)
-print("Slowrequests:",response_times[slow_mask]) #Countslowrequests
-print("Numslow:
-",slow_mask.sum().item())
-print("%slow:
-",(slow_mask.float().mean()*100).item(),"%")</python><python>#Replaceslowresponseswithacap(usefulindatacleaning) capped=response_times.clone() capped[slow_mask]=200.0 print("Cappedtimes:",capped)
-True,False,
-True,False])
-Mask:
-tensor([False,
-True,False,
-True,False,False,
-Slowrequests:tensor([210.,350.,412.,230.])
-Numslow:
-4
-67.,200.,
-99.])
-%slow:
-40.0%
-Cappedtimes:
-tensor([45.,200.,
-88.,200.,120.,195.,200.,</python><p><strong>AdvancedIndexing:Fancy/IntegerIndexing</strong></p><p>&lt;python&gt;</p><python>scores=torch.tensor([[85,90,78], [92,88,95], [70,75,80], [60,65,72]])
-#Selectspecificrows top_students=scores[[0,1,3]]
-#Student0 #Student1 #Student2 #Student3
-#Students0,1,and3</python><p>9</p><python>print("Topstudents:\n",top_students) #Selectspecific(row,col)pairs—gatherdiagonal-style rows=torch.tensor([0,1,2,3])
-cols=torch.tensor([2,0,1,2])
-#Bestsubjectperstudent
-best_scores=scores[rows,cols]
-print("Bestscores:
-",best_scores)
-#Eachstudent'sbestsubject
-<python>  Topstudents: 	tensor([[85,90,78], 		[92,88,95], 		[60,65,72]])
-Bestscores:
-tensor([78,92,75,72])</python><p><strong>Scatter:WritingValuestoSpecificPositions</strong></p><p>scatter_isthewriteoperation:<em>putthesevaluesattheseindices</em>.</p><python>#Real-world:one-hotencodingofclasslabels num_classes=5
-labels=torch.tensor([2,0,4,1])
-#4samples,classindices</python><python>#Createemptyone-hotmatrix one_hot=torch.zeros(4,num_classes) one_hot.scatter_(dim=1,index=labels.unsqueeze(1),value=1.0) print("One-hot:\n",one_hot)</python><p>One-hot: <br />	tensor([[0.,0.,1.,0.,0.], <br />		[1.,0.,0.,0.,0.], <br />		[0.,0.,0.,0.,1.], <br />		[0.,1.,0.,0.,0.]])</p><p><strong>Gather:ReadingValuesfromSpecificPositions</strong></p><p>gatheristhereadoperation:<em>givemethevaluesattheseindices</em>.</p><p>10</p><p>&lt;python&gt;</p><python>#Real-world:extractlogitforthetrueclass(usedinlosscalculations)
-logits=torch.randn(4,5)
-#4samples,5classscores
-labels=torch.tensor([2,0,4,1])</python><python>#Gatherthescoreforthetrueclassofeachsample true_class_logits=logits.gather(dim=1,index=labels.unsqueeze(1)) print("Logits:\n",logits.round(decimals=2)) print("Trueclasslogits:",true_class_logits.squeeze())</python><p> &lt;python&gt;</p><p>Logits:</p><p>tensor([[-0.0900,-0.6100, 	0.6400, 	0.5000,</p><p>[0.7600,-0.3700, 	0.7100,-0.2500,</p><p>[0.2000,-0.3500, 	0.1800,-0.3700,</p><p>[-1.1900,-0.6600,-0.9400,-0.0100,</p><p>Trueclasslogits:tensor([0.6431, 0.7613,</p><p>0.8800], <br />0.3300], <br />0.5900], <br />0.3300]]) <br />0.5911,-0.6635])</p><p><strong>4.Reshape,View,Permute,Transpose</strong></p><p><strong>TheShape-ChangingFamily</strong></p><p>Fouroperationschangehowatensor’sdatais“seen”without(usually)copyingit:</p><python>Operation
-Whatitdoes
-Requirescontiguous?
-.view()
-Reinterpretshape—sharesmemory Reinterpretshape—copiesifneeded ReorderALLdimensions SwapexactlyTWOdimensions
-Yes No No No
-.reshape()
-.permute()
-.transpose()</python><p><strong>Real-WorldAnalogy:ASpreadsheetReorganisation</strong></p><p>Imagineyouhave24hourlytemperaturereadingsinaflatlist.Youwanttoviewthemas:-<strong>4 rows×6columns</strong>(4groupsof6)-<strong>6rows×4columns</strong>(6groupsof4)-A3-Dtensorof shape(2,3,4)(2days×3periods×4hours)</p><p>Theunderlying24numbersdon’tchange—onlyhowyouslicethemup.</p><p>11</p><p>&lt;python&gt;</p><python>flat=torch.arange(24).float() print("Originalshape:",flat.shape)
-#(24,)</python><python>a=flat.reshape(4,6) b=flat.reshape(6,4) c=flat.reshape(2,3,4)</python><python>print("(4,6):\n",a) print("(6,4):\n",b) print("(2,3,4):\n",c)
-#-1letsPyTorchinferonedimension d=flat.reshape(4,-1) print("(4,-1)→shape:",d.shape)
- <python>  Originalshape:torch.Size([24]) (4,6):
-#→(4,6),-1inferredas6
-tensor([[0.,
-1.,
-2.,
-3.,
-4.,
-5.],
-[6.,
-7.,
-8.,
-9.,10.,11.],
-(6,4):
-[12.,13.,14.,15.,16.,17.], [18.,19.,20.,21.,22.,23.]])</python></td></tr><tr><td><p>tensor([[0.,</p></td><td colspan="2"><p>1.,</p></td><td colspan="2"><p>2.,</p></td><td colspan="4"><p>3.],</p></td></tr><tr><td><p>[4.,</p></td><td colspan="2"><p>5.,</p></td><td colspan="2"><p>6.,</p></td><td colspan="4"><p>7.],</p></td></tr><tr><td><p>[8.,</p></td><td colspan="8"><p>9.,10.,11.],</p></td></tr><tr><td colspan="9"><p>	[12.,13.,14.,15.], 	[16.,17.,18.,19.], 	[20.,21.,22.,23.]]) (2,3,4):</p></td></tr><tr><td colspan="2"><p>tensor([[[0.,</p></td><td colspan="2"><p>1.,</p></td><td colspan="2"><p>2.,</p></td><td colspan="3"><p>3.],</p></td></tr><tr><td><p>[4.,</p></td><td colspan="2"><p>5.,</p></td><td colspan="2"><p>6.,</p></td><td colspan="4"><p>7.],</p></td></tr><tr><td><p>[8.,</p></td><td colspan="8"><p>9.,10.,11.]],</p></td></tr></table><p>	[[12.,13.,14.,15.], <br />		[16.,17.,18.,19.], <br />		[20.,21.,22.,23.]]]) <br />(4,-1)→shape:torch.Size([4,6])</p><p>12</p><p><strong>.view()vs.reshape()—TheCriticalDifference</strong></p><p>&lt;python&gt;</p><python>x=torch.arange(12).float().reshape(3,4) #.view()—zero-copyreshape,ONLYworksoncontiguoustensors
-y=x.view(4,3)
-#Fine—xiscontiguous
-print("view:
-",y.shape)
-#.reshape()—worksregardless,copiesifneeded
-z=x.reshape(4,3)
-#Alwayssafe
-print("reshape:",z.shape) #WHENVIEWFAILS:afterpermute/transpose,tensorbecomesnon-contiguous
-x_t=x.permute(1,0)
-#Transpose:(3,4)→(4,3),non-contiguousnow
-print("Iscontiguousafterpermute?",x_t.is_contiguous()) try:
-x_t.view(-1)
-#ThiswillCRASH
-exceptRuntimeErrorase: 	print("Error:",e)
-#FIX:call.contiguous()first
-x_t.contiguous().view(-1)
-#Works
-#OR:justusereshape()whichhandlesthisautomatically
-x_t.reshape(-1)
-#Alwayssafe
-<python>
-   view:
-torch.Size([4,3])
-reshape:
-torch.Size([4,3])
-Iscontiguousafterpermute?False Error:viewsizeisnotcompatiblewithinputtensor'ssizeandstride(atleastonedimensio
-tensor([0.,
-4.,
-8.,
-1.,
-5.,
-9.,
-2.,
-6.,10.,
-3.,
-7.,11.])</python><python>ExclamationImportant</python></td></tr></table><python>Rule:Default to .reshape() for safety.Use .view() only when you’ve verified contiguity andcareaboutzero-copyguarantees.</python><p>13</p><p><strong>PermuteandTranspose</strong></p><p>&lt;python&gt;</p><python>#Real-world:imagesinPyTorchuse(C,H,W)butmostlibrariesuse(H,W,C) #Weneedtoreorderdimensions
-img_pytorch=torch.randn(3,64,64)
-#(Channels,Height,Width)
-img_numpy
-=img_pytorch.permute(1,2,0)
-#(Height,Width,Channels)
-print("PyTorchformat:",img_pytorch.shape)
-print("NumPyformat:
-",img_numpy.shape)
-#Goback
-img_back=img_numpy.permute(2,0,1)
-#(H,W,C)→(C,H,W)
-print("BacktoPyTorch:",img_back.shape)</python><python>#Batchofimages:(N,C,H,W)→(N,H,W,C) batch=torch.randn(8,3,64,64) batch_np=batch.permute(0,2,3,1) print("Batchpermuted:",batch_np.shape)
-#.transpose()—swapexactlytwodimensions matrix=torch.arange(12).reshape(3,4)
-matrix_T=matrix.transpose(0,1)
-#Sameas.Tfor2D
-print("Original:
-",matrix.shape)
-print("Transposed:",matrix_T.shape) <python>
-PyTorchformat:torch.Size([3,64,64])
-NumPyformat:
-torch.Size([64,64,3])
-BacktoPyTorch:torch.Size([3,64,64])
-Batchpermuted:
-torch.Size([8,64,64,3])
-Original:
-torch.Size([3,4])
-Transposed:
-torch.Size([4,3])</python><p><strong>5.Memory:ContiguousTensors,.clone()vs.view() WhatisMemoryContiguity?</strong></p><p>Whenatensoris<strong>contiguous</strong>,itselementsarestoredsequentiallyinmemory,rowbyrow (C-order).Operationslike.permute()and.transpose()returna<em>view</em>withadifferent<em>stride</em></p><p>14</p><p>—theydon’trearrangememory.Aftertheseoperations,thetensorisnolongercontiguous.</p><p>&lt;python&gt;</p><python>x=torch.arange(12).reshape(3,4) print("Originalstrides:",x.stride()) print("Contiguous?",x.is_contiguous())
-x_t=x.T print("Transposedstrides:",x_t.stride()) print("Contiguous?",x_t.is_contiguous())
-#(4,1)—rowstride=4,colstride=1 #True
-#Transpose #(1,4)—reversed!
-#False</python><p>&lt;python&gt;  </p><p>Originalstrides:(4,1) <br />Contiguous?True <br />Transposedstrides:(1,4) <br />Contiguous?False</p><p><strong>.clone()vsView—WhentoCopy</strong></p><python>Operation
-Copiesmemory?
-Sharesgradients?
-Usewhen
-y=x y=
-No No
-Yes(sametensor) Yes(sharedstorage)
-Justaliasing Cheapreshape
-x.view(...) y=x.detach()
-No
-No(breaksgradient)
-Inference/ stoppinggrad Need independent copy Safe independent copyfor metrics/logging
-y=x.clone()
-Yes
-Yes(newgradienttree)
-y=
-Yes
-No
-x.clone().detach()</python><p>&lt;python&gt;</p><python>x=torch.tensor([1.0,2.0,3.0])
-#Alias—modifyingymodifiesx!
-y=x y[0]=99.0 print("xaftery[0]=99:",x)
-#xisalsochanged!</python><python>#View—stillsharesmemory</python><p>15</p><python>x=torch.tensor([1.0,2.0,3.0]) y=x.view(3) y[0]=99.0
-print("xafterviewy[0]=99:",x)
-#xisalsochanged!
-#Clone—independentcopy x=torch.tensor([1.0,2.0,3.0]) y=x.clone() y[0]=99.0
-print("xaftercloney[0]=99:",x)
-#xisUNCHANGED
-<python>  xaftery[0]=99:tensor([99.,
-2.,
-3.])
-xafterviewy[0]=99:tensor([99.,
-2.,
-3.])
-xaftercloney[0]=99:tensor([1.,2.,3.])</python><p><strong>The.contiguous()Workflow</strong></p><p>&lt;python&gt;</p><python>#Typicalworkflowwhenyoumustuse.view() x=torch.randn(4,3,5)
-x_perm=x.permute(2,0,1)
-#(5,4,3)—non-contiguous</python><python>#Safepattern:makecontiguousbefore.view() x_flat=x_perm.contiguous().view(5,-1) print("Flattenedshape:",x_flat.shape)</python><python>#Orjustusereshape—ithandlesthisforyou x_flat2=x_perm.reshape(5,-1) print("Reshaped(safe):",x_flat2.shape)</python><p>&lt;python&gt;   </p><p>Flattenedshape:torch.Size([5,12]) <br />Reshaped(safe):torch.Size([5,12])</p><p>16</p><p><strong>6.NumPyTorchInterop </strong><br /><strong>TheBridgeBetweenWorlds </strong><br />PyTorchandNumPysharememorywhenatensorisonCPU.Conversionsare(usually) zero-copy.</p><p>importnumpyasnp</p><python>#NumPy→Torch(sharesmemoryonCPU!) arr=np.array([1.0,2.0,3.0],dtype=np.float32) tensor=torch.from_numpy(arr) print("NumPytoTorch:",tensor)
-#Prooftheysharememory arr[0]=99.0
-print("Aftermodifyingarr,tensor:",tensor)
-#tensoralsochanges!</python><python>#Torch→NumPy(sharesmemory) t=torch.tensor([10.0,20.0,30.0]) n=t.numpy() print("TorchtoNumPy:",n)
-#CRITICAL:GPUtensorscannotdirectlyconverttoNumPy #t_gpu=t.cuda()
-#t_gpu.numpy()
-#←ERROR!
-#Fix:
-#t_gpu.cpu().numpy()
-#MovetoCPUfirst
-NumPytoTorch:tensor([1.,2.,3.])
-Aftermodifyingarr,tensor:tensor([99.,
-2.,
-3.])
-TorchtoNumPy:[10.20.30.]</python><p><strong>SafeConversionPattern</strong></p><python>defto_numpy_safe(tensor:torch.Tensor)->np.ndarray: """SafelyconvertanytensortoNumPy.""" returntensor.detach().cpu().numpy()</python><python>#Whyeachstep:</python><p>17</p><python>#.detach()—removesfromcomputationgraph(safeifrequires_grad=True)
-#.cpu()
-—movestoRAMifonGPU
-#.numpy()
-—zero-copybridgetoNumPy</python><python>#Usage x=torch.randn(3,4,requires_grad=True) arr=to_numpy_safe(x) print("Convertedsafely:",arr.shape,type(arr))</python><p>Convertedsafely:(3,4)&lt;class'numpy.ndarray'&gt;</p><p><strong>InteropwithPandas</strong></p><p>&lt;python&gt;</p><python>importpandasaspd</python><python>#DataFrame→Tensor df=pd.DataFrame({ 	'age':[25,30,35,28], 	'salary':[50000.0,75000.0,90000.0,62000.0], 	'score':[8.5,9.2,7.8,8.9] })</python><python>tensor=torch.tensor(df.values,dtype=torch.float32) print("FromDataFrame:",tensor.shape) print(tensor)</python><python>#Tensor→DataFrame t=torch.randn(4,3) df_back=pd.DataFrame(t.numpy(),columns=['feat_0','feat_1','feat_2']) print("\nBacktoDataFrame:\n",df_back.round(3))
-<python></python><p>FromDataFrame:torch.Size([4,3]) <br />tensor([[2.5000e+01,5.0000e+04,8.5000e+00], 	[3.0000e+01,7.5000e+04,9.2000e+00], 	[3.5000e+01,9.0000e+04,7.8000e+00], 	[2.8000e+01,6.2000e+04,8.9000e+00]])</p><python>BacktoDataFrame:
-feat_2
-feat_0
-feat_1</python><p>18</p><python>0
--0.623
--1.044
--0.481
-1
--1.174
-0.333
-0.369
-2
--0.205
-0.154
-0.186
-3
-0.250
--0.169
--1.400</python><p><strong>MiniProject1:VectorisedDataCleaning&amp;FeatureEngineering</strong></p><p><strong>Scenario</strong></p><p>Youreceivearawlogofservermetrics:CPUusage,memoryusage,andrequestcount.Some valuesarecorrupted(negativeorimpossiblylarge).We’llcleanandengineerfeaturesentirely inPyTorch—noPythonloops.</p><p>&lt;python&gt;</p><python>torch.manual_seed(42)
-#Simulaterawservermetrics:1000timesteps,3features #Features:[cpu_pct,mem_pct,req_count] raw=torch.cat([
-torch.rand(1000,1)*120,
-#CPU:some>100(corrupt)
-torch.rand(1000,1)*110,
-#Memory:some>100(corrupt)
-	torch.randint(0,500,(1000,1)).float() ],dim=1)
-#Injectsomecorruptvalues
-raw[50,0]
-=-5.0
-#NegativeCPU
-raw[200,1]=150.0
-#Impossiblememory%
-raw[300,:]=float('nan')
-#NaNrow
-print("Rawdatashape:",raw.shape) print("Rawstats(first3cols):")
-print("
-min:",raw.nanmean(dim=0).round(decimals=2))
-<python>
-Rawdatashape:torch.Size([1000,3]) Rawstats(first3cols):
-min:tensor([58.3500,
-55.5500,239.7300])</python><p>19</p><python>#Step1:Detectandcountcorruptvalues
-nan_mask
-=raw.isnan().any(dim=1)
-#rowswithNaN
-cpu_invalid
-=(raw[:,0]<0)|(raw[:,0]>100)
-mem_invalid
-=(raw[:,1]<0)|(raw[:,1]>100)
-print(f"NaNrows:
-{nan_mask.sum().item()}")
-print(f"InvalidCPUrows:{cpu_invalid.sum().item()}") print(f"InvalidMemrows:{mem_invalid.sum().item()}")
-#Step2:Clean—clamptovalidrange,fillNaNwithcolumnmedian clean=raw.clone()
-clean[nan_mask]=0.0
-#ZerooutNaNrowsfirst
-clean[:,0]=clean[:,0].clamp(0,100)
-#CPU:clipto[0,100]
-clean[:,1]=clean[:,1].clamp(0,100)
-#Mem:clipto[0,100]</python><python>#Re-fillformerNaNrowswithcolumnmeansofcleandata col_means=clean[~nan_mask].mean(dim=0) clean[nan_mask]=col_means</python><python>#Step3:Featureengineering(noloops!) cpu=clean[:,0] mem=clean[:,1] req=clean[:,2]
-pressure
-=(cpu+mem)/2.0
-#Systempressureindex
-cpu_mem_ratio=cpu/(mem+1e-6)
-#Ratio(avoiddivbyzero)
-high_load
-=((cpu>80)|(mem>80)).float()
-#Binaryflag
-#Rollingmean(last10steps)—usingunfoldforvectorisedwindows
-req_windows=req.unfold(0,10,1)
-#(991,10)
-req_roll10
-=req_windows.mean(dim=1)
-#(991,)</python><python>#Assemblefinalfeaturematrix features_base=torch.stack([cpu,mem,req,pressure,cpu_mem_ratio,high_load],dim=1) print("\nEngineeredfeaturematrixshape:",features_base.shape) print("Features:[cpu,mem,req,pressure,cpu_mem_ratio,high_load]") print("Samplerow:\n",features_base[10].round(decimals=3))
-NaNrows:
-1
-InvalidCPUrows:161 InvalidMemrows:83</python><p>20</p><python>Engineeredfeaturematrixshape:torch.Size([1000,6]) Features:[cpu,mem,req,pressure,cpu_mem_ratio,high_load] Samplerow:
-tensor([100.0000,
-69.2930,
-14.0000,
-84.6470,
-1.4430,
-1.0000])
-#Step4:Normalise(zero-mean,unit-varianceperfeature)
-mu
-=features_base.mean(dim=0)
-sigma=features_base.std(dim=0)
-sigma[sigma<1e-6]=1.0
-#Avoiddivide-by-zeroforconstantcols</python><python>features_norm=(features_base-mu)/sigma print("Post-normalisationmean(0):",features_norm.mean(dim=0).round(decimals=3))
-print("Post-normalisationstd
-(1):",features_norm.std(dim=0).round(decimals=3))
-print("\nFinalclean&engineereddataset:",features_norm.shape)
-Post-normalisationmean(0):tensor([-0.,0.,0.,0.,0.,0.])
-Post-normalisationstd
-(1):tensor([1.,1.,1.,1.,1.,1.])</python><p>Finalclean&amp;engineereddataset:torch.Size([1000,6])</p><p><strong>MiniProject2:Rolling-WindowTransformsforTimeSeries</strong></p><p><strong>Scenario</strong></p><p>Youhaveaunivariatetimeseriesofnetworkpacketcountssampledeveryminute.Builda windowedfeaturematrixforsupervisedlearning—whereeachrowisawindowof24past valuespredictingthenextvalue.</p><python>torch.manual_seed(7) #Simulate500minutesofnetworktraffic(packetsperminute)
-t
-=torch.linspace(0,4*3.14159,500)
-signal=(50*torch.sin(t)+100+torch.randn(500)*10).clamp(min=0)</python><python>print("Timeseriesshape:",signal.shape) print("Min/Max:",signal.min().item(),signal.max().item())</python><p>21</p><p>Timeseriesshape:torch.Size([500]) <br />Min/Max:26.261886596679688165.60018920898438</p><python>defmake_windows(series:torch.Tensor,window:int=24)->tuple: """ Createoverlappingwindowsfroma1-Dtimeseries.</python><python>Args: series:1-Dtensorofshape(T,) window:numberofpaststepsperwindow
-Returns:
-X:(T-window,window)
-—inputwindows
-y:(T-window,)
-—next-steptargets
-""" #.unfoldcreatesaview—nodatacopy!
-windows=series.unfold(0,window+1,1)
-#(T-window,window+1)
-X=windows[:,:-1]
-#Allbutlastcolumn→inputs
-y=windows[:,-1]
-#Lastcolumn→target
-returnX,y
-window_size=24
-X,y=make_windows(signal,window_size)
-print(f"WindowmatrixX:{X.shape}")
-#(476,24)
-print(f"Targetsy:
-{y.shape}")
-#(476,)
-WindowmatrixX:torch.Size([476,24])
-Targetsy:
-torch.Size([476])
-#Additionalwindowfeatures
-win_mean
-=X.mean(dim=1)
-#Rollingmeanperwindow
-win_std
-=X.std(dim=1)
-#Rollingstdperwindow
-win_max
-=X.max(dim=1).values
-#Rollingmax
-win_min
-=X.min(dim=1).values
-#Rollingmin
-win_range=win_max-win_min
-#Rollingrange(volatilityproxy)
-#Stackintosummaryfeaturematrix summary=torch.stack([win_mean,win_std,win_max,win_min,win_range],dim=1)
-print("Summaryfeaturematrix:",summary.shape)
-#(476,5)</python><python>#Train/testsplit(noshuffle—timeseries!)</python><p>22</p><python>split=int(len(X)*0.8) X_train,X_test=X[:split],X[split:] y_train,y_test=y[:split],y[split:] summary_train,summary_test=summary[:split],summary[split:]
-print(f"\nTrain:X={X_train.shape},y={y_train.shape}")
-print(f"Test:
-X={X_test.shape},
-y={y_test.shape}")</python><p>Summaryfeaturematrix:torch.Size([476,5])</p><python>Train:X=torch.Size([380,24]),y=torch.Size([380])
-Test:
-X=torch.Size([96,24]),
-y=torch.Size([96])</python><p><strong>ModuleSummary</strong></p><python>Concept
-KeyTakeaway</python><p><strong>Tensors </strong><br /><strong>dtype </strong><br /><strong>device </strong><br /><strong>Broadcasting </strong><br /><strong>Masking </strong><br /><strong>viewvsreshape </strong><br /><strong>permute/transpose clonevsview </strong><br /><strong>NumPyinterop</strong></p><p>Multi-dimensionalarrays.Alwayscheck.shape, .dtype,.devicefirst.</p><p>float32formodelweights;int64forlabels;boolfor masks.</p><p>Bothtensorsmustbeonthesamedevicebeforeany operation.</p><p>Worksright-to-left;adimiscompatibleifequalOR oneofthemis1.</p><p>Booleanindexingforfiltering;scatter_towrite, gathertoread.</p><p>Defaultto.reshape().Use.view()onlyon confirmedcontiguoustensors.</p><p>Re-ordersdimswithoutcopyingdata;resultis non-contiguous.</p><p>.clone()=independentcopy;view/alias=shared memory.</p><p>CPUtensorssharememoryvia.numpy().Alwaysuse .detach().cpu().numpy()assafepattern.</p><p>23</p><p><strong>What’sNext</strong></p><p><strong>Module2—Autograd</strong>picksupexactlyhere.Younowknowhowtocreateandmanipulate tensors;nextwewirethemtogetherintoacomputationgraphsoPyTorchcanautomatically computegradients.That’stheenginebehindallofdeeplearning.</p><p><em>Thisdocumentispartofa12-modulePyTorchforDataSciencecourse.Eachmodulebuilds directlyonthepreviousone.</em></p><p>24</p>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Module 1 — Tensors & Tensor Thinking | PyTorch for Data Science</title>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&family=Outfit:wght@300;400;500;600;700;800;900&family=Source+Serif+4:ital,wght@0,300;0,400;0,600;1,300;1,400&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg-primary: #0a0a0f;
+  --bg-secondary: #11111a;
+  --bg-card: #161622;
+  --bg-card-hover: #1c1c2e;
+  --bg-code: #0d0d18;
+  --text-primary: #e8e8f0;
+  --text-secondary: #9898b0;
+  --text-muted: rgba(104,104,128,0.37);
+  --accent-1: #6c5ce7;
+  --accent-2: #00cec9;
+  --accent-3: #fd79a8;
+  --accent-4: #fdcb6e;
+  --accent-5: #55efc4;
+  --gradient-line: linear-gradient(90deg, #6c5ce7, #00cec9, #fd79a8, #fdcb6e);
+  --border-subtle: rgba(255,255,255,0.06);
+  --border-glow: rgba(108,92,231,0.3);
+  --shadow-card: 0 4px 30px rgba(0,0,0,0.4);
+  --radius: 12px;
+  --radius-sm: 8px;
+}
+* { margin: 0; padding: 0; box-sizing: border-box; }
+html { scroll-behavior: smooth; }
+body {
+  background: var(--bg-primary);
+  color: var(--text-primary);
+  font-family: 'Outfit', sans-serif;
+  font-weight: 400;
+  line-height: 1.7;
+  overflow-x: hidden;
+  -webkit-font-smoothing: antialiased;
+}
+.scroll-progress {
+  position: fixed; top: 0; left: 0; height: 3px; z-index: 1000;
+  background: var(--gradient-line);
+  width: 0%; transition: width 0.1s linear;
+}
+.hero {
+  min-height: 100vh;
+  display: flex; flex-direction: column; justify-content: center; align-items: center;
+  text-align: center; padding: 2rem; position: relative; overflow: hidden;
+}
+.hero::before {
+  content: ''; position: absolute; inset: 0;
+  background:
+    radial-gradient(ellipse 600px 400px at 30% 40%, rgba(108,92,231,0.12), transparent),
+    radial-gradient(ellipse 500px 350px at 70% 60%, rgba(0,206,201,0.08), transparent);
+  pointer-events: none;
+}
+.hero-particles { position: absolute; inset: 0; pointer-events: none; }
+.hero-particles .dot {
+  position: absolute; width: 3px; height: 3px; border-radius: 50%;
+  background: var(--accent-2); opacity: 0;
+  animation: floatDot 6s ease-in-out infinite;
+}
+@keyframes floatDot {
+  0%, 100% { opacity: 0; transform: translateY(0); }
+  50% { opacity: 0.6; transform: translateY(-40px); }
+}
+.hero-label {
+  display: inline-flex; align-items: center; gap: 8px;
+  background: rgba(108,92,231,0.1); border: 1px solid rgba(108,92,231,0.25);
+  border-radius: 100px; padding: 6px 18px; font-size: 0.8rem; font-weight: 500;
+  color: var(--accent-1); letter-spacing: 1.5px; text-transform: uppercase;
+  margin-bottom: 2rem; animation: fadeInDown 0.8s ease-out;
+}
+.hero-label .dot-indicator {
+  width: 6px; height: 6px; border-radius: 50%; background: var(--accent-2);
+  animation: pulse 2s ease-in-out infinite;
+}
+@keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.3; } }
+.hero h1 {
+  font-size: clamp(2.8rem, 6vw, 5rem); font-weight: 900; line-height: 1.1;
+  letter-spacing: -2px; margin-bottom: 1.5rem;
+  animation: fadeInDown 0.8s ease-out 0.1s both;
+}
+.hero h1 .gradient-text {
+  background: var(--gradient-line); -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent; background-clip: text;
+}
+.hero-subtitle {
+  font-family: 'Source Serif 4', serif; font-size: clamp(1.05rem, 2vw, 1.25rem);
+  color: var(--text-secondary); max-width: 640px; line-height: 1.8; font-weight: 300;
+  animation: fadeInDown 0.8s ease-out 0.2s both;
+}
+.hero-scroll-cue {
+  position: absolute; bottom: 3rem;
+  display: flex; flex-direction: column; align-items: center; gap: 8px;
+  color: var(--text-secondary); font-size: 0.75rem; letter-spacing: 2px; text-transform: uppercase;
+  animation: fadeInDown 0.8s ease-out 0.5s both;
+}
+.hero-scroll-cue .arrow {
+  width: 20px; height: 20px; border-right: 2px solid var(--text-secondary);
+  border-bottom: 2px solid var(--text-secondary); transform: rotate(45deg);
+  animation: bounceArrow 2s ease-in-out infinite;
+}
+@keyframes bounceArrow { 0%, 100% { transform: rotate(45deg) translateY(0); } 50% { transform: rotate(45deg) translateY(6px); } }
+@keyframes fadeInDown { from { opacity: 0; transform: translateY(-20px); } to { opacity: 1; transform: translateY(0); } }
+.content-wrapper { max-width: 860px; margin: 0 auto; padding: 0 2rem 6rem; }
+.section {
+  margin-bottom: 5rem; opacity: 0; transform: translateY(30px);
+  transition: all 0.7s cubic-bezier(0.16, 1, 0.3, 1);
+}
+.section.visible { opacity: 1; transform: translateY(0); }
+.section-number {
+  font-family: 'JetBrains Mono', monospace; font-size: 0.7rem; color: var(--accent-2);
+  letter-spacing: 3px; text-transform: uppercase; margin-bottom: 0.75rem;
+  display: flex; align-items: center; gap: 10px;
+}
+.section-number::after {
+  content: ''; flex: 1; height: 1px;
+  background: linear-gradient(90deg, var(--accent-2), transparent); opacity: 0.3;
+}
+h2 { font-size: clamp(1.8rem, 3.5vw, 2.4rem); font-weight: 700; letter-spacing: -0.5px; margin-bottom: 1.5rem; line-height: 1.2; }
+h3 { font-size: 1.3rem; font-weight: 600; margin: 2.5rem 0 1rem; color: var(--text-primary); }
+p { color: var(--text-secondary); margin-bottom: 1.25rem; font-size: 1.02rem; }
+p strong, p b { color: var(--text-primary); font-weight: 600; }
+.highlight { color: var(--accent-2); font-weight: 500; }
+.gradient-divider { height: 2px; background: var(--gradient-line); border-radius: 2px; margin: 4rem 0; opacity: 0.5; }
+.code-block { background: var(--bg-code); border: 1px solid var(--border-subtle); border-radius: var(--radius); overflow: hidden; margin: 1.5rem 0; }
+.code-block-header {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 10px 16px; background: rgba(255,255,255,0.02); border-bottom: 1px solid var(--border-subtle);
+}
+.code-lang { font-family: 'JetBrains Mono', monospace; font-size: 0.7rem; color: var(--accent-2); display: flex; align-items: center; gap: 6px; }
+.code-lang::before { content: '●'; font-size: 8px; }
+.code-block pre { padding: 16px 20px; overflow-x: auto; font-family: 'JetBrains Mono', monospace; font-size: 0.82rem; line-height: 1.65; color: #c8c8d8; }
+.code-block .kw { color: #c792ea; }
+.code-block .fn { color: #82aaff; }
+.code-block .str { color: #c3e88d; }
+.code-block .num { color: #f78c6c; }
+.code-block .cm { color: #546e7a; font-style: italic; }
+.code-block .op { color: #89ddff; }
+.code-output { border-top: 1px solid var(--border-subtle); background: rgba(0,0,0,0.25); }
+.code-output-label {
+  display: flex; align-items: center; gap: 6px; padding: 8px 16px 0;
+  font-family: 'JetBrains Mono', monospace; font-size: 0.65rem; color: var(--accent-5);
+  letter-spacing: 1px; text-transform: uppercase;
+}
+.code-output-label::before { content: '▸'; font-size: 0.7rem; }
+.code-output pre { padding: 8px 20px 14px; font-family: 'JetBrains Mono', monospace; font-size: 0.8rem; line-height: 1.6; color: var(--accent-5); opacity: 0.85; overflow-x: auto; }
+.formula-card {
+  background: var(--bg-card); border: 1px solid var(--border-subtle);
+  border-radius: var(--radius); padding: 24px 28px; margin: 1.5rem 0;
+  position: relative; overflow: hidden;
+}
+.formula-card::before { content: ''; position: absolute; left: 0; top: 0; bottom: 0; width: 3px; background: var(--gradient-line); }
+.formula-card .formula-label { font-family: 'JetBrains Mono', monospace; font-size: 0.7rem; color: var(--accent-1); letter-spacing: 1.5px; text-transform: uppercase; margin-bottom: 12px; }
+.formula-card .formula-math { font-size: 1.3rem; color: var(--text-primary); font-weight: 300; letter-spacing: 1px; margin-bottom: 12px; font-family: 'Source Serif 4', serif; }
+.formula-card .formula-explain { font-size: 0.88rem; color: var(--text-secondary); line-height: 1.6; }
+.formula-card .formula-explain .var { font-family: 'Source Serif 4', serif; font-style: italic; color: var(--accent-4); font-weight: 400; }
+.insight {
+  background: linear-gradient(135deg, rgba(108,92,231,0.08), rgba(0,206,201,0.05));
+  border: 1px solid rgba(108,92,231,0.2); border-radius: var(--radius);
+  padding: 20px 24px; margin: 2rem 0; position: relative;
+}
+.insight::before { content: '💡'; position: absolute; top: -12px; left: 20px; background: var(--bg-primary); padding: 0 8px; font-size: 1.1rem; }
+.insight p { color: var(--text-primary); font-size: 0.95rem; margin: 0; }
+.warning {
+  background: linear-gradient(135deg, rgba(253,121,168,0.08), rgba(253,203,110,0.05));
+  border: 1px solid rgba(253,121,168,0.2); border-radius: var(--radius);
+  padding: 20px 24px; margin: 2rem 0; position: relative;
+}
+.warning::before { content: '⚠️'; position: absolute; top: -12px; left: 20px; background: var(--bg-primary); padding: 0 8px; font-size: 1.1rem; }
+.warning p { color: var(--text-primary); font-size: 0.95rem; margin: 0; }
+.concept-badge {
+  display: inline-flex; align-items: center; gap: 6px;
+  background: rgba(0,206,201,0.1); border: 1px solid rgba(0,206,201,0.2);
+  color: var(--accent-2); padding: 4px 12px; border-radius: 100px;
+  font-family: 'JetBrains Mono', monospace; font-size: 0.7rem; font-weight: 500; margin: 0 4px;
+}
+.data-table { width: 100%; border-collapse: collapse; margin: 1.5rem 0; font-size: 0.9rem; }
+.data-table th {
+  font-family: 'JetBrains Mono', monospace; font-size: 0.7rem; letter-spacing: 1px;
+  text-transform: uppercase; color: var(--accent-2); padding: 10px 16px;
+  border-bottom: 1px solid var(--border-subtle); text-align: left; background: rgba(0,206,201,0.04);
+}
+.data-table td { padding: 10px 16px; border-bottom: 1px solid var(--border-subtle); color: var(--text-secondary); }
+.data-table tr:hover td { background: rgba(255,255,255,0.02); color: var(--text-primary); }
+.quiz-card { background: var(--bg-card); border: 1px solid var(--border-subtle); border-radius: var(--radius); margin: 1.5rem 0; overflow: hidden; }
+.quiz-card-header { padding: 14px 20px; background: rgba(253,203,110,0.05); border-bottom: 1px solid var(--border-subtle); font-weight: 600; font-size: 0.9rem; display: flex; align-items: center; gap: 8px; }
+.quiz-card-body { padding: 20px 24px; }
+.quiz-question { font-size: 0.95rem; color: var(--text-primary); margin-bottom: 16px; line-height: 1.6; }
+.quiz-options { display: flex; flex-direction: column; gap: 8px; }
+.quiz-option {
+  padding: 12px 16px; border: 1px solid var(--border-subtle); border-radius: var(--radius-sm);
+  cursor: pointer; font-size: 0.9rem; color: var(--text-secondary); transition: all 0.25s;
+  display: flex; align-items: center; gap: 10px;
+}
+.quiz-option:hover { border-color: var(--accent-1); background: rgba(108,92,231,0.06); color: var(--text-primary); }
+.quiz-option.correct { border-color: var(--accent-5); background: rgba(85,239,196,0.1); color: var(--accent-5); }
+.quiz-option.incorrect { border-color: var(--accent-3); background: rgba(253,121,168,0.1); color: var(--accent-3); }
+.quiz-option .option-letter {
+  font-family: 'JetBrains Mono', monospace; font-size: 0.7rem; font-weight: 600;
+  width: 22px; height: 22px; display: flex; align-items: center; justify-content: center;
+  border-radius: 50%; border: 1px solid currentColor; flex-shrink: 0;
+}
+.quiz-feedback { margin-top: 12px; padding: 12px 16px; border-radius: var(--radius-sm); font-size: 0.88rem; line-height: 1.6; display: none; }
+.quiz-feedback.show { display: block; }
+.quiz-feedback.correct-fb { background: rgba(85,239,196,0.08); border: 1px solid rgba(85,239,196,0.2); color: var(--accent-5); }
+.quiz-feedback.incorrect-fb { background: rgba(253,121,168,0.08); border: 1px solid rgba(253,121,168,0.2); color: var(--accent-3); }
+@media (max-width: 640px) { .content-wrapper { padding: 0 1rem 4rem; } }
+</style>
+</head>
+<body>
+
+<div class="scroll-progress" id="scrollProgress"></div>
+
+<section class="hero">
+  <div class="hero-particles" id="heroParticles"></div>
+  <div class="hero-label"><span class="dot-indicator"></span> PyTorch · Module 1 of 12</div>
+  <h1>Tensors &amp; <span class="gradient-text">Tensor Thinking</span></h1>
+  <p class="hero-subtitle">
+    The real foundation of PyTorch. By the end of this module you will be completely comfortable
+    creating, inspecting, and transforming tensors — the single data structure that everything
+    in PyTorch is built on. No more shape panics. No more mysterious broadcast errors.
+  </p>
+  <div class="hero-scroll-cue"><span>Begin</span><div class="arrow"></div></div>
+</section>
+
+<div class="content-wrapper">
+
+<!-- SECTION 1 -->
+<div class="section" id="sec1">
+  <div class="section-number">01 — Tensor Creation, dtype, device, shape</div>
+  <h2>What is a Tensor?</h2>
+
+  <p>A <strong>tensor</strong> is just a multi-dimensional array — a generalisation of scalars, vectors,
+  and matrices into any number of dimensions. Think of it as NumPy's <code>ndarray</code>, but with two superpowers:</p>
+
+  <div class="formula-card">
+    <div class="formula-label">The Two Superpowers</div>
+    <div class="formula-math">GPU Acceleration &nbsp;+&nbsp; Automatic Differentiation</div>
+    <div class="formula-explain">
+      <span class="var">GPU</span> — can perform millions of operations in parallel &nbsp;·&nbsp;
+      <span class="var">Autograd</span> — knows how to track gradients for automatic differentiation
+    </div>
+  </div>
+
+  <h3>Dimensions at a Glance</h3>
+  <table class="data-table">
+    <thead><tr><th>Name</th><th>Dimensions</th><th>Example</th></tr></thead>
+    <tbody>
+      <tr><td><strong>Scalar</strong></td><td>0-D</td><td>A single temperature reading: <code>38.5</code></td></tr>
+      <tr><td><strong>Vector</strong></td><td>1-D</td><td>Daily temperatures for a week: <code>[38, 37, 39, 40, 36, 35, 38]</code></td></tr>
+      <tr><td><strong>Matrix</strong></td><td>2-D</td><td>Temperatures for 7 days × 5 cities</td></tr>
+      <tr><td><strong>Tensor</strong></td><td>N-D</td><td>Temperatures for 7 days × 5 cities × 24 hours</td></tr>
+    </tbody>
+  </table>
+
+  <h3>The Three Properties You Must Always Know</h3>
+  <p>Every tensor has three properties you should check immediately when debugging:</p>
+
+  <div class="formula-card">
+    <div class="formula-label">Core Tensor Properties</div>
+    <div class="formula-math">shape &nbsp;·&nbsp; dtype &nbsp;·&nbsp; device</div>
+    <div class="formula-explain">
+      <span class="var">shape</span> — how many elements in each dimension, e.g. <code>torch.Size([32, 128])</code> &nbsp;·&nbsp;
+      <span class="var">dtype</span> — what kind of numbers are stored (<code>float32</code>, <code>int64</code>, <code>bool</code>) &nbsp;·&nbsp;
+      <span class="var">device</span> — where the tensor lives (<code>cpu</code> or <code>cuda:0</code>)
+    </div>
+  </div>
+
+  <div class="insight"><p><strong>Real-World Analogy:</strong> Imagine you manage a chain of coffee shops. You track daily sales for <strong>5 items</strong> across <strong>3 branches</strong> for <strong>30 days</strong>. That's a 3-D tensor of shape <code>(30, 3, 5)</code>. The <code>dtype</code> tells you whether those numbers are whole units sold (<code>int64</code>) or revenue in dollars (<code>float32</code>). The <code>device</code> tells you whether that data is in your laptop's RAM (CPU) or being processed at lightning speed on a GPU.</p></div>
+
+  <div class="code-block">
+    <div class="code-block-header"><span class="code-lang">Python</span></div>
+    <pre><span class="kw">import</span> torch
+
+<span class="cm"># --- Scalars, Vectors, Matrices, Tensors ---</span>
+scalar  = torch.<span class="fn">tensor</span>(<span class="num">38.5</span>)                    <span class="cm"># 0-D</span>
+vector  = torch.<span class="fn">tensor</span>([<span class="num">38.0</span>, <span class="num">37</span>, <span class="num">39</span>, <span class="num">40</span>, <span class="num">36</span>, <span class="num">35</span>, <span class="num">38</span>])  <span class="cm"># 1-D: 7 days</span>
+matrix  = torch.<span class="fn">zeros</span>(<span class="num">7</span>, <span class="num">5</span>)                    <span class="cm"># 2-D: 7 days × 5 cities</span>
+tensor3 = torch.<span class="fn">zeros</span>(<span class="num">30</span>, <span class="num">3</span>, <span class="num">5</span>)                <span class="cm"># 3-D: 30 days × 3 branches × 5 items</span>
+
+<span class="fn">print</span>(<span class="str">"Shapes:"</span>, scalar.shape, vector.shape, matrix.shape, tensor3.shape)
+<span class="fn">print</span>(<span class="str">"Dimensions:"</span>, scalar.ndim, vector.ndim, matrix.ndim, tensor3.ndim)</pre>
+    <div class="code-output">
+      <div class="code-output-label">Output</div>
+      <pre>Shapes: torch.Size([]) torch.Size([7]) torch.Size([7, 5]) torch.Size([30, 3, 5])
+Dimensions: 0 1 2 3</pre>
+    </div>
+  </div>
+
+  <h3>Common Creation Functions</h3>
+  <div class="code-block">
+    <div class="code-block-header"><span class="code-lang">Python</span></div>
+    <pre><span class="cm"># From data</span>
+a = torch.<span class="fn">tensor</span>([<span class="num">1.0</span>, <span class="num">2.0</span>, <span class="num">3.0</span>])  <span class="cm"># Infers float32</span>
+b = torch.<span class="fn">tensor</span>([<span class="num">1</span>, <span class="num">2</span>, <span class="num">3</span>])        <span class="cm"># Infers int64</span>
+
+<span class="cm"># Filled tensors</span>
+zeros = torch.<span class="fn">zeros</span>(<span class="num">3</span>, <span class="num">4</span>)
+ones  = torch.<span class="fn">ones</span>(<span class="num">3</span>, <span class="num">4</span>)
+full  = torch.<span class="fn">full</span>((<span class="num">3</span>, <span class="num">4</span>), fill_value=<span class="num">7.0</span>)
+
+<span class="cm"># Ranges (like Python's range / np.arange)</span>
+r = torch.<span class="fn">arange</span>(<span class="num">0</span>, <span class="num">10</span>, step=<span class="num">2</span>)        <span class="cm"># [0, 2, 4, 6, 8]</span>
+l = torch.<span class="fn">linspace</span>(<span class="num">0</span>, <span class="num">1</span>, steps=<span class="num">5</span>)      <span class="cm"># [0.0, 0.25, 0.5, 0.75, 1.0]</span>
+
+<span class="cm"># Random</span>
+rand   = torch.<span class="fn">rand</span>(<span class="num">3</span>, <span class="num">4</span>)              <span class="cm"># Uniform [0, 1)</span>
+randn  = torch.<span class="fn">randn</span>(<span class="num">3</span>, <span class="num">4</span>)             <span class="cm"># Standard Normal (mean=0, std=1)</span>
+randint= torch.<span class="fn">randint</span>(<span class="num">0</span>, <span class="num">10</span>, (<span class="num">3</span>, <span class="num">4</span>))  <span class="cm"># Random integers in [0, 10)</span>
+
+<span class="cm"># Like-functions (same shape/device as another tensor)</span>
+x = torch.<span class="fn">randn</span>(<span class="num">3</span>, <span class="num">4</span>)
+y = torch.<span class="fn">zeros_like</span>(x)               <span class="cm"># Zeros with same shape &amp; dtype as x</span>
+z = torch.<span class="fn">ones_like</span>(x)</pre>
+  </div>
+
+  <h3>dtype: Choosing the Right Number Type</h3>
+  <div class="code-block">
+    <div class="code-block-header"><span class="code-lang">Python</span></div>
+    <pre><span class="cm"># Default dtypes</span>
+f32 = torch.<span class="fn">tensor</span>([<span class="num">1.0</span>, <span class="num">2.0</span>])                         <span class="cm"># float32 — default for floats</span>
+i64 = torch.<span class="fn">tensor</span>([<span class="num">1</span>, <span class="num">2</span>])                               <span class="cm"># int64   — default for ints</span>
+
+<span class="cm"># Explicit dtype</span>
+f16 = torch.<span class="fn">tensor</span>([<span class="num">1.0</span>, <span class="num">2.0</span>], dtype=torch.float16)  <span class="cm"># Half precision (saves memory)</span>
+f64 = torch.<span class="fn">tensor</span>([<span class="num">1.0</span>, <span class="num">2.0</span>], dtype=torch.float64)  <span class="cm"># Double precision</span>
+boo = torch.<span class="fn">tensor</span>([<span class="kw">True</span>, <span class="kw">False</span>], dtype=torch.bool)
+
+<span class="cm"># Casting (converting between dtypes)</span>
+x = torch.<span class="fn">tensor</span>([<span class="num">1.7</span>, <span class="num">2.9</span>, <span class="num">3.1</span>])
+<span class="fn">print</span>(x.<span class="fn">to</span>(torch.int32))   <span class="cm"># Truncates: tensor([1, 2, 3])</span>
+<span class="fn">print</span>(x.<span class="fn">float</span>())           <span class="cm"># Stays float32</span>
+<span class="fn">print</span>(x.<span class="fn">half</span>())            <span class="cm"># Converts to float16</span></pre>
+    <div class="code-output">
+      <div class="code-output-label">Output</div>
+      <pre>tensor([1, 2, 3], dtype=torch.int32)
+tensor([1.7000, 2.9000, 3.1000])
+tensor([1.7002, 2.9004, 3.0996], dtype=torch.float16)</pre>
+    </div>
+  </div>
+
+  <div class="insight"><p><strong>Rule of Thumb:</strong> Use <code>float32</code> for model weights and activations. Use <code>int64</code> for class labels. Use <code>bool</code> for masks and conditions. Use <code>float16</code> in mixed-precision training to halve memory usage.</p></div>
+
+  <h3>device: CPU vs GPU</h3>
+  <div class="code-block">
+    <div class="code-block-header"><span class="code-lang">Python</span></div>
+    <pre><span class="cm"># Check if a GPU is available</span>
+device = <span class="str">"cuda"</span> <span class="kw">if</span> torch.cuda.<span class="fn">is_available</span>() <span class="kw">else</span> <span class="str">"cpu"</span>
+<span class="fn">print</span>(<span class="fn">f</span><span class="str">"Using device: {device}"</span>)
+
+<span class="cm"># Create tensors on a specific device</span>
+x_cpu = torch.<span class="fn">randn</span>(<span class="num">3</span>, <span class="num">4</span>)          <span class="cm"># Always on CPU</span>
+x_gpu = torch.<span class="fn">randn</span>(<span class="num">3</span>, <span class="num">4</span>, device=<span class="str">"cuda"</span>) <span class="kw">if</span> torch.cuda.<span class="fn">is_available</span>() <span class="kw">else</span> x_cpu
+
+<span class="cm"># Move existing tensors between devices</span>
+x_cpu_2 = x_cpu.<span class="fn">to</span>(<span class="str">"cpu"</span>)
+<span class="cm"># x_gpu_2 = x_cpu.to("cuda")   # uncomment if GPU available</span>
+
+<span class="cm"># CRITICAL RULE: Both tensors must be on the SAME device before any operation</span>
+<span class="cm"># x_cpu + x_gpu   &lt;-- This will CRASH with RuntimeError</span></pre>
+  </div>
+
+  <div class="warning"><p><strong>The Most Common Beginner Crash:</strong> <code>RuntimeError: Expected all tensors to be on the same device.</code> Always ensure operands are on the same device before arithmetic. Move everything to <code>device</code> at the start of your script.</p></div>
+</div>
+
+<div class="gradient-divider"></div>
+
+<!-- SECTION 2 -->
+<div class="section" id="sec2">
+  <div class="section-number">02 — Broadcasting Rules</div>
+  <h2>What is Broadcasting?</h2>
+
+  <p><strong>Broadcasting</strong> lets PyTorch do arithmetic on tensors of <em>different shapes</em> by <strong>virtually stretching</strong> the smaller tensor — without actually copying data in memory. It's what makes vectorised code both fast and readable.</p>
+
+  <h3>The Two Broadcasting Rules</h3>
+  <p>PyTorch checks shapes <strong>right-to-left</strong>, dimension by dimension. Two dimensions are compatible if:</p>
+  <div class="formula-card">
+    <div class="formula-label">Broadcasting Compatibility</div>
+    <div class="formula-math">Equal dimensions &nbsp;OR&nbsp; one dimension = 1</div>
+    <div class="formula-explain">
+      If tensors have different numbers of dimensions, the shape with fewer dims is <span class="var">padded with 1s on the left</span> automatically.
+    </div>
+  </div>
+
+  <div class="insight"><p><strong>Real-World Analogy:</strong> You have 3 students, each with 4 exercise scores. You want to add a subject-specific bonus of <code>[10, 20, 30, 40]</code> to every student's scores. Matrix A is <code>(3, 4)</code>. Bonus vector b is <code>(4,)</code>. PyTorch virtually stretches b to <code>(3, 4)</code> by repeating it — zero extra memory.</p></div>
+
+  <div class="code-block">
+    <div class="code-block-header"><span class="code-lang">Python</span></div>
+    <pre><span class="cm"># Shape: (3, 4) + (4,) → broadcasts to (3, 4)</span>
+A = torch.<span class="fn">arange</span>(<span class="num">12</span>).<span class="fn">reshape</span>(<span class="num">3</span>, <span class="num">4</span>).<span class="fn">float</span>()
+b = torch.<span class="fn">tensor</span>([<span class="num">10</span>, <span class="num">20</span>, <span class="num">30</span>, <span class="num">40</span>]).<span class="fn">float</span>()
+<span class="fn">print</span>(A + b)
+
+<span class="cm"># Shape: (3, 1) + (1, 4) → broadcasts to (3, 4)</span>
+col = torch.<span class="fn">tensor</span>([[<span class="num">100</span>], [<span class="num">200</span>], [<span class="num">300</span>]]).<span class="fn">float</span>()
+row = torch.<span class="fn">tensor</span>([[<span class="num">1</span>, <span class="num">2</span>, <span class="num">3</span>, <span class="num">4</span>]]).<span class="fn">float</span>()
+<span class="fn">print</span>(col + row)</pre>
+    <div class="code-output">
+      <div class="code-output-label">Output</div>
+      <pre>tensor([[10., 21., 32., 43.],
+        [14., 25., 36., 47.],
+        [18., 29., 40., 51.]])
+
+tensor([[101., 102., 103., 104.],
+        [201., 202., 203., 204.],
+        [301., 302., 303., 304.]])</pre>
+    </div>
+  </div>
+
+  <h3>Broadcasting Errors to Watch Out For</h3>
+  <div class="code-block">
+    <div class="code-block-header"><span class="code-lang">Python</span></div>
+    <pre><span class="cm"># These FAIL — not compatible right-to-left</span>
+<span class="cm"># torch.zeros(3, 4) + torch.zeros(4, 3)   # 4 != 3 AND 3 != 4</span>
+<span class="cm"># torch.zeros(3, 4) + torch.zeros(2)      # 4 != 2 and neither is 1</span>
+
+<span class="cm"># These WORK</span>
+<span class="fn">print</span>(torch.<span class="fn">zeros</span>(<span class="num">3</span>, <span class="num">4</span>) + torch.<span class="fn">zeros</span>(<span class="num">1</span>, <span class="num">4</span>))   <span class="cm"># (3,4) ✓</span>
+<span class="fn">print</span>(torch.<span class="fn">zeros</span>(<span class="num">3</span>, <span class="num">4</span>) + torch.<span class="fn">zeros</span>(<span class="num">3</span>, <span class="num">1</span>))   <span class="cm"># (3,4) ✓</span>
+<span class="fn">print</span>(torch.<span class="fn">zeros</span>(<span class="num">3</span>, <span class="num">4</span>, <span class="num">5</span>) + torch.<span class="fn">zeros</span>(<span class="num">4</span>, <span class="num">5</span>)) <span class="cm"># (3,4,5) ✓ — padded left</span></pre>
+  </div>
+</div>
+
+<div class="gradient-divider"></div>
+
+<!-- SECTION 3 -->
+<div class="section" id="sec3">
+  <div class="section-number">03 — Indexing, Slicing, Fancy Indexing</div>
+  <h2>Accessing Data Inside Tensors</h2>
+
+  <p>PyTorch indexing is almost identical to NumPy. Master this and you'll never fight shape errors again.</p>
+
+  <div class="code-block">
+    <div class="code-block-header"><span class="code-lang">Python</span></div>
+    <pre>x = torch.<span class="fn">arange</span>(<span class="num">12</span>).<span class="fn">reshape</span>(<span class="num">3</span>, <span class="num">4</span>)
+<span class="cm"># tensor([[ 0,  1,  2,  3],</span>
+<span class="cm">#         [ 4,  5,  6,  7],</span>
+<span class="cm">#         [ 8,  9, 10, 11]])</span>
+
+<span class="cm"># Single element</span>
+<span class="fn">print</span>(x[<span class="num">1</span>, <span class="num">2</span>])          <span class="cm"># tensor(6)</span>
+
+<span class="cm"># Row / column slices</span>
+<span class="fn">print</span>(x[<span class="num">0</span>])             <span class="cm"># First row  → tensor([0, 1, 2, 3])</span>
+<span class="fn">print</span>(x[:, <span class="num">1</span>])          <span class="cm"># Second col → tensor([1, 5, 9])</span>
+<span class="fn">print</span>(x[<span class="num">1</span>:, <span class="num">2</span>:])        <span class="cm"># Bottom-right 2×2 block</span>
+
+<span class="cm"># Step slicing</span>
+<span class="fn">print</span>(x[::, ::<span class="num">2</span>])       <span class="cm"># Every other column</span>
+
+<span class="cm"># Boolean (mask) indexing</span>
+mask = x > <span class="num">5</span>
+<span class="fn">print</span>(x[mask])          <span class="cm"># Elements &gt; 5 as a flat tensor</span>
+
+<span class="cm"># Fancy indexing — pick arbitrary rows</span>
+<span class="fn">print</span>(x[[<span class="num">0</span>, <span class="num">2</span>]])        <span class="cm"># Rows 0 and 2</span>
+<span class="fn">print</span>(x[[<span class="num">0</span>, <span class="num">2</span>], [<span class="num">1</span>, <span class="num">3</span>]])  <span class="cm"># Elements (0,1) and (2,3) → tensor([1, 11])</span></pre>
+    <div class="code-output">
+      <div class="code-output-label">Output</div>
+      <pre>tensor(6)
+tensor([0, 1, 2, 3])
+tensor([1, 5, 9])
+tensor([[ 6,  7], [10, 11]])
+tensor([[ 0,  2], [ 4,  6], [ 8, 10]])
+tensor([ 6,  7,  8,  9, 10, 11])
+tensor([[ 0,  1,  2,  3], [ 8,  9, 10, 11]])
+tensor([ 1, 11])</pre>
+    </div>
+  </div>
+</div>
+
+<div class="gradient-divider"></div>
+
+<!-- SECTION 4 -->
+<div class="section" id="sec4">
+  <div class="section-number">04 — Reshaping &amp; Views</div>
+  <h2>Reshaping Without Copying Data</h2>
+
+  <p>This is where most beginners struggle. Understanding <code>.view()</code> vs <code>.reshape()</code> will save you hours of debugging.</p>
+
+  <div class="formula-card">
+    <div class="formula-label">The Key Rule</div>
+    <div class="formula-math">.view() = zero-copy reshape on contiguous tensors</div>
+    <div class="formula-explain">
+      <span class="var">.view()</span> — fastest, returns a new tensor sharing the same memory. Requires contiguous tensor. &nbsp;·&nbsp;
+      <span class="var">.reshape()</span> — always works, may or may not copy. Use when unsure. &nbsp;·&nbsp;
+      <span class="var">.contiguous()</span> — makes tensor contiguous in memory before calling .view()
+    </div>
+  </div>
+
+  <div class="code-block">
+    <div class="code-block-header"><span class="code-lang">Python</span></div>
+    <pre>x = torch.<span class="fn">arange</span>(<span class="num">12</span>)
+
+<span class="cm"># .view() — shares memory (zero-copy)</span>
+y = x.<span class="fn">view</span>(<span class="num">3</span>, <span class="num">4</span>)
+y[<span class="num">0</span>, <span class="num">0</span>] = <span class="num">99</span>
+<span class="fn">print</span>(x[<span class="num">0</span>])  <span class="cm"># 99 — x is also modified! They share memory.</span>
+
+<span class="cm"># .reshape() — safe alternative</span>
+z = x.<span class="fn">reshape</span>(<span class="num">4</span>, <span class="num">3</span>)
+
+<span class="cm"># Special shapes</span>
+<span class="fn">print</span>(x.<span class="fn">view</span>(<span class="num">1</span>, <span class="num">-1</span>))     <span class="cm"># (1, 12) — -1 means "infer this dim"</span>
+<span class="fn">print</span>(x.<span class="fn">view</span>(-<span class="num">1</span>, <span class="num">3</span>))     <span class="cm"># (4, 3)</span>
+
+<span class="cm"># squeeze / unsqueeze — add or remove size-1 dimensions</span>
+a = torch.<span class="fn">zeros</span>(<span class="num">3</span>, <span class="num">1</span>, <span class="num">4</span>)
+<span class="fn">print</span>(a.<span class="fn">squeeze</span>().shape)      <span class="cm"># (3, 4)   — removes all size-1 dims</span>
+<span class="fn">print</span>(a.<span class="fn">unsqueeze</span>(<span class="num">0</span>).shape)  <span class="cm"># (1, 3, 1, 4) — adds a new dim at position 0</span>
+
+<span class="cm"># flatten / ravel</span>
+<span class="fn">print</span>(a.<span class="fn">flatten</span>().shape)     <span class="cm"># (12,) — equivalent to .view(-1)</span></pre>
+    <div class="code-output">
+      <div class="code-output-label">Output</div>
+      <pre>tensor(99)
+torch.Size([3, 4])
+torch.Size([4, 3])
+torch.Size([3, 4])
+torch.Size([1, 3, 1, 4])
+torch.Size([12])</pre>
+    </div>
+  </div>
+
+  <div class="insight"><p><strong>When does .view() fail?</strong> After a transpose or any non-contiguous operation like <code>x.T</code>. Fix it with <code>x.T.contiguous().view(...)</code> or simply use <code>.reshape()</code> which handles it automatically.</p></div>
+</div>
+
+<div class="gradient-divider"></div>
+
+<!-- SECTION 5 -->
+<div class="section" id="sec5">
+  <div class="section-number">05 — Operations &amp; Aggregations</div>
+  <h2>The Math Behind the Magic</h2>
+
+  <div class="code-block">
+    <div class="code-block-header"><span class="code-lang">Python</span></div>
+    <pre>a = torch.<span class="fn">tensor</span>([[<span class="num">1.0</span>, <span class="num">2</span>], [<span class="num">3</span>, <span class="num">4</span>]])
+b = torch.<span class="fn">tensor</span>([[<span class="num">5.0</span>, <span class="num">6</span>], [<span class="num">7</span>, <span class="num">8</span>]])
+
+<span class="cm"># Element-wise ops (same shape required or broadcastable)</span>
+<span class="fn">print</span>(a + b)            <span class="cm"># element-wise add</span>
+<span class="fn">print</span>(a * b)            <span class="cm"># element-wise multiply (NOT matrix multiply)</span>
+<span class="fn">print</span>(a ** <span class="num">2</span>)           <span class="cm"># element-wise square</span>
+
+<span class="cm"># Matrix multiply (the one you'll use most)</span>
+<span class="fn">print</span>(a @ b)            <span class="cm"># equivalent to torch.matmul(a, b)</span>
+<span class="fn">print</span>(torch.<span class="fn">matmul</span>(a, b))
+
+<span class="cm"># Aggregations — along an axis</span>
+x = torch.<span class="fn">tensor</span>([[<span class="num">1</span>, <span class="num">2</span>, <span class="num">3</span>], [<span class="num">4</span>, <span class="num">5</span>, <span class="num">6</span>]]).<span class="fn">float</span>()
+<span class="fn">print</span>(x.<span class="fn">sum</span>(dim=<span class="num">0</span>))     <span class="cm"># Sum down rows → shape (3,)</span>
+<span class="fn">print</span>(x.<span class="fn">sum</span>(dim=<span class="num">1</span>))     <span class="cm"># Sum across cols → shape (2,)</span>
+<span class="fn">print</span>(x.<span class="fn">mean</span>())         <span class="cm"># Grand mean (scalar)</span>
+<span class="fn">print</span>(x.<span class="fn">max</span>(dim=<span class="num">1</span>))     <span class="cm"># Returns (values, indices)</span>
+<span class="fn">print</span>(x.<span class="fn">argmax</span>(dim=<span class="num">1</span>)) <span class="cm"># Just the indices</span></pre>
+    <div class="code-output">
+      <div class="code-output-label">Output</div>
+      <pre>tensor([[ 6.,  8.], [10., 12.]])
+tensor([[ 5., 12.], [21., 32.]])
+
+Matrix multiply:
+tensor([[19., 22.], [43., 50.]])
+
+sum(dim=0): tensor([5., 7., 9.])
+sum(dim=1): tensor([ 6., 15.])
+mean:       tensor(3.5000)</pre>
+    </div>
+  </div>
+
+  <div class="warning"><p><strong>* vs @ Confusion:</strong> <code>a * b</code> is element-wise multiplication (Hadamard product). <code>a @ b</code> is matrix multiplication. In neural networks you almost always want <code>@</code> or <code>torch.matmul()</code>.</p></div>
+</div>
+
+<div class="gradient-divider"></div>
+
+<!-- SECTION 6 — QUIZ -->
+<div class="section" id="sec6">
+  <div class="section-number">06 — Knowledge Check</div>
+  <h2>Test Your Understanding</h2>
+
+  <div class="quiz-card">
+    <div class="quiz-card-header">🧩 Question 1</div>
+    <div class="quiz-card-body">
+      <div class="quiz-question">You have a tensor of shape <code>(32, 1, 64)</code> and want to add a bias of shape <code>(64,)</code>. What is the output shape after broadcasting?</div>
+      <div class="quiz-options">
+        <div class="quiz-option" onclick="answerQuiz(this,'wrong','q1')"><span class="option-letter">A</span>This will raise a RuntimeError — incompatible shapes.</div>
+        <div class="quiz-option" onclick="answerQuiz(this,'correct','q1')"><span class="option-letter">B</span><code>(32, 1, 64)</code> — the bias broadcasts across batch and sequence dims.</div>
+        <div class="quiz-option" onclick="answerQuiz(this,'wrong','q1')"><span class="option-letter">C</span><code>(32, 64)</code> — the middle dimension gets removed.</div>
+        <div class="quiz-option" onclick="answerQuiz(this,'wrong','q1')"><span class="option-letter">D</span><code>(64, 32, 1)</code> — shapes are reordered automatically.</div>
+      </div>
+      <div class="quiz-feedback" id="q1-feedback"></div>
+    </div>
+  </div>
+
+  <div class="quiz-card">
+    <div class="quiz-card-header">🧩 Question 2</div>
+    <div class="quiz-card-body">
+      <div class="quiz-question">What is the key difference between <code>.view()</code> and <code>.reshape()</code>?</div>
+      <div class="quiz-options">
+        <div class="quiz-option" onclick="answerQuiz(this,'wrong','q2')"><span class="option-letter">A</span><code>.view()</code> always copies data; <code>.reshape()</code> never does.</div>
+        <div class="quiz-option" onclick="answerQuiz(this,'wrong','q2')"><span class="option-letter">B</span>They are completely identical in all situations.</div>
+        <div class="quiz-option" onclick="answerQuiz(this,'correct','q2')"><span class="option-letter">C</span><code>.view()</code> requires contiguous memory and never copies; <code>.reshape()</code> always works but may copy.</div>
+        <div class="quiz-option" onclick="answerQuiz(this,'wrong','q2')"><span class="option-letter">D</span><code>.reshape()</code> only works on 2-D tensors.</div>
+      </div>
+      <div class="quiz-feedback" id="q2-feedback"></div>
+    </div>
+  </div>
+
+  <div class="quiz-card">
+    <div class="quiz-card-header">🧩 Question 3</div>
+    <div class="quiz-card-body">
+      <div class="quiz-question">Which dtype should you use for class labels in a classification task?</div>
+      <div class="quiz-options">
+        <div class="quiz-option" onclick="answerQuiz(this,'wrong','q3')"><span class="option-letter">A</span><code>torch.float32</code></div>
+        <div class="quiz-option" onclick="answerQuiz(this,'correct','q3')"><span class="option-letter">B</span><code>torch.int64</code> (torch.long)</div>
+        <div class="quiz-option" onclick="answerQuiz(this,'wrong','q3')"><span class="option-letter">C</span><code>torch.bool</code></div>
+        <div class="quiz-option" onclick="answerQuiz(this,'wrong','q3')"><span class="option-letter">D</span><code>torch.float16</code></div>
+      </div>
+      <div class="quiz-feedback" id="q3-feedback"></div>
+    </div>
+  </div>
+</div>
+
+</div><!-- end content-wrapper -->
+
+<script>
+// Scroll progress
+const scrollProgress = document.getElementById('scrollProgress');
+window.addEventListener('scroll', () => {
+  const scrolled = (window.scrollY / (document.body.scrollHeight - window.innerHeight)) * 100;
+  scrollProgress.style.width = scrolled + '%';
+});
+
+// Section reveal
+const sections = document.querySelectorAll('.section');
+const observer = new IntersectionObserver(entries => {
+  entries.forEach(e => { if (e.isIntersecting) e.target.classList.add('visible'); });
+}, { threshold: 0.08 });
+sections.forEach(s => observer.observe(s));
+
+// Hero particles
+const container = document.getElementById('heroParticles');
+for (let i = 0; i < 18; i++) {
+  const dot = document.createElement('div');
+  dot.className = 'dot';
+  dot.style.cssText = `left:${Math.random()*100}%;top:${Math.random()*100}%;animation-delay:${Math.random()*6}s;animation-duration:${4+Math.random()*4}s`;
+  container.appendChild(dot);
+}
+
+// Quiz
+const feedbacks = {
+  q1: { correct: "✓ Correct! PyTorch pads (64,) to (1,1,64) then broadcasts to (32,1,64). The bias adds to every position along that last dimension.", incorrect: "✗ Not quite. Check the broadcasting rules: PyTorch aligns shapes right-to-left, padding with 1s on the left." },
+  q2: { correct: "✓ Correct! .view() is a zero-copy operation but requires contiguous memory. .reshape() is the safe fallback that may or may not copy depending on memory layout.", incorrect: "✗ Not quite. .view() is the zero-copy version but with a contiguous memory requirement." },
+  q3: { correct: "✓ Correct! Loss functions like nn.CrossEntropyLoss expect labels as torch.long (int64). Passing float32 will raise an error.", incorrect: "✗ Not quite. Loss functions for classification need integer labels — specifically torch.long (int64)." }
+};
+
+function answerQuiz(el, result, qid) {
+  const card = el.closest('.quiz-card-body');
+  card.querySelectorAll('.quiz-option').forEach(o => { o.style.pointerEvents = 'none'; });
+  el.classList.add(result === 'correct' ? 'correct' : 'incorrect');
+  const fb = document.getElementById(qid + '-feedback');
+  fb.textContent = feedbacks[qid][result === 'correct' ? 'correct' : 'incorrect'];
+  fb.className = 'quiz-feedback show ' + (result === 'correct' ? 'correct-fb' : 'incorrect-fb');
+}
+</script>
+</body>
+</html>

@@ -218,18 +218,18 @@ const COURSE_HTML_MAP = {
   "pytorch-debugging": "/cources/Data_Science/pytorch/module10_debugging.html",
   "pytorch-distributed": "/cources/Data_Science/pytorch/module11_distributed.html",
   "pytorch-deployment": "/cources/Data_Science/pytorch/module12_deployment.html",
-  "clustering-part0": "/cources/clus/part 0.html",
-  "clustering-part1": "/cources/clus/part1.html",
-  "clustering-part2": "/cources/clus/part 2.html",
-  "clustering-part3": "/cources/clus/part 3.html",
-  "clustering-part4": "/cources/clus/part 4.html",
-  "clustering-part5": "/cources/clus/part 5.html",
-  "clustering-part6": "/cources/clus/part 6.html",
-  "clustering-part7": "/cources/clus/part 7.html",
-  "clustering-part8": "/cources/clus/part 8.html",
-  "clustering-part9": "/cources/clus/part 9.html",
-  "clustering-part10": "/cources/clus/part 10.html",
-  "clustering-part11": "/cources/clus/part 11.html",
+  "clustering-part0": "/cources/clus/part_0.html",
+  "clustering-part1": "/cources/clus/part_1.html",
+  "clustering-part2": "/cources/clus/part_2.html",
+  "clustering-part3": "/cources/clus/part_3.html",
+  "clustering-part4": "/cources/clus/part_4.html",
+  "clustering-part5": "/cources/clus/part_5.html",
+  "clustering-part6": "/cources/clus/part_6.html",
+  "clustering-part7": "/cources/clus/part_7.html",
+  "clustering-part8": "/cources/clus/part_8.html",
+  "clustering-part9": "/cources/clus/part_9.html",
+  "clustering-part10": "/cources/clus/part_10.html",
+  "clustering-part11": "/cources/clus/part_11.html",
   "mrag-intro": "/cources/generative-ai/Multi-modal-rag/Introduction.html",
   "mrag-vlm": "/cources/generative-ai/Multi-modal-rag/VLMs.html",
   "mrag-embedding": "/cources/generative-ai/Multi-modal-rag/Embedding-Spaces.html",
@@ -243,6 +243,26 @@ const COURSE_HTML_MAP = {
   "mrag-fine-tuning": "/cources/generative-ai/Multi-modal-rag/Efficient-Fine-Tuning.html",
   "mrag-memory": "/cources/generative-ai/Multi-modal-rag/Memory-Safety.html",
 };
+
+/**
+ * Courses that should be rendered inside a full-page <iframe> rather than
+ * being parsed / injected as HTML. Add any course id here whose HTML file
+ * ships its own complete UI (styles, scripts, animations).
+ */
+const IFRAME_COURSES = new Set([
+  "clustering-part0",
+  "clustering-part1",
+  "clustering-part2",
+  "clustering-part3",
+  "clustering-part4",
+  "clustering-part5",
+  "clustering-part6",
+  "clustering-part7",
+  "clustering-part8",
+  "clustering-part9",
+  "clustering-part10",
+  "clustering-part11",
+]);
 
 /**
  * Per-course sidebar metadata for HTML-backed courses.
@@ -1605,8 +1625,25 @@ export default function CourseContent() {
         )}
 
         {/* Scrollable lesson content */}
-        <div ref={scrollContainerRef} className="flex-1 overflow-y-auto custom-scrollbar" onScroll={htmlFile ? handleScroll : undefined}>
+        <div ref={scrollContainerRef} className="flex-1 overflow-y-auto custom-scrollbar" onScroll={htmlFile && !IFRAME_COURSES.has(id) ? handleScroll : undefined}>
           {htmlFile ? (
+            IFRAME_COURSES.has(id) ? (
+              /* ── Full-page iframe for self-contained HTML courses (clustering) ── */
+              <iframe
+                key={htmlFile}
+                src={htmlFile}
+                title="Course Content"
+                style={{
+                  width: '100%',
+                  height: '100%',
+                  minHeight: 'calc(100vh - 56px)',
+                  border: 'none',
+                  display: 'block',
+                  background: '#0a0a0f',
+                }}
+                allowFullScreen
+              />
+            ) : (
             /* ── Immersive full-screen HTML reader ── */
             <div>
 
@@ -1667,6 +1704,7 @@ export default function CourseContent() {
 
               </div>
             </div>
+            )
 
 
           ) : (
