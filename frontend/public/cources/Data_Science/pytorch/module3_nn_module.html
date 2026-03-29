@@ -1,1 +1,341 @@
-<p><strong>Module3—nn.ModuleEssentials:Build ModelsCleanly</strong></p><p><strong>TheBuildingBlocksofEveryPyTorchModel</strong></p><p>PyTorchforDataScience</p><p><strong>ModuleGoal:</strong>Learnhowtostructuremodelsproperlyusingnn.Module.Move fromrawtensorstoreusable,inspectable,saveablemodelobjects.Bytheendyou willbuildanMLPclassifierwithapropersave/loadpipelineandacleaninference script.</p><p><strong>1.nn.Module,Parameters,andBuffers</strong></p><p><strong>Whatisnn.Module?</strong></p><p>nn.Moduleisthebaseclassfor<strong>everyneuralnetworkinPyTorch</strong>.Itgivesyourmodelfour superpowers:</p><p>1.<strong>Parametertracking</strong>—anynn.Parameterorsub-moduleyouassignisautomatically 	registeredandreturnedby.parameters().</p><p>2.<strong>Statesaving/loading</strong>—.state_dict()and.load_state_dict()letyoucheckpoint 	andresume.</p><p>3.<strong>Devicemanagement</strong>—.to(device)movesallparametersandbuffersatonce. 4.<strong>Training/evalmodes</strong>—.train()and.eval()togglebehaviourofdropout,batch-	norm,etc.</p><p><strong>Real-WorldAnalogy:ABlueprintvsaBuilding</strong></p><p>Aclassthatinheritsfromnn.Moduleislikea<strong>blueprint</strong>.Whenyouinstantiateit,youget anactualbuilding(amodelobject)withrealrooms(parameters)andfixtures(buffers).The blueprintcanbeusedtoconstructasmanyindependentbuildingsasyouwant.</p><p>1</p><table><tr><td><p>importtorch <br />importtorch.nnasnn</p></td></tr></table><table><tr><td colspan="3"><p>#Theminimalnn.Module <br /><strong>class</strong>TinyLinear(nn.Module):</p><p><strong>def</strong>__init__(self,in_features:int,out_features:int):</p></td></tr><tr><td colspan="2"><p>super().__init__()</p></td><td><p>#Alwayscallthisfirst</p></td></tr><tr><td colspan="3"><p>self.weight=nn.Parameter(torch.randn(out_features,in_features))</p></td></tr><tr><td><p>self.bias</p></td><td colspan="2"><p>=nn.Parameter(torch.zeros(out_features))</p></td></tr></table><table><tr><td colspan="4"><p><strong>def</strong>forward(self,x:torch.Tensor)-&gt;torch.Tensor: 	<strong>return</strong>x@self.weight.T+self.bias</p><p>model=TinyLinear(3,2)</p></td></tr><tr><td><p>x</p></td><td colspan="2"><p>=torch.randn(5,3)</p></td><td><p>#Batchof5samples</p></td></tr><tr><td><p>out</p></td><td colspan="2"><p>=model(x)</p></td><td><p>#Callsforward()via__call__</p></td></tr><tr><td colspan="4"><p>print("Outputshape:",out.shape) <br />print("\nParameters:") <br /><strong>for</strong>name,param<strong>in</strong>model.named_parameters():</p></td></tr><tr><td colspan="2"><p>print(f"</p></td><td colspan="2"><p>{name}:shape={param.shape},requires_grad={param.requires_grad}")</p></td></tr></table><p>Outputshape:torch.Size([5,2])</p><p>Parameters: <br />weight:shape=torch.Size([2,3]),requires_grad=True bias:shape=torch.Size([2]),requires_grad=True</p><p><strong>ParametersvsBuffers</strong></p><table><tr><td><p>Type</p></td><td><p>Whatitis</p></td><td><p>Savedinstate_dict?</p></td><td><p>Updatedduringtraining?</p></td></tr><tr><td><p>nn.Parameter</p></td><td rowspan="2"><p>Trainableweight/bias <br />Non-trainablepersistentstate Pythonvariable</p></td><td rowspan="2"><p>Yes <br />Yes <br /><strong>No</strong></p></td><td rowspan="2"><p>Yes <br />No <br />No</p></td></tr><tr><td><p>register_buffer Plainattribute</p></td></tr></table><table><tr><td><p><strong>class</strong>ModelWithBuffer(nn.Module):</p></td></tr></table><p>2</p><table><tr><td><p><strong>def</strong>__init__(self): <br />super().__init__() <br />self.weight=nn.Parameter(torch.randn(4,4))</p></td></tr></table><table><tr><td colspan="2"><p>#Buffer:moveswith.to(device),savedinstate_dict,butnottrained self.register_buffer('running_mean',torch.zeros(4))</p><p>#Plainattribute:NOTtrackedbyPyTorch</p></td></tr><tr><td><p>self.some_constant=42</p></td><td><p>#Won'tappearinstate_dict</p></td></tr></table><table><tr><td colspan="3"><p><strong>def</strong>forward(self,x): <br />	<strong>return</strong>x@self.weight+self.running_mean</p><p>m=ModelWithBuffer() <br />print("Parameters:",[n<strong>for</strong>n,_<strong>in</strong>m.named_parameters()])</p></td></tr><tr><td colspan="2"><p>print("Buffers:</p></td><td><p>",[n<strong>for</strong>n,_<strong>in</strong>m.named_buffers()])</p></td></tr><tr><td colspan="3"><p>print("Statedictkeys:",list(m.state_dict().keys()))</p><p>Parameters:['weight']</p></td></tr><tr><td><p>Buffers:</p></td><td colspan="2"><p>['running_mean']</p></td></tr><tr><td colspan="3"><p>Statedictkeys:['weight','running_mean']</p></td></tr></table><table><tr><td><p>INFONote</p></td></tr></table><table><tr><td><p><strong>Whentouseabuffer:</strong>BatchNorm’srunning_meanandrunning_varareclassic examples—theytrackstatisticsduringtrainingbutaren’ttrainedviabackprop.</p></td></tr></table><p><strong>2.ForwardPassPatternsandGoodStyle</strong></p><p><strong>TheThreePatterns</strong></p><table><tr><td><p>#Pattern1:Sequential(simple,cleanforlinearstacks) model_seq=nn.Sequential( <br />	nn.Linear(10,64), <br />	nn.ReLU(),</p></td></tr></table><p>3</p><table><tr><td><p>)</p></td><td><p>nn.Linear(64,32), <br />nn.ReLU(), <br />nn.Linear(32,1)</p></td></tr></table><p>#Pattern2:Customclass(flexible,recommendedforanythingnon-trivial) <strong>class</strong>MLP(nn.Module):</p><table><tr><td><p><strong>def</strong>__init__(self,in_dim,hidden_dim,out_dim): super().__init__() <br />self.fc1=nn.Linear(in_dim,hidden_dim) self.fc2=nn.Linear(hidden_dim,out_dim) self.act=nn.ReLU()</p></td></tr></table><table><tr><td><p><strong>def</strong>forward(self,x): <br />x=self.act(self.fc1(x)) x=self.fc2(x) <br /><strong>return</strong>x</p></td></tr></table><table><tr><td><p>#Pattern3:ModuleListfordynamicdepth <strong>class</strong>DeepMLP(nn.Module):</p></td></tr></table><table><tr><td colspan="3"><p><strong>def</strong>__init__(self,dims:list): <br />super().__init__() <br />#MUSTusenn.ModuleList—plainPythonlistwon'tregisterparameters!</p><p>self.layers=nn.ModuleList([ <br />nn.Linear(dims[i],dims[i+1])<strong>for</strong>i<strong>in</strong>range(len(dims)-1) ]) <br />self.act=nn.ReLU()</p><p><strong>def</strong>forward(self,x): <br />	<strong>for</strong>i,layer<strong>in</strong>enumerate(self.layers): 	x=layer(x)</p></td></tr><tr><td colspan="2"><p><strong>if</strong>i&lt;len(self.layers)-1:</p></td><td><p>#Noactivationafterlastlayer</p></td></tr><tr><td colspan="3"><p>x=self.act(x) <br /><strong>return</strong>x</p><p>deep=DeepMLP([10,64,32,16,1])</p></td></tr><tr><td><p>x</p></td><td colspan="2"><p>=torch.randn(8,10)</p></td></tr><tr><td colspan="3"><p>print("DeepMLPoutput:",deep(x).shape)</p></td></tr></table><p>4</p><table><tr><td colspan="5"><p>#Countparameters <br />total=sum(p.numel()<strong>for</strong>p<strong>in</strong>deep.parameters()) <br />train=sum(p.numel()<strong>for</strong>p<strong>in</strong>deep.parameters()<strong>if</strong>p.requires_grad)</p></td></tr><tr><td colspan="3"><p>print(f"Totalparams:{total:,}</p></td><td><p>|</p></td><td><p>Trainable:{train:,}")</p></td></tr><tr><td colspan="5"><p>DeepMLPoutput:torch.Size([8,1])</p></td></tr><tr><td><p>Totalparams:3,329</p></td><td><p>|</p></td><td colspan="3"><p>Trainable:3,329</p></td></tr></table><table><tr><td><table><tr><td><p>Exclamation-TriangleWarning</p></td></tr></table></td></tr><tr><td><table><tr><td><p><strong>NeveruseaplainPythonlisttoholdsubmodules. </strong>Usenn.ModuleListor nn.ModuleDict.PlainlistsareinvisibletoPyTorch—parametersinsidethemwon’tbe trackedormovedwith.to(device).</p></td></tr></table></td></tr></table><p><strong>3.CommonLayers</strong></p><p><strong>Linear</strong></p><table><tr><td colspan="7"><p>#nn.Linear(in_features,out_features,bias=True) #Computes:y=xW^T+b</p><p>layer=nn.Linear(8,4)</p></td></tr><tr><td><p>x</p></td><td colspan="3"><p>=torch.randn(16,8)</p></td><td colspan="3"><p>#Batchof16,8featureseach</p></td></tr><tr><td><p>out</p></td><td colspan="6"><p>=layer(x)</p></td></tr><tr><td colspan="5"><p>print("Linearoutputshape:",out.shape)</p></td><td colspan="2"><p>#(16,4)</p></td></tr><tr><td colspan="6"><p>print("Weightshape:",layer.weight.shape)#(4,8)</p></td><td><p>—note:(out,in)</p></td></tr><tr><td colspan="3"><p>print("Biasshape:</p></td><td colspan="2"><p>",layer.bias.shape)</p></td><td colspan="2"><p>#(4,)</p></td></tr><tr><td colspan="7"><p>Linearoutputshape:torch.Size([16,4]) Weightshape:torch.Size([4,8])</p></td></tr><tr><td colspan="2"><p>Biasshape:</p></td><td colspan="5"><p>torch.Size([4])</p></td></tr></table><p><strong>Convolution</strong></p><p>5</p><table><tr><td colspan="4"><p>#Conv2d:forimage-likedata(B,C,H,W) <br />conv=nn.Conv2d(in_channels=3,out_channels=16,kernel_size=3,padding=1)</p></td></tr><tr><td><p>img</p></td><td><p>=torch.randn(4,3,32,32)</p></td><td colspan="2"><p>#Batch=4,RGB,32×32</p></td></tr><tr><td><p>out</p></td><td colspan="3"><p>=conv(img)</p></td></tr><tr><td colspan="3"><p>print("Conv2doutputshape:",out.shape)</p></td><td><p>#(4,16,32,32)—samespatial,padding=1</p></td></tr></table><p>Conv2doutputshape:torch.Size([4,16,32,32])</p><p><strong>BatchNormandLayerNorm</strong></p><table><tr><td colspan="4"><p>#BatchNorm:normalisesacrossthebatchdimension #Usedin:CNNs,residualnetworks <br />bn=nn.BatchNorm1d(64)</p></td></tr><tr><td><p>x</p></td><td colspan="2"><p>=torch.randn(32,64)</p></td><td><p>#Batchof32,64features</p></td></tr><tr><td colspan="4"><p>print("BatchNormoutputshape:",bn(x).shape)</p><p>#LayerNorm:normalisesacrossthefeaturedimension #Usedin:Transformers,RNNs—workswithbatchsize1 ln=nn.LayerNorm(64)</p></td></tr><tr><td><p>x</p></td><td colspan="3"><p>=torch.randn(32,64)</p></td></tr><tr><td colspan="4"><p>print("LayerNormoutputshape:",ln(x).shape) #Keydifference:</p></td></tr><tr><td colspan="2"><p>#BatchNorm</p></td><td colspan="2"><p>—normalisesacrossSAMPLESinabatch→sensitivetobatchsize</p></td></tr><tr><td colspan="2"><p>#LayerNorm</p></td><td colspan="2"><p>—normalisesacrossFEATURESofonesample→worksatanybatchsize</p></td></tr></table><p>BatchNormoutputshape:torch.Size([32,64]) <br />LayerNormoutputshape:torch.Size([32,64])</p><p><strong>Dropout</strong></p><table><tr><td><p>drop=nn.Dropout(p=0.3)</p></td><td><p>#30%ofneuronszeroedduringtraining</p></td></tr></table><table><tr><td><p>x=torch.ones(4,8)</p></td></tr></table><table><tr><td><p>#Trainingmode:dropoutisactive drop.train()</p></td></tr></table><p>6</p><table><tr><td colspan="4"><p>print("Trainingmode:",drop(x)) <br />#Evalmode:dropoutdisabled(justpassesthrough) drop.eval()</p></td></tr><tr><td colspan="2"><p>print("Evalmode:</p></td><td><p>",drop(x))</p></td><td><p>#Allones—nozeroing</p></td></tr><tr><td colspan="4"><p>Trainingmode:tensor([[1.4286,1.4286,0.0000,1.4286,1.4286,0.0000,0.0000,0.0000], [1.4286,1.4286,1.4286,1.4286,1.4286,1.4286,1.4286,0.0000], <br />[0.0000,1.4286,0.0000,0.0000,1.4286,1.4286,1.4286,1.4286], <br />[1.4286,1.4286,0.0000,1.4286,1.4286,1.4286,0.0000,1.4286]])</p></td></tr><tr><td><p>Evalmode:</p></td><td colspan="3"><p>tensor([[1.,1.,1.,1.,1.,1.,1.,1.],</p></td></tr><tr><td colspan="4"><p>[1.,1.,1.,1.,1.,1.,1.,1.], <br />[1.,1.,1.,1.,1.,1.,1.,1.], <br />[1.,1.,1.,1.,1.,1.,1.,1.]])</p></td></tr></table><p><strong>Activations</strong></p><table><tr><td colspan="13"><p>x=torch.linspace(-3,3,7)</p></td></tr><tr><td><p>relu</p></td><td colspan="12"><p>=nn.ReLU()</p></td></tr><tr><td><p>gelu</p></td><td colspan="12"><p>=nn.GELU()</p></td></tr><tr><td><p>silu</p></td><td colspan="3"><p>=nn.SiLU()</p></td><td colspan="9"><p>#Swish=x*sigmoid(x),usedinmodernarchitectures</p></td></tr><tr><td><p>tanh</p></td><td colspan="12"><p>=nn.Tanh()</p></td></tr><tr><td><p>sig</p></td><td colspan="12"><p>=nn.Sigmoid()</p></td></tr><tr><td colspan="3"><p>print("Input:</p></td><td colspan="10"><p>",x.round(decimals=2))</p></td></tr><tr><td colspan="3"><p>print("ReLU:</p></td><td colspan="10"><p>",relu(x).round(decimals=2))</p></td></tr><tr><td colspan="3"><p>print("GELU:</p></td><td colspan="10"><p>",gelu(x).round(decimals=2))</p></td></tr><tr><td colspan="3"><p>print("SiLU:</p></td><td colspan="10"><p>",silu(x).round(decimals=2))</p></td></tr><tr><td colspan="2"><p>Input:</p></td><td colspan="3"><p>tensor([-3.,-2.,-1.,</p></td><td><p>0.,</p></td><td><p>1.,</p></td><td colspan="2"><p>2.,</p></td><td colspan="4"><p>3.])</p></td></tr><tr><td><p>ReLU:</p></td><td colspan="12"><p>tensor([0.,0.,0.,0.,1.,2.,3.])</p></td></tr><tr><td><p>GELU:</p></td><td colspan="7"><p>tensor([-0.0000,-0.0500,-0.1600,</p></td><td colspan="2"><p>0.0000,</p></td><td><p>0.8400,</p></td><td><p>1.9500,</p></td><td><p>3.0000])</p></td></tr><tr><td><p>SiLU:</p></td><td colspan="7"><p>tensor([-0.1400,-0.2400,-0.2700,</p></td><td colspan="2"><p>0.0000,</p></td><td><p>0.7300,</p></td><td><p>1.7600,</p></td><td><p>2.8600])</p></td></tr><tr><td colspan="4"><p>Activation</p></td><td colspan="2"><p>Formula</p></td><td colspan="7"><p>Bestusedin</p></td></tr><tr><td colspan="4" rowspan="2"><p>ReLU <br />GELU</p></td><td colspan="2"><p>max(0,x)</p></td><td colspan="7" rowspan="2"><p>CNNs,simpleMLPs <br />Transformers(BERT,GPT)</p></td></tr><tr><td colspan="2"><p>x*Φ(x)</p></td></tr></table><p>7</p><table><tr><td><p>Activation</p></td><td><p>Formula</p></td><td><p>Bestusedin</p></td></tr><tr><td rowspan="3"><p>SiLU(Swish) Tanh <br />Sigmoid</p></td><td><p>x*sigmoid(x)</p></td><td rowspan="3"><p>ModernCNNs,LLMs <br />RNNs,outputlayers <br />Binaryclassificationoutput</p></td></tr><tr><td><p>(e-e)/(e+e)</p></td></tr><tr><td><p>1/(1+e)</p></td></tr></table><p><strong>4.WeightInitialisation</strong></p><p><strong>WhyItMatters</strong></p><p>Startwithweightsthataretoolarge→activationsexplode→NaNloss. Startwithweightstoosmall→gradientsvanish→networkdoesn’tlearn.</p><p>PyTorch’sdefaultinitialisationsarealreadygood,butunderstandingthemhelpsyoufixbroken models.</p><table><tr><td colspan="4"><p>#DefaultPyTorchinit—KaiminguniformforLinearlayers layer=nn.Linear(64,32) <br />print("Defaultweightstats:")</p></td></tr><tr><td><p>print(f"</p></td><td colspan="3"><p>mean={layer.weight.data.mean():.4f},std={layer.weight.data.std():.4f}")</p></td></tr><tr><td colspan="4"><p>#Manualinitusingtorch.nn.init <br /><strong>def</strong>init_weights(module): <br />	<strong>if</strong>isinstance(module,nn.Linear):</p></td></tr><tr><td colspan="3"><p>nn.init.xavier_uniform_(module.weight)</p></td><td><p>#Goodfortanh/sigmoid</p></td></tr><tr><td colspan="4"><p>	nn.init.zeros_(module.bias) <br /><strong>elif</strong>isinstance(module,nn.Conv2d): <br />	nn.init.kaiming_normal_(module.weight,mode='fan_out',nonlinearity='relu')</p><p><strong>class</strong>Net(nn.Module): <br />	<strong>def</strong>__init__(self): <br />		super().__init__() <br />		self.fc1=nn.Linear(32,64) <br />		self.fc2=nn.Linear(64,10)</p></td></tr><tr><td colspan="2"><p>self.apply(init_weights)</p></td><td colspan="2"><p>#Applytoallsubmodulesrecursively</p></td></tr><tr><td colspan="4"><p>net=Net() <br />print("\nAfterXavierinit:")</p></td></tr><tr><td><p>print(f"</p></td><td colspan="3"><p>mean={net.fc1.weight.data.mean():.4f},std={net.fc1.weight.data.std():.4f}")</p></td></tr></table><p>8</p><p>Defaultweightstats: <br />	mean=-0.0011,std=0.0709</p><p>AfterXavierinit: <br />	mean=0.0014,std=0.1439</p><table><tr><td><p>Initialisation</p></td><td><p>Formula</p></td><td><p>Usewith</p></td></tr><tr><td rowspan="4"><p>Xavier/Glorot Kaiming/He <br />Zeros <br />Normal</p></td><td><p>U[-√6/√(fan_in+fan_out),...]</p></td><td rowspan="4"><p>Tanh,Sigmoid <br />ReLU,GELU,SiLU Biases <br />Embeddings</p></td></tr><tr><td><p>N(0,√2/fan_in)</p></td></tr><tr><td><p>0</p></td></tr><tr><td><p>N(mean,std)</p></td></tr></table><p><strong>5.SavingandLoadingstate_dictProperly</strong></p><p><strong>TheCorrectPattern</strong></p><table><tr><td><p>importos</p></td></tr></table><table><tr><td><p>model=MLP(10,64,3)</p></td></tr></table><table><tr><td colspan="2"><p>#SaveONLYthestatedict(notthewholemodelobject) <br />torch.save(model.state_dict(),"mlp_checkpoint.pt") <br />print("Savedstate_dictkeys:",list(model.state_dict().keys()))</p><p>#Load:instantiatethearchitecture,thenloadweights</p></td></tr><tr><td><p>model_loaded=MLP(10,64,3)</p></td><td><p>#Samearchitecture</p></td></tr><tr><td colspan="2"><p>state=torch.load("mlp_checkpoint.pt",map_location="cpu") model_loaded.load_state_dict(state)</p></td></tr><tr><td><p>model_loaded.eval()</p></td><td><p>#Alwayssetevalforinference</p></td></tr></table><table><tr><td><p>print("Modelloadedsuccessfully.") <br />print("Isinevalmode?",<strong>not</strong>model_loaded.training)</p></td></tr></table><p>Savedstate_dictkeys:['fc1.weight','fc1.bias','fc2.weight','fc2.bias'] Modelloadedsuccessfully.</p><p>Isinevalmode?True</p><p>9</p><table><tr><td><table><tr><td><p>ExclamationImportant</p></td></tr></table></td></tr></table><table><tr><td><p><strong>Alwayssavethestate_dict,notthewholemodel.</strong>Savingthewholemodelwith torch.save(model,...)serialisestheclassdefinitiontoo,whichcausesproblemsif yourefactoryourcodelater.Thestate_dictisjustadictionaryoftensors—portable andstable.</p></td></tr></table><p><strong>SavingTrainingCheckpoints(FullState)</strong></p><table><tr><td colspan="2"><p>#Whenyouwanttoresumetraining(notjustinference),saveeverything optimizer=torch.optim.Adam(model.parameters(),lr=1e-3)</p><p>checkpoint={</p></td></tr><tr><td><p>'epoch':</p></td><td><p>42,</p></td></tr><tr><td colspan="2"><p>'model_state_dict':model.state_dict(), <br />'optimizer_state_dict':optimizer.state_dict(),</p></td></tr><tr><td><p>'loss':</p></td><td><p>0.0423,</p></td></tr><tr><td colspan="2"><p>}</p></td></tr></table><table><tr><td><p>torch.save(checkpoint,"training_checkpoint.pt")</p></td></tr></table><table><tr><td><p>#Resume <br />checkpoint=torch.load("training_checkpoint.pt",map_location="cpu") model.load_state_dict(checkpoint['model_state_dict']) <br />optimizer.load_state_dict(checkpoint['optimizer_state_dict']) <br />start_epoch=checkpoint['epoch']+1 <br />print(f"Resumingfromepoch{start_epoch},lastloss:{checkpoint['loss']}")</p></td></tr></table><p>Resumingfromepoch43,lastloss:0.0423</p><p><strong>Project:MLPClassifier+Save/Load+InferenceScript</strong></p><p><strong>TheTask</strong></p><p>BuildanMLPtoclassifytabularcustomerdatainto3categories(e.g.,churnrisk: low/medium/high).Implementthefullsave/load/inferencepipeline.</p><p>10</p><table><tr><td colspan="2"><p>torch.manual_seed(42) <br />#Syntheticdataset:500customers,12features,3classes</p></td></tr><tr><td><p>n_samples</p></td><td><p>=500</p></td></tr><tr><td><p>n_features</p></td><td><p>=12</p></td></tr><tr><td><p>n_classes</p></td><td><p>=3</p></td></tr></table><table><tr><td><p>X=torch.randn(n_samples,n_features) <br />#Non-trivialclassboundary <br />y=((X[:,0]+X[:,1]*2-X[:,3])&gt;0).long()+\ 	((X[:,2]-X[:,4]+X[:,5]*0.5)&gt;1).long() y=y.clamp(0,2)</p></td></tr></table><table><tr><td><p>#Train/valsplit <br />split=int(0.8*n_samples) <br />X_train,X_val=X[:split],X[split:] y_train,y_val=y[:split],y[split:]</p></td></tr></table><table><tr><td colspan="2"><p>print(f"Train:{X_train.shape},Val:{X_val.shape}") print(f"Classcounts:{y.bincount()}")</p><p>Train:torch.Size([400,12]),Val:torch.Size([100,12])</p></td></tr><tr><td><p>Classcounts:tensor([187,251,</p></td><td><p>62])</p></td></tr></table><table><tr><td><p>#Modeldefinition <br /><strong>class</strong>CustomerMLP(nn.Module):</p></td></tr></table><p><strong>def</strong>__init__(self,in_dim:int,hidden_dims:list,out_dim:int,dropout:float=0.3):</p><table><tr><td colspan="2"><p>super().__init__()</p></td></tr><tr><td><p>dims</p></td><td><p>=[in_dim]+hidden_dims</p></td></tr><tr><td colspan="2"><p>layers=[] <br /><strong>for</strong>i<strong>in</strong>range(len(dims)-1): <br />layers.extend([ <br />	nn.Linear(dims[i],dims[i+1]), <br />	nn.BatchNorm1d(dims[i+1]), <br />	nn.ReLU(), <br />	nn.Dropout(dropout) <br />]) <br />layers.append(nn.Linear(dims[-1],out_dim))</p></td></tr></table><p>11</p><table><tr><td><p>self.net=nn.Sequential(*layers) <br />self.apply(self._init_weights)</p></td></tr></table><table><tr><td><p><strong>def</strong>_init_weights(self,m): <br />	<strong>if</strong>isinstance(m,nn.Linear): <br />	nn.init.kaiming_normal_(m.weight,nonlinearity='relu') 	nn.init.zeros_(m.bias)</p></td></tr></table><table><tr><td><p><strong>def</strong>forward(self,x:torch.Tensor)-&gt;torch.Tensor: 	<strong>return</strong>self.net(x)</p></td></tr></table><table><tr><td><p>model=CustomerMLP(in_dim=12,hidden_dims=[64,32],out_dim=3) total_params=sum(p.numel()<strong>for</strong>p<strong>in</strong>model.parameters()) print(f"Model:{model}") <br />print(f"Totalparameters:{total_params:,}")</p></td></tr></table><p>Model:CustomerMLP( <br />	(net):Sequential( <br />		(0):Linear(in_features=12,out_features=64,bias=True) <br />		(1):BatchNorm1d(64,eps=1e-05,momentum=0.1,affine=True,track_running_stats=True) 		(2):ReLU() <br />		(3):Dropout(p=0.3,inplace=False) <br />		(4):Linear(in_features=64,out_features=32,bias=True) <br />		(5):BatchNorm1d(32,eps=1e-05,momentum=0.1,affine=True,track_running_stats=True) 		(6):ReLU() <br />		(7):Dropout(p=0.3,inplace=False) <br />		(8):Linear(in_features=32,out_features=3,bias=True) <br />	) <br />) <br />Totalparameters:3,203</p><table><tr><td colspan="2"><p>#Training <br />optimizer=torch.optim.AdamW(model.parameters(),lr=1e-3,weight_decay=1e-4) criterion=nn.CrossEntropyLoss()</p><p>best_val_acc=0.0</p></td></tr><tr><td><p>best_state</p></td><td><p>=None</p></td></tr></table><table><tr><td><p><strong>for</strong>epoch<strong>in</strong>range(100): <br />	#---Train---</p></td></tr></table><p>12</p><table><tr><td colspan="5"><p>model.train() <br />optimizer.zero_grad() <br />logits=model(X_train)</p></td></tr><tr><td><p>loss</p></td><td colspan="4"><p>=criterion(logits,y_train)</p></td></tr><tr><td colspan="5"><p>loss.backward() <br />optimizer.step()</p><p>#---Validate---<br />model.eval() <br /><strong>with</strong>torch.no_grad(): <br />	val_logits=model(X_val)</p></td></tr><tr><td colspan="2"><p>val_preds</p></td><td colspan="3"><p>=val_logits.argmax(dim=1)</p></td></tr><tr><td colspan="2"><p>val_acc</p></td><td colspan="3"><p>=(val_preds==y_val).float().mean().item()</p></td></tr><tr><td colspan="5"><p><strong>if</strong>val_acc&gt;best_val_acc: <br />best_val_acc=val_acc</p></td></tr><tr><td colspan="2"><p>best_state</p></td><td><p>=model.state_dict().copy()</p></td><td colspan="2"><p>#Savebestweights</p></td></tr><tr><td colspan="5"><p><strong>if</strong>epoch%20==0:</p></td></tr><tr><td colspan="4"><p>print(f"Epoch{epoch:3d}:loss={loss.item():.4f}</p></td><td><p>val_acc={val_acc:.3f}")</p></td></tr></table><table><tr><td colspan="3"><p>print(f"\nBestvalaccuracy:{best_val_acc:.3f}")</p></td></tr><tr><td><p>Epoch</p></td><td><p>0:loss=1.5631</p></td><td><p>val_acc=0.330</p></td></tr><tr><td><p>Epoch</p></td><td><p>20:loss=1.1470</p></td><td><p>val_acc=0.500</p></td></tr><tr><td><p>Epoch</p></td><td><p>40:loss=0.9680</p></td><td><p>val_acc=0.680</p></td></tr><tr><td><p>Epoch</p></td><td><p>60:loss=0.8408</p></td><td><p>val_acc=0.730</p></td></tr><tr><td><p>Epoch</p></td><td><p>80:loss=0.7550</p></td><td><p>val_acc=0.750</p></td></tr></table><p>Bestvalaccuracy:0.780</p><table><tr><td colspan="2"><p>#Savethebestmodel <br />torch.save({ <br />	'model_state_dict':best_state,</p></td></tr><tr><td><p>'model_config':</p></td><td><p>{'in_dim':12,'hidden_dims':[64,32],'out_dim':3},</p></td></tr><tr><td><p>'val_accuracy':</p></td><td><p>best_val_acc,</p></td></tr><tr><td colspan="2"><p>},"customer_mlp_best.pt")</p></td></tr></table><table><tr><td><p>print("Modelsaved.")</p></td></tr></table><table><tr><td><p>#Inferencescript(simulateloadinginanewsession)</p></td></tr></table><p>13</p><p><strong>def</strong>load_model_for_inference(checkpoint_path:str,device:str="cpu")-&gt;nn.Module: 	"""LoadasavedCustomerMLPforinference.""" <br />	checkpoint=torch.load(checkpoint_path,map_location=device) <br />	cfg 	=checkpoint['model_config'] <br />	model 	=CustomerMLP(**cfg) <br />	model.load_state_dict(checkpoint['model_state_dict']) <br />	model.eval() <br />	<strong>return</strong>model</p><p><strong>def</strong>predict(model:nn.Module,X:torch.Tensor)-&gt;dict: <br />	"""Runinferenceandreturnpredictions+probabilities.""" 	<strong>with</strong>torch.no_grad(): <br />		logits=model(X) <br />		probs 	=torch.softmax(logits,dim=1) <br />		preds 	=probs.argmax(dim=1) <br />	<strong>return</strong>{ <br />		'predictions': 	preds, <br />		'probabilities':probs, <br />		'class_names': 	['low_risk','medium_risk','high_risk'] 	}</p><p>#Runinference <br />loaded_model=load_model_for_inference("customer_mlp_best.pt") results 	=predict(loaded_model,X_val[:5])</p><p>print("\nInferenceresultsfor5validationsamples:") <br /><strong>for</strong>i<strong>in</strong>range(5): <br />	pred =results['predictions'][i].item() <br />	probs=results['probabilities'][i] <br />	name =results['class_names'][pred] <br />	print(f" 	Sample{i}:{name:12s} 	probs={probs.round(decimals=3)}")</p><p>Modelsaved.</p><p>Inferenceresultsfor5validationsamples: <br />	Sample0:medium_risk 	probs=tensor([0.3040,0.5790,0.1170]) 	Sample1:medium_risk 	probs=tensor([0.1890,0.6970,0.1140]) 	Sample2:medium_risk 	probs=tensor([0.3640,0.4270,0.2090]) 	Sample3:low_risk <br />	probs=tensor([0.8560,0.1290,0.0140]) 	Sample4:low_risk 	probs=tensor([0.4640,0.4380,0.0980])</p><p>14</p><p><strong>ModuleSummary</strong></p><table><tr><td><p>Concept</p></td><td><p>KeyTakeaway</p></td></tr><tr><td><p><strong>nn.Module </strong><br /><strong>nn.Parameter register_buffer nn.ModuleList state_dict </strong><br /><strong>model.eval() </strong><br /><strong>Weightinit</strong></p></td><td><p>Baseclassforallmodels.Alwayscall super().__init__()first.</p><p>Tensorsthatareautomaticallytrackedandtrained. Non-trainablestatethatmoveswiththemodel(e.g., runningstats).</p><p>UseinsteadofplainPythonliststoholdsubmodules.</p><p>Savethis,notthewholemodel.Loadintoafresh instance.</p><p>Alwayscallbeforeinference—disablesdropout,fixes batchnorm.</p><p>KaimingforReLUnetworks;Xavierfor Tanh/Sigmoid.</p></td></tr></table><p><strong>What’sNext</strong></p><p><strong>Module4—TheTrainingLoop</strong>iswhereallthreemodulessofarcometogether.You havetensors(Module1),youunderstandgradients(Module2),youcanbuildcleanmodels (Module3).Nowyou’llwriteaproduction-qualitytrainingloopwithproperlossfunctions, optimisers,learningratescheduling,anddebuggingtools.</p><p>15</p>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Module 3 — nn.Module: Building Neural Networks | PyTorch for Data Science</title>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&family=Outfit:wght@300;400;500;600;700;800;900&family=Source+Serif+4:ital,wght@0,300;0,400;0,600;1,300;1,400&display=swap" rel="stylesheet">
+<style>
+:root{--bg-primary:#0a0a0f;--bg-secondary:#11111a;--bg-card:#161622;--bg-code:#0d0d18;--text-primary:#e8e8f0;--text-secondary:#9898b0;--accent-1:#6c5ce7;--accent-2:#00cec9;--accent-3:#fd79a8;--accent-4:#fdcb6e;--accent-5:#55efc4;--gradient-line:linear-gradient(90deg,#6c5ce7,#00cec9,#fd79a8,#fdcb6e);--border-subtle:rgba(255,255,255,0.06);--border-glow:rgba(108,92,231,0.3);--shadow-card:0 4px 30px rgba(0,0,0,0.4);--radius:12px;--radius-sm:8px;}
+*{margin:0;padding:0;box-sizing:border-box;}html{scroll-behavior:smooth;}
+body{background:var(--bg-primary);color:var(--text-primary);font-family:'Outfit',sans-serif;font-weight:400;line-height:1.7;overflow-x:hidden;-webkit-font-smoothing:antialiased;}
+.scroll-progress{position:fixed;top:0;left:0;height:3px;z-index:1000;background:var(--gradient-line);width:0%;transition:width 0.1s linear;}
+.hero{min-height:100vh;display:flex;flex-direction:column;justify-content:center;align-items:center;text-align:center;padding:2rem;position:relative;overflow:hidden;}
+.hero::before{content:'';position:absolute;inset:0;background:radial-gradient(ellipse 600px 400px at 30% 40%,rgba(108,92,231,0.12),transparent),radial-gradient(ellipse 500px 350px at 70% 60%,rgba(0,206,201,0.08),transparent);pointer-events:none;}
+.hero-particles{position:absolute;inset:0;pointer-events:none;}
+.hero-particles .dot{position:absolute;width:3px;height:3px;border-radius:50%;background:var(--accent-2);opacity:0;animation:floatDot 6s ease-in-out infinite;}
+@keyframes floatDot{0%,100%{opacity:0;transform:translateY(0);}50%{opacity:0.6;transform:translateY(-40px);}}
+.hero-label{display:inline-flex;align-items:center;gap:8px;background:rgba(108,92,231,0.1);border:1px solid rgba(108,92,231,0.25);border-radius:100px;padding:6px 18px;font-size:0.8rem;font-weight:500;color:var(--accent-1);letter-spacing:1.5px;text-transform:uppercase;margin-bottom:2rem;animation:fadeInDown 0.8s ease-out;}
+.hero-label .dot-indicator{width:6px;height:6px;border-radius:50%;background:var(--accent-2);animation:pulse 2s ease-in-out infinite;}
+@keyframes pulse{0%,100%{opacity:1;}50%{opacity:0.3;}}
+.hero h1{font-size:clamp(2.8rem,6vw,5rem);font-weight:900;line-height:1.1;letter-spacing:-2px;margin-bottom:1.5rem;animation:fadeInDown 0.8s ease-out 0.1s both;}
+.hero h1 .gradient-text{background:var(--gradient-line);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;}
+.hero-subtitle{font-family:'Source Serif 4',serif;font-size:clamp(1.05rem,2vw,1.25rem);color:var(--text-secondary);max-width:640px;line-height:1.8;font-weight:300;animation:fadeInDown 0.8s ease-out 0.2s both;}
+.hero-scroll-cue{position:absolute;bottom:3rem;display:flex;flex-direction:column;align-items:center;gap:8px;color:var(--text-secondary);font-size:0.75rem;letter-spacing:2px;text-transform:uppercase;animation:fadeInDown 0.8s ease-out 0.5s both;}
+.hero-scroll-cue .arrow{width:20px;height:20px;border-right:2px solid var(--text-secondary);border-bottom:2px solid var(--text-secondary);transform:rotate(45deg);animation:bounceArrow 2s ease-in-out infinite;}
+@keyframes bounceArrow{0%,100%{transform:rotate(45deg) translateY(0);}50%{transform:rotate(45deg) translateY(6px);}}
+@keyframes fadeInDown{from{opacity:0;transform:translateY(-20px);}to{opacity:1;transform:translateY(0);}}
+.content-wrapper{max-width:860px;margin:0 auto;padding:0 2rem 6rem;}
+.section{margin-bottom:5rem;opacity:0;transform:translateY(30px);transition:all 0.7s cubic-bezier(0.16,1,0.3,1);}
+.section.visible{opacity:1;transform:translateY(0);}
+.section-number{font-family:'JetBrains Mono',monospace;font-size:0.7rem;color:var(--accent-2);letter-spacing:3px;text-transform:uppercase;margin-bottom:0.75rem;display:flex;align-items:center;gap:10px;}
+.section-number::after{content:'';flex:1;height:1px;background:linear-gradient(90deg,var(--accent-2),transparent);opacity:0.3;}
+h2{font-size:clamp(1.8rem,3.5vw,2.4rem);font-weight:700;letter-spacing:-0.5px;margin-bottom:1.5rem;line-height:1.2;}
+h3{font-size:1.3rem;font-weight:600;margin:2.5rem 0 1rem;color:var(--text-primary);}
+p{color:var(--text-secondary);margin-bottom:1.25rem;font-size:1.02rem;}
+p strong,p b{color:var(--text-primary);font-weight:600;}
+.gradient-divider{height:2px;background:var(--gradient-line);border-radius:2px;margin:4rem 0;opacity:0.5;}
+.code-block{background:var(--bg-code);border:1px solid var(--border-subtle);border-radius:var(--radius);overflow:hidden;margin:1.5rem 0;}
+.code-block-header{display:flex;align-items:center;justify-content:space-between;padding:10px 16px;background:rgba(255,255,255,0.02);border-bottom:1px solid var(--border-subtle);}
+.code-lang{font-family:'JetBrains Mono',monospace;font-size:0.7rem;color:var(--accent-2);display:flex;align-items:center;gap:6px;}
+.code-lang::before{content:'●';font-size:8px;}
+.code-block pre{padding:16px 20px;overflow-x:auto;font-family:'JetBrains Mono',monospace;font-size:0.82rem;line-height:1.65;color:#c8c8d8;}
+.code-block .kw{color:#c792ea;}.code-block .fn{color:#82aaff;}.code-block .str{color:#c3e88d;}.code-block .num{color:#f78c6c;}.code-block .cm{color:#546e7a;font-style:italic;}.code-block .op{color:#89ddff;}
+.code-output{border-top:1px solid var(--border-subtle);background:rgba(0,0,0,0.25);}
+.code-output-label{display:flex;align-items:center;gap:6px;padding:8px 16px 0;font-family:'JetBrains Mono',monospace;font-size:0.65rem;color:var(--accent-5);letter-spacing:1px;text-transform:uppercase;}
+.code-output-label::before{content:'▸';font-size:0.7rem;}
+.code-output pre{padding:8px 20px 14px;font-family:'JetBrains Mono',monospace;font-size:0.8rem;line-height:1.6;color:var(--accent-5);opacity:0.85;overflow-x:auto;}
+.formula-card{background:var(--bg-card);border:1px solid var(--border-subtle);border-radius:var(--radius);padding:24px 28px;margin:1.5rem 0;position:relative;overflow:hidden;}
+.formula-card::before{content:'';position:absolute;left:0;top:0;bottom:0;width:3px;background:var(--gradient-line);}
+.formula-card .formula-label{font-family:'JetBrains Mono',monospace;font-size:0.7rem;color:var(--accent-1);letter-spacing:1.5px;text-transform:uppercase;margin-bottom:12px;}
+.formula-card .formula-math{font-size:1.3rem;color:var(--text-primary);font-weight:300;letter-spacing:1px;margin-bottom:12px;font-family:'Source Serif 4',serif;}
+.formula-card .formula-explain{font-size:0.88rem;color:var(--text-secondary);line-height:1.6;}
+.formula-card .formula-explain .var{font-family:'Source Serif 4',serif;font-style:italic;color:var(--accent-4);font-weight:400;}
+.insight{background:linear-gradient(135deg,rgba(108,92,231,0.08),rgba(0,206,201,0.05));border:1px solid rgba(108,92,231,0.2);border-radius:var(--radius);padding:20px 24px;margin:2rem 0;position:relative;}
+.insight::before{content:'💡';position:absolute;top:-12px;left:20px;background:var(--bg-primary);padding:0 8px;font-size:1.1rem;}
+.insight p{color:var(--text-primary);font-size:0.95rem;margin:0;}
+.warning{background:linear-gradient(135deg,rgba(253,121,168,0.08),rgba(253,203,110,0.05));border:1px solid rgba(253,121,168,0.2);border-radius:var(--radius);padding:20px 24px;margin:2rem 0;position:relative;}
+.warning::before{content:'⚠️';position:absolute;top:-12px;left:20px;background:var(--bg-primary);padding:0 8px;font-size:1.1rem;}
+.warning p{color:var(--text-primary);font-size:0.95rem;margin:0;}
+.arch-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:16px;margin:1.5rem 0;}
+.arch-card{background:var(--bg-card);border:1px solid var(--border-subtle);border-radius:var(--radius-sm);padding:20px;transition:border-color 0.3s;}
+.arch-card:hover{border-color:var(--border-glow);}
+.arch-card .arch-name{font-family:'JetBrains Mono',monospace;font-size:0.8rem;color:var(--accent-1);margin-bottom:8px;font-weight:600;}
+.arch-card p{color:var(--text-secondary);font-size:0.85rem;margin:0;}
+.quiz-card{background:var(--bg-card);border:1px solid var(--border-subtle);border-radius:var(--radius);margin:1.5rem 0;overflow:hidden;}
+.quiz-card-header{padding:14px 20px;background:rgba(253,203,110,0.05);border-bottom:1px solid var(--border-subtle);font-weight:600;font-size:0.9rem;display:flex;align-items:center;gap:8px;}
+.quiz-card-body{padding:20px 24px;}
+.quiz-question{font-size:0.95rem;color:var(--text-primary);margin-bottom:16px;line-height:1.6;}
+.quiz-options{display:flex;flex-direction:column;gap:8px;}
+.quiz-option{padding:12px 16px;border:1px solid var(--border-subtle);border-radius:var(--radius-sm);cursor:pointer;font-size:0.9rem;color:var(--text-secondary);transition:all 0.25s;display:flex;align-items:center;gap:10px;}
+.quiz-option:hover{border-color:var(--accent-1);background:rgba(108,92,231,0.06);color:var(--text-primary);}
+.quiz-option.correct{border-color:var(--accent-5);background:rgba(85,239,196,0.1);color:var(--accent-5);}
+.quiz-option.incorrect{border-color:var(--accent-3);background:rgba(253,121,168,0.1);color:var(--accent-3);}
+.quiz-option .option-letter{font-family:'JetBrains Mono',monospace;font-size:0.7rem;font-weight:600;width:22px;height:22px;display:flex;align-items:center;justify-content:center;border-radius:50%;border:1px solid currentColor;flex-shrink:0;}
+.quiz-feedback{margin-top:12px;padding:12px 16px;border-radius:var(--radius-sm);font-size:0.88rem;line-height:1.6;display:none;}
+.quiz-feedback.show{display:block;}
+.quiz-feedback.correct-fb{background:rgba(85,239,196,0.08);border:1px solid rgba(85,239,196,0.2);color:var(--accent-5);}
+.quiz-feedback.incorrect-fb{background:rgba(253,121,168,0.08);border:1px solid rgba(253,121,168,0.2);color:var(--accent-3);}
+</style>
+</head>
+<body>
+<div class="scroll-progress" id="scrollProgress"></div>
+
+<section class="hero">
+  <div class="hero-particles" id="heroParticles"></div>
+  <div class="hero-label"><span class="dot-indicator"></span> PyTorch · Module 3 of 12</div>
+  <h1><span class="gradient-text">nn.Module</span> Architecture</h1>
+  <p class="hero-subtitle">
+    Learn to build clean, reusable neural network components using PyTorch's <code>nn.Module</code> base class.
+    Understand the difference between <code>nn.Sequential</code> and custom modules, and master the
+    key layers every data scientist needs.
+  </p>
+  <div class="hero-scroll-cue"><span>Begin</span><div class="arrow"></div></div>
+</section>
+
+<div class="content-wrapper">
+
+<!-- SECTION 1 -->
+<div class="section" id="sec1">
+  <div class="section-number">01 — The nn.Module Base Class</div>
+  <h2>Why Does nn.Module Exist?</h2>
+
+  <p>In Module 2, you managed <code>w</code> and <code>b</code> as raw tensors. For a real network with millions of parameters across dozens of layers, this becomes unmanageable. <code>nn.Module</code> solves the <strong>organisation and bookkeeping problem</strong>.</p>
+
+  <div class="formula-card">
+    <div class="formula-label">What nn.Module Gives You</div>
+    <div class="formula-math">Parameters · Submodules · State Dict · Device Management</div>
+    <div class="formula-explain">
+      <span class="var">.parameters()</span> — automatically collects all learnable tensors &nbsp;·&nbsp;
+      <span class="var">.state_dict()</span> — save / load all weights &nbsp;·&nbsp;
+      <span class="var">.to(device)</span> — move the entire model to GPU in one call &nbsp;·&nbsp;
+      <span class="var">.train() / .eval()</span> — toggle training vs inference mode
+    </div>
+  </div>
+
+  <div class="code-block">
+    <div class="code-block-header"><span class="code-lang">Python</span></div>
+    <pre><span class="kw">import</span> torch
+<span class="kw">import</span> torch.nn <span class="kw">as</span> nn
+
+<span class="cm"># Minimal custom module</span>
+<span class="kw">class</span> <span class="fn">LinearRegression</span>(nn.Module):
+    <span class="kw">def</span> <span class="fn">__init__</span>(self, in_features, out_features):
+        <span class="fn">super</span>().__init__()
+        self.linear = nn.<span class="fn">Linear</span>(in_features, out_features)
+
+    <span class="kw">def</span> <span class="fn">forward</span>(self, x):
+        <span class="kw">return</span> self.<span class="fn">linear</span>(x)
+
+model = <span class="fn">LinearRegression</span>(<span class="num">1</span>, <span class="num">1</span>)
+<span class="fn">print</span>(model)
+<span class="fn">print</span>(<span class="str">"\nParameters:"</span>)
+<span class="kw">for</span> name, param <span class="kw">in</span> model.<span class="fn">named_parameters</span>():
+    <span class="fn">print</span>(<span class="fn">f</span><span class="str">"  {name}: {param.shape} | requires_grad={param.requires_grad}"</span>)</pre>
+    <div class="code-output">
+      <div class="code-output-label">Output</div>
+      <pre>LinearRegression(
+  (linear): Linear(in_features=1, out_features=1, bias=True)
+)
+
+Parameters:
+  linear.weight: torch.Size([1, 1]) | requires_grad=True
+  linear.bias:   torch.Size([1])    | requires_grad=True</pre>
+    </div>
+  </div>
+
+  <div class="insight"><p><strong>The Two Rules of nn.Module:</strong> (1) Always call <code>super().__init__()</code> first. (2) Define all learnable sub-layers in <code>__init__</code>, not in <code>forward()</code>. If you assign a layer in <code>forward()</code>, it won't be tracked by <code>.parameters()</code>.</p></div>
+</div>
+
+<div class="gradient-divider"></div>
+
+<!-- SECTION 2 -->
+<div class="section" id="sec2">
+  <div class="section-number">02 — nn.Sequential vs Custom Modules</div>
+  <h2>Two Ways to Stack Layers</h2>
+
+  <div class="code-block">
+    <div class="code-block-header"><span class="code-lang">Python</span></div>
+    <pre><span class="cm"># ── Method 1: nn.Sequential ──────────────────────────────────────</span>
+<span class="cm"># Best for simple, linear pipelines where data flows straight through</span>
+model_seq = nn.<span class="fn">Sequential</span>(
+    nn.<span class="fn">Linear</span>(<span class="num">784</span>, <span class="num">256</span>),
+    nn.<span class="fn">ReLU</span>(),
+    nn.<span class="fn">Dropout</span>(<span class="num">0.3</span>),
+    nn.<span class="fn">Linear</span>(<span class="num">256</span>, <span class="num">128</span>),
+    nn.<span class="fn">ReLU</span>(),
+    nn.<span class="fn">Linear</span>(<span class="num">128</span>, <span class="num">10</span>),
+)
+
+<span class="cm"># ── Method 2: Custom nn.Module ────────────────────────────────────</span>
+<span class="cm"># Better when you need skip connections, multiple inputs/outputs,</span>
+<span class="cm"># conditional logic, or reusable blocks</span>
+<span class="kw">class</span> <span class="fn">MLP</span>(nn.Module):
+    <span class="kw">def</span> <span class="fn">__init__</span>(self, in_dim, hidden_dim, out_dim, dropout=<span class="num">0.3</span>):
+        <span class="fn">super</span>().__init__()
+        self.fc1     = nn.<span class="fn">Linear</span>(in_dim, hidden_dim)
+        self.fc2     = nn.<span class="fn">Linear</span>(hidden_dim, hidden_dim)
+        self.fc3     = nn.<span class="fn">Linear</span>(hidden_dim, out_dim)
+        self.relu    = nn.<span class="fn">ReLU</span>()
+        self.dropout = nn.<span class="fn">Dropout</span>(dropout)
+
+    <span class="kw">def</span> <span class="fn">forward</span>(self, x):
+        x = self.dropout(self.<span class="fn">relu</span>(self.<span class="fn">fc1</span>(x)))
+        x = self.dropout(self.<span class="fn">relu</span>(self.<span class="fn">fc2</span>(x)))
+        <span class="kw">return</span> self.<span class="fn">fc3</span>(x)  <span class="cm"># No activation on final layer (raw logits)</span>
+
+model = <span class="fn">MLP</span>(in_dim=<span class="num">784</span>, hidden_dim=<span class="num">256</span>, out_dim=<span class="num">10</span>)
+x = torch.<span class="fn">randn</span>(<span class="num">32</span>, <span class="num">784</span>)   <span class="cm"># Batch of 32 MNIST-like images</span>
+out = <span class="fn">model</span>(x)
+<span class="fn">print</span>(<span class="str">"Output shape:"</span>, out.shape)  <span class="cm"># (32, 10) — logits for 10 classes</span></pre>
+    <div class="code-output">
+      <div class="code-output-label">Output</div>
+      <pre>Output shape: torch.Size([32, 10])</pre>
+    </div>
+  </div>
+</div>
+
+<div class="gradient-divider"></div>
+
+<!-- SECTION 3 -->
+<div class="section" id="sec3">
+  <div class="section-number">03 — Essential Layers Reference</div>
+  <h2>The Layers You'll Use Every Day</h2>
+
+  <div class="arch-grid">
+    <div class="arch-card">
+      <div class="arch-name">nn.Linear</div>
+      <p>Fully connected layer. Computes <code>xW<sup>T</sup> + b</code>. Core of all MLPs and transformer feed-forward blocks.</p>
+    </div>
+    <div class="arch-card">
+      <div class="arch-name">nn.ReLU / GELU / SiLU</div>
+      <p>Activation functions. ReLU: max(0,x). GELU: smoother, used in Transformers. SiLU: used in modern models like Mistral.</p>
+    </div>
+    <div class="arch-card">
+      <div class="arch-name">nn.Dropout</div>
+      <p>Randomly zeros <code>p</code> fraction of neurons during training. Disabled automatically in <code>.eval()</code> mode.</p>
+    </div>
+    <div class="arch-card">
+      <div class="arch-name">nn.BatchNorm1d/2d</div>
+      <p>Normalises activations per batch. Stabilises training. Behaves differently in train vs eval mode.</p>
+    </div>
+    <div class="arch-card">
+      <div class="arch-name">nn.Embedding</div>
+      <p>Lookup table mapping integer indices to dense vectors. Foundation of NLP models and recommender systems.</p>
+    </div>
+    <div class="arch-card">
+      <div class="arch-name">nn.Conv2d</div>
+      <p>2D convolution for image data. Parameters: in/out channels, kernel size, stride, padding.</p>
+    </div>
+  </div>
+
+  <div class="code-block">
+    <div class="code-block-header"><span class="code-lang">Python</span></div>
+    <pre><span class="cm"># Inspecting model internals</span>
+model = <span class="fn">MLP</span>(<span class="num">784</span>, <span class="num">256</span>, <span class="num">10</span>)
+
+<span class="cm"># Total parameter count</span>
+total = <span class="fn">sum</span>(p.<span class="fn">numel</span>() <span class="kw">for</span> p <span class="kw">in</span> model.<span class="fn">parameters</span>())
+trainable = <span class="fn">sum</span>(p.<span class="fn">numel</span>() <span class="kw">for</span> p <span class="kw">in</span> model.<span class="fn">parameters</span>() <span class="kw">if</span> p.requires_grad)
+<span class="fn">print</span>(<span class="fn">f</span><span class="str">"Total params:     {total:,}"</span>)
+<span class="fn">print</span>(<span class="fn">f</span><span class="str">"Trainable params: {trainable:,}"</span>)
+
+<span class="cm"># Save and load weights</span>
+torch.<span class="fn">save</span>(model.<span class="fn">state_dict</span>(), <span class="str">"model.pt"</span>)
+
+new_model = <span class="fn">MLP</span>(<span class="num">784</span>, <span class="num">256</span>, <span class="num">10</span>)
+new_model.<span class="fn">load_state_dict</span>(torch.<span class="fn">load</span>(<span class="str">"model.pt"</span>))
+
+<span class="cm"># Move to GPU (if available)</span>
+device = <span class="str">"cuda"</span> <span class="kw">if</span> torch.cuda.<span class="fn">is_available</span>() <span class="kw">else</span> <span class="str">"cpu"</span>
+model = model.<span class="fn">to</span>(device)
+
+<span class="cm"># Freeze a layer (stop gradients flowing through it)</span>
+<span class="kw">for</span> param <span class="kw">in</span> model.fc1.<span class="fn">parameters</span>():
+    param.requires_grad = <span class="kw">False</span>
+
+frozen_count = <span class="fn">sum</span>(p.<span class="fn">numel</span>() <span class="kw">for</span> p <span class="kw">in</span> model.<span class="fn">parameters</span>() <span class="kw">if</span> <span class="kw">not</span> p.requires_grad)
+<span class="fn">print</span>(<span class="fn">f</span><span class="str">"Frozen params: {frozen_count:,}"</span>)</pre>
+    <div class="code-output">
+      <div class="code-output-label">Output</div>
+      <pre>Total params:     268,554
+Trainable params: 268,554
+Frozen params:    200,960</pre>
+    </div>
+  </div>
+
+  <h3>train() vs eval() Mode</h3>
+  <div class="warning"><p><strong>Always set the correct mode!</strong> <code>model.train()</code> enables Dropout and makes BatchNorm use batch statistics. <code>model.eval()</code> disables Dropout and makes BatchNorm use running statistics. Forgetting to call <code>model.eval()</code> during inference leads to randomly different predictions every run.</p></div>
+
+  <div class="code-block">
+    <div class="code-block-header"><span class="code-lang">Python</span></div>
+    <pre><span class="cm"># Standard pattern</span>
+model.<span class="fn">train</span>()   <span class="cm"># Before training loop</span>
+<span class="kw">for</span> batch <span class="kw">in</span> train_loader:
+    ...
+
+model.<span class="fn">eval</span>()    <span class="cm"># Before validation / inference</span>
+<span class="kw">with</span> torch.<span class="fn">no_grad</span>():
+    <span class="kw">for</span> batch <span class="kw">in</span> val_loader:
+        ...</pre>
+  </div>
+</div>
+
+<div class="gradient-divider"></div>
+
+<!-- SECTION 4 — QUIZ -->
+<div class="section" id="sec4">
+  <div class="section-number">04 — Knowledge Check</div>
+  <h2>Test Your Understanding</h2>
+
+  <div class="quiz-card">
+    <div class="quiz-card-header">🧩 Question 1</div>
+    <div class="quiz-card-body">
+      <div class="quiz-question">You define a layer inside <code>forward()</code> instead of <code>__init__()</code>. What is the consequence?</div>
+      <div class="quiz-options">
+        <div class="quiz-option" onclick="answerQuiz(this,'wrong','q1')"><span class="option-letter">A</span>The code raises a TypeError immediately.</div>
+        <div class="quiz-option" onclick="answerQuiz(this,'correct','q1')"><span class="option-letter">B</span>The layer's parameters are not tracked and won't be included in <code>.parameters()</code> or optimisers.</div>
+        <div class="quiz-option" onclick="answerQuiz(this,'wrong','q1')"><span class="option-letter">C</span>The layer will still be tracked because PyTorch monitors all <code>nn.Module</code> instances.</div>
+        <div class="quiz-option" onclick="answerQuiz(this,'wrong','q1')"><span class="option-letter">D</span>It works fine and is actually the recommended pattern for dynamic graphs.</div>
+      </div>
+      <div class="quiz-feedback" id="q1-feedback"></div>
+    </div>
+  </div>
+
+  <div class="quiz-card">
+    <div class="quiz-card-header">🧩 Question 2</div>
+    <div class="quiz-card-body">
+      <div class="quiz-question">What happens to <code>nn.Dropout</code> when you call <code>model.eval()</code>?</div>
+      <div class="quiz-options">
+        <div class="quiz-option" onclick="answerQuiz(this,'wrong','q2')"><span class="option-letter">A</span>It raises an error — Dropout cannot be used during evaluation.</div>
+        <div class="quiz-option" onclick="answerQuiz(this,'wrong','q2')"><span class="option-letter">B</span>Dropout rate is halved automatically for stability.</div>
+        <div class="quiz-option" onclick="answerQuiz(this,'correct','q2')"><span class="option-letter">C</span>Dropout is completely disabled — all neurons are kept, outputs are unchanged.</div>
+        <div class="quiz-option" onclick="answerQuiz(this,'wrong','q2')"><span class="option-letter">D</span>Dropout switches to zeroing entire feature maps instead of individual neurons.</div>
+      </div>
+      <div class="quiz-feedback" id="q2-feedback"></div>
+    </div>
+  </div>
+</div>
+
+</div>
+
+<script>
+const sp = document.getElementById('scrollProgress');
+window.addEventListener('scroll', () => { sp.style.width = (window.scrollY / (document.body.scrollHeight - window.innerHeight) * 100) + '%'; });
+document.querySelectorAll('.section').forEach(s => new IntersectionObserver(([e]) => { if (e.isIntersecting) e.target.classList.add('visible'); }, { threshold: 0.08 }).observe(s));
+const c = document.getElementById('heroParticles');
+for (let i = 0; i < 18; i++) { const d = document.createElement('div'); d.className = 'dot'; d.style.cssText = `left:${Math.random()*100}%;top:${Math.random()*100}%;animation-delay:${Math.random()*6}s;animation-duration:${4+Math.random()*4}s`; c.appendChild(d); }
+const fb = {
+  q1: { correct: '✓ Correct! Only nn.Module attributes assigned in __init__ are registered. Layers created inside forward() are invisible to .parameters() and state_dict().', incorrect: '✗ Not quite. nn.Module only tracks sub-modules assigned as attributes in __init__.' },
+  q2: { correct: '✓ Correct! model.eval() sets all Dropout layers to pass-through mode — no neurons are dropped, giving deterministic outputs.', incorrect: '✗ Not quite. model.eval() completely disables Dropout — all neurons pass through unchanged.' }
+};
+function answerQuiz(el, r, qid) {
+  el.closest('.quiz-card-body').querySelectorAll('.quiz-option').forEach(o => o.style.pointerEvents = 'none');
+  el.classList.add(r === 'correct' ? 'correct' : 'incorrect');
+  const f = document.getElementById(qid + '-feedback');
+  f.textContent = fb[qid][r === 'correct' ? 'correct' : 'incorrect'];
+  f.className = 'quiz-feedback show ' + (r === 'correct' ? 'correct-fb' : 'incorrect-fb');
+}
+</script>
+</body>
+</html>

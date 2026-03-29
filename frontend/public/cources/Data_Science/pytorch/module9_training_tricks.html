@@ -1,1 +1,201 @@
-<p><strong>Module9—ModernTrainingTricks</strong></p><p><strong>Regularisation,Augmentation,Imbalance,andHyperparameterTuning</strong></p><p>PyTorchforDataScience</p><p><strong>ModuleGoal:</strong>Learntheregularisationandtrainingtricksthattakeamodelfrom“overfittingontrainingset”to“generalisesinproduction.”Coversdropout,label smoothing,weightdecay,focalloss,mixupfortabulardata,andanOptuna-style hyperparametersearchworkflow.</p><p><strong>1.Regularisation</strong></p><p><strong>Dropout</strong></p><table><tr><td><p>importtorch <br />importtorch.nnasnn <br />importnumpyasnp <br />torch.manual_seed(42)</p></td></tr></table><table><tr><td><p>#Dropoutrandomlyzerosactivationsduringtraining <br />#Atinference,allneuronsareactivebutoutputsarescaledby(1-p)</p></td></tr></table><table><tr><td><p>#Wheretoputdropout: <br />#-Afteractivationfunctionsinhiddenlayers <br />#-Beforethefinallinearlayer <br />#-NOTaftertheverylastlinearlayer(beforeloss)</p></td></tr></table><table><tr><td><p><strong>class</strong>RegularisedMLP(nn.Module):</p></td></tr></table><table><tr><td><p><strong>def</strong>__init__(self,in_dim,hidden,out_dim,dropout_p=0.3): super().__init__() <br />self.net=nn.Sequential(</p></td></tr></table><p>1</p><table><tr><td><p>)</p></td><td><p>nn.Linear(in_dim,hidden),nn.ReLU(),nn.Dropout(dropout_p), nn.Linear(hidden,hidden),nn.ReLU(),nn.Dropout(dropout_p), nn.Linear(hidden,out_dim)</p></td></tr></table><table><tr><td><p><strong>def</strong>forward(self,x):<strong>return</strong>self.net(x)</p></td></tr></table><p><strong>LabelSmoothing</strong></p><p>Standard cross-entropy trains the model towards one-hot targets [0,0,1,0].Label smooth-ingusessofttargets[0.05,0.05,0.85,0.05]—preventsthemodelfrombecomingover-confident.</p><table><tr><td colspan="2"><p>#LabelsmoothingisbuiltintoCrossEntropyLosssincePyTorch1.10 criterion_smooth=nn.CrossEntropyLoss(label_smoothing=0.1)</p></td></tr><tr><td><p>logits</p></td><td><p>=torch.randn(16,5)</p></td></tr><tr><td colspan="2"><p>targets=torch.randint(0,5,(16,))</p></td></tr></table><table><tr><td colspan="3"><p>loss_hard=nn.CrossEntropyLoss()(logits,targets) loss_soft=criterion_smooth(logits,targets)</p></td></tr><tr><td colspan="2"><p>print(f"HardlabelCEloss:</p></td><td><p>{loss_hard.item():.4f}")</p></td></tr><tr><td colspan="2"><p>print(f"SmoothlabelCEloss:</p></td><td><p>{loss_soft.item():.4f}")</p></td></tr><tr><td colspan="3"><p>#Smoothlossistypicallyabithigher—modelcan'tgettooconfident</p></td></tr><tr><td><p>HardlabelCEloss:</p></td><td colspan="2"><p>2.1040</p></td></tr><tr><td><p>SmoothlabelCEloss:</p></td><td colspan="2"><p>2.0936</p></td></tr></table><p><strong>WeightDecay:L2Regularisation</strong></p><table><tr><td><p>#Weightdecaypenaliseslargeweights—simplermodelsgeneralisebetter #AdamWimplementsDECOUPLEDweightdecay(correctversion)</p></td></tr></table><table><tr><td colspan="2"><p>model=RegularisedMLP(10,64,3) <br />#Applydifferentweightdecaytodifferentparametergroups <br />#Commonpattern:noweightdecayonbiasesandLayerNormparameters</p></td></tr><tr><td><p>no_decay</p></td><td><p>=['bias','norm']</p></td></tr></table><p>2</p><table><tr><td colspan="3"><p>decay_params=[p<strong>for</strong>n,p<strong>in</strong>model.named_parameters() 	<strong>ifnot</strong>any(nd<strong>in</strong>n<strong>for</strong>nd<strong>in</strong>no_decay)] nodecay_params=[p<strong>for</strong>n,p<strong>in</strong>model.named_parameters() 		<strong>if</strong>any(nd<strong>in</strong>n<strong>for</strong>nd<strong>in</strong>no_decay)]</p><p>opt=torch.optim.AdamW([</p></td></tr><tr><td colspan="2"><p>{'params':decay_params,</p></td><td><p>'weight_decay':1e-2},</p></td></tr><tr><td colspan="3"><p>	{'params':nodecay_params,'weight_decay':0.0}, ],lr=1e-3)</p><p>print("Optimizerwithselectiveweightdecayconfigured.")</p></td></tr><tr><td colspan="2"><p>print(f"Decayparamcount:</p></td><td><p>{sum(p.numel()<strong>for</strong>p<strong>in</strong>decay_params):,}")</p></td></tr><tr><td colspan="3"><p>print(f"No-decayparamcount:{sum(p.numel()<strong>for</strong>p<strong>in</strong>nodecay_params):,}")</p></td></tr><tr><td colspan="3"><p>Optimizerwithselectiveweightdecayconfigured.</p></td></tr><tr><td><p>Decayparamcount:</p></td><td colspan="2"><p>4,928</p></td></tr><tr><td colspan="3"><p>No-decayparamcount:131</p></td></tr></table><p><strong>2.Normalisation:BatchvsLayerNorm</strong></p><table><tr><td><p>#BatchNorm:normaliseacrossBATCHdimension <br />#Problem:failswithbatch_size=1,andbehaviourdifferstrain/eval bn=nn.BatchNorm1d(64)</p></td></tr></table><table><tr><td><p>#LayerNorm:normaliseacrossFEATUREdimension <br />#Worksatanybatchsize;consistenttrain/eval;preferredforTransformers ln=nn.LayerNorm(64)</p></td></tr></table><table><tr><td><p>x=torch.randn(16,64)</p></td></tr></table><table><tr><td><p>bn_out=bn(x) <br />ln_out=ln(x)</p></td></tr></table><table><tr><td><p>print("BatchNormoutputmean/std:",bn_out.mean().item(),bn_out.std().item()) print("LayerNormoutputmean/std:",ln_out.mean().item(),ln_out.std().item())</p></td></tr></table><table><tr><td><p>#Ruleofthumb:</p></td></tr></table><p>3</p><table><tr><td><p>#CNNs</p></td><td><p>→BatchNorm</p></td></tr><tr><td colspan="2"><p>#Transformers,RNNs→LayerNorm <br />#Smallbatchsize→LayerNorm(BatchNormfailsatbatch_size&lt;8)</p></td></tr></table><p>BatchNormoutputmean/std:-2.2992026060819626e-091.0004825592041016 LayerNormoutputmean/std:1.1641532182693481e-091.0004833936691284</p><p><strong>3.Augmentations:MixupforTabular/Time-Series </strong><br />Mixupcreatesnewtrainingsamplesbylinearlyinterpolatingbetweentworealsamples.Origi-nallyproposedforimages,itworkswellfortabularandtime-seriesdatatoo.</p><table><tr><td colspan="3"><p><strong>def</strong>mixup_batch(X:torch.Tensor,y:torch.Tensor,alpha:float=0.4): """ <br />Applymixupaugmentationtoabatch.</p><p>Createsconvexcombinationsofpairsofsamples.</p><p>Returns: <br />X_mixed:interpolatedfeatures <br />y_a,y_b:originallabels</p></td></tr><tr><td colspan="2"><p>lam:</p></td><td><p>mixingcoefficient</p></td></tr><tr><td colspan="3"><p>"""</p></td></tr><tr><td><p>lam</p></td><td colspan="2"><p>=np.random.beta(alpha,alpha)<strong>if</strong>alpha&gt;0<strong>else</strong>1.0</p></td></tr><tr><td><p>idx</p></td><td colspan="2"><p>=torch.randperm(len(X))</p></td></tr><tr><td colspan="3"><p>X_mixed=lam*X+(1-lam)*X[idx]</p></td></tr><tr><td><p>y_a</p></td><td colspan="2"><p>=y</p></td></tr><tr><td><p>y_b</p></td><td colspan="2"><p>=y[idx]</p></td></tr><tr><td colspan="3"><p><strong>return</strong>X_mixed,y_a,y_b,lam</p></td></tr></table><table><tr><td><p><strong>def</strong>mixup_criterion(criterion,pred,y_a,y_b,lam): <br />"""Lossformixup-augmentedsamples.""" <br /><strong>return</strong>lam*criterion(pred,y_a)+(1-lam)*criterion(pred,y_b)</p></td></tr></table><table><tr><td><p>#Usageintrainingloop <br />X_b=torch.randn(32,10)</p></td></tr></table><p>4</p><table><tr><td colspan="4"><p>y_b=torch.randint(0,3,(32,)) <br />criterion_ce=nn.CrossEntropyLoss() <br />model_m=RegularisedMLP(10,64,3)</p><p>X_mix,y_a,y_b_mix,lam=mixup_batch(X_b,y_b,alpha=0.4) logits=model_m(X_mix)</p></td></tr><tr><td><p>loss</p></td><td colspan="3"><p>=mixup_criterion(criterion_ce,logits,y_a,y_b_mix,lam)</p></td></tr><tr><td colspan="3"><p>print(f"Mixuploss:{loss.item():.4f}</p></td><td><p>(lambda={lam:.3f})")</p></td></tr><tr><td colspan="2"><p>Mixuploss:1.1269</p></td><td colspan="2"><p>(lambda=0.001)</p></td></tr></table><p><strong>4.ClassImbalance:FocalLoss+WeightedSampling</strong></p><p><strong>FocalLoss</strong></p><p>Focallossdown-weightseasy,well-classifiedexamplessothemodelfocusesonhardones.</p><p>Originallydesignedforobjectdetection,it’shighlyusefulforanomalydetectionandfraud.</p><table><tr><td colspan="4"><p><strong>class</strong>FocalLoss(nn.Module): <br />""" <br />FocalLoss:FL(p_t)=-alpha_t*(1-p_t)^gamma*log(p_t) gamma&gt;0reduceslossforwell-classifiedexamples.</p><p>alphabalancesclassimportance.</p><p>"""</p><p><strong>def</strong>__init__(self,alpha:float=0.25,gamma:float=2.0, 		reduction:str='mean'): <br />	super().__init__()</p></td></tr><tr><td colspan="2"><p>self.alpha</p></td><td colspan="2"><p>=alpha</p></td></tr><tr><td colspan="2"><p>self.gamma</p></td><td colspan="2"><p>=gamma</p></td></tr><tr><td colspan="4"><p>	self.reduction=reduction <br /><strong>def</strong>forward(self,logits:torch.Tensor,targets:torch.Tensor)-&gt;torch.Tensor: 	ce_loss=nn.functional.cross_entropy(logits,targets,reduction='none')</p></td></tr><tr><td><p>pt</p></td><td colspan="2"><p>=torch.exp(-ce_loss)</p></td><td><p>#p_t=probabilityofcorrectclass</p></td></tr><tr><td><p>focal</p></td><td colspan="3"><p>=self.alpha*(1-pt)**self.gamma*ce_loss</p></td></tr></table><table><tr><td><p><strong>if</strong>self.reduction=='mean':<strong>return</strong>focal.mean()</p></td></tr></table><p>5</p><table><tr><td colspan="4"><p><strong>if</strong>self.reduction=='sum':</p></td><td><p><strong>return</strong>focal.sum()</p></td></tr><tr><td colspan="5"><p><strong>return</strong>focal</p><p>#Compareonimbalancedbatch</p></td></tr><tr><td><p>logits</p></td><td colspan="4"><p>=torch.randn(32,2)</p></td></tr><tr><td colspan="5"><p>targets=torch.zeros(32,dtype=torch.long)</p></td></tr><tr><td colspan="2"><p>targets[:3]=1</p></td><td colspan="3"><p>#Only3positivesoutof32—heavilyimbalanced</p></td></tr><tr><td><p>ce_loss</p></td><td colspan="4"><p>=nn.CrossEntropyLoss()(logits,targets)</p></td></tr><tr><td colspan="5"><p>focal_loss=FocalLoss(gamma=2.0)(logits,targets) print(f"Cross-entropyloss:{ce_loss.item():.4f}")</p></td></tr><tr><td colspan="3"><p>print(f"Focalloss:</p></td><td colspan="2"><p>{focal_loss.item():.4f}")</p></td></tr><tr><td colspan="5"><p>Cross-entropyloss:0.9112</p></td></tr><tr><td colspan="2"><p>Focalloss:</p></td><td colspan="3"><p>0.1130</p></td></tr></table><p><strong>5.Self-SupervisedLearning:ContrastiveLearningIntro</strong></p><p>Contrastive learning trains a model to bring similar samples together and push different samples</p><p>apart—withoutrequiringlabelsforeverysample.</p><table><tr><td><p><strong>class</strong>ProjectionHead(nn.Module): <br />	"""SmallMLPheadusedforcontrastivelearning.""" 	<strong>def</strong>__init__(self,in_dim,proj_dim=64): <br />		super().__init__() <br />		self.net=nn.Sequential( <br />		nn.Linear(in_dim,in_dim),nn.ReLU(), <br />		nn.Linear(in_dim,proj_dim) <br />		) <br />	<strong>def</strong>forward(self,x):<strong>return</strong>self.net(x)</p></td></tr></table><p><strong>def</strong>nt_xent_loss(z1:torch.Tensor,z2:torch.Tensor,temperature:float=0.5):</p><table><tr><td><p>""" <br />NT-Xent(NormalisedTemperature-scaledCrossEntropy)loss.</p><p>z1,z2:twoaugmentedviewsofthesamesamples(B,D).</p></td></tr></table><p>6</p><table><tr><td colspan="3"><p>Positives:(z1[i],z2[i]).Negatives:allotherpairs.</p><p>""" <br />B=z1.size(0)</p></td></tr><tr><td colspan="2"><p>z=torch.cat([z1,z2],dim=0)</p></td><td><p>#(2B,D)</p></td></tr><tr><td colspan="3"><p>z=nn.functional.normalize(z,dim=1)</p></td></tr><tr><td><p>sim</p></td><td><p>=torch.matmul(z,z.T)/temperature</p></td><td><p>#(2B,2B)</p></td></tr><tr><td colspan="3"><p>#Removeself-similarityfromdenominator <br />mask=torch.eye(2*B,dtype=torch.bool,device=z.device) sim.masked_fill_(mask,float('-inf'))</p></td></tr></table><table><tr><td><p>#Positivepairs:iwithi+Bandi+Bwithi <br />labels=torch.cat([torch.arange(B)+B, <br />torch.arange(B)],dim=0).to(z.device)</p></td></tr></table><table><tr><td colspan="3"><p><strong>return</strong>nn.CrossEntropyLoss()(sim,labels)</p><p>#Demo:augmentlogfeaturevectorsbyaddingnoise B,D=32,64 <br />z1=torch.randn(B,D)</p></td></tr><tr><td colspan="2"><p>z2=z1+torch.randn(B,D)*0.1</p></td><td><p>#Slightlyperturbed(positivepair)</p></td></tr><tr><td colspan="3"><p>proj_head=ProjectionHead(D,proj_dim=32)</p></td></tr><tr><td><p>z1_proj</p></td><td colspan="2"><p>=proj_head(z1)</p></td></tr><tr><td><p>z2_proj</p></td><td colspan="2"><p>=proj_head(z2)</p></td></tr></table><table><tr><td><p>loss=nt_xent_loss(z1_proj,z2_proj,temperature=0.5) print(f"NT-Xentcontrastiveloss:{loss.item():.4f}")</p></td></tr></table><p>NT-Xentcontrastiveloss:2.7913</p><p><strong>6.HyperparameterTuning:Optuna-StyleWorkflow</strong></p><table><tr><td><p>#OptunaistherecommendedHPOlibraryforPyTorch #pipinstalloptuna</p></td></tr></table><p>7</p><table><tr><td colspan="4"><p>#WithoutOptunainstalled,hereisthedesignpattern:</p><p><strong>def</strong>objective(trial_config:dict)-&gt;float: <br />""" <br />Onetrial:build+trainmodelwithgivenhyperparameters.</p><p>Returns:validationmetric(tominimiseormaximise).</p><p>"""</p></td></tr><tr><td><p>lr</p></td><td colspan="3"><p>=trial_config['lr']</p></td></tr><tr><td colspan="3"><p>dropout</p></td><td><p>=trial_config['dropout']</p></td></tr><tr><td colspan="2"><p>hidden</p></td><td colspan="2"><p>=trial_config['hidden_dim']</p></td></tr><tr><td><p>wd</p></td><td colspan="3"><p>=trial_config['weight_decay']</p></td></tr><tr><td><p>X_tr</p></td><td colspan="3"><p>=torch.randn(500,10);y_tr=torch.randint(0,3,(500,))</p></td></tr><tr><td><p>X_vl</p></td><td colspan="3"><p>=torch.randn(100,10);y_vl=torch.randint(0,3,(100,))</p></td></tr><tr><td colspan="4"><p>model=RegularisedMLP(10,hidden,3,dropout_p=dropout)</p></td></tr><tr><td><p>opt</p></td><td colspan="3"><p>=torch.optim.AdamW(model.parameters(),lr=lr,weight_decay=wd)</p></td></tr><tr><td><p>crit</p></td><td colspan="3"><p>=nn.CrossEntropyLoss(label_smoothing=0.1)</p></td></tr></table><table><tr><td><p><strong>for</strong>_<strong>in</strong>range(20): <br />model.train();opt.zero_grad() loss=crit(model(X_tr),y_tr) loss.backward();opt.step()</p></td></tr></table><table><tr><td><p>model.eval() <br /><strong>with</strong>torch.no_grad(): <br />	acc=(model(X_vl).argmax(1)==y_vl).float().mean().item()</p></td></tr></table><p><strong>return</strong>acc</p><table><tr><td colspan="2"><p>#Manualgridsearch(replacewithOptunaforproduction) <br />search_space=[ <br />	{'lr':1e-3,'dropout':0.2,'hidden_dim':64,'weight_decay':1e-3}, 	{'lr':5e-4,'dropout':0.3,'hidden_dim':128,'weight_decay':1e-2}, 	{'lr':1e-3,'dropout':0.1,'hidden_dim':32,'weight_decay':1e-4}, ]</p><p>print("ManualHPOsearch:") <br /><strong>for</strong>i,config<strong>in</strong>enumerate(search_space): 	val_acc=objective(config)</p></td></tr><tr><td><p>print(f"</p></td><td><p>Trial{i}:lr={config['lr']},hidden={config['hidden_dim']}"</p></td></tr></table><p>8</p><table><tr><td><p>f"→val_acc={val_acc:.3f}")</p></td></tr></table><p>ManualHPOsearch: <br />Trial0:lr=0.001,hidden=64→val_acc=0.370 Trial1:lr=0.0005,hidden=128→val_acc=0.300 Trial2:lr=0.001,hidden=32→val_acc=0.320</p><p><strong>ModuleSummary</strong></p><table><tr><td><p>Concept</p></td><td><p>KeyTakeaway</p></td></tr></table><p><strong>Dropout </strong><br /><strong>Labelsmoothing </strong><br /><strong>Weightdecay </strong><br /><strong>Focalloss </strong><br /><strong>Mixup </strong><br /><strong>Contrastivelearning HPO</strong></p><p>Addafteractivationsinhiddenlayers.Neverafterthe finallayer.</p><p>CrossEntropyLoss(label_smoothing=0.1).</p><p>Preventsoverconfidence.</p><p>UseAdamW.Applytoweights,notbiasesornorm parameters.</p><p>Bestforimbalancedclassification(fraud,anomaly detection).gamma=2.</p><p>Interpolatesamplesandlabels.Improves generalisationontabulardata.</p><p>Learnrepresentationsfromunlabelleddatausing augmentationpairs.</p><p>UseOptuna.Theobjectivefunctionisjustyour trainingloopreturningametric.</p><p><strong>What’sNext</strong></p><p><strong>Module10—ModelDebugging</strong>coversthesystematicapproachtodiagnosingbroken training:vanishing/explodinggradients,activationhistograms,theLRfinder,andthe“overfit atinybatch”sanitycheck.Youwillreceiveapre-brokenmodelanddebugitfromscratch.</p><p>9</p>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Module 9 — Training Tricks & Regularisation | PyTorch for Data Science</title>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&family=Outfit:wght@300;400;500;600;700;800;900&family=Source+Serif+4:ital,wght@0,300;0,400;0,600;1,300;1,400&display=swap" rel="stylesheet">
+<style>
+:root{--bg-primary:#0a0a0f;--bg-card:#161622;--bg-code:#0d0d18;--text-primary:#e8e8f0;--text-secondary:#9898b0;--accent-1:#6c5ce7;--accent-2:#00cec9;--accent-3:#fd79a8;--accent-4:#fdcb6e;--accent-5:#55efc4;--gradient-line:linear-gradient(90deg,#6c5ce7,#00cec9,#fd79a8,#fdcb6e);--border-subtle:rgba(255,255,255,0.06);--radius:12px;--radius-sm:8px;}
+*{margin:0;padding:0;box-sizing:border-box;}html{scroll-behavior:smooth;}
+body{background:var(--bg-primary);color:var(--text-primary);font-family:'Outfit',sans-serif;line-height:1.7;overflow-x:hidden;-webkit-font-smoothing:antialiased;}
+.scroll-progress{position:fixed;top:0;left:0;height:3px;z-index:1000;background:var(--gradient-line);width:0%;transition:width 0.1s linear;}
+.hero{min-height:100vh;display:flex;flex-direction:column;justify-content:center;align-items:center;text-align:center;padding:2rem;position:relative;overflow:hidden;}
+.hero::before{content:'';position:absolute;inset:0;background:radial-gradient(ellipse 600px 400px at 30% 40%,rgba(108,92,231,0.12),transparent),radial-gradient(ellipse 500px 350px at 70% 60%,rgba(0,206,201,0.08),transparent);pointer-events:none;}
+.hero-particles{position:absolute;inset:0;pointer-events:none;}
+.hero-particles .dot{position:absolute;width:3px;height:3px;border-radius:50%;background:var(--accent-2);opacity:0;animation:floatDot 6s ease-in-out infinite;}
+@keyframes floatDot{0%,100%{opacity:0;transform:translateY(0);}50%{opacity:0.6;transform:translateY(-40px);}}
+.hero-label{display:inline-flex;align-items:center;gap:8px;background:rgba(108,92,231,0.1);border:1px solid rgba(108,92,231,0.25);border-radius:100px;padding:6px 18px;font-size:0.8rem;font-weight:500;color:var(--accent-1);letter-spacing:1.5px;text-transform:uppercase;margin-bottom:2rem;}
+.dot-indicator{width:6px;height:6px;border-radius:50%;background:var(--accent-2);animation:pulse 2s ease-in-out infinite;}
+@keyframes pulse{0%,100%{opacity:1;}50%{opacity:0.3;}}
+.hero h1{font-size:clamp(2.8rem,6vw,5rem);font-weight:900;line-height:1.1;letter-spacing:-2px;margin-bottom:1.5rem;}
+.gradient-text{background:var(--gradient-line);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;}
+.hero-subtitle{font-family:'Source Serif 4',serif;font-size:clamp(1.05rem,2vw,1.25rem);color:var(--text-secondary);max-width:640px;line-height:1.8;font-weight:300;}
+.hero-scroll-cue{position:absolute;bottom:3rem;display:flex;flex-direction:column;align-items:center;gap:8px;color:var(--text-secondary);font-size:0.75rem;letter-spacing:2px;text-transform:uppercase;}
+.arrow{width:20px;height:20px;border-right:2px solid var(--text-secondary);border-bottom:2px solid var(--text-secondary);transform:rotate(45deg);animation:bounceArrow 2s ease-in-out infinite;}
+@keyframes bounceArrow{0%,100%{transform:rotate(45deg) translateY(0);}50%{transform:rotate(45deg) translateY(6px);}}
+.content-wrapper{max-width:860px;margin:0 auto;padding:0 2rem 6rem;}
+.section{margin-bottom:5rem;opacity:0;transform:translateY(30px);transition:all 0.7s cubic-bezier(0.16,1,0.3,1);}
+.section.visible{opacity:1;transform:translateY(0);}
+.section-number{font-family:'JetBrains Mono',monospace;font-size:0.7rem;color:var(--accent-2);letter-spacing:3px;text-transform:uppercase;margin-bottom:0.75rem;display:flex;align-items:center;gap:10px;}
+.section-number::after{content:'';flex:1;height:1px;background:linear-gradient(90deg,var(--accent-2),transparent);opacity:0.3;}
+h2{font-size:clamp(1.8rem,3.5vw,2.4rem);font-weight:700;letter-spacing:-0.5px;margin-bottom:1.5rem;line-height:1.2;}
+h3{font-size:1.3rem;font-weight:600;margin:2.5rem 0 1rem;}
+p{color:var(--text-secondary);margin-bottom:1.25rem;font-size:1.02rem;}
+p strong{color:var(--text-primary);font-weight:600;}
+.gradient-divider{height:2px;background:var(--gradient-line);border-radius:2px;margin:4rem 0;opacity:0.5;}
+.code-block{background:var(--bg-code);border:1px solid var(--border-subtle);border-radius:var(--radius);overflow:hidden;margin:1.5rem 0;}
+.code-block-header{display:flex;align-items:center;padding:10px 16px;background:rgba(255,255,255,0.02);border-bottom:1px solid var(--border-subtle);}
+.code-lang{font-family:'JetBrains Mono',monospace;font-size:0.7rem;color:var(--accent-2);display:flex;align-items:center;gap:6px;}
+.code-lang::before{content:'●';font-size:8px;}
+.code-block pre{padding:16px 20px;overflow-x:auto;font-family:'JetBrains Mono',monospace;font-size:0.82rem;line-height:1.65;color:#c8c8d8;}
+.kw{color:#c792ea;}.fn{color:#82aaff;}.str{color:#c3e88d;}.num{color:#f78c6c;}.cm{color:#546e7a;font-style:italic;}
+.code-output{border-top:1px solid var(--border-subtle);background:rgba(0,0,0,0.25);}
+.code-output-label{display:flex;align-items:center;gap:6px;padding:8px 16px 0;font-family:'JetBrains Mono',monospace;font-size:0.65rem;color:var(--accent-5);letter-spacing:1px;text-transform:uppercase;}
+.code-output-label::before{content:'▸';font-size:0.7rem;}
+.code-output pre{padding:8px 20px 14px;font-family:'JetBrains Mono',monospace;font-size:0.8rem;line-height:1.6;color:var(--accent-5);opacity:0.85;}
+.formula-card{background:var(--bg-card);border:1px solid var(--border-subtle);border-radius:var(--radius);padding:24px 28px;margin:1.5rem 0;position:relative;overflow:hidden;}
+.formula-card::before{content:'';position:absolute;left:0;top:0;bottom:0;width:3px;background:var(--gradient-line);}
+.formula-label{font-family:'JetBrains Mono',monospace;font-size:0.7rem;color:var(--accent-1);letter-spacing:1.5px;text-transform:uppercase;margin-bottom:12px;}
+.formula-math{font-size:1.1rem;color:var(--text-primary);font-weight:300;margin-bottom:12px;font-family:'Source Serif 4',serif;}
+.formula-explain{font-size:0.88rem;color:var(--text-secondary);line-height:1.6;}
+.formula-explain .var{font-family:'Source Serif 4',serif;font-style:italic;color:var(--accent-4);}
+.insight{background:linear-gradient(135deg,rgba(108,92,231,0.08),rgba(0,206,201,0.05));border:1px solid rgba(108,92,231,0.2);border-radius:var(--radius);padding:20px 24px;margin:2rem 0;position:relative;}
+.insight::before{content:'💡';position:absolute;top:-12px;left:20px;background:var(--bg-primary);padding:0 8px;font-size:1.1rem;}
+.insight p{color:var(--text-primary);font-size:0.95rem;margin:0;}
+.warning{background:linear-gradient(135deg,rgba(253,121,168,0.08),rgba(253,203,110,0.05));border:1px solid rgba(253,121,168,0.2);border-radius:var(--radius);padding:20px 24px;margin:2rem 0;position:relative;}
+.warning::before{content:'⚠️';position:absolute;top:-12px;left:20px;background:var(--bg-primary);padding:0 8px;font-size:1.1rem;}
+.warning p{color:var(--text-primary);font-size:0.95rem;margin:0;}
+.tricks-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:16px;margin:1.5rem 0;}
+.trick-card{background:var(--bg-card);border:1px solid var(--border-subtle);border-radius:var(--radius-sm);padding:20px;transition:border-color 0.3s;}
+.trick-card:hover{border-color:rgba(108,92,231,0.3);}
+.trick-name{font-family:'JetBrains Mono',monospace;font-size:0.8rem;color:var(--accent-1);margin-bottom:8px;font-weight:600;}
+.trick-when{font-size:0.75rem;color:var(--accent-4);margin-bottom:8px;font-family:'JetBrains Mono',monospace;}
+.trick-desc{font-size:0.85rem;color:var(--text-secondary);}
+</style>
+</head>
+<body>
+<div class="scroll-progress" id="scrollProgress"></div>
+<section class="hero">
+  <div class="hero-particles" id="heroParticles"></div>
+  <div class="hero-label"><span class="dot-indicator"></span> PyTorch · Module 9 of 12</div>
+  <h1>Training <span class="gradient-text">Tricks &amp; Regularisation</span></h1>
+  <p class="hero-subtitle">Go from training to <em>training well</em>. Learn weight initialisation, batch normalisation, mixed precision, gradient clipping, label smoothing, and the tricks that separate good models from great ones.</p>
+  <div class="hero-scroll-cue"><span>Begin</span><div class="arrow"></div></div>
+</section>
+
+<div class="content-wrapper">
+
+<div class="section" id="sec1">
+  <div class="section-number">01 — Regularisation Techniques</div>
+  <h2>Fighting Overfitting</h2>
+
+  <div class="tricks-grid">
+    <div class="trick-card">
+      <div class="trick-name">L2 Weight Decay</div>
+      <div class="trick-when">Use: Always, especially with Adam</div>
+      <div class="trick-desc">Adds λ·||W||² to loss, penalising large weights. Set via <code>weight_decay</code> in optimiser.</div>
+    </div>
+    <div class="trick-card">
+      <div class="trick-name">Dropout</div>
+      <div class="trick-when">Use: MLPs, after dense layers</div>
+      <div class="trick-desc">Randomly zeros neurons (p=0.1–0.5). Forces the network to learn redundant, robust representations.</div>
+    </div>
+    <div class="trick-card">
+      <div class="trick-name">Label Smoothing</div>
+      <div class="trick-when">Use: Classification, large datasets</div>
+      <div class="trick-desc">Replace hard (0,1) targets with (ε/K, 1-ε). Prevents overconfidence. Use <code>label_smoothing=0.1</code> in CrossEntropyLoss.</div>
+    </div>
+    <div class="trick-card">
+      <div class="trick-name">Data Augmentation</div>
+      <div class="trick-when">Use: When data is limited</div>
+      <div class="trick-desc">Artificially increases training set via random transforms. Most effective regularisation for images.</div>
+    </div>
+    <div class="trick-card">
+      <div class="trick-name">Early Stopping</div>
+      <div class="trick-when">Use: Always as a safety net</div>
+      <div class="trick-desc">Stop training when val loss stops improving. Save best checkpoint with <code>torch.save(model.state_dict())</code>.</div>
+    </div>
+    <div class="trick-card">
+      <div class="trick-name">Batch Normalisation</div>
+      <div class="trick-when">Use: Deep networks (5+ layers)</div>
+      <div class="trick-desc">Normalises layer inputs across the batch. Stabilises training, allows higher LRs. Standard in modern CNNs.</div>
+    </div>
+  </div>
+</div>
+
+<div class="gradient-divider"></div>
+
+<div class="section" id="sec2">
+  <div class="section-number">02 — Weight Initialisation</div>
+  <h2>Starting in the Right Place</h2>
+
+  <p>Poor initialisation can cause vanishing or exploding activations before training even begins. PyTorch layers have good defaults, but knowing how to customise is important for non-standard architectures.</p>
+
+  <div class="code-block">
+    <div class="code-block-header"><span class="code-lang">Python</span></div>
+    <pre><span class="kw">import</span> torch
+<span class="kw">import</span> torch.nn <span class="kw">as</span> nn
+
+<span class="kw">def</span> <span class="fn">init_weights</span>(module):
+    <span class="kw">if</span> <span class="fn">isinstance</span>(module, nn.Linear):
+        nn.init.<span class="fn">kaiming_normal_</span>(module.weight, mode=<span class="str">'fan_out'</span>, nonlinearity=<span class="str">'relu'</span>)
+        <span class="kw">if</span> module.bias <span class="kw">is not</span> <span class="kw">None</span>:
+            nn.init.<span class="fn">zeros_</span>(module.bias)
+    <span class="kw">elif</span> <span class="fn">isinstance</span>(module, nn.Conv2d):
+        nn.init.<span class="fn">kaiming_normal_</span>(module.weight, mode=<span class="str">'fan_out'</span>, nonlinearity=<span class="str">'relu'</span>)
+    <span class="kw">elif</span> <span class="fn">isinstance</span>(module, (nn.BatchNorm2d, nn.LayerNorm)):
+        nn.init.<span class="fn">ones_</span>(module.weight)
+        nn.init.<span class="fn">zeros_</span>(module.bias)
+
+model = nn.<span class="fn">Sequential</span>(nn.<span class="fn">Linear</span>(<span class="num">128</span>, <span class="num">64</span>), nn.<span class="fn">ReLU</span>(), nn.<span class="fn">Linear</span>(<span class="num">64</span>, <span class="num">10</span>))
+model.<span class="fn">apply</span>(init_weights)   <span class="cm"># Apply recursively to all submodules</span>
+<span class="fn">print</span>(<span class="str">"Weights initialised successfully"</span>)</pre>
+    <div class="code-output">
+      <div class="code-output-label">Output</div>
+      <pre>Weights initialised successfully</pre>
+    </div>
+  </div>
+
+  <div class="formula-card">
+    <div class="formula-label">Initialisation Guide</div>
+    <div class="formula-math">ReLU → Kaiming Normal &nbsp;·&nbsp; Tanh/Sigmoid → Xavier &nbsp;·&nbsp; Transformer → Xavier Uniform</div>
+    <div class="formula-explain">
+      <span class="var">Kaiming (He)</span> — accounts for ReLU's dead-neuron effect. Default for most modern networks. &nbsp;·&nbsp;
+      <span class="var">Xavier (Glorot)</span> — maintains activation variance for symmetric activations (tanh, sigmoid).
+    </div>
+  </div>
+</div>
+
+<div class="gradient-divider"></div>
+
+<div class="section" id="sec3">
+  <div class="section-number">03 — Mixed Precision Training</div>
+  <h2>Train Faster, Use Less Memory</h2>
+
+  <p>Mixed precision training uses <code>float16</code> (or <code>bfloat16</code>) for forward/backward passes and <code>float32</code> only for the optimiser update. This typically gives <strong>2–3× speedup</strong> on modern GPUs with minimal accuracy loss.</p>
+
+  <div class="code-block">
+    <div class="code-block-header"><span class="code-lang">Python</span></div>
+    <pre><span class="kw">from</span> torch.cuda.amp <span class="kw">import</span> autocast, GradScaler
+
+scaler = <span class="fn">GradScaler</span>()           <span class="cm"># Prevents fp16 underflow</span>
+
+<span class="kw">for</span> X, y <span class="kw">in</span> train_loader:
+    optimizer.<span class="fn">zero_grad</span>()
+
+    <span class="kw">with</span> <span class="fn">autocast</span>():               <span class="cm"># Forward in fp16</span>
+        logits = <span class="fn">model</span>(X)
+        loss   = <span class="fn">criterion</span>(logits, y)
+
+    scaler.<span class="fn">scale</span>(loss).<span class="fn">backward</span>()  <span class="cm"># Scale loss before backward</span>
+    scaler.<span class="fn">unscale_</span>(optimizer)    <span class="cm"># Unscale before grad clipping</span>
+    nn.utils.<span class="fn">clip_grad_norm_</span>(model.<span class="fn">parameters</span>(), <span class="num">1.0</span>)
+    scaler.<span class="fn">step</span>(optimizer)        <span class="cm"># Update only if grads are finite</span>
+    scaler.<span class="fn">update</span>()              <span class="cm"># Adjust scale factor</span></pre>
+  </div>
+
+  <div class="insight"><p><strong>When to Use Mixed Precision:</strong> Always when training on NVIDIA GPUs (Ampere or newer — RTX 30xx/A100/H100). For older GPUs (pre-Volta), skip it. For Apple Silicon, use <code>torch.mps</code> instead of CUDA but mixed precision is less impactful.</p></div>
+</div>
+
+</div>
+
+<script>
+const sp = document.getElementById('scrollProgress');
+window.addEventListener('scroll', () => { sp.style.width = (window.scrollY / (document.body.scrollHeight - window.innerHeight) * 100) + '%'; });
+document.querySelectorAll('.section').forEach(s => new IntersectionObserver(([e]) => { if (e.isIntersecting) e.target.classList.add('visible'); }, { threshold: 0.08 }).observe(s));
+const c = document.getElementById('heroParticles');
+for (let i = 0; i < 18; i++) { const d = document.createElement('div'); d.className = 'dot'; d.style.cssText = `left:${Math.random()*100}%;top:${Math.random()*100}%;animation-delay:${Math.random()*6}s;animation-duration:${4+Math.random()*4}s`; c.appendChild(d); }
+</script>
+</body>
+</html>

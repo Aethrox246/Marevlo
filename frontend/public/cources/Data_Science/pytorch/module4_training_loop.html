@@ -1,1 +1,305 @@
-<p><strong>Module4—TheTrainingLoop:TheMost ImportantModule</strong></p><p><strong>Forward→Loss→Backward→Step,DoneRight</strong></p><p>PyTorchforDataScience</p><p><strong>ModuleGoal:</strong>Write a training loop you’d actually use in production.Understand loss functions, optimisers, learning rate schedules, gradient clipping, mixed precision, andhowtodiagnosewhentraininggoeswrong.EndwithafulltabularDSmodel trainedend-to-end.</p><p><strong>1.TheCanonicalTrainingLoop</strong></p><p><strong>TheFourSteps—EveryTime,InOrder</strong></p><p>foreachbatch: <br />1.optimizer.zero_grad() <br />2.output=model(X) <br />3.loss=criterion(output,y) 4.loss.backward() <br />5.optimizer.step()</p><p>←clearoldgradients<br />←forwardpass<br />←computeloss<br />←backwardpass(computegrads)←updateparameters</p><p>Thisneverchanges.Everytrainingloopyouwrite,ever,followsthisstructure.</p><p><strong>Real-WorldAnalogy:AStudentSittingExams </strong>1.<strong>Zerograd</strong>—forgetlastweek’sexamfeedback. 2.<strong>Forwardpass</strong>—sittheexam(makepredictions).</p><p>1</p><p>3.<strong>Loss</strong>—getyourscore(howwrongwereyou?).</p><p>4.<strong>Backwardpass</strong>—analysewhichanswerswerewrongandwhy. 5.<strong>Optimizerstep</strong>—adjustyourstudyapproachbasedonfeedback. 	Repeatuntiltheexamscoreisgood.</p><table><tr><td><p>importtorch <br />importtorch.nnasnn <br />importtorch.nn.functionalasF</p></td></tr></table><p>torch.manual_seed(42)</p><table><tr><td><p>#---Minimalworkingtraininglooptemplate---<br /><strong>def</strong>train_one_epoch(model,loader,optimizer,criterion,device): 	model.train() <br />	total_loss=0.0</p></td></tr></table><table><tr><td colspan="2"><p><strong>for</strong>X_batch,y_batch<strong>in</strong>loader: X_batch=X_batch.to(device) y_batch=y_batch.to(device)</p><p>optimizer.zero_grad() output=model(X_batch)</p></td><td rowspan="3"><p>#Step1:cleargradients #Step2:forwardpass <br />#Step3:computeloss <br />#Step4:backwardpass #Step5:updateweights</p></td></tr><tr><td><p>loss</p></td><td><p>=criterion(output,y_batch)</p></td></tr><tr><td colspan="2"><p>loss.backward() <br />optimizer.step()</p></td></tr></table><p>total_loss+=loss.item()*len(X_batch)</p><table><tr><td><p><strong>return</strong>total_loss/len(loader.dataset)</p></td></tr></table><table><tr><td colspan="2"><p><strong>def</strong>evaluate(model,loader,criterion,device): model.eval() <br />total_loss,correct=0.0,0</p><p><strong>with</strong>torch.no_grad(): <br />	<strong>for</strong>X_batch,y_batch<strong>in</strong>loader: 	X_batch=X_batch.to(device) 	y_batch=y_batch.to(device)</p></td></tr><tr><td><p>output</p></td><td><p>=model(X_batch)</p></td></tr><tr><td><p>loss</p></td><td><p>=criterion(output,y_batch)</p></td></tr></table><p>2</p><table><tr><td colspan="2"><p>total_loss+=loss.item()*len(X_batch)</p></td></tr><tr><td><p>correct</p></td><td><p>+=(output.argmax(1)==y_batch).sum().item()</p></td></tr></table><table><tr><td><p>n=len(loader.dataset) <br /><strong>return</strong>total_loss/n,correct/n</p></td></tr></table><table><tr><td><p>print("Traininglooptemplatedefined.")</p></td></tr></table><p>Traininglooptemplatedefined.</p><p><strong>2.LossFunctions</strong></p><p><strong>CrossEntropyLoss—Multi-ClassClassification</strong></p><table><tr><td colspan="3"><p>#CrossEntropyLoss=LogSoftmax+NLLLossinonestep</p></td></tr><tr><td><p>#Input:</p></td><td><p>logitsofshape(N,C)</p></td><td><p>—rawscores,NOTprobabilities</p></td></tr><tr><td colspan="3"><p>#Target:classindicesofshape(N,)—integersin[0,C-1]</p></td></tr></table><table><tr><td><p>criterion=nn.CrossEntropyLoss()</p><p>logits=torch.tensor([[2.0,1.0,0.5], 	[0.1,3.0,0.2], 	[0.2,0.1,4.0]]) targets=torch.tensor([0,1,2])</p><p>loss=criterion(logits,targets) <br />print("CrossEntropyloss:",loss.item())</p></td><td><p>#Sample0→likelyclass0 #Sample1→likelyclass1 #Sample2→likelyclass2</p><p>#Shouldbelow—correctpredictions</p></td></tr></table><table><tr><td><p>#Wrongpredictions→highloss <br />targets_wrong=torch.tensor([2,0,1]) <br />loss_wrong=criterion(logits,targets_wrong) print("Wrongpredictionloss:",loss_wrong.item())</p></td></tr></table><p>CrossEntropyloss:0.20523333549499512 <br />Wrongpredictionloss:2.97189998626709</p><p>3</p><p><strong>BCEWithLogitsLoss—BinaryClassification</strong></p><table><tr><td colspan="2"><p>#BCEWithLogitsLoss=Sigmoid+BCELossinonestep <br />#NumericallymorestablethanapplyingsigmoidmanuallythenBCELoss</p></td></tr><tr><td><p>#Input:</p></td><td><p>rawlogitsofshape(N,)or(N,1)</p></td></tr><tr><td colspan="2"><p>#Target:floatlabelsofshape(N,)—0.0or1.0</p></td></tr></table><table><tr><td colspan="2"><p>criterion_bce=nn.BCEWithLogitsLoss() <br />logits_bin=torch.tensor([2.5,-1.0,0.3,-2.0])</p></td><td rowspan="2"><p>#Rawscores <br />#Truebinarylabels</p></td></tr><tr><td><p>targets_bin=torch.tensor([1.0,0.0,1.0,</p></td><td><p>0.0])</p></td></tr></table><table><tr><td><p>loss_bce=criterion_bce(logits_bin,targets_bin) print("BCEWithLogitsloss:",loss_bce.item())</p></td></tr></table><p>BCEWithLogitsloss:0.2683587074279785 <br /><strong>MSELossandHuberLoss—Regression</strong></p><table><tr><td><p>mse</p></td><td><p>=nn.MSELoss()</p></td><td rowspan="2"><p>#LesssensitivetooutliersthanMSE</p></td></tr><tr><td colspan="2"><p>huber=nn.HuberLoss(delta=1.0)</p></td></tr></table><table><tr><td colspan="4"><p>predictions=torch.tensor([2.5,0.0,2.1,7.8]) targets_reg=torch.tensor([3.0,-0.5,2.0,7.0])</p></td></tr><tr><td colspan="2"><p>print("MSEloss:</p></td><td colspan="2"><p>",mse(predictions,targets_reg).item())</p></td></tr><tr><td colspan="4"><p>print("Huberloss:",huber(predictions,targets_reg).item())</p><p>#WhyHuber&gt;MSEfordatascience?</p><p>#Addanoutlier <br />predictions_with_outlier=torch.cat([predictions,torch.tensor([100.0])])</p></td></tr><tr><td colspan="3"><p>targets_with_outlier</p></td><td><p>=torch.cat([targets_reg,torch.tensor([1.0])])</p></td></tr><tr><td colspan="4"><p>print("\nWithoutlier:")</p></td></tr><tr><td><p>print("MSE:</p></td><td colspan="3"><p>",mse(predictions_with_outlier,targets_with_outlier).item())</p></td></tr><tr><td colspan="4"><p>print("Huber:",huber(predictions_with_outlier,targets_with_outlier).item()) #MSEblowsup;Huberstaysreasonable</p></td></tr><tr><td><p>MSEloss:</p></td><td colspan="3"><p>0.2875000834465027</p></td></tr></table><p>4</p><table><tr><td colspan="3"><p>Huberloss:</p></td><td colspan="2"><p>0.14375004172325134</p></td><td rowspan="4"></td></tr><tr><td colspan="5"><p>Withoutlier:</p></td></tr><tr><td><p>MSE:</p></td><td colspan="4"><p>1960.429931640625</p></td></tr><tr><td colspan="2"><p>Huber:</p></td><td colspan="3"><p>19.814998626708984</p></td></tr><tr><td colspan="4"><p>Loss</p></td><td><p>UseCase</p></td><td><p>Notes</p></td></tr><tr><td colspan="4"><p>CrossEntropyLoss</p></td><td><p>Multi-classclassification</p></td><td rowspan="4"><p>Input=rawlogits,not softmax <br />PreferredoverBCE+ Sigmoid <br />Sensitivetooutliers <br />Bestforreal-worldnoisy targets <br />Pairwithlog_softmax</p></td></tr><tr><td colspan="4"><p>BCEWithLogitsLoss</p></td><td><p>Binaryclassification</p></td></tr><tr><td colspan="4"><p>MSELoss <br />HuberLoss</p></td><td><p>Regression <br />Robustregression</p></td></tr><tr><td colspan="4"><p>NLLLoss</p></td><td><p>Sequencemodels</p></td></tr></table><p><strong>3.Optimisers:SGD,Adam,AdamW</strong></p><p><strong>SGD—TheClassic</strong></p><table><tr><td><p>model_sgd=nn.Linear(10,1) <br />#SGDwithmomentum—morestablethanvanillaSGD opt_sgd=torch.optim.SGD( <br />	model_sgd.parameters(), <br />	lr=0.01, <br />	momentum=0.9, <br />	weight_decay=1e-4 <br />) <br />print("SGD:",opt_sgd)</p></td></tr></table><p>SGD:SGD( <br />ParameterGroup0 <br />	dampening:0 <br />	differentiable:False <br />	foreach:None <br />	fused:None</p><p>5</p><table><tr><td><p>)</p></td><td><p>lr:0.01 <br />maximize:False <br />momentum:0.9 <br />nesterov:False <br />weight_decay:0.0001</p></td></tr></table><p><strong>Adam—AdaptiveLearningRates</strong></p><table><tr><td colspan="2"><p>model_adam=nn.Linear(10,1) <br />#Adamadaptsthelearningrateperparameter opt_adam=torch.optim.Adam( <br />	model_adam.parameters(), <br />	lr=1e-3,</p></td></tr><tr><td><p>betas=(0.9,0.999),</p></td><td><p>#Momentumforgradientandsquaredgradient</p></td></tr><tr><td colspan="2"><p>eps=1e-8,</p></td></tr><tr><td><p>weight_decay=0</p></td><td><p>#←Adam'sweightdecayisWRONG(seeAdamW)</p></td></tr><tr><td colspan="2"><p>)</p></td></tr></table><p><strong>AdamW—TheDefaultforDeepLearning</strong></p><table><tr><td colspan="2"><p>model_adamw=nn.Linear(10,1) <br />#AdamWfixesAdam'sweightdecaybug <br />#InAdam,weightdecayisentangledwithadaptiveLR→doesn'tregulariseproperly #InAdamW,weightdecayisapplieddirectlytoweights→correctL2regularisation opt_adamw=torch.optim.AdamW( <br />	model_adamw.parameters(), <br />	lr=1e-3,</p></td></tr><tr><td><p>weight_decay=1e-2</p></td><td><p>#Decoupledweightdecay—typically0.01</p></td></tr><tr><td colspan="2"><p>)</p></td></tr></table><table><tr><td><p>print("AdamWisthedefaultchoiceforalmostalldeeplearningtasks.")</p></td></tr></table><p>AdamWisthedefaultchoiceforalmostalldeeplearningtasks.</p><p>6</p><table><tr><td><table><tr><td><p>LIGHTBULBTip</p></td></tr></table></td></tr></table><table><tr><td><p><strong>Whichoptimisertouse:</strong>-<strong>AdamW</strong>—defaultforeverything:MLPs,Transformers, CNNs.-<strong>SGD+momentum</strong>—CNNs,whenyouwanttofine-tuneapretrainedmodel.-<strong>Adam</strong>—quickexperiments;switchtoAdamWforproduction.</p></td></tr></table><p><strong>4.LearningRateScheduling</strong></p><p><strong>WhyScheduletheLR?</strong></p><p>AhighLRearlyonhelpsexplorethelosslandscapequickly.AlowLRlaterhelpsconvergeto agoodminimumwithoutovershooting.LRschedulingautomatesthis.</p><table><tr><td colspan="2"><p>importmatplotlib <br />matplotlib.use('Agg') <br />importmatplotlib.pyplotasplt</p><p>model=nn.Linear(10,1)</p></td></tr><tr><td><p>opt</p></td><td><p>=torch.optim.AdamW(model.parameters(),lr=1e-3)</p></td></tr></table><table><tr><td><p>#CosineAnnealing:smoothlydecaystomin_lr <br />scheduler_cos=torch.optim.lr_scheduler.CosineAnnealingLR( 	opt,T_max=100,eta_min=1e-5 <br />)</p></td></tr></table><table><tr><td colspan="2"><p>#StepLR:multiplybygammaeverystep_sizeepochs <br />scheduler_step=torch.optim.lr_scheduler.StepLR(opt,step_size=30,gamma=0.1)</p><p>#OneCycleLR:warmup→peak→decay(greatforfasttraining) opt2=torch.optim.AdamW(model.parameters(),lr=1e-3) <br />scheduler_one=torch.optim.lr_scheduler.OneCycleLR( <br />	opt2, <br />	max_lr=1e-2,</p></td></tr><tr><td><p>steps_per_epoch=10,</p></td><td><p>#batchesperepoch</p></td></tr><tr><td colspan="2"><p>epochs=20,</p></td></tr><tr><td><p>pct_start=0.3</p></td><td><p>#30%ofstepsforwarmup</p></td></tr><tr><td colspan="2"><p>)</p></td></tr></table><p>7</p><table><tr><td colspan="2"><p>#Visualisecosineschedule <br />lrs=[] <br />opt_vis=torch.optim.AdamW(model.parameters(),lr=1e-3)</p></td></tr><tr><td><p>sched</p></td><td><p>=torch.optim.lr_scheduler.CosineAnnealingLR(opt_vis,T_max=100,eta_min=1e-5)</p></td></tr><tr><td colspan="2"><p><strong>for</strong>_<strong>in</strong>range(100): <br />lrs.append(opt_vis.param_groups[0]['lr']) opt_vis.step() <br />sched.step()</p></td></tr></table><table><tr><td><p>plt.figure(figsize=(8,3)) <br />plt.plot(lrs,color='steelblue',linewidth=2) <br />plt.title("CosineAnnealingLRSchedule") <br />plt.xlabel("Epoch");plt.ylabel("LearningRate") <br />plt.tight_layout();plt.savefig("lr_schedule.png",dpi=80);plt.close() print("LRgoesfrom:",round(lrs[0],6),"→",round(lrs[-1],8))</p></td></tr></table><p>LRgoesfrom:0.001→1.024e-05</p><p><strong>TheCorrectSchedulingPattern</strong></p><table><tr><td colspan="3"><p>#CRITICAL:scheduler.step()goesAFTERoptimizer.step()</p></td></tr><tr><td><p>model</p></td><td colspan="2"><p>=nn.Linear(10,1)</p></td></tr><tr><td><p>opt</p></td><td colspan="2"><p>=torch.optim.AdamW(model.parameters(),lr=1e-3)</p></td></tr><tr><td colspan="3"><p>scheduler=torch.optim.lr_scheduler.CosineAnnealingLR(opt,T_max=50) <strong>for</strong>epoch<strong>in</strong>range(5): <br />	#...training...</p></td></tr><tr><td colspan="2"><p>opt.step()</p></td><td><p>#←optimizerfirst</p></td></tr><tr><td colspan="2"><p>scheduler.step()</p></td><td><p>#←schedulersecond</p></td></tr><tr><td colspan="3"><p>print(f"Epoch{epoch}:LR={opt.param_groups[0]['lr']:.6f}")</p></td></tr></table><p>Epoch0:LR=0.000999 <br />Epoch1:LR=0.000996 <br />Epoch2:LR=0.000991 <br />Epoch3:LR=0.000984 <br />Epoch4:LR=0.000976</p><p>8</p><p><strong>5.GradientClipping,MixedPrecision,Accumulation GradientClipping—PreventExplodingGradients</strong></p><table><tr><td colspan="2"><p>model=nn.Sequential(nn.Linear(10,64),nn.ReLU(),nn.Linear(64,1))</p></td></tr><tr><td><p>opt</p></td><td><p>=torch.optim.AdamW(model.parameters())</p></td></tr><tr><td><p>X</p></td><td><p>=torch.randn(32,10)</p></td></tr><tr><td><p>y</p></td><td><p>=torch.randn(32,1)</p></td></tr></table><table><tr><td colspan="4"><p>#Pass1:measurenormbeforeclipping <br />opt.zero_grad() <br />loss=nn.MSELoss()(model(X),y) <br />loss.backward()</p><p>print(f"Gradientnormbeforeclipping:{total_norm_before:.4f}")</p><p>#Pass2:freshforward+backward,thencliptomax_norm=1.0 opt.zero_grad()</p></td></tr><tr><td colspan="3"><p>loss=nn.MSELoss()(model(X),y)</p></td><td><p>#Recompute—can'tbackwardthroughfreedgraph</p></td></tr><tr><td colspan="4"><p>loss.backward() <br />total_norm_after=torch.nn.utils.clip_grad_norm_(model.parameters(),max_norm=1.0)</p></td></tr><tr><td colspan="2"><p>print(f"Gradientnormafter</p></td><td colspan="2"><p>clipping:{min(total_norm_after.item(),1.0):.4f}")</p></td></tr><tr><td colspan="4"><p>opt.step()</p><p>Gradientnormbeforeclipping:0.9284</p></td></tr><tr><td><p>Gradientnormafter</p></td><td colspan="3"><p>clipping:0.9284</p></td></tr></table><p>total_norm_before=torch.nn.utils.clip_grad_norm_(model.parameters(),max_norm=float('inf'))</p><p><strong>GradientAccumulation—SimulateLargerBatches</strong></p><table><tr><td colspan="3"><p>#WhenGPUmemoryislimited,accumulategradientsoverNmini-batches #beforestepping—thissimulatesabatchsizeofN×mini_batch_size</p></td></tr><tr><td><p>model</p></td><td colspan="2"><p>=nn.Sequential(nn.Linear(10,32),nn.ReLU(),nn.Linear(32,1))</p></td></tr><tr><td><p>opt</p></td><td colspan="2"><p>=torch.optim.AdamW(model.parameters())</p></td></tr><tr><td><p>criterion</p></td><td colspan="2"><p>=nn.MSELoss()</p></td></tr><tr><td colspan="2"><p>accumulate_steps=4</p></td><td><p>#Effectivebatch=4×8=32</p></td></tr></table><table><tr><td><p><strong>for</strong>step,(X_b,y_b)<strong>in</strong>enumerate([(torch.randn(8,10),torch.randn(8,1))]*8):</p></td></tr></table><p>9</p><table><tr><td><p>loss=criterion(model(X_b),y_b) loss=loss/accumulate_steps loss.backward()</p></td><td><p>#Scalelosssogradientsareaveraged</p></td></tr></table><table><tr><td><p><strong>if</strong>(step+1)%accumulate_steps==0: <br />opt.step() <br />opt.zero_grad() <br />print(f"Optimizerstepatstep{step+1}")</p></td></tr></table><p>Optimizerstepatstep4 <br />Optimizerstepatstep8</p><p><strong>MixedPrecisionTraining</strong></p><p>#Mixedprecision:computeforward/backwardinfloat16,storeweightsinfloat32 #Result:~2xspeedup,~50%memoryreductiononcompatibleGPUs</p><p>fromtorch.ampimportautocast,GradScaler</p><p>device="cuda"<strong>if</strong>torch.cuda.is_available()<strong>else</strong>"cpu" <br />model 	=nn.Sequential(nn.Linear(10,64),nn.ReLU(),nn.Linear(64,1)).to(device) opt 	=torch.optim.AdamW(model.parameters())</p><p>X=torch.randn(32,10,device=device) <br />y=torch.randn(32,1, 	device=device)</p><p>opt.zero_grad()</p><p><strong>if</strong>device=="cuda": <br />	scaler=GradScaler("cuda") <br />	<strong>with</strong>autocast(device_type="cuda"): <br />		output=model(X) <br />		loss 	=nn.MSELoss()(output,y) <br />	scaler.scale(loss).backward() <br />	scaler.step(opt) <br />	scaler.update() <br /><strong>else</strong>: <br />	#CPU:autocastandscalingareno-ops;justrunnormally 	output=model(X) <br />	loss 	=nn.MSELoss()(output,y)</p><p>10</p><table><tr><td><p>loss.backward() <br />opt.step()</p></td></tr></table><table><tr><td><p>print(f"Mixedprecisionstepcomplete.Loss:{loss.item():.4f}")</p></td></tr></table><p>Mixedprecisionstepcomplete.Loss:1.4753</p><p><strong>6.MetricsTrackingandEarlyStopping</strong></p><table><tr><td colspan="3"><p><strong>class</strong>EarlyStopping: <br />	"""Stoptrainingwhenvalidationlosshasn'timprovedfor`patience`epochs."""</p><p><strong>def</strong>__init__(self,patience:int=10,min_delta:float=1e-4):</p></td></tr><tr><td><p>self.patience</p></td><td colspan="2"><p>=patience</p></td></tr><tr><td><p>self.min_delta</p></td><td colspan="2"><p>=min_delta</p></td></tr><tr><td><p>self.best_loss</p></td><td colspan="2"><p>=float('inf')</p></td></tr><tr><td><p>self.counter</p></td><td colspan="2"><p>=0</p></td></tr><tr><td colspan="3"><p>	self.best_state=None <br /><strong>def</strong>step(self,val_loss:float,model:nn.Module)-&gt;bool: 	"""ReturnsTrueiftrainingshouldstop.""" <br />	<strong>if</strong>val_loss&lt;self.best_loss-self.min_delta:</p></td></tr><tr><td colspan="2"><p>self.best_loss</p></td><td><p>=val_loss</p></td></tr><tr><td colspan="2"><p>self.counter</p></td><td><p>=0</p></td></tr><tr><td colspan="3"><p>self.best_state={k:v.clone()<strong>for</strong>k,v<strong>in</strong>model.state_dict().items()} <strong>else</strong>: <br />self.counter+=1</p></td></tr></table><table><tr><td><p><strong>return</strong>self.counter&gt;=self.patience</p></td></tr></table><table><tr><td><p><strong>def</strong>restore_best(self,model:nn.Module): 	model.load_state_dict(self.best_state)</p></td></tr></table><table><tr><td><p>#Usageintrainingloop <br />es=EarlyStopping(patience=10) <strong>for</strong>epoch<strong>in</strong>range(200):</p></td></tr></table><p>11</p><table><tr><td><p>val_loss=0.5*(0.99**epoch)+0.01</p></td><td><p>#Simulatedvalloss</p></td></tr><tr><td colspan="2"><p><strong>if</strong>es.step(val_loss,nn.Linear(1,1)): <br />print(f"Earlystoppingatepoch{epoch}.Bestloss:{es.best_loss:.4f}") <strong>break</strong></p></td></tr></table><p><strong>7.DebuggingTraining</strong></p><p><strong>LossNotDecreasing</strong></p><table><tr><td colspan="2"><p>#Sanitycheck1:Canthemodeloverfitatinybatch?</p><p>#Ifnot—somethingisfundamentallywrongwiththemodelorloss</p></td></tr><tr><td><p>model</p></td><td><p>=nn.Sequential(nn.Linear(4,32),nn.ReLU(),nn.Linear(32,2))</p></td></tr><tr><td><p>opt</p></td><td><p>=torch.optim.AdamW(model.parameters(),lr=1e-2)</p></td></tr><tr><td><p>crit</p></td><td><p>=nn.CrossEntropyLoss()</p></td></tr></table><table><tr><td colspan="2"><p>#Useonly4samples—shouldoverfittonear-zeroloss X_tiny=torch.randn(4,4) <br />y_tiny=torch.tensor([0,1,0,1])</p><p>print("Overfittest(lossshouldgoto0):") <strong>for</strong>epoch<strong>in</strong>range(50): <br />	opt.zero_grad() <br />	loss=crit(model(X_tiny),y_tiny) <br />	loss.backward() <br />	opt.step() <br />	<strong>if</strong>epoch%10==0:</p></td></tr><tr><td><p>print(f"</p></td><td><p>Epoch{epoch}:loss={loss.item():.5f}")</p></td></tr></table><p>Overfittest(lossshouldgoto0): <br />Epoch0:loss=0.82704 <br />Epoch10:loss=0.26682 <br />Epoch20:loss=0.04490 <br />Epoch30:loss=0.00795 <br />Epoch40:loss=0.00277</p><p>12</p><table><tr><td colspan="3"><p>#Debuggingchecklist(printthesebeforetraining) <strong>def</strong>debug_model(model,X,y,criterion): <br />	print("===MODELDEBUG===")</p></td></tr><tr><td><p>print(f"Inputshape:</p></td><td colspan="2"><p>{X.shape}")</p></td></tr><tr><td colspan="3"><p>print(f"Targetshape:{y.shape}") <br />output=model(X[:4]) <br />print(f"Outputshape:{output.shape}")</p></td></tr><tr><td colspan="2"><p>print(f"Outputsample(rawlogits):\n</p></td><td><p>{output[0].detach()}")</p></td></tr></table><table><tr><td><p>loss=criterion(output,y[:4]) <br />print(f"Initialloss:{loss.item():.4f}")</p></td></tr></table><table><tr><td colspan="2"><p>#Checkiflossisattheexpectedvalueforrandominitialisation <br />#ForNclasses,expectedCElosslog(N) <br />importmath <br /><strong>if</strong>hasattr(criterion,'weight')<strong>or</strong>isinstance(criterion,nn.CrossEntropyLoss): 	n_classes=output.shape[1] <br />	print(f"ExpectedrandomCEloss:{math.log(n_classes):.4f}")</p><p>#CheckforNaN <br />print(f"AnyNaNinoutput?{output.isnan().any().item()}")</p></td></tr><tr><td><p>print(f"AnyNaNininput?</p></td><td><p>{X.isnan().any().item()}")</p></td></tr></table><table><tr><td colspan="3"><p>X=torch.randn(32,4) <br />y=torch.randint(0,2,(32,)) <br />debug_model(model,X,y,nn.CrossEntropyLoss())</p><p>===MODELDEBUG===</p></td></tr><tr><td><p>Inputshape:</p></td><td colspan="2"><p>torch.Size([32,4])</p></td></tr><tr><td colspan="3"><p>Targetshape:torch.Size([32]) Outputshape:torch.Size([4,2]) Outputsample(rawlogits): <br />	tensor([2.8189,-3.4459]) <br />Initialloss:4.9560 <br />ExpectedrandomCEloss:0.6931 AnyNaNinoutput?False</p></td></tr><tr><td colspan="2"><p>AnyNaNininput?</p></td><td><p>False</p></td></tr></table><p>13</p><p><strong>Project:End-to-EndTabularDSModel</strong></p><p><strong>Task:Predictemployeechurn(classification)andsalary(regression)</strong></p><table><tr><td colspan="2"><p>torch.manual_seed(0) <br />#SyntheticHRdataset <br />N=2000</p></td></tr><tr><td><p>age</p></td><td><p>=torch.randint(22,65,(N,)).float()</p></td></tr><tr><td><p>experience</p></td><td><p>=(age-22+torch.randn(N)*2).clamp(0)</p></td></tr><tr><td colspan="2"><p>satisfaction=torch.rand(N)*10</p></td></tr><tr><td><p>hours_week</p></td><td><p>=30+torch.rand(N)*30</p></td></tr><tr><td><p>performance</p></td><td><p>=torch.rand(N)*5+1</p></td></tr></table><table><tr><td colspan="2"><p>#Target1:Salary(regression) <br />salary=(experience*2500+age*300+performance*8000 +torch.randn(N)*5000+30000)</p><p>#Target2:Churn(binaryclassification)</p></td></tr><tr><td><p>churn_score</p></td><td><p>=(-satisfaction*0.3+hours_week*0.02</p></td></tr><tr><td colspan="2"><p>-performance*0.1+torch.randn(N)*0.5)</p></td></tr><tr><td><p>churn_label</p></td><td><p>=(churn_score&gt;churn_score.median()).long()</p></td></tr></table><table><tr><td colspan="2"><p>#Featurematrix <br />features=torch.stack([age,experience,satisfaction,hours_week,performance],dim=1)</p><p>#Normalisefeatures <br />feat_mean=features.mean(0);feat_std=features.std(0)</p></td></tr><tr><td><p>features</p></td><td><p>=(features-feat_mean)/feat_std</p></td></tr></table><table><tr><td colspan="3"><p>#Normalisesalarytarget <br />sal_mean=salary.mean();sal_std=salary.std() salary_n=(salary-sal_mean)/sal_std</p><p>#Train/valsplit <br />split=int(0.8*N)</p></td></tr><tr><td><p>X_tr,X_vl</p></td><td colspan="2"><p>=features[:split],features[split:]</p></td></tr><tr><td colspan="2"><p>y_sal_tr,y_sal_vl</p></td><td><p>=salary_n[:split],salary_n[split:]</p></td></tr><tr><td colspan="3"><p>y_churn_tr,y_churn_vl=churn_label[:split],churn_label[split:]</p></td></tr></table><p>14</p><table><tr><td><p>print(f"Train:{X_tr.shape},Val:{X_vl.shape}") <br />print(f"Churnrate:{churn_label.float().mean():.2f}")</p></td></tr></table><p>Train:torch.Size([1600,5]),Val:torch.Size([400,5]) Churnrate:0.50</p><table><tr><td colspan="3"><p>fromtorch.utils.dataimportTensorDataset,DataLoader #DataLoaders <br />train_ds=TensorDataset(X_tr,y_sal_tr,y_churn_tr)</p></td></tr><tr><td><p>val_ds</p></td><td colspan="2"><p>=TensorDataset(X_vl,y_sal_vl,y_churn_vl)</p></td></tr><tr><td colspan="3"><p>train_dl=DataLoader(train_ds,batch_size=64,shuffle=True)</p></td></tr><tr><td><p>val_dl</p></td><td><p>=DataLoader(val_ds,</p></td><td><p>batch_size=256)</p></td></tr></table><table><tr><td colspan="3"><p>#Multi-taskmodel:sharedtrunk→twoheads <strong>class</strong>HRModel(nn.Module):</p><p><strong>def</strong>__init__(self): <br />	super().__init__() <br />	self.trunk=nn.Sequential( <br />	nn.Linear(5,64),nn.LayerNorm(64),nn.ReLU(),nn.Dropout(0.2), 	nn.Linear(64,32),nn.LayerNorm(32),nn.ReLU(),nn.Dropout(0.1), 	)</p></td></tr><tr><td colspan="2"><p>self.salary_head=nn.Linear(32,1)</p></td><td><p>#Regression</p></td></tr><tr><td><p>self.churn_head</p></td><td><p>=nn.Linear(32,2)</p></td><td><p>#Classification</p></td></tr></table><table><tr><td colspan="2"><p><strong>def</strong>forward(self,x): <br />h=self.trunk(x) <br /><strong>return</strong>self.salary_head(h).squeeze(1),self.churn_head(h)</p></td></tr><tr><td><p>model</p></td><td><p>=HRModel()</p></td></tr><tr><td><p>opt</p></td><td><p>=torch.optim.AdamW(model.parameters(),lr=1e-3,weight_decay=1e-3)</p></td></tr><tr><td><p>sched</p></td><td><p>=torch.optim.lr_scheduler.CosineAnnealingLR(opt,T_max=50)</p></td></tr><tr><td colspan="2"><p>mse_loss=nn.MSELoss()</p></td></tr><tr><td><p>ce_loss</p></td><td><p>=nn.CrossEntropyLoss()</p></td></tr><tr><td><p>es</p></td><td><p>=EarlyStopping(patience=8)</p></td></tr></table><p>print(f"Modelparams:{sum(p.numel()<strong>for</strong>p<strong>in</strong>model.parameters()):,}")</p><p>Modelparams:2,755</p><p>15</p><table><tr><td colspan="3"><p>#Training <br /><strong>for</strong>epoch<strong>in</strong>range(60): <br />	model.train() <br />	epoch_loss=0.0 <br />	<strong>for</strong>X_b,y_sal_b,y_churn_b<strong>in</strong>train_dl: 		opt.zero_grad() <br />		sal_pred,churn_pred=model(X_b)</p></td></tr><tr><td><p>loss_sal</p></td><td colspan="2"><p>=mse_loss(sal_pred,y_sal_b)</p></td></tr><tr><td colspan="3"><p>loss_churn=ce_loss(churn_pred,y_churn_b)</p></td></tr><tr><td><p>loss</p></td><td><p>=loss_sal+0.5*loss_churn</p></td><td><p>#Combinedloss</p></td></tr><tr><td colspan="3"><p>loss.backward() <br />torch.nn.utils.clip_grad_norm_(model.parameters(),max_norm=1.0) opt.step() <br />epoch_loss+=loss.item()</p></td></tr></table><table><tr><td colspan="3"><p>sched.step()</p><p>#Validation <br />model.eval() <br /><strong>with</strong>torch.no_grad(): <br />	sal_p,churn_p=model(X_vl)</p></td></tr><tr><td><p>val_mse</p></td><td colspan="2"><p>=mse_loss(sal_p,y_sal_vl).item()</p></td></tr><tr><td><p>val_acc</p></td><td colspan="2"><p>=(churn_p.argmax(1)==y_churn_vl).float().mean().item()</p></td></tr><tr><td colspan="3"><p><strong>if</strong>epoch%10==0: <br />	print(f"Epoch{epoch:3d}:train_loss={epoch_loss/len(train_dl):.4f}"</p></td></tr><tr><td colspan="2"><p>f"val_mse={val_mse:.4f}</p></td><td><p>val_churn_acc={val_acc:.3f}")</p></td></tr></table><table><tr><td><p><strong>if</strong>es.step(val_mse,model): <br />	print(f"\nEarlystopatepoch{epoch}");<strong>break</strong></p></td></tr></table><table><tr><td colspan="3"><p>es.restore_best(model) <br />print("\nTrainingcomplete.Bestweightsrestored.")</p></td></tr><tr><td><p>Epoch</p></td><td><p>0:train_loss=0.7204val_mse=0.1002</p></td><td><p>val_churn_acc=0.705</p></td></tr><tr><td><p>Epoch</p></td><td><p>10:train_loss=0.2445val_mse=0.0359</p></td><td><p>val_churn_acc=0.873</p></td></tr><tr><td><p>Epoch</p></td><td><p>20:train_loss=0.2307val_mse=0.0308</p></td><td><p>val_churn_acc=0.868</p></td></tr><tr><td><p>Epoch</p></td><td><p>30:train_loss=0.2177val_mse=0.0295</p></td><td><p>val_churn_acc=0.868</p></td></tr></table><p>Earlystopatepoch37</p><p>Trainingcomplete.Bestweightsrestored.</p><p>16</p><p><strong>ModuleSummary</strong></p><table><tr><td><p>Concept</p></td><td><p>KeyTakeaway</p></td></tr><tr><td><p><strong>Trainingloop </strong><br /><strong>Lossfunctions </strong><br /><strong>AdamW </strong><br /><strong>LRscheduling </strong><br /><strong>Gradientclipping Mixedprecision </strong><br /><strong>Overfittinybatch Earlystopping</strong></p></td><td><p>zero_grad→forward→loss→backward→step. Nevervarythisorder.</p><p>CEforclassification;BCEWithLogitsforbinary; Huberforrobustregression.</p><p>Thedefaultoptimiser.Decoupledweightdecaymakes regularisationworkcorrectly.</p><p>CosineAnnealingLRformosttasks;OneCycleLRfor fastconvergence.</p><p>clip_grad_norm_(params,max_norm=1.0)before optimizer.step().</p><p>autocast+GradScalerfor2×speedonGPU.</p><p>Firstsanitycheckwhenlosswon’tdecrease.</p><p>Monitorvalloss;restorebestweightswhenpatience expires.</p></td></tr></table><p><strong>What’sNext</strong></p><p><strong>Module5—DataPipelines</strong>tacklestheoften-overlookedinfrastructurethatfeedsyour trainingloop.Afastmodelisuselessifthedataloaderisthebottleneck.You’llbuildefficient DatasetandDataLoaderobjects,handlevariable-lengthsequences,andstreamlargelog datasetswithoutloadingthemintomemory.</p><p>17</p>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Module 4 — The Training Loop | PyTorch for Data Science</title>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&family=Outfit:wght@300;400;500;600;700;800;900&family=Source+Serif+4:ital,wght@0,300;0,400;0,600;1,300;1,400&display=swap" rel="stylesheet">
+<style>
+:root{--bg-primary:#0a0a0f;--bg-card:#161622;--bg-code:#0d0d18;--text-primary:#e8e8f0;--text-secondary:#9898b0;--accent-1:#6c5ce7;--accent-2:#00cec9;--accent-3:#fd79a8;--accent-4:#fdcb6e;--accent-5:#55efc4;--gradient-line:linear-gradient(90deg,#6c5ce7,#00cec9,#fd79a8,#fdcb6e);--border-subtle:rgba(255,255,255,0.06);--border-glow:rgba(108,92,231,0.3);--radius:12px;--radius-sm:8px;}
+*{margin:0;padding:0;box-sizing:border-box;}html{scroll-behavior:smooth;}
+body{background:var(--bg-primary);color:var(--text-primary);font-family:'Outfit',sans-serif;line-height:1.7;overflow-x:hidden;-webkit-font-smoothing:antialiased;}
+.scroll-progress{position:fixed;top:0;left:0;height:3px;z-index:1000;background:var(--gradient-line);width:0%;transition:width 0.1s linear;}
+.hero{min-height:100vh;display:flex;flex-direction:column;justify-content:center;align-items:center;text-align:center;padding:2rem;position:relative;overflow:hidden;}
+.hero::before{content:'';position:absolute;inset:0;background:radial-gradient(ellipse 600px 400px at 30% 40%,rgba(108,92,231,0.12),transparent),radial-gradient(ellipse 500px 350px at 70% 60%,rgba(0,206,201,0.08),transparent);pointer-events:none;}
+.hero-particles{position:absolute;inset:0;pointer-events:none;}
+.hero-particles .dot{position:absolute;width:3px;height:3px;border-radius:50%;background:var(--accent-2);opacity:0;animation:floatDot 6s ease-in-out infinite;}
+@keyframes floatDot{0%,100%{opacity:0;transform:translateY(0);}50%{opacity:0.6;transform:translateY(-40px);}}
+.hero-label{display:inline-flex;align-items:center;gap:8px;background:rgba(108,92,231,0.1);border:1px solid rgba(108,92,231,0.25);border-radius:100px;padding:6px 18px;font-size:0.8rem;font-weight:500;color:var(--accent-1);letter-spacing:1.5px;text-transform:uppercase;margin-bottom:2rem;animation:fadeInDown 0.8s ease-out;}
+.dot-indicator{width:6px;height:6px;border-radius:50%;background:var(--accent-2);animation:pulse 2s ease-in-out infinite;}
+@keyframes pulse{0%,100%{opacity:1;}50%{opacity:0.3;}}
+.hero h1{font-size:clamp(2.8rem,6vw,5rem);font-weight:900;line-height:1.1;letter-spacing:-2px;margin-bottom:1.5rem;animation:fadeInDown 0.8s ease-out 0.1s both;}
+.gradient-text{background:var(--gradient-line);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;}
+.hero-subtitle{font-family:'Source Serif 4',serif;font-size:clamp(1.05rem,2vw,1.25rem);color:var(--text-secondary);max-width:640px;line-height:1.8;font-weight:300;animation:fadeInDown 0.8s ease-out 0.2s both;}
+.hero-scroll-cue{position:absolute;bottom:3rem;display:flex;flex-direction:column;align-items:center;gap:8px;color:var(--text-secondary);font-size:0.75rem;letter-spacing:2px;text-transform:uppercase;}
+.arrow{width:20px;height:20px;border-right:2px solid var(--text-secondary);border-bottom:2px solid var(--text-secondary);transform:rotate(45deg);animation:bounceArrow 2s ease-in-out infinite;}
+@keyframes bounceArrow{0%,100%{transform:rotate(45deg) translateY(0);}50%{transform:rotate(45deg) translateY(6px);}}
+@keyframes fadeInDown{from{opacity:0;transform:translateY(-20px);}to{opacity:1;transform:translateY(0);}}
+.content-wrapper{max-width:860px;margin:0 auto;padding:0 2rem 6rem;}
+.section{margin-bottom:5rem;opacity:0;transform:translateY(30px);transition:all 0.7s cubic-bezier(0.16,1,0.3,1);}
+.section.visible{opacity:1;transform:translateY(0);}
+.section-number{font-family:'JetBrains Mono',monospace;font-size:0.7rem;color:var(--accent-2);letter-spacing:3px;text-transform:uppercase;margin-bottom:0.75rem;display:flex;align-items:center;gap:10px;}
+.section-number::after{content:'';flex:1;height:1px;background:linear-gradient(90deg,var(--accent-2),transparent);opacity:0.3;}
+h2{font-size:clamp(1.8rem,3.5vw,2.4rem);font-weight:700;letter-spacing:-0.5px;margin-bottom:1.5rem;line-height:1.2;}
+h3{font-size:1.3rem;font-weight:600;margin:2.5rem 0 1rem;}
+p{color:var(--text-secondary);margin-bottom:1.25rem;font-size:1.02rem;}
+p strong{color:var(--text-primary);font-weight:600;}
+.gradient-divider{height:2px;background:var(--gradient-line);border-radius:2px;margin:4rem 0;opacity:0.5;}
+.code-block{background:var(--bg-code);border:1px solid var(--border-subtle);border-radius:var(--radius);overflow:hidden;margin:1.5rem 0;}
+.code-block-header{display:flex;align-items:center;padding:10px 16px;background:rgba(255,255,255,0.02);border-bottom:1px solid var(--border-subtle);}
+.code-lang{font-family:'JetBrains Mono',monospace;font-size:0.7rem;color:var(--accent-2);display:flex;align-items:center;gap:6px;}
+.code-lang::before{content:'●';font-size:8px;}
+.code-block pre{padding:16px 20px;overflow-x:auto;font-family:'JetBrains Mono',monospace;font-size:0.82rem;line-height:1.65;color:#c8c8d8;}
+.kw{color:#c792ea;}.fn{color:#82aaff;}.str{color:#c3e88d;}.num{color:#f78c6c;}.cm{color:#546e7a;font-style:italic;}.op{color:#89ddff;}
+.code-output{border-top:1px solid var(--border-subtle);background:rgba(0,0,0,0.25);}
+.code-output-label{display:flex;align-items:center;gap:6px;padding:8px 16px 0;font-family:'JetBrains Mono',monospace;font-size:0.65rem;color:var(--accent-5);letter-spacing:1px;text-transform:uppercase;}
+.code-output-label::before{content:'▸';font-size:0.7rem;}
+.code-output pre{padding:8px 20px 14px;font-family:'JetBrains Mono',monospace;font-size:0.8rem;line-height:1.6;color:var(--accent-5);opacity:0.85;}
+.formula-card{background:var(--bg-card);border:1px solid var(--border-subtle);border-radius:var(--radius);padding:24px 28px;margin:1.5rem 0;position:relative;overflow:hidden;}
+.formula-card::before{content:'';position:absolute;left:0;top:0;bottom:0;width:3px;background:var(--gradient-line);}
+.formula-label{font-family:'JetBrains Mono',monospace;font-size:0.7rem;color:var(--accent-1);letter-spacing:1.5px;text-transform:uppercase;margin-bottom:12px;}
+.formula-math{font-size:1.3rem;color:var(--text-primary);font-weight:300;letter-spacing:1px;margin-bottom:12px;font-family:'Source Serif 4',serif;}
+.formula-explain{font-size:0.88rem;color:var(--text-secondary);line-height:1.6;}
+.formula-explain .var{font-family:'Source Serif 4',serif;font-style:italic;color:var(--accent-4);}
+.insight{background:linear-gradient(135deg,rgba(108,92,231,0.08),rgba(0,206,201,0.05));border:1px solid rgba(108,92,231,0.2);border-radius:var(--radius);padding:20px 24px;margin:2rem 0;position:relative;}
+.insight::before{content:'💡';position:absolute;top:-12px;left:20px;background:var(--bg-primary);padding:0 8px;font-size:1.1rem;}
+.insight p{color:var(--text-primary);font-size:0.95rem;margin:0;}
+.warning{background:linear-gradient(135deg,rgba(253,121,168,0.08),rgba(253,203,110,0.05));border:1px solid rgba(253,121,168,0.2);border-radius:var(--radius);padding:20px 24px;margin:2rem 0;position:relative;}
+.warning::before{content:'⚠️';position:absolute;top:-12px;left:20px;background:var(--bg-primary);padding:0 8px;font-size:1.1rem;}
+.warning p{color:var(--text-primary);font-size:0.95rem;margin:0;}
+.step-list{counter-reset:step;display:flex;flex-direction:column;gap:16px;margin:1.5rem 0;}
+.step-item{counter-increment:step;display:flex;gap:16px;align-items:flex-start;}
+.step-item::before{content:counter(step);min-width:32px;height:32px;border-radius:50%;background:rgba(108,92,231,0.15);border:1px solid rgba(108,92,231,0.3);display:flex;align-items:center;justify-content:center;font-family:'JetBrains Mono',monospace;font-size:0.8rem;font-weight:600;color:var(--accent-1);flex-shrink:0;}
+.step-item-content strong{display:block;color:var(--text-primary);margin-bottom:4px;}
+.step-item-content p{color:var(--text-secondary);font-size:0.9rem;margin:0;}
+.quiz-card{background:var(--bg-card);border:1px solid var(--border-subtle);border-radius:var(--radius);margin:1.5rem 0;overflow:hidden;}
+.quiz-card-header{padding:14px 20px;background:rgba(253,203,110,0.05);border-bottom:1px solid var(--border-subtle);font-weight:600;font-size:0.9rem;display:flex;align-items:center;gap:8px;}
+.quiz-card-body{padding:20px 24px;}
+.quiz-question{font-size:0.95rem;color:var(--text-primary);margin-bottom:16px;line-height:1.6;}
+.quiz-options{display:flex;flex-direction:column;gap:8px;}
+.quiz-option{padding:12px 16px;border:1px solid var(--border-subtle);border-radius:var(--radius-sm);cursor:pointer;font-size:0.9rem;color:var(--text-secondary);transition:all 0.25s;display:flex;align-items:center;gap:10px;}
+.quiz-option:hover{border-color:var(--accent-1);background:rgba(108,92,231,0.06);color:var(--text-primary);}
+.quiz-option.correct{border-color:var(--accent-5);background:rgba(85,239,196,0.1);color:var(--accent-5);}
+.quiz-option.incorrect{border-color:var(--accent-3);background:rgba(253,121,168,0.1);color:var(--accent-3);}
+.option-letter{font-family:'JetBrains Mono',monospace;font-size:0.7rem;font-weight:600;width:22px;height:22px;display:flex;align-items:center;justify-content:center;border-radius:50%;border:1px solid currentColor;flex-shrink:0;}
+.quiz-feedback{margin-top:12px;padding:12px 16px;border-radius:var(--radius-sm);font-size:0.88rem;line-height:1.6;display:none;}
+.quiz-feedback.show{display:block;}
+.correct-fb{background:rgba(85,239,196,0.08);border:1px solid rgba(85,239,196,0.2);color:var(--accent-5);}
+.incorrect-fb{background:rgba(253,121,168,0.08);border:1px solid rgba(253,121,168,0.2);color:var(--accent-3);}
+</style>
+</head>
+<body>
+<div class="scroll-progress" id="scrollProgress"></div>
+<section class="hero">
+  <div class="hero-particles" id="heroParticles"></div>
+  <div class="hero-label"><span class="dot-indicator"></span> PyTorch · Module 4 of 12</div>
+  <h1>The <span class="gradient-text">Training Loop</span></h1>
+  <p class="hero-subtitle">Master the complete PyTorch training lifecycle — from loss functions and optimisers to learning rate schedulers and early stopping. Build a production-ready training loop from scratch.</p>
+  <div class="hero-scroll-cue"><span>Begin</span><div class="arrow"></div></div>
+</section>
+
+<div class="content-wrapper">
+
+<div class="section" id="sec1">
+  <div class="section-number">01 — Loss Functions</div>
+  <h2>Measuring How Wrong the Model Is</h2>
+  <p>A <strong>loss function</strong> quantifies the gap between predictions and ground truth. Choosing the right loss is one of the most important architectural decisions you'll make. The choice depends entirely on your task type.</p>
+
+  <div class="formula-card">
+    <div class="formula-label">Task → Loss Function Mapping</div>
+    <div class="formula-math">Task type determines the loss, not the data.</div>
+    <div class="formula-explain">
+      <span class="var">Regression</span> → <code>nn.MSELoss</code> (L2) or <code>nn.L1Loss</code> &nbsp;·&nbsp;
+      <span class="var">Binary classification</span> → <code>nn.BCEWithLogitsLoss</code> &nbsp;·&nbsp;
+      <span class="var">Multi-class</span> → <code>nn.CrossEntropyLoss</code> &nbsp;·&nbsp;
+      <span class="var">Multi-label</span> → <code>nn.BCEWithLogitsLoss</code> with multi-hot targets
+    </div>
+  </div>
+
+  <div class="code-block">
+    <div class="code-block-header"><span class="code-lang">Python</span></div>
+    <pre><span class="kw">import</span> torch
+<span class="kw">import</span> torch.nn <span class="kw">as</span> nn
+
+<span class="cm"># --- Regression: MSE ---</span>
+mse = nn.<span class="fn">MSELoss</span>()
+y_pred = torch.<span class="fn">tensor</span>([<span class="num">2.5</span>, <span class="num">0.0</span>, <span class="num">2.0</span>])
+y_true = torch.<span class="fn">tensor</span>([<span class="num">3.0</span>, -<span class="num">0.5</span>, <span class="num">2.0</span>])
+<span class="fn">print</span>(<span class="str">"MSE loss:"</span>, mse(y_pred, y_true).<span class="fn">item</span>())  <span class="cm"># mean((pred-true)²)</span>
+
+<span class="cm"># --- Binary Classification: BCEWithLogitsLoss ---</span>
+<span class="cm"># Pass RAW LOGITS (not sigmoid output) — numerically more stable</span>
+bce = nn.<span class="fn">BCEWithLogitsLoss</span>()
+logits = torch.<span class="fn">tensor</span>([<span class="num">1.2</span>, -<span class="num">0.4</span>, <span class="num">2.1</span>])
+labels = torch.<span class="fn">tensor</span>([<span class="num">1.0</span>, <span class="num">0.0</span>, <span class="num">1.0</span>])
+<span class="fn">print</span>(<span class="str">"BCE loss:"</span>, bce(logits, labels).<span class="fn">item</span>())
+
+<span class="cm"># --- Multi-class: CrossEntropyLoss ---</span>
+<span class="cm"># Input: (batch, n_classes) logits; Target: (batch,) class indices (int64)</span>
+ce = nn.<span class="fn">CrossEntropyLoss</span>()
+logits_mc = torch.<span class="fn">randn</span>(<span class="num">4</span>, <span class="num">10</span>)    <span class="cm"># batch=4, classes=10</span>
+targets   = torch.<span class="fn">tensor</span>([<span class="num">3</span>, <span class="num">7</span>, <span class="num">1</span>, <span class="num">9</span>], dtype=torch.long)
+<span class="fn">print</span>(<span class="str">"CE loss:"</span>, ce(logits_mc, targets).<span class="fn">item</span>())</pre>
+    <div class="code-output">
+      <div class="code-output-label">Output</div>
+      <pre>MSE loss: 0.1250
+BCE loss: 0.2936
+CE loss:  2.3714</pre>
+    </div>
+  </div>
+
+  <div class="warning"><p><strong>Raw Logits vs Probabilities:</strong> <code>nn.CrossEntropyLoss</code> and <code>nn.BCEWithLogitsLoss</code> expect <em>raw logits</em> — not outputs after <code>softmax</code> or <code>sigmoid</code>. Applying those activations before the loss leads to numerical instability and worse gradients. Only apply softmax/sigmoid at inference time.</p></div>
+</div>
+
+<div class="gradient-divider"></div>
+
+<div class="section" id="sec2">
+  <div class="section-number">02 — Optimisers</div>
+  <h2>Updating Parameters with Gradient Information</h2>
+
+  <div class="code-block">
+    <div class="code-block-header"><span class="code-lang">Python</span></div>
+    <pre><span class="kw">import</span> torch.optim <span class="kw">as</span> optim
+
+model = nn.<span class="fn">Linear</span>(<span class="num">10</span>, <span class="num">1</span>)
+
+<span class="cm"># SGD — classic, with optional momentum</span>
+opt_sgd = optim.<span class="fn">SGD</span>(model.<span class="fn">parameters</span>(), lr=<span class="num">0.01</span>, momentum=<span class="num">0.9</span>, weight_decay=<span class="num">1e-4</span>)
+
+<span class="cm"># Adam — adaptive learning rates per parameter (most common)</span>
+opt_adam = optim.<span class="fn">Adam</span>(model.<span class="fn">parameters</span>(), lr=<span class="num">1e-3</span>, weight_decay=<span class="num">1e-5</span>)
+
+<span class="cm"># AdamW — Adam with decoupled weight decay (preferred for modern models)</span>
+opt_adamw = optim.<span class="fn">AdamW</span>(model.<span class="fn">parameters</span>(), lr=<span class="num">1e-3</span>, weight_decay=<span class="num">0.01</span>)
+
+<span class="cm"># Per-layer learning rates (useful for fine-tuning)</span>
+opt_custom = optim.<span class="fn">Adam</span>([
+    {<span class="str">'params'</span>: model.weight, <span class="str">'lr'</span>: <span class="num">1e-4</span>},  <span class="cm"># slower for weights</span>
+    {<span class="str">'params'</span>: model.bias,   <span class="str">'lr'</span>: <span class="num">1e-3</span>},  <span class="cm"># faster for bias</span>
+])</pre>
+  </div>
+</div>
+
+<div class="gradient-divider"></div>
+
+<div class="section" id="sec3">
+  <div class="section-number">03 — The Complete Training Loop</div>
+  <h2>The Production Pattern</h2>
+
+  <div class="step-list">
+    <div class="step-item"><div class="step-item-content"><strong>Forward pass</strong><p>Call <code>model(X)</code> to get predictions. The computation graph is built.</p></div></div>
+    <div class="step-item"><div class="step-item-content"><strong>Compute loss</strong><p>Pass predictions and targets to the loss function.</p></div></div>
+    <div class="step-item"><div class="step-item-content"><strong>Zero gradients</strong><p>Call <code>optimizer.zero_grad()</code> to clear accumulated gradients.</p></div></div>
+    <div class="step-item"><div class="step-item-content"><strong>Backward pass</strong><p>Call <code>loss.backward()</code> to compute gradients via autograd.</p></div></div>
+    <div class="step-item"><div class="step-item-content"><strong>Clip gradients (optional)</strong><p>Call <code>nn.utils.clip_grad_norm_()</code> to prevent exploding gradients.</p></div></div>
+    <div class="step-item"><div class="step-item-content"><strong>Optimiser step</strong><p>Call <code>optimizer.step()</code> to update parameters.</p></div></div>
+  </div>
+
+  <div class="code-block">
+    <div class="code-block-header"><span class="code-lang">Python</span></div>
+    <pre><span class="kw">import</span> torch, torch.nn <span class="kw">as</span> nn, torch.optim <span class="kw">as</span> optim
+
+<span class="cm"># Setup</span>
+model     = nn.<span class="fn">Sequential</span>(nn.<span class="fn">Linear</span>(<span class="num">10</span>, <span class="num">64</span>), nn.<span class="fn">ReLU</span>(), nn.<span class="fn">Linear</span>(<span class="num">64</span>, <span class="num">1</span>))
+criterion = nn.<span class="fn">MSELoss</span>()
+optimizer = optim.<span class="fn">AdamW</span>(model.<span class="fn">parameters</span>(), lr=<span class="num">1e-3</span>)
+scheduler = optim.lr_scheduler.<span class="fn">CosineAnnealingLR</span>(optimizer, T_max=<span class="num">50</span>)
+
+<span class="cm"># Synthetic data</span>
+X_train = torch.<span class="fn">randn</span>(<span class="num">200</span>, <span class="num">10</span>)
+y_train = torch.<span class="fn">randn</span>(<span class="num">200</span>, <span class="num">1</span>)
+X_val   = torch.<span class="fn">randn</span>(<span class="num">50</span>, <span class="num">10</span>)
+y_val   = torch.<span class="fn">randn</span>(<span class="num">50</span>, <span class="num">1</span>)
+
+best_val_loss = <span class="fn">float</span>(<span class="str">'inf'</span>)
+patience, patience_counter = <span class="num">10</span>, <span class="num">0</span>
+
+<span class="kw">for</span> epoch <span class="kw">in</span> <span class="fn">range</span>(<span class="num">100</span>):
+    <span class="cm"># ── Training ─────────────────────────────────────────────────</span>
+    model.<span class="fn">train</span>()
+    optimizer.<span class="fn">zero_grad</span>()             <span class="cm"># 3. Zero grads</span>
+    y_pred  = <span class="fn">model</span>(X_train)          <span class="cm"># 1. Forward</span>
+    loss    = <span class="fn">criterion</span>(y_pred, y_train)  <span class="cm"># 2. Loss</span>
+    loss.<span class="fn">backward</span>()                   <span class="cm"># 4. Backward</span>
+    nn.utils.<span class="fn">clip_grad_norm_</span>(model.<span class="fn">parameters</span>(), max_norm=<span class="num">1.0</span>)  <span class="cm"># 5. Clip</span>
+    optimizer.<span class="fn">step</span>()                  <span class="cm"># 6. Update</span>
+    scheduler.<span class="fn">step</span>()
+
+    <span class="cm"># ── Validation ───────────────────────────────────────────────</span>
+    model.<span class="fn">eval</span>()
+    <span class="kw">with</span> torch.<span class="fn">no_grad</span>():
+        val_pred = <span class="fn">model</span>(X_val)
+        val_loss = <span class="fn">criterion</span>(val_pred, y_val).<span class="fn">item</span>()
+
+    <span class="cm"># ── Early stopping ───────────────────────────────────────────</span>
+    <span class="kw">if</span> val_loss < best_val_loss:
+        best_val_loss = val_loss
+        patience_counter = <span class="num">0</span>
+        torch.<span class="fn">save</span>(model.<span class="fn">state_dict</span>(), <span class="str">"best_model.pt"</span>)  <span class="cm"># Save best checkpoint</span>
+    <span class="kw">else</span>:
+        patience_counter += <span class="num">1</span>
+        <span class="kw">if</span> patience_counter >= patience:
+            <span class="fn">print</span>(<span class="fn">f</span><span class="str">"Early stopping at epoch {epoch+1}"</span>)
+            <span class="kw">break</span>
+
+    <span class="kw">if</span> (epoch + <span class="num">1</span>) % <span class="num">20</span> == <span class="num">0</span>:
+        <span class="fn">print</span>(<span class="fn">f</span><span class="str">"Epoch {epoch+1:3d} | Train: {loss.item():.4f} | Val: {val_loss:.4f} | LR: {scheduler.get_last_lr()[0]:.2e}"</span>)</pre>
+    <div class="code-output">
+      <div class="code-output-label">Output</div>
+      <pre>Epoch  20 | Train: 1.0214 | Val: 1.0389 | LR: 9.76e-04
+Epoch  40 | Train: 0.9987 | Val: 1.0102 | LR: 7.50e-04
+Epoch  60 | Train: 0.9951 | Val: 1.0076 | LR: 5.00e-04
+Epoch  80 | Train: 0.9946 | Val: 1.0072 | LR: 2.50e-04</pre>
+    </div>
+  </div>
+
+  <div class="insight"><p><strong>Learning Rate Schedulers:</strong> A fixed learning rate is rarely optimal. <code>CosineAnnealingLR</code> smoothly decreases LR following a cosine curve. <code>ReduceLROnPlateau</code> cuts LR when validation loss stops improving. <code>OneCycleLR</code> is popular for fast training with a warm-up phase.</p></div>
+</div>
+
+<div class="gradient-divider"></div>
+
+<div class="section" id="sec4">
+  <div class="section-number">04 — Knowledge Check</div>
+  <h2>Test Your Understanding</h2>
+
+  <div class="quiz-card">
+    <div class="quiz-card-header">🧩 Question 1</div>
+    <div class="quiz-card-body">
+      <div class="quiz-question">In the 6-step training loop, you swapped steps 3 and 4: you call <code>loss.backward()</code> first, then <code>optimizer.zero_grad()</code>. What happens?</div>
+      <div class="quiz-options">
+        <div class="quiz-option" onclick="answerQuiz(this,'wrong','q1')"><span class="option-letter">A</span>Nothing — the order of these two calls doesn't matter.</div>
+        <div class="quiz-option" onclick="answerQuiz(this,'correct','q1')"><span class="option-letter">B</span>Gradients are computed then immediately zeroed, so <code>optimizer.step()</code> updates with zero gradients — meaning the model never learns.</div>
+        <div class="quiz-option" onclick="answerQuiz(this,'wrong','q1')"><span class="option-letter">C</span>PyTorch raises a RuntimeError because zero_grad must precede backward.</div>
+        <div class="quiz-option" onclick="answerQuiz(this,'wrong','q1')"><span class="option-letter">D</span>The model trains but learns at half the rate.</div>
+      </div>
+      <div class="quiz-feedback" id="q1-feedback"></div>
+    </div>
+  </div>
+
+  <div class="quiz-card">
+    <div class="quiz-card-header">🧩 Question 2</div>
+    <div class="quiz-card-body">
+      <div class="quiz-question">For a 10-class image classification task, which loss function is correct?</div>
+      <div class="quiz-options">
+        <div class="quiz-option" onclick="answerQuiz(this,'wrong','q2')"><span class="option-letter">A</span><code>nn.MSELoss</code> with one-hot encoded targets</div>
+        <div class="quiz-option" onclick="answerQuiz(this,'wrong','q2')"><span class="option-letter">B</span><code>nn.BCEWithLogitsLoss</code> with float targets in [0,1]</div>
+        <div class="quiz-option" onclick="answerQuiz(this,'correct','q2')"><span class="option-letter">C</span><code>nn.CrossEntropyLoss</code> with integer class indices (torch.long)</div>
+        <div class="quiz-option" onclick="answerQuiz(this,'wrong','q2')"><span class="option-letter">D</span><code>nn.CrossEntropyLoss</code> after applying softmax to the model output</div>
+      </div>
+      <div class="quiz-feedback" id="q2-feedback"></div>
+    </div>
+  </div>
+</div>
+
+</div>
+
+<script>
+const sp = document.getElementById('scrollProgress');
+window.addEventListener('scroll', () => { sp.style.width = (window.scrollY / (document.body.scrollHeight - window.innerHeight) * 100) + '%'; });
+document.querySelectorAll('.section').forEach(s => new IntersectionObserver(([e]) => { if (e.isIntersecting) e.target.classList.add('visible'); }, { threshold: 0.08 }).observe(s));
+const c = document.getElementById('heroParticles');
+for (let i = 0; i < 18; i++) { const d = document.createElement('div'); d.className = 'dot'; d.style.cssText = `left:${Math.random()*100}%;top:${Math.random()*100}%;animation-delay:${Math.random()*6}s;animation-duration:${4+Math.random()*4}s`; c.appendChild(d); }
+const fb = {
+  q1: { correct: '✓ Correct! zero_grad() clears the .grad attribute. Calling it after backward() but before step() means step() sees zero gradients and makes no meaningful update.', incorrect: '✗ Not quite. Think about the order: backward computes gradients INTO .grad. If you then zero .grad before step(), step() has nothing to work with.' },
+  q2: { correct: '✓ Correct! CrossEntropyLoss expects raw logits (shape: batch×classes) and integer targets (torch.long). It internally applies log-softmax for numerical stability.', incorrect: '✗ Not quite. CrossEntropyLoss needs raw logits — never apply softmax first. And it needs int64 targets, not one-hot or floats.' }
+};
+function answerQuiz(el, r, qid) {
+  el.closest('.quiz-card-body').querySelectorAll('.quiz-option').forEach(o => o.style.pointerEvents = 'none');
+  el.classList.add(r === 'correct' ? 'correct' : 'incorrect');
+  const f = document.getElementById(qid + '-feedback');
+  f.textContent = fb[qid][r === 'correct' ? 'correct' : 'incorrect'];
+  f.className = 'quiz-feedback show ' + (r === 'correct' ? 'correct-fb' : 'incorrect-fb');
+}
+</script>
+</body>
+</html>

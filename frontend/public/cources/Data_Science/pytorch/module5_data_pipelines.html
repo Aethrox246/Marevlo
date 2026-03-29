@@ -1,1 +1,239 @@
-<p><strong>Module5—DataPipelines:Dataset, DataLoader,Performance</strong></p><p><strong>BuildPipelinesThatAreNevertheBottleneck</strong></p><p>PyTorchforDataScience</p><p><strong>ModuleGoal:</strong>Buildefficient,production-gradedatapipelinesinPyTorch.Un-derstandwhentouseDatasetvsIterableDataset,writesmartcollatefunctions forvariable-lengthsequences,andtuneyourDataLoadersoit’sneverthetraining bottleneck.EndwithalogdatasetloaderbuiltforAIOps.</p><p><strong>1.DatasetvsIterableDataset</strong></p><p><strong>TheTwoModesofDataLoading</strong></p><table><tr><td></td><td><p>Dataset</p></td><td><p>IterableDataset</p></td></tr><tr><td rowspan="5"><p><strong>Access pat-</strong><br /><strong>tern </strong><br /><strong>Must </strong><br /><strong>know </strong><br /><strong>length? Shuf-</strong><br /><strong>fling </strong><br /><strong>Best </strong><br /><strong>for</strong></p></td><td><p>Randomaccessvia</p></td><td><p>Sequentialstream</p></td></tr><tr><td><p>__getitem__(i)</p></td><td rowspan="2"><p>No</p></td></tr><tr><td><p>Yes(__len__required)</p></td></tr><tr><td rowspan="2"><p>Free—DataLoaderhandles it <br />Filesondisk,databases, <br />in-memorydata</p></td><td><p>Mustimplementmanually</p></td></tr><tr><td><p>Streaminglogs,largefiles,networkdata</p></td></tr></table><p>1</p><p><strong>Real-WorldAnalogy</strong></p><p>Datasetislikea<strong>library</strong>—youcanwalktoanyshelfandgrabbooknumber247.</p><p>IterableDatasetislikea<strong>conveyorbelt</strong>—itemscometoyouinorder,andyouprocess themastheyarrive.</p><p><strong>Map-StyleDataset</strong></p><table><tr><td><p>importtorch <br />fromtorch.utils.dataimportDataset,DataLoader importnumpyasnp</p></td></tr></table><table><tr><td colspan="2"><p><strong>class</strong>TabularDataset(Dataset): <br />""" <br />AreusableDatasetfortabulardatastoredastensorsornumpyarrays. Appliesoptionalper-featurenormalisation.</p><p>"""</p><p><strong>def</strong>__init__(self,X:torch.Tensor,y:torch.Tensor,transform=None): 	<strong>assert</strong>len(X)==len(y),"Xandymusthavethesamenumberofsamples"</p></td></tr><tr><td><p>self.X</p></td><td><p>=X.float()</p></td></tr><tr><td><p>self.y</p></td><td><p>=y</p></td></tr><tr><td colspan="2"><p>self.transform=transform</p></td></tr></table><table><tr><td><p><strong>def</strong>__len__(self)-&gt;int: <br />	<strong>return</strong>len(self.X)</p></td></tr></table><table><tr><td><p><strong>def</strong>__getitem__(self,idx:int): 	x=self.X[idx] <br />	<strong>if</strong>self.transform: <br />	x=self.transform(x) 	<strong>return</strong>x,self.y[idx]</p></td></tr></table><table><tr><td><p>#Usage <br />torch.manual_seed(42) <br />X_raw=torch.randn(1000,8) <br />y_raw=(X_raw[:,0]+X_raw[:,1]&gt;0).long()</p></td></tr></table><p>dataset=TabularDataset(X_raw,y_raw)</p><p>2</p><table><tr><td><p>print(f"Datasetlength:{len(dataset)}") <br />print(f"Sample0:Xshape={dataset[0][0].shape},y={dataset[0][1].item()}")</p></td></tr></table><p>Datasetlength:1000 <br />Sample0:Xshape=torch.Size([8]),y=1</p><p><strong>IterableDataset—ForLargeLogFiles</strong></p><table><tr><td><p>fromtorch.utils.dataimportIterableDataset importitertools</p></td></tr></table><table><tr><td colspan="4"><p><strong>class</strong>LogFileDataset(IterableDataset): <br />""" <br />StreamsloglinesfromoneormorefileswithoutloadingeverythingintoRAM. Yields(token_ids,label)tuples.</p><p>Eachlineisaspace-separatedsequenceoftokenIDsfollowedbyalabel.</p><p>"""</p><p><strong>def</strong>__init__(self,filepaths:list,max_seq_len:int=64):</p></td></tr><tr><td colspan="2"><p>self.filepaths</p></td><td colspan="2"><p>=filepaths</p></td></tr><tr><td colspan="4"><p>	self.max_seq_len=max_seq_len <br /><strong>def</strong>_parse_line(self,line:str): <br />	tokens=list(map(int,line.strip().split()))</p></td></tr><tr><td><p>label</p></td><td colspan="3"><p>=tokens[-1]</p></td></tr><tr><td><p>seq</p></td><td colspan="2"><p>=tokens[:-1][:self.max_seq_len]</p></td><td><p>#Truncatetomax_seq_len</p></td></tr><tr><td colspan="4"><p><strong>return</strong>torch.tensor(seq,dtype=torch.long),label</p></td></tr></table><table><tr><td><p><strong>def</strong>__iter__(self): <br />worker_info=torch.utils.data.get_worker_info() files=self.filepaths</p></td></tr></table><table><tr><td><p>#Distributefilesacrossworkersifmulti-workerloading <strong>if</strong>worker_info<strong>isnot</strong>None: <br />files=[f<strong>for</strong>i,f<strong>in</strong>enumerate(files) <br />	<strong>if</strong>i%worker_info.num_workers==worker_info.id]</p></td></tr></table><table><tr><td><p><strong>for</strong>filepath<strong>in</strong>files: <br /><strong>with</strong>open(filepath,'r')asf: 	<strong>for</strong>line<strong>in</strong>f:</p></td></tr></table><p>3</p><table><tr><td><p><strong>if</strong>line.strip(): <br />	<strong>yield</strong>self._parse_line(line)</p></td></tr></table><table><tr><td colspan="2"><p>#Simulatewritingafakelogfilefordemonstration importtempfile,os</p><p>fake_log=tempfile.NamedTemporaryFile(mode='w',suffix='.txt',delete=False) <strong>for</strong>i<strong>in</strong>range(200):</p></td></tr><tr><td><p>seq</p></td><td><p>=''.join([str(np.random.randint(1,50))<strong>for</strong>_<strong>in</strong>range(np.random.randint(5,20))</p></td></tr><tr><td><p>label</p></td><td><p>=np.random.randint(0,2)</p></td></tr><tr><td colspan="2"><p>	fake_log.write(f"{seq}{label}\n") <br />fake_log.close()</p></td></tr></table><table><tr><td colspan="2"><p>log_ds=LogFileDataset([fake_log.name],max_seq_len=16) #Can'tuseshuffle=TruewithIterableDataset <br />log_dl=DataLoader(log_ds,batch_size=8,collate_fn=None)</p><p>sample_seq,sample_label=next(iter(log_ds)) print(f"Samplesequence:{sample_seq}")</p></td></tr><tr><td><p>print(f"Samplelabel:</p></td><td><p>{sample_label}")</p></td></tr><tr><td><p>print(f"Seqlength:</p></td><td><p>{len(sample_seq)}")</p></td></tr></table><table><tr><td colspan="2"><p>os.unlink(fake_log.name)</p></td><td rowspan="4"><p>1,34,34,</p></td><td rowspan="4"><p>2,49,32,15,38])</p></td></tr><tr><td colspan="2"><p>Samplesequence:tensor([7,35,22,45,</p></td></tr><tr><td><p>Samplelabel:</p></td><td><p>0</p></td></tr><tr><td><p>Seqlength:</p></td><td><p>12</p></td></tr><tr><td colspan="4"></td></tr></table><p><strong>2.CollateFunctions—HandlingVariable-LengthSequences </strong><br /><strong>TheProblem </strong><br />By default, DataLoader tries to stack samples into a single tensor.This works when all samples havethesameshape.Butlogsequences,text,ortime-serieswindowsoftenhave<strong>variable length</strong>—stackingfails.</p><p>4</p><table><tr><td><p>#ThisFAILSbecausesequenceshavedifferentlengths sequences=[ <br />	torch.tensor([1,2,3]), <br />	torch.tensor([4,5]), <br />	torch.tensor([6,7,8,9]) <br />]</p></td></tr></table><table><tr><td><p><strong>try</strong>: <br />	torch.stack(sequences) <br /><strong>except</strong>RuntimeErrorase: <br />	print("Error:",e)</p></td></tr></table><p>Error:stackexpectseachtensortobeequalsize,butgot[3]atentry0and[2]atentry1</p><p><strong>PaddingCollateFunction</strong></p><table><tr><td><p>fromtorch.nn.utils.rnnimportpad_sequence</p></td></tr></table><table><tr><td colspan="4"><p><strong>def</strong>collate_variable_length(batch): <br />""" <br />Collateabatchof(sequence,label)tupleswithvariable-lengthsequences. Padssequencestothelongestinthebatch.</p><p>Returns: <br />	sequences:(B,T_max)paddedtensor</p></td></tr><tr><td colspan="2"><p>lengths:</p></td><td><p>(B,)</p></td><td><p>originallengths(neededbyLSTM)</p></td></tr><tr><td colspan="2"><p>labels:</p></td><td><p>(B,)</p></td><td><p>labels</p></td></tr><tr><td colspan="4"><p>""" <br />sequences,labels=zip(*batch)</p></td></tr><tr><td><p>lengths</p></td><td colspan="3"><p>=torch.tensor([len(s)<strong>for</strong>s<strong>in</strong>sequences])</p></td></tr><tr><td><p>padded</p></td><td colspan="3"><p>=pad_sequence(sequences,batch_first=True,padding_value=0)</p></td></tr><tr><td><p>labels</p></td><td colspan="3"><p>=torch.tensor(labels)</p></td></tr></table><table><tr><td colspan="2"><p><strong>return</strong>padded,lengths,labels</p><p>#Testit</p><p>batch=[</p></td></tr><tr><td><p>(torch.tensor([1,2,3]),</p></td><td><p>0),</p></td></tr></table><p>5</p><table><tr><td colspan="2"><p>(torch.tensor([4,5]),</p></td><td><p>1),</p></td></tr><tr><td colspan="3"><table><tr><td><p>]</p></td><td><p>(torch.tensor([6,7,8,9]),0),</p></td></tr></table><p>padded,lengths,labels=collate_variable_length(batch) print("Paddedsequences:\n",padded) <br />print("Originallengths:",lengths)</p></td></tr><tr><td><p>print("Labels:</p></td><td colspan="2"><p>",labels)</p></td></tr><tr><td colspan="3"><p>Paddedsequences: <br />	tensor([[1,2,3,0], <br />		[4,5,0,0], <br />		[6,7,8,9]]) <br />Originallengths:tensor([3,2,4])</p></td></tr><tr><td><p>Labels:</p></td><td colspan="2"><p>tensor([0,1,0])</p></td></tr></table><p><strong>Truncate+PadCollateforFixedBucketSize</strong></p><table><tr><td colspan="2"><p><strong>def</strong>make_collate_fn(max_len:int=32,pad_value:int=0): <br />	"""Returnsacollate_fnthattruncatestomax_lenthenpads."""</p><p><strong>def</strong>collate(batch): <br />sequences,labels=zip(*batch) <br />truncated=[s[:max_len]<strong>for</strong>s<strong>in</strong>sequences]</p></td></tr><tr><td><p>lengths</p></td><td><p>=torch.tensor([len(s)<strong>for</strong>s<strong>in</strong>truncated])</p></td></tr><tr><td><p>padded</p></td><td><p>=pad_sequence(truncated,batch_first=True,padding_value=pad_value)</p></td></tr><tr><td colspan="2"><p><strong>return</strong>padded,lengths,torch.tensor(labels)</p></td></tr></table><table><tr><td><p><strong>return</strong>collate</p></td></tr></table><table><tr><td><p>#UseinDataLoader <br />collate_fn=make_collate_fn(max_len=16)</p></td></tr></table><p>6</p><p><strong>3.DataLoaderPerformance </strong><br /><strong>KeyParameters</strong></p><table><tr><td><p>#Buildadatasetforperformancetesting</p></td></tr></table><p>dataset=TabularDataset(torch.randn(50000,128),torch.randint(0,10,(50000,)))</p><table><tr><td><p>#Default—slow(singleprocess,noprefetch) slow_dl=DataLoader(dataset,batch_size=256)</p></td></tr></table><table><tr><td colspan="2"><p>#Optimised</p><p>#Usenum_workers=0onWindows;setto4+onLinux/Macserversforrealspeedups.</p><p>importplatform <br />n_workers=0<strong>if</strong>platform.system()=="Windows"<strong>else</strong>4</p><p>fast_dl=DataLoader( <br />dataset, <br />batch_size=256,</p></td></tr><tr><td><p>num_workers=n_workers,</p></td><td><p>#0onWindowsnotebooks;4+onLinux/Mac</p></td></tr><tr><td><p>pin_memory=False,</p></td><td><p>#TrueonlywhenaGPUisavailable</p></td></tr><tr><td colspan="2"><table><tr><td><p>)</p></td><td><p>shuffle=True</p></td></tr></table></td></tr></table><p>#NOTE:OnWindows,num_workers&gt;0requiresa__main__guard(doesn'tworkinnotebooks).</p><table><tr><td><p>print("FastDataLoaderconfigured.") <br />print(f"Estimatedbatchesperepoch:{len(fast_dl)}")</p></td></tr></table><p>FastDataLoaderconfigured.</p><p>Estimatedbatchesperepoch:196 <br /><strong>TimingComparison</strong></p><table><tr><td colspan="2"><p>importtime <br /><strong>def</strong>time_dataloader(dl,n_batches=50): <br />	start=time.time() <br />	<strong>for</strong>i,(X,y)<strong>in</strong>enumerate(dl):</p></td></tr><tr><td><p>_=X.shape</p></td><td><p>#Simulateminimalprocessing</p></td></tr><tr><td colspan="2"><p><strong>if</strong>i&gt;=n_batches:</p></td></tr></table><p>7</p><table><tr><td><p><strong>break </strong><br /><strong>return</strong>time.time()-start</p></td></tr></table><table><tr><td colspan="3"><p>slow_time=time_dataloader(slow_dl) fast_time=time_dataloader(fast_dl)</p><p>print(f"Single-workertime(50batches):{slow_time:.3f}s")</p></td></tr><tr><td colspan="2"><p>print(f"Multi-workertime</p></td><td><p>(50batches):{fast_time:.3f}s")</p></td></tr><tr><td colspan="3"><p>print(f"Speedup:{slow_time/fast_time:.1f}x")</p><p>Single-workertime(50batches):0.098s</p></td></tr><tr><td><p>Multi-workertime</p></td><td colspan="2"><p>(50batches):0.089s</p></td></tr><tr><td colspan="3"><p>Speedup:1.1x</p></td></tr></table><p><strong>TuningGuidelines</strong></p><table><tr><td><p>Parameter</p></td><td><p>Recommendation</p></td></tr></table><p>num_workers <br />pin_memory <br />prefetch_factor <br />persistent_workers batch_size</p><p>Startwith4;tuneuptocpu_count()//2 <br />TrueiftrainingonGPU,FalseforCPU <br />2(default);increaseifGPUutilisationdipsbetween batches <br />Trueforlargedatasetstoavoidworkerrespawn overhead <br />LargestsizethatfitsinGPUmemory;powersof2 (64,128,256)</p><table><tr><td><table><tr><td><p>Exclamation-TriangleWarning</p></td></tr></table></td></tr></table><table><tr><td><p><strong>pin_memory=TruewithCPU-onlytraining</strong> will slightly slow things down.Only enable itwhenyouaremovingtensorstoaGPU.</p></td></tr></table><p>8</p><p><strong>4.StreamingLargeDatasets </strong><br /><strong>TheMemoryProblem </strong><br />Alargelogfile(100GB+)cannotbeloadedintoRAM.Solutions: 	1.<strong>IterableDataset</strong>—streamlinebyline.</p><p>2.<strong>Memory-mappedfiles</strong>—np.memmaportorch.frombufferforbinarydata. 3.<strong>ChunkedHDF5/Parquet</strong>—loadoneshardatatime.</p><p>importstruct</p><table><tr><td colspan="2"><p>#Memory-mappedbinarydataset <br /><strong>class</strong>BinarySequenceDataset(Dataset): <br />	""" <br />	Readsfixed-lengthsequencesfromabinaryfileusingmemorymapping. 	Format:eachrecord=[n_tokensint32][tokensint32*seq_len][labelint32] 	"""</p><p><strong>def</strong>__init__(self,filepath:str,seq_len:int,dtype=np.float32):</p></td></tr><tr><td><p>self.seq_len</p></td><td><p>=seq_len</p></td></tr><tr><td><p>self.data</p></td><td><p>=np.memmap(filepath,dtype=dtype,mode='r')</p></td></tr><tr><td colspan="2"><p>self.n_samples=len(self.data)//(seq_len+1)</p></td></tr></table><table><tr><td colspan="4"><p><strong>def</strong>__len__(self): <br />	<strong>return</strong>self.n_samples</p><p><strong>def</strong>__getitem__(self,idx): <br />	start=idx*(self.seq_len+1)</p></td></tr><tr><td colspan="2"><p>row</p></td><td colspan="2"><p>=self.data[start:start+self.seq_len+1]</p></td></tr><tr><td colspan="2"><p>x</p></td><td colspan="2"><p>=torch.tensor(row[:-1],dtype=torch.float32)</p></td></tr><tr><td colspan="2"><p>y</p></td><td colspan="2"><p>=int(row[-1])</p></td></tr><tr><td colspan="4"><p><strong>return</strong>x,y</p><p>#Writeafakebinaryfile—tempfileworksonallplatforms(Windows,Linux,Mac)</p><p>importtempfile,os</p><p>n,seq=5000,16</p></td></tr><tr><td><p>arr</p></td><td colspan="3"><p>=np.random.randn(n*(seq+1)).astype(np.float32)</p></td></tr><tr><td colspan="3"><p>arr[seq::seq+1]=np.random.randint(0,2,n).astype(np.float32)</p></td><td><p>#Labels</p></td></tr></table><p><strong>with</strong>tempfile.NamedTemporaryFile(suffix='.dat',delete=False)asf:</p><p>9</p><table><tr><td colspan="3"><p>fake_path=f.name <br />arr.tofile(f)</p></td></tr><tr><td><p>bin_ds</p></td><td colspan="2"><p>=BinarySequenceDataset(fake_path,seq_len=seq)</p></td></tr><tr><td><p>bin_dl</p></td><td colspan="2"><p>=DataLoader(bin_ds,batch_size=128,num_workers=0)</p></td></tr><tr><td colspan="3"><p>X_b,y_b=next(iter(bin_dl)) <br />print(f"Memory-mappeddataset:{len(bin_ds)}samples") print(f"Batchshapes:X={X_b.shape},yshape={len(y_b)}")</p><p>#Windowsrequiresclosingthememmapbeforedeletingthefile</p></td></tr><tr><td colspan="2"><p><strong>del</strong>bin_ds,bin_dl</p></td><td><p>#Releasememmaphandle</p></td></tr><tr><td colspan="3"><p>os.unlink(fake_path)</p></td></tr></table><p>Memory-mappeddataset:5000samples <br />Batchshapes:X=torch.Size([128,16]),yshape=128</p><p><strong>5.DataLeakageandSplitStrategies </strong><br /><strong>TheGoldenRule</strong></p><p><strong>Fitnothingontestdata. imputer.</strong></p><p><strong>Notthescaler,nottheencoder,notthe</strong></p><table><tr><td colspan="2"><p>fromtorch.utils.dataimportrandom_split,Subset <br />#Strategy1:Randomsplit(tabular,i.i.d.data) <br />dataset=TabularDataset(torch.randn(1000,8),torch.randint(0,2,(1000,)))</p></td></tr><tr><td><p>n</p></td><td><p>=len(dataset)</p></td></tr><tr><td colspan="2"><p>train_ds,val_ds,test_ds=random_split( <br />	dataset, <br />	[int(0.7*n),int(0.15*n),n-int(0.7*n)-int(0.15*n)], <br />	generator=torch.Generator().manual_seed(42) <br />) <br />print(f"Randomsplit—Train:{len(train_ds)},Val:{len(val_ds)},Test:{len(test_ds)}")</p><p>#Strategy2:Temporalsplit(timeseries—NEVERshuffle!)</p></td></tr><tr><td><p>n_ts</p></td><td><p>=1000</p></td></tr><tr><td colspan="2"><p>indices=list(range(n_ts))</p></td></tr></table><p>10</p><table><tr><td colspan="2"><p>train_idx=indices[:700]</p></td></tr><tr><td><p>val_idx</p></td><td><p>=indices[700:850]</p></td></tr><tr><td><p>test_idx</p></td><td><p>=indices[850:]</p></td></tr><tr><td colspan="2"><p>train_ts=Subset(dataset,train_idx)</p></td></tr><tr><td><p>val_ts</p></td><td><p>=Subset(dataset,val_idx)</p></td></tr><tr><td><p>test_ts</p></td><td><p>=Subset(dataset,test_idx)</p></td></tr><tr><td colspan="2"><p>print(f"Temporalsplit—Train:{len(train_ts)},Val:{len(val_ts)},Test:{len(test_ts)}")</p></td></tr></table><p>Randomsplit—Train:700,Val:150,Test:150 Temporalsplit—Train:700,Val:150,Test:150</p><table><tr><td colspan="7"><p>#Correctnormalisation—fitONLYontrain,applytoall X_full=torch.randn(1000,8) <br />train_X=X_full[:700]</p></td></tr><tr><td colspan="2"><p>val_X</p></td><td colspan="5"><p>=X_full[700:850]</p></td></tr><tr><td colspan="2"><p>test_X</p></td><td colspan="5"><p>=X_full[850:]</p></td></tr><tr><td colspan="7"><p>#FitstatsonTRAINonly <br />mean=train_X.mean(dim=0)</p></td></tr><tr><td><p>std</p></td><td colspan="6"><p>=train_X.std(dim=0)</p></td></tr><tr><td colspan="7"><p>std[std&lt;1e-6]=1.0 <br />#Applytoallsplits <br />train_X_norm=(train_X-mean)/std</p></td></tr><tr><td colspan="3"><p>val_X_norm</p></td><td><p>=(val_X</p></td><td><p>-mean)/std</p></td><td colspan="2"><p>#←usetrainstats,notvalstats</p></td></tr><tr><td colspan="3"><p>test_X_norm</p></td><td><p>=(test_X</p></td><td><p>-mean)/std</p></td><td colspan="2"><p>#←usetrainstats,notteststats</p></td></tr><tr><td colspan="7"><p>print("Normalisationappliedusingtrain-setstatisticsonly.")</p></td></tr><tr><td colspan="3"><p>print(f"Val</p></td><td colspan="4"><p>mean(not0,that'sfine):{val_X_norm.mean(0)[:3].round(decimals=3)}")</p></td></tr><tr><td colspan="7"><p>Normalisationappliedusingtrain-setstatisticsonly.</p></td></tr><tr><td><p>Val</p></td><td colspan="5"><p>mean(not0,that'sfine):tensor([-0.0200,-0.0360,</p></td><td><p>0.0920])</p></td></tr><tr><td colspan="7"></td></tr></table><table><tr><td><table><tr><td><p>ExclamationImportant</p></td></tr></table></td></tr></table><table><tr><td><p><strong>Dataleakagechecklist:</strong>-Nevercomputemean/std/quantilesonthefulldatasetbefore splitting.-Neverincludefutureinformationintime-seriesfeatures.-Neverletvalidation samplesinfluencetrainingaugmentationparameters.</p></td></tr></table><p>11</p><p><strong>Lab:LogDatasetLoaderforAIOps</strong></p><p><strong>Buildacompletelogsequenceloaderwithwindowingandanomalylabels</strong></p><p>importhashlib</p><table><tr><td><p>#Simulaterawlogdata <br />#InrealAIOps,thiswouldbeparsedfromsyslog/ELK/Splunk #Here:each"event"isalogtemplateID(0-99),withtimestamps</p></td></tr></table><table><tr><td colspan="3"><p>torch.manual_seed(99) <br />np.random.seed(99)</p><p><strong>def</strong>generate_log_stream(n_events:int=5000,vocab_size:int=50, 		anomaly_rate:float=0.05): <br />	""" <br />	Simulatealogstream.</p><p>Normal:Markov-ishtransitionsbetweencommontemplates. Anomaly:randomraretemplatesinjected.</p><p>"""</p></td></tr><tr><td><p>events</p></td><td colspan="2"><p>=[]</p></td></tr><tr><td><p>labels</p></td><td><p>=[]</p></td><td><p>#1=anomalywindow,0=normalwindow</p></td></tr><tr><td colspan="3"><p>templates=np.arange(vocab_size)</p></td></tr></table><table><tr><td><p>#Buildatransitionmatrix(normalbehaviour) <br />trans=np.random.dirichlet(np.ones(vocab_size)*0.3,size=vocab_size)</p></td></tr></table><table><tr><td><p>current=0 <br /><strong>for</strong>i<strong>in</strong>range(n_events): <br />	is_anomaly=np.random.rand()&lt;anomaly_rate <br />	<strong>if</strong>is_anomaly: <br />	#Raretemplate—highID <br />	event=np.random.randint(40,vocab_size) <br />	<strong>else</strong>: <br />	event=np.random.choice(templates,p=trans[current]) 	events.append(event) <br />	labels.append(int(is_anomaly)) <br />	current=event</p></td></tr></table><p><strong>return</strong>np.array(events),np.array(labels)</p><p>12</p><table><tr><td><p>log_events,event_labels=generate_log_stream(5000) print(f"Logstream:{len(log_events)}events") <br />print(f"Anomalyrate:{event_labels.mean():.3f}")</p></td></tr></table><p>Logstream:5000events <br />Anomalyrate:0.052</p><table><tr><td colspan="4"><p><strong>class</strong>LogWindowDataset(Dataset): <br />""" <br />Sliding-windowdatasetfromalogeventstream.</p><p>Eachsample=windowof`window_size`events→label=1ifanyanomalyinwindow.</p><p>"""</p><p><strong>def</strong>__init__(self,events:np.ndarray,labels:np.ndarray, 		window_size:int=20,stride:int=1): 	self.window_size=window_size</p></td></tr><tr><td colspan="2"><p>self.stride</p></td><td colspan="2"><p>=stride</p></td></tr><tr><td><p>windows</p></td><td colspan="3"><p>=[]</p></td></tr><tr><td colspan="4"><p>win_labels=[]</p><p><strong>for</strong>start<strong>in</strong>range(0,len(events)-window_size,stride): end=start+window_size <br />windows.append(events[start:end])</p></td></tr><tr><td colspan="3"><p>win_labels.append(int(labels[start:end].any()))</p></td><td><p>#1ifANYanomaly</p></td></tr></table><table><tr><td><p>self.X=torch.tensor(np.array(windows),dtype=torch.long) self.y=torch.tensor(win_labels,dtype=torch.long)</p></td></tr></table><table><tr><td><p><strong>def</strong>__len__(self): <br />	<strong>return</strong>len(self.X)</p></td></tr></table><table><tr><td><p><strong>def</strong>__getitem__(self,idx): <br />	<strong>return</strong>self.X[idx],self.y[idx]</p></td></tr></table><table><tr><td><p>log_dataset=LogWindowDataset(log_events,event_labels,window_size=20,stride=5)</p></td></tr></table><table><tr><td><p>print(f"Windowdataset:{len(log_dataset)}windows") <br />print(f"Xshape:{log_dataset.X.shape}") <br />print(f"Anomalywindowrate:{log_dataset.y.float().mean():.3f}")</p></td></tr></table><p>13</p><table><tr><td><p>#Checkclassimbalance <br />pos=log_dataset.y.sum().item() <br />neg=len(log_dataset)-pos <br />print(f"Normalwindows:{neg},Anomalywindows:{pos}")</p></td></tr></table><p>Windowdataset:996windows <br />Xshape:torch.Size([996,20]) <br />Anomalywindowrate:0.634 <br />Normalwindows:365,Anomalywindows:631</p><table><tr><td colspan="3"><p>#Temporalsplit(noshuffleforsequencedata)</p></td></tr><tr><td><p>n</p></td><td colspan="2"><p>=len(log_dataset)</p></td></tr><tr><td colspan="3"><p>split1=int(0.7*n) <br />split2=int(0.85*n)</p><p>train_ids=list(range(0,split1))</p></td></tr><tr><td colspan="2"><p>val_ids</p></td><td><p>=list(range(split1,split2))</p></td></tr><tr><td colspan="2"><p>test_ids</p></td><td><p>=list(range(split2,n))</p></td></tr></table><table><tr><td colspan="2"><p>fromtorch.utils.dataimportSubset <br />train_log=Subset(log_dataset,train_ids)</p></td></tr><tr><td><p>val_log</p></td><td><p>=Subset(log_dataset,val_ids)</p></td></tr><tr><td><p>test_log</p></td><td><p>=Subset(log_dataset,test_ids)</p></td></tr></table><table><tr><td colspan="2"><p>#Weightedsamplertohandleclassimbalance fromtorch.utils.dataimportWeightedRandomSampler</p><p>train_labels=log_dataset.y[train_ids] class_counts=torch.bincount(train_labels)</p></td></tr><tr><td><p>weights</p></td><td><p>=1.0/class_counts.float()</p></td></tr><tr><td colspan="2"><p>sample_weights=weights[train_labels]</p></td></tr></table><table><tr><td colspan="3"><p>sampler=WeightedRandomSampler( <br />	weights=sample_weights, <br />	num_samples=len(train_log), <br />	replacement=True <br />)</p><p>train_dl_log=DataLoader(train_log,batch_size=64,sampler=sampler)</p></td></tr><tr><td><p>val_dl_log</p></td><td><p>=DataLoader(val_log,</p></td><td><p>batch_size=256,shuffle=False)</p></td></tr></table><p>14</p><table><tr><td colspan="2"><p>X_b,y_b=next(iter(train_dl_log)) <br />print(f"\nBatchfromlogDataLoader:")</p></td></tr><tr><td><p>print(f"</p></td><td><p>Xshape:{X_b.shape}")</p></td></tr><tr><td><p>print(f"</p></td><td><p>ydistributioninbatch:{y_b.bincount()}")</p></td></tr></table><p>BatchfromlogDataLoader: <br />Xshape:torch.Size([64,20]) <br />ydistributioninbatch:tensor([37,27])</p><p><strong>ModuleSummary</strong></p><table><tr><td><p>Concept</p></td><td><p>KeyTakeaway</p></td></tr></table><p><strong>Dataset </strong><br /><strong>IterableDataset </strong><br /><strong>collate_fn </strong><br /><strong>num_workers </strong><br /><strong>pin_memory </strong><br /><strong>Temporalsplit </strong><br /><strong>Dataleakage </strong><br /><strong>WeightedRandomSampler</strong></p><p>Implement__len__and__getitem__.Usefor random-accessdata.</p><p>Implement__iter__.Useforstreaming/largefiles. Handlemulti-workermanually.</p><p>Writecustomcollateforvariable-lengthsequences. Usepad_sequence.</p><p>Startat4;tunetocpu_count()//2.Single-process= trainingbottleneck.</p><p>EnableonlywhenmovingbatchestoGPU.</p><p>Nevershuffletime-series.Splitchronologically.</p><p>Fitnormalisationstatsontrainonly.Applysame statstoval/test.</p><p>Combatclassimbalanceatthedataloadinglevel.</p><p><strong>What’sNext </strong><br /><strong>Module6—Evaluation&amp;ExperimentDiscipline</strong>coverstherightwaytoevaluate modelsoncethey’retrained.Properevalloops,calibration,PR/ROCcurvesforimbalanced tasks,cross-validation,andtheerroranalysisworkflowyouusewhenresultsarebad.</p><p>15</p>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Module 5 — Data Pipelines | PyTorch for Data Science</title>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&family=Outfit:wght@300;400;500;600;700;800;900&family=Source+Serif+4:ital,wght@0,300;0,400;0,600;1,300;1,400&display=swap" rel="stylesheet">
+<style>
+:root{--bg-primary:#0a0a0f;--bg-card:#161622;--bg-code:#0d0d18;--text-primary:#e8e8f0;--text-secondary:#9898b0;--accent-1:#6c5ce7;--accent-2:#00cec9;--accent-3:#fd79a8;--accent-4:#fdcb6e;--accent-5:#55efc4;--gradient-line:linear-gradient(90deg,#6c5ce7,#00cec9,#fd79a8,#fdcb6e);--border-subtle:rgba(255,255,255,0.06);--radius:12px;--radius-sm:8px;}
+*{margin:0;padding:0;box-sizing:border-box;}html{scroll-behavior:smooth;}
+body{background:var(--bg-primary);color:var(--text-primary);font-family:'Outfit',sans-serif;line-height:1.7;overflow-x:hidden;-webkit-font-smoothing:antialiased;}
+.scroll-progress{position:fixed;top:0;left:0;height:3px;z-index:1000;background:var(--gradient-line);width:0%;transition:width 0.1s linear;}
+.hero{min-height:100vh;display:flex;flex-direction:column;justify-content:center;align-items:center;text-align:center;padding:2rem;position:relative;overflow:hidden;}
+.hero::before{content:'';position:absolute;inset:0;background:radial-gradient(ellipse 600px 400px at 30% 40%,rgba(108,92,231,0.12),transparent),radial-gradient(ellipse 500px 350px at 70% 60%,rgba(0,206,201,0.08),transparent);pointer-events:none;}
+.hero-particles{position:absolute;inset:0;pointer-events:none;}
+.hero-particles .dot{position:absolute;width:3px;height:3px;border-radius:50%;background:var(--accent-2);opacity:0;animation:floatDot 6s ease-in-out infinite;}
+@keyframes floatDot{0%,100%{opacity:0;transform:translateY(0);}50%{opacity:0.6;transform:translateY(-40px);}}
+.hero-label{display:inline-flex;align-items:center;gap:8px;background:rgba(108,92,231,0.1);border:1px solid rgba(108,92,231,0.25);border-radius:100px;padding:6px 18px;font-size:0.8rem;font-weight:500;color:var(--accent-1);letter-spacing:1.5px;text-transform:uppercase;margin-bottom:2rem;}
+.dot-indicator{width:6px;height:6px;border-radius:50%;background:var(--accent-2);animation:pulse 2s ease-in-out infinite;}
+@keyframes pulse{0%,100%{opacity:1;}50%{opacity:0.3;}}
+.hero h1{font-size:clamp(2.8rem,6vw,5rem);font-weight:900;line-height:1.1;letter-spacing:-2px;margin-bottom:1.5rem;}
+.gradient-text{background:var(--gradient-line);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;}
+.hero-subtitle{font-family:'Source Serif 4',serif;font-size:clamp(1.05rem,2vw,1.25rem);color:var(--text-secondary);max-width:640px;line-height:1.8;font-weight:300;}
+.hero-scroll-cue{position:absolute;bottom:3rem;display:flex;flex-direction:column;align-items:center;gap:8px;color:var(--text-secondary);font-size:0.75rem;letter-spacing:2px;text-transform:uppercase;}
+.arrow{width:20px;height:20px;border-right:2px solid var(--text-secondary);border-bottom:2px solid var(--text-secondary);transform:rotate(45deg);animation:bounceArrow 2s ease-in-out infinite;}
+@keyframes bounceArrow{0%,100%{transform:rotate(45deg) translateY(0);}50%{transform:rotate(45deg) translateY(6px);}}
+@keyframes fadeInDown{from{opacity:0;transform:translateY(-20px);}to{opacity:1;transform:translateY(0);}}
+.content-wrapper{max-width:860px;margin:0 auto;padding:0 2rem 6rem;}
+.section{margin-bottom:5rem;opacity:0;transform:translateY(30px);transition:all 0.7s cubic-bezier(0.16,1,0.3,1);}
+.section.visible{opacity:1;transform:translateY(0);}
+.section-number{font-family:'JetBrains Mono',monospace;font-size:0.7rem;color:var(--accent-2);letter-spacing:3px;text-transform:uppercase;margin-bottom:0.75rem;display:flex;align-items:center;gap:10px;}
+.section-number::after{content:'';flex:1;height:1px;background:linear-gradient(90deg,var(--accent-2),transparent);opacity:0.3;}
+h2{font-size:clamp(1.8rem,3.5vw,2.4rem);font-weight:700;letter-spacing:-0.5px;margin-bottom:1.5rem;line-height:1.2;}
+h3{font-size:1.3rem;font-weight:600;margin:2.5rem 0 1rem;}
+p{color:var(--text-secondary);margin-bottom:1.25rem;font-size:1.02rem;}
+p strong{color:var(--text-primary);font-weight:600;}
+.gradient-divider{height:2px;background:var(--gradient-line);border-radius:2px;margin:4rem 0;opacity:0.5;}
+.code-block{background:var(--bg-code);border:1px solid var(--border-subtle);border-radius:var(--radius);overflow:hidden;margin:1.5rem 0;}
+.code-block-header{display:flex;align-items:center;padding:10px 16px;background:rgba(255,255,255,0.02);border-bottom:1px solid var(--border-subtle);}
+.code-lang{font-family:'JetBrains Mono',monospace;font-size:0.7rem;color:var(--accent-2);display:flex;align-items:center;gap:6px;}
+.code-lang::before{content:'●';font-size:8px;}
+.code-block pre{padding:16px 20px;overflow-x:auto;font-family:'JetBrains Mono',monospace;font-size:0.82rem;line-height:1.65;color:#c8c8d8;}
+.kw{color:#c792ea;}.fn{color:#82aaff;}.str{color:#c3e88d;}.num{color:#f78c6c;}.cm{color:#546e7a;font-style:italic;}
+.code-output{border-top:1px solid var(--border-subtle);background:rgba(0,0,0,0.25);}
+.code-output-label{display:flex;align-items:center;gap:6px;padding:8px 16px 0;font-family:'JetBrains Mono',monospace;font-size:0.65rem;color:var(--accent-5);letter-spacing:1px;text-transform:uppercase;}
+.code-output-label::before{content:'▸';font-size:0.7rem;}
+.code-output pre{padding:8px 20px 14px;font-family:'JetBrains Mono',monospace;font-size:0.8rem;line-height:1.6;color:var(--accent-5);opacity:0.85;}
+.formula-card{background:var(--bg-card);border:1px solid var(--border-subtle);border-radius:var(--radius);padding:24px 28px;margin:1.5rem 0;position:relative;overflow:hidden;}
+.formula-card::before{content:'';position:absolute;left:0;top:0;bottom:0;width:3px;background:var(--gradient-line);}
+.formula-label{font-family:'JetBrains Mono',monospace;font-size:0.7rem;color:var(--accent-1);letter-spacing:1.5px;text-transform:uppercase;margin-bottom:12px;}
+.formula-math{font-size:1.3rem;color:var(--text-primary);font-weight:300;letter-spacing:1px;margin-bottom:12px;font-family:'Source Serif 4',serif;}
+.formula-explain{font-size:0.88rem;color:var(--text-secondary);line-height:1.6;}
+.formula-explain .var{font-family:'Source Serif 4',serif;font-style:italic;color:var(--accent-4);}
+.insight{background:linear-gradient(135deg,rgba(108,92,231,0.08),rgba(0,206,201,0.05));border:1px solid rgba(108,92,231,0.2);border-radius:var(--radius);padding:20px 24px;margin:2rem 0;position:relative;}
+.insight::before{content:'💡';position:absolute;top:-12px;left:20px;background:var(--bg-primary);padding:0 8px;font-size:1.1rem;}
+.insight p{color:var(--text-primary);font-size:0.95rem;margin:0;}
+.warning{background:linear-gradient(135deg,rgba(253,121,168,0.08),rgba(253,203,110,0.05));border:1px solid rgba(253,121,168,0.2);border-radius:var(--radius);padding:20px 24px;margin:2rem 0;position:relative;}
+.warning::before{content:'⚠️';position:absolute;top:-12px;left:20px;background:var(--bg-primary);padding:0 8px;font-size:1.1rem;}
+.warning p{color:var(--text-primary);font-size:0.95rem;margin:0;}
+.pipeline-flow{display:flex;align-items:center;justify-content:center;flex-wrap:wrap;gap:0;margin:2rem 0;}
+.pipe-node{background:var(--bg-card);border:1px solid var(--border-subtle);border-radius:var(--radius-sm);padding:14px 18px;text-align:center;min-width:110px;}
+.pipe-node .pipe-icon{font-size:1.4rem;margin-bottom:6px;}
+.pipe-node .pipe-label{font-family:'JetBrains Mono',monospace;font-size:0.7rem;color:var(--accent-2);}
+.pipe-arrow{color:var(--accent-4);font-size:1.4rem;padding:0 8px;align-self:center;}
+</style>
+</head>
+<body>
+<div class="scroll-progress" id="scrollProgress"></div>
+<section class="hero">
+  <div class="hero-particles" id="heroParticles"></div>
+  <div class="hero-label"><span class="dot-indicator"></span> PyTorch · Module 5 of 12</div>
+  <h1>Data <span class="gradient-text">Pipelines</span></h1>
+  <p class="hero-subtitle">Master <code>Dataset</code> and <code>DataLoader</code> — the two classes that turn raw files into efficient, batched training data. Learn transforms, custom datasets, and how to avoid common bottlenecks.</p>
+  <div class="hero-scroll-cue"><span>Begin</span><div class="arrow"></div></div>
+</section>
+
+<div class="content-wrapper">
+
+<div class="section" id="sec1">
+  <div class="section-number">01 — The Dataset–DataLoader Architecture</div>
+  <h2>How PyTorch Thinks About Data</h2>
+
+  <p>PyTorch separates <em>what</em> the data is from <em>how</em> it is served. The <strong>Dataset</strong> defines one sample; the <strong>DataLoader</strong> handles batching, shuffling, and parallel loading.</p>
+
+  <div class="pipeline-flow">
+    <div class="pipe-node"><div class="pipe-icon">📂</div><div class="pipe-label">Raw Files</div></div>
+    <div class="pipe-arrow">→</div>
+    <div class="pipe-node"><div class="pipe-icon">🗃️</div><div class="pipe-label">Dataset</div></div>
+    <div class="pipe-arrow">→</div>
+    <div class="pipe-node"><div class="pipe-icon">🔄</div><div class="pipe-label">Transforms</div></div>
+    <div class="pipe-arrow">→</div>
+    <div class="pipe-node"><div class="pipe-icon">📦</div><div class="pipe-label">DataLoader</div></div>
+    <div class="pipe-arrow">→</div>
+    <div class="pipe-node"><div class="pipe-icon">🧠</div><div class="pipe-label">Model</div></div>
+  </div>
+
+  <div class="formula-card">
+    <div class="formula-label">The Dataset Contract</div>
+    <div class="formula-math">__len__() &nbsp;·&nbsp; __getitem__(idx)</div>
+    <div class="formula-explain">
+      Any class that implements these two methods is a valid PyTorch Dataset.
+      <span class="var">__len__</span> returns the total number of samples.
+      <span class="var">__getitem__</span> returns a single (input, label) pair for a given index.
+    </div>
+  </div>
+
+  <div class="code-block">
+    <div class="code-block-header"><span class="code-lang">Python</span></div>
+    <pre><span class="kw">import</span> torch
+<span class="kw">from</span> torch.utils.data <span class="kw">import</span> Dataset, DataLoader
+<span class="kw">import</span> numpy <span class="kw">as</span> np
+
+<span class="cm"># ── Custom Dataset ────────────────────────────────────────────────</span>
+<span class="kw">class</span> <span class="fn">TabularDataset</span>(Dataset):
+    <span class="kw">def</span> <span class="fn">__init__</span>(self, X: np.ndarray, y: np.ndarray, transform=<span class="kw">None</span>):
+        self.X = torch.<span class="fn">tensor</span>(X, dtype=torch.float32)
+        self.y = torch.<span class="fn">tensor</span>(y, dtype=torch.float32)
+        self.transform = transform
+
+    <span class="kw">def</span> <span class="fn">__len__</span>(self):
+        <span class="kw">return</span> <span class="fn">len</span>(self.X)
+
+    <span class="kw">def</span> <span class="fn">__getitem__</span>(self, idx):
+        x, y = self.X[idx], self.y[idx]
+        <span class="kw">if</span> self.transform:
+            x = self.<span class="fn">transform</span>(x)
+        <span class="kw">return</span> x, y
+
+<span class="cm"># Create dummy data</span>
+X = np.<span class="fn">random</span>.<span class="fn">randn</span>(<span class="num">1000</span>, <span class="num">20</span>)
+y = np.<span class="fn">random</span>.<span class="fn">randint</span>(<span class="num">0</span>, <span class="num">2</span>, size=(<span class="num">1000</span>,))
+
+dataset  = <span class="fn">TabularDataset</span>(X, y)
+<span class="fn">print</span>(<span class="fn">f</span><span class="str">"Dataset size: {len(dataset)}"</span>)
+<span class="fn">print</span>(<span class="fn">f</span><span class="str">"Sample shape: {dataset[0][0].shape}, label: {dataset[0][1]}"</span>)</pre>
+    <div class="code-output">
+      <div class="code-output-label">Output</div>
+      <pre>Dataset size: 1000
+Sample shape: torch.Size([20]), label: tensor(1.)</pre>
+    </div>
+  </div>
+</div>
+
+<div class="gradient-divider"></div>
+
+<div class="section" id="sec2">
+  <div class="section-number">02 — DataLoader Configuration</div>
+  <h2>Serving Data Efficiently</h2>
+
+  <div class="code-block">
+    <div class="code-block-header"><span class="code-lang">Python</span></div>
+    <pre><span class="cm"># Train/Val/Test split</span>
+<span class="kw">from</span> torch.utils.data <span class="kw">import</span> random_split
+
+train_size = <span class="fn">int</span>(<span class="num">0.8</span> * <span class="fn">len</span>(dataset))
+val_size   = <span class="fn">len</span>(dataset) - train_size
+train_ds, val_ds = <span class="fn">random_split</span>(dataset, [train_size, val_size],
+                                  generator=torch.<span class="fn">Generator</span>().<span class="fn">manual_seed</span>(<span class="num">42</span>))
+
+<span class="cm"># DataLoaders</span>
+train_loader = <span class="fn">DataLoader</span>(
+    train_ds,
+    batch_size=<span class="num">64</span>,
+    shuffle=<span class="kw">True</span>,          <span class="cm"># Shuffle training data every epoch</span>
+    num_workers=<span class="num">4</span>,         <span class="cm"># Background workers for loading</span>
+    pin_memory=<span class="kw">True</span>,       <span class="cm"># Faster GPU transfer (use if GPU available)</span>
+    drop_last=<span class="kw">True</span>,        <span class="cm"># Drop incomplete final batch</span>
+)
+
+val_loader = <span class="fn">DataLoader</span>(
+    val_ds,
+    batch_size=<span class="num">128</span>,        <span class="cm"># Larger batch OK for val (no gradient memory)</span>
+    shuffle=<span class="kw">False</span>,
+    num_workers=<span class="num">4</span>,
+    pin_memory=<span class="kw">True</span>,
+)
+
+<span class="fn">print</span>(<span class="fn">f</span><span class="str">"Train batches: {len(train_loader)}"</span>)
+<span class="fn">print</span>(<span class="fn">f</span><span class="str">"Val batches:   {len(val_loader)}"</span>)
+
+<span class="cm"># Inspect one batch</span>
+X_batch, y_batch = <span class="fn">next</span>(<span class="fn">iter</span>(train_loader))
+<span class="fn">print</span>(<span class="fn">f</span><span class="str">"Batch X: {X_batch.shape}, y: {y_batch.shape}"</span>)</pre>
+    <div class="code-output">
+      <div class="code-output-label">Output</div>
+      <pre>Train batches: 12
+Val batches:   2
+Batch X: torch.Size([64, 20]), y: torch.Size([64])</pre>
+    </div>
+  </div>
+
+  <div class="insight"><p><strong>num_workers:</strong> Setting <code>num_workers &gt; 0</code> spawns background processes that load the next batch while the GPU trains on the current one. On Windows, always wrap DataLoader usage in <code>if __name__ == '__main__':</code> to avoid multiprocessing errors. Start with <code>num_workers=4</code> and increase until training speed stops improving.</p></div>
+</div>
+
+<div class="gradient-divider"></div>
+
+<div class="section" id="sec3">
+  <div class="section-number">03 — Transforms &amp; Augmentation</div>
+  <h2>Preprocessing Inside the Pipeline</h2>
+
+  <div class="code-block">
+    <div class="code-block-header"><span class="code-lang">Python</span></div>
+    <pre><span class="kw">from</span> torchvision <span class="kw">import</span> transforms
+
+<span class="cm"># Standard image transform pipeline</span>
+train_transform = transforms.<span class="fn">Compose</span>([
+    transforms.<span class="fn">RandomHorizontalFlip</span>(p=<span class="num">0.5</span>),
+    transforms.<span class="fn">RandomRotation</span>(degrees=<span class="num">15</span>),
+    transforms.<span class="fn">ColorJitter</span>(brightness=<span class="num">0.2</span>, contrast=<span class="num">0.2</span>),
+    transforms.<span class="fn">ToTensor</span>(),              <span class="cm"># PIL/numpy → float32 tensor [0,1]</span>
+    transforms.<span class="fn">Normalize</span>(
+        mean=[<span class="num">0.485</span>, <span class="num">0.456</span>, <span class="num">0.406</span>],   <span class="cm"># ImageNet stats</span>
+        std=[<span class="num">0.229</span>, <span class="num">0.224</span>, <span class="num">0.225</span>]
+    ),
+])
+
+val_transform = transforms.<span class="fn">Compose</span>([
+    transforms.<span class="fn">ToTensor</span>(),
+    transforms.<span class="fn">Normalize</span>(mean=[<span class="num">0.485</span>, <span class="num">0.456</span>, <span class="num">0.406</span>],
+                           std=[<span class="num">0.229</span>, <span class="num">0.224</span>, <span class="num">0.225</span>]),
+])
+<span class="cm"># NOTE: Augmentations like RandomFlip are ONLY applied to training data.</span>
+<span class="cm"># Validation uses only Normalize/ToTensor for consistent evaluation.</span></pre>
+  </div>
+
+  <div class="warning"><p><strong>Data Augmentation — Train Only:</strong> Never apply random transforms (flip, crop, colour jitter) to your validation or test set. Those sets must be deterministic. Apply augmentation only in <code>train_transform</code>, not <code>val_transform</code>.</p></div>
+</div>
+
+</div>
+
+<script>
+const sp = document.getElementById('scrollProgress');
+window.addEventListener('scroll', () => { sp.style.width = (window.scrollY / (document.body.scrollHeight - window.innerHeight) * 100) + '%'; });
+document.querySelectorAll('.section').forEach(s => new IntersectionObserver(([e]) => { if (e.isIntersecting) e.target.classList.add('visible'); }, { threshold: 0.08 }).observe(s));
+const c = document.getElementById('heroParticles');
+for (let i = 0; i < 18; i++) { const d = document.createElement('div'); d.className = 'dot'; d.style.cssText = `left:${Math.random()*100}%;top:${Math.random()*100}%;animation-delay:${Math.random()*6}s;animation-duration:${4+Math.random()*4}s`; c.appendChild(d); }
+</script>
+</body>
+</html>
