@@ -279,6 +279,7 @@ export default function Profile() {
     const [activityData, setActivityData] = useState([]);
     const [saveLoading, setSaveLoading] = useState(false);
     const [resumeLoading, setResumeLoading] = useState(false);
+    const [showToast, setShowToast] = useState(false);
     const [activeTab, setActiveTab] = useState('overview');
     const [stats, setStats] = useState(null);
     const fileRef = useRef(null);
@@ -319,7 +320,7 @@ export default function Profile() {
             try {
                 const token = localStorage.getItem('access_token');
                 if (!token) return;
-                
+
                 setStatsLoading(true);
                 const res = await fetch(`${import.meta.env.VITE_API_URL}/profile/stats`, {
                     headers: { 'Authorization': `Bearer ${token}` }
@@ -335,7 +336,7 @@ export default function Profile() {
                 setStatsLoading(false);
             }
         };
-        
+
         fetchStats();
     }, [profileStats]);
 
@@ -383,6 +384,8 @@ export default function Profile() {
             // Refresh achievements (profile_complete badge may be earned)
             await refreshStats();
             setIsEditing(false);
+            setShowToast(true);
+            setTimeout(() => setShowToast(false), 3000);
         } catch (err) {
             alert('Save failed: ' + err.message);
         } finally {
@@ -417,6 +420,22 @@ export default function Profile() {
     return (
         <div style={{ minHeight: '100vh', background: 'var(--color-app-bg)', color: 'var(--color-primary-text)', overflowY: 'auto', position: 'relative' }}
             className="custom-scrollbar">
+
+            {/* Toast Notification */}
+            <div style={{
+                position: 'fixed', bottom: 30, right: 30, zIndex: 100,
+                background: 'var(--color-surface)', border: `1px solid ${accent.green}50`,
+                padding: '12px 20px', borderRadius: 12, boxShadow: `0 8px 32px ${accent.green}25`,
+                display: 'flex', alignItems: 'center', gap: 10,
+                transform: showToast ? 'translateY(0) scale(1)' : 'translateY(20px) scale(0.9)',
+                opacity: showToast ? 1 : 0, pointerEvents: showToast ? 'auto' : 'none',
+                transition: 'all 0.3s cubic-bezier(0.34, 1.2, 0.64, 1)',
+            }}>
+                <div style={{ width: 24, height: 24, borderRadius: '50%', background: `${accent.green}20`, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                    <CheckCircle size={14} style={{ color: accent.green }} />
+                </div>
+                <span style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--color-primary-text)' }}>Profile saved successfully</span>
+            </div>
             {/* Spinner keyframe */}
             <style>{`@keyframes spin { from{transform:rotate(0deg)} to{transform:rotate(360deg)} }`}</style>
 
@@ -563,21 +582,36 @@ export default function Profile() {
 
                 {/* ━━━━━━━ TAB BAR ━━━━━━━ */}
                 <div className="profile-fade-in-delay-2" style={{
-                    display: 'flex', gap: 4, padding: 5, marginBottom: 20,
+                    display: 'flex', padding: 5, marginBottom: 20,
                     background: 'var(--color-surface)', border: '1px solid var(--color-border)', borderRadius: 16,
                     boxShadow: '0 2px 12px rgba(99,102,241,0.08)',
+                    position: 'relative',
                 }}>
+                    {/* Sliding pill */}
+                    <div style={{
+                        position: 'absolute',
+                        top: 5, bottom: 5,
+                        width: `calc(${100 / TABS.length}% - ${10 / TABS.length}px)`,
+                        background: `linear-gradient(135deg, ${accent.indigo}22, ${accent.violet}18)`,
+                        border: `1.5px solid ${accent.indigo}40`,
+                        borderRadius: 11,
+                        boxShadow: `0 2px 12px ${accent.indigo}25`,
+                        transform: `translateX(calc(${TABS.findIndex(t => t.id === activeTab)} * (100% + ${10 / TABS.length}px)))`,
+                        transition: 'transform 0.3s cubic-bezier(0.34, 1.2, 0.64, 1)',
+                        pointerEvents: 'none',
+                        zIndex: 0,
+                    }} />
                     {TABS.map(({ id, label, icon: Icon }) => {
                         const active = activeTab === id;
                         return (
                             <button key={id} onClick={() => setActiveTab(id)} style={{
-                                flex: 1, padding: '10px 14px', borderRadius: 12, border: 'none', cursor: 'pointer',
+                                flex: 1, padding: '10px 14px', borderRadius: 11, border: 'none', cursor: 'pointer',
                                 fontWeight: active ? 700 : 600, fontSize: '0.82rem',
-                                background: active ? `${accent.indigo}18` : 'transparent',
+                                background: 'transparent',
                                 color: active ? accent.indigo : 'var(--color-muted-text)',
-                                borderBottom: active ? `2px solid ${accent.indigo}` : '2px solid transparent',
                                 display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
-                                transition: 'all 0.18s',
+                                transition: 'color 0.2s',
+                                position: 'relative', zIndex: 1,
                             }}>
                                 <Icon size={14} /> {label}
                             </button>

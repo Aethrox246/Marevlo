@@ -7,6 +7,27 @@ import UserSearch from '../components/chat/UserSearch';
 
 const API_BASE = import.meta.env.VITE_API_URL;
 
+// Utility: Generate gradient color from username
+const getGradientFromUsername = (username) => {
+    if (!username) return 'linear-gradient(135deg, #6366f1, #8b5cf6)';
+    let hash = 0;
+    for (let i = 0; i < username.length; i++) {
+        hash = ((hash << 5) - hash) + username.charCodeAt(i);
+        hash = hash & hash;
+    }
+    const colors = [
+        'linear-gradient(135deg, #6366f1, #8b5cf6)',
+        'linear-gradient(135deg, #10b981, #14b8a6)',
+        'linear-gradient(135deg, #f59e0b, #f97316)',
+        'linear-gradient(135deg, #ef4444, #ec4899)',
+        'linear-gradient(135deg, #06b6d4, #0ea5e9)',
+        'linear-gradient(135deg, #8b5cf6, #a78bfa)',
+        'linear-gradient(135deg, #14b8a6, #06b6d4)',
+        'linear-gradient(135deg, #f97316, #fb923c)',
+    ];
+    return colors[Math.abs(hash) % colors.length];
+};
+
 export default function Messages({ setView }) {
     const { user } = useAuth();
     const [searchParams, setSearchParams] = useSearchParams();
@@ -199,19 +220,30 @@ export default function Messages({ setView }) {
                                             <div
                                                 key={chat.id}
                                                 onClick={() => handleSelectChat(chat.id, otherUserId)}
-                                                className="p-3 rounded-xl cursor-pointer transition-all duration-200 flex items-center gap-3"
+                                                className="p-3 rounded-xl cursor-pointer transition-all duration-300 flex items-center gap-3"
                                                 style={{
                                                     backgroundColor: isSelected
                                                         ? 'rgba(99,102,241,0.15)'
-                                                        : 'var(--color-surface)'
+                                                        : 'var(--color-surface)',
+                                                    transform: isSelected ? 'scale(1.02)' : 'scale(1)',
                                                 }}
-                                                onMouseEnter={e => { if (!isSelected) e.currentTarget.style.backgroundColor = 'rgba(99,102,241,0.1)'; }}
-                                                onMouseLeave={e => { if (!isSelected) e.currentTarget.style.backgroundColor = 'var(--color-surface)'; }}
+                                                onMouseEnter={(e) => { 
+                                                    if (!isSelected) {
+                                                        e.currentTarget.style.backgroundColor = 'rgba(99,102,241,0.08)';
+                                                        e.currentTarget.style.transform = 'scale(1.01) translateX(4px)';
+                                                    }
+                                                }}
+                                                onMouseLeave={(e) => { 
+                                                    if (!isSelected) {
+                                                        e.currentTarget.style.backgroundColor = 'var(--color-surface)';
+                                                        e.currentTarget.style.transform = 'scale(1)';
+                                                    }
+                                                }}
                                             >
                                                 {/* Avatar */}
                                                 <div
-                                                    className="w-12 h-12 rounded-full flex items-center justify-center flex-shrink-0 text-sm font-bold text-white"
-                                                    style={{ background: 'linear-gradient(135deg, #6366f1, #8b5cf6)' }}
+                                                    className="w-12 h-12 rounded-full flex items-center justify-center flex-shrink-0 text-sm font-bold text-white transition-all duration-300"
+                                                    style={{ background: getGradientFromUsername(otherUsername) }}
                                                 >
                                                     {avatar}
                                                 </div>
@@ -222,7 +254,7 @@ export default function Messages({ setView }) {
                                                         {otherUsername}
                                                     </h3>
                                                     <p 
-                                                        className="text-xs truncate"
+                                                        className="text-xs truncate message-preview"
                                                         style={{ color: 'var(--color-muted-text)' }}
                                                     >
                                                         {chat.last_message_preview || 'No messages yet'}
@@ -239,7 +271,7 @@ export default function Messages({ setView }) {
                                                     </span>
                                                     {chat.unread_count > 0 && (
                                                         <span 
-                                                            className="px-2 py-1 rounded-full text-xs font-bold text-white"
+                                                            className="px-2 py-1 rounded-full text-xs font-bold text-white unread-pulse"
                                                             style={{ background: '#ef4444' }}
                                                         >
                                                             {chat.unread_count}
@@ -315,6 +347,26 @@ export default function Messages({ setView }) {
                     background: radial-gradient(circle, rgba(244,63,94,0.12), transparent 70%);
                     top: 40%; left: 40%;
                     animation-delay: -7s;
+                }
+                
+                @keyframes unreadPulse {
+                    0%, 100% {
+                        box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.7);
+                    }
+                    50% {
+                        box-shadow: 0 0 0 4px rgba(239, 68, 68, 0.3);
+                    }
+                }
+                
+                .unread-pulse {
+                    animation: unreadPulse 2s infinite;
+                }
+                
+                .message-preview {
+                    background: linear-gradient(90deg, var(--color-muted-text) 0%, var(--color-muted-text) 70%, transparent 100%);
+                    background-clip: text;
+                    -webkit-background-clip: text;
+                    -webkit-text-fill-color: transparent;
                 }
             `}</style>
         </div>
