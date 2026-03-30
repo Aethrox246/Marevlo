@@ -242,6 +242,14 @@ const COURSE_HTML_MAP = {
   "mrag-evaluation": "/cources/generative-ai/Multi-modal-rag/Evaluation-Debugging.html",
   "mrag-fine-tuning": "/cources/generative-ai/Multi-modal-rag/Efficient-Fine-Tuning.html",
   "mrag-memory": "/cources/generative-ai/Multi-modal-rag/Memory-Safety.html",
+  "langgraph-module-1": "/cources/LangGraph/module1.html",
+  "langgraph-module-2": "/cources/LangGraph/module2.html",
+  "langgraph-module-3": "/cources/LangGraph/module3.html",
+  "langgraph-module-4": "/cources/LangGraph/module4.html",
+  "langgraph-module-5": "/cources/LangGraph/module5.html",
+  "langgraph-module-6": "/cources/LangGraph/module6.html",
+  "langgraph-module-7": "/cources/LangGraph/module7.html",
+  "langgraph-module-8": "/cources/LangGraph/module8.html",
 };
 
 /**
@@ -262,6 +270,14 @@ const IFRAME_COURSES = new Set([
   "clustering-part9",
   "clustering-part10",
   "clustering-part11",
+  "langgraph-module-1",
+  "langgraph-module-2",
+  "langgraph-module-3",
+  "langgraph-module-4",
+  "langgraph-module-5",
+  "langgraph-module-6",
+  "langgraph-module-7",
+  "langgraph-module-8",
 ]);
 
 /**
@@ -538,6 +554,126 @@ const COURSE_CONFIGS = {
     category: "Machine Learning",
     title: "Machine Learning - Module 3",
     icon: "Network",
+    lessons: [],
+  },
+  "clustering-part0": {
+    category: "Clustering",
+    title: "Part 0: Course Overview",
+    icon: "GitBranch",
+    lessons: [],
+  },
+  "clustering-part1": {
+    category: "Clustering",
+    title: "Part 1: Introduction to Clustering",
+    icon: "BookOpen",
+    lessons: [],
+  },
+  "clustering-part2": {
+    category: "Clustering",
+    title: "Part 2: K-Means & K-Medoids",
+    icon: "Cpu",
+    lessons: [],
+  },
+  "clustering-part3": {
+    category: "Clustering",
+    title: "Part 3: Hierarchical & Density-based",
+    icon: "Network",
+    lessons: [],
+  },
+  "clustering-part4": {
+    category: "Clustering",
+    title: "Part 4: Evaluation & Validation",
+    icon: "FlaskConical",
+    lessons: [],
+  },
+  "clustering-part5": {
+    category: "Clustering",
+    title: "Part 5: Gaussian Mixture Models",
+    icon: "Brain",
+    lessons: [],
+  },
+  "clustering-part6": {
+    category: "Clustering",
+    title: "Part 6: Spectral Clustering",
+    icon: "Network",
+    lessons: [],
+  },
+  "clustering-part7": {
+    category: "Clustering",
+    title: "Part 7: Dimensionality Reduction",
+    icon: "Sparkles",
+    lessons: [],
+  },
+  "clustering-part8": {
+    category: "Clustering",
+    title: "Part 8: Large-scale Algorithms",
+    icon: "ServerCog",
+    lessons: [],
+  },
+  "clustering-part9": {
+    category: "Clustering",
+    title: "Part 9: Time Series Clustering",
+    icon: "Clock",
+    lessons: [],
+  },
+  "clustering-part10": {
+    category: "Clustering",
+    title: "Part 10: Anomaly Detection",
+    icon: "Search",
+    lessons: [],
+  },
+  "clustering-part11": {
+    category: "Clustering",
+    title: "Part 11: Capstone Project",
+    icon: "Code2",
+    lessons: [],
+  },
+  "langgraph-module-1": {
+    category: "LangGraph",
+    title: "Module 1",
+    icon: "GitBranch",
+    lessons: [],
+  },
+  "langgraph-module-2": {
+    category: "LangGraph",
+    title: "Module 2",
+    icon: "GitBranch",
+    lessons: [],
+  },
+  "langgraph-module-3": {
+    category: "LangGraph",
+    title: "Module 3",
+    icon: "GitBranch",
+    lessons: [],
+  },
+  "langgraph-module-4": {
+    category: "LangGraph",
+    title: "Module 4",
+    icon: "GitBranch",
+    lessons: [],
+  },
+  "langgraph-module-5": {
+    category: "LangGraph",
+    title: "Module 5",
+    icon: "GitBranch",
+    lessons: [],
+  },
+  "langgraph-module-6": {
+    category: "LangGraph",
+    title: "Module 6",
+    icon: "GitBranch",
+    lessons: [],
+  },
+  "langgraph-module-7": {
+    category: "LangGraph",
+    title: "Module 7",
+    icon: "GitBranch",
+    lessons: [],
+  },
+  "langgraph-module-8": {
+    category: "LangGraph",
+    title: "Module 8",
+    icon: "GitBranch",
     lessons: [],
   },
 };
@@ -819,6 +955,7 @@ export default function CourseContent() {
   const milestoneShownRef = useRef(new Set());
   const chapterTimerRef = useRef(null);
   const toastTimerRef = useRef(null);
+  const sidebarTocRef = useRef(null);
 
   /* Re-initialise lessons + reader state when route changes */
   useEffect(() => {
@@ -1124,6 +1261,46 @@ export default function CourseContent() {
     };
   }, [docHtml, tocItems, rawTocItems]);
 
+  /* Auto-scroll sidebar TOC to keep active lesson visible */
+  useEffect(() => {
+    if (!sidebarTocRef.current || !currentLesson) return;
+    
+    // Small delay to ensure DOM is fully rendered
+    const timeoutId = setTimeout(() => {
+      const container = sidebarTocRef.current;
+      if (!container) return;
+      
+      // Find the active lesson button in the sidebar
+      const activeLessonBtn = container.querySelector(`[data-lesson-id="${currentLesson}"]`);
+      if (!activeLessonBtn) return;
+      
+      // Get the lesson card div (parent of the button)
+      const lessonCard = activeLessonBtn.closest('[data-lesson-id]')?.parentElement;
+      
+      if (lessonCard) {
+        // Use getBoundingClientRect for accurate positioning
+        const cardRect = lessonCard.getBoundingClientRect();
+        const containerRect = container.getBoundingClientRect();
+        
+        // Calculate position of card relative to container
+        const cardTopRelativeToContainer = cardRect.top - containerRect.top + container.scrollTop;
+        const cardHeight = cardRect.height;
+        const containerHeight = containerRect.height;
+        
+        // Calculate target scroll position to center the card
+        const targetScroll = cardTopRelativeToContainer - (containerHeight / 2) + (cardHeight / 2);
+        
+        // Smooth scroll the container
+        container.scrollTo({
+          top: Math.max(0, targetScroll),
+          behavior: 'smooth'
+        });
+      }
+    }, 100);
+    
+    return () => clearTimeout(timeoutId);
+  }, [currentLesson]);
+
   /* ── Flat Structure mapping for unified progress & pagination ── */
   const flatNodes = useMemo(() => {
     const list = [];
@@ -1307,7 +1484,7 @@ export default function CourseContent() {
         </div>
 
         {/* ── Glassmorphic lesson cards ── */}
-        <div className="flex-1 overflow-y-auto py-5 px-4 custom-scrollbar space-y-3">
+        <div ref={sidebarTocRef} className="flex-1 overflow-y-auto py-5 px-4 custom-scrollbar space-y-3">
           {lessons.map((l, index) => {
             const isActive = l.id === currentLesson;
             const isExpanded = l.id === expandedLesson;
@@ -1338,6 +1515,7 @@ export default function CourseContent() {
               >
                 {/* ── Main Module Header ── */}
                 <button
+                  data-lesson-id={l.id}
                   onClick={() => handleLessonClick(l)}
                   className="w-full flex items-center gap-3 p-4 text-left transition-colors relative z-10 w-full hover:bg-transparent"
                 >
@@ -1450,7 +1628,7 @@ export default function CourseContent() {
               </div>
             );
           })}
-        </div>
+        </div>33333
 
         {/* Sidebar footer */}
         <div className="p-4 border-t flex-shrink-0 space-y-4" style={S.border}>
