@@ -1,0 +1,1290 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Module 6 — Multimodal Retrieval-Augmented Generation (MRAG)</title>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&family=Outfit:wght@300;400;500;600;700;800;900&family=Source+Serif+4:ital,wght@0,300;0,400;0,600;1,300;1,400&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg-primary: #091018;
+  --bg-card: #131d28;
+  --bg-card-soft: rgba(255,255,255,0.03);
+  --bg-code: #0b141f;
+  --text-primary: #eef4fb;
+  --text-secondary: #9db0c4;
+  --accent-1: #4cc9f0;
+  --accent-2: #80ed99;
+  --accent-3: #ffd166;
+  --accent-4: #ff6b6b;
+  --accent-5: #c77dff;
+  --gradient-line: linear-gradient(90deg, #4cc9f0, #80ed99, #ffd166, #ff6b6b, #c77dff);
+  --border-subtle: rgba(255,255,255,0.08);
+  --shadow-card: 0 12px 40px rgba(0,0,0,0.35);
+  --radius: 16px;
+  --radius-sm: 10px;
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+html { scroll-behavior: smooth; }
+body {
+  background: var(--bg-primary);
+  color: var(--text-primary);
+  font-family: 'Outfit', sans-serif;
+  line-height: 1.7;
+  overflow-x: hidden;
+  -webkit-font-smoothing: antialiased;
+}
+.scroll-progress {
+  position: fixed; top: 0; left: 0; z-index: 1000; height: 3px; width: 0%;
+  background: var(--gradient-line);
+}
+.hero {
+  min-height: 100vh;
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  padding: 2rem;
+  text-align: center;
+  overflow: hidden;
+}
+.hero::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background:
+    radial-gradient(ellipse 760px 420px at 18% 32%, rgba(76,201,240,0.16), transparent),
+    radial-gradient(ellipse 560px 340px at 82% 30%, rgba(128,237,153,0.14), transparent),
+    radial-gradient(ellipse 640px 380px at 50% 78%, rgba(199,125,255,0.10), transparent);
+}
+.hero-particles { position: absolute; inset: 0; pointer-events: none; }
+.hero-particles .dot {
+  position: absolute; width: 4px; height: 4px; border-radius: 50%;
+  background: rgba(255,255,255,0.7); opacity: 0; animation: floatDot 7s ease-in-out infinite;
+}
+@keyframes floatDot {
+  0%, 100% { opacity: 0; transform: translateY(0) scale(0.8); }
+  50% { opacity: 0.55; transform: translateY(-46px) scale(1); }
+}
+.hero-label {
+  position: relative;
+  z-index: 1;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 7px 18px;
+  border-radius: 999px;
+  background: rgba(76,201,240,0.10);
+  border: 1px solid rgba(76,201,240,0.25);
+  color: var(--accent-1);
+  text-transform: uppercase;
+  letter-spacing: 1.6px;
+  font-size: 0.78rem;
+  font-weight: 600;
+  margin-bottom: 1.8rem;
+}
+.dot-indicator {
+  width: 7px; height: 7px; border-radius: 50%;
+  background: var(--accent-2); animation: pulse 2s ease-in-out infinite;
+}
+@keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: 0.35; } }
+.hero h1 {
+  position: relative; z-index: 1;
+  font-size: clamp(2.8rem, 6vw, 5.2rem);
+  line-height: 1.04;
+  letter-spacing: -2px;
+  font-weight: 900;
+  margin-bottom: 1.4rem;
+  max-width: 1000px;
+}
+.gradient-text {
+  background: var(--gradient-line);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+.hero-subtitle {
+  position: relative; z-index: 1;
+  max-width: 860px;
+  color: var(--text-secondary);
+  font-family: 'Source Serif 4', serif;
+  font-size: clamp(1.05rem, 2vw, 1.26rem);
+  line-height: 1.85;
+}
+.hero-scroll-cue {
+  position: absolute;
+  bottom: 2.7rem;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  color: var(--text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 2px;
+  font-size: 0.74rem;
+}
+.hero-scroll-cue .arrow {
+  width: 18px;
+  height: 18px;
+  border-right: 2px solid var(--text-secondary);
+  border-bottom: 2px solid var(--text-secondary);
+  transform: rotate(45deg);
+  animation: bounceArrow 2s ease-in-out infinite;
+}
+@keyframes bounceArrow {
+  0%,100% { transform: rotate(45deg) translateY(0); }
+  50% { transform: rotate(45deg) translateY(6px); }
+}
+.content-wrapper { max-width: 1080px; margin: 0 auto; padding: 0 2rem 6rem; }
+.section { margin-bottom: 5rem; }
+.section-number {
+  display: flex; align-items: center; gap: 10px;
+  margin-bottom: 0.8rem;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.72rem;
+  letter-spacing: 3px;
+  text-transform: uppercase;
+  color: var(--accent-1);
+}
+.section-number::after {
+  content: '';
+  height: 1px;
+  flex: 1;
+  background: linear-gradient(90deg, var(--accent-1), transparent);
+  opacity: 0.35;
+}
+h2 {
+  font-size: clamp(1.9rem, 3.7vw, 2.7rem);
+  line-height: 1.18;
+  letter-spacing: -0.6px;
+  margin-bottom: 1.4rem;
+}
+h3 {
+  font-size: 1.34rem;
+  margin: 2.2rem 0 1rem;
+  color: var(--text-primary);
+}
+h4 {
+  font-size: 1rem;
+  color: var(--accent-3);
+  margin-bottom: 0.5rem;
+}
+p {
+  color: var(--text-secondary);
+  margin-bottom: 1.15rem;
+  font-size: 1.02rem;
+}
+ul, ol { margin: 0 0 1.2rem 1.2rem; color: var(--text-secondary); }
+li { margin-bottom: 0.55rem; }
+p strong, li strong, b { color: var(--text-primary); }
+code {
+  font-family: 'JetBrains Mono', monospace;
+  background: rgba(255,255,255,0.06);
+  padding: 2px 6px;
+  border-radius: 6px;
+  font-size: 0.9em;
+}
+.lead {
+  font-family: 'Source Serif 4', serif;
+  color: var(--text-primary);
+  font-size: 1.16rem;
+}
+.gradient-divider {
+  height: 2px;
+  margin: 4rem 0;
+  border-radius: 2px;
+  opacity: 0.55;
+  background: var(--gradient-line);
+}
+.mini-card, .formula-card, .flow-card, .quiz-card, .target-card, .paradigm-card, .pipeline-card, .rerank-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-card);
+}
+.mini-card, .flow-card, .target-card, .paradigm-card, .pipeline-card, .rerank-card { padding: 22px; }
+.goal-grid, .target-grid, .takeaway-grid, .paradigm-grid, .packing-grid, .doc-grid, .rerank-grid {
+  display: grid;
+  gap: 16px;
+  margin: 1.5rem 0;
+}
+.goal-grid { grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); }
+.target-grid { grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); }
+.takeaway-grid { grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); }
+.paradigm-grid { grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); }
+.packing-grid { grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); }
+.doc-grid { grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); }
+.rerank-grid { grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); }
+.formula-card {
+  padding: 24px 28px;
+  position: relative;
+  overflow: hidden;
+  margin: 1.5rem 0;
+}
+.formula-card::before {
+  content: '';
+  position: absolute;
+  left: 0; top: 0; bottom: 0;
+  width: 3px;
+  background: var(--gradient-line);
+}
+.formula-label {
+  font-family: 'JetBrains Mono', monospace;
+  text-transform: uppercase;
+  letter-spacing: 1.5px;
+  color: var(--accent-1);
+  font-size: 0.72rem;
+  margin-bottom: 10px;
+}
+.formula-math {
+  font-family: 'Source Serif 4', serif;
+  color: var(--text-primary);
+  font-size: 1.22rem;
+  margin-bottom: 10px;
+}
+.formula-explain { color: var(--text-secondary); font-size: 0.92rem; }
+.insight, .warning {
+  position: relative;
+  margin: 2rem 0;
+  padding: 20px 24px;
+  border-radius: var(--radius);
+}
+.insight {
+  background: linear-gradient(135deg, rgba(76,201,240,0.10), rgba(128,237,153,0.05));
+  border: 1px solid rgba(76,201,240,0.22);
+}
+.warning {
+  background: linear-gradient(135deg, rgba(255,107,107,0.10), rgba(255,209,102,0.06));
+  border: 1px solid rgba(255,107,107,0.22);
+}
+.insight::before, .warning::before {
+  position: absolute;
+  top: -12px;
+  left: 18px;
+  background: var(--bg-primary);
+  padding: 0 8px;
+  font-size: 1.05rem;
+}
+.insight::before { content: '◎'; color: var(--accent-1); }
+.warning::before { content: '▲'; color: var(--accent-4); }
+.pipeline-stage, .architecture-stage {
+  margin: 2rem 0;
+  background: var(--bg-card);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-card);
+  padding: 22px;
+}
+.stage-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding-bottom: 14px;
+  margin-bottom: 16px;
+  border-bottom: 1px solid var(--border-subtle);
+  font-family: 'JetBrains Mono', monospace;
+  color: var(--text-secondary);
+  font-size: 0.75rem;
+}
+.pipeline-flow {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 14px;
+}
+.pipeline-card {
+  position: relative;
+  min-height: 190px;
+  overflow: hidden;
+}
+.pipeline-card::after {
+  content: '→';
+  position: absolute;
+  right: -12px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: var(--accent-2);
+  font-size: 1.15rem;
+}
+.pipeline-flow .pipeline-card:last-child::after { display: none; }
+.pipeline-tag {
+  font-family: 'JetBrains Mono', monospace;
+  color: var(--accent-5);
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  font-size: 0.68rem;
+  margin-bottom: 10px;
+}
+.pipeline-visual {
+  display: grid;
+  gap: 8px;
+  margin-top: 14px;
+}
+.bar {
+  position: relative;
+  height: 12px;
+  border-radius: 999px;
+  background: rgba(255,255,255,0.06);
+  overflow: hidden;
+}
+.bar span {
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 62%;
+  border-radius: 999px;
+  background: var(--gradient-line);
+  animation: move 2.8s ease-in-out infinite;
+}
+.pipeline-card:nth-child(2) .bar span { animation-delay: 0.25s; }
+.pipeline-card:nth-child(3) .bar span { animation-delay: 0.5s; }
+.pipeline-card:nth-child(4) .bar span { animation-delay: 0.75s; }
+.pipeline-card:nth-child(5) .bar span { animation-delay: 1s; }
+@keyframes move {
+  0%,100% { transform: translateX(0); opacity: 0.72; }
+  50% { transform: translateX(18%); opacity: 1; }
+}
+.flow-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 14px;
+  margin: 1.5rem 0;
+}
+.flow-card { position: relative; }
+.flow-card::after {
+  content: '→';
+  position: absolute;
+  right: -12px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: var(--accent-2);
+  font-size: 1.15rem;
+}
+.flow-grid .flow-card:last-child::after { display: none; }
+.flow-label {
+  font-family: 'JetBrains Mono', monospace;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  color: var(--accent-5);
+  font-size: 0.68rem;
+  margin-bottom: 8px;
+}
+.paradigm-card {
+  position: relative;
+  overflow: hidden;
+}
+.paradigm-card::before {
+  content: '';
+  position: absolute;
+  inset: 0 0 auto 0;
+  height: 3px;
+  background: var(--gradient-line);
+}
+.paradigm-type {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  letter-spacing: 1.2px;
+  color: var(--accent-1);
+  margin-bottom: 14px;
+}
+.tradeoff-list { margin-bottom: 0; }
+.architecture-lanes {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 14px;
+}
+.lane {
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border-subtle);
+  background: var(--bg-card-soft);
+  padding: 16px;
+  min-height: 220px;
+}
+.lane h4 { margin-bottom: 0.8rem; }
+.signal-stack {
+  display: grid;
+  gap: 10px;
+  margin-top: 12px;
+}
+.signal {
+  position: relative;
+  padding: 11px 12px;
+  border-radius: 10px;
+  background: rgba(255,255,255,0.05);
+  overflow: hidden;
+}
+.signal::after {
+  content: '';
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 34%;
+  background: linear-gradient(90deg, rgba(76,201,240,0.25), rgba(128,237,153,0));
+  animation: scan 2.4s ease-in-out infinite;
+}
+.lane:nth-child(2) .signal::after { animation-delay: 0.35s; }
+.lane:nth-child(3) .signal::after { animation-delay: 0.7s; }
+@keyframes scan {
+  0%,100% { transform: translateX(-20%); opacity: 0.5; }
+  50% { transform: translateX(170%); opacity: 1; }
+}
+.rerank-card {
+  position: relative;
+  overflow: hidden;
+}
+.rerank-card::before {
+  content: '';
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 3px;
+  background: var(--gradient-line);
+}
+.quiz-section-title {
+  margin-top: 1.4rem;
+  color: var(--accent-3);
+  font-size: 1.08rem;
+}
+.quiz-card { margin: 1rem 0; overflow: hidden; }
+.quiz-card-header {
+  padding: 14px 18px;
+  border-bottom: 1px solid var(--border-subtle);
+  background: rgba(255,255,255,0.03);
+  font-weight: 600;
+}
+.quiz-card-body { padding: 18px 22px; }
+.quiz-question { color: var(--text-primary); margin-bottom: 12px; }
+.quiz-options div { margin-bottom: 8px; color: var(--text-secondary); }
+.answer-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(100px, 1fr));
+  gap: 10px;
+  margin-top: 1rem;
+}
+.answer-chip {
+  display: inline-flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 44px;
+  padding: 10px 12px;
+  border-radius: 999px;
+  border: 1px solid var(--border-subtle);
+  background: rgba(255,255,255,0.04);
+  color: var(--text-primary);
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.84rem;
+}
+details {
+  margin-top: 1.5rem;
+  background: var(--bg-card);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius);
+  padding: 16px 18px;
+}
+summary {
+  cursor: pointer;
+  color: var(--text-primary);
+  font-weight: 600;
+}
+@media (max-width: 980px) {
+  .pipeline-flow, .architecture-lanes { grid-template-columns: 1fr; }
+  .pipeline-card::after, .flow-card::after { display: none; }
+}
+@media (max-width: 720px) {
+  .content-wrapper { padding: 0 1.15rem 5rem; }
+  .hero { padding: 1.35rem; }
+  .hero h1 { letter-spacing: -1.2px; }
+}
+</style>
+</head>
+<body>
+<div class="scroll-progress" id="scrollProgress"></div>
+
+<section class="hero">
+  <div class="hero-particles" id="heroParticles"></div>
+  <div class="hero-label"><span class="dot-indicator"></span> Multimodal RAG · Module 6 of 13</div>
+  <h1>Multimodal Retrieval-<span class="gradient-text">Augmented Generation</span> (MRAG)</h1>
+  <p class="hero-subtitle">
+    MRAG is where multimodal systems stop being passive models and become grounded assistants:
+    they understand mixed queries, retrieve evidence across modalities, rerank what matters, and answer with citations instead of guesses.
+  </p>
+  <div class="hero-scroll-cue"><span>Continue</span><div class="arrow"></div></div>
+</section>
+
+<div class="content-wrapper">
+
+<div class="section" id="sec1">
+  <div class="section-number">01 — Goal and Difference</div>
+  <h2>Why MRAG Is Harder Than Text RAG, and Why It Matters</h2>
+
+  <p class="lead">
+    The goal is to demystify Multimodal RAG (MRAG), the advanced evolution of classic text RAG that handles queries
+    and knowledge across text, images, tables, documents, video, and audio.
+  </p>
+
+  <div class="goal-grid">
+    <div class="mini-card">
+      <h4>You will learn</h4>
+      <ul>
+        <li>Why MRAG is harder but more powerful than text RAG</li>
+        <li>The five core stages: query understanding, retrieval, reranking, context packing, grounded generation</li>
+        <li>The three retrieval paradigms: text-first, vision-first, and joint</li>
+      </ul>
+    </div>
+    <div class="mini-card">
+      <h4>You will also learn</h4>
+      <ul>
+        <li>Document and table handling, visual grounding, and cross-modal reranking</li>
+        <li>Iterative or multi-hop retrieval for harder questions</li>
+        <li>How to avoid hallucinations, modality bias, and context explosion</li>
+      </ul>
+    </div>
+  </div>
+
+  <p>
+    Text RAG is simple: chunk text, embed, retrieve similar chunks, stuff them into the prompt, and generate.
+    MRAG adds complexity at every stage because the evidence may live in photos, tables, PDF regions, keyframes, and transcripts.
+  </p>
+
+  <div class="formula-card">
+    <div class="formula-label">Classic Text RAG</div>
+    <div class="formula-math">chunk text → embed → retrieve similar chunks → prompt LLM → generate</div>
+    <div class="formula-explain">
+      MRAG keeps the same grounding objective, but the evidence is now multimodal and must stay faithful to what was actually retrieved.
+    </div>
+  </div>
+
+  <div class="target-grid">
+    <div class="target-card">
+      <h4>Input Queries</h4>
+      <p>Queries can already be multimodal, such as text plus a photo of a broken phone or earbuds.</p>
+    </div>
+    <div class="target-card">
+      <h4>Retrieval Targets</h4>
+      <p>Targets include raw images, document regions, video frames with transcripts, image-text pairs, and tables.</p>
+    </div>
+    <div class="target-card">
+      <h4>Embeddings</h4>
+      <p>Cross-modal alignment is required so text like <code>wireless ANC earbuds</code> matches both spec tables and product photos.</p>
+    </div>
+    <div class="target-card">
+      <h4>Generation</h4>
+      <p>VLMs such as GPT-4o, Gemini, and LLaVA-Next must reason over mixed context and output grounded responses.</p>
+    </div>
+  </div>
+
+  <div class="warning">
+    <p>
+      Pitfalls multiply in MRAG: visual hallucinations, trusting text more than images, poor cross-modal retrieval,
+      and exploding context windows. Surveys are clear on this point: MRAG reduces hallucinations only when retrieval preserves semantics
+      and generation stays faithful to the retrieved multimodal evidence.
+    </p>
+  </div>
+</div>
+
+<div class="gradient-divider"></div>
+
+<div class="section" id="sec2">
+  <div class="section-number">02 — Core Pipeline</div>
+  <h2>The Five Core Stages of a Modern MRAG System</h2>
+
+  <p>Modern MRAG pipelines follow a five-stage flow: query understanding, retrieval, reranking, context packing, and grounded generation.</p>
+  <p>
+    Query understanding is the critical first filter because it decides whether the request is text-only, image-assisted, or truly hybrid,
+    and extracts the real intent, such as recognizing that a vague message plus a damage photo is actually a warranty claim.
+  </p>
+
+  <div class="pipeline-stage">
+    <div class="stage-header">
+      <span>Animated MRAG Pipeline</span>
+      <span>QUERY → EVIDENCE → RESPONSE</span>
+    </div>
+    <div class="pipeline-flow">
+      <div class="pipeline-card">
+        <div class="pipeline-tag">Stage 1</div>
+        <h4>Query Understanding</h4>
+        <p>Figure out intent, modality, and whether the query is text-only, image-assisted, or truly hybrid.</p>
+        <div class="pipeline-visual"><div class="bar"><span></span></div><div class="bar"><span></span></div></div>
+      </div>
+      <div class="pipeline-card">
+        <div class="pipeline-tag">Stage 2</div>
+        <h4>Retrieval</h4>
+        <p>Fetch candidates across text chunks, images, layout regions, video clips, and transcripts.</p>
+        <div class="pipeline-visual"><div class="bar"><span></span></div><div class="bar"><span></span></div></div>
+      </div>
+      <div class="pipeline-card">
+        <div class="pipeline-tag">Stage 3</div>
+        <h4>Reranking</h4>
+        <p>Score candidates with stronger cross-modal or answer-aware signals so recall turns into relevance.</p>
+        <div class="pipeline-visual"><div class="bar"><span></span></div><div class="bar"><span></span></div></div>
+      </div>
+      <div class="pipeline-card">
+        <div class="pipeline-tag">Stage 4</div>
+        <h4>Context Packing</h4>
+        <p>Compress and order mixed evidence so the VLM sees the most useful items first without losing grounding.</p>
+        <div class="pipeline-visual"><div class="bar"><span></span></div><div class="bar"><span></span></div></div>
+      </div>
+      <div class="pipeline-card">
+        <div class="pipeline-tag">Stage 5</div>
+        <h4>Grounded Generation</h4>
+        <p>Generate an answer that cites the right image, region, table, or clip instead of producing unsupported claims.</p>
+        <div class="pipeline-visual"><div class="bar"><span></span></div><div class="bar"><span></span></div></div>
+      </div>
+    </div>
+  </div>
+
+  <h3>Multimodal Query Understanding</h3>
+  <p>The system first parses what the user wants, and which modalities matter.</p>
+  <ul>
+    <li>If the query is pure text, use standard embedding.</li>
+    <li>If the query includes an image, use a VLM to summarize or extract intent, such as identifying a damaged earbuds photo as a warranty query.</li>
+    <li>For hybrid queries, fuse text and image embeddings into a richer query representation.</li>
+  </ul>
+  <p>
+    This stage sounds simple, but it is where many MRAG systems quietly fail. The model is not just embedding a sentence.
+    It is deciding whether the user is asking for comparison, diagnosis, troubleshooting, warranty interpretation, or product similarity,
+    and whether the answer should lean more on text evidence, visual evidence, or both. A weak query representation sends the rest of the pipeline in the wrong direction.
+  </p>
+
+  <p>
+    At TechVista, a customer can type <code>This isn't working</code> and upload a photo.
+    The VLM interprets that as a query about faulty wireless earbuds with visual evidence of a defect,
+    then builds a query that can search both textual specs and visual damage patterns.
+  </p>
+
+  <h3>Multimodal Retrieval</h3>
+  <ul>
+    <li>Use a hybrid index: dense vectors such as CLIP or SigLIP for images, ColPali for document pages, and BM25 for text.</li>
+    <li>Retrieve across modalities: text chunks, image-text pairs, layout-aware document regions, and video clips with ASR transcripts.</li>
+    <li>Many systems are multi-vector, storing one vector per modality and using late fusion during retrieval.</li>
+  </ul>
+
+  <p>
+    For a question like <code>Compare ANC on Sony WH-1000XM5 vs Bose QuietComfort</code>,
+    MRAG may retrieve product photos, comparison tables from PDFs, unboxing video snippets, and review audio clips together.
+  </p>
+
+  <h3>Context Selection and Reranking</h3>
+  <p>
+    Raw retrieval is usually recall-heavy. It fetches a broad candidate set, but that set often contains duplicates, weak matches,
+    stale documents, or chunks that mention the right topic without actually supporting the answer. MRAG therefore needs a second selection layer
+    that scores candidates on usefulness, freshness, trustworthiness, and support value.
+  </p>
+  <ul>
+    <li>Use a cross-modal reranker to score query and candidate jointly rather than separately.</li>
+    <li>Filter by metadata such as <code>reliability ≥ 8</code> and recent timestamps.</li>
+    <li>Use diversity reranking to avoid sending five nearly identical images into the prompt.</li>
+    <li>Usually keep only the top 5 to 10 evidence items so the context window stays useful.</li>
+  </ul>
+  <p>
+    At TechVista, this is the difference between retrieving 20 plausible warranty-related items and actually keeping the clearest defect photos,
+    the right policy table, and the most relevant manual snippet.
+  </p>
+
+  <h3>Grounded Generation</h3>
+  <ul>
+    <li>Feed the selected multimodal context to a VLM and generate an answer that cites visuals instead of free-styling.</li>
+    <li>Use prompts like <code>Use the provided images/tables only — describe exactly what you see.</code></li>
+    <li>Prefer outputs with inline references such as <code>As shown in Image 2, the crack is on the right side...</code></li>
+    <li>If the evidence is still unclear, use an agentic loop to retrieve more or ask a clarifying question.</li>
+  </ul>
+
+  <p>
+    A TechVista-style answer can look like this:
+    <code>Your earbuds show physical damage on the charging port (see retrieved photo). Warranty covers manufacturing defects but not accidental damage — check policy page 3 table.</code>
+  </p>
+</div>
+
+<div class="gradient-divider"></div>
+
+<div class="section" id="sec3">
+  <div class="section-number">03 — Retrieval Targets and Packing</div>
+  <h2>What You Fetch, and How You Pack It Without Losing Grounding</h2>
+
+  <h3>Retrieval Targets: What You Actually Fetch</h3>
+  <p>Surveys classify retrieval targets by both granularity and modality.</p>
+
+  <div class="target-grid">
+    <div class="target-card">
+      <h4>Text Only</h4>
+      <p>Fast fallback, but visual nuance disappears. This is where chart colors, spatial patterns, and layout signals get lost.</p>
+    </div>
+    <div class="target-card">
+      <h4>Image-Text Pairs</h4>
+      <p>CLIP-style photo-plus-caption pairs are excellent for visual search and product understanding.</p>
+    </div>
+    <div class="target-card">
+      <h4>Document Regions</h4>
+      <p>Page, figure, and table bounding boxes preserve layout. ColPali is especially strong here because it is layout-aware.</p>
+    </div>
+    <div class="target-card">
+      <h4>Video Clips + Transcripts</h4>
+      <p>Keyframes plus ASR text let the system answer questions like pairing instructions or durability claims from review videos.</p>
+    </div>
+  </div>
+
+  <p>
+    TechVista example: for <code>Why does my smartwatch screen scratch easily?</code>, the system can retrieve
+    close-up product photos, durability test video clips with subtitles, scratched-unit customer images,
+    and the exact spec sheet region mentioning Gorilla Glass.
+  </p>
+
+  <h3>Context Packing: Mixed Content Needs Structure</h3>
+  <p>
+    This is one of the biggest practical pain points in MRAG. VLMs have token limits, and naive packing destroys meaning.
+  </p>
+
+  <div class="packing-grid">
+    <div class="mini-card">
+      <h4>Image Placeholders + Descriptions</h4>
+      <p>Use labels like <code>Image 1</code> and attach short captions or VLM summaries so the model can refer back precisely.</p>
+    </div>
+    <div class="mini-card">
+      <h4>Multimodal Prompt Templates</h4>
+      <p>Use model-native multimodal tokens such as <code>&lt;image&gt;</code> or base64-encoded images when the model supports them. Put the most relevant evidence first.</p>
+    </div>
+    <div class="mini-card">
+      <h4>Table Formatting</h4>
+      <p>Convert tables to markdown while also attaching the table image so alignment and visual structure are not lost.</p>
+    </div>
+    <div class="mini-card">
+      <h4>Compression</h4>
+      <p>Summarize long videos into keyframes plus highlights and group related chunks so packing stays efficient.</p>
+    </div>
+    <div class="mini-card">
+      <h4>Grounding Enforcement</h4>
+      <p>Explicitly instruct the model to use only visible information and say when it is uncertain. Then post-check claims against retrieved regions.</p>
+    </div>
+    <div class="mini-card">
+      <h4>Ordering Discipline</h4>
+      <p>Do not pack 10 unlabeled images in arbitrary order. Relevance and diversity should determine which top 4 to 6 items are shown.</p>
+    </div>
+  </div>
+
+  <p>
+    Good packing is really evidence choreography. The goal is to make the VLM see the right items in the right order with enough structure
+    that it can refer back to them. The strongest evidence should come first, related items should be grouped, and labels like <code>Image 1</code>,
+    <code>Table 1</code>, or <code>Page 4 Region B</code> should stay stable between retrieval and generation so the answer can cite them cleanly.
+  </p>
+
+  <div class="warning">
+    <p>
+      Pitfall example: packing 10 images without order often makes the model ignore half of them.
+      The practical fix is simple but strict: rerank by relevance and diversity, then pack only the clearest top items with stable labels.
+    </p>
+  </div>
+</div>
+
+<div class="gradient-divider"></div>
+
+<div class="section" id="sec4">
+  <div class="section-number">04 — Retrieval Paradigms</div>
+  <h2>The Three Main MRAG Retrieval Paradigms</h2>
+
+  <p>
+    MRAG retrieval is not just “find similar stuff.” Because information may live in text descriptions, product photos,
+    comparison tables, blurry defect images, or 30-second unboxing clips, the field has converged on three main paradigms.
+  </p>
+
+  <div class="architecture-stage">
+    <div class="stage-header">
+      <span>Animated Retrieval Architecture</span>
+      <span>TEXT-FIRST · VISION-FIRST · JOINT</span>
+    </div>
+    <div class="architecture-lanes">
+      <div class="lane">
+        <h4>Text-First</h4>
+        <p>Convert everything possible into text before retrieval.</p>
+        <div class="signal-stack">
+          <div class="signal">OCR, captions, markdown tables</div>
+          <div class="signal">Text encoder or BM25 retrieval</div>
+          <div class="signal">Fast and interpretable, but lossy</div>
+        </div>
+      </div>
+      <div class="lane">
+        <h4>Vision-First</h4>
+        <p>Treat images, pages, and keyframes as the primary retrieval objects.</p>
+        <div class="signal-stack">
+          <div class="signal">CLIP, SigLIP, ImageBind, ColPali</div>
+          <div class="signal">Cosine similarity in vision space</div>
+          <div class="signal">Preserves nuance, but semantics can be weak</div>
+        </div>
+      </div>
+      <div class="lane">
+        <h4>Joint Retrieval</h4>
+        <p>Coordinate both modalities with shared spaces, fusion, and second-stage reranking.</p>
+        <div class="signal-stack">
+          <div class="signal">Aligned text + image embeddings</div>
+          <div class="signal">Cross-modal rerankers and answer-aware scoring</div>
+          <div class="signal">Best balance of speed, recall, and precision</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="paradigm-grid">
+    <div class="paradigm-card">
+      <div class="paradigm-type">Text-First Retrieval</div>
+      <p>
+        Convert born-digital PDFs with PyMuPDF or pdfplumber, run OCR on scanned documents with TrOCR, Donut, Nougat,
+        or layout-aware models like LayoutLMv3, convert tables to markdown or CSV with tools such as Table Transformer or deepdoctection,
+        and caption images or videos with BLIP-2 or LLaVA-style summaries.
+      </p>
+      <p>
+        In production, companies still love this setup because text retrieval is mature, cheap, explainable, and easy to hybridize with BM25.
+        It is especially useful when users ask exact keyword-heavy questions such as model names, policy phrases, or spec terms like <code>ANC</code>.
+      </p>
+      <ul class="tradeoff-list">
+        <li><strong>Advantages:</strong> mature, fast, cheap, keyword-friendly, and easy to filter with terms like <code>ANC</code> and <code>Sony</code>.</li>
+        <li><strong>Downsides:</strong> loses layout, color, spatial relationships, and fine visual details; OCR and captioning errors compound.</li>
+        <li><strong>Typical failure:</strong> a blurry damage photo becomes a vague caption like <code>damaged device</code>, which is too weak to distinguish crack from dent.</li>
+      </ul>
+      <p>
+        A typical TechVista failure case is a customer asking <code>Is this covered?</code> with a damaged earbuds photo.
+        The text-first system may retrieve the right generic warranty policy, but it often cannot point to the exact visual evidence the customer uploaded,
+        so the answer feels correct but unconvincing.
+      </p>
+    </div>
+
+    <div class="paradigm-card">
+      <div class="paradigm-type">Vision-First Retrieval</div>
+      <p>
+        Embed raw images, PDF page renders, and video keyframes directly with CLIP, SigLIP, ImageBind, or ColPali.
+        For documents, render the full page as an image and preserve layout instead of forcing OCR to do all the work.
+      </p>
+      <ul class="tradeoff-list">
+        <li><strong>Advantages:</strong> keeps color, texture, layout, crack patterns, and table structure intact.</li>
+        <li><strong>Downsides:</strong> exact text semantics and keyword filtering are weaker, and compute cost rises quickly at scale.</li>
+        <li><strong>Best use:</strong> visual similarity search, such as finding products with the same scratch pattern as an uploaded photo.</li>
+      </ul>
+      <p>
+        This is why vision-first retrieval shines for queries like <code>Show me phones with a scratch pattern like this</code>.
+        Even if captions are generic, the visual embedding can still retrieve product images or return photos with genuinely similar damage signatures.
+      </p>
+    </div>
+
+    <div class="paradigm-card">
+      <div class="paradigm-type">Joint Retrieval</div>
+      <p>
+        Combine aligned embeddings with late fusion, cross-encoders, and answer-aware reranking.
+        A common formula is a weighted blend like <code>s = λ·s_text + (1-λ)·s_image</code>,
+        followed by a second-stage scorer that jointly sees the query and candidate.
+      </p>
+      <ul class="tradeoff-list">
+        <li><strong>Paired embeddings:</strong> shared-space retrieval so text and image evidence can meet in one ranking stack.</li>
+        <li><strong>Cross-modal rerankers:</strong> models such as MM-R5 or multimodal ColBERT refine the top candidates jointly.</li>
+        <li><strong>Answer-aware reranking:</strong> downrank candidates that do not actually support the provisional answer.</li>
+      </ul>
+      <p>
+        This is the most powerful setup for hard support questions because it lets the system combine exact terms, semantic meaning, and visual cues.
+        If a provisional answer says the crack is on the left side but the strongest candidate image clearly shows the defect on the right,
+        answer-aware reranking can push that misleading candidate down before generation happens.
+      </p>
+    </div>
+  </div>
+
+  <div class="insight">
+    <p>
+      The document’s recommendation is clear: text-first is fast but lossy, vision-first preserves nuance but weakens semantics,
+      and joint retrieval offers the best balance for real products and support scenarios.
+    </p>
+  </div>
+
+  <p>
+    Example: for <code>Compare battery drain causes from manual table + this photo of my usage screen</code>,
+    a joint system can retrieve with both text keywords and an image embedding, rerank with a VLM,
+    and generate a grounded answer citing the exact table and screenshot.
+  </p>
+</div>
+
+<div class="gradient-divider"></div>
+
+<div class="section" id="sec5">
+  <div class="section-number">05 — Reranking and Iteration</div>
+  <h2>Why First-Stage Retrieval Is Not Enough</h2>
+
+  <p>
+    Reranking is almost mandatory in MRAG because first-stage bi-encoder retrieval is optimized for recall, not precision.
+    It finds many plausible candidates, but it does not reliably pick the most supportive ones.
+  </p>
+
+  <div class="rerank-grid">
+    <div class="rerank-card">
+      <h4>Cross-Modal Reranker</h4>
+      <p>Input is the query, optionally an image, plus a candidate that could be text, image, table, or video snippet.</p>
+      <p>Output is a relevance score, often from 0 to 1.</p>
+      <p>Examples include fine-tuned FLMR, MM-R5, or even LLaVA-Next used as a zero-shot scorer.</p>
+    </div>
+    <div class="rerank-card">
+      <h4>Answer-Aware Reranking</h4>
+      <p>Generate a provisional answer from the top raw retrieval set, then score candidates by how well they support that answer.</p>
+      <p>This reduces modality bias, especially when noisy OCR text conflicts with cleaner visual evidence, because candidates are rewarded for actually supporting the answer rather than merely matching one modality well.</p>
+    </div>
+    <div class="rerank-card">
+      <h4>Practical Filters</h4>
+      <p>Filter by metadata such as <code>reliability ≥ 8</code> and recent timestamps.</p>
+      <p>Add diversity reranking to avoid repeated near-duplicate images, and cap the context at roughly the top 5 to 10 items.</p>
+    </div>
+  </div>
+
+  <div class="code-block">
+    <div class="code-block-header"><span class="code-lang">Python · Cross-Modal Reranking Sketch</span></div>
+    <pre>def rerank_candidates(query, candidates, scorer):
+    rescored = []
+    for candidate in candidates:
+        score = scorer(query=query, candidate=candidate)  # text + image/table/page together
+        rescored.append((score, candidate))
+    rescored.sort(key=lambda x: x[0], reverse=True)
+    return rescored[:8]  # keep only the most supportive evidence</pre>
+  </div>
+
+  <div class="warning">
+    <p>
+      Production pitfall: a first-stage retriever may surface candidates that all look relevant in isolation, but if reranking does not check answer support,
+      the system can over-trust a noisy OCR paragraph and ignore a clearer image or table region that actually contains the right evidence.
+    </p>
+  </div>
+
+  <p>
+    At TechVista, an initial retrieval may grab 20 candidates. The reranker then scores them against both the query and the damage photo,
+    keeping the clearest crack images and the most accurate spec or policy tables.
+  </p>
+
+  <h3>Iterative Retrieval (Multi-Hop MRAG)</h3>
+  <p>
+    For harder questions, a single retrieval pass is not enough. The system needs an agentic loop:
+    retrieve, reason, rewrite the query, and retrieve again.
+  </p>
+
+  <div class="flow-grid">
+    <div class="flow-card">
+      <div class="flow-label">Round 1</div>
+      <p>Initial query arrives as text, image, or both.</p>
+    </div>
+    <div class="flow-card">
+      <div class="flow-label">Reason</div>
+      <p>The VLM decides which missing evidence still needs to be fetched.</p>
+    </div>
+    <div class="flow-card">
+      <div class="flow-label">Rewrite</div>
+      <p>The system creates new text queries or even new image-query embeddings.</p>
+    </div>
+    <div class="flow-card">
+      <div class="flow-label">Round 2+</div>
+      <p>Retrieve again until the answer is sufficiently grounded.</p>
+    </div>
+  </div>
+
+  <p>
+    Example: <code>Is this laptop hinge issue common?</code> plus a photo. Round 1 retrieves similar hinge-damage images.
+    The VLM then decides it also needs build-quality evidence from manuals and user reviews.
+    It rewrites the search into text like <code>laptop hinge durability</code> and an image embedding focused on the hinge area,
+    retrieves again, and only then answers.
+  </p>
+
+  <div class="code-block">
+    <div class="code-block-header"><span class="code-lang">Python · Multi-Hop MRAG Loop</span></div>
+    <pre>query_state = initial_query
+evidence = []
+
+for step in range(3):
+    retrieved = retrieve(query_state)
+    evidence.extend(retrieved)
+    plan = vlm_reason(query_state, evidence)
+    if plan["grounded_enough"]:
+        break
+    query_state = plan["rewritten_query"]  # can include text rewrite + image-query update
+
+final_answer = grounded_generate(query_state, evidence)</pre>
+  </div>
+</div>
+
+<div class="gradient-divider"></div>
+
+<div class="section" id="sec6">
+  <div class="section-number">06 — Documents and Tables</div>
+  <h2>Document, Table, and Region-Aware MRAG</h2>
+
+  <h3>PDFs</h3>
+  <div class="doc-grid">
+    <div class="mini-card">
+      <h4>Born-Digital PDFs</h4>
+      <p>Manufacturer manuals usually have extractable text and preserved layout. LayoutLMv3 or ColPali can exploit that structure well.</p>
+    </div>
+    <div class="mini-card">
+      <h4>Scanned PDFs</h4>
+      <p>Noisy OCR can hurt badly. ColPali often shines because it embeds the rendered page image directly without depending on OCR quality.</p>
+    </div>
+    <div class="mini-card">
+      <h4>Layout Sensitivity</h4>
+      <p>If layout is ignored, table rows scramble. Layout-aware models like ColPali or DocLayout-YOLO preserve spatial meaning.</p>
+    </div>
+  </div>
+
+  <h3>Table Handling</h3>
+  <div class="doc-grid">
+    <div class="mini-card">
+      <h4>Table as Text</h4>
+      <p>Classic markdown extraction is simple, but alignment, style, and visual grouping disappear.</p>
+    </div>
+    <div class="mini-card">
+      <h4>Table as Image</h4>
+      <p>Vision-first retrieval can embed the rendered table with ColPali and preserve the visual structure.</p>
+    </div>
+    <div class="mini-card">
+      <h4>Dual-Mode Decomposition</h4>
+      <p>State-of-the-art systems often combine a graph or structured table representation with both text and image paths, then retrieve jointly.</p>
+    </div>
+  </div>
+
+  <p>
+    This matters because tables are not just text with line breaks. Rows, columns, headers, highlights, and layout cues carry meaning.
+    A pure text version is often enough for simple numeric lookup, but for comparison-heavy questions, layout-aware retrieval keeps the evidence far more faithful.
+  </p>
+  <p>
+    That is also why layout-aware models like ColPali often beat pure OCR on scanned PDFs and complex tables: they preserve spatial relationships,
+    visual grouping, and page structure that flattened text extraction tends to scramble or erase.
+  </p>
+
+  <h3>Visual Grounding in Documents</h3>
+  <ul>
+    <li>Page-region retrieval can highlight the exact bounding box or patch that supports the answer.</li>
+    <li>The answer can cite the evidence directly, such as <code>Table 3, row 2, Battery Life, page 8</code>.</li>
+    <li>Metadata and lineage make the support trace visible, including retrieval scores and region heat maps.</li>
+  </ul>
+
+  <p>
+    Example: <code>What’s the IP rating difference between these two earbuds models?</code> plus a photo of the packaging.
+    The system retrieves spec-sheet pages, pulls the exact rows with dual-mode table decomposition,
+    highlights the <code>IP68</code> and <code>IPX4</code> cells, and answers with visible evidence.
+  </p>
+  <p>
+    This is exactly the kind of question where MRAG outperforms a plain text-only system. The answer is not just a sentence hidden in a manual.
+    It is a relation between packaging evidence, retrieved spec-sheet regions, and the visually grounded cells that show the actual IP rating difference.
+  </p>
+
+  <div class="formula-card">
+    <div class="formula-label">Grounded Response Pattern</div>
+    <div class="formula-math">retrieved page region + highlighted cell + cited answer</div>
+    <div class="formula-explain">
+      Grounding is not a decorative extra. It is what turns a multimodal answer into something a user can verify and trust.
+    </div>
+  </div>
+</div>
+
+<div class="gradient-divider"></div>
+
+<div class="section" id="sec7">
+  <div class="section-number">07 — Conclusion</div>
+  <h2>Key Takeaways from Module 6</h2>
+
+  <p>
+    MRAG powers truly visual, grounded support. It can answer a question like <code>Is this crack covered?</code>
+    by seeing the uploaded photo, reading the policy, and citing both.
+  </p>
+
+  <div class="takeaway-grid">
+    <div class="mini-card"><p><strong>Pipeline:</strong> multimodal query → hybrid or joint retrieval → cross-modal rerank → careful packing → grounded VLM generation.</p></div>
+    <div class="mini-card"><p><strong>Paradigms:</strong> text-first is fast but lossy, vision-first preserves nuance but weakens semantics, and joint retrieval is usually the best balance.</p></div>
+    <div class="mini-card"><p><strong>Reranking:</strong> reranking and iterative retrieval are what fix precision and reduce hallucinations.</p></div>
+    <div class="mini-card"><p><strong>Docs and Tables:</strong> ColPali is especially strong for layout-sensitive pages, figures, and tables.</p></div>
+    <div class="mini-card"><p><strong>Trust:</strong> grounding and citations, including regions and images, are critical for support, returns, and warranty scenarios.</p></div>
+    <div class="mini-card"><p><strong>TechVista impact:</strong> the system sees defect photos, retrieves policy regions and videos, and produces cited, accurate responses with fewer disputes.</p></div>
+  </div>
+
+  <div class="insight">
+    <p>Master MRAG and your system does not just read. It sees, understands, and explains what it sees reliably.</p>
+  </div>
+  <p>
+    In product terms, joint retrieval with reranking is usually the safest default for customer-facing systems: text-first when speed and keyword control dominate,
+    vision-first when the visual signal is primary, and multi-hop MRAG when one retrieval round is not enough to justify the answer.
+  </p>
+  <p>
+    In TechVista-style warranty support, grounded answers with visible citations reduce disputes and returns because customers and agents can verify exactly which photo,
+    policy region, or table cell the recommendation came from.
+  </p>
+</div>
+
+<div class="gradient-divider"></div>
+
+<div class="section" id="sec8">
+  <div class="section-number">08 — Quiz</div>
+  <h2>Assessment</h2>
+
+  <div class="quiz-section-title">Easy Questions</div>
+
+  <div class="quiz-card">
+    <div class="quiz-card-header">Question 1</div>
+    <div class="quiz-card-body">
+      <div class="quiz-question">What is the main difference between classic text RAG and MRAG?</div>
+      <div class="quiz-options">
+        <div>A) MRAG works only with text while classic RAG uses images</div>
+        <div>B) MRAG handles queries and knowledge across text, images, tables, documents, video, and audio</div>
+        <div>C) MRAG removes the need for any retrieval</div>
+        <div>D) MRAG is slower and less powerful than text RAG</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="quiz-card">
+    <div class="quiz-card-header">Question 2</div>
+    <div class="quiz-card-body">
+      <div class="quiz-question">What are the five core stages in a modern MRAG pipeline?</div>
+      <div class="quiz-options">
+        <div>A) Query understanding → retrieval → reranking → context packing → grounded generation</div>
+        <div>B) Only retrieval and generation</div>
+        <div>C) Only text encoding and decoding</div>
+        <div>D) Only image captioning</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="quiz-card">
+    <div class="quiz-card-header">Question 3</div>
+    <div class="quiz-card-body">
+      <div class="quiz-question">Which of the following is a valid retrieval target in MRAG?</div>
+      <div class="quiz-options">
+        <div>A) Only plain text chunks</div>
+        <div>B) Image-text pairs, document regions with layout, video clips + transcripts</div>
+        <div>C) Only audio files</div>
+        <div>D) Only keywords</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="quiz-card">
+    <div class="quiz-card-header">Question 4</div>
+    <div class="quiz-card-body">
+      <div class="quiz-question">What does “visual grounding” mean in MRAG answers?</div>
+      <div class="quiz-options">
+        <div>A) The model cites the exact retrieved image or table region in its response</div>
+        <div>B) The model ignores images completely</div>
+        <div>C) The model only uses text</div>
+        <div>D) The model generates new images</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="quiz-section-title">Medium Questions</div>
+
+  <div class="quiz-card">
+    <div class="quiz-card-header">Question 5</div>
+    <div class="quiz-card-body">
+      <div class="quiz-question">What are the three main retrieval paradigms in MRAG?</div>
+      <div class="quiz-options">
+        <div>A) Text-first, vision-first, and joint retrieval</div>
+        <div>B) Only text-first and image-only</div>
+        <div>C) Only hybrid and late fusion</div>
+        <div>D) Only early fusion and cross-attention</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="quiz-card">
+    <div class="quiz-card-header">Question 6</div>
+    <div class="quiz-card-body">
+      <div class="quiz-question">Why is reranking almost mandatory in MRAG?</div>
+      <div class="quiz-options">
+        <div>A) First-stage retrieval is recall-oriented but low precision, so reranking improves relevance using cross-modal or answer-aware scorers</div>
+        <div>B) It makes retrieval slower</div>
+        <div>C) It removes the need for any retrieval</div>
+        <div>D) It only works for text</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="quiz-card">
+    <div class="quiz-card-header">Question 7</div>
+    <div class="quiz-card-body">
+      <div class="quiz-question">What is a common practical technique for handling tables and documents in MRAG?</div>
+      <div class="quiz-options">
+        <div>A) Use ColPali or dual-mode decomposition with text and vision paths</div>
+        <div>B) Convert everything to plain text only</div>
+        <div>C) Ignore layout completely</div>
+        <div>D) Use only OCR without vision</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="quiz-section-title">Hard Questions</div>
+
+  <div class="quiz-card">
+    <div class="quiz-card-header">Question 8</div>
+    <div class="quiz-card-body">
+      <div class="quiz-question">In iterative or multi-hop MRAG, what happens after the first retrieval round?</div>
+      <div class="quiz-options">
+        <div>A) The VLM reasons over the results, rewrites the query multimodally, and triggers more retrieval rounds until the answer is grounded</div>
+        <div>B) The process stops immediately</div>
+        <div>C) Only one retrieval is ever done</div>
+        <div>D) The model ignores previous results</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="quiz-card">
+    <div class="quiz-card-header">Question 9</div>
+    <div class="quiz-card-body">
+      <div class="quiz-question">What is one major pitfall of naive context packing in MRAG?</div>
+      <div class="quiz-options">
+        <div>A) Feeding too many unordered images or tables causes the VLM to ignore context or hallucinate</div>
+        <div>B) It always improves accuracy</div>
+        <div>C) It reduces token usage</div>
+        <div>D) It works perfectly with any number of images</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="quiz-card">
+    <div class="quiz-card-header">Question 10</div>
+    <div class="quiz-card-body">
+      <div class="quiz-question">Why is MRAG especially valuable for e-commerce support such as TechVista warranty claims?</div>
+      <div class="quiz-options">
+        <div>A) The system can see the uploaded damage photo, retrieve relevant policy regions, tables, and videos, and generate a cited, accurate response</div>
+        <div>B) It only uses text descriptions</div>
+        <div>C) It increases hallucinations</div>
+        <div>D) It cannot handle photos</div>
+      </div>
+    </div>
+  </div>
+
+  <details>
+    <summary>Answers</summary>
+    <div class="answer-grid">
+      <span class="answer-chip">1 · B</span>
+      <span class="answer-chip">2 · A</span>
+      <span class="answer-chip">3 · B</span>
+      <span class="answer-chip">4 · A</span>
+      <span class="answer-chip">5 · A</span>
+      <span class="answer-chip">6 · A</span>
+      <span class="answer-chip">7 · A</span>
+      <span class="answer-chip">8 · A</span>
+      <span class="answer-chip">9 · A</span>
+      <span class="answer-chip">10 · A</span>
+    </div>
+  </details>
+</div>
+
+</div>
+
+<script>
+window.addEventListener('scroll', () => {
+  const h = document.documentElement;
+  const progress = (h.scrollTop / (h.scrollHeight - h.clientHeight)) * 100;
+  document.getElementById('scrollProgress').style.width = progress + '%';
+});
+
+const heroParticles = document.getElementById('heroParticles');
+for (let i = 0; i < 34; i++) {
+  const dot = document.createElement('div');
+  dot.className = 'dot';
+  dot.style.left = Math.random() * 100 + '%';
+  dot.style.top = Math.random() * 100 + '%';
+  dot.style.animationDelay = Math.random() * 5 + 's';
+  dot.style.animationDuration = (5 + Math.random() * 4) + 's';
+  heroParticles.appendChild(dot);
+}
+</script>
+</body>
+</html>

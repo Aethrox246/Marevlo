@@ -1,0 +1,872 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Module 11 — Agentic Retrieval-Augmented Generation</title>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&family=Outfit:wght@300;400;500;600;700;800;900&family=Source+Serif+4:ital,wght@0,300;0,400;0,600;1,300;1,400&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg-primary: #0a1017;
+  --bg-card: #151d28;
+  --bg-soft: rgba(255,255,255,0.03);
+  --bg-code: #0d1420;
+  --text-primary: #eef5ff;
+  --text-secondary: #9fb0c6;
+  --accent-1: #67e8f9;
+  --accent-2: #86efac;
+  --accent-3: #fbbf24;
+  --accent-4: #fb7185;
+  --accent-5: #c084fc;
+  --gradient-line: linear-gradient(90deg, #67e8f9, #86efac, #fbbf24, #fb7185, #c084fc);
+  --border-subtle: rgba(255,255,255,0.08);
+  --shadow-card: 0 12px 38px rgba(0,0,0,0.34);
+  --radius: 16px;
+  --radius-sm: 10px;
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+html { scroll-behavior: smooth; }
+body {
+  background: var(--bg-primary);
+  color: var(--text-primary);
+  font-family: 'Outfit', sans-serif;
+  line-height: 1.7;
+  overflow-x: hidden;
+  -webkit-font-smoothing: antialiased;
+}
+.scroll-progress { position: fixed; top: 0; left: 0; height: 3px; width: 0%; z-index: 1000; background: var(--gradient-line); }
+.hero {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  text-align: center;
+  position: relative;
+  overflow: hidden;
+  padding: 2rem;
+}
+.hero::before {
+  content: '';
+  position: absolute; inset: 0;
+  background:
+    radial-gradient(ellipse 760px 440px at 18% 28%, rgba(103,232,249,0.15), transparent),
+    radial-gradient(ellipse 560px 360px at 82% 30%, rgba(134,239,172,0.13), transparent),
+    radial-gradient(ellipse 700px 380px at 52% 80%, rgba(192,132,252,0.10), transparent);
+}
+.hero-particles { position: absolute; inset: 0; pointer-events: none; }
+.hero-particles .dot {
+  position: absolute; width: 4px; height: 4px; border-radius: 50%;
+  background: rgba(255,255,255,0.72); opacity: 0; animation: floatDot 7s ease-in-out infinite;
+}
+@keyframes floatDot {
+  0%,100% { opacity: 0; transform: translateY(0) scale(0.75); }
+  50% { opacity: 0.55; transform: translateY(-44px) scale(1); }
+}
+.hero-label {
+  position: relative; z-index: 1;
+  display: inline-flex; align-items: center; gap: 8px;
+  border-radius: 999px; padding: 7px 18px;
+  background: rgba(103,232,249,0.10);
+  border: 1px solid rgba(103,232,249,0.24);
+  color: var(--accent-1);
+  font-size: 0.78rem; font-weight: 600; letter-spacing: 1.6px; text-transform: uppercase;
+  margin-bottom: 1.7rem;
+}
+.dot-indicator {
+  width: 7px; height: 7px; border-radius: 50%;
+  background: var(--accent-2); animation: pulse 2s ease-in-out infinite;
+}
+@keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: 0.35; } }
+.hero h1 {
+  position: relative; z-index: 1;
+  font-size: clamp(2.7rem, 6vw, 5rem);
+  line-height: 1.05;
+  letter-spacing: -2px;
+  font-weight: 900;
+  max-width: 1040px;
+  margin-bottom: 1.3rem;
+}
+.gradient-text {
+  background: var(--gradient-line);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+.hero-subtitle {
+  position: relative; z-index: 1;
+  max-width: 920px;
+  color: var(--text-secondary);
+  font-family: 'Source Serif 4', serif;
+  font-size: clamp(1.05rem, 2vw, 1.24rem);
+  line-height: 1.85;
+}
+.hero-scroll-cue {
+  position: absolute; bottom: 2.8rem;
+  display: flex; flex-direction: column; align-items: center; gap: 8px;
+  color: var(--text-secondary); text-transform: uppercase; letter-spacing: 2px; font-size: 0.74rem;
+}
+.hero-scroll-cue .arrow {
+  width: 18px; height: 18px;
+  border-right: 2px solid var(--text-secondary);
+  border-bottom: 2px solid var(--text-secondary);
+  transform: rotate(45deg); animation: bounceArrow 2s ease-in-out infinite;
+}
+@keyframes bounceArrow {
+  0%,100% { transform: rotate(45deg) translateY(0); }
+  50% { transform: rotate(45deg) translateY(6px); }
+}
+.content-wrapper { max-width: 1100px; margin: 0 auto; padding: 0 2rem 6rem; }
+.section { margin-bottom: 5rem; }
+.section-number {
+  display: flex; align-items: center; gap: 10px;
+  font-family: 'JetBrains Mono', monospace; font-size: 0.72rem; letter-spacing: 3px;
+  text-transform: uppercase; color: var(--accent-1); margin-bottom: 0.8rem;
+}
+.section-number::after {
+  content: ''; flex: 1; height: 1px; background: linear-gradient(90deg, var(--accent-1), transparent); opacity: 0.35;
+}
+h2 {
+  font-size: clamp(1.9rem, 3.6vw, 2.7rem);
+  line-height: 1.18;
+  letter-spacing: -0.6px;
+  margin-bottom: 1.4rem;
+}
+h3 { font-size: 1.35rem; margin: 2.2rem 0 1rem; }
+h4 { font-size: 1rem; color: var(--accent-3); margin-bottom: 0.5rem; }
+p { color: var(--text-secondary); margin-bottom: 1.15rem; font-size: 1.02rem; }
+ul, ol { color: var(--text-secondary); margin: 0 0 1.2rem 1.2rem; }
+li { margin-bottom: 0.55rem; }
+p strong, li strong, b { color: var(--text-primary); }
+code {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.9em;
+  background: rgba(255,255,255,0.06);
+  border-radius: 6px;
+  padding: 2px 6px;
+}
+.lead {
+  font-family: 'Source Serif 4', serif;
+  color: var(--text-primary);
+  font-size: 1.16rem;
+}
+.gradient-divider { height: 2px; margin: 4rem 0; border-radius: 2px; opacity: 0.55; background: var(--gradient-line); }
+.mini-card, .formula-card, .feature-card, .compare-card, .pipeline-card, .example-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-card);
+}
+.mini-card, .feature-card, .compare-card, .pipeline-card, .example-card { padding: 22px; }
+.goal-grid, .feature-grid, .compare-grid, .takeaway-grid, .example-grid {
+  display: grid;
+  gap: 16px;
+  margin: 1.5rem 0;
+}
+.goal-grid { grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); }
+.feature-grid { grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); }
+.compare-grid { grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); }
+.takeaway-grid { grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); }
+.example-grid { grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); }
+.formula-card {
+  position: relative;
+  overflow: hidden;
+  padding: 24px 28px;
+  margin: 1.5rem 0;
+}
+.formula-card::before {
+  content: '';
+  position: absolute; inset: 0 auto 0 0; width: 3px; background: var(--gradient-line);
+}
+.formula-label {
+  font-family: 'JetBrains Mono', monospace;
+  text-transform: uppercase; letter-spacing: 1.5px;
+  color: var(--accent-2); font-size: 0.72rem; margin-bottom: 10px;
+}
+.formula-math {
+  font-family: 'Source Serif 4', serif;
+  color: var(--text-primary);
+  font-size: 1.22rem;
+  margin-bottom: 10px;
+}
+.formula-explain { color: var(--text-secondary); font-size: 0.92rem; }
+.insight, .warning {
+  position: relative;
+  margin: 2rem 0;
+  padding: 20px 24px;
+  border-radius: var(--radius);
+}
+.insight {
+  background: linear-gradient(135deg, rgba(103,232,249,0.10), rgba(134,239,172,0.05));
+  border: 1px solid rgba(103,232,249,0.22);
+}
+.warning {
+  background: linear-gradient(135deg, rgba(251,113,133,0.10), rgba(251,191,36,0.06));
+  border: 1px solid rgba(251,113,133,0.22);
+}
+.insight::before, .warning::before {
+  position: absolute; top: -12px; left: 18px; background: var(--bg-primary); padding: 0 8px; font-size: 1.05rem;
+}
+.insight::before { content: '◎'; color: var(--accent-1); }
+.warning::before { content: '▲'; color: var(--accent-4); }
+.pipeline-stage {
+  margin: 2rem 0;
+  background: var(--bg-card);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-card);
+  padding: 22px;
+}
+.stage-header {
+  display: flex; align-items: center; justify-content: space-between; gap: 12px;
+  padding-bottom: 14px; margin-bottom: 16px; border-bottom: 1px solid var(--border-subtle);
+  font-family: 'JetBrains Mono', monospace; font-size: 0.75rem; color: var(--text-secondary);
+}
+.pipeline-flow {
+  display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 14px;
+}
+.pipeline-card {
+  position: relative;
+  min-height: 195px;
+  background: var(--bg-soft);
+}
+.pipeline-card::after {
+  content: '→';
+  position: absolute; right: -12px; top: 50%; transform: translateY(-50%);
+  color: var(--accent-2); font-size: 1.15rem;
+}
+.pipeline-flow .pipeline-card:last-child::after { display: none; }
+.pipeline-tag {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.68rem; text-transform: uppercase; letter-spacing: 1px; color: var(--accent-5); margin-bottom: 8px;
+}
+.pipeline-visual { display: grid; gap: 8px; margin-top: 12px; }
+.bar {
+  position: relative; height: 12px; border-radius: 999px; background: rgba(255,255,255,0.06); overflow: hidden;
+}
+.bar span {
+  position: absolute; inset: 0 auto 0 0; width: 60%;
+  border-radius: 999px; background: var(--gradient-line); animation: move 2.8s ease-in-out infinite;
+}
+.pipeline-card:nth-child(2) .bar span { animation-delay: 0.25s; }
+.pipeline-card:nth-child(3) .bar span { animation-delay: 0.5s; }
+.pipeline-card:nth-child(4) .bar span { animation-delay: 0.75s; }
+.pipeline-card:nth-child(5) .bar span { animation-delay: 1s; }
+@keyframes move {
+  0%,100% { transform: translateX(0); opacity: 0.72; }
+  50% { transform: translateX(18%); opacity: 1; }
+}
+.feature-card, .compare-card, .example-card { position: relative; overflow: hidden; }
+.feature-card::before, .compare-card::before, .example-card::before {
+  content: '';
+  position: absolute; inset: 0 0 auto 0; height: 3px; background: var(--gradient-line);
+}
+.card-type {
+  display: inline-flex; align-items: center; gap: 8px;
+  font-family: 'JetBrains Mono', monospace; font-size: 0.7rem; letter-spacing: 1.2px;
+  text-transform: uppercase; color: var(--accent-1); margin-bottom: 12px;
+}
+.code-block {
+  background: var(--bg-code);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius);
+  overflow: hidden;
+  margin: 1.5rem 0;
+}
+.code-block-header {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 10px 16px;
+  background: rgba(255,255,255,0.03);
+  border-bottom: 1px solid var(--border-subtle);
+}
+.code-lang {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.72rem;
+  color: var(--accent-1);
+}
+.code-block pre {
+  padding: 16px 20px;
+  overflow-x: auto;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.82rem;
+  line-height: 1.65;
+  color: #d7e2f0;
+}
+@media (max-width: 980px) {
+  .pipeline-flow { grid-template-columns: 1fr; }
+  .pipeline-card::after { display: none; }
+}
+@media (max-width: 720px) {
+  .content-wrapper { padding: 0 1.15rem 5rem; }
+  .hero { padding: 1.35rem; }
+  .hero h1 { letter-spacing: -1.2px; }
+}
+</style>
+</head>
+<body>
+<div class="scroll-progress" id="scrollProgress"></div>
+
+<section class="hero">
+  <div class="hero-particles" id="heroParticles"></div>
+  <div class="hero-label"><span class="dot-indicator"></span> Multimodal RAG · Module 11 of 13</div>
+  <h1><span class="gradient-text">Agentic RAG</span>: Retrieval That Thinks, Plans, and Adapts</h1>
+  <p class="hero-subtitle">
+    This module explains how agentic RAG upgrades traditional one-shot retrieval into an iterative, goal-directed process that can plan,
+    choose tools, re-retrieve, validate evidence, and handle complex multimodal tasks like warranty claims and multi-source travel planning.
+  </p>
+  <div class="hero-scroll-cue"><span>Continue</span><div class="arrow"></div></div>
+</section>
+
+<div class="content-wrapper">
+
+<div class="section">
+  <div class="section-number">01 — Goal</div>
+  <h2>Why Agentic RAG Matters</h2>
+
+  <p class="lead">
+    The goal is to explain how agentic RAG transforms traditional RAG from a one-shot retrieval system into an intelligent, iterative,
+    goal-directed process powered by an AI agent.
+  </p>
+
+  <div class="goal-grid">
+    <div class="mini-card">
+      <h4>You will learn</h4>
+      <ul>
+        <li>Why traditional RAG fails on complex, multi-hop, or dynamic queries</li>
+        <li>The core workflow of agentic RAG</li>
+        <li>Key architectural features like dynamic retrieval, tool diversity, planning, memory, and observability</li>
+      </ul>
+    </div>
+    <div class="mini-card">
+      <h4>You will also learn</h4>
+      <ul>
+        <li>Single-agent versus multi-agent implementations</li>
+        <li>Real-world applications, benefits, limitations, and implementation concerns</li>
+        <li>A detailed travel-planning example showing multi-source orchestration</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="formula-card">
+    <div class="formula-label">Core Shift</div>
+    <div class="formula-math">from one-shot retrieval to iterative retrieval with planning, evaluation, and retry</div>
+    <div class="formula-explain">
+      Agentic RAG keeps retrieval in the loop instead of treating it as a single pre-processing step.
+    </div>
+  </div>
+</div>
+
+<div class="gradient-divider"></div>
+
+<div class="section">
+  <div class="section-number">02 — Traditional RAG Limits</div>
+  <h2>Why Traditional RAG Breaks on Harder Tasks</h2>
+
+  <p>
+    Traditional RAG usually follows a fixed pipeline: index documents, perform a one-off similarity search, then pass the top-K chunks into the LLM for answer generation.
+    That works well for straightforward factual questions, but it breaks down when the query needs several reasoning hops, several data sources, or dynamic adaptation.
+  </p>
+
+  <div class="pipeline-stage">
+    <div class="stage-header">
+      <span>Traditional RAG Pipeline</span>
+      <span>INDEX → RETRIEVE ONCE → GENERATE</span>
+    </div>
+    <div class="pipeline-flow">
+      <div class="pipeline-card">
+        <div class="pipeline-tag">Stage 1</div>
+        <h4>Indexing</h4>
+        <p>Chunk, embed, and store documents in a vector database.</p>
+        <div class="pipeline-visual"><div class="bar"><span></span></div><div class="bar"><span></span></div></div>
+      </div>
+      <div class="pipeline-card">
+        <div class="pipeline-tag">Stage 2</div>
+        <h4>Retrieval</h4>
+        <p>Run one similarity search and fetch the top-K chunks.</p>
+        <div class="pipeline-visual"><div class="bar"><span></span></div><div class="bar"><span></span></div></div>
+      </div>
+      <div class="pipeline-card">
+        <div class="pipeline-tag">Stage 3</div>
+        <h4>Generation</h4>
+        <p>Pass query plus retrieved context to the LLM.</p>
+        <div class="pipeline-visual"><div class="bar"><span></span></div><div class="bar"><span></span></div></div>
+      </div>
+      <div class="pipeline-card">
+        <div class="pipeline-tag">Stage 4</div>
+        <h4>Failure Mode</h4>
+        <p>If the first retrieval is incomplete, the opportunity is lost.</p>
+        <div class="pipeline-visual"><div class="bar"><span></span></div><div class="bar"><span></span></div></div>
+      </div>
+      <div class="pipeline-card">
+        <div class="pipeline-tag">Stage 5</div>
+        <h4>Opaque Result</h4>
+        <p>Reasoning is buried inside one prompt, so debugging is hard.</p>
+        <div class="pipeline-visual"><div class="bar"><span></span></div><div class="bar"><span></span></div></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="feature-grid">
+    <div class="feature-card">
+      <div class="card-type">Single-Turn Retrieval</div>
+      <p>No follow-up retrieval rounds, so multi-hop evidence chaining is weak or impossible.</p>
+    </div>
+    <div class="feature-card">
+      <div class="card-type">Fixed Tooling</div>
+      <p>Usually limited to vector search, without SQL, APIs, calculators, or web sources.</p>
+    </div>
+    <div class="feature-card">
+      <div class="card-type">Limited Adaptability</div>
+      <p>If the first retrieval misses, the system often answers vaguely or says it does not know.</p>
+    </div>
+    <div class="feature-card">
+      <div class="card-type">Opaque Reasoning</div>
+      <p>Developers cannot easily trace why the answer succeeded or failed.</p>
+    </div>
+  </div>
+
+  <div class="warning">
+    <p>
+      This is the core limitation: traditional RAG assumes the right evidence can be found in one shot. Real tasks like warranty claims,
+      policy interpretation, troubleshooting, or travel planning often do not work that way.
+    </p>
+  </div>
+</div>
+
+<div class="gradient-divider"></div>
+
+<div class="section">
+  <div class="section-number">03 — What Agentic RAG Is</div>
+  <h2>Agentic RAG Turns Retrieval Into a Reason–Act–Observe Loop</h2>
+
+  <p>
+    Agentic RAG inserts an AI agent into the retrieval process, so retrieval becomes a goal-directed, multi-step loop rather than a one-off operation.
+    The agent can decide whether retrieval is needed, which tool to use, how to form the query, whether the evidence is sufficient, and whether to retrieve again.
+  </p>
+
+  <div class="pipeline-stage">
+    <div class="stage-header">
+      <span>Agentic RAG Workflow</span>
+      <span>UNDERSTAND → PLAN → RETRIEVE → EVALUATE → ITERATE → ANSWER</span>
+    </div>
+    <div class="pipeline-flow">
+      <div class="pipeline-card">
+        <div class="pipeline-tag">Step 1</div>
+        <h4>Task Understanding</h4>
+        <p>Parse the intent and judge whether the task is simple or needs decomposition.</p>
+        <div class="pipeline-visual"><div class="bar"><span></span></div><div class="bar"><span></span></div></div>
+      </div>
+      <div class="pipeline-card">
+        <div class="pipeline-tag">Step 2</div>
+        <h4>Strategy Planning</h4>
+        <p>Create a roadmap of sub-tasks and evidence needs.</p>
+        <div class="pipeline-visual"><div class="bar"><span></span></div><div class="bar"><span></span></div></div>
+      </div>
+      <div class="pipeline-card">
+        <div class="pipeline-tag">Step 3</div>
+        <h4>Tool Selection + Retrieval</h4>
+        <p>Choose the right retriever or tool for each sub-goal and fetch evidence.</p>
+        <div class="pipeline-visual"><div class="bar"><span></span></div><div class="bar"><span></span></div></div>
+      </div>
+      <div class="pipeline-card">
+        <div class="pipeline-tag">Step 4</div>
+        <h4>Self-Evaluation</h4>
+        <p>Check whether the evidence is sufficient, trustworthy, and complete.</p>
+        <div class="pipeline-visual"><div class="bar"><span></span></div><div class="bar"><span></span></div></div>
+      </div>
+      <div class="pipeline-card">
+        <div class="pipeline-tag">Step 5</div>
+        <h4>Iterate or Answer</h4>
+        <p>Refine the strategy, switch tools, or generate the final answer when ready.</p>
+        <div class="pipeline-visual"><div class="bar"><span></span></div><div class="bar"><span></span></div></div>
+      </div>
+    </div>
+  </div>
+
+  <h3>The Full 8-Step Agentic Workflow</h3>
+  <ol>
+    <li><strong>User input:</strong> the user asks a question or requests a task.</li>
+    <li><strong>Task understanding:</strong> the agent parses intent and judges whether the task is simple or needs decomposition.</li>
+    <li><strong>Strategy planning:</strong> it creates a roadmap of sub-tasks and dependencies.</li>
+    <li><strong>Tool selection:</strong> it decides which retriever or external tool fits each sub-task.</li>
+    <li><strong>Document retrieval:</strong> it performs targeted retrieval from the chosen sources.</li>
+    <li><strong>Self-evaluation:</strong> it checks whether the retrieved evidence is sufficient and trustworthy.</li>
+    <li><strong>Iterative reasoning:</strong> it loops back through planning and retrieval until enough evidence is gathered.</li>
+    <li><strong>Answer generation:</strong> it composes the final answer from the curated context.</li>
+  </ol>
+
+  <p>
+    This is the key difference from traditional RAG: iterative reasoning is not a cosmetic extra. It is the mechanism that lets the system recover from weak first retrievals,
+    reformulate queries, switch tools, and keep working until the evidence is genuinely good enough.
+  </p>
+
+  <p>
+    In practice, this is a Reason–Act–Observe loop applied to retrieval itself.
+    The agent keeps asking: do I have enough evidence, do I trust it, and is there a better source or a better query?
+  </p>
+
+  <div class="code-block">
+    <div class="code-block-header"><span class="code-lang">Python · Agentic RAG Loop Sketch</span></div>
+    <pre>state = {"goal": user_query, "evidence": [], "done": False}
+
+while not state["done"]:
+    plan = make_plan(state)
+    tool = choose_tool(plan)
+    result = tool.run(plan)
+    state["evidence"].append(result)
+    verdict = evaluate_evidence(state)
+    if verdict["enough"]:
+        state["done"] = True
+    else:
+        state["goal"] = verdict["refined_goal"]
+
+answer = generate_answer(state["evidence"], user_query)</pre>
+  </div>
+</div>
+
+<div class="gradient-divider"></div>
+
+<div class="section">
+  <div class="section-number">04 — Key Features</div>
+  <h2>The Architectural Features That Make Agentic RAG Different</h2>
+
+  <div class="feature-grid">
+    <div class="feature-card">
+      <div class="card-type">Dynamic Retrieval</div>
+      <p>The agent can decide whether retrieval is needed, adjust granularity, refine queries iteratively, and switch between summary and detail retrieval.</p>
+    </div>
+    <div class="feature-card">
+      <div class="card-type">Tool Diversity</div>
+      <p>The agent can use vector search, SQL databases, APIs, web search, knowledge graphs, and calculators instead of only one vector store.</p>
+    </div>
+    <div class="feature-card">
+      <div class="card-type">Reasoning and Planning</div>
+      <p>The system explicitly decomposes tasks, sequences sub-goals, and uses conditional logic to decide the next action.</p>
+    </div>
+    <div class="feature-card">
+      <div class="card-type">Memory and State</div>
+      <p>The agent remembers what has already been retrieved, what failed, and what user-specific context matters.</p>
+    </div>
+    <div class="feature-card">
+      <div class="card-type">Observability</div>
+      <p>Intermediate steps, tool calls, retrieved context, and reasoning traces are visible for debugging and evaluation.</p>
+    </div>
+    <div class="feature-card">
+      <div class="card-type">Single vs Multi-Agent</div>
+      <p>The system can be a single routing agent or several specialized agents coordinated together.</p>
+    </div>
+  </div>
+
+  <p>
+    Industry writeups often emphasize slightly different parts of the same shift. Weaviate tends to emphasize routing and source choice.
+    Arize AI highlights dynamic retrieval, planning, and tool diversity. Patronus AI emphasizes observability and traceability for debugging.
+    Nvidia highlights the value of dynamic knowledge access in constantly changing domains.
+  </p>
+
+  <div class="insight">
+    <p>
+      Agentic RAG is not just “RAG plus more tools.” The real difference is that retrieval becomes a controlled decision process instead of a fixed retrieval subroutine.
+    </p>
+  </div>
+</div>
+
+<div class="gradient-divider"></div>
+
+<div class="section">
+  <div class="section-number">05 — Traditional vs Agentic</div>
+  <h2>How Agentic RAG Differs From Traditional RAG</h2>
+
+  <div class="compare-grid">
+    <div class="compare-card">
+      <div class="card-type">Execution Flow</div>
+      <p><strong>Traditional RAG:</strong> fixed one-shot pipeline.</p>
+      <p><strong>Agentic RAG:</strong> multi-step loop with planning, retrieval, evaluation, and iteration.</p>
+    </div>
+    <div class="compare-card">
+      <div class="card-type">Reasoning</div>
+      <p><strong>Traditional RAG:</strong> retrieval then response.</p>
+      <p><strong>Agentic RAG:</strong> multi-hop reasoning with query decomposition and re-planning.</p>
+    </div>
+    <div class="compare-card">
+      <div class="card-type">Tool Integration</div>
+      <p><strong>Traditional RAG:</strong> usually limited to vector search.</p>
+      <p><strong>Agentic RAG:</strong> can call vector stores, SQL, APIs, web search, calculators, and more.</p>
+    </div>
+    <div class="compare-card">
+      <div class="card-type">Adaptability and Recovery</div>
+      <p><strong>Traditional RAG:</strong> static and brittle after a bad first retrieval.</p>
+      <p><strong>Agentic RAG:</strong> can retry, refine, switch tools, and recover from poor retrievals.</p>
+    </div>
+    <div class="compare-card">
+      <div class="card-type">Observability</div>
+      <p><strong>Traditional RAG:</strong> reasoning is hidden in one prompt.</p>
+      <p><strong>Agentic RAG:</strong> exposes intermediate steps and tool traces.</p>
+    </div>
+    <div class="compare-card">
+      <div class="card-type">Personalization</div>
+      <p><strong>Traditional RAG:</strong> limited unless explicitly engineered.</p>
+      <p><strong>Agentic RAG:</strong> can use memory and user history more naturally.</p>
+    </div>
+  </div>
+</div>
+
+<div class="gradient-divider"></div>
+
+<div class="section">
+  <div class="section-number">06 — Single vs Multi-Agent</div>
+  <h2>How Agentic RAG Can Be Implemented as One Agent or a Team</h2>
+
+  <div class="compare-grid">
+    <div class="compare-card">
+      <div class="card-type">Single-Agent Router</div>
+      <p>One agent handles task understanding, tool choice, retrieval, evaluation, and answer generation by itself.</p>
+      <p><strong>Benefit:</strong> simpler to build and easier to deploy.</p>
+      <p><strong>Trade-off:</strong> one controller must juggle every source, every tool, and every reasoning step.</p>
+    </div>
+    <div class="compare-card">
+      <div class="card-type">Multi-Agent Team</div>
+      <p>Specialist agents handle different sources or capabilities while a coordinator routes work and combines results.</p>
+      <p><strong>Benefit:</strong> greater specialization and scalability across more complex workflows.</p>
+      <p><strong>Trade-off:</strong> coordination overhead, state management, and debugging complexity are all higher.</p>
+    </div>
+  </div>
+
+  <p>
+    A simple router agent might choose between an internal database and a web search source. A more advanced multi-agent setup might use one agent for policy documents,
+    one for databases, one for image inspection, and a coordinator to reconcile results. That trade-off matters in practice:
+    single-agent routing is often cheaper and easier to ship, while multi-agent orchestration scales better when the workflow mixes very different tasks.
+  </p>
+</div>
+
+<div class="gradient-divider"></div>
+
+<div class="section">
+  <div class="section-number">07 — Applications and Benefits</div>
+  <h2>Where Agentic RAG Creates Real Value</h2>
+
+  <p>
+    One useful framing is to think of agentic RAG as a research assistant pattern: break down the prompt, gather evidence from multiple sources,
+    track progress, and synthesize a response that is grounded in what was actually found.
+  </p>
+
+  <div class="example-grid">
+    <div class="example-card">
+      <div class="card-type">Research Assistants</div>
+      <p>Break big questions into sub-questions, fetch papers, extract findings, and synthesize cited insights.</p>
+    </div>
+    <div class="example-card">
+      <div class="card-type">Customer Support</div>
+      <p>Combine user profile, transaction history, policy documents, and troubleshooting guidance in one adaptive loop.</p>
+    </div>
+    <div class="example-card">
+      <div class="card-type">Coding Assistants</div>
+      <p>Query documentation, run code examples, inspect errors, and adjust retrieval based on intermediate results.</p>
+    </div>
+    <div class="example-card">
+      <div class="card-type">Enterprise Search</div>
+      <p>Combine internal databases, knowledge graphs, and external sources to answer complex business questions.</p>
+    </div>
+    <div class="example-card">
+      <div class="card-type">Dynamic Information Retrieval</div>
+      <p>Update answers continuously from changing sources like news, weather, market data, and policy feeds.</p>
+    </div>
+  </div>
+
+  <p>
+    Some organizations report error-rate reductions of up to 78% when moving from traditional RAG to agentic RAG.
+    The reason is not magic. The system simply gets more chances to ask better questions, use better tools, and recover from weak first retrievals.
+  </p>
+</div>
+
+<div class="gradient-divider"></div>
+
+<div class="section">
+  <div class="section-number">08 — Limitations</div>
+  <h2>What Agentic RAG Makes Better, and What It Makes Harder</h2>
+
+  <div class="feature-grid">
+    <div class="feature-card">
+      <div class="card-type">Higher Latency and Cost</div>
+      <p>Multi-step reasoning and multiple tool calls cost more than one-shot retrieval, so caching and careful orchestration matter.</p>
+    </div>
+    <div class="feature-card">
+      <div class="card-type">Tool Reliability</div>
+      <p>If a database, API, or web source fails, the agent needs retry logic and fallback strategies.</p>
+    </div>
+    <div class="feature-card">
+      <div class="card-type">Safety and Guardrails</div>
+      <p>External tools increase the risk of exposing sensitive data or calling harmful actions without enough checks.</p>
+    </div>
+    <div class="feature-card">
+      <div class="card-type">Implementation Complexity</div>
+      <p>State, memory, coordination, observability, and evaluation are all significantly harder to engineer than vanilla RAG.</p>
+    </div>
+    <div class="feature-card">
+      <div class="card-type">Evaluation Difficulty</div>
+      <p>You must score reasoning quality, retrieval efficiency, tool use, cost, and latency rather than only answer correctness.</p>
+    </div>
+  </div>
+
+  <div class="warning">
+    <p>
+      Agentic RAG is not a free upgrade. It gives you more recovery power and more intelligence, but also more moving parts, more cost, and more ways to fail if the orchestration is weak.
+    </p>
+  </div>
+</div>
+
+<div class="gradient-divider"></div>
+
+<div class="section">
+  <div class="section-number">09 — Travel Planner Example</div>
+  <h2>How Agentic RAG Works on a Multi-Source Travel Planning Task</h2>
+
+  <p>
+    The source’s example asks for a 7-day Japan trip during cherry-blossom season, including flights from San Francisco to Tokyo,
+    hotels under a nightly budget, Tokyo and Kyoto activities, and current entry requirements.
+    This task is perfect for agentic RAG because it needs multiple tools, multiple retrieval rounds, and ongoing evaluation of whether the itinerary still satisfies constraints.
+  </p>
+
+  <h3>Step 1: Task Understanding and Planning</h3>
+  <p>
+    The agent recognizes several sub-goals: entry requirements, flights, hotels, and activities.
+    It plans to check entry rules first, then flights, then hotels, then activities.
+  </p>
+
+  <h3>Step 2: Tool Selection</h3>
+  <ul>
+    <li>Government database and web search for entry requirements and vaccine advisories</li>
+    <li>Travel booking API for flights and hotels</li>
+    <li>Vector search over travel blogs plus a knowledge graph for activities and tourist attractions</li>
+  </ul>
+
+  <h3>Step 3: Iterative Retrieval and Reasoning</h3>
+  <ul>
+    <li>Fetch entry rules and health advisories first, updating the plan immediately if travel requires a booster shot or a different entry document.</li>
+    <li>Search flights, then refine the query if the results include very long layovers or miss the desired travel window.</li>
+    <li>Query hotels under the nightly budget, cross-check review quality with web search, and expand the search radius or lower star-rating constraints if everything is too expensive.</li>
+    <li>Retrieve cherry-blossom recommendations from blogs, then verify opening schedules, bloom timing, and alignment with the user’s interests through a knowledge graph.</li>
+  </ul>
+
+  <p>
+    This step-by-step refinement is the point of the agentic design. If the first hotel set violates the budget, the search changes.
+    If the first flight set has unacceptable layovers, the flight filter changes. If the first activity suggestions do not match the user’s interests, the activity query changes.
+    The itinerary improves because the retrieval plan itself evolves.
+  </p>
+
+  <div class="code-block">
+    <div class="code-block-header"><span class="code-lang">Python · Multi-Source Orchestration Sketch</span></div>
+    <pre>plan = ["entry_rules", "flights", "hotels", "activities"]
+results = {}
+
+for step in plan:
+    results[step] = run_best_tool(step, constraints, results)
+    if not satisfies_constraints(step, results[step]):
+        constraints = refine_constraints(step, constraints, results[step])
+        results[step] = run_best_tool(step, constraints, results)
+
+final_itinerary = compose_itinerary(results)</pre>
+  </div>
+</div>
+
+<div class="gradient-divider"></div>
+
+<div class="section">
+  <div class="section-number">10 — Implementing Agentic RAG</div>
+  <h2>What It Takes to Build One in Practice</h2>
+
+  <h3>Frameworks</h3>
+  <p>
+    LangChain and LangGraph are both useful building blocks. LangChain simplifies access to external tools and function calls.
+    LangGraph makes graph-based workflows easier, including retries, confidence-threshold branching, memory integration, and multi-agent orchestration.
+  </p>
+
+  <h3>Function Calling</h3>
+  <p>
+    Many modern LLM systems support function-calling schemas. The model chooses a function and fills arguments, the orchestration layer executes it,
+    and the result flows back into the reasoning loop. This is one of the most common practical foundations of agentic RAG.
+  </p>
+
+  <div class="code-block">
+    <div class="code-block-header"><span class="code-lang">JSON · Function Calling Schema Example</span></div>
+    <pre>{
+  "tool_name": "lookup_warranty_policy",
+  "description": "Fetch policy clauses for a product model and region",
+  "parameters": {
+    "model_id": "string",
+    "purchase_region": "string",
+    "damage_type": "string"
+  }
+}</pre>
+  </div>
+
+  <h3>Memory Management</h3>
+  <p>
+    Agentic RAG needs both short-term memory for the current loop and long-term memory for user profiles, prior retrieval history, and persistent context.
+    Common patterns include vector stores for long-term memory, key-value caches for intermediate results, and stateful tools for persistent context across sessions.
+  </p>
+
+  <h3>Guardrails</h3>
+  <p>
+    Input guardrails help block prompt injection and sensitive data leakage. Output guardrails inspect the final answer and any tool-triggered action for privacy, factuality, and policy compliance.
+    Without those checks, the agent can retrieve unsafe content or reveal information it should not expose.
+  </p>
+
+  <h3>Evaluation</h3>
+  <p>
+    Evaluating agentic RAG requires more than answer accuracy. Developers need to inspect reasoning quality, number of tool calls, cost, latency, and retrieval efficiency.
+    Benchmarks such as AgentBench, WebArena, and VisualWebArena are useful because they test long-horizon agentic workflows instead of only final answers.
+  </p>
+
+  <p>
+    The implementation lesson is that agentic RAG is partly an LLM problem and partly a systems-engineering problem. The reasoning loop is only useful if tool schemas are clean,
+    memory is reliable, retries are well defined, and observability is strong enough to debug why the agent made each decision.
+  </p>
+</div>
+
+<div class="gradient-divider"></div>
+
+<div class="section">
+  <div class="section-number">11 — Conclusion</div>
+  <h2>Key Takeaways from Module 11</h2>
+
+  <div class="takeaway-grid">
+    <div class="mini-card"><p><strong>Agentic RAG</strong> turns static retrieval into dynamic, adaptive information gathering.</p></div>
+    <div class="mini-card"><p><strong>Core strengths:</strong> multi-hop reasoning, multi-source orchestration, tool diversity, and self-evaluation.</p></div>
+    <div class="mini-card"><p><strong>Best fit:</strong> tasks that require chaining evidence, refining searches, or recovering from bad initial retrievals.</p></div>
+    <div class="mini-card"><p><strong>Architectural edge:</strong> memory, planning, observability, and tool selection make the system much more robust than vanilla RAG.</p></div>
+    <div class="mini-card"><p><strong>Main costs:</strong> latency, engineering complexity, safety concerns, and harder evaluation.</p></div>
+    <div class="mini-card"><p><strong>TechVista relevance:</strong> a warranty claim agent can verify the order, analyze the photo, lookup the policy, cite the clause, and escalate only when needed.</p></div>
+  </div>
+
+  <p>
+    In TechVista 2026, a customer asking <code>Is this crack covered under warranty?</code> with a photo is exactly the kind of task where agentic RAG wins.
+    The agent can plan the retrieval path, refine image analysis if the photo is blurry, switch to the database for serial-number matching,
+    cite the exact policy clause, and return a grounded answer with a confidence signal instead of a generic one-shot response.
+  </p>
+  <p>
+    Choose agentic RAG when the task needs chaining evidence, switching tools, recovering from bad retrieval, or coordinating internal and external sources.
+    In e-commerce terms, that often means photo analysis, policy lookup, database checks, and form submission in one flow. That is where one-shot retrieval starts to feel brittle and agentic retrieval starts to feel necessary.
+  </p>
+</div>
+
+</div>
+
+<script>
+window.addEventListener('scroll', () => {
+  const h = document.documentElement;
+  document.getElementById('scrollProgress').style.width = ((h.scrollTop / (h.scrollHeight - h.clientHeight)) * 100) + '%';
+});
+
+const heroParticles = document.getElementById('heroParticles');
+for (let i = 0; i < 34; i++) {
+  const dot = document.createElement('div');
+  dot.className = 'dot';
+  dot.style.left = Math.random() * 100 + '%';
+  dot.style.top = Math.random() * 100 + '%';
+  dot.style.animationDelay = Math.random() * 5 + 's';
+  dot.style.animationDuration = (5 + Math.random() * 4) + 's';
+  heroParticles.appendChild(dot);
+}
+</script>
+</body>
+</html>
