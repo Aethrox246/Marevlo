@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import {
     ChevronRight, Play, BookOpen, Layers, Brain,
@@ -407,6 +407,26 @@ const COURSE_TREE = [
             { id: 'clustering-part11', label: 'Part 11', description: 'Capstone project: building an end-to-end clustering pipeline in production.', icon: Code2, isLeaf: true, duration: '3h', level: 'Expert' },
         ],
     },
+    {
+        id: 'langgraph',
+        label: 'LangGraph',
+        description: 'Build stateful, multi-agent applications with LangGraph — the graph framework for agentic AI.',
+        icon: GitBranch,
+        gradient: 'linear-gradient(135deg, #ec4899 0%, #f43f5e 50%, #8b5cf6 100%)',
+        lineGradient: 'from-pink-500 via-rose-500 to-violet-500',
+        tag: 'New 🌟',
+        tagColor: '#ec4899',
+        children: [
+            { id: 'langgraph-module-1', label: 'Module 1', description: 'Module 1 — Introduction and fundamentals.', icon: BookOpen, isLeaf: true, duration: '20m', level: 'Beginner' },
+            { id: 'langgraph-module-2', label: 'Module 2', description: 'Module 2 — Core concepts and basics.', icon: Network, isLeaf: true, duration: '35m', level: 'Beginner' },
+            { id: 'langgraph-module-3', label: 'Module 3', description: 'Module 3 — Building blocks and structures.', icon: Database, isLeaf: true, duration: '30m', level: 'Intermediate' },
+            { id: 'langgraph-module-4', label: 'Module 4', description: 'Module 4 — Advanced patterns and techniques.', icon: Cpu, isLeaf: true, duration: '45m', level: 'Intermediate' },
+            { id: 'langgraph-module-5', label: 'Module 5', description: 'Module 5 — Complex implementations.', icon: GitBranch, isLeaf: true, duration: '50m', level: 'Advanced' },
+            { id: 'langgraph-module-6', label: 'Module 6', description: 'Module 6 — Optimization and scaling.', icon: ServerCog, isLeaf: true, duration: '40m', level: 'Advanced' },
+            { id: 'langgraph-module-7', label: 'Module 7', description: 'Module 7 — Real-world applications.', icon: Zap, isLeaf: true, duration: '35m', level: 'Intermediate' },
+            { id: 'langgraph-module-8', label: 'Module 8', description: 'Module 8 — Capstone and deployment.', icon: Code2, isLeaf: true, duration: '55m', level: 'Advanced' },
+        ],
+    },
 ];
 
 
@@ -443,25 +463,66 @@ function findNode(tree, path) {
 //  COURSE CARD — both branch (folder) & leaf
 // ─────────────────────────────────────────────
 function CourseCard({ node, onDrillDown, onStartLeaf, isRootCategory }) {
+    const cardRef = useRef(null);
+    const glareRef = useRef(null);
     const [hovered, setHovered] = useState(false);
+    const [transform, setTransform] = useState('perspective(1000px) rotateX(0deg) rotateY(0deg) scale3d(1, 1, 1)');
+
     const Icon = node.icon ?? BookOpen;
     const isFolder = !node.isLeaf;
     const leafCount = isFolder ? countLeaves(node) : 0;
     const lvl = LEVEL_COLORS[node.level] ?? LEVEL_COLORS['Intermediate'];
 
+    const handleMouseMove = (e) => {
+        if (!cardRef.current) return;
+        const rect = cardRef.current.getBoundingClientRect();
+        const x = e.clientX - rect.left;
+        const y = e.clientY - rect.top;
+        
+        const centerX = rect.width / 2;
+        const centerY = rect.height / 2;
+        
+        // Calculate dynamic rotation
+        const rotateX = ((y - centerY) / centerY) * -12;
+        const rotateY = ((x - centerX) / centerX) * 12;
+        
+        setTransform(`perspective(1000px) rotateX(${rotateX}deg) rotateY(${rotateY}deg) scale3d(1.02, 1.02, 1.02)`);
+
+        // Create glare lighting effect tracking the cursor
+        if (glareRef.current) {
+            glareRef.current.style.background = `radial-gradient(circle at ${x}px ${y}px, rgba(255,255,255,0.12) 0%, transparent 50%)`;
+        }
+    };
+
+    const handleMouseLeave = () => {
+        setHovered(false);
+        setTransform('perspective(1000px) rotateX(0deg) rotateY(0deg) scale3d(1, 1, 1)');
+    };
+
     return (
         <div
-            className="flex flex-col rounded-2xl overflow-hidden transition-all duration-300 cursor-pointer"
+            ref={cardRef}
+            className="relative flex flex-col rounded-2xl overflow-hidden cursor-pointer"
             style={{
                 backgroundColor: 'var(--color-surface)',
                 border: `1px solid ${hovered ? 'rgba(99,102,241,0.4)' : 'var(--color-border)'}`,
-                boxShadow: hovered ? '0 12px 40px rgba(99,102,241,0.18)' : '0 2px 8px rgba(0,0,0,0.04)',
-                transform: hovered ? 'translateY(-3px)' : 'translateY(0)',
+                boxShadow: hovered ? '0 30px 60px rgba(0,0,0,0.12), 0 0 20px rgba(99,102,241,0.15)' : '0 2px 8px rgba(0,0,0,0.04)',
+                transform: transform,
+                transition: hovered ? 'box-shadow 0.3s ease, border 0.3s ease, transform 0.1s ease-out' : 'all 0.5s ease',
+                transformStyle: 'preserve-3d',
+                willChange: 'transform',
             }}
             onMouseEnter={() => setHovered(true)}
-            onMouseLeave={() => setHovered(false)}
+            onMouseMove={handleMouseMove}
+            onMouseLeave={handleMouseLeave}
             onClick={() => isFolder ? onDrillDown(node) : onStartLeaf(node)}
         >
+            {/* Dynamic Glare Overlay */}
+            <div 
+                ref={glareRef} 
+                className="absolute inset-0 pointer-events-none rounded-2xl transition-opacity duration-300 z-10" 
+                style={{ opacity: hovered ? 1 : 0 }} 
+            />
             {/* Gradient top line */}
             <div className={`h-[3px] bg-gradient-to-r ${node.lineGradient || 'from-indigo-500 via-purple-500 to-cyan-500'}`} />
 
