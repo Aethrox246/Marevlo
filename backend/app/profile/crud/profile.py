@@ -163,8 +163,8 @@ def get_stats(db: Session, user_id: int) -> dict:
         {"uid": uid},
     ).scalar() or 0
 
-    # Streak = max consecutive calendar days with ANY activity_log entry
-    streak = _compute_streak(db, uid)
+    # Streak calculation is currently disabled — returns 0 until re-implemented
+    streak = 0
 
     return {
         "xp": xp,
@@ -177,36 +177,8 @@ def get_stats(db: Session, user_id: int) -> dict:
 
 
 def _compute_streak(db: Session, user_id: int) -> int:
-    """Count consecutive calendar days ending today with at least one activity log."""
-    rows = db.execute(
-        text("""
-            SELECT DISTINCT DATE(created_at AT TIME ZONE 'UTC') AS day
-            FROM activity_logs
-            WHERE user_id = :uid
-            ORDER BY day DESC
-        """),
-        {"uid": user_id},
-    ).fetchall()
-
-    if not rows:
-        return 0
-
-    today = date.today()
-    streak = 0
-    expected = today
-
-    for (day,) in rows:
-        if day == expected:
-            streak += 1
-            expected = expected - timedelta(days=1)
-        elif day == today - timedelta(days=1) and streak == 0:
-            # Allow yesterday as starting day (user hasn't acted today yet)
-            streak += 1
-            expected = day - timedelta(days=1)
-        else:
-            break
-
-    return streak
+    """Streak calculation is disabled. Returns 0 until re-implemented."""
+    return 0
 
 
 def get_activity(db: Session, user_id: int, days: int = 70) -> list:
@@ -249,7 +221,7 @@ def check_and_award_achievements(db: Session, user_id: int):
         {"uid": uid},
     ).scalar() or 0
 
-    streak = _compute_streak(db, uid)
+    streak = 0  # Streak calculation disabled — always 0 for now
 
     courses = db.execute(
         text("SELECT COUNT(*) FROM activity_logs WHERE user_id=:uid AND action='course_completed'"),

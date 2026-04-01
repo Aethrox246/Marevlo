@@ -17,21 +17,64 @@ export function AuthProvider({ children }) {
 
     useWebSocket(user);
 
+    const logout = () => {
+        setUser(null);
+        setProfileStats({ xp: 0, level: 1, streak: 0, rank: null, courses_completed: 0, problems_solved: 0 });
+        setAchievements([]);
+        setProfileData(null);
+        localStorage.removeItem('marevlo_user');
+        localStorage.removeItem('access_token');
+        localStorage.removeItem('refresh_token');
+    };
+
     /** Make an authenticated API call */
     const apiCall = useCallback(async (path, options = {}) => {
-        const token = localStorage.getItem('access_token');
-        const headers = {
-            'Content-Type': 'application/json',
-            ...(token ? { Authorization: `Bearer ${token}` } : {}),
-            ...options.headers,
+        let token = localStorage.getItem('access_token');
+        const makeRequest = async (t) => {
+            const headers = {
+                'Content-Type': 'application/json',
+                ...(t ? { Authorization: `Bearer ${t}` } : {}),
+                ...options.headers,
+            };
+            return fetch(`${API_BASE}${path}`, { ...options, headers });
         };
-        const resp = await fetch(`${API_BASE}${path}`, { ...options, headers });
+
+        let resp = await makeRequest(token);
+        // Token expired - try to refresh once, then retry
+        if (resp.status === 401) {
+            const refreshToken = localStorage.getItem('refresh_token');
+            if (refreshToken) {
+                try {
+                    const r = await fetch(`${API_BASE}/auth/refresh`, {
+                        method: 'POST',
+                        headers: { Authorization: `Bearer ${refreshToken}` },
+                    });
+                    if (r.ok) {
+                        const data = await r.json();
+                        localStorage.setItem('access_token', data.access_token);
+                        localStorage.setItem('refresh_token', data.refresh_token);
+                        token = data.access_token;
+                        resp = await makeRequest(token);
+                    } else {
+                        logout();
+                        throw new Error('Session expired. Please login again.');
+                    }
+                } catch {
+                    logout();
+                    throw new Error('Session expired. Please login again.');
+                }
+            } else {
+                logout();
+                throw new Error('Session expired. Please login again.');
+            }
+        }
+
         if (!resp.ok) {
             const err = await resp.json().catch(() => ({}));
             throw new Error(err.detail || `HTTP ${resp.status}`);
         }
         return resp.json();
-    }, []);
+    }, [logout]);
 
     /** Refresh profile stats + achievements from backend */
     const refreshStats = useCallback(async () => {
@@ -47,7 +90,7 @@ export function AuthProvider({ children }) {
             // Keep user.xp in sync for XP bar
             setUser(prev => prev ? { ...prev, xp: stats.xp } : prev);
         } catch (e) {
-            // Not logged in or token expired — ignore silently
+            // Not logged in or token expired - ignore silently
             console.warn('Profile stats fetch failed:', e.message);
         }
     }, [apiCall]);
@@ -71,6 +114,31 @@ export function AuthProvider({ children }) {
         }
     }, [user?.id, refreshStats]);
 
+    // Background refresh to keep access token alive
+    useEffect(() => {
+        if (!user) return;
+        const interval = setInterval(async () => {
+            const refreshToken = localStorage.getItem('refresh_token');
+            if (!refreshToken) return;
+            try {
+                const r = await fetch(`${API_BASE}/auth/refresh`, {
+                    method: 'POST',
+                    headers: { Authorization: `Bearer ${refreshToken}` },
+                });
+                if (r.ok) {
+                    const data = await r.json();
+                    localStorage.setItem('access_token', data.access_token);
+                    localStorage.setItem('refresh_token', data.refresh_token);
+                } else {
+                    logout();
+                }
+            } catch {
+                // Network error - try again next interval
+            }
+        }, 13 * 60 * 1000);
+        return () => clearInterval(interval);
+    }, [user, logout]);
+
     const login = (userData) => {
         const username = userData.username || (userData.email ? userData.email.split('@')[0] : 'user');
         const displayName = userData.name || userData.username || 'User';
@@ -83,16 +151,6 @@ export function AuthProvider({ children }) {
         };
         setUser(userObj);
         localStorage.setItem('marevlo_user', JSON.stringify(userObj));
-    };
-
-    const logout = () => {
-        setUser(null);
-        setProfileStats({ xp: 0, level: 1, streak: 0, rank: null, courses_completed: 0, problems_solved: 0 });
-        setAchievements([]);
-        setProfileData(null);
-        localStorage.removeItem('marevlo_user');
-        localStorage.removeItem('access_token');
-        localStorage.removeItem('refresh_token');
     };
 
     const addPoints = (points = 50) => {

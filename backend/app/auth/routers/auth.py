@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException, status, Request
 from fastapi.security import OAuth2PasswordRequestForm
 from sqlalchemy.orm import Session
-from sqlalchemy import select
+from sqlalchemy import select, text
 from datetime import datetime, timezone, timedelta
 import random
 from redis import Redis
@@ -25,12 +25,29 @@ from app.auth.utils.email import send_otp_email
 from app.auth.dependencies import oauth2_scheme, limiter
 from app.core.config import REDIS_URL
 from app.core.firebase import verify_firebase_id_token
+from app.core.activity_model import ActivityLog
 
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 
 redis = Redis.from_url(REDIS_URL, decode_responses=True)
 logger = logging.getLogger("auth")
+
+
+def _log_login_once_per_day(db: Session, user_id: int, source: str) -> None:
+    exists = db.execute(
+        text("""
+            SELECT 1
+            FROM activity_logs
+            WHERE user_id = :uid
+              AND action = 'login'
+              AND DATE(created_at AT TIME ZONE 'UTC') = DATE(NOW() AT TIME ZONE 'UTC')
+            LIMIT 1
+        """),
+        {"uid": user_id},
+    ).scalar()
+    if not exists:
+        db.add(ActivityLog(user_id=user_id, action="login", meta={"source": source}))
 
 
 @router.post("/login", response_model=Token)
@@ -56,6 +73,7 @@ def login(
         ip_address=ip_address,
         device=(user_agent[:100] if user_agent else None),
     )
+    _log_login_once_per_day(db, user.id, "password")
     db.add(session)
     db.commit()
     db.refresh(session)
@@ -347,6 +365,7 @@ def google_login(
         ip_address=ip_address,
         device=(user_agent[:100] if user_agent else None),
     )
+    _log_login_once_per_day(db, user.id, "google")
     db.add(session)
     db.commit()
     db.refresh(session)
