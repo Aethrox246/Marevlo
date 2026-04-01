@@ -1,0 +1,928 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Module 5 — Multimodal Storage, Chunking, Metadata & Retrieval</title>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&amp;family=Outfit:wght@300;400;500;600;700;800;900&amp;family=Source+Serif+4:ital,wght@0,300;0,400;0,600;1,300;1,400&amp;display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg-primary: #0a0a0f;
+  --bg-card: #161622;
+  --bg-code: #0d0d18;
+  --text-primary: #e8e8f0;
+  --text-secondary: #9898b0;
+  --accent-1: #6c5ce7;
+  --accent-2: #00cec9;
+  --accent-3: #fd79a8;
+  --accent-4: #fdcb6e;
+  --accent-5: #55efc4;
+  --gradient-line: linear-gradient(90deg, #6c5ce7, #00cec9, #fd79a8, #fdcb6e);
+  --border-subtle: rgba(255,255,255,0.06);
+  --shadow-card: 0 4px 30px rgba(0,0,0,0.4);
+  --radius: 12px;
+  --radius-sm: 8px;
+}
+* { margin: 0; padding: 0; box-sizing: border-box; }
+html { scroll-behavior: smooth; }
+body {
+  background: var(--bg-primary);
+  color: var(--text-primary);
+  font-family: 'Outfit', sans-serif;
+  line-height: 1.7;
+  overflow-x: hidden;
+  -webkit-font-smoothing: antialiased;
+}
+.scroll-progress { position: fixed; top: 0; left: 0; height: 3px; z-index: 1000; background: var(--gradient-line); width: 0%; }
+.hero {
+  min-height: 100vh; display: flex; flex-direction: column; justify-content: center; align-items: center;
+  text-align: center; padding: 2rem; position: relative; overflow: hidden;
+}
+.hero::before {
+  content: ''; position: absolute; inset: 0;
+  background:
+    radial-gradient(ellipse 700px 430px at 20% 35%, rgba(108,92,231,0.14), transparent),
+    radial-gradient(ellipse 540px 360px at 78% 60%, rgba(0,206,201,0.08), transparent),
+    radial-gradient(ellipse 420px 280px at 56% 20%, rgba(253,121,168,0.08), transparent);
+}
+.hero-particles { position: absolute; inset: 0; pointer-events: none; }
+.hero-particles .dot {
+  position: absolute; width: 3px; height: 3px; border-radius: 50%;
+  background: var(--accent-2); opacity: 0; animation: floatDot 6s ease-in-out infinite;
+}
+@keyframes floatDot { 0%,100% { opacity: 0; transform: translateY(0); } 50% { opacity: 0.6; transform: translateY(-40px); } }
+.hero-label {
+  display: inline-flex; align-items: center; gap: 8px; background: rgba(108,92,231,0.1);
+  border: 1px solid rgba(108,92,231,0.25); border-radius: 100px; padding: 6px 18px;
+  font-size: 0.8rem; font-weight: 500; color: var(--accent-1); letter-spacing: 1.5px;
+  text-transform: uppercase; margin-bottom: 2rem;
+}
+.hero-label .dot-indicator {
+  width: 6px; height: 6px; border-radius: 50%; background: var(--accent-2); animation: pulse 2s ease-in-out infinite;
+}
+@keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: 0.3; } }
+.hero h1 { font-size: clamp(2.8rem, 6vw, 5rem); font-weight: 900; line-height: 1.08; letter-spacing: -2px; margin-bottom: 1.5rem; }
+.gradient-text {
+  background: var(--gradient-line); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;
+}
+.hero-subtitle {
+  font-family: 'Source Serif 4', serif; font-size: clamp(1.05rem, 2vw, 1.25rem);
+  color: var(--text-secondary); max-width: 820px; line-height: 1.8; font-weight: 300;
+}
+.hero-scroll-cue {
+  position: absolute; bottom: 3rem; display: flex; flex-direction: column; align-items: center;
+  gap: 8px; color: var(--text-secondary); font-size: 0.75rem; letter-spacing: 2px; text-transform: uppercase;
+}
+.hero-scroll-cue .arrow {
+  width: 20px; height: 20px; border-right: 2px solid var(--text-secondary); border-bottom: 2px solid var(--text-secondary);
+  transform: rotate(45deg); animation: bounceArrow 2s ease-in-out infinite;
+}
+@keyframes bounceArrow { 0%,100% { transform: rotate(45deg) translateY(0); } 50% { transform: rotate(45deg) translateY(6px); } }
+.content-wrapper { max-width: 980px; margin: 0 auto; padding: 0 2rem 6rem; }
+.section { margin-bottom: 5rem; }
+.section-number {
+  font-family: 'JetBrains Mono', monospace; font-size: 0.7rem; color: var(--accent-2);
+  letter-spacing: 3px; text-transform: uppercase; margin-bottom: 0.75rem; display: flex; align-items: center; gap: 10px;
+}
+.section-number::after { content: ''; flex: 1; height: 1px; background: linear-gradient(90deg, var(--accent-2), transparent); opacity: 0.3; }
+h2 { font-size: clamp(1.8rem, 3.5vw, 2.45rem); font-weight: 700; letter-spacing: -0.5px; margin-bottom: 1.5rem; line-height: 1.2; }
+h3 { font-size: 1.3rem; font-weight: 600; margin: 2.3rem 0 1rem; color: var(--text-primary); }
+h4 { font-size: 1rem; font-weight: 600; margin: 1rem 0 0.55rem; color: var(--accent-4); }
+p { color: var(--text-secondary); margin-bottom: 1.2rem; font-size: 1.02rem; }
+p strong, li strong, b { color: var(--text-primary); font-weight: 600; }
+ul, ol { color: var(--text-secondary); margin: 0 0 1.2rem 1.2rem; }
+li { margin-bottom: 0.55rem; }
+.lead { font-family: 'Source Serif 4', serif; font-size: 1.15rem; color: var(--text-primary); }
+.gradient-divider { height: 2px; background: var(--gradient-line); border-radius: 2px; margin: 4rem 0; opacity: 0.5; }
+.formula-card, .mini-card, .flow-card, .quiz-card, .pipeline-card, .modality-card {
+  background: var(--bg-card); border: 1px solid var(--border-subtle); border-radius: var(--radius); box-shadow: var(--shadow-card);
+}
+.formula-card {
+  padding: 24px 28px; margin: 1.5rem 0; position: relative; overflow: hidden;
+}
+.formula-card::before { content: ''; position: absolute; left: 0; top: 0; bottom: 0; width: 3px; background: var(--gradient-line); }
+.formula-label {
+  font-family: 'JetBrains Mono', monospace; font-size: 0.7rem; color: var(--accent-1);
+  letter-spacing: 1.5px; text-transform: uppercase; margin-bottom: 12px;
+}
+.formula-math {
+  font-size: 1.22rem; color: var(--text-primary); font-weight: 300; letter-spacing: 0.8px;
+  margin-bottom: 12px; font-family: 'Source Serif 4', serif;
+}
+.formula-explain { font-size: 0.9rem; color: var(--text-secondary); line-height: 1.6; }
+.insight, .warning {
+  border-radius: var(--radius); padding: 20px 24px; margin: 2rem 0; position: relative;
+}
+.insight {
+  background: linear-gradient(135deg, rgba(108,92,231,0.08), rgba(0,206,201,0.05)); border: 1px solid rgba(108,92,231,0.2);
+}
+.insight::before { content: '💡'; position: absolute; top: -12px; left: 20px; background: var(--bg-primary); padding: 0 8px; font-size: 1.1rem; }
+.warning {
+  background: linear-gradient(135deg, rgba(253,121,168,0.08), rgba(253,203,110,0.05)); border: 1px solid rgba(253,121,168,0.2);
+}
+.warning::before { content: '⚠️'; position: absolute; top: -12px; left: 20px; background: var(--bg-primary); padding: 0 8px; font-size: 1.1rem; }
+.goal-grid, .layer-grid, .chunk-grid, .meta-grid, .takeaway-grid, .modality-grid {
+  display: grid; gap: 16px; margin: 1.5rem 0;
+}
+.goal-grid { grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); }
+.layer-grid { grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); }
+.chunk-grid { grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); }
+.meta-grid { grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); }
+.takeaway-grid { grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); }
+.modality-grid { grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); }
+.mini-card, .flow-card, .pipeline-card, .modality-card { padding: 20px; }
+
+.pipeline-stage, .lineage-stage, .index-stage {
+  margin: 2rem 0; background: var(--bg-card); border: 1px solid var(--border-subtle);
+  border-radius: var(--radius); box-shadow: var(--shadow-card); padding: 20px;
+}
+.pipeline-header, .lineage-header, .index-header {
+  display: flex; align-items: center; justify-content: space-between; padding-bottom: 14px; margin-bottom: 16px;
+  border-bottom: 1px solid var(--border-subtle); font-family: 'JetBrains Mono', monospace; font-size: 0.75rem; color: var(--text-secondary);
+}
+.pipeline-flow {
+  display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 14px;
+}
+.pipeline-card { position: relative; min-height: 168px; }
+.pipeline-card::after {
+  content: '→'; position: absolute; right: -12px; top: 50%; transform: translateY(-50%);
+  color: var(--accent-2); font-size: 1.2rem;
+}
+.pipeline-flow .pipeline-card:last-child::after { display: none; }
+.pipeline-tag {
+  font-family: 'JetBrains Mono', monospace; font-size: 0.68rem; text-transform: uppercase; letter-spacing: 1px; color: var(--accent-3); margin-bottom: 8px;
+}
+.pipeline-visual {
+  display: grid; gap: 8px; margin-top: 12px;
+}
+.bar {
+  position: relative; height: 12px; border-radius: 999px; background: rgba(255,255,255,0.06); overflow: hidden;
+}
+.bar span {
+  position: absolute; inset: 0 auto 0 0; width: 60%; border-radius: 999px; background: var(--gradient-line); animation: move 2.8s ease-in-out infinite;
+}
+.pipeline-card:nth-child(2) .bar span { animation-delay: 0.3s; }
+.pipeline-card:nth-child(3) .bar span { animation-delay: 0.6s; }
+.pipeline-card:nth-child(4) .bar span { animation-delay: 0.9s; }
+.pipeline-card:nth-child(5) .bar span { animation-delay: 1.2s; }
+@keyframes move { 0%,100% { transform: translateX(0); opacity: 0.75; } 50% { transform: translateX(16%); opacity: 1; } }
+
+.lineage-grid {
+  display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 12px; align-items: center;
+}
+.lineage-node {
+  position: relative; min-height: 110px; padding: 14px; border-radius: var(--radius-sm);
+  border: 1px solid var(--border-subtle); background: rgba(255,255,255,0.03);
+}
+.lineage-node::after {
+  content: '→'; position: absolute; right: -11px; top: 50%; transform: translateY(-50%);
+  color: var(--accent-2); font-size: 1rem;
+}
+.lineage-grid .lineage-node:last-child::after { display: none; }
+
+.index-columns {
+  display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px;
+}
+.index-box {
+  border: 1px solid var(--border-subtle); border-radius: var(--radius-sm); background: rgba(255,255,255,0.03); padding: 16px; position: relative; overflow: hidden;
+}
+.index-box::before { content: ''; position: absolute; inset: 0 0 auto 0; height: 2px; background: var(--gradient-line); }
+.index-type {
+  font-family: 'JetBrains Mono', monospace; font-size: 0.68rem; text-transform: uppercase; letter-spacing: 1px; color: var(--accent-2); margin-bottom: 8px;
+}
+
+.code-block {
+  background: var(--bg-code); border: 1px solid var(--border-subtle); border-radius: var(--radius); overflow: hidden; margin: 1.5rem 0;
+}
+.code-block-header {
+  display: flex; align-items: center; justify-content: space-between; padding: 10px 16px;
+  background: rgba(255,255,255,0.02); border-bottom: 1px solid var(--border-subtle);
+}
+.code-lang { font-family: 'JetBrains Mono', monospace; font-size: 0.7rem; color: var(--accent-2); display: flex; align-items: center; gap: 6px; }
+.code-lang::before { content: '●'; font-size: 8px; }
+.code-block pre {
+  padding: 16px 20px; overflow-x: auto; font-family: 'JetBrains Mono', monospace; font-size: 0.81rem; line-height: 1.65; color: #c8c8d8;
+}
+.flow-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 14px; margin: 1.5rem 0; }
+.flow-card { position: relative; }
+.flow-card::after {
+  content: '→'; position: absolute; right: -12px; top: 50%; transform: translateY(-50%); color: var(--accent-2); font-size: 1.2rem;
+}
+.flow-grid .flow-card:last-child::after { display: none; }
+.flow-label {
+  font-family: 'JetBrains Mono', monospace; font-size: 0.68rem; text-transform: uppercase; letter-spacing: 1px; color: var(--accent-3); margin-bottom: 8px;
+}
+.quiz-card { margin: 1.5rem 0; overflow: hidden; }
+.quiz-card-header {
+  padding: 14px 20px; background: rgba(253,203,110,0.05); border-bottom: 1px solid var(--border-subtle); font-weight: 600; font-size: 0.9rem;
+}
+.quiz-card-body { padding: 20px 24px; }
+.quiz-question { font-size: 0.95rem; color: var(--text-primary); margin-bottom: 16px; line-height: 1.6; }
+.quiz-options { display: flex; flex-direction: column; gap: 8px; }
+.quiz-option {
+  padding: 12px 16px; border: 1px solid var(--border-subtle); border-radius: var(--radius-sm);
+  cursor: pointer; font-size: 0.9rem; color: var(--text-secondary); transition: all 0.25s; display: flex; align-items: center; gap: 10px;
+}
+.quiz-option:hover { border-color: var(--accent-1); background: rgba(108,92,231,0.06); color: var(--text-primary); }
+.quiz-option.correct { border-color: var(--accent-5); background: rgba(85,239,196,0.1); color: var(--accent-5); }
+.quiz-option.incorrect { border-color: var(--accent-3); background: rgba(253,121,168,0.1); color: var(--accent-3); }
+.option-letter {
+  font-family: 'JetBrains Mono', monospace; font-size: 0.7rem; font-weight: 600;
+  width: 22px; height: 22px; display: flex; align-items: center; justify-content: center; border-radius: 50%; border: 1px solid currentColor; flex-shrink: 0;
+}
+.quiz-feedback {
+  margin-top: 12px; padding: 12px 16px; border-radius: var(--radius-sm); font-size: 0.88rem; line-height: 1.6; display: none;
+}
+.quiz-feedback.show { display: block; }
+.quiz-feedback.correct-fb { background: rgba(85,239,196,0.08); border: 1px solid rgba(85,239,196,0.2); color: var(--accent-5); }
+.quiz-feedback.incorrect-fb { background: rgba(253,121,168,0.08); border: 1px solid rgba(253,121,168,0.2); color: var(--accent-3); }
+details { background: var(--bg-card); border: 1px solid var(--border-subtle); border-radius: var(--radius); padding: 14px 18px; margin: 1rem 0 0; }
+summary { cursor: pointer; color: var(--text-primary); font-weight: 600; }
+.answer-grid { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; }
+.answer-chip {
+  padding: 6px 10px; border-radius: 100px; border: 1px solid var(--border-subtle); background: rgba(255,255,255,0.03);
+  color: var(--text-secondary); font-family: 'JetBrains Mono', monospace; font-size: 0.72rem;
+}
+@media (max-width: 960px) {
+  .pipeline-flow, .lineage-grid, .index-columns { grid-template-columns: 1fr; }
+  .pipeline-card::after, .lineage-node::after { display: none; }
+}
+@media (max-width: 640px) {
+  .content-wrapper { padding: 0 1rem 4rem; }
+  .flow-card::after { display: none; }
+}
+</style>
+</head>
+<body>
+<div class="scroll-progress" id="scrollProgress"></div>
+
+<section class="hero">
+  <div class="hero-particles" id="heroParticles"></div>
+  <div class="hero-label"><span class="dot-indicator"></span> Multimodal RAG · Module 5 of 13</div>
+  <h1>Multimodal Storage, Chunking, <span class="gradient-text">Metadata & Retrieval</span></h1>
+  <p class="hero-subtitle">
+    Production multimodal RAG is not just about models. It is about how raw files, vectors, metadata,
+    lineage, and retrieval infrastructure are coordinated into a system you can trust.
+  </p>
+  <div class="hero-scroll-cue"><span>Continue</span><div class="arrow"></div></div>
+</section>
+
+<div class="content-wrapper">
+
+<div class="section" id="sec1">
+  <div class="section-number">01 — Goal and Core Problem</div>
+  <h2>Why Storage and Retrieval Design Matter</h2>
+
+  <p class="lead">
+    The goal of this module is to guide you through building a robust, production-ready storage and retrieval system
+    for multimodal data in e-commerce, such as customer photos, manuals, invoices, videos, and audio.
+    The running example is TechVista's fashion and electronics store, where every upload has to remain searchable,
+    trustworthy, and traceable end to end.
+  </p>
+
+  <div class="goal-grid">
+    <div class="mini-card">
+      <h4>By the end, you will understand</h4>
+      <ul>
+        <li>How to layer raw blobs, processed vectors, and metadata across storage systems</li>
+        <li>Smart chunking strategies that preserve meaning across images, tables, documents, video, and audio</li>
+      </ul>
+    </div>
+    <div class="mini-card">
+      <h4>You will also understand</h4>
+      <ul>
+        <li>Essential metadata fields and lineage tracking for trust, debugging, and compliance</li>
+        <li>Index design choices and why metadata filtering matters at query time</li>
+      </ul>
+    </div>
+  </div>
+
+  <p>
+    This is what turns chaotic uploads into a reliable, filterable, auditable knowledge base
+    that powers accurate multimodal RAG. You cannot just dump files into S3 and call it a day.
+    Modern multimodal pipelines coordinate raw data, processed representations, and metadata together.
+  </p>
+  <p>
+    That coordination matters because production questions are rarely clean. One customer may ask for a battery comparison from a spec sheet,
+    another may upload a cracked-screen photo and ask whether the damage is covered, and a support agent may need the latest manual rather than an outdated marketplace listing.
+    Storage design, chunking discipline, metadata quality, and retrieval policy are what decide whether the answer is grounded, current, and safe to show.
+  </p>
+</div>
+
+<div class="gradient-divider"></div>
+
+<div class="section" id="sec2">
+  <div class="section-number">02 — Layered Storage</div>
+  <h2>How Production Storage Is Structured</h2>
+
+  <p>
+    A production pipeline stores <strong>raw objects</strong>, <strong>processed representations</strong>,
+    and <strong>vector-indexed searchable forms</strong> as distinct but connected layers.
+  </p>
+
+  <div class="pipeline-stage">
+    <div class="pipeline-header">
+      <span>Multimodal Production Pipeline</span>
+      <span>ANIMATED DATA FLOW</span>
+    </div>
+    <div class="pipeline-flow">
+      <div class="pipeline-card">
+        <div class="pipeline-tag">Layer 1</div>
+        <h4>Raw Objects</h4>
+        <p>JPEGs, PNGs, PDFs, videos, audio clips, OCR text, and transcripts live in cheap blob storage like S3, GCS, or Azure Blob.</p>
+        <div class="pipeline-visual"><div class="bar"><span></span></div><div class="bar"><span></span></div></div>
+      </div>
+      <div class="pipeline-card">
+        <div class="pipeline-tag">Layer 2</div>
+        <h4>Processed Representations</h4>
+        <p>Embeddings, thumbnails, structured JSON, OCR output, bounding boxes, and table markdown sit alongside raw blobs.</p>
+        <div class="pipeline-visual"><div class="bar"><span></span></div><div class="bar"><span></span></div></div>
+      </div>
+      <div class="pipeline-card">
+        <div class="pipeline-tag">Layer 3</div>
+        <h4>Vector Database</h4>
+        <p>Dense vectors plus payload metadata are stored in Pinecone, Weaviate, Qdrant, Milvus, Chroma, or pgvector.</p>
+        <div class="pipeline-visual"><div class="bar"><span></span></div><div class="bar"><span></span></div></div>
+      </div>
+      <div class="pipeline-card">
+        <div class="pipeline-tag">Layer 4</div>
+        <h4>Hybrid Retrieval</h4>
+        <p>Dense vector search often works together with inverted text indexes for keyword fallback and ranking balance.</p>
+        <div class="pipeline-visual"><div class="bar"><span></span></div><div class="bar"><span></span></div></div>
+      </div>
+      <div class="pipeline-card">
+        <div class="pipeline-tag">Layer 5</div>
+        <h4>Grounded RAG</h4>
+        <p>Query-time filtering, provenance, and pointers back to raw assets let the answer remain traceable and auditable.</p>
+        <div class="pipeline-visual"><div class="bar"><span></span></div><div class="bar"><span></span></div></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="layer-grid">
+    <div class="mini-card">
+      <h4>Raw objects</h4>
+      <ul>
+        <li>Product photos and customer-uploaded damage images</li>
+        <li>PDF manuals, invoices, and spec sheets</li>
+        <li>30–60 second video clips instead of giant full videos</li>
+        <li>Audio segments from voice notes or extracted video tracks</li>
+        <li>OCR text and ASR transcripts</li>
+      </ul>
+    </div>
+    <div class="mini-card">
+      <h4>Processed representations</h4>
+      <ul>
+        <li>Embeddings from CLIP, SigLIP, ImageBind, or ColPali</li>
+        <li>Thumbnails and previews</li>
+        <li>Bounding boxes from object detection</li>
+        <li>Structured extractions such as table markdown or JSON</li>
+        <li>Short BLIP-2 style captions paired with visual embeddings</li>
+      </ul>
+    </div>
+    <div class="mini-card">
+      <h4>Vector database payloads</h4>
+      <ul>
+        <li>Dense vectors</li>
+        <li>Metadata and filterable payloads</li>
+        <li>Pointers back to raw storage</li>
+        <li>Support for hybrid vector plus text retrieval</li>
+        <li>Fields filterable at query time for freshness, reliability, and compliance</li>
+      </ul>
+    </div>
+  </div>
+
+  <h3>Why These Layers Stay Separate in Production</h3>
+  <p>
+    Keeping these layers separate is not bureaucracy. It is what makes the system cheap, debuggable, and upgradeable.
+    Raw blobs stay in low-cost durable storage. Processed views can be regenerated when OCR, captioning, or detection models improve.
+    The vector database stays lean and query-focused, storing search-ready representations plus payloads rather than becoming a dumping ground for huge binary files.
+  </p>
+  <p>
+    This separation also protects immutability. The original evidence should remain untouched so you can always re-run OCR, re-caption an image,
+    re-embed a document with a newer model, or re-check a compliance decision without losing the source of truth. That is the operational difference
+    between a prototype and a system that can survive audits, model upgrades, and customer disputes.
+  </p>
+  <ul>
+    <li><strong>Blob storage:</strong> cheapest place for original evidence, such as the untouched customer photo or original PDF manual.</li>
+    <li><strong>Processed artifacts:</strong> OCR text, ASR transcript, thumbnails, table markdown, and detection JSON can be replaced without re-uploading the original file.</li>
+    <li><strong>Vector index:</strong> should store the searchable representation and pointer, not the entire raw asset.</li>
+    <li><strong>Metadata store:</strong> keeps richly filterable JSON that query logic, compliance checks, and debugging tools can all reuse.</li>
+  </ul>
+
+  <div class="flow-grid">
+    <div class="flow-card">
+      <div class="flow-label">Storage Choice</div>
+      <h4>S3 / Blob Layer</h4>
+      <p>Keep originals immutable so the system always has a source of truth.</p>
+    </div>
+    <div class="flow-card">
+      <div class="flow-label">Processing Choice</div>
+      <h4>Derived Artifacts</h4>
+      <p>OCR, captions, crops, previews, and structured JSON can evolve as models improve.</p>
+    </div>
+    <div class="flow-card">
+      <div class="flow-label">Retrieval Choice</div>
+      <h4>Vector + Sparse Index</h4>
+      <p>Keep retrieval fast, compact, and filterable instead of loading giant files at query time.</p>
+    </div>
+    <div class="flow-card">
+      <div class="flow-label">Trust Choice</div>
+      <h4>Metadata + Lineage</h4>
+      <p>Make every answer traceable back to when, where, and how the evidence was created.</p>
+    </div>
+  </div>
+
+  <p><strong>Real-world example:</strong> Amazon product pages combine blob-stored images and PDF manuals with vector-indexed embeddings for semantic plus visual search such as “find similar wireless earbuds.”</p>
+
+  <div class="code-block">
+    <div class="code-block-header"><span class="code-lang">Python · S3 + Pinecone</span></div>
+    <pre>import boto3
+from pinecone import Pinecone
+
+s3 = boto3.client('s3')
+pc = Pinecone(api_key="your-key")
+index = pc.Index("multimodal-store")
+
+# Step 1: upload the original raw image to cheap durable storage
+s3.upload_file("damage_photo.jpg", "techvista-raw", "customer/CU-987654.jpg")
+
+# Step 2: create search-ready artifacts from that raw evidence
+caption = blip2_model.generate_caption(image)  # pseudo
+ocr_text = trocr_model.read_text(image)        # pseudo
+thumbnail_path = "s3://techvista-derived/thumbs/CU-987654.jpg"
+
+# Step 3: generate multimodal embedding from the image or image+caption
+embedding = clip_model.encode_image(image)     # pseudo
+
+# Step 4: upsert the search object with rich payload fields
+index.upsert([
+    ("vec1", embedding.tolist(), {
+        "s3_path": "s3://techvista-raw/customer/CU-987654.jpg",
+        "caption": caption,
+        "ocr_text": ocr_text,
+        "thumbnail_path": thumbnail_path,
+        "provenance": "customer_upload",
+        "upload_id": "CU-987654",
+        "reliability": 6,
+        "pii_detected": True,
+        "processing_history": ["face_blur", "ocr_trocr_v2", "clip_embedding_vit_l_14"]
+    })
+])</pre>
+  </div>
+</div>
+
+<div class="gradient-divider"></div>
+
+<div class="section" id="sec3">
+  <div class="section-number">03 — Chunking</div>
+  <h2>Breaking Things Smartly Without Breaking Meaning</h2>
+
+  <p>
+    Chunking is not just “split every 512 tokens.” Different modalities require different chunking rules
+    if you want retrieval to preserve meaning and context.
+  </p>
+  <p>
+    The key idea is that the chunk should match the unit of meaning. For a PDF manual, that might be a full page or region because the figure, caption, and nearby paragraph depend on one another.
+    For a table, it might be one row plus its header. For a video, it is usually a scene or coherent time window rather than an arbitrary slice.
+    When chunk boundaries ignore structure, retrieval may still find something relevant, but the generator loses the evidence needed to answer correctly.
+  </p>
+
+  <div class="chunk-grid">
+    <div class="modality-card">
+      <h4>Documents</h4>
+      <ul>
+        <li>Page-level chunking when layout matters</li>
+        <li>Region-level chunking via layout parsers such as Unstructured.io, Docling, or Nougat</li>
+        <li>Semantic chunking to avoid cutting related paragraphs apart</li>
+      </ul>
+    </div>
+    <div class="modality-card">
+      <h4>Tables</h4>
+      <ul>
+        <li>Preserve rows and columns using markdown or HTML</li>
+        <li>Chunk by row with header context for large tables</li>
+        <li>Optionally embed the table image and text representation together</li>
+      </ul>
+    </div>
+    <div class="modality-card">
+      <h4>Images</h4>
+      <ul>
+        <li>Use whole image for smaller inputs</li>
+        <li>Tile or crop very large product shots</li>
+        <li>Store both image vectors and generated captions</li>
+        <li>Use short BLIP-2 style captions so text and vision retrieval both stay available</li>
+      </ul>
+    </div>
+    <div class="modality-card">
+      <h4>Video</h4>
+      <ul>
+        <li>Extract keyframes every 2–5 seconds plus transcript</li>
+        <li>Use scene or shot detection for coherent segment boundaries</li>
+      </ul>
+    </div>
+    <div class="modality-card">
+      <h4>Audio</h4>
+      <ul>
+        <li>Use fixed time windows such as 10–30 seconds</li>
+        <li>Pair each chunk with transcript text</li>
+        <li>Apply speaker diarization when multiple voices matter</li>
+      </ul>
+    </div>
+  </div>
+
+  <h3>Chunking Trade-Offs by Modality</h3>
+  <div class="meta-grid">
+    <div class="mini-card">
+      <h4>Documents</h4>
+      <p><strong>Best when:</strong> manuals, invoices, warranty documents, support PDFs.</p>
+      <p><strong>Good strategy:</strong> region-based chunking by heading, paragraph, figure, and table.</p>
+      <p><strong>Main risk:</strong> naive token splitting destroys layout meaning and breaks citations.</p>
+    </div>
+    <div class="mini-card">
+      <h4>Tables</h4>
+      <p><strong>Best when:</strong> spec sheets, comparison tables, pricing matrices.</p>
+      <p><strong>Good strategy:</strong> preserve headers with each row or logical section.</p>
+      <p><strong>Main risk:</strong> split away the headers and the row values become meaningless.</p>
+    </div>
+    <div class="mini-card">
+      <h4>Images</h4>
+      <p><strong>Best when:</strong> damage photos, product shots, screenshots.</p>
+      <p><strong>Good strategy:</strong> whole-image for compact inputs, tile or crop only when scale demands it.</p>
+      <p><strong>Main risk:</strong> over-cropping removes context, while under-cropping hides fine defects.</p>
+    </div>
+    <div class="mini-card">
+      <h4>Video and Audio</h4>
+      <p><strong>Best when:</strong> unboxing clips, review videos, voice notes, support calls.</p>
+      <p><strong>Good strategy:</strong> keyframe + transcript or fixed time windows plus speaker or scene boundaries.</p>
+      <p><strong>Main risk:</strong> arbitrary cuts break causality, sequence, and who-said-what context.</p>
+    </div>
+  </div>
+
+  <div class="warning">
+    <p>
+      In e-commerce, bad chunking can silently destroy answer quality.
+      If a battery-comparison table gets split in the wrong place, the model may lose header context and give the wrong comparison.
+      Good chunking keeps the row and header together so the answer stays grounded.
+    </p>
+  </div>
+
+  <p><strong>Real-world example:</strong> Weaviate-style semantic chunking improves retrieval from product manuals for questions like “How do I charge WH-1000XM5 headphones?”</p>
+
+  <p>
+    The broader lesson is that chunking is a context-preservation problem, not a token-budget trick.
+    In TechVista's pipeline, the correct chunk may be a full manual page, a table row plus headers, a product image plus caption,
+    or a video scene paired with transcript text. The right unit is whatever preserves the answerable meaning.
+  </p>
+  <p>
+    This is why the semantic threshold matters in practice. A threshold like <code>0.75</code> is not just a number in code;
+    it is the boundary between keeping two sentences together because they explain the same idea and splitting them because the topic has shifted.
+    In production, teams tune that threshold by measuring whether citations stay coherent and whether answers stop dropping important nearby context.
+  </p>
+
+  <div class="code-block">
+    <div class="code-block-header"><span class="code-lang">Python · Semantic Chunking</span></div>
+    <pre>def semantic_chunk(texts, embedder, threshold=0.75):
+    embeddings = embedder.encode(texts)
+    chunks = []
+    current = [texts[0]]
+    for i in range(1, len(texts)):
+        sim = cosine_sim(embeddings[i-1], embeddings[i])
+        if sim >= threshold:
+            current.append(texts[i])
+        else:
+            chunks.append(" ".join(current))
+            current = [texts[i]]
+    chunks.append(" ".join(current))
+    return chunks</pre>
+  </div>
+
+  <div class="code-block">
+    <div class="code-block-header"><span class="code-lang">Python · Structure-Preserving Table Chunking</span></div>
+    <pre>def chunk_table(rows, header, max_rows=4):
+    chunks = []
+    for i in range(0, len(rows), max_rows):
+        batch = rows[i:i + max_rows]
+        chunk = {
+            "header": header,           # keep schema context attached
+            "rows": batch,              # preserve full row semantics
+            "text_view": to_markdown(header, batch)
+        }
+        chunks.append(chunk)
+    return chunks</pre>
+  </div>
+</div>
+
+<div class="gradient-divider"></div>
+
+<div class="section" id="sec4">
+  <div class="section-number">04 — Metadata and Lineage</div>
+  <h2>The Who, When, Why, and How of Every Chunk</h2>
+
+  <p>
+    Without metadata, you are flying blind. With rich metadata, your system knows where a chunk came from,
+    how fresh it is, how trustworthy it is, how it was processed, and whether it contains sensitive information.
+  </p>
+  <p>
+    The deeper lesson is that metadata is not a side table for administrators. It is active retrieval logic.
+    The retriever uses it to filter stale sources, ranking uses it to reward trusted evidence, the UI uses it to cite provenance,
+    and compliance logic uses it to decide whether content should be hidden, blurred, or redacted.
+  </p>
+
+  <h3>Five Essential Metadata Fields</h3>
+  <div class="meta-grid">
+    <div class="mini-card">
+      <h4>Provenance</h4>
+      <p>Stores original source and unique identifier.</p>
+      <ul>
+        <li>Manufacturer manual: <code>"source": "manufacturer_sony.com/manuals/WH-1000XM5_2025-03.pdf"</code> and <code>"crawl_date": "2025-03-15"</code></li>
+        <li>Customer upload: <code>"source": "customer_upload"</code>, <code>"upload_id": "CU-987654"</code>, <code>"user_id": "user_44521"</code></li>
+        <li>Review video: <code>"source": "youtube_review"</code> and <code>"video_id": "dQw4w9wgabc"</code></li>
+      </ul>
+    </div>
+    <div class="mini-card">
+      <h4>Timestamps</h4>
+      <p>Use multiple dates because freshness has more than one meaning.</p>
+      <ul>
+        <li><code>ingestion_timestamp</code>: when the file entered your pipeline</li>
+        <li><code>last_updated</code>: when the source owner last changed it</li>
+        <li><code>content_creation_date</code>: when the customer photo or source artifact was originally created</li>
+      </ul>
+    </div>
+    <div class="mini-card">
+      <h4>Reliability Score</h4>
+      <p>A simple 1–10 trust signal your retriever can filter or rerank on.</p>
+      <ul>
+        <li>10 = official manufacturer manual, manually verified</li>
+        <li>9 = verified product spec from brand API</li>
+        <li>7 = YouTube unboxing video from verified channel</li>
+        <li>6 = customer-uploaded photo that may be edited or incomplete</li>
+        <li>4 = auto-crawled marketplace listing that may be outdated</li>
+        <li>2 = random forum post</li>
+      </ul>
+    </div>
+    <div class="mini-card">
+      <h4>Processing History</h4>
+      <p>Full audit trail of every transformation: OCR model, chunking strategy, embedding model, and so on.</p>
+      <p><code>"ocr_model": "TrOCR-v2"</code>, <code>"strategy": "region_based"</code>, and embedding model pointers are the kind of fields that make debugging possible.</p>
+    </div>
+    <div class="mini-card">
+      <h4>PII / Sensitivity Flags</h4>
+      <p>Marks whether content includes faces, serial numbers, or other sensitive information and what action was taken.</p>
+      <p>Example fields: <code>pii_detected</code>, <code>action_taken</code>, and <code>sensitivity_level</code>. For example: face visible in a customer photo, serial number visible on a laptop, or invoice address requiring redaction.</p>
+    </div>
+  </div>
+
+  <div class="code-block">
+    <div class="code-block-header"><span class="code-lang">JSON · Metadata Payload Example</span></div>
+    <pre>{
+  "chunk_id": "CHUNK-44521-3",
+  "source": "customer_upload",
+  "upload_id": "CU-987654",
+  "user_id": "user_44521",
+  "ingestion_timestamp": "2025-10-05T14:22:31Z",
+  "content_creation_date": "2025-08-20",
+  "reliability": 6,
+  "ocr_model": "TrOCR-v2",
+  "strategy": "region_based",
+  "embedding_model": "CLIP-ViT-L-14",
+  "pii_detected": true,
+  "action_taken": "face_blurred",
+  "sensitivity_level": "medium"
+}</pre>
+  </div>
+
+  <p>
+    Lineage is the directed graph that shows how a chunk traveled from raw input to final index entry.
+    It answers the question: how did this exact piece of content end up in my retrieval system?
+  </p>
+  <p>
+    This is the same style of lineage graph you see in tools such as Collibra, Amundsen, or open-source DataHub:
+    nodes represent assets, arrows represent transformations, and branches show how one source can feed both text and multimodal paths.
+  </p>
+  <p>
+    In TechVista's system, a single broken MacBook photo can travel through several parallel branches:
+    raw photo in S3, face blurring for compliance, OCR for serial number extraction, object detection for crack localization,
+    caption generation for text-side retrieval, multimodal embedding for visual similarity, and finally a hybrid index entry that joins those outputs together.
+    That full graph is what lets an engineer answer, with evidence, why a support response was right or wrong.
+  </p>
+
+  <div class="lineage-stage">
+    <div class="lineage-header">
+      <span>Lineage Graph</span>
+      <span>TRANSFORMATION TRACE</span>
+    </div>
+    <div class="lineage-grid">
+      <div class="lineage-node"><div class="formula-label">Node 1</div><h4>Raw Photo</h4><p>S3 customer upload</p></div>
+      <div class="lineage-node"><div class="formula-label">Node 2</div><h4>PII Handling</h4><p>Face blur or redaction</p></div>
+      <div class="lineage-node"><div class="formula-label">Node 3</div><h4>OCR / Detection</h4><p>Serial number extraction and crack detection</p></div>
+      <div class="lineage-node"><div class="formula-label">Node 4</div><h4>Caption + Embedding</h4><p>Generate textual view and multimodal vector</p></div>
+      <div class="lineage-node"><div class="formula-label">Node 5</div><h4>Hybrid Index Entry</h4><p>Vector + text + metadata payload</p></div>
+    </div>
+  </div>
+
+  <h3>Step-by-Step Metadata + Lineage Process</h3>
+  <ol>
+    <li><strong>Ingestion trigger:</strong> a photo or manual lands in the raw bucket after a webhook fires and immediately gets initial provenance and upload timestamp.</li>
+    <li><strong>Metadata enrichment:</strong> a lightweight processor adds provenance, timestamps, reliability score, and PII scan results using services such as AWS Rekognition or DeepPrivacy.</li>
+    <li><strong>Processing pipeline:</strong> OCR, chunking, embedding, and every other step append to metadata history. This can run in Kafka or an Airflow DAG.</li>
+    <li><strong>Lineage graph construction:</strong> each step emits an event to a lineage service so the full graph can be rebuilt automatically.</li>
+    <li><strong>Storage:</strong> raw files stay in blob storage, metadata and lineage JSON live in MongoDB or PostgreSQL JSONB, and vectors plus payloads go into a vector DB.</li>
+    <li><strong>Query-time usage:</strong> the retriever can now filter by reliability, date, or PII status, or skip and blur sensitive results before they are shown.</li>
+    <li><strong>Auditing and debugging:</strong> support teams can click a chunk ID, open the lineage trace, and see when a bad answer came from an outdated or low-reliability source.</li>
+  </ol>
+
+  <div class="insight">
+    <p>
+      This step-by-step process is what makes metadata operational instead of decorative. It is not enough to store fields.
+      Those fields must be written during ingest, updated during every transformation, queryable during retrieval, and visible during audits.
+    </p>
+  </div>
+
+  <div class="code-block">
+    <div class="code-block-header"><span class="code-lang">Python · Query-Time Policy Filter</span></div>
+    <pre>def allow_chunk(metadata):
+    if metadata["reliability"] < 8:
+        return False
+    if metadata.get("pii_detected") and metadata.get("action_taken") != "face_blurred":
+        return False
+    if metadata.get("content_creation_date", "") < "2025-01-01":
+        return False
+    return True</pre>
+  </div>
+
+  <div class="code-block">
+    <div class="code-block-header"><span class="code-lang">OpenLineage-Style Event</span></div>
+    <pre>{
+  "eventType": "COMPLETE",
+  "job": {"name": "customer_photo_ocr"},
+  "inputs": ["s3://raw/customer_44521.jpg"],
+  "outputs": ["vector_db/chunk_44521_3"]
+}</pre>
+  </div>
+</div>
+
+<div class="gradient-divider"></div>
+
+<div class="section" id="sec5">
+  <div class="section-number">05 — Index Design and Retrieval</div>
+  <h2>Where Retrieval Quality Is Won or Lost</h2>
+
+  <p>
+    Index design determines how your system actually retrieves evidence. In production, most systems no longer choose
+    between keyword search and vector search. They combine them.
+  </p>
+  <p>
+    That combination is not academic. Real user queries often mix exact constraints, fuzzy intent, and multimodal evidence.
+    "Find similar wireless earbuds" leans heavily on semantic and visual similarity. "WH-1000XM5 charging issue" needs exact product naming.
+    "Is this damage covered?" may require warranty text, image evidence, and metadata filters all at once.
+  </p>
+
+  <div class="index-stage">
+    <div class="index-header">
+      <span>Index Design Comparison</span>
+      <span>RETRIEVAL STRATEGIES</span>
+    </div>
+    <div class="index-columns">
+      <div class="index-box">
+        <div class="index-type">Text Index Only</div>
+        <h4>BM25 / Elasticsearch</h4>
+        <p>Strong keyword fallback. Good for exact terms, model names, serial numbers, and error codes, but weak on semantic similarity and visual matching.</p>
+      </div>
+      <div class="index-box">
+        <div class="index-type">Vector Index Only</div>
+        <h4>Pure Semantic Search</h4>
+        <p>Dense retrieval using ANN structures such as HNSW in systems like Pinecone or Qdrant. Strong on meaning, but exact keyword constraints can get lost without sparse support.</p>
+      </div>
+      <div class="index-box">
+        <div class="index-type">Hybrid / Multimodal</div>
+        <h4>Dense + Sparse Together</h4>
+        <p>Combine vector similarity and BM25, often with reciprocal rank fusion or weighted sum scoring. This is the production default.</p>
+      </div>
+    </div>
+  </div>
+
+  <div class="insight">
+    <p>
+      The source also calls out vector database internals such as sharding, replication, and indexing.
+      You do not need those internals to understand retrieval quality yet, but they are what make distributed multimodal search scale in production.
+    </p>
+  </div>
+  <p>
+    In practice, those internals affect latency and reliability. Sharding spreads vectors across machines so large catalogs remain searchable.
+    Replication keeps the system available when one node fails. ANN structures such as HNSW make approximate nearest-neighbor search fast enough
+    that hybrid retrieval can still feel interactive for a customer-facing assistant.
+  </p>
+
+  <p>
+    Multimodal pair indices can store image-text pairs together so a query like “wireless earbuds with ANC”
+    retrieves both product photos and spec text. Filtering matters just as much as retrieval style.
+  </p>
+
+  <h3>How Production Teams Usually Decide</h3>
+  <ul>
+    <li><strong>Text-only index:</strong> keep it as a fallback for exact SKU queries, error messages, or legal phrasing.</li>
+    <li><strong>Vector-only index:</strong> useful when the main problem is semantic similarity, image matching, or open-ended language retrieval.</li>
+    <li><strong>Hybrid index:</strong> the production default because many user questions mix exact terms with fuzzy meaning.</li>
+    <li><strong>Multimodal pair index:</strong> critical when one query should retrieve both text evidence and visual evidence together.</li>
+  </ul>
+
+  <div class="formula-card">
+    <div class="formula-label">Query-Time Filters</div>
+    <div class="formula-math">reliability ≥ 8 &nbsp;&nbsp;·&nbsp;&nbsp; content_creation_date &gt; 2025-01-01 &nbsp;&nbsp;·&nbsp;&nbsp; pii_detected = false</div>
+    <div class="formula-explain">
+      Metadata filters are how you keep results trustworthy, fresh, and compliant.
+      Retrieval quality is not just similarity score. It is score plus policy.
+    </div>
+  </div>
+
+  <p><strong>Real-world example:</strong> Weaviate or Pinecone hybrid search can combine keyword and vector signals for a query like “ANC earbuds under $200.”</p>
+
+  <div class="code-block">
+    <div class="code-block-header"><span class="code-lang">Pinecone · Hybrid Query</span></div>
+    <pre>results = index.query(
+    vector=query_embedding,
+    top_k=20,
+    filter={"reliability": {"$gte": 8}},
+    include_metadata=True,
+    sparse_vector=bm25_sparse  # if hybrid
+)</pre>
+  </div>
+
+  <div class="code-block">
+    <div class="code-block-header"><span class="code-lang">Python · Weighted Hybrid Ranking</span></div>
+    <pre>def hybrid_score(vector_score, bm25_score, reliability):
+    # Dense meaning + sparse exact match + trust signal
+    return 0.55 * vector_score + 0.30 * bm25_score + 0.15 * (reliability / 10.0)
+
+query = "Compare battery life of these three phones from the spec sheet"
+
+# Example outcome: table row with header context outranks a generic paragraph
+scored = sorted(candidates, key=lambda x: hybrid_score(
+    x["vector_score"], x["bm25_score"], x["metadata"]["reliability"]
+), reverse=True)</pre>
+  </div>
+
+  <p>
+    The point of a weighting scheme like <code>0.55 / 0.30 / 0.15</code> is not that these exact numbers are universal.
+    It is that production teams explicitly decide how much semantic similarity, exact lexical match, and trustworthiness should influence ranking.
+    Those weights are tuned against the failure modes the business cares about most: wrong product comparisons, bad support answers, or unsafe content exposure.
+  </p>
+
+  <p>
+    This is why hybrid retrieval wins so often in production. A query like "Is this damage covered?" may require exact warranty language,
+    semantic understanding of the support intent, and image evidence from a customer-uploaded photo. No single index type handles all of that well on its own.
+  </p>
+</div>
+
+<div class="gradient-divider"></div>
+
+<div class="section" id="sec6">
+  <div class="section-number">06 — Conclusion and Assessment</div>
+  <h2>Key Takeaways from Module 5</h2>
+
+  <p>
+    A production multimodal pipeline coordinates cheap raw storage, vector databases, smart chunking, rich metadata,
+    and lineage tracking into one reliable retrieval system.
+  </p>
+
+  <div class="takeaway-grid">
+    <div class="mini-card"><p><strong>Layer storage:</strong> raw blobs, vectors, and metadata should be coordinated, not mixed blindly.</p></div>
+    <div class="mini-card"><p><strong>Chunk modality-smart:</strong> region/layout for documents and tables, keyframe + transcript for video.</p></div>
+    <div class="mini-card"><p><strong>Metadata essentials:</strong> provenance, timestamps, reliability, processing history, and PII flags.</p></div>
+    <div class="mini-card"><p><strong>Lineage graphs</strong> let you debug why a wrong answer happened instead of guessing.</p></div>
+    <div class="mini-card"><p><strong>Hybrid filtered retrieval</strong> gives fresher, higher-quality, more compliant results.</p></div>
+    <div class="mini-card"><p><strong>In e-commerce</strong>, this leads to accurate battery comparisons, grounded damage assessments, compliant PII handling, fewer returns, and more trust.</p></div>
+  </div>
+
+  <p>
+    In product terms, the recipe is clear: keep raw evidence cheap and durable, preserve meaning while chunking, attach metadata that retrieval can actually filter on,
+    and make lineage visible enough that a wrong answer can be traced back to the exact source, transformation, and policy decision that produced it.
+  </p>
+  <p>
+    In e-commerce terms, that translates directly into business outcomes: fewer returns because comparisons stay grounded, faster support resolution because evidence is traceable,
+    and lower compliance risk because sensitive content can be filtered or redacted before it reaches a customer-facing answer.
+  </p>
+</div>
+
+</div>
+
+<script>
+window.addEventListener('scroll', () => {
+  const h = document.documentElement;
+  document.getElementById('scrollProgress').style.width = (h.scrollTop / (h.scrollHeight - h.clientHeight)) * 100 + '%';
+});
+
+const heroParticles = document.getElementById('heroParticles');
+for (let i = 0; i < 34; i++) {
+  const dot = document.createElement('div');
+  dot.className = 'dot';
+  dot.style.left = Math.random() * 100 + '%';
+  dot.style.top = Math.random() * 100 + '%';
+  dot.style.animationDelay = (Math.random() * 6).toFixed(2) + 's';
+  dot.style.animationDuration = (4 + Math.random() * 5).toFixed(2) + 's';
+  heroParticles.appendChild(dot);
+}
+</script>
+</body>
+</html>

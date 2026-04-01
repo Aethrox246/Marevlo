@@ -4,6 +4,27 @@ import { useAuth } from '../../context/AuthContext';
 
 const API_BASE = import.meta.env.VITE_API_URL;
 
+// Utility: Generate gradient color from username
+const getGradientFromUsername = (username) => {
+    if (!username) return 'linear-gradient(135deg, #6366f1, #8b5cf6)';
+    let hash = 0;
+    for (let i = 0; i < username.length; i++) {
+        hash = ((hash << 5) - hash) + username.charCodeAt(i);
+        hash = hash & hash;
+    }
+    const colors = [
+        'linear-gradient(135deg, #6366f1, #8b5cf6)',
+        'linear-gradient(135deg, #10b981, #14b8a6)',
+        'linear-gradient(135deg, #f59e0b, #f97316)',
+        'linear-gradient(135deg, #ef4444, #ec4899)',
+        'linear-gradient(135deg, #06b6d4, #0ea5e9)',
+        'linear-gradient(135deg, #8b5cf6, #a78bfa)',
+        'linear-gradient(135deg, #14b8a6, #06b6d4)',
+        'linear-gradient(135deg, #f97316, #fb923c)',
+    ];
+    return colors[Math.abs(hash) % colors.length];
+};
+
 export default function ChatWindow({ chatId: chatIdProp, userId, onBack }) {
     const { user } = useAuth();
     const [messages, setMessages] = useState([]);
@@ -11,13 +32,24 @@ export default function ChatWindow({ chatId: chatIdProp, userId, onBack }) {
     const [loading, setLoading] = useState(false);
     const [otherUser, setOtherUser] = useState(null);
     const [sending, setSending] = useState(false);
+    const [isInputFocused, setIsInputFocused] = useState(false);
+    const [isTyping, setIsTyping] = useState(false);
     const messagesEndRef = useRef(null);
+    const inputRef = useRef(null);
     const token = localStorage.getItem('access_token');
 
     // Mutable ref for chatId so the WS listener always has the latest value
-    // (chatIdProp can be null on first render for new chats)
     const chatIdRef = useRef(chatIdProp);
     useEffect(() => { chatIdRef.current = chatIdProp; }, [chatIdProp]);
+
+    // Auto-grow textarea
+    useEffect(() => {
+        if (inputRef.current) {
+            inputRef.current.style.height = 'auto';
+            const newHeight = Math.min(inputRef.current.scrollHeight, 120);
+            inputRef.current.style.height = newHeight + 'px';
+        }
+    }, [input]);
 
     // Fetch chat on initial load
     useEffect(() => {
@@ -26,7 +58,7 @@ export default function ChatWindow({ chatId: chatIdProp, userId, onBack }) {
         }
     }, [userId]);
 
-    // WebSocket listener — uses refs, not stale closure values
+    // WebSocket listener
     useEffect(() => {
         const handleWsMessage = (event) => {
             const data = event.detail;
@@ -35,7 +67,6 @@ export default function ChatWindow({ chatId: chatIdProp, userId, onBack }) {
                 const currentChatId = chatIdRef.current;
                 const msg = data.message;
 
-                // Match if: same chat_id, OR the message involves the user we're chatting with
                 const isThisChat =
                     (currentChatId && String(data.chat_id) === String(currentChatId)) ||
                     msg.sender_id === userId ||
@@ -43,16 +74,13 @@ export default function ChatWindow({ chatId: chatIdProp, userId, onBack }) {
 
                 if (!isThisChat) return;
 
-                // Update chatIdRef if we learned the chat_id (new chat scenario)
                 if (!currentChatId && data.chat_id) {
                     chatIdRef.current = data.chat_id;
                 }
 
                 setMessages(prev => {
-                    // Skip if we already have this exact message id
                     if (prev.find(m => m.id === msg.id)) return prev;
 
-                    // If this is our own message echoed back via WS, replace the optimistic version
                     if (msg.sender_id === user?.id) {
                         const optimisticIdx = prev.findIndex(m =>
                             m._optimistic && m.content === msg.content && m.sender_id === msg.sender_id
@@ -67,7 +95,6 @@ export default function ChatWindow({ chatId: chatIdProp, userId, onBack }) {
                     return [...prev, msg];
                 });
 
-                // Mark as read if I'm the receiver
                 if (msg.sender_id !== user?.id && data.chat_id) {
                     fetch(`${API_BASE}/chat/chats/${data.chat_id}/messages/${msg.id}/read`, {
                         method: 'POST',
@@ -77,13 +104,16 @@ export default function ChatWindow({ chatId: chatIdProp, userId, onBack }) {
                         }
                     }).catch(() => {});
                 }
-
             } else if (data.type === 'status_update') {
                 if (data.user_id === userId) {
                     setOtherUser(prev => prev ? { ...prev, isOnline: data.status === 'online' } : prev);
                 }
+            } else if (data.type === 'typing_indicator') {
+                if (data.user_id === userId) {
+                    setIsTyping(true);
+                    setTimeout(() => setIsTyping(false), 3000);
+                }
             }
-            // read_receipt handling can be added here
         };
 
         window.addEventListener('ws_message', handleWsMessage);
@@ -221,7 +251,7 @@ export default function ChatWindow({ chatId: chatIdProp, userId, onBack }) {
                     
                     <div
                         className="w-10 h-10 rounded-full flex items-center justify-center text-sm font-bold text-white"
-                        style={{ background: 'linear-gradient(135deg, #6366f1, #8b5cf6)' }}
+                        style={{ background: getGradientFromUsername(otherUser?.username || '?') }}
                     >
                         {otherUser?.username?.[0]?.toUpperCase() || '?'}
                     </div>
@@ -271,7 +301,7 @@ export default function ChatWindow({ chatId: chatIdProp, userId, onBack }) {
                     <div className="flex flex-col items-center justify-center h-full">
                         <div
                             className="w-16 h-16 rounded-full flex items-center justify-center mb-3"
-                            style={{ background: 'linear-gradient(135deg, #6366f1, #8b5cf6)' }}
+                            style={{ background: getGradientFromUsername(otherUser?.username || '?') }}
                         >
                             <span className="text-2xl font-bold text-white">
                                 {otherUser?.username?.[0]?.toUpperCase() || '?'}
@@ -286,10 +316,13 @@ export default function ChatWindow({ chatId: chatIdProp, userId, onBack }) {
                     </div>
                 )}
 
-                {messages.map((message) => (
+                {messages.map((message, idx) => (
                     <div
                         key={message.id}
-                        className={`flex ${message.sender_id === user?.id ? 'justify-end' : 'justify-start'}`}
+                        className={`flex ${message.sender_id === user?.id ? 'justify-end' : 'justify-start'} message-entrance`}
+                        style={{
+                            animation: `messageSlideIn 0.4s cubic-bezier(0.34, 1.56, 0.64, 1) ${idx * 0.05}s both`,
+                        }}
                     >
                         <div
                             className="max-w-xs lg:max-w-md px-4 py-2.5 rounded-2xl"
@@ -325,36 +358,62 @@ export default function ChatWindow({ chatId: chatIdProp, userId, onBack }) {
                     </div>
                 ))}
 
+                {isTyping && (
+                    <div className="flex justify-start">
+                        <div
+                            className="px-4 py-3 rounded-2xl"
+                            style={{
+                                background: 'var(--color-surface)',
+                                display: 'flex',
+                                gap: '6px',
+                                alignItems: 'center',
+                            }}
+                        >
+                            <span className="typing-dot" style={{ animation: 'typingBounce 1.4s infinite' }} />
+                            <span className="typing-dot" style={{ animation: 'typingBounce 1.4s infinite 0.2s' }} />
+                            <span className="typing-dot" style={{ animation: 'typingBounce 1.4s infinite 0.4s' }} />
+                        </div>
+                    </div>
+                )}
+
                 <div ref={messagesEndRef} />
             </div>
 
             {/* ── Input ── */}
             <div
-                className="p-4 border-t"
+                className="p-4 border-t transition-all duration-300"
                 style={{
                     borderColor: 'var(--color-border)',
-                    backgroundColor: 'var(--color-surface)'
+                    backgroundColor: 'var(--color-surface)',
+                    boxShadow: isInputFocused ? '0 -4px 12px rgba(99,102,241,0.15)' : 'none',
                 }}
             >
-                <div className="flex gap-3">
-                    <input
-                        type="text"
-                        value={input}
-                        onChange={(e) => setInput(e.target.value)}
-                        onKeyDown={handleKeyPress}
-                        placeholder="Type a message..."
-                        className="flex-1 px-4 py-3 rounded-full text-sm focus:outline-none transition-all"
-                        style={{
-                            backgroundColor: 'var(--color-surface-hover)',
-                            color: 'var(--color-primary-text)',
-                            border: `1.5px solid ${input ? '#6366f1' : 'var(--color-border)'}`
-                        }}
-                        disabled={sending}
-                    />
+                <div className="flex gap-3 items-flex-end">
+                    <div style={{ flex: 1, position: 'relative' }}>
+                        <textarea
+                            ref={inputRef}
+                            value={input}
+                            onChange={(e) => setInput(e.target.value)}
+                            onKeyDown={handleKeyPress}
+                            onFocus={() => setIsInputFocused(true)}
+                            onBlur={() => setIsInputFocused(false)}
+                            placeholder="Type a message..."
+                            className="w-full px-4 py-3 rounded-2xl text-sm focus:outline-none transition-all resize-none custom-scrollbar"
+                            style={{
+                                backgroundColor: 'var(--color-surface-hover)',
+                                color: 'var(--color-primary-text)',
+                                border: `2px solid ${isInputFocused ? '#6366f1' : 'var(--color-border)'}`,
+                                minHeight: '44px',
+                                maxHeight: '120px',
+                                boxShadow: isInputFocused ? '0 0 0 3px rgba(99,102,241,0.1)' : 'none',
+                            }}
+                            disabled={sending}
+                        />
+                    </div>
                     <button
                         onClick={handleSendMessage}
                         disabled={!input.trim() || sending}
-                        className="px-4 py-3 rounded-full font-semibold text-white transition-all duration-200 flex items-center justify-center"
+                        className="px-4 py-3 rounded-full font-semibold text-white transition-all duration-200 flex items-center justify-center flex-shrink-0"
                         style={{
                             background: input.trim() && !sending
                                 ? 'linear-gradient(135deg, #6366f1, #8b5cf6)'
@@ -365,7 +424,8 @@ export default function ChatWindow({ chatId: chatIdProp, userId, onBack }) {
                             cursor: input.trim() && !sending ? 'pointer' : 'not-allowed',
                             opacity: input.trim() && !sending ? 1 : 0.5,
                             minWidth: '44px',
-                            height: '44px'
+                            height: '44px',
+                            transform: sending ? 'scale(0.95)' : 'scale(1)',
                         }}
                     >
                         {sending ? (
@@ -376,6 +436,51 @@ export default function ChatWindow({ chatId: chatIdProp, userId, onBack }) {
                     </button>
                 </div>
             </div>
+
+            <style>{`
+                @keyframes messageSlideIn {
+                    from {
+                        opacity: 0;
+                        transform: translateY(20px) scale(0.95);
+                    }
+                    to {
+                        opacity: 1;
+                        transform: translateY(0) scale(1);
+                    }
+                }
+                
+                @keyframes typingBounce {
+                    0%, 60%, 100% {
+                        opacity: 0.5;
+                        transform: translateY(0);
+                    }
+                    30% {
+                        opacity: 1;
+                        transform: translateY(-10px);
+                    }
+                }
+                
+                .typing-dot {
+                    display: inline-block;
+                    width: 8px;
+                    height: 8px;
+                    border-radius: 50%;
+                    background-color: var(--color-muted-text);
+                }
+                
+                textarea::-webkit-scrollbar {
+                    width: 6px;
+                }
+                
+                textarea::-webkit-scrollbar-track {
+                    background: transparent;
+                }
+                
+                textarea::-webkit-scrollbar-thumb {
+                    background: #999;
+                    border-radius: 3px;
+                }
+            `}</style>
         </div>
     );
 }

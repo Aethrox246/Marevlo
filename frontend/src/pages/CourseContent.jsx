@@ -230,18 +230,27 @@ const COURSE_HTML_MAP = {
   "clustering-part9": "/cources/clus/part_9.html",
   "clustering-part10": "/cources/clus/part_10.html",
   "clustering-part11": "/cources/clus/part_11.html",
-  "mrag-intro": "/cources/generative-ai/Multi-modal-rag/Introduction.html",
-  "mrag-vlm": "/cources/generative-ai/Multi-modal-rag/VLMs.html",
-  "mrag-embedding": "/cources/generative-ai/Multi-modal-rag/Embedding-Spaces.html",
-  "mrag-pretraining": "/cources/generative-ai/Multi-modal-rag/Pretraining-Signals.html",
-  "mrag-core": "/cources/generative-ai/Multi-modal-rag/MRAG.html",
-  "mrag-agents-intro": "/cources/generative-ai/Multi-modal-rag/AGENTS.html",
-  "mrag-single-agent": "/cources/generative-ai/Multi-modal-rag/Single-Agent-Paradigms.html",
-  "mrag-multi-agent": "/cources/generative-ai/Multi-modal-rag/Multi-Agent-Systems.html",
-  "mrag-agentic-rag": "/cources/generative-ai/Multi-modal-rag/Agentic-RAG.html",
-  "mrag-evaluation": "/cources/generative-ai/Multi-modal-rag/Evaluation-Debugging.html",
-  "mrag-fine-tuning": "/cources/generative-ai/Multi-modal-rag/Efficient-Fine-Tuning.html",
-  "mrag-memory": "/cources/generative-ai/Multi-modal-rag/Memory-Safety.html",
+  "mrag-module-1": "/cources/generative-ai/Multi-modal-rag/multimodal_module_1.html",
+  "mrag-module-2": "/cources/generative-ai/Multi-modal-rag/multimodal_module_2.html",
+  "mrag-module-3": "/cources/generative-ai/Multi-modal-rag/multimodal_module_3.html",
+  "mrag-module-4": "/cources/generative-ai/Multi-modal-rag/multimodal_module_4.html",
+  "mrag-module-5": "/cources/generative-ai/Multi-modal-rag/multimodal_module_5.html",
+  "mrag-module-6": "/cources/generative-ai/Multi-modal-rag/multimodal_module_6.html",
+  "mrag-module-7": "/cources/generative-ai/Multi-modal-rag/multimodal_module_7.html",
+  "mrag-module-8": "/cources/generative-ai/Multi-modal-rag/multimodal_module_8.html",
+  "mrag-module-9": "/cources/generative-ai/Multi-modal-rag/multimodal_module_9.html",
+  "mrag-module-10": "/cources/generative-ai/Multi-modal-rag/multimodal_module_10.html",
+  "mrag-module-11": "/cources/generative-ai/Multi-modal-rag/multimodal_module_11.html",
+  "mrag-module-12": "/cources/generative-ai/Multi-modal-rag/multimodal_module_12.html",
+  "mrag-module-13": "/cources/generative-ai/Multi-modal-rag/multimodal_module_13.html",
+  "langgraph-module-1": "/cources/LangGraph/module1.html",
+  "langgraph-module-2": "/cources/LangGraph/module2.html",
+  "langgraph-module-3": "/cources/LangGraph/module3.html",
+  "langgraph-module-4": "/cources/LangGraph/module4.html",
+  "langgraph-module-5": "/cources/LangGraph/module5.html",
+  "langgraph-module-6": "/cources/LangGraph/module6.html",
+  "langgraph-module-7": "/cources/LangGraph/module7.html",
+  "langgraph-module-8": "/cources/LangGraph/module8.html",
 };
 
 /**
@@ -262,6 +271,27 @@ const IFRAME_COURSES = new Set([
   "clustering-part9",
   "clustering-part10",
   "clustering-part11",
+  "langgraph-module-1",
+  "langgraph-module-2",
+  "langgraph-module-3",
+  "langgraph-module-4",
+  "langgraph-module-5",
+  "langgraph-module-6",
+  "langgraph-module-7",
+  "langgraph-module-8",
+  "mrag-module-1",
+  "mrag-module-2",
+  "mrag-module-3",
+  "mrag-module-4",
+  "mrag-module-5",
+  "mrag-module-6",
+  "mrag-module-7",
+  "mrag-module-8",
+  "mrag-module-9",
+  "mrag-module-10",
+  "mrag-module-11",
+  "mrag-module-12",
+  "mrag-module-13",
 ]);
 
 /**
@@ -366,76 +396,82 @@ const COURSE_CONFIGS = {
     icon: "Cpu",
     lessons: [],
   },
-  "mrag-intro": {
+  "mrag-module-1": {
     category: "Multimodal RAG",
-    title: "Introduction to Multimodal AI",
+    title: "Introduction",
     icon: "BookOpen",
     lessons: [],
   },
-  "mrag-vlm": {
+  "mrag-module-2": {
     category: "Multimodal RAG",
-    title: "Visual Language Models (VLMs)",
+    title: "Embedding Spaces",
     icon: "Image",
     lessons: [],
   },
-  "mrag-embedding": {
+  "mrag-module-3": {
     category: "Multimodal RAG",
-    title: "Visual Embedding Spaces",
+    title: "Pretraining Signals to Vision-Language Models",
     icon: "Layers",
     lessons: [],
   },
-  "mrag-pretraining": {
+  "mrag-module-4": {
     category: "Multimodal RAG",
-    title: "Visual Pre-training Signals",
-    icon: "Search",
+    title: "Vision-Language Models",
+    icon: "Eye",
     lessons: [],
   },
-  "mrag-core": {
+  "mrag-module-5": {
     category: "Multimodal RAG",
-    title: "Multimodality & MRAG Core",
+    title: "Storage, Chunking, metadata&retrival",
     icon: "Database",
     lessons: [],
   },
-  "mrag-agents-intro": {
+  "mrag-module-6": {
     category: "Multimodal RAG",
-    title: "What is an AI Agent?",
-    icon: "Cpu",
+    title: "MRAG",
+    icon: "Search",
     lessons: [],
   },
-  "mrag-single-agent": {
+  "mrag-module-7": {
     category: "Multimodal RAG",
-    title: "Single Agent Paradigms",
-    icon: "Zap",
-    lessons: [],
-  },
-  "mrag-multi-agent": {
-    category: "Multimodal RAG",
-    title: "Multi-Agent Systems",
-    icon: "GitBranch",
-    lessons: [],
-  },
-  "mrag-agentic-rag": {
-    category: "Multimodal RAG",
-    title: "Agentic RAG",
-    icon: "Sparkles",
-    lessons: [],
-  },
-  "mrag-evaluation": {
-    category: "Multimodal RAG",
-    title: "Evaluation & Debugging",
+    title: "Evaluation & Debugging in Multimodal RAG",
     icon: "FlaskConical",
     lessons: [],
   },
-  "mrag-fine-tuning": {
+  "mrag-module-8": {
     category: "Multimodal RAG",
-    title: "Efficient Fine-Tuning",
+    title: "Efficient Fine-Tuning & Preference Alignment",
     icon: "Cpu",
     lessons: [],
   },
-  "mrag-memory": {
+  "mrag-module-9": {
     category: "Multimodal RAG",
-    title: "Memory & Safety",
+    title: "Chatbots, AI Agents, and Multimodal Agents",
+    icon: "MessageSquare",
+    lessons: [],
+  },
+  "mrag-module-10": {
+    category: "Multimodal RAG",
+    title: "Single-Agent Paradigms Beyond ReAct",
+    icon: "Zap",
+    lessons: [],
+  },
+  "mrag-module-11": {
+    category: "Multimodal RAG",
+    title: "Agentic Retrieval-Augmented Generation",
+    icon: "GitBranch",
+    lessons: [],
+  },
+  "mrag-module-12": {
+    category: "Multimodal RAG",
+    title: "Multi-Agent Systems in Multimodal AI",
     icon: "Lock",
+    lessons: [],
+  },
+  "mrag-module-13": {
+    category: "Multimodal RAG",
+    title: "Memory, Safety, Evaluation & Optimization",
+    icon: "Sparkles",
     lessons: [],
   },
   "rag-database": {
@@ -538,6 +574,126 @@ const COURSE_CONFIGS = {
     category: "Machine Learning",
     title: "Machine Learning - Module 3",
     icon: "Network",
+    lessons: [],
+  },
+  "clustering-part0": {
+    category: "Clustering",
+    title: "Part 0: Course Overview",
+    icon: "GitBranch",
+    lessons: [],
+  },
+  "clustering-part1": {
+    category: "Clustering",
+    title: "Part 1: Introduction to Clustering",
+    icon: "BookOpen",
+    lessons: [],
+  },
+  "clustering-part2": {
+    category: "Clustering",
+    title: "Part 2: K-Means & K-Medoids",
+    icon: "Cpu",
+    lessons: [],
+  },
+  "clustering-part3": {
+    category: "Clustering",
+    title: "Part 3: Hierarchical & Density-based",
+    icon: "Network",
+    lessons: [],
+  },
+  "clustering-part4": {
+    category: "Clustering",
+    title: "Part 4: Evaluation & Validation",
+    icon: "FlaskConical",
+    lessons: [],
+  },
+  "clustering-part5": {
+    category: "Clustering",
+    title: "Part 5: Gaussian Mixture Models",
+    icon: "Brain",
+    lessons: [],
+  },
+  "clustering-part6": {
+    category: "Clustering",
+    title: "Part 6: Spectral Clustering",
+    icon: "Network",
+    lessons: [],
+  },
+  "clustering-part7": {
+    category: "Clustering",
+    title: "Part 7: Dimensionality Reduction",
+    icon: "Sparkles",
+    lessons: [],
+  },
+  "clustering-part8": {
+    category: "Clustering",
+    title: "Part 8: Large-scale Algorithms",
+    icon: "ServerCog",
+    lessons: [],
+  },
+  "clustering-part9": {
+    category: "Clustering",
+    title: "Part 9: Time Series Clustering",
+    icon: "Clock",
+    lessons: [],
+  },
+  "clustering-part10": {
+    category: "Clustering",
+    title: "Part 10: Anomaly Detection",
+    icon: "Search",
+    lessons: [],
+  },
+  "clustering-part11": {
+    category: "Clustering",
+    title: "Part 11: Capstone Project",
+    icon: "Code2",
+    lessons: [],
+  },
+  "langgraph-module-1": {
+    category: "LangGraph",
+    title: "Module 1",
+    icon: "GitBranch",
+    lessons: [],
+  },
+  "langgraph-module-2": {
+    category: "LangGraph",
+    title: "Module 2",
+    icon: "GitBranch",
+    lessons: [],
+  },
+  "langgraph-module-3": {
+    category: "LangGraph",
+    title: "Module 3",
+    icon: "GitBranch",
+    lessons: [],
+  },
+  "langgraph-module-4": {
+    category: "LangGraph",
+    title: "Module 4",
+    icon: "GitBranch",
+    lessons: [],
+  },
+  "langgraph-module-5": {
+    category: "LangGraph",
+    title: "Module 5",
+    icon: "GitBranch",
+    lessons: [],
+  },
+  "langgraph-module-6": {
+    category: "LangGraph",
+    title: "Module 6",
+    icon: "GitBranch",
+    lessons: [],
+  },
+  "langgraph-module-7": {
+    category: "LangGraph",
+    title: "Module 7",
+    icon: "GitBranch",
+    lessons: [],
+  },
+  "langgraph-module-8": {
+    category: "LangGraph",
+    title: "Module 8",
+    icon: "GitBranch",
     lessons: [],
   },
 };
@@ -819,6 +975,7 @@ export default function CourseContent() {
   const milestoneShownRef = useRef(new Set());
   const chapterTimerRef = useRef(null);
   const toastTimerRef = useRef(null);
+  const sidebarTocRef = useRef(null);
 
   /* Re-initialise lessons + reader state when route changes */
   useEffect(() => {
@@ -1124,6 +1281,46 @@ export default function CourseContent() {
     };
   }, [docHtml, tocItems, rawTocItems]);
 
+  /* Auto-scroll sidebar TOC to keep active lesson visible */
+  useEffect(() => {
+    if (!sidebarTocRef.current || !currentLesson) return;
+    
+    // Small delay to ensure DOM is fully rendered
+    const timeoutId = setTimeout(() => {
+      const container = sidebarTocRef.current;
+      if (!container) return;
+      
+      // Find the active lesson button in the sidebar
+      const activeLessonBtn = container.querySelector(`[data-lesson-id="${currentLesson}"]`);
+      if (!activeLessonBtn) return;
+      
+      // Get the lesson card div (parent of the button)
+      const lessonCard = activeLessonBtn.closest('[data-lesson-id]')?.parentElement;
+      
+      if (lessonCard) {
+        // Use getBoundingClientRect for accurate positioning
+        const cardRect = lessonCard.getBoundingClientRect();
+        const containerRect = container.getBoundingClientRect();
+        
+        // Calculate position of card relative to container
+        const cardTopRelativeToContainer = cardRect.top - containerRect.top + container.scrollTop;
+        const cardHeight = cardRect.height;
+        const containerHeight = containerRect.height;
+        
+        // Calculate target scroll position to center the card
+        const targetScroll = cardTopRelativeToContainer - (containerHeight / 2) + (cardHeight / 2);
+        
+        // Smooth scroll the container
+        container.scrollTo({
+          top: Math.max(0, targetScroll),
+          behavior: 'smooth'
+        });
+      }
+    }, 100);
+    
+    return () => clearTimeout(timeoutId);
+  }, [currentLesson]);
+
   /* ── Flat Structure mapping for unified progress & pagination ── */
   const flatNodes = useMemo(() => {
     const list = [];
@@ -1307,7 +1504,7 @@ export default function CourseContent() {
         </div>
 
         {/* ── Glassmorphic lesson cards ── */}
-        <div className="flex-1 overflow-y-auto py-5 px-4 custom-scrollbar space-y-3">
+        <div ref={sidebarTocRef} className="flex-1 overflow-y-auto py-5 px-4 custom-scrollbar space-y-3">
           {lessons.map((l, index) => {
             const isActive = l.id === currentLesson;
             const isExpanded = l.id === expandedLesson;
@@ -1338,6 +1535,7 @@ export default function CourseContent() {
               >
                 {/* ── Main Module Header ── */}
                 <button
+                  data-lesson-id={l.id}
                   onClick={() => handleLessonClick(l)}
                   className="w-full flex items-center gap-3 p-4 text-left transition-colors relative z-10 w-full hover:bg-transparent"
                 >
@@ -1450,7 +1648,7 @@ export default function CourseContent() {
               </div>
             );
           })}
-        </div>
+        </div>33333
 
         {/* Sidebar footer */}
         <div className="p-4 border-t flex-shrink-0 space-y-4" style={S.border}>

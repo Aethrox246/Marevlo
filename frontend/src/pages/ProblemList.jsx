@@ -1,6 +1,67 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { ArrowRight, ChevronDown, BookOpen, Zap, Target } from 'lucide-react';
 import { loadAllTopics } from '../utils/topicsLoader';
+
+function FeatureCard({ icon, title, desc, color }) {
+    const cardRef = useRef(null);
+    const glareRef = useRef(null);
+    const [hovered, setHovered] = useState(false);
+    const [transform, setTransform] = useState('perspective(1000px) rotateX(0deg) rotateY(0deg) scale3d(1, 1, 1)');
+
+    const handleMouseMove = (e) => {
+        if (!cardRef.current) return;
+        const rect = cardRef.current.getBoundingClientRect();
+        const x = e.clientX - rect.left;
+        const y = e.clientY - rect.top;
+        const centerX = rect.width / 2;
+        const centerY = rect.height / 2;
+        
+        const rotateX = ((y - centerY) / centerY) * -15; 
+        const rotateY = ((x - centerX) / centerX) * 15;
+        
+        setTransform(`perspective(1000px) rotateX(${rotateX}deg) rotateY(${rotateY}deg) scale3d(1.02, 1.02, 1.02)`);
+
+        if (glareRef.current) {
+            glareRef.current.style.background = `radial-gradient(circle at ${x}px ${y}px, color-mix(in srgb, ${color} 25%, white 15%), transparent 65%)`;
+        }
+    };
+
+    const handleMouseLeave = () => {
+        setHovered(false);
+        setTransform('perspective(1000px) rotateX(0deg) rotateY(0deg) scale3d(1, 1, 1)');
+    };
+
+    return (
+        <div
+            ref={cardRef}
+            className="relative rounded-xl p-4 overflow-hidden"
+            style={{
+                background: `color-mix(in srgb, ${color} 6%, var(--color-surface))`,
+                border: `1px solid color-mix(in srgb, ${color} 25%, var(--color-border))`,
+                transform: transform,
+                transition: hovered ? 'transform 0.1s ease-out, box-shadow 0.3s ease' : 'all 0.5s ease',
+                boxShadow: hovered ? `0 20px 40px color-mix(in srgb, ${color} 20%, transparent), 0 0 15px color-mix(in srgb, ${color} 30%, transparent)` : 'none',
+                transformStyle: 'preserve-3d',
+                willChange: 'transform',
+                cursor: 'pointer'
+            }}
+            onMouseEnter={() => setHovered(true)}
+            onMouseMove={handleMouseMove}
+            onMouseLeave={handleMouseLeave}
+        >
+            <div 
+                ref={glareRef} 
+                className="absolute inset-0 pointer-events-none rounded-xl transition-opacity duration-300 z-10" 
+                style={{ opacity: hovered ? 1 : 0 }} 
+            />
+            <div style={{ position: 'relative', zIndex: 2 }}>
+                <div className="text-xl mb-2">{icon}</div>
+                <div className="text-sm font-bold mb-1" style={{ color: 'var(--color-primary-text)' }}>{title}</div>
+                <div className="text-xs leading-relaxed" style={{ color: 'var(--color-muted-text)' }}>{desc}</div>
+            </div>
+        </div>
+    );
+}
 
 const difficultyConfig = {
     Easy:   { label: 'Easy',   classes: 'bg-green-100 text-green-700 border border-green-200' },
@@ -259,19 +320,8 @@ export default function ProblemList({ onSelect }) {
                                     desc: 'Every ladder level has its own examples, explanations, and 10 test cases.',
                                     color: '#f59e0b',
                                 },
-                            ].map(({ icon, title, desc, color }) => (
-                                <div
-                                    key={title}
-                                    className="rounded-xl p-4 transition-all duration-200 hover:-translate-y-0.5"
-                                    style={{
-                                        background: `color-mix(in srgb, ${color} 6%, var(--color-surface))`,
-                                        border: `1px solid color-mix(in srgb, ${color} 25%, var(--color-border))`,
-                                    }}
-                                >
-                                    <div className="text-xl mb-2">{icon}</div>
-                                    <div className="text-sm font-bold mb-1" style={{ color: 'var(--color-primary-text)' }}>{title}</div>
-                                    <div className="text-xs leading-relaxed" style={{ color: 'var(--color-muted-text)' }}>{desc}</div>
-                                </div>
+                            ].map((feature) => (
+                                <FeatureCard key={feature.title} {...feature} />
                             ))}
                         </div>
                     </div>

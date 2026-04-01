@@ -1,0 +1,946 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Module 3 — Pretraining Signals in Multimodal AI</title>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&family=Outfit:wght@300;400;500;600;700;800;900&family=Source+Serif+4:ital,wght@0,300;0,400;0,600;1,300;1,400&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg-primary: #0a0f16;
+  --bg-card: #141c28;
+  --bg-soft: rgba(255,255,255,0.03);
+  --bg-code: #0c131d;
+  --text-primary: #eef5ff;
+  --text-secondary: #9eb1c7;
+  --accent-1: #5eead4;
+  --accent-2: #60a5fa;
+  --accent-3: #fbbf24;
+  --accent-4: #fb7185;
+  --accent-5: #a78bfa;
+  --gradient-line: linear-gradient(90deg, #5eead4, #60a5fa, #a78bfa, #fbbf24, #fb7185);
+  --border-subtle: rgba(255,255,255,0.08);
+  --shadow-card: 0 12px 38px rgba(0,0,0,0.35);
+  --radius: 16px;
+  --radius-sm: 10px;
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+html { scroll-behavior: smooth; }
+body {
+  background: var(--bg-primary);
+  color: var(--text-primary);
+  font-family: 'Outfit', sans-serif;
+  line-height: 1.7;
+  overflow-x: hidden;
+  -webkit-font-smoothing: antialiased;
+}
+.scroll-progress { position: fixed; top: 0; left: 0; height: 3px; width: 0%; z-index: 1000; background: var(--gradient-line); }
+.hero {
+  min-height: 100vh;
+  display: flex; flex-direction: column; justify-content: center; align-items: center;
+  text-align: center; position: relative; overflow: hidden; padding: 2rem;
+}
+.hero::before {
+  content: '';
+  position: absolute; inset: 0;
+  background:
+    radial-gradient(ellipse 760px 440px at 20% 30%, rgba(94,234,212,0.14), transparent),
+    radial-gradient(ellipse 540px 340px at 78% 34%, rgba(96,165,250,0.12), transparent),
+    radial-gradient(ellipse 640px 380px at 54% 78%, rgba(167,139,250,0.10), transparent);
+}
+.hero-particles { position: absolute; inset: 0; pointer-events: none; }
+.hero-particles .dot {
+  position: absolute; width: 4px; height: 4px; border-radius: 50%;
+  background: rgba(255,255,255,0.7); opacity: 0; animation: floatDot 7s ease-in-out infinite;
+}
+@keyframes floatDot {
+  0%,100% { opacity: 0; transform: translateY(0) scale(0.75); }
+  50% { opacity: 0.55; transform: translateY(-42px) scale(1); }
+}
+.hero-label {
+  position: relative; z-index: 1;
+  display: inline-flex; align-items: center; gap: 8px;
+  padding: 7px 18px; border-radius: 999px;
+  background: rgba(94,234,212,0.10); border: 1px solid rgba(94,234,212,0.24);
+  color: var(--accent-1); font-size: 0.78rem; font-weight: 600; letter-spacing: 1.6px; text-transform: uppercase;
+  margin-bottom: 1.7rem;
+}
+.dot-indicator {
+  width: 7px; height: 7px; border-radius: 50%;
+  background: var(--accent-2); animation: pulse 2s ease-in-out infinite;
+}
+@keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: 0.35; } }
+.hero h1 {
+  position: relative; z-index: 1;
+  font-size: clamp(2.8rem, 6vw, 5rem); line-height: 1.05; letter-spacing: -2px; font-weight: 900;
+  max-width: 1000px; margin-bottom: 1.3rem;
+}
+.gradient-text {
+  background: var(--gradient-line);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+.hero-subtitle {
+  position: relative; z-index: 1;
+  max-width: 860px; color: var(--text-secondary); font-family: 'Source Serif 4', serif;
+  font-size: clamp(1.05rem, 2vw, 1.24rem); line-height: 1.85;
+}
+.hero-scroll-cue {
+  position: absolute; bottom: 2.8rem; display: flex; flex-direction: column; align-items: center; gap: 8px;
+  color: var(--text-secondary); text-transform: uppercase; letter-spacing: 2px; font-size: 0.74rem;
+}
+.hero-scroll-cue .arrow {
+  width: 18px; height: 18px; border-right: 2px solid var(--text-secondary); border-bottom: 2px solid var(--text-secondary);
+  transform: rotate(45deg); animation: bounceArrow 2s ease-in-out infinite;
+}
+@keyframes bounceArrow { 0%,100% { transform: rotate(45deg) translateY(0); } 50% { transform: rotate(45deg) translateY(6px); } }
+.content-wrapper { max-width: 1100px; margin: 0 auto; padding: 0 2rem 6rem; }
+.section { margin-bottom: 5rem; }
+.section-number {
+  display: flex; align-items: center; gap: 10px;
+  font-family: 'JetBrains Mono', monospace; font-size: 0.72rem; color: var(--accent-1); letter-spacing: 3px; text-transform: uppercase;
+  margin-bottom: 0.8rem;
+}
+.section-number::after {
+  content: ''; flex: 1; height: 1px; background: linear-gradient(90deg, var(--accent-1), transparent); opacity: 0.35;
+}
+h2 {
+  font-size: clamp(1.9rem, 3.7vw, 2.75rem); line-height: 1.18; letter-spacing: -0.6px; margin-bottom: 1.4rem;
+}
+h3 { font-size: 1.34rem; margin: 2.2rem 0 1rem; }
+h4 { font-size: 1rem; color: var(--accent-3); margin-bottom: 0.5rem; }
+p { color: var(--text-secondary); margin-bottom: 1.15rem; font-size: 1.02rem; }
+ul, ol { color: var(--text-secondary); margin: 0 0 1.2rem 1.2rem; }
+li { margin-bottom: 0.55rem; }
+p strong, li strong, b { color: var(--text-primary); }
+code {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.9em; background: rgba(255,255,255,0.06); border-radius: 6px; padding: 2px 6px;
+}
+.lead {
+  font-family: 'Source Serif 4', serif; color: var(--text-primary); font-size: 1.16rem;
+}
+.gradient-divider { height: 2px; margin: 4rem 0; border-radius: 2px; opacity: 0.55; background: var(--gradient-line); }
+.mini-card, .formula-card, .signal-card, .quiz-card, .compare-card, .clip-card, .pipeline-card {
+  background: var(--bg-card); border: 1px solid var(--border-subtle); border-radius: var(--radius); box-shadow: var(--shadow-card);
+}
+.mini-card, .signal-card, .compare-card, .clip-card, .pipeline-card { padding: 22px; }
+.goal-grid, .signal-grid, .compare-grid, .takeaway-grid, .eval-grid {
+  display: grid; gap: 16px; margin: 1.5rem 0;
+}
+.goal-grid { grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); }
+.signal-grid { grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); }
+.compare-grid { grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); }
+.takeaway-grid { grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); }
+.eval-grid { grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); }
+.formula-card {
+  position: relative; overflow: hidden; padding: 24px 28px; margin: 1.5rem 0;
+}
+.formula-card::before {
+  content: ''; position: absolute; inset: 0 auto 0 0; width: 3px; background: var(--gradient-line);
+}
+.formula-label {
+  font-family: 'JetBrains Mono', monospace; text-transform: uppercase; letter-spacing: 1.5px; color: var(--accent-2); font-size: 0.72rem; margin-bottom: 10px;
+}
+.formula-math {
+  font-family: 'Source Serif 4', serif; color: var(--text-primary); font-size: 1.22rem; margin-bottom: 10px;
+}
+.formula-explain { color: var(--text-secondary); font-size: 0.92rem; }
+.insight, .warning {
+  position: relative; margin: 2rem 0; padding: 20px 24px; border-radius: var(--radius);
+}
+.insight {
+  background: linear-gradient(135deg, rgba(94,234,212,0.10), rgba(96,165,250,0.05)); border: 1px solid rgba(94,234,212,0.22);
+}
+.warning {
+  background: linear-gradient(135deg, rgba(251,113,133,0.10), rgba(251,191,36,0.06)); border: 1px solid rgba(251,113,133,0.22);
+}
+.insight::before, .warning::before {
+  position: absolute; top: -12px; left: 18px; background: var(--bg-primary); padding: 0 8px; font-size: 1.05rem;
+}
+.insight::before { content: '◎'; color: var(--accent-1); }
+.warning::before { content: '▲'; color: var(--accent-4); }
+.clip-stage, .lora-stage, .ground-stage {
+  margin: 2rem 0; background: var(--bg-card); border: 1px solid var(--border-subtle); border-radius: var(--radius); box-shadow: var(--shadow-card); padding: 22px;
+}
+.stage-header {
+  display: flex; align-items: center; justify-content: space-between; gap: 12px;
+  padding-bottom: 14px; margin-bottom: 16px; border-bottom: 1px solid var(--border-subtle);
+  font-family: 'JetBrains Mono', monospace; font-size: 0.75rem; color: var(--text-secondary);
+}
+.clip-grid {
+  display: grid; grid-template-columns: 1fr 1.2fr 1fr; gap: 16px; align-items: center;
+}
+.tower, .matrix-card {
+  border: 1px solid var(--border-subtle); border-radius: var(--radius-sm); background: rgba(255,255,255,0.03); padding: 16px;
+}
+.tower-stack { display: grid; gap: 10px; }
+.token {
+  padding: 10px 12px; border-radius: 10px; background: rgba(255,255,255,0.04); border: 1px solid var(--border-subtle);
+  font-size: 0.88rem; color: var(--text-secondary);
+}
+.tower-output {
+  margin-top: 12px; padding: 10px 12px; border-radius: 10px;
+  background: rgba(96,165,250,0.10); border: 1px solid rgba(96,165,250,0.22); font-family: 'JetBrains Mono', monospace; font-size: 0.75rem; color: var(--accent-2);
+}
+.matrix { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; }
+.cell {
+  aspect-ratio: 1 / 1; border-radius: 8px; display: flex; align-items: center; justify-content: center;
+  font-family: 'JetBrains Mono', monospace; font-size: 0.7rem;
+  background: rgba(255,255,255,0.04); color: var(--text-secondary); border: 1px solid var(--border-subtle);
+  animation: softBlink 2.8s ease-in-out infinite;
+}
+.cell.diag {
+  background: rgba(134,239,172,0.12); color: var(--accent-2); border-color: rgba(134,239,172,0.26); animation: diagPulse 2s ease-in-out infinite;
+}
+.cell.off { opacity: 0.55; }
+.cell:nth-child(2) { animation-delay: 0.15s; }
+.cell:nth-child(3) { animation-delay: 0.3s; }
+.cell:nth-child(4) { animation-delay: 0.45s; }
+.cell:nth-child(5) { animation-delay: 0.6s; }
+.cell:nth-child(6) { animation-delay: 0.75s; }
+.cell:nth-child(7) { animation-delay: 0.9s; }
+.cell:nth-child(8) { animation-delay: 1.05s; }
+@keyframes softBlink {
+  0%,100% { opacity: 0.45; }
+  50% { opacity: 0.85; }
+}
+@keyframes diagPulse {
+  0%,100% { transform: scale(1); box-shadow: none; }
+  50% { transform: scale(1.03); box-shadow: 0 0 20px rgba(134,239,172,0.16); }
+}
+.matrix-note { margin-top: 12px; font-size: 0.9rem; color: var(--text-secondary); }
+.signal-type {
+  font-family: 'JetBrains Mono', monospace; font-size: 0.68rem; text-transform: uppercase; letter-spacing: 1px; color: var(--accent-2); margin-bottom: 8px;
+}
+.lora-grid, .ground-grid {
+  display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px;
+}
+.model-box {
+  border: 1px solid var(--border-subtle); border-radius: var(--radius-sm); background: rgba(255,255,255,0.03); padding: 16px;
+}
+.layer-row { display: grid; gap: 8px; margin-top: 10px; }
+.layer {
+  position: relative; padding: 10px 12px; border-radius: 10px; border: 1px solid var(--border-subtle); background: rgba(255,255,255,0.04);
+  color: var(--text-secondary); font-size: 0.88rem;
+}
+.layer.frozen { opacity: 0.7; }
+.layer.trainable { border-color: rgba(96,165,250,0.26); background: rgba(96,165,250,0.10); color: var(--text-primary); }
+.plugin {
+  position: absolute; right: 10px; top: 50%; transform: translateY(-50%);
+  font-family: 'JetBrains Mono', monospace; font-size: 0.68rem; color: var(--accent-5);
+}
+.ground-box {
+  border: 1px solid var(--border-subtle); border-radius: var(--radius-sm); background: rgba(255,255,255,0.03); padding: 16px;
+}
+.ground-claim {
+  padding: 10px 12px; border-radius: 10px; background: rgba(255,255,255,0.04); margin-bottom: 10px;
+}
+.ground-claim.bad { border: 1px solid rgba(251,113,133,0.3); background: rgba(251,113,133,0.08); }
+.ground-claim.good { border: 1px solid rgba(134,239,172,0.3); background: rgba(134,239,172,0.08); }
+.code-block {
+  background: var(--bg-code); border: 1px solid var(--border-subtle); border-radius: var(--radius); overflow: hidden; margin: 1.5rem 0;
+}
+.code-block-header {
+  display: flex; align-items: center; justify-content: space-between; padding: 10px 16px; background: rgba(255,255,255,0.02); border-bottom: 1px solid var(--border-subtle);
+}
+.code-lang { font-family: 'JetBrains Mono', monospace; font-size: 0.7rem; color: var(--accent-2); }
+.code-block pre {
+  padding: 16px 20px; overflow-x: auto; font-family: 'JetBrains Mono', monospace; font-size: 0.82rem; line-height: 1.65; color: #d2dde9;
+}
+.quiz-section-title { margin-top: 1.4rem; color: var(--accent-3); font-size: 1.08rem; }
+.quiz-card { margin: 1rem 0; overflow: hidden; }
+.quiz-card-header { padding: 14px 18px; border-bottom: 1px solid var(--border-subtle); background: rgba(255,255,255,0.03); font-weight: 600; }
+.quiz-card-body { padding: 18px 22px; }
+.quiz-question { color: var(--text-primary); margin-bottom: 12px; }
+.quiz-options div { margin-bottom: 8px; color: var(--text-secondary); }
+.answer-grid {
+  display: grid; grid-template-columns: repeat(auto-fit, minmax(100px, 1fr)); gap: 10px; margin-top: 1rem;
+}
+.answer-chip {
+  display: inline-flex; align-items: center; justify-content: center; min-height: 44px; padding: 10px 12px; border-radius: 999px;
+  background: rgba(255,255,255,0.04); border: 1px solid var(--border-subtle); color: var(--text-primary);
+  font-family: 'JetBrains Mono', monospace; font-size: 0.84rem;
+}
+details {
+  margin-top: 1.5rem; background: var(--bg-card); border: 1px solid var(--border-subtle); border-radius: var(--radius); padding: 16px 18px;
+}
+summary { cursor: pointer; color: var(--text-primary); font-weight: 600; }
+@media (max-width: 980px) {
+  .clip-grid, .lora-grid, .ground-grid { grid-template-columns: 1fr; }
+}
+@media (max-width: 720px) {
+  .content-wrapper { padding: 0 1.15rem 5rem; }
+  .hero { padding: 1.35rem; }
+  .hero h1 { letter-spacing: -1.2px; }
+}
+</style>
+</head>
+<body>
+<div class="scroll-progress" id="scrollProgress"></div>
+
+<section class="hero">
+  <div class="hero-particles" id="heroParticles"></div>
+  <div class="hero-label"><span class="dot-indicator"></span> Multimodal RAG · Module 3 of 13</div>
+  <h1>Pretraining Signals in <span class="gradient-text">Multimodal AI</span></h1>
+  <p class="hero-subtitle">
+    This module is about the training signals that give multimodal models their first real understanding of the world:
+    alignment, captioning, masking, multi-task learning, efficient adaptation, and the habits that keep them grounded.
+  </p>
+  <div class="hero-scroll-cue"><span>Continue</span><div class="arrow"></div></div>
+</section>
+
+<div class="content-wrapper">
+
+<div class="section">
+  <div class="section-number">01 — Goal</div>
+  <h2>Why Pretraining Signals Matter</h2>
+
+  <p class="lead">
+    The goal of this module is to explain the key pretraining techniques that build strong multimodal foundations,
+    like teaching an AI baby the world through picture books.
+  </p>
+
+  <div class="goal-grid">
+    <div class="mini-card">
+      <h4>You will learn</h4>
+      <ul>
+        <li>The four main signals: contrastive, captioning, masked modeling, and multi-task training</li>
+        <li>How pretraining creates aligned, transferable representations for tasks like fashion matching</li>
+      </ul>
+    </div>
+    <div class="mini-card">
+      <h4>You will also learn</h4>
+      <ul>
+        <li>Practical ways to adapt pretrained models efficiently</li>
+        <li>Common traps such as hallucinations and how to mitigate them</li>
+      </ul>
+    </div>
+  </div>
+
+  <p>
+    This module equips you to build or refine multimodal systems such as a saree styling app with higher-quality, more grounded outputs.
+  </p>
+  <p>
+    The source uses a helpful analogy: pretraining is like giving your AI baby millions of picture books so it learns the world before school starts.
+    Those picture books come in the form of large-scale image-text pairs, masked examples, captions, and mixed-task objectives.
+  </p>
+</div>
+
+<div class="gradient-divider"></div>
+
+<div class="section">
+  <div class="section-number">02 — Contrastive</div>
+  <h2>Contrastive Learning, CLIP Style</h2>
+
+  <p>
+    Contrastive pretraining is the king for alignment and zero-shot magic.
+    The rule is simple: this photo matches this caption, and the others do not.
+    Matching pairs are pulled together in embedding space while mismatches are pushed apart.
+  </p>
+
+  <div class="clip-stage">
+    <div class="stage-header">
+      <span>Animated CLIP Diagram</span>
+      <span>TWO TOWERS · ONE SIMILARITY MATRIX</span>
+    </div>
+    <div class="clip-grid">
+      <div class="tower">
+        <h4>Text Encoder</h4>
+        <div class="tower-stack">
+          <div class="token">pepper the aussie pup</div>
+          <div class="token">small hedgehog on grass</div>
+          <div class="token">other captions in batch</div>
+        </div>
+        <div class="tower-output">T₁, T₂, … Tₙ</div>
+      </div>
+
+      <div class="matrix-card">
+        <h4>Similarity Matrix</h4>
+        <div class="matrix">
+          <div class="cell diag">I₁·T₁</div>
+          <div class="cell off">I₁·T₂</div>
+          <div class="cell off">I₁·T₃</div>
+          <div class="cell off">I₁·T₄</div>
+          <div class="cell off">I₂·T₁</div>
+          <div class="cell diag">I₂·T₂</div>
+          <div class="cell off">I₂·T₃</div>
+          <div class="cell off">I₂·T₄</div>
+          <div class="cell off">I₃·T₁</div>
+          <div class="cell off">I₃·T₂</div>
+          <div class="cell diag">I₃·T₃</div>
+          <div class="cell off">I₃·T₄</div>
+          <div class="cell off">I₄·T₁</div>
+          <div class="cell off">I₄·T₂</div>
+          <div class="cell off">I₄·T₃</div>
+          <div class="cell diag">I₄·T₄</div>
+        </div>
+        <div class="matrix-note">
+          The diagonal is the positive set. Everything off-diagonal is a negative pair the model should learn to dislike.
+        </div>
+      </div>
+
+      <div class="tower">
+        <h4>Image Encoder</h4>
+        <div class="tower-stack">
+          <div class="token">puppy photo</div>
+          <div class="token">hedgehog photo</div>
+          <div class="token">other images in batch</div>
+        </div>
+        <div class="tower-output">I₁, I₂, … Iₙ</div>
+      </div>
+    </div>
+  </div>
+
+  <p>
+    CLIP does not begin by trying to generate captions or answer questions.
+    Instead it learns a massive matching game from internet-scale image-caption pairs.
+  </p>
+  <ul>
+    <li>For each batch, one image-caption pair is the positive match</li>
+    <li>All the other captions in that batch become negatives for that image</li>
+    <li>The model is rewarded for making the correct match stand out and the wrong ones fade away</li>
+  </ul>
+
+  <h3>Step-by-Step Diagram Explanation</h3>
+  <ul>
+    <li>Text captions go into a text encoder, usually a Transformer, which outputs one fixed-size vector for each caption</li>
+    <li>Images go into an image encoder, often a Vision Transformer, which cuts the image into patches and also outputs one vector</li>
+    <li>Those vectors are projected into the same shared space, often dimensions like 512 or 768</li>
+    <li>The similarity matrix compares every image to every caption in the batch</li>
+    <li>The bright diagonal cells are the true matches and the rest should be pushed down</li>
+  </ul>
+
+  <p>
+    The repeated puppy and hedgehog examples in the source are there to show that this is not a one-off. The same matching pattern is learned for every pair in the batch simultaneously.
+  </p>
+
+  <div class="formula-card">
+    <div class="formula-label">InfoNCE Intuition</div>
+    <div class="formula-math">maximize the probability of the correct match among one positive and many negatives</div>
+    <div class="formula-explain">
+      This happens symmetrically: image-to-text and text-to-image both learn from the same contrastive structure.
+    </div>
+  </div>
+
+  <p>
+    The full intuition matters here. For each image, the model treats its real caption as the positive and the other
+    <code>N - 1</code> captions in the batch as negatives. Then it does the same thing from the caption side:
+    the real image is the positive and all the other images are negatives. That is why people say CLIP uses a
+    symmetric image-to-text plus text-to-image InfoNCE objective rather than a one-sided loss.
+  </p>
+  <p>
+    In practice, the model computes a probability distribution over the whole batch with softmax and temperature,
+    then tries to make the probability of the true match as close to 100 percent as possible. That is what makes large batches so powerful:
+    they give the model many more hard negatives to learn from in a single update.
+  </p>
+  <p>
+    That extra negative pressure is a big reason CLIP-style systems generalize so well in zero-shot settings.
+    With more hard negatives in each batch, the model learns a sharper notion of what truly belongs together and what only looks superficially similar.
+  </p>
+
+  <ul>
+    <li><strong>Embedding space:</strong> similar things should live nearby, such as golden retriever text near golden retriever photos</li>
+    <li><strong>Contrastive learning:</strong> strengthen positives and weaken negatives</li>
+    <li><strong>Batch size matters:</strong> more negatives create a stronger learning signal</li>
+    <li><strong>CLIP scale:</strong> the source notes CLIP famously used batches of 32,768, which is why it needed huge compute</li>
+    <li><strong>Zero-shot payoff:</strong> after training, brand-new phrases can retrieve relevant images even if the exact phrase never appeared during training</li>
+  </ul>
+
+  <p>
+    In a fashion app, this is what lets the model immediately connect a query like
+    <code>elegant blue Banarasi silk saree with zari border</code> to the right images without extra task-specific retraining.
+  </p>
+
+  <p><strong>Real-world example:</strong> Instagram’s recommendation system can use contrastive learning to match uploaded photos with similar content and improve feed personalization.</p>
+
+  <div class="code-block">
+    <div class="code-block-header"><span class="code-lang">PyTorch · Symmetric InfoNCE Loss</span></div>
+    <pre>import torch
+import torch.nn.functional as F
+
+def info_nce_loss(image_embeds, text_embeds, temperature=0.07):
+    image_embeds = F.normalize(image_embeds, dim=-1)
+    text_embeds = F.normalize(text_embeds, dim=-1)
+
+    logits = image_embeds @ text_embeds.T / temperature
+    labels = torch.arange(logits.size(0), device=logits.device)
+
+    # image -> text direction
+    loss_i = F.cross_entropy(logits, labels)
+    # text -> image direction
+    loss_t = F.cross_entropy(logits.T, labels)
+
+    # Final CLIP-style loss averages both directions
+    return (loss_i + loss_t) / 2
+
+# image_embeds: [batch, dim]
+# text_embeds:  [batch, dim]
+# temperature sharpens or softens the similarity distribution
+# Larger batches mean more negatives and usually stronger alignment pressure.</pre>
+  </div>
+</div>
+
+<div class="gradient-divider"></div>
+
+<div class="section">
+  <div class="section-number">03 — Other Signals</div>
+  <h2>The Other Major Pretraining Signals</h2>
+
+  <div class="signal-grid">
+    <div class="signal-card">
+      <div class="signal-type">Captioning</div>
+      <h4>Image to Text Generation</h4>
+      <p>The model sees an image and predicts a natural description. This forces it to understand details deeply rather than only learning similarity structure.</p>
+      <p>
+        Captioning is what teaches descriptive richness: not just that two examples belong together, but what is actually in the scene,
+        what the texture looks like, what the fabric might be, and what objects or attributes deserve mention.
+      </p>
+    </div>
+
+    <div class="signal-card">
+      <div class="signal-type">Masked Modeling</div>
+      <h4>Guess What Is Missing</h4>
+      <p>Hide parts of the image or text and train the model to reconstruct them. This is great for local structure, texture, layout, and fine visual details.</p>
+      <p>
+        The easiest intuition is BERT-for-vision: remove a region, patch, or token and make the model infer what belongs there.
+        That strengthens local understanding, especially for texture, spatial arrangement, and document layout.
+      </p>
+      <p>
+        This matters a lot for charts, tables, invoices, and fine-grained visual surfaces such as saree weave patterns,
+        because the model is forced to recover missing local evidence rather than only learning broad global similarity.
+      </p>
+    </div>
+
+    <div class="signal-card">
+      <div class="signal-type">Multi-Task</div>
+      <h4>Mix Signals Together</h4>
+      <p>Use contrastive training, captioning, and masking in one system. The module points to systems like Flamingo and PaLI as examples of mixing objectives for stronger representations.</p>
+      <p>
+        The reason multi-task works so well is that each objective teaches a different skill:
+        contrastive for alignment and zero-shot transfer, captioning for descriptive depth, masking for local detail,
+        and the combination for better robustness and generalization.
+      </p>
+    </div>
+  </div>
+
+  <p>
+    The source’s message is not that one signal always wins. It is that different signals shape different strengths:
+    contrastive for alignment, captioning for descriptive depth, masking for local structure, and multi-task training for breadth.
+  </p>
+</div>
+
+<div class="gradient-divider"></div>
+
+<div class="section">
+  <div class="section-number">04 — Fine-Tuning</div>
+  <h2>How to Adapt a Pretrained Multimodal Model Efficiently</h2>
+
+  <p>
+    Once pretraining is done, the next question is adaptation. Most teams cannot afford to retrain a full giant model from scratch for each new product.
+    That is where LoRA and adapters come in.
+  </p>
+
+  <div class="lora-stage">
+    <div class="stage-header">
+      <span>Full Fine-Tuning vs LoRA</span>
+      <span>FREEZE MOST THINGS · TRAIN SMALL PLUGINS</span>
+    </div>
+    <div class="lora-grid">
+      <div class="model-box">
+        <h4>Full Fine-Tuning</h4>
+        <div class="layer-row">
+          <div class="layer trainable">Vision encoder <span class="plugin">update all</span></div>
+          <div class="layer trainable">Projector <span class="plugin">update all</span></div>
+          <div class="layer trainable">LLM backbone <span class="plugin">update all</span></div>
+        </div>
+        <p>Powerful, but expensive in memory, compute, and engineering time.</p>
+      </div>
+
+      <div class="model-box">
+        <h4>LoRA / Adapters</h4>
+        <div class="layer-row">
+          <div class="layer frozen">Vision encoder <span class="plugin">frozen</span></div>
+          <div class="layer trainable">Projector <span class="plugin">tiny adapter</span></div>
+          <div class="layer trainable">LLM backbone <span class="plugin">low-rank update</span></div>
+        </div>
+        <p>Freeze the base, train only roughly 1 to 5 percent of the parameters.</p>
+      </div>
+    </div>
+  </div>
+
+  <p>
+    In multimodal systems, many teams apply LoRA only to the projector or the LLM while keeping the vision encoder frozen.
+    In the source’s fashion example, that means you can fine-tune a model on Odisha-specific saree styles such as Pochampally ikat and Sambalpuri motifs overnight on a modest GPU.
+  </p>
+  <p>
+    That trade-off is the practical point: instead of paying for a full multimodal retrain, you preserve the expensive visual foundation
+    and adapt only the smaller parts that need to learn the product-specific language and style behavior.
+  </p>
+
+  <h3>Preference Tuning</h3>
+  <p>
+    The next layer after basic fine-tuning is preference tuning. The rule is:
+    helpful and accurate is better than helpful but hallucinated, which is better than rude or vague.
+  </p>
+  <p>
+    The module explicitly frames this through <code>DPO</code> and <code>RLHF</code>-style preference tuning:
+    rank responses, then train the model to prefer the grounded and truthful ones.
+  </p>
+  <p>
+    Modern approaches like <code>DPO</code> are especially popular because they can optimize directly on preference pairs
+    without needing the full complexity of classic RLHF pipelines.
+  </p>
+  <p>
+    This matters because without preference tuning, the model may confidently invent details like
+    <code>this saree is pure silk</code> when the image actually shows a polyester blend.
+    Preference tuning teaches the model a grounding habit: only say what you see.
+  </p>
+  <p>
+    That ranking logic is the key missing habit in many raw models. If you explicitly teach the system that
+    <code>helpful + grounded</code> outranks <code>helpful but guessed</code>, then the model stops treating fluent guesses as acceptable answers.
+    In e-commerce, that difference directly affects trust, returns, and disputes.
+  </p>
+</div>
+
+<div class="gradient-divider"></div>
+
+<div class="section">
+  <div class="section-number">05 — Data</div>
+  <h2>Data Curation: Garbage In Still Means Garbage Out</h2>
+
+  <p>
+    Multimodal data is messy. Internet images come with noisy captions, documents come with OCR errors,
+    and tables get flattened into meaningless summaries if you are not careful.
+  </p>
+
+  <ul>
+    <li><strong>Caption noise:</strong> a saree image labeled as <code>beautiful woman in dress</code> teaches the wrong association</li>
+    <li><strong>OCR noise:</strong> scanned invoices or labels can turn <code>Total: $100</code> into <code>Tota1: $1OO</code></li>
+    <li><strong>Chart or table labeling failures:</strong> a pricing table screenshot labeled only as <code>some numbers</code> never teaches row or column understanding</li>
+  </ul>
+
+  <p><strong>Practical curation steps from the source:</strong></p>
+  <ul>
+    <li>Filter data by CLIP score, for example image-text similarity above about 0.28</li>
+    <li>Run dedicated OCR systems like TrOCR and verify the outputs</li>
+    <li>Use synthetic data for clean table images with known labels</li>
+    <li>Generate synthetic tables, charts, and invoice-style documents with perfect labels when real-world structured data is too noisy</li>
+    <li>Use human-in-the-loop review in high-value domains like medical, legal, or authenticity-sensitive fashion</li>
+  </ul>
+
+  <p>
+    The workflow matters as much as the ingredients: score noisy pairs, remove the worst caption-image mismatches,
+    clean OCR-heavy sources, generate synthetic structured examples for tables or charts, then reserve human review for the high-stakes tail.
+    That is how messy web data turns into usable multimodal training data.
+  </p>
+
+  <p>
+    The source’s recommendation is sharp: in your app, a curated set of 5,000 high-quality saree photos with accurate descriptions is often better than 500,000 noisy examples.
+    Quality wins.
+  </p>
+
+  <p><strong>Real-world example:</strong> datasets like LAION-5B use CLIP-based filtering to curate billions of image-text pairs for training systems such as Stable Diffusion.</p>
+
+  <div class="code-block">
+    <div class="code-block-header"><span class="code-lang">Pseudo-CLIP · Filtering with Threshold and Review</span></div>
+    <pre>def filter_pair(record, threshold=0.28):
+    score = record["clip_score"]
+
+    if score &lt; 0.20:
+        return "drop"
+    if score &lt; threshold:
+        return "send_to_review"
+    return "keep"
+
+records = [
+    {"id": "saree_photo_1", "clip_score": 0.41},
+    {"id": "invoice_scan_2", "clip_score": 0.19},
+    {"id": "table_image_3", "clip_score": 0.26},
+]
+
+for record in records:
+    print(record["id"], filter_pair(record))</pre>
+  </div>
+</div>
+
+<div class="gradient-divider"></div>
+
+<div class="section">
+  <div class="section-number">06 — Evaluation</div>
+  <h2>Evaluation Traps and Grounding Failures</h2>
+
+  <p>
+    The sneaky problem in multimodal AI is that a model can sound fluent and plausible while being completely wrong about the image.
+  </p>
+
+  <div class="ground-stage">
+    <div class="stage-header">
+      <span>Grounding Failure vs Grounded Claim</span>
+      <span>LOOK PLAUSIBLE ≠ BE CORRECT</span>
+    </div>
+    <div class="ground-grid">
+      <div class="ground-box">
+        <h4>Hallucinated Claim</h4>
+        <div class="ground-claim bad">“The woman is wearing a red saree with heavy embroidery.”</div>
+        <p>But the actual image shows a blue plain cotton saree.</p>
+      </div>
+      <div class="ground-box">
+        <h4>Grounded Claim</h4>
+        <div class="ground-claim good">“There is a tear on the border region near the lower right edge.”</div>
+        <p>The claim points to a visible location and can be verified in the image.</p>
+      </div>
+    </div>
+  </div>
+
+  <ul>
+    <li><strong>Looks correct but hallucinates:</strong> fluent language can hide false visual claims</li>
+    <li><strong>Groundedness failure:</strong> the model ignores the image and parrots training bias</li>
+    <li><strong>Generic instead of specific:</strong> it says <code>damaged</code> without locating the actual defect</li>
+  </ul>
+
+  <p><strong>How to catch these problems:</strong></p>
+  <div class="eval-grid">
+    <div class="mini-card">
+      <h4>POPE / MME</h4>
+      <p>Use grounding-sensitive benchmarks such as POPE and MME to probe whether the model is inventing objects, attributes, or unsupported details.</p>
+      <p>They matter because multimodal failure is often not random nonsense, but plausible-sounding object or attribute hallucination.</p>
+    </div>
+    <div class="mini-card">
+      <h4>Human Checks</h4>
+      <p>Ask a strict evaluation question: does the answer say only what is visible?</p>
+    </div>
+    <div class="mini-card">
+      <h4>Visual Grounding</h4>
+      <p>Require the model to point to bounding boxes or regions that support its claims, so the answer is tied to visible evidence instead of generic language.</p>
+    </div>
+  </div>
+
+  <p>
+    In the fashion-return example, if a customer uploads a damaged saree photo, the model must ground the claim
+    <code>tear on the border</code> to the actual spot. Grounded answers create trust and reduce disputes.
+  </p>
+
+  <p><strong>Real-world example:</strong> VQA and related grounding benchmarks are used to evaluate multimodal reasoning in systems deployed by companies such as Meta for LLaMA-based VLMs.</p>
+
+  <div class="code-block">
+    <div class="code-block-header"><span class="code-lang">Pseudo-Code · IoU Grounding Validation</span></div>
+    <pre>def claim_is_grounded(claim_box, detected_boxes, iou_threshold=0.5):
+    for detected_box in detected_boxes:
+        iou = compute_iou(claim_box, detected_box)
+        if iou &gt;= iou_threshold:
+            return True
+    return False
+
+# If the claim “tear on the border” has no matching region,
+# the answer should not be trusted as grounded.
+# In practice you would also log the best IoU and attach the region to the answer.</pre>
+  </div>
+</div>
+
+<div class="gradient-divider"></div>
+
+<div class="section">
+  <div class="section-number">07 — Conclusion</div>
+  <h2>Key Takeaways from Module 3</h2>
+
+  <p>
+    Pretraining signals lay the multimodal foundation. Fine-tuning and curation are what turn that foundation into practical, grounded performance.
+    Evaluation is what keeps fluent mistakes from becoming product failures.
+  </p>
+
+  <div class="takeaway-grid">
+    <div class="mini-card"><p><strong>Contrastive CLIP-style learning</strong> dominates for alignment and zero-shot transfer.</p></div>
+    <div class="mini-card"><p><strong>Captioning, masking, and multi-task signals</strong> add descriptive depth, local detail, and stronger generalization beyond simple alignment.</p></div>
+    <div class="mini-card"><p><strong>LoRA and adapters</strong> make efficient multimodal fine-tuning practical by updating only a small slice of the system instead of retraining everything.</p></div>
+    <div class="mini-card"><p><strong>Preference tuning</strong> combats hallucinations by explicitly teaching the model that grounded truth beats confident guessing.</p></div>
+    <div class="mini-card"><p><strong>Data curation</strong> should prioritize quality through CLIP filtering, OCR cleanup, synthetic examples, and human review in high-stakes domains.</p></div>
+    <div class="mini-card"><p><strong>Evaluation</strong> must focus on grounding, using POPE, MME, human checks, and region-based verification to catch fluent but wrong outputs.</p></div>
+  </div>
+
+  <p>
+    In product terms, the recipe is direct: use contrastive pretraining for alignment and zero-shot matching, add captioning or masking when you need richer detail, adapt with LoRA instead of retraining the whole stack, and enforce grounding with preference tuning plus evaluation before the model reaches users.
+  </p>
+</div>
+
+<div class="gradient-divider"></div>
+
+<div class="section">
+  <div class="section-number">08 — Quiz</div>
+  <h2>Assessment</h2>
+
+  <div class="quiz-section-title">Easy Questions</div>
+
+  <div class="quiz-card">
+    <div class="quiz-card-header">Question 1</div>
+    <div class="quiz-card-body">
+      <div class="quiz-question">What is the main goal of pretraining in multimodal AI?</div>
+      <div class="quiz-options">
+        <div>A) To teach the model the world through different signals so it learns aligned representations before fine-tuning</div>
+        <div>B) To only train on labeled data</div>
+        <div>C) To skip fine-tuning completely</div>
+        <div>D) To make the model slower</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="quiz-card">
+    <div class="quiz-card-header">Question 2</div>
+    <div class="quiz-card-body">
+      <div class="quiz-question">What is the core idea of contrastive learning?</div>
+      <div class="quiz-options">
+        <div>A) Pull matching image-text pairs close and push mismatches far away</div>
+        <div>B) Only generate captions</div>
+        <div>C) Only mask parts of the image</div>
+        <div>D) Only do classification</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="quiz-card">
+    <div class="quiz-card-header">Question 3</div>
+    <div class="quiz-card-body">
+      <div class="quiz-question">What does the contrastive-learning diagram show?</div>
+      <div class="quiz-options">
+        <div>A) A matching game where the correct image-caption pair gets a high score while wrong ones are dimmed</div>
+        <div>B) Only pixel prediction</div>
+        <div>C) Only text generation</div>
+        <div>D) Only classification</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="quiz-card">
+    <div class="quiz-card-header">Question 4</div>
+    <div class="quiz-card-body">
+      <div class="quiz-question">What is one real-world example of contrastive learning?</div>
+      <div class="quiz-options">
+        <div>A) Instagram’s recommendation system matching uploaded photos with similar content</div>
+        <div>B) Only text summarization</div>
+        <div>C) Only audio transcription</div>
+        <div>D) Only table extraction</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="quiz-section-title">Medium Questions</div>
+
+  <div class="quiz-card">
+    <div class="quiz-card-header">Question 5</div>
+    <div class="quiz-card-body">
+      <div class="quiz-question">What are the four main pretraining signals mentioned in the module?</div>
+      <div class="quiz-options">
+        <div>A) Contrastive, Captioning, Masked Modeling, and Multi-task</div>
+        <div>B) Only contrastive and captioning</div>
+        <div>C) Only masked modeling</div>
+        <div>D) Only supervised classification</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="quiz-card">
+    <div class="quiz-card-header">Question 6</div>
+    <div class="quiz-card-body">
+      <div class="quiz-question">Why is LoRA useful for fine-tuning multimodal models?</div>
+      <div class="quiz-options">
+        <div>A) It adds tiny trainable adapters so you only train about 1 to 5 percent of parameters while freezing the base model</div>
+        <div>B) It retrains the entire model</div>
+        <div>C) It removes the vision encoder</div>
+        <div>D) It makes training slower</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="quiz-card">
+    <div class="quiz-card-header">Question 7</div>
+    <div class="quiz-card-body">
+      <div class="quiz-question">What is the purpose of preference tuning?</div>
+      <div class="quiz-options">
+        <div>A) To teach the model to prefer grounded, truthful answers over hallucinated ones by ranking responses</div>
+        <div>B) To only increase speed</div>
+        <div>C) To remove all fine-tuning</div>
+        <div>D) To only use contrastive signals</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="quiz-section-title">Hard Questions</div>
+
+  <div class="quiz-card">
+    <div class="quiz-card-header">Question 8</div>
+    <div class="quiz-card-body">
+      <div class="quiz-question">Why is data curation critical in multimodal pretraining?</div>
+      <div class="quiz-options">
+        <div>A) Because noisy captions, bad OCR, and poor labels lead to garbage representations, so quality beats quantity</div>
+        <div>B) Because more data is always better</div>
+        <div>C) Because curation is not needed</div>
+        <div>D) Because it only affects speed</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="quiz-card">
+    <div class="quiz-card-header">Question 9</div>
+    <div class="quiz-card-body">
+      <div class="quiz-question">What is a common evaluation trap in multimodal models?</div>
+      <div class="quiz-options">
+        <div>A) The model sounds fluent but hallucinates details not actually visible in the image</div>
+        <div>B) The model is always perfectly grounded</div>
+        <div>C) The model only makes factual errors in text</div>
+        <div>D) The model never hallucinates</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="quiz-card">
+    <div class="quiz-card-header">Question 10</div>
+    <div class="quiz-card-body">
+      <div class="quiz-question">What is the overall outcome of this module?</div>
+      <div class="quiz-options">
+        <div>A) You understand the key pretraining signals, efficient fine-tuning, preference tuning, data curation, and how to avoid grounding hallucinations</div>
+        <div>B) You only learn contrastive learning</div>
+        <div>C) You skip fine-tuning</div>
+        <div>D) You only learn evaluation</div>
+      </div>
+    </div>
+  </div>
+
+  <details>
+    <summary>Answers</summary>
+    <div class="answer-grid">
+      <span class="answer-chip">1 · A</span>
+      <span class="answer-chip">2 · A</span>
+      <span class="answer-chip">3 · A</span>
+      <span class="answer-chip">4 · A</span>
+      <span class="answer-chip">5 · A</span>
+      <span class="answer-chip">6 · A</span>
+      <span class="answer-chip">7 · A</span>
+      <span class="answer-chip">8 · A</span>
+      <span class="answer-chip">9 · A</span>
+      <span class="answer-chip">10 · A</span>
+    </div>
+  </details>
+</div>
+
+</div>
+
+<script>
+window.addEventListener('scroll', () => {
+  const h = document.documentElement;
+  document.getElementById('scrollProgress').style.width = ((h.scrollTop / (h.scrollHeight - h.clientHeight)) * 100) + '%';
+});
+
+const heroParticles = document.getElementById('heroParticles');
+for (let i = 0; i < 34; i++) {
+  const dot = document.createElement('div');
+  dot.className = 'dot';
+  dot.style.left = Math.random() * 100 + '%';
+  dot.style.top = Math.random() * 100 + '%';
+  dot.style.animationDelay = Math.random() * 5 + 's';
+  dot.style.animationDuration = (5 + Math.random() * 4) + 's';
+  heroParticles.appendChild(dot);
+}
+</script>
+</body>
+</html>

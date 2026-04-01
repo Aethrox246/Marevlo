@@ -11,6 +11,59 @@ import { useAuth } from '../context/AuthContext';
 const INITIAL_POSTS = [];
 const API_BASE = import.meta.env.VITE_API_URL;
 
+function TiltCard({ children, intensity = 10 }) {
+    const cardRef = useRef(null);
+    const glareRef = useRef(null);
+    const [hovered, setHovered] = useState(false);
+    const [transform, setTransform] = useState('perspective(1000px) rotateX(0deg) rotateY(0deg) scale3d(1, 1, 1)');
+
+    const handleMouseMove = (e) => {
+        if (!cardRef.current) return;
+        const rect = cardRef.current.getBoundingClientRect();
+        const x = e.clientX - rect.left;
+        const y = e.clientY - rect.top;
+        const centerX = rect.width / 2;
+        const centerY = rect.height / 2;
+        
+        const rotateX = ((y - centerY) / centerY) * -intensity;
+        const rotateY = ((x - centerX) / centerX) * intensity;
+        
+        setTransform(`perspective(1000px) rotateX(${rotateX}deg) rotateY(${rotateY}deg) scale3d(1.02, 1.02, 1.02)`);
+
+        if (glareRef.current) {
+            glareRef.current.style.background = `radial-gradient(circle at ${x}px ${y}px, rgba(255,255,255,0.15) 0%, transparent 60%)`;
+        }
+    };
+
+    const handleMouseLeave = () => {
+        setHovered(false);
+        setTransform('perspective(1000px) rotateX(0deg) rotateY(0deg) scale3d(1, 1, 1)');
+    };
+
+    return (
+        <div
+            ref={cardRef}
+            className="relative transition-all duration-300"
+            style={{
+                transform: transform,
+                transition: hovered ? 'transform 0.1s ease-out' : 'all 0.5s ease',
+                transformStyle: 'preserve-3d',
+                willChange: 'transform',
+            }}
+            onMouseEnter={() => setHovered(true)}
+            onMouseMove={handleMouseMove}
+            onMouseLeave={handleMouseLeave}
+        >
+            <div 
+                ref={glareRef} 
+                className="absolute inset-0 pointer-events-none rounded-2xl transition-opacity duration-300 z-50" 
+                style={{ opacity: hovered ? 1 : 0 }} 
+            />
+            {children}
+        </div>
+    );
+}
+
 export default function Feed({ setView }) {
     const { user } = useAuth();
     const token = localStorage.getItem('access_token');
@@ -330,49 +383,51 @@ export default function Feed({ setView }) {
                     <div className="space-y-5">
 
                         {/* ── Gradient Hero Header ── */}
-                        <div className="relative rounded-2xl overflow-hidden p-6 sm:p-7" style={{
-                            background: 'linear-gradient(135deg, #6366f1 0%, #8b5cf6 45%, #06b6d4 100%)',
-                            boxShadow: '0 8px 32px rgba(99,102,241,0.35)'
-                        }}>
-                            {/* Decorative shapes */}
-                            <div style={{
-                                position: 'absolute', top: '-30px', right: '-30px',
-                                width: '160px', height: '160px',
-                                borderRadius: '50%', opacity: 0.2,
-                                background: 'rgba(255,255,255,0.3)'
-                            }} />
-                            <div style={{
-                                position: 'absolute', bottom: '-20px', left: '30%',
-                                width: '80px', height: '80px',
-                                borderRadius: '50%', opacity: 0.15,
-                                background: 'rgba(255,255,255,0.4)'
-                            }} />
-                            <div className="relative z-10 flex items-center justify-between">
-                                <div>
-                                    <div className="flex items-center gap-2 mb-1">
-                                        <Sparkles size={16} style={{ color: 'rgba(255,255,255,0.85)' }} />
-                                        <span style={{ color: 'rgba(255,255,255,0.75)', fontSize: '0.72rem', fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase' }}>
-                                            Marevlo Community
-                                        </span>
+                        <TiltCard>
+                            <div className="relative rounded-2xl overflow-hidden p-6 sm:p-7 h-full" style={{
+                                background: 'linear-gradient(135deg, #6366f1 0%, #8b5cf6 45%, #06b6d4 100%)',
+                                boxShadow: '0 8px 32px rgba(99,102,241,0.35)'
+                            }}>
+                                {/* Decorative shapes */}
+                                <div style={{
+                                    position: 'absolute', top: '-30px', right: '-30px',
+                                    width: '160px', height: '160px',
+                                    borderRadius: '50%', opacity: 0.2,
+                                    background: 'rgba(255,255,255,0.3)'
+                                }} />
+                                <div style={{
+                                    position: 'absolute', bottom: '-20px', left: '30%',
+                                    width: '80px', height: '80px',
+                                    borderRadius: '50%', opacity: 0.15,
+                                    background: 'rgba(255,255,255,0.4)'
+                                }} />
+                                <div className="relative z-10 flex items-center justify-between">
+                                    <div>
+                                        <div className="flex items-center gap-2 mb-1">
+                                            <Sparkles size={16} style={{ color: 'rgba(255,255,255,0.85)' }} />
+                                            <span style={{ color: 'rgba(255,255,255,0.75)', fontSize: '0.72rem', fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase' }}>
+                                                Marevlo Community
+                                            </span>
+                                        </div>
+                                        <h1 className="text-2xl sm:text-3xl font-extrabold text-white" style={{ letterSpacing: '-0.03em', lineHeight: 1.15 }}>
+                                            Your Feed
+                                        </h1>
+                                        <p style={{ color: 'rgba(255,255,255,0.75)', marginTop: '4px', fontSize: '0.9rem' }}>
+                                            Share ideas, connect with peers &amp; inspire the community
+                                        </p>
                                     </div>
-                                    <h1 className="text-2xl sm:text-3xl font-extrabold text-white" style={{ letterSpacing: '-0.03em', lineHeight: 1.15 }}>
-                                        Your Feed
-                                    </h1>
-                                    <p style={{ color: 'rgba(255,255,255,0.75)', marginTop: '4px', fontSize: '0.9rem' }}>
-                                        Share ideas, connect with peers &amp; inspire the community
-                                    </p>
-                                </div>
-                                <div className="hidden sm:flex items-center justify-center"
-                                    style={{
-                                        width: 64, height: 64, borderRadius: '50%',
-                                        background: 'rgba(255,255,255,0.2)',
-                                        border: '2px solid rgba(255,255,255,0.3)',
-                                        backdropFilter: 'blur(8px)'
-                                    }}>
-                                    <Zap size={28} style={{ color: '#fff' }} />
+                                    <div className="hidden sm:flex items-center justify-center"
+                                        style={{
+                                            width: 64, height: 64, borderRadius: '50%',
+                                            background: 'rgba(255,255,255,0.2)',
+                                            border: '2px solid rgba(255,255,255,0.3)',
+                                            backdropFilter: 'blur(8px)'
+                                        }}>
+                                        <Zap size={28} style={{ color: '#fff' }} />
+                                    </div>
                                 </div>
                             </div>
-                        </div>
+                        </TiltCard>
 
                         {/* ── Create Post Widget ── */}
                         <div className="transition-all duration-300 hover:shadow-xl" style={{ borderRadius: '1rem' }}>
@@ -517,69 +572,73 @@ export default function Feed({ setView }) {
                         <TrendingProblems />
 
                         {/* ── Suggested People Card (Empty State for Backend) ── */}
-                        <div className="rounded-2xl overflow-hidden transition-all duration-300 hover:shadow-xl" style={{
-                            border: '1px solid var(--color-border)',
-                            backgroundColor: 'var(--color-surface)',
-                        }}>
-                            <div style={{ height: 4, background: 'linear-gradient(90deg, #f43f5e, #ec4899, #8b5cf6)' }} />
-                            <div className="p-5 sm:p-6">
-                                <h3 className="text-sm font-bold flex items-center gap-2 mb-4">
-                                    <span style={{
-                                        display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
-                                        width: 30, height: 30, borderRadius: '50%',
-                                        background: 'linear-gradient(135deg, #f43f5e, #ec4899)',
-                                        color: '#fff'
-                                    }}>
-                                        <Users size={15} />
-                                    </span>
-                                    <span style={{ color: 'var(--color-primary-text)' }}>People You May Know</span>
-                                </h3>
-                                <div className="text-center py-4" style={{ color: 'var(--color-muted-text)' }}>
-                                    <p className="text-xs italic">Sync suggestions will appear here soon.</p>
+                        <TiltCard>
+                            <div className="rounded-2xl overflow-hidden transition-all duration-300 hover:shadow-xl h-full" style={{
+                                border: '1px solid var(--color-border)',
+                                backgroundColor: 'var(--color-surface)',
+                            }}>
+                                <div style={{ height: 4, background: 'linear-gradient(90deg, #f43f5e, #ec4899, #8b5cf6)' }} />
+                                <div className="p-5 sm:p-6">
+                                    <h3 className="text-sm font-bold flex items-center gap-2 mb-4">
+                                        <span style={{
+                                            display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+                                            width: 30, height: 30, borderRadius: '50%',
+                                            background: 'linear-gradient(135deg, #f43f5e, #ec4899)',
+                                            color: '#fff'
+                                        }}>
+                                            <Users size={15} />
+                                        </span>
+                                        <span style={{ color: 'var(--color-primary-text)' }}>People You May Know</span>
+                                    </h3>
+                                    <div className="text-center py-4" style={{ color: 'var(--color-muted-text)' }}>
+                                        <p className="text-xs italic">Sync suggestions will appear here soon.</p>
+                                    </div>
                                 </div>
                             </div>
-                        </div>
+                        </TiltCard>
 
                         {/* ── Quick Actions Card ── */}
-                        <div className="rounded-2xl overflow-hidden transition-all duration-300 hover:shadow-xl" style={{
-                            border: '1px solid var(--color-border)',
-                            backgroundColor: 'var(--color-surface)',
-                        }}>
-                            <div style={{ height: 4, background: 'linear-gradient(90deg, #10b981, #06b6d4)' }} />
-                            <div className="p-5 sm:p-6">
-                                <h3 className="text-sm font-bold flex items-center gap-2 mb-4">
-                                    <span style={{
-                                        display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
-                                        width: 30, height: 30, borderRadius: '50%',
-                                        background: 'linear-gradient(135deg, #10b981, #06b6d4)',
-                                        color: '#fff'
-                                    }}>
-                                        <Zap size={15} />
-                                    </span>
-                                    <span style={{ color: 'var(--color-primary-text)' }}>Quick Actions</span>
-                                </h3>
-                                <div className="flex flex-col gap-2">
-                                    <button
-                                        onClick={() => setIsArticleModalOpen(true)}
-                                        className="w-full flex items-center gap-3 py-2.5 px-3 rounded-xl text-sm font-semibold transition-all duration-200"
-                                        style={{ backgroundColor: 'rgba(99,102,241,0.1)', color: '#6366f1' }}
-                                        onMouseEnter={e => { e.currentTarget.style.backgroundColor = 'rgba(99,102,241,0.2)'; e.currentTarget.style.transform = 'translateX(4px)'; }}
-                                        onMouseLeave={e => { e.currentTarget.style.backgroundColor = 'rgba(99,102,241,0.1)'; e.currentTarget.style.transform = 'translateX(0)'; }}
-                                    >
-                                        <PenTool size={16} /> Write an Article
-                                    </button>
-                                    <button
-                                        onClick={() => setIsEventModalOpen(true)}
-                                        className="w-full flex items-center gap-3 py-2.5 px-3 rounded-xl text-sm font-semibold transition-all duration-200"
-                                        style={{ backgroundColor: 'rgba(244,63,94,0.1)', color: '#f43f5e' }}
-                                        onMouseEnter={e => { e.currentTarget.style.backgroundColor = 'rgba(244,63,94,0.2)'; e.currentTarget.style.transform = 'translateX(4px)'; }}
-                                        onMouseLeave={e => { e.currentTarget.style.backgroundColor = 'rgba(244,63,94,0.1)'; e.currentTarget.style.transform = 'translateX(0)'; }}
-                                    >
-                                        <Calendar size={16} /> Host an Event
-                                    </button>
+                        <TiltCard>
+                            <div className="rounded-2xl overflow-hidden transition-all duration-300 hover:shadow-xl h-full" style={{
+                                border: '1px solid var(--color-border)',
+                                backgroundColor: 'var(--color-surface)',
+                            }}>
+                                <div style={{ height: 4, background: 'linear-gradient(90deg, #10b981, #06b6d4)' }} />
+                                <div className="p-5 sm:p-6">
+                                    <h3 className="text-sm font-bold flex items-center gap-2 mb-4">
+                                        <span style={{
+                                            display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+                                            width: 30, height: 30, borderRadius: '50%',
+                                            background: 'linear-gradient(135deg, #10b981, #06b6d4)',
+                                            color: '#fff'
+                                        }}>
+                                            <Zap size={15} />
+                                        </span>
+                                        <span style={{ color: 'var(--color-primary-text)' }}>Quick Actions</span>
+                                    </h3>
+                                    <div className="flex flex-col gap-2">
+                                        <button
+                                            onClick={() => setIsArticleModalOpen(true)}
+                                            className="w-full flex items-center gap-3 py-2.5 px-3 rounded-xl text-sm font-semibold transition-all duration-200"
+                                            style={{ backgroundColor: 'rgba(99,102,241,0.1)', color: '#6366f1' }}
+                                            onMouseEnter={e => { e.currentTarget.style.backgroundColor = 'rgba(99,102,241,0.2)'; e.currentTarget.style.transform = 'translateX(4px)'; }}
+                                            onMouseLeave={e => { e.currentTarget.style.backgroundColor = 'rgba(99,102,241,0.1)'; e.currentTarget.style.transform = 'translateX(0)'; }}
+                                        >
+                                            <PenTool size={16} /> Write an Article
+                                        </button>
+                                        <button
+                                            onClick={() => setIsEventModalOpen(true)}
+                                            className="w-full flex items-center gap-3 py-2.5 px-3 rounded-xl text-sm font-semibold transition-all duration-200"
+                                            style={{ backgroundColor: 'rgba(244,63,94,0.1)', color: '#f43f5e' }}
+                                            onMouseEnter={e => { e.currentTarget.style.backgroundColor = 'rgba(244,63,94,0.2)'; e.currentTarget.style.transform = 'translateX(4px)'; }}
+                                            onMouseLeave={e => { e.currentTarget.style.backgroundColor = 'rgba(244,63,94,0.1)'; e.currentTarget.style.transform = 'translateX(0)'; }}
+                                        >
+                                            <Calendar size={16} /> Host an Event
+                                        </button>
+                                    </div>
                                 </div>
                             </div>
-                        </div>
+                        </TiltCard>
 
                         {/* Footer Links */}
                         <div className="flex flex-wrap gap-x-3 gap-y-2 text-[11px] px-2">

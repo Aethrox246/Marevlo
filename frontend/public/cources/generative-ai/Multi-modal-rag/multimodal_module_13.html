@@ -1,0 +1,915 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Module 13 — Memory, Safety, Evaluation & Optimization in Multimodal Agents</title>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&family=Outfit:wght@300;400;500;600;700;800;900&family=Source+Serif+4:ital,wght@0,300;0,400;0,600;1,300;1,400&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg-primary: #0a1017;
+  --bg-card: #151d28;
+  --bg-soft: rgba(255,255,255,0.03);
+  --bg-code: #0d1420;
+  --text-primary: #eef5ff;
+  --text-secondary: #9fb0c6;
+  --accent-1: #67e8f9;
+  --accent-2: #86efac;
+  --accent-3: #fbbf24;
+  --accent-4: #fb7185;
+  --accent-5: #c084fc;
+  --gradient-line: linear-gradient(90deg, #67e8f9, #86efac, #fbbf24, #fb7185, #c084fc);
+  --border-subtle: rgba(255,255,255,0.08);
+  --shadow-card: 0 12px 38px rgba(0,0,0,0.34);
+  --radius: 16px;
+  --radius-sm: 10px;
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+html { scroll-behavior: smooth; }
+body {
+  background: var(--bg-primary);
+  color: var(--text-primary);
+  font-family: 'Outfit', sans-serif;
+  line-height: 1.7;
+  overflow-x: hidden;
+  -webkit-font-smoothing: antialiased;
+}
+.scroll-progress { position: fixed; top: 0; left: 0; height: 3px; width: 0%; z-index: 1000; background: var(--gradient-line); }
+.hero {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  text-align: center;
+  position: relative;
+  overflow: hidden;
+  padding: 2rem;
+}
+.hero::before {
+  content: '';
+  position: absolute; inset: 0;
+  background:
+    radial-gradient(ellipse 760px 440px at 18% 28%, rgba(103,232,249,0.15), transparent),
+    radial-gradient(ellipse 560px 360px at 82% 30%, rgba(134,239,172,0.13), transparent),
+    radial-gradient(ellipse 700px 380px at 52% 80%, rgba(192,132,252,0.10), transparent);
+}
+.hero-particles { position: absolute; inset: 0; pointer-events: none; }
+.hero-particles .dot {
+  position: absolute; width: 4px; height: 4px; border-radius: 50%;
+  background: rgba(255,255,255,0.72); opacity: 0; animation: floatDot 7s ease-in-out infinite;
+}
+@keyframes floatDot {
+  0%,100% { opacity: 0; transform: translateY(0) scale(0.75); }
+  50% { opacity: 0.55; transform: translateY(-44px) scale(1); }
+}
+.hero-label {
+  position: relative; z-index: 1;
+  display: inline-flex; align-items: center; gap: 8px;
+  border-radius: 999px; padding: 7px 18px;
+  background: rgba(103,232,249,0.10);
+  border: 1px solid rgba(103,232,249,0.24);
+  color: var(--accent-1);
+  font-size: 0.78rem; font-weight: 600; letter-spacing: 1.6px; text-transform: uppercase;
+  margin-bottom: 1.7rem;
+}
+.dot-indicator {
+  width: 7px; height: 7px; border-radius: 50%;
+  background: var(--accent-2); animation: pulse 2s ease-in-out infinite;
+}
+@keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: 0.35; } }
+.hero h1 {
+  position: relative; z-index: 1;
+  font-size: clamp(2.7rem, 6vw, 5rem);
+  line-height: 1.05;
+  letter-spacing: -2px;
+  font-weight: 900;
+  max-width: 1040px;
+  margin-bottom: 1.3rem;
+}
+.gradient-text {
+  background: var(--gradient-line);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+.hero-subtitle {
+  position: relative; z-index: 1;
+  max-width: 920px;
+  color: var(--text-secondary);
+  font-family: 'Source Serif 4', serif;
+  font-size: clamp(1.05rem, 2vw, 1.24rem);
+  line-height: 1.85;
+}
+.hero-scroll-cue {
+  position: absolute; bottom: 2.8rem;
+  display: flex; flex-direction: column; align-items: center; gap: 8px;
+  color: var(--text-secondary); text-transform: uppercase; letter-spacing: 2px; font-size: 0.74rem;
+}
+.hero-scroll-cue .arrow {
+  width: 18px; height: 18px;
+  border-right: 2px solid var(--text-secondary);
+  border-bottom: 2px solid var(--text-secondary);
+  transform: rotate(45deg); animation: bounceArrow 2s ease-in-out infinite;
+}
+@keyframes bounceArrow {
+  0%,100% { transform: rotate(45deg) translateY(0); }
+  50% { transform: rotate(45deg) translateY(6px); }
+}
+.content-wrapper { max-width: 1100px; margin: 0 auto; padding: 0 2rem 6rem; }
+.section { margin-bottom: 5rem; }
+.section-number {
+  display: flex; align-items: center; gap: 10px;
+  font-family: 'JetBrains Mono', monospace; font-size: 0.72rem; letter-spacing: 3px;
+  text-transform: uppercase; color: var(--accent-1); margin-bottom: 0.8rem;
+}
+.section-number::after {
+  content: ''; flex: 1; height: 1px; background: linear-gradient(90deg, var(--accent-1), transparent); opacity: 0.35;
+}
+h2 {
+  font-size: clamp(1.9rem, 3.6vw, 2.7rem);
+  line-height: 1.18;
+  letter-spacing: -0.6px;
+  margin-bottom: 1.4rem;
+}
+h3 { font-size: 1.35rem; margin: 2.2rem 0 1rem; }
+h4 { font-size: 1rem; color: var(--accent-3); margin-bottom: 0.5rem; }
+p { color: var(--text-secondary); margin-bottom: 1.15rem; font-size: 1.02rem; }
+ul, ol { color: var(--text-secondary); margin: 0 0 1.2rem 1.2rem; }
+li { margin-bottom: 0.55rem; }
+p strong, li strong, b { color: var(--text-primary); }
+code {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.9em;
+  background: rgba(255,255,255,0.06);
+  border-radius: 6px;
+  padding: 2px 6px;
+}
+.lead {
+  font-family: 'Source Serif 4', serif;
+  color: var(--text-primary);
+  font-size: 1.16rem;
+}
+.gradient-divider { height: 2px; margin: 4rem 0; border-radius: 2px; opacity: 0.55; background: var(--gradient-line); }
+.mini-card, .formula-card, .memory-card, .benchmark-card, .pipeline-card, .tool-card, .quiz-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-card);
+}
+.mini-card, .memory-card, .benchmark-card, .pipeline-card, .tool-card { padding: 22px; }
+.goal-grid, .memory-grid, .benchmark-grid, .takeaway-grid, .tool-grid {
+  display: grid;
+  gap: 16px;
+  margin: 1.5rem 0;
+}
+.goal-grid { grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); }
+.memory-grid { grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); }
+.benchmark-grid { grid-template-columns: repeat(auto-fit, minmax(270px, 1fr)); }
+.takeaway-grid { grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); }
+.tool-grid { grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); }
+.formula-card {
+  position: relative;
+  overflow: hidden;
+  padding: 24px 28px;
+  margin: 1.5rem 0;
+}
+.formula-card::before {
+  content: '';
+  position: absolute; inset: 0 auto 0 0; width: 3px; background: var(--gradient-line);
+}
+.formula-label {
+  font-family: 'JetBrains Mono', monospace;
+  text-transform: uppercase; letter-spacing: 1.5px;
+  color: var(--accent-2); font-size: 0.72rem; margin-bottom: 10px;
+}
+.formula-math {
+  font-family: 'Source Serif 4', serif;
+  color: var(--text-primary);
+  font-size: 1.22rem;
+  margin-bottom: 10px;
+}
+.formula-explain { color: var(--text-secondary); font-size: 0.92rem; }
+.insight, .warning {
+  position: relative;
+  margin: 2rem 0;
+  padding: 20px 24px;
+  border-radius: var(--radius);
+}
+.insight {
+  background: linear-gradient(135deg, rgba(103,232,249,0.10), rgba(134,239,172,0.05));
+  border: 1px solid rgba(103,232,249,0.22);
+}
+.warning {
+  background: linear-gradient(135deg, rgba(251,113,133,0.10), rgba(251,191,36,0.06));
+  border: 1px solid rgba(251,113,133,0.22);
+}
+.insight::before, .warning::before {
+  position: absolute; top: -12px; left: 18px; background: var(--bg-primary); padding: 0 8px; font-size: 1.05rem;
+}
+.insight::before { content: '◎'; color: var(--accent-1); }
+.warning::before { content: '▲'; color: var(--accent-4); }
+.pipeline-stage {
+  margin: 2rem 0;
+  background: var(--bg-card);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-card);
+  padding: 22px;
+}
+.stage-header {
+  display: flex; align-items: center; justify-content: space-between; gap: 12px;
+  padding-bottom: 14px; margin-bottom: 16px; border-bottom: 1px solid var(--border-subtle);
+  font-family: 'JetBrains Mono', monospace; font-size: 0.75rem; color: var(--text-secondary);
+}
+.pipeline-flow {
+  display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 14px;
+}
+.pipeline-card {
+  position: relative;
+  min-height: 190px;
+  background: var(--bg-soft);
+}
+.pipeline-card::after {
+  content: '→';
+  position: absolute; right: -12px; top: 50%; transform: translateY(-50%);
+  color: var(--accent-2); font-size: 1.15rem;
+}
+.pipeline-flow .pipeline-card:last-child::after { display: none; }
+.pipeline-tag {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.68rem; text-transform: uppercase; letter-spacing: 1px; color: var(--accent-5); margin-bottom: 8px;
+}
+.pipeline-visual { display: grid; gap: 8px; margin-top: 12px; }
+.bar {
+  position: relative; height: 12px; border-radius: 999px; background: rgba(255,255,255,0.06); overflow: hidden;
+}
+.bar span {
+  position: absolute; inset: 0 auto 0 0; width: 60%;
+  border-radius: 999px; background: var(--gradient-line); animation: move 2.8s ease-in-out infinite;
+}
+.pipeline-card:nth-child(2) .bar span { animation-delay: 0.25s; }
+.pipeline-card:nth-child(3) .bar span { animation-delay: 0.5s; }
+.pipeline-card:nth-child(4) .bar span { animation-delay: 0.75s; }
+@keyframes move {
+  0%,100% { transform: translateX(0); opacity: 0.72; }
+  50% { transform: translateX(18%); opacity: 1; }
+}
+.memory-card, .benchmark-card, .tool-card { position: relative; overflow: hidden; }
+.memory-card::before, .benchmark-card::before, .tool-card::before {
+  content: '';
+  position: absolute; inset: 0 0 auto 0; height: 3px; background: var(--gradient-line);
+}
+.card-type {
+  display: inline-flex; align-items: center; gap: 8px;
+  font-family: 'JetBrains Mono', monospace; font-size: 0.7rem; letter-spacing: 1.2px;
+  text-transform: uppercase; color: var(--accent-1); margin-bottom: 12px;
+}
+.code-block {
+  background: var(--bg-code);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius);
+  overflow: hidden;
+  margin: 1.5rem 0;
+}
+.code-block-header {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 10px 16px;
+  background: rgba(255,255,255,0.03);
+  border-bottom: 1px solid var(--border-subtle);
+}
+.code-lang {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.72rem;
+  color: var(--accent-1);
+}
+.code-block pre {
+  padding: 16px 20px;
+  overflow-x: auto;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.82rem;
+  line-height: 1.65;
+  color: #d7e2f0;
+}
+.quiz-card { margin: 1rem 0; overflow: hidden; }
+.quiz-card-header {
+  padding: 14px 18px;
+  border-bottom: 1px solid var(--border-subtle);
+  background: rgba(255,255,255,0.03);
+  font-weight: 600;
+}
+.quiz-card-body { padding: 18px 22px; }
+.quiz-question { color: var(--text-primary); margin-bottom: 12px; }
+.quiz-options div { margin-bottom: 8px; color: var(--text-secondary); }
+.answer-grid {
+  display: grid; grid-template-columns: repeat(auto-fit, minmax(100px, 1fr)); gap: 10px; margin-top: 1rem;
+}
+.answer-chip {
+  display: inline-flex; align-items: center; justify-content: center;
+  min-height: 44px; padding: 10px 12px;
+  border-radius: 999px; background: rgba(255,255,255,0.04); border: 1px solid var(--border-subtle);
+  color: var(--text-primary); font-family: 'JetBrains Mono', monospace; font-size: 0.84rem;
+}
+details {
+  margin-top: 1.5rem;
+  background: var(--bg-card);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius);
+  padding: 16px 18px;
+}
+summary { cursor: pointer; color: var(--text-primary); font-weight: 600; }
+@media (max-width: 980px) {
+  .pipeline-flow { grid-template-columns: 1fr; }
+  .pipeline-card::after { display: none; }
+}
+@media (max-width: 720px) {
+  .content-wrapper { padding: 0 1.15rem 5rem; }
+  .hero { padding: 1.35rem; }
+  .hero h1 { letter-spacing: -1.2px; }
+}
+</style>
+</head>
+<body>
+<div class="scroll-progress" id="scrollProgress"></div>
+
+<section class="hero">
+  <div class="hero-particles" id="heroParticles"></div>
+  <div class="hero-label"><span class="dot-indicator"></span> Multimodal RAG · Module 13 of 13</div>
+  <h1>Memory, Safety, <span class="gradient-text">Evaluation & Optimization</span> in Multimodal Agents</h1>
+  <p class="hero-subtitle">
+    This final module covers the systems that turn a clever multimodal prototype into a production-grade digital employee:
+    memory, guardrails, human oversight, benchmarks, optimization, persistence, and governed custom tools.
+  </p>
+  <div class="hero-scroll-cue"><span>Continue</span><div class="arrow"></div></div>
+</section>
+
+<div class="content-wrapper">
+
+<div class="section">
+  <div class="section-number">01 — Goal</div>
+  <h2>What Makes a Multimodal Agent Production-Grade</h2>
+
+  <p class="lead">
+    The goal of this module is to cover the supporting systems that make multimodal agents reliable, scalable, safe, and cost-effective in real-world deployment,
+    especially for e-commerce support flows like TechVista.
+  </p>
+
+  <div class="goal-grid">
+    <div class="mini-card">
+      <h4>You will learn</h4>
+      <ul>
+        <li>Different types of memory: short-term, long-term vector, episodic, and tool memory</li>
+        <li>How memory solves forgetting, continuity, and tool-selection problems</li>
+        <li>Human-in-the-loop and guardrails for high-stakes decisions</li>
+      </ul>
+    </div>
+    <div class="mini-card">
+      <h4>You will also learn</h4>
+      <ul>
+        <li>Key benchmarks for evaluating agent performance</li>
+        <li>Cost and latency optimization techniques</li>
+        <li>Persistent state across sessions and custom multimodal tool design with governance</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="formula-card">
+    <div class="formula-label">Big Idea</div>
+    <div class="formula-math">reasoning + memory + safety + optimization + evaluation = production system</div>
+    <div class="formula-explain">
+      These components turn a clever prototype into a production-grade digital employee that remembers customers, stays safe, runs cheaply, and improves over time.
+    </div>
+  </div>
+</div>
+
+<div class="gradient-divider"></div>
+
+<div class="section">
+  <div class="section-number">02 — Memory Types</div>
+  <h2>The Memory Stack That Stops Agents From Forgetting</h2>
+
+  <p class="lead">
+    Memory is not one thing. Production agents need multiple memory layers because remembering the last two chat turns is very different from recalling a similar claim from six months ago,
+    or remembering that a tool failed earlier in the current workflow.
+  </p>
+
+  <div class="memory-grid">
+    <div class="memory-card">
+      <div class="card-type">Short-Term Memory</div>
+      <p><strong>What it is:</strong> short-term memory captures the recent exchanges between the user and the agent. In practice, this usually means including the last few turns directly in the prompt so the model can track pronouns, implicit references, and follow-up corrections.</p>
+      <p><strong>When to use it:</strong> use short-term memory for immediate dialogue continuity whenever the agent must understand what “it,” “that one,” or “the earlier photo” refers to in the current session.</p>
+      <p><strong>TechVista example:</strong> when a customer says “It won’t turn on after charging for an hour,” the short-term memory keeps that complaint active so the next question “Does it show any lights?” makes sense. Once the thread grows too long, the older turns are summarized and pushed into longer-term storage.</p>
+    </div>
+    <div class="memory-card">
+      <div class="card-type">Long-Term Vector Memory</div>
+      <p><strong>What it is:</strong> long-term memory lets the agent recall information beyond the current conversation by storing embeddings of documents, chat transcripts, product photos, or policy pages in a vector database.</p>
+      <p><strong>Why it matters:</strong> this semantic memory stores factual knowledge and conceptual relationships, so the agent can retrieve general knowledge like laws, safety rules, and product details through RAG or knowledge-graph style retrieval instead of relying only on the live prompt.</p>
+      <p><strong>TechVista example:</strong> embeddings of all past warranty claims, including damaged-phone photos, are stored. When a new claim arrives, the agent searches for similar cases and may discover that a specific model often shows the same defect pattern. Previous customer chats can also be retrieved so returning customers do not have to repeat their history.</p>
+    </div>
+    <div class="memory-card">
+      <div class="card-type">Episodic Memory</div>
+      <p><strong>What it is:</strong> episodic memory records specific experiences: what happened, in what order, and with what outcome. It typically stores dialogue-state snapshots, tool calls, intermediate outputs, and status changes for the current case.</p>
+      <p><strong>When to use it:</strong> use episodic memory for long-horizon workflows where the agent must avoid repeating failed steps and must keep track of where the process stands.</p>
+      <p><strong>TechVista example:</strong> a warranty claim may involve photo upload, receipt verification, warranty-period checking, and replacement approval. The agent logs each step, such as “asked customer to upload photo” and “photo verified as damage code D3.” If the receipt later fails OCR, the agent can look back and continue cleanly instead of asking for the same photo again.</p>
+    </div>
+    <div class="memory-card">
+      <div class="card-type">Tool Memory</div>
+      <p><strong>What it is:</strong> tool memory is a specialized long-term memory that records prior interactions with external tools, including inputs, outputs, failures, and the surrounding context.</p>
+      <p><strong>Why it matters:</strong> by indexing tool behavior, the agent learns practical heuristics such as “use the image classifier when the photo is blurry” or “the warranty API requires a 9-digit order ID and purchase date.”</p>
+      <p><strong>TechVista example:</strong> the agent learns that <code>policy_lookup</code> requires product ID plus purchase date, while the damage classifier works best with images above <code>800×600</code>. It also remembers which version of a vision model was more reliable, so future tool choice becomes faster and less error-prone.</p>
+    </div>
+  </div>
+
+  <div class="pipeline-stage">
+    <div class="stage-header">
+      <span>Memory Stack in Practice</span>
+      <span>SHORT-TERM → LONG-TERM → EPISODIC → TOOL MEMORY</span>
+    </div>
+    <div class="pipeline-flow">
+      <div class="pipeline-card">
+        <div class="pipeline-tag">Layer 1</div>
+        <h4>Current Chat</h4>
+        <p>Hold the recent dialogue turns for immediate coherence.</p>
+        <div class="pipeline-visual"><div class="bar"><span></span></div><div class="bar"><span></span></div></div>
+      </div>
+      <div class="pipeline-card">
+        <div class="pipeline-tag">Layer 2</div>
+        <h4>Past Knowledge</h4>
+        <p>Retrieve similar historical cases and domain facts semantically.</p>
+        <div class="pipeline-visual"><div class="bar"><span></span></div><div class="bar"><span></span></div></div>
+      </div>
+      <div class="pipeline-card">
+        <div class="pipeline-tag">Layer 3</div>
+        <h4>Session History</h4>
+        <p>Remember what steps already happened in this specific workflow.</p>
+        <div class="pipeline-visual"><div class="bar"><span></span></div><div class="bar"><span></span></div></div>
+      </div>
+      <div class="pipeline-card">
+        <div class="pipeline-tag">Layer 4</div>
+        <h4>Tool Habits</h4>
+        <p>Remember which tools, inputs, and parameters succeeded or failed.</p>
+        <div class="pipeline-visual"><div class="bar"><span></span></div><div class="bar"><span></span></div></div>
+      </div>
+    </div>
+  </div>
+
+  <p>
+    The practical pattern is simple but important: short-term memory handles immediate dialogue continuity, long-term vector memory recalls domain facts and similar historical cases,
+    episodic memory tracks progress within the current task, and tool memory reduces wasted trial-and-error when interacting with APIs, databases, classifiers, and retrieval systems.
+  </p>
+</div>
+
+<div class="gradient-divider"></div>
+
+<div class="section">
+  <div class="section-number">03 — Human Oversight</div>
+  <h2>Human-in-the-Loop: When the Agent Should Stop and Ask for Help</h2>
+
+  <p>
+    Even with strong memory, agents can still make mistakes, miss context, or act too confidently in ambiguous situations. Human-in-the-loop systems let the agent run autonomously most of the time,
+    but pause and request human review when confidence is low, ethical judgment is required, or the cost of a wrong action is too high.
+  </p>
+
+  <div class="warning">
+    <p>
+      HITL is not a sign that the agent failed. It is a production feature. A trustworthy system knows when not to act alone.
+    </p>
+  </div>
+
+  <p>
+    Apply HITL in high-stakes domains like finance, healthcare, legal workflows, or expensive support decisions. It is also valuable for subjective judgments and for ongoing training,
+    because the human correction becomes future supervision data.
+  </p>
+
+  <p>
+    TechVista example: most warranty claims are processed automatically. But when a damage description is ambiguous, the receipt is unusual, or the claim value is large,
+    the system escalates to a human supervisor who inspects the photos and evidence before approving or declining the case. That lowers fraud risk, improves fairness, and creates useful correction data for future tuning.
+  </p>
+</div>
+
+<div class="gradient-divider"></div>
+
+<div class="section">
+  <div class="section-number">04 — Safety and Guardrails</div>
+  <h2>Why Autonomous Agents Need Boundaries</h2>
+
+  <p class="lead">
+    Multimodal agents introduce risks that plain chatbots do not: tool misuse, cascading action chains, unintended control amplification, prompt injection, privacy leaks, and silent schema errors.
+    Guardrails are the system of checks that keep those risks contained.
+  </p>
+
+  <div class="tool-grid">
+    <div class="tool-card">
+      <div class="card-type">Input Guardrails</div>
+      <p>Prompt safety filters, sensitive-data detection, prompt-injection defenses, schema checks, date/ID validation, and contextual compliance checks before tool execution.</p>
+    </div>
+    <div class="tool-card">
+      <div class="card-type">Output Guardrails</div>
+      <p>Content moderation, fact-checking, sensitive-data filtering, structured-output validation, and self-critics or LLM-as-judge checks that inspect the generated result.</p>
+    </div>
+    <div class="tool-card">
+      <div class="card-type">Identity and Access</div>
+      <p>Only authorized tools and services should be allowed to trigger sensitive actions like refunds, account edits, or policy overrides.</p>
+    </div>
+    <div class="tool-card">
+      <div class="card-type">Behavioral Boundaries</div>
+      <p>Actions should be classified by risk so high-risk steps require approval, escalation, or explicit human sign-off.</p>
+    </div>
+    <div class="tool-card">
+      <div class="card-type">Visibility and Control</div>
+      <p>All actions, tool calls, approvals, and outputs should be logged so the system can be audited, debugged, and interrupted when necessary.</p>
+    </div>
+  </div>
+
+  <div class="pipeline-stage">
+    <div class="stage-header">
+      <span>Guardrail Chain</span>
+      <span>INPUT CHECKS → POLICY CHECK → TOOL CALL → OUTPUT CHECKS</span>
+    </div>
+    <div class="pipeline-flow">
+      <div class="pipeline-card">
+        <div class="pipeline-tag">Step 1</div>
+        <h4>Screen Input</h4>
+        <p>Detect malicious prompts, irrelevant content, and bad parameters before they reach tools.</p>
+        <div class="pipeline-visual"><div class="bar"><span></span></div><div class="bar"><span></span></div></div>
+      </div>
+      <div class="pipeline-card">
+        <div class="pipeline-tag">Step 2</div>
+        <h4>Classify Risk</h4>
+        <p>Check whether the requested action is low-risk, medium-risk, or approval-gated.</p>
+        <div class="pipeline-visual"><div class="bar"><span></span></div><div class="bar"><span></span></div></div>
+      </div>
+      <div class="pipeline-card">
+        <div class="pipeline-tag">Step 3</div>
+        <h4>Execute Safely</h4>
+        <p>Run only the allowed tool with validated schema and approved identity scope.</p>
+        <div class="pipeline-visual"><div class="bar"><span></span></div><div class="bar"><span></span></div></div>
+      </div>
+      <div class="pipeline-card">
+        <div class="pipeline-tag">Step 4</div>
+        <h4>Verify Output</h4>
+        <p>Validate facts, format, refund amount, and data redaction before sending or acting.</p>
+        <div class="pipeline-visual"><div class="bar"><span></span></div><div class="bar"><span></span></div></div>
+      </div>
+    </div>
+  </div>
+
+  <p>
+    TechVista example: before the refund tool is called, a policy checker validates eligibility and a human-approval guardrail handles expensive or risky refunds.
+    Input guardrails verify that only order IDs tied to verified purchases are processed. Output guardrails validate the refund amount, redact personal data before any email is sent,
+    and ensure only authorized services can trigger the actual monetary action.
+  </p>
+
+  <div class="insight">
+    <p>
+      Guardrails are non-negotiable. Without them, multimodal agents can leak private information, call harmful tools, or confidently take the wrong action while appearing perfectly fluent.
+    </p>
+  </div>
+</div>
+
+<div class="gradient-divider"></div>
+
+<div class="section">
+  <div class="section-number">05 — Evaluation</div>
+  <h2>How We Measure Whether Agents Actually Work</h2>
+
+  <div class="benchmark-grid">
+    <div class="benchmark-card">
+      <div class="card-type">AgentVista</div>
+      <p>Evaluates multimodal agents in realistic scenarios with long-horizon tool interactions across 25 sub-domains, often requiring more than 25 tool-calling turns.</p>
+      <p>Even the best cited model, Gemini-3-Pro with tools, achieved only <strong>27.3%</strong> accuracy, showing how far current systems still are from robust human-level performance.</p>
+    </div>
+    <div class="benchmark-card">
+      <div class="card-type">VisualWebArena</div>
+      <p>Tests agents on <strong>910 tasks</strong> across Classifieds, Shopping, and Reddit-like environments, with image-text comprehension, spatial reasoning, OCR, and long interaction traces.</p>
+      <p>Baseline agents reached only about <strong>16.4%</strong> success, highlighting how hard multimodal web interaction still is.</p>
+    </div>
+    <div class="benchmark-card">
+      <div class="card-type">WebArena</div>
+      <p>Replicates diverse web environments such as e-commerce, forums, and code repositories, and scores functional correctness on tasks like navigation, search, and editing.</p>
+      <p>Humans reach around <strong>78%</strong> success, while early GPT-4-based agents were much lower, often failing through abandonment, looping, or inconsistent planning.</p>
+    </div>
+    <div class="benchmark-card">
+      <div class="card-type">AgentBench</div>
+      <p>Covers multiple environments such as math, websites, and interactive tasks, and compares many models on long-term reasoning and decision quality.</p>
+      <p>The broad lesson is that strong commercial models still struggle, and open-source models often lag further behind on long-horizon planning.</p>
+    </div>
+  </div>
+
+  <p>
+    For practitioners, the lesson is not to watch a single accuracy number. Evaluate reasoning quality, tool use, long-horizon behavior, cost, latency, and safety under realistic workloads.
+    Later work has shown that adding reflection and workflow memory can improve these scores, which means benchmark results should inform architecture decisions, not just leaderboard slides.
+  </p>
+
+  <p>
+    TechVista can build internal benchmark suites inspired by VisualWebArena and AgentVista, such as navigating shopping pages, interpreting product photos, checking policy pages,
+    and answering warranty questions under time and cost budgets before allowing a new agent version into production.
+  </p>
+</div>
+
+<div class="gradient-divider"></div>
+
+<div class="section">
+  <div class="section-number">06 — Cost and Latency</div>
+  <h2>How to Keep Powerful Agents Fast Enough and Cheap Enough</h2>
+
+  <div class="tool-grid">
+    <div class="tool-card">
+      <div class="card-type">Parallel Tool Calling</div>
+      <p>Run independent checks at the same time instead of sequentially whenever dependencies allow it, so latency grows with the slowest branch instead of the sum of all branches.</p>
+    </div>
+    <div class="tool-card">
+      <div class="card-type">Semantic Caching</div>
+      <p>Reuse answers or partial results via vector similarity when the question is common or semantically close to a previous one, avoiding repeated expensive model calls.</p>
+    </div>
+    <div class="tool-card">
+      <div class="card-type">Hybrid Model Routing</div>
+      <p>Use small language models for simple tasks and escalate to larger models only for harder reasoning, which is often the fastest path to good UX.</p>
+    </div>
+    <div class="tool-card">
+      <div class="card-type">Context Optimization</div>
+      <p>Send only the evidence the model actually needs instead of dumping unnecessary documents, images, or long histories into the prompt.</p>
+    </div>
+    <div class="tool-card">
+      <div class="card-type">Response Limits</div>
+      <p>Long outputs are expensive. Tight response limits lower both latency and cost, especially when the model tends to over-explain.</p>
+    </div>
+  </div>
+
+  <p>
+    The source highlights a crucial systems insight: decoding output tokens can be up to <strong>100×</strong> more expensive than processing input tokens.
+    That means adding a little more structured context or a short summary can reduce long, rambling generation and lower total latency.
+  </p>
+
+  <p>
+    Optimization is also about avoiding hidden costs: wasted compute from hallucination loops, unnecessary tool calls, irrelevant queries, and oversized prompts.
+    Practical strategies include input filtering, semantic caching, context optimization, response limits, and lightweight parallel guardrails that can fail fast before a costly model call completes.
+  </p>
+
+  <p>
+    TechVista example: a small, fast model first classifies user intent such as “warranty claim” versus “general question.” More complex work like policy interpretation is escalated to a larger model.
+    Common questions such as “How long is the warranty on this laptop?” can be served from semantic cache, while prompt-injection filters and PII detectors run in parallel to cancel harmful requests early.
+  </p>
+</div>
+
+<div class="gradient-divider"></div>
+
+<div class="section">
+  <div class="section-number">07 — Persistence</div>
+  <h2>How Agents Remember Across Days Instead of Starting Over</h2>
+
+  <p>
+    Agents often need to remember facts across sessions or days. Stuffing old conversation history back into the prompt is expensive and brittle.
+    A better design uses stateful tools: one function stores updates in an external database, another retrieves them later.
+  </p>
+
+  <div class="pipeline-stage">
+    <div class="stage-header">
+      <span>Persistent State Flow</span>
+      <span>STORE → RECALL → CONTINUE → UPDATE</span>
+    </div>
+    <div class="pipeline-flow">
+      <div class="pipeline-card">
+        <div class="pipeline-tag">Step 1</div>
+        <h4>Store Facts</h4>
+        <p>Save claim IDs, uploaded evidence, pending documents, and tool results externally.</p>
+        <div class="pipeline-visual"><div class="bar"><span></span></div><div class="bar"><span></span></div></div>
+      </div>
+      <div class="pipeline-card">
+        <div class="pipeline-tag">Step 2</div>
+        <h4>Recall Later</h4>
+        <p>Load the relevant state when the user returns, rather than rebuilding the case from scratch.</p>
+        <div class="pipeline-visual"><div class="bar"><span></span></div><div class="bar"><span></span></div></div>
+      </div>
+      <div class="pipeline-card">
+        <div class="pipeline-tag">Step 3</div>
+        <h4>Continue Work</h4>
+        <p>Resume exactly where the process left off.</p>
+        <div class="pipeline-visual"><div class="bar"><span></span></div><div class="bar"><span></span></div></div>
+      </div>
+      <div class="pipeline-card">
+        <div class="pipeline-tag">Step 4</div>
+        <h4>Update State</h4>
+        <p>Write back the new evidence and decision progress after the next step completes.</p>
+        <div class="pipeline-visual"><div class="bar"><span></span></div><div class="bar"><span></span></div></div>
+      </div>
+    </div>
+  </div>
+
+  <p>
+    This pattern behaves like a small external memory system. The agent loads the prior state at the start of the session, continues the workflow, and writes back the updated status at the end.
+    It reduces hallucination risk because the agent reads facts from storage instead of inventing them.
+  </p>
+
+  <div class="code-block">
+    <div class="code-block-header"><span class="code-lang">Python · Stateful Tool Pattern</span></div>
+    <pre>def store_claim_state(claim_id, state_update):
+    # Save structured state externally instead of bloating the prompt
+    db.upsert({"claim_id": claim_id, **state_update})
+
+def retrieve_claim_state(claim_id):
+    # Load the latest known facts before continuing the workflow
+    return db.get({"claim_id": claim_id})
+
+state = retrieve_claim_state("TV-2026-1042")
+if state and state.get("missing_document") == "receipt":
+    next_step = "ask_for_receipt"
+else:
+    next_step = "continue_standard_flow"</pre>
+  </div>
+
+  <p>
+    TechVista example: a customer starts a warranty claim on Monday but forgets to upload the receipt. On Wednesday they return.
+    The agent recalls the claim ID, the already uploaded photos, and the missing receipt requirement instead of making the customer restart. When the receipt arrives, a <code>store_document</code> style tool updates the case and a <code>retrieve_claim</code> style tool fetches the consolidated state for final processing.
+  </p>
+</div>
+
+<div class="gradient-divider"></div>
+
+<div class="section">
+  <div class="section-number">08 — Custom Tools</div>
+  <h2>Designing Multimodal Tools That Agents Can Use Safely</h2>
+
+  <p>
+    Multimodal agents need specialized tools for images, audio, and other inputs. Building these tools is not just a coding exercise.
+    It also requires good schemas, logging, versioning, governance, and observability.
+  </p>
+
+  <p>
+    The ToolMaker work cited in the source makes the point sharply: agents that could synthesize and refine their own tools reached around <strong>80%</strong> success,
+    versus roughly <strong>20%</strong> for agents restricted to static human-written tools in the reported setup. The lesson is not that every agent should invent tools,
+    but that tool design quality strongly shapes agent capability.
+  </p>
+
+  <div class="code-block">
+    <div class="code-block-header"><span class="code-lang">JSON · Custom Multimodal Tool Schema</span></div>
+    <pre>{
+  "tool_name": "image_damage_classifier",
+  "description": "Classify visible product damage from an uploaded image",
+  "parameters": {
+    "image_base64": "string",
+    "product_type": "string",
+    "request_id": "string"
+  },
+  "returns": {
+    "damage_type": "string",
+    "severity": "string",
+    "bounding_boxes": "array",
+    "tool_version": "string"
+  }
+}</pre>
+  </div>
+
+  <p>
+    A strong tool schema includes a name, a clear description, typed parameters, and a structured return format. Good production tools also log every call,
+    monitor performance, expose version metadata, and define who is allowed to invoke them.
+  </p>
+
+  <p>
+    TechVista example: the company builds a custom <code>image_damage_classifier</code> that accepts a base64-encoded image and returns structured JSON with damage type,
+    severity, and bounding boxes. Version metadata prevents old and new outputs from being mixed. Governance determines which agents are allowed to call it,
+    and logging tracks every use for drift analysis, observability, and auditing.
+  </p>
+
+  <div class="warning">
+    <p>
+      A custom tool without schema discipline and governance can be as dangerous as no tool at all. Agents need clean parameter contracts, explicit outputs, and strong access controls.
+    </p>
+  </div>
+</div>
+
+<div class="gradient-divider"></div>
+
+<div class="section">
+  <div class="section-number">09 — Conclusion</div>
+  <h2>Key Takeaways from Module 13</h2>
+
+  <div class="takeaway-grid">
+    <div class="mini-card"><p><strong>Short-term memory:</strong> keeps dialogue coherent in the current interaction.</p></div>
+    <div class="mini-card"><p><strong>Long-term vector memory:</strong> recalls historical cases, facts, and similar images.</p></div>
+    <div class="mini-card"><p><strong>Episodic memory:</strong> remembers what has already happened in the current workflow.</p></div>
+    <div class="mini-card"><p><strong>Tool memory:</strong> improves tool selection and parameter use over time.</p></div>
+    <div class="mini-card"><p><strong>HITL and guardrails:</strong> keep high-stakes decisions safe and auditable.</p></div>
+    <div class="mini-card"><p><strong>Benchmarks and optimization:</strong> measure performance honestly and keep the system deployable at scale.</p></div>
+  </div>
+
+  <p>
+    Quick reference: short-term memory handles dialogue continuity, long-term vector memory recalls historical cases and photos, episodic memory tracks session progress,
+    tool memory improves tool use, HITL and guardrails keep high-stakes decisions safe, benchmarks measure progress, parallel calls and caching improve latency,
+    persistent state enables multi-day continuity, and custom multimodal tools let the agent act on real visual data safely.
+  </p>
+  <p>
+    At TechVista in 2026, a customer starts a warranty claim on Monday with a blurry photo, returns on Wednesday, and the agent remembers everything.
+    It uses long-term memory to find similar defects, verifies the image with a custom classifier, escalates a high-value edge case to a human, approves safely with guardrails,
+    serves common policy answers from cache, and still stays under cost control.
+  </p>
+  <p>
+    That is the difference between a smart demo and a production-ready digital teammate: memory that persists, safety that intervenes, evaluation that reveals weaknesses,
+    optimization that keeps the system affordable, and tool governance that makes multimodal action reliable.
+  </p>
+</div>
+
+<div class="gradient-divider"></div>
+
+<div class="section">
+  <div class="section-number">10 — Quiz</div>
+  <h2>Assessment</h2>
+
+  <div class="quiz-card">
+    <div class="quiz-card-header">Question 1</div>
+    <div class="quiz-card-body">
+      <div class="quiz-question">Which memory type is primarily responsible for preserving immediate conversation continuity?</div>
+      <div class="quiz-options">
+        <div>A) Long-term vector memory</div>
+        <div>B) Short-term memory</div>
+        <div>C) Tool memory</div>
+        <div>D) Swarm memory</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="quiz-card">
+    <div class="quiz-card-header">Question 2</div>
+    <div class="quiz-card-body">
+      <div class="quiz-question">What does episodic memory help an agent remember?</div>
+      <div class="quiz-options">
+        <div>A) Only global company policy</div>
+        <div>B) What happened earlier in the current task or session</div>
+        <div>C) The weights of the base model</div>
+        <div>D) Only image embeddings</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="quiz-card">
+    <div class="quiz-card-header">Question 3</div>
+    <div class="quiz-card-body">
+      <div class="quiz-question">When should a human-in-the-loop review be triggered?</div>
+      <div class="quiz-options">
+        <div>A) Only when the agent is bored</div>
+        <div>B) In high-stakes or uncertain decisions where autonomous action is risky</div>
+        <div>C) Never, because agents should always act alone</div>
+        <div>D) Only for low-value tasks</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="quiz-card">
+    <div class="quiz-card-header">Question 4</div>
+    <div class="quiz-card-body">
+      <div class="quiz-question">What is one practical optimization technique mentioned in the module?</div>
+      <div class="quiz-options">
+        <div>A) Always use the largest model for every task</div>
+        <div>B) Parallel tool calling and semantic caching</div>
+        <div>C) Disable all guardrails</div>
+        <div>D) Never store state externally</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="quiz-card">
+    <div class="quiz-card-header">Question 5</div>
+    <div class="quiz-card-body">
+      <div class="quiz-question">Why do custom multimodal tools need governance and versioning?</div>
+      <div class="quiz-options">
+        <div>A) To make the JSON longer</div>
+        <div>B) To prevent uncontrolled use, track drift, and avoid mixing incompatible outputs</div>
+        <div>C) Because agents cannot read tool schemas</div>
+        <div>D) Only for aesthetic reasons</div>
+      </div>
+    </div>
+  </div>
+
+  <details>
+    <summary>Answers</summary>
+    <div class="answer-grid">
+      <span class="answer-chip">1 · B</span>
+      <span class="answer-chip">2 · B</span>
+      <span class="answer-chip">3 · B</span>
+      <span class="answer-chip">4 · B</span>
+      <span class="answer-chip">5 · B</span>
+    </div>
+  </details>
+</div>
+
+</div>
+
+<script>
+window.addEventListener('scroll', () => {
+  const h = document.documentElement;
+  document.getElementById('scrollProgress').style.width = ((h.scrollTop / (h.scrollHeight - h.clientHeight)) * 100) + '%';
+});
+
+const heroParticles = document.getElementById('heroParticles');
+for (let i = 0; i < 34; i++) {
+  const dot = document.createElement('div');
+  dot.className = 'dot';
+  dot.style.left = Math.random() * 100 + '%';
+  dot.style.top = Math.random() * 100 + '%';
+  dot.style.animationDelay = Math.random() * 5 + 's';
+  dot.style.animationDuration = (5 + Math.random() * 4) + 's';
+  heroParticles.appendChild(dot);
+}
+</script>
+</body>
+</html>

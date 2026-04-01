@@ -21,6 +21,7 @@ const TOPIC_META = {
   sorting:        { name: 'Sorting',       icon: '🔀' },
   searching:      { name: 'Searching',     icon: '🔍' },
   'searching and sorting': { name: 'Searching and Sorting', icon: '🔍' },
+  string:         { name: 'String',        icon: '🔤' },
   strings:        { name: 'Strings',       icon: '🔤' },
   'hash tables':  { name: 'Hash Tables',   icon: '#️⃣' },
   stacks:         { name: 'Stacks',        icon: '📚' },

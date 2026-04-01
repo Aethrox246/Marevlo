@@ -1,0 +1,1039 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Module 10 — Single-Agent Paradigms Beyond ReAct</title>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&family=Outfit:wght@300;400;500;600;700;800;900&family=Source+Serif+4:ital,wght@0,300;0,400;0,600;1,300;1,400&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg-primary: #0a1017;
+  --bg-card: #151d28;
+  --bg-soft: rgba(255,255,255,0.03);
+  --bg-code: #0d1420;
+  --text-primary: #eef5ff;
+  --text-secondary: #9fb0c6;
+  --accent-1: #67e8f9;
+  --accent-2: #86efac;
+  --accent-3: #fbbf24;
+  --accent-4: #fb7185;
+  --accent-5: #c084fc;
+  --gradient-line: linear-gradient(90deg, #67e8f9, #86efac, #fbbf24, #fb7185, #c084fc);
+  --border-subtle: rgba(255,255,255,0.08);
+  --shadow-card: 0 12px 38px rgba(0,0,0,0.34);
+  --radius: 16px;
+  --radius-sm: 10px;
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+html { scroll-behavior: smooth; }
+body {
+  background: var(--bg-primary);
+  color: var(--text-primary);
+  font-family: 'Outfit', sans-serif;
+  line-height: 1.7;
+  overflow-x: hidden;
+  -webkit-font-smoothing: antialiased;
+}
+.scroll-progress { position: fixed; top: 0; left: 0; height: 3px; width: 0%; z-index: 1000; background: var(--gradient-line); }
+.hero {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  text-align: center;
+  position: relative;
+  overflow: hidden;
+  padding: 2rem;
+}
+.hero::before {
+  content: '';
+  position: absolute; inset: 0;
+  background:
+    radial-gradient(ellipse 760px 440px at 18% 28%, rgba(103,232,249,0.15), transparent),
+    radial-gradient(ellipse 560px 360px at 82% 30%, rgba(134,239,172,0.13), transparent),
+    radial-gradient(ellipse 700px 380px at 52% 80%, rgba(192,132,252,0.10), transparent);
+}
+.hero-particles { position: absolute; inset: 0; pointer-events: none; }
+.hero-particles .dot {
+  position: absolute; width: 4px; height: 4px; border-radius: 50%;
+  background: rgba(255,255,255,0.72); opacity: 0; animation: floatDot 7s ease-in-out infinite;
+}
+@keyframes floatDot {
+  0%,100% { opacity: 0; transform: translateY(0) scale(0.75); }
+  50% { opacity: 0.55; transform: translateY(-44px) scale(1); }
+}
+.hero-label {
+  position: relative; z-index: 1;
+  display: inline-flex; align-items: center; gap: 8px;
+  border-radius: 999px; padding: 7px 18px;
+  background: rgba(103,232,249,0.10);
+  border: 1px solid rgba(103,232,249,0.24);
+  color: var(--accent-1);
+  font-size: 0.78rem; font-weight: 600; letter-spacing: 1.6px; text-transform: uppercase;
+  margin-bottom: 1.7rem;
+}
+.dot-indicator {
+  width: 7px; height: 7px; border-radius: 50%;
+  background: var(--accent-2); animation: pulse 2s ease-in-out infinite;
+}
+@keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: 0.35; } }
+.hero h1 {
+  position: relative; z-index: 1;
+  font-size: clamp(2.7rem, 6vw, 5rem);
+  line-height: 1.05;
+  letter-spacing: -2px;
+  font-weight: 900;
+  max-width: 1040px;
+  margin-bottom: 1.3rem;
+}
+.gradient-text {
+  background: var(--gradient-line);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+.hero-subtitle {
+  position: relative; z-index: 1;
+  max-width: 920px;
+  color: var(--text-secondary);
+  font-family: 'Source Serif 4', serif;
+  font-size: clamp(1.05rem, 2vw, 1.24rem);
+  line-height: 1.85;
+}
+.hero-scroll-cue {
+  position: absolute; bottom: 2.8rem;
+  display: flex; flex-direction: column; align-items: center; gap: 8px;
+  color: var(--text-secondary); text-transform: uppercase; letter-spacing: 2px; font-size: 0.74rem;
+}
+.hero-scroll-cue .arrow {
+  width: 18px; height: 18px;
+  border-right: 2px solid var(--text-secondary);
+  border-bottom: 2px solid var(--text-secondary);
+  transform: rotate(45deg); animation: bounceArrow 2s ease-in-out infinite;
+}
+@keyframes bounceArrow {
+  0%,100% { transform: rotate(45deg) translateY(0); }
+  50% { transform: rotate(45deg) translateY(6px); }
+}
+.content-wrapper { max-width: 1100px; margin: 0 auto; padding: 0 2rem 6rem; }
+.section { margin-bottom: 5rem; }
+.section-number {
+  display: flex; align-items: center; gap: 10px;
+  font-family: 'JetBrains Mono', monospace; font-size: 0.72rem; letter-spacing: 3px;
+  text-transform: uppercase; color: var(--accent-1); margin-bottom: 0.8rem;
+}
+.section-number::after {
+  content: ''; flex: 1; height: 1px; background: linear-gradient(90deg, var(--accent-1), transparent); opacity: 0.35;
+}
+h2 {
+  font-size: clamp(1.9rem, 3.6vw, 2.7rem);
+  line-height: 1.18;
+  letter-spacing: -0.6px;
+  margin-bottom: 1.4rem;
+}
+h3 { font-size: 1.35rem; margin: 2.2rem 0 1rem; }
+h4 { font-size: 1rem; color: var(--accent-3); margin-bottom: 0.5rem; }
+p { color: var(--text-secondary); margin-bottom: 1.15rem; font-size: 1.02rem; }
+ul, ol { color: var(--text-secondary); margin: 0 0 1.2rem 1.2rem; }
+li { margin-bottom: 0.55rem; }
+p strong, li strong, b { color: var(--text-primary); }
+code {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.9em;
+  background: rgba(255,255,255,0.06);
+  border-radius: 6px;
+  padding: 2px 6px;
+}
+.lead {
+  font-family: 'Source Serif 4', serif;
+  color: var(--text-primary);
+  font-size: 1.16rem;
+}
+.gradient-divider { height: 2px; margin: 4rem 0; border-radius: 2px; opacity: 0.55; background: var(--gradient-line); }
+.mini-card, .formula-card, .paradigm-card, .pipeline-card, .choice-card, .quiz-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-card);
+}
+.mini-card, .paradigm-card, .pipeline-card, .choice-card { padding: 22px; }
+.goal-grid, .paradigm-grid, .choice-grid, .takeaway-grid {
+  display: grid;
+  gap: 16px;
+  margin: 1.5rem 0;
+}
+.goal-grid { grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); }
+.paradigm-grid { grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); }
+.choice-grid { grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); }
+.takeaway-grid { grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); }
+.formula-card {
+  position: relative;
+  overflow: hidden;
+  padding: 24px 28px;
+  margin: 1.5rem 0;
+}
+.formula-card::before {
+  content: '';
+  position: absolute; inset: 0 auto 0 0; width: 3px; background: var(--gradient-line);
+}
+.formula-label {
+  font-family: 'JetBrains Mono', monospace;
+  text-transform: uppercase; letter-spacing: 1.5px;
+  color: var(--accent-2); font-size: 0.72rem; margin-bottom: 10px;
+}
+.formula-math {
+  font-family: 'Source Serif 4', serif;
+  color: var(--text-primary);
+  font-size: 1.22rem;
+  margin-bottom: 10px;
+}
+.formula-explain { color: var(--text-secondary); font-size: 0.92rem; }
+.insight, .warning {
+  position: relative;
+  margin: 2rem 0;
+  padding: 20px 24px;
+  border-radius: var(--radius);
+}
+.insight {
+  background: linear-gradient(135deg, rgba(103,232,249,0.10), rgba(134,239,172,0.05));
+  border: 1px solid rgba(103,232,249,0.22);
+}
+.warning {
+  background: linear-gradient(135deg, rgba(251,113,133,0.10), rgba(251,191,36,0.06));
+  border: 1px solid rgba(251,113,133,0.22);
+}
+.insight::before, .warning::before {
+  position: absolute; top: -12px; left: 18px; background: var(--bg-primary); padding: 0 8px; font-size: 1.05rem;
+}
+.insight::before { content: '◎'; color: var(--accent-1); }
+.warning::before { content: '▲'; color: var(--accent-4); }
+.pipeline-stage, .architecture-stage {
+  margin: 2rem 0;
+  background: var(--bg-card);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-card);
+  padding: 22px;
+}
+.stage-header {
+  display: flex; align-items: center; justify-content: space-between; gap: 12px;
+  padding-bottom: 14px; margin-bottom: 16px; border-bottom: 1px solid var(--border-subtle);
+  font-family: 'JetBrains Mono', monospace; font-size: 0.75rem; color: var(--text-secondary);
+}
+.pipeline-flow {
+  display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 14px;
+}
+.pipeline-card {
+  position: relative;
+  min-height: 190px;
+  background: var(--bg-soft);
+}
+.pipeline-card::after {
+  content: '→';
+  position: absolute; right: -12px; top: 50%; transform: translateY(-50%);
+  color: var(--accent-2); font-size: 1.15rem;
+}
+.pipeline-flow .pipeline-card:last-child::after { display: none; }
+.pipeline-tag {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.68rem; text-transform: uppercase; letter-spacing: 1px; color: var(--accent-5); margin-bottom: 8px;
+}
+.pipeline-visual { display: grid; gap: 8px; margin-top: 12px; }
+.bar {
+  position: relative; height: 12px; border-radius: 999px; background: rgba(255,255,255,0.06); overflow: hidden;
+}
+.bar span {
+  position: absolute; inset: 0 auto 0 0; width: 60%;
+  border-radius: 999px; background: var(--gradient-line); animation: move 2.8s ease-in-out infinite;
+}
+.pipeline-card:nth-child(2) .bar span { animation-delay: 0.25s; }
+.pipeline-card:nth-child(3) .bar span { animation-delay: 0.5s; }
+.pipeline-card:nth-child(4) .bar span { animation-delay: 0.75s; }
+@keyframes move {
+  0%,100% { transform: translateX(0); opacity: 0.72; }
+  50% { transform: translateX(18%); opacity: 1; }
+}
+.paradigm-card, .choice-card { position: relative; overflow: hidden; }
+.paradigm-card::before, .choice-card::before {
+  content: '';
+  position: absolute; inset: 0 0 auto 0; height: 3px; background: var(--gradient-line);
+}
+.card-type {
+  display: inline-flex; align-items: center; gap: 8px;
+  font-family: 'JetBrains Mono', monospace; font-size: 0.7rem; letter-spacing: 1.2px;
+  text-transform: uppercase; color: var(--accent-1); margin-bottom: 12px;
+}
+.code-block {
+  background: var(--bg-code);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius);
+  overflow: hidden;
+  margin: 1.5rem 0;
+}
+.code-block-header {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 10px 16px;
+  background: rgba(255,255,255,0.03);
+  border-bottom: 1px solid var(--border-subtle);
+}
+.code-lang {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.72rem;
+  color: var(--accent-1);
+}
+.code-block pre {
+  padding: 16px 20px;
+  overflow-x: auto;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.82rem;
+  line-height: 1.65;
+  color: #d7e2f0;
+}
+.quiz-section-title {
+  margin-top: 1.4rem;
+  color: var(--accent-3);
+  font-size: 1.08rem;
+}
+.quiz-card { margin: 1rem 0; overflow: hidden; }
+.quiz-card-header {
+  padding: 14px 18px;
+  border-bottom: 1px solid var(--border-subtle);
+  background: rgba(255,255,255,0.03);
+  font-weight: 600;
+}
+.quiz-card-body { padding: 18px 22px; }
+.quiz-question { color: var(--text-primary); margin-bottom: 12px; }
+.quiz-options div { margin-bottom: 8px; color: var(--text-secondary); }
+.answer-grid {
+  display: grid; grid-template-columns: repeat(auto-fit, minmax(100px, 1fr)); gap: 10px; margin-top: 1rem;
+}
+.answer-chip {
+  display: inline-flex; align-items: center; justify-content: center;
+  min-height: 44px; padding: 10px 12px;
+  border-radius: 999px; background: rgba(255,255,255,0.04); border: 1px solid var(--border-subtle);
+  color: var(--text-primary); font-family: 'JetBrains Mono', monospace; font-size: 0.84rem;
+}
+details {
+  margin-top: 1.5rem;
+  background: var(--bg-card);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius);
+  padding: 16px 18px;
+}
+summary { cursor: pointer; color: var(--text-primary); font-weight: 600; }
+@media (max-width: 980px) {
+  .pipeline-flow { grid-template-columns: 1fr; }
+  .pipeline-card::after { display: none; }
+}
+@media (max-width: 720px) {
+  .content-wrapper { padding: 0 1.15rem 5rem; }
+  .hero { padding: 1.35rem; }
+  .hero h1 { letter-spacing: -1.2px; }
+}
+</style>
+</head>
+<body>
+<div class="scroll-progress" id="scrollProgress"></div>
+
+<section class="hero">
+  <div class="hero-particles" id="heroParticles"></div>
+  <div class="hero-label"><span class="dot-indicator"></span> Multimodal RAG · Module 10 of 13</div>
+  <h1>Single-Agent Paradigms <span class="gradient-text">Beyond ReAct</span></h1>
+  <p class="hero-subtitle">
+    This module surveys the major single-agent reasoning styles used in 2025–2026 systems, explains what each one solves,
+    when to choose it, how its control flow works, and how it changes practical multimodal tasks like warranty processing at TechVista.
+  </p>
+  <div class="hero-scroll-cue"><span>Continue</span><div class="arrow"></div></div>
+</section>
+
+<div class="content-wrapper">
+
+<div class="section">
+  <div class="section-number">01 — Goal</div>
+  <h2>Why We Need More Than Just ReAct</h2>
+
+  <p class="lead">
+    The goal of this module is to give you a clear, practical survey of the major single-agent reasoning paradigms used in 2025–2026 intelligent systems,
+    beyond the classic ReAct loop.
+  </p>
+
+  <div class="goal-grid">
+    <div class="mini-card">
+      <h4>This module includes</h4>
+      <ul>
+        <li>Simple intuition for each method and what problem it solves</li>
+        <li>When to choose it, using TechVista e-commerce examples</li>
+        <li>High-level architecture and control-flow explanation</li>
+      </ul>
+    </div>
+    <div class="mini-card">
+      <h4>You also get</h4>
+      <ul>
+        <li>Concrete multimodal warranty-claim examples</li>
+        <li>Benefits and trade-offs of each style</li>
+        <li>A practical conclusion about which style fits which production task</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="formula-card">
+    <div class="formula-label">Core Question</div>
+    <div class="formula-math">Which reasoning style fits this task best?</div>
+    <div class="formula-explain">
+      The answer depends on what the task demands: adaptability, long-horizon structure, self-correction, multi-hypothesis search, latency efficiency, cost control, or maximum accuracy.
+    </div>
+  </div>
+</div>
+
+<div class="gradient-divider"></div>
+
+<div class="section">
+  <div class="section-number">02 — ReAct</div>
+  <h2>ReAct: The Classic Thought–Action–Observation Loop</h2>
+
+  <p>
+    ReAct stands for <strong>Reason + Act</strong>. Introduced by Yao et al. in 2022, it interleaves chain-of-thought reasoning with tool-using actions.
+    The agent thinks about the next step, executes an action, observes the result, updates its reasoning, and repeats.
+  </p>
+
+  <div class="pipeline-stage">
+    <div class="stage-header">
+      <span>Animated ReAct Loop</span>
+      <span>THOUGHT → ACTION → OBSERVATION → REPEAT</span>
+    </div>
+    <div class="pipeline-flow">
+      <div class="pipeline-card">
+        <div class="pipeline-tag">Phase 1</div>
+        <h4>Thought</h4>
+        <p>The controller LLM reasons about the next useful move.</p>
+        <div class="pipeline-visual"><div class="bar"><span></span></div><div class="bar"><span></span></div></div>
+      </div>
+      <div class="pipeline-card">
+        <div class="pipeline-tag">Phase 2</div>
+        <h4>Action</h4>
+        <p>It chooses and parameterizes a tool call.</p>
+        <div class="pipeline-visual"><div class="bar"><span></span></div><div class="bar"><span></span></div></div>
+      </div>
+      <div class="pipeline-card">
+        <div class="pipeline-tag">Phase 3</div>
+        <h4>Observation</h4>
+        <p>The tool returns evidence or a result from the environment.</p>
+        <div class="pipeline-visual"><div class="bar"><span></span></div><div class="bar"><span></span></div></div>
+      </div>
+      <div class="pipeline-card">
+        <div class="pipeline-tag">Phase 4</div>
+        <h4>Update</h4>
+        <p>The next thought is conditioned on what was just observed.</p>
+        <div class="pipeline-visual"><div class="bar"><span></span></div><div class="bar"><span></span></div></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="choice-grid">
+    <div class="choice-card">
+      <div class="card-type">When to Use</div>
+      <p>Use ReAct when tasks require iterative interaction with the outside world and the plan may need to change after every observation.</p>
+    </div>
+    <div class="choice-card">
+      <div class="card-type">Why It Helps</div>
+      <p>It reduces hallucinations by grounding each next step in retrieved or observed evidence instead of reasoning in a vacuum.</p>
+    </div>
+  </div>
+
+  <p>
+    TechVista example: a customer reports a malfunctioning laptop. The ReAct agent first reasons that it should verify warranty status,
+    then queries the order database, observes that the purchase is eligible, next inspects the uploaded photos, observes no obvious physical damage,
+    and finally reasons that this looks like a manufacturer fault and initiates a replacement.
+  </p>
+
+  <div class="code-block">
+    <div class="code-block-header"><span class="code-lang">Python · ReAct-Style Loop Sketch</span></div>
+    <pre>while not done:
+    thought = llm_reason(state)
+    action = choose_tool(thought)
+    observation = call_tool(action)
+    state = update_state(state, thought, action, observation)
+    done = should_finish(state)</pre>
+  </div>
+
+  <div class="insight">
+    <p>
+      ReAct is adaptive and transparent. Auditors can inspect the reasoning trace and see why the agent chose each action after each observation.
+    </p>
+  </div>
+</div>
+
+<div class="gradient-divider"></div>
+
+<div class="section">
+  <div class="section-number">03 — Plan-and-Execute</div>
+  <h2>Plan-and-Execute: Separate Strategy From Execution</h2>
+
+  <p>
+    Plan-and-Execute, also called Plan-and-Solve or Plan-Then-Act, divides the work into two phases.
+    First the agent creates a complete ordered plan. Then an executor follows that plan and performs the steps.
+  </p>
+
+  <div class="choice-grid">
+    <div class="choice-card">
+      <div class="card-type">Planner</div>
+      <p>Receives the task description and emits a structured sequence such as verify warranty, inspect damage, send replacement, and notify customer.</p>
+    </div>
+    <div class="choice-card">
+      <div class="card-type">Executor</div>
+      <p>Follows the plan step by step, invoking tools or subroutines. If a step fails, it can retry or trigger replanning.</p>
+    </div>
+  </div>
+
+  <p>
+    This style is best for long-horizon tasks where the sequence is mostly known in advance and interruptions are expensive.
+    A full warranty workflow with verification, label generation, scheduling pickup, and follow-up notification fits this pattern well.
+  </p>
+
+  <div class="formula-card">
+    <div class="formula-label">Core Trade-Off</div>
+    <div class="formula-math">more structure, less flexibility</div>
+    <div class="formula-explain">
+      Plan-and-Execute is efficient for predictable workflows, but less graceful than ReAct when unexpected new information appears midstream.
+    </div>
+  </div>
+
+  <p>
+    TechVista example: for a complicated warranty claim, the planner first outputs the entire sequence:
+    retrieve order details, validate warranty eligibility, collect evidence, inspect damage, generate authorization, schedule pickup, notify customer.
+    The executor then performs those steps in order. If photo inspection fails, the executor can pause and ask for replanning.
+  </p>
+</div>
+
+<div class="gradient-divider"></div>
+
+<div class="section">
+  <div class="section-number">04 — Reflexion</div>
+  <h2>Reflexion: Self-Critique and Revision for Higher Reliability</h2>
+
+  <p>
+    Reflexion extends the usual reasoning loop by adding a critique phase. Instead of treating each thought or action as final,
+    the agent treats it as a draft, critiques it, and then revises before moving on.
+  </p>
+
+  <div class="pipeline-stage">
+    <div class="stage-header">
+      <span>Animated Reflexion Loop</span>
+      <span>THOUGHT → ACTION → OBSERVATION → CRITIQUE → REVISE</span>
+    </div>
+    <div class="pipeline-flow">
+      <div class="pipeline-card">
+        <div class="pipeline-tag">Step 1</div>
+        <h4>Thought</h4>
+        <p>Produce an initial interpretation or next move.</p>
+        <div class="pipeline-visual"><div class="bar"><span></span></div><div class="bar"><span></span></div></div>
+      </div>
+      <div class="pipeline-card">
+        <div class="pipeline-tag">Step 2</div>
+        <h4>Action</h4>
+        <p>Use the current idea to inspect evidence or trigger a tool.</p>
+        <div class="pipeline-visual"><div class="bar"><span></span></div><div class="bar"><span></span></div></div>
+      </div>
+      <div class="pipeline-card">
+        <div class="pipeline-tag">Step 3</div>
+        <h4>Critique</h4>
+        <p>Ask whether something was missed, misread, or weakly supported.</p>
+        <div class="pipeline-visual"><div class="bar"><span></span></div><div class="bar"><span></span></div></div>
+      </div>
+      <div class="pipeline-card">
+        <div class="pipeline-tag">Step 4</div>
+        <h4>Revision</h4>
+        <p>Refine the thought or redo the action with a better focus.</p>
+        <div class="pipeline-visual"><div class="bar"><span></span></div><div class="bar"><span></span></div></div>
+      </div>
+    </div>
+  </div>
+
+  <p>
+    This is especially useful when you need reliability without expensive reinforcement learning. The reflections can be stored in memory,
+    helping the agent avoid repeating the same mistakes later in the task and, in some designs, across future related tasks as well.
+  </p>
+
+  <p>
+    TechVista example: during photo inspection the agent first classifies the damage as minor. In Reflexion it then critiques itself:
+    maybe scratches around the ports were missed. It zooms in, reruns analysis with a better crop, and updates the classification.
+    That extra critique-revise loop can materially improve fairness in warranty decisions.
+  </p>
+
+  <div class="warning">
+    <p>
+      Reflexion costs extra time and tokens, so it is best used where trust and self-correction matter more than raw speed.
+    </p>
+  </div>
+</div>
+
+<div class="gradient-divider"></div>
+
+<div class="section">
+  <div class="section-number">05 — Tree-of-Thoughts</div>
+  <h2>Tree-of-Thoughts: Explore Several Hypotheses Before Deciding</h2>
+
+  <p>
+    Tree-of-Thoughts extends ordinary chain-of-thought by maintaining several candidate reasoning branches instead of one single line of thought.
+    Each branch is a partial solution, and the agent evaluates which branches deserve further exploration.
+  </p>
+
+  <div class="choice-grid">
+    <div class="choice-card">
+      <div class="card-type">Thought Generation</div>
+      <p>At each depth, generate several candidate thoughts or explanations.</p>
+    </div>
+    <div class="choice-card">
+      <div class="card-type">Evaluation and Search</div>
+      <p>Score branches, then expand promising ones using BFS, DFS, or beam search while pruning weak branches that look unlikely to lead to the correct answer.</p>
+    </div>
+  </div>
+
+  <div class="code-block">
+    <div class="code-block-header"><span class="code-lang">Python · ToT Branch Evaluation Sketch</span></div>
+    <pre>branches = generate_candidate_thoughts(state)
+scored = [(score_thought(branch), branch) for branch in branches]
+scored.sort(key=lambda x: x[0], reverse=True)
+active_branches = [branch for _, branch in scored[:beam_width]]</pre>
+  </div>
+
+  <p>
+    This style fits ambiguous problems. If the evidence could support several plausible stories, ToT forces the agent to consider alternatives before acting.
+  </p>
+
+  <p>
+    TechVista example: a blurry image of a cracked smartphone screen could suggest drop damage, manufacturing defect, or shipping damage.
+    The agent creates several branches, calls different tools for each branch, evaluates the evidence, and then chooses the most plausible explanation.
+    This makes the rejection or approval decision more defensible.
+  </p>
+</div>
+
+<div class="gradient-divider"></div>
+
+<div class="section">
+  <div class="section-number">06 — Graph-of-Thoughts</div>
+  <h2>Graph-of-Thoughts: Reason as a Network, Not Just a Tree</h2>
+
+  <p>
+    Graph-of-Thoughts generalizes Tree-of-Thoughts by representing reasoning as an arbitrary graph rather than a strict tree.
+    Thoughts become nodes, edges capture dependencies, and the graph can support merging, feedback loops, reuse, and cross-branch interaction.
+  </p>
+
+  <div class="choice-grid">
+    <div class="choice-card">
+      <div class="card-type">Thought Nodes</div>
+      <p>Each node stores an intermediate fact or conclusion, such as damage severity, purchase location, or recall eligibility.</p>
+    </div>
+    <div class="choice-card">
+      <div class="card-type">Edges and Aggregation</div>
+      <p>Edges encode dependencies, and the agent can combine nodes, augment them with new evidence, or prune irrelevant ones.</p>
+    </div>
+  </div>
+
+  <p>
+    GoT is powerful for interdependent tasks. A policy lookup may depend on time since purchase, damage severity, manufacturer recall history,
+    and order channel all at once. A graph structure can represent those relationships more naturally than a simple tree.
+  </p>
+  <p>
+    That graph structure also allows merging and feedback loops. A policy node can influence a damage-decision node, which in turn can trigger a recall-history node,
+    and the result can flow back into the main eligibility decision. This is why GoT fits complex, interdependent reasoning so well.
+  </p>
+
+  <p>
+    TechVista example: the agent constructs nodes for order history, damage classification, warranty policy, past complaints, and recall status.
+    It then traverses and refines that graph until the evidence supports approve, repair, or reject.
+  </p>
+
+  <div class="insight">
+    <p>
+      The key structural difference from ToT is that GoT allows cross-branch merging and cycles. It is not just a search tree with more branches.
+    </p>
+  </div>
+</div>
+
+<div class="gradient-divider"></div>
+
+<div class="section">
+  <div class="section-number">07 — ReWOO</div>
+  <h2>ReWOO: Plan Tool Calls Up Front for Lower Latency</h2>
+
+  <p>
+    ReWOO stands for <strong>Reasoning Without Observation</strong>. Instead of alternating between reasoning and observations at every step,
+    the agent plans all needed tool calls in advance, executes them, and only then integrates the results.
+  </p>
+
+  <div class="pipeline-stage">
+    <div class="stage-header">
+      <span>Animated ReWOO Flow</span>
+      <span>PLAN → EXECUTE ALL → INTEGRATE</span>
+    </div>
+    <div class="pipeline-flow">
+      <div class="pipeline-card">
+        <div class="pipeline-tag">Stage 1</div>
+        <h4>Planning</h4>
+        <p>Generate the full list of tool calls before execution begins.</p>
+        <div class="pipeline-visual"><div class="bar"><span></span></div><div class="bar"><span></span></div></div>
+      </div>
+      <div class="pipeline-card">
+        <div class="pipeline-tag">Stage 2</div>
+        <h4>Execution</h4>
+        <p>Run the planned calls, potentially in parallel, while the LLM waits.</p>
+        <div class="pipeline-visual"><div class="bar"><span></span></div><div class="bar"><span></span></div></div>
+      </div>
+      <div class="pipeline-card">
+        <div class="pipeline-tag">Stage 3</div>
+        <h4>Integration</h4>
+        <p>Combine the returned results into the final answer or next decision.</p>
+        <div class="pipeline-visual"><div class="bar"><span></span></div><div class="bar"><span></span></div></div>
+      </div>
+      <div class="pipeline-card">
+        <div class="pipeline-tag">Stage 4</div>
+        <h4>Risk</h4>
+        <p>Incorrect assumptions in the initial plan cannot be corrected until all calls complete.</p>
+        <div class="pipeline-visual"><div class="bar"><span></span></div><div class="bar"><span></span></div></div>
+      </div>
+    </div>
+  </div>
+
+  <p>
+    ReWOO is useful when speed and token efficiency matter and the calls are mostly independent.
+    TechVista example: checking replacement stock, expedited shipping cost, and warranty status can all be planned together and executed concurrently.
+  </p>
+
+  <div class="warning">
+    <p>
+      The trap is dependency risk. ReWOO is much less safe when later tool calls depend on facts that only earlier observations could have clarified.
+      In a mixed dependent/independent warranty scenario, that upfront planning can bake in invalid assumptions, such as estimating the wrong next step before warranty status or purchase timing is actually confirmed.
+    </p>
+  </div>
+</div>
+
+<div class="gradient-divider"></div>
+
+<div class="section">
+  <div class="section-number">08 — Self-Consistency</div>
+  <h2>Self-Consistency: Sample Several Reasoning Paths and Vote</h2>
+
+  <p>
+    Self-consistency, also called majority voting, acknowledges that a single reasoning chain may go wrong by chance.
+    Instead of trusting one path, the system samples several independent chains and then votes on the final answer.
+  </p>
+
+  <div class="choice-grid">
+    <div class="choice-card">
+      <div class="card-type">Parallel Reasoning</div>
+      <p>Run the model several times with different sampling paths to produce independent reasoning trajectories.</p>
+    </div>
+    <div class="choice-card">
+      <div class="card-type">Voting</div>
+      <p>Extract the final answers, count frequencies, and select the majority answer, optionally exposing agreement level as a confidence cue.</p>
+    </div>
+  </div>
+
+  <p>
+    This works well when accuracy matters more than cost or latency and the task has a deterministic answer.
+    The source example uses a refund calculation: if three chains produce <code>₹7,500</code>, <code>₹7,500</code>, and <code>₹7,000</code>,
+    the system returns <code>₹7,500</code> and can show the 2/3 agreement.
+  </p>
+</div>
+
+<div class="gradient-divider"></div>
+
+<div class="section">
+  <div class="section-number">09 — Toolformer and Tool Calling</div>
+  <h2>Toolformer and the Evolution From Sequential to Parallel Tool Use</h2>
+
+  <p>
+    Early tool-using agents relied on carefully hand-crafted prompts. Toolformer showed that models can instead be trained to decide which tools to call,
+    when to call them, and how to integrate the results more natively.
+  </p>
+
+  <h3>Three Eras of Tool Calling</h3>
+  <div class="choice-grid">
+    <div class="choice-card">
+      <div class="card-type">Sequential</div>
+      <p>Call one tool, wait for its result, then decide whether to call another. This is the default in ReAct and many Plan-and-Execute systems.</p>
+    </div>
+    <div class="choice-card">
+      <div class="card-type">Parallel</div>
+      <p>Issue several independent calls at once, drastically reducing end-to-end latency when calls do not depend on one another.</p>
+    </div>
+    <div class="choice-card">
+      <div class="card-type">Hybrid</div>
+      <p>Run independent calls in parallel and dependent calls sequentially, combining the best of both patterns.</p>
+    </div>
+  </div>
+
+  <div class="code-block">
+    <div class="code-block-header"><span class="code-lang">Python · Hybrid Tool Orchestration Sketch</span></div>
+    <pre># First get the user/order identity because later calls depend on it
+user = lookup_customer(query)
+
+# Then run independent calls in parallel
+stock_result = check_local_stock(user["city"])
+shipping_result = estimate_shipping(user["city"])
+warranty_result = verify_warranty(user["order_id"])
+
+# Finally integrate the results into one answer
+response = synthesize(stock_result, shipping_result, warranty_result)</pre>
+  </div>
+
+  <p>
+    TechVista example: the assistant may need to look up the order, check local stock, compute shipping, and verify warranty eligibility.
+    A mature hybrid tool-calling agent runs the independent parts together while respecting dependencies where needed.
+  </p>
+</div>
+
+<div class="gradient-divider"></div>
+
+<div class="section">
+  <div class="section-number">10 — Practical Comparison</div>
+  <h2>How to Choose the Right Paradigm for a Real Task</h2>
+
+  <div class="paradigm-grid">
+    <div class="paradigm-card">
+      <div class="card-type">ReAct</div>
+      <p><strong>Best for:</strong> dynamic tasks that need step-by-step adaptation.</p>
+      <p><strong>TechVista fit:</strong> open-ended troubleshooting and evolving support interactions.</p>
+    </div>
+    <div class="paradigm-card">
+      <div class="card-type">Plan-and-Execute</div>
+      <p><strong>Best for:</strong> structured long-horizon workflows with predictable sequences.</p>
+      <p><strong>TechVista fit:</strong> full warranty claim processing from validation to customer notification.</p>
+    </div>
+    <div class="paradigm-card">
+      <div class="card-type">Reflexion</div>
+      <p><strong>Best for:</strong> high reliability and self-correction.</p>
+      <p><strong>TechVista fit:</strong> borderline damage-classification or ambiguous evidence cases.</p>
+    </div>
+    <div class="paradigm-card">
+      <div class="card-type">ToT / GoT</div>
+      <p><strong>Best for:</strong> ambiguity, competing explanations, and interdependent reasoning.</p>
+      <p><strong>TechVista fit:</strong> deciding among several plausible causes of damage or policy outcomes.</p>
+    </div>
+    <div class="paradigm-card">
+      <div class="card-type">ReWOO</div>
+      <p><strong>Best for:</strong> latency-sensitive tasks with many independent tool calls.</p>
+      <p><strong>TechVista fit:</strong> fast status and eligibility checks where dependencies are minimal.</p>
+    </div>
+    <div class="paradigm-card">
+      <div class="card-type">Self-Consistency</div>
+      <p><strong>Best for:</strong> highest accuracy on deterministic decisions where cost is acceptable.</p>
+      <p><strong>TechVista fit:</strong> high-stakes refund or eligibility decisions that need extra confidence.</p>
+    </div>
+  </div>
+
+  <div class="insight">
+    <p>
+      The strongest production systems often combine paradigms. For a high-stakes warranty case, a structured long-horizon flow from Plan-and-Execute plus the self-critique of Reflexion can be a very strong pairing.
+    </p>
+  </div>
+</div>
+
+<div class="gradient-divider"></div>
+
+<div class="section">
+  <div class="section-number">11 — Conclusion</div>
+  <h2>Key Takeaways from Module 10</h2>
+
+  <div class="takeaway-grid">
+    <div class="mini-card"><p><strong>Dynamic and adaptive:</strong> choose ReAct.</p></div>
+    <div class="mini-card"><p><strong>Structured and long-horizon:</strong> choose Plan-and-Execute.</p></div>
+    <div class="mini-card"><p><strong>High reliability and self-correction:</strong> choose Reflexion.</p></div>
+    <div class="mini-card"><p><strong>Ambiguous multi-hypothesis reasoning:</strong> choose Tree-of-Thoughts or Graph-of-Thoughts.</p></div>
+    <div class="mini-card"><p><strong>Latency-sensitive independent actions:</strong> choose ReWOO with parallel calls.</p></div>
+    <div class="mini-card"><p><strong>Highest accuracy on deterministic tasks:</strong> choose Self-Consistency voting.</p></div>
+  </div>
+
+  <p>
+    In 2026 production settings like TechVista, the practical defaults are clear:
+    simple warranty photo checks can use ReAct or ReWOO, full claims with policy plus evidence plus follow-up can use Plan-and-Execute or Graph-of-Thoughts,
+    and high-stakes eligibility decisions benefit from Reflexion plus Self-Consistency.
+  </p>
+  <p>
+    In production, these choices are really trade-offs between cost, latency, and reliability. ReWOO and parallel calls are attractive when speed dominates,
+    Reflexion and Self-Consistency are worth the extra cost when accuracy and fairness dominate, and Plan-and-Execute or GoT are strongest when the task is long and structurally complex.
+  </p>
+</div>
+
+<div class="gradient-divider"></div>
+
+<div class="section">
+  <div class="section-number">12 — Quiz</div>
+  <h2>Assessment</h2>
+
+  <div class="quiz-section-title">Easy Questions</div>
+
+  <div class="quiz-card">
+    <div class="quiz-card-header">Question 1</div>
+    <div class="quiz-card-body">
+      <div class="quiz-question">What is the core idea behind the ReAct paradigm?</div>
+      <div class="quiz-options">
+        <div>A) Complete planning before any action</div>
+        <div>B) Interleaving internal reasoning with external actions and observations in a loop</div>
+        <div>C) Generating a graph of interconnected thoughts</div>
+        <div>D) Sampling multiple reasoning chains and voting</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="quiz-card">
+    <div class="quiz-card-header">Question 2</div>
+    <div class="quiz-card-body">
+      <div class="quiz-question">In Plan-and-Execute, what happens first?</div>
+      <div class="quiz-options">
+        <div>A) Tool execution and observation</div>
+        <div>B) Generating a complete ordered list of steps</div>
+        <div>C) Self-critique of previous actions</div>
+        <div>D) Parallel tool calls without observations</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="quiz-card">
+    <div class="quiz-card-header">Question 3</div>
+    <div class="quiz-card-body">
+      <div class="quiz-question">What key component does Reflexion add?</div>
+      <div class="quiz-options">
+        <div>A) Tree search over candidate thoughts</div>
+        <div>B) A critique-revision loop that improves intermediate outputs</div>
+        <div>C) Decoupling reasoning from immediate observations</div>
+        <div>D) Majority voting across samples</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="quiz-card">
+    <div class="quiz-card-header">Question 4</div>
+    <div class="quiz-card-body">
+      <div class="quiz-question">What is the main benefit of ReWOO?</div>
+      <div class="quiz-options">
+        <div>A) Exploring hypotheses in a tree</div>
+        <div>B) Reducing token cost and latency by planning calls upfront</div>
+        <div>C) Building a graph of thoughts</div>
+        <div>D) Storing verbal reflections for memory</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="quiz-section-title">Hard Questions</div>
+
+  <div class="quiz-card">
+    <div class="quiz-card-header">Question 5</div>
+    <div class="quiz-card-body">
+      <div class="quiz-question">For a long, mostly predictable warranty sequence, which paradigm is generally most appropriate?</div>
+      <div class="quiz-options">
+        <div>A) ReAct</div>
+        <div>B) Plan-and-Execute</div>
+        <div>C) Tree-of-Thoughts</div>
+        <div>D) Self-Consistency</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="quiz-card">
+    <div class="quiz-card-header">Question 6</div>
+    <div class="quiz-card-body">
+      <div class="quiz-question">Which style best explores several possible causes of a blurry crack photo before deciding?</div>
+      <div class="quiz-options">
+        <div>A) Reflexion</div>
+        <div>B) ReWOO</div>
+        <div>C) Tree-of-Thoughts</div>
+        <div>D) Plan-and-Execute</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="quiz-card">
+    <div class="quiz-card-header">Question 7</div>
+    <div class="quiz-card-body">
+      <div class="quiz-question">What is the primary structural difference between GoT and ToT?</div>
+      <div class="quiz-options">
+        <div>A) GoT uses only DFS while ToT uses BFS</div>
+        <div>B) GoT is an arbitrary graph with merging and dependencies, while ToT is tree-structured</div>
+        <div>C) GoT requires parallel tool calls</div>
+        <div>D) GoT is only for simple tasks</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="quiz-section-title">Extremely Difficult Questions</div>
+
+  <div class="quiz-card">
+    <div class="quiz-card-header">Question 8</div>
+    <div class="quiz-card-body">
+      <div class="quiz-question">In a mixed independent and dependent warranty scenario, which paradigm can introduce significant risk, and why?</div>
+      <div class="quiz-options">
+        <div>A) ReAct, because it is too slow</div>
+        <div>B) ReWOO, because upfront planning can lock in invalid assumptions before observations arrive</div>
+        <div>C) Self-Consistency, because voting always hides errors</div>
+        <div>D) GoT, because it is too complex for warranty processing</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="quiz-card">
+    <div class="quiz-card-header">Question 9</div>
+    <div class="quiz-card-body">
+      <div class="quiz-question">For a high-stakes TechVista warranty claim needing reliability and fairness on ambiguous multimodal evidence, which combination is best?</div>
+      <div class="quiz-options">
+        <div>A) Pure ReAct plus Self-Consistency</div>
+        <div>B) Plan-and-Execute plus Reflexion</div>
+        <div>C) Tree-of-Thoughts plus Graph-of-Thoughts</div>
+        <div>D) ReWOO plus Parallel tool calling only</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="quiz-card">
+    <div class="quiz-card-header">Question 10</div>
+    <div class="quiz-card-body">
+      <div class="quiz-question">Which statement best matches the module’s production recommendation for simple photo checks versus full claims?</div>
+      <div class="quiz-options">
+        <div>A) ReAct or ReWOO for simple checks; Plan-and-Execute or GoT for full claims</div>
+        <div>B) Self-Consistency is always required</div>
+        <div>C) Reflexion should always be avoided</div>
+        <div>D) Toolformer removes the need for reasoning paradigms</div>
+      </div>
+    </div>
+  </div>
+
+  <details>
+    <summary>Answers</summary>
+    <div class="answer-grid">
+      <span class="answer-chip">1 · B</span>
+      <span class="answer-chip">2 · B</span>
+      <span class="answer-chip">3 · B</span>
+      <span class="answer-chip">4 · B</span>
+      <span class="answer-chip">5 · B</span>
+      <span class="answer-chip">6 · C</span>
+      <span class="answer-chip">7 · B</span>
+      <span class="answer-chip">8 · B</span>
+      <span class="answer-chip">9 · B</span>
+      <span class="answer-chip">10 · A</span>
+    </div>
+  </details>
+</div>
+
+</div>
+
+<script>
+window.addEventListener('scroll', () => {
+  const h = document.documentElement;
+  document.getElementById('scrollProgress').style.width = ((h.scrollTop / (h.scrollHeight - h.clientHeight)) * 100) + '%';
+});
+
+const heroParticles = document.getElementById('heroParticles');
+for (let i = 0; i < 34; i++) {
+  const dot = document.createElement('div');
+  dot.className = 'dot';
+  dot.style.left = Math.random() * 100 + '%';
+  dot.style.top = Math.random() * 100 + '%';
+  dot.style.animationDelay = Math.random() * 5 + 's';
+  dot.style.animationDuration = (5 + Math.random() * 4) + 's';
+  heroParticles.appendChild(dot);
+}
+</script>
+</body>
+</html>

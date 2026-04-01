@@ -1,0 +1,682 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Module 7 — Evaluation & Debugging in Multimodal RAG (MRAG)</title>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&family=Outfit:wght@300;400;500;600;700;800;900&family=Source+Serif+4:ital,wght@0,300;0,400;0,600;1,300;1,400&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg-primary: #0a0f16;
+  --bg-card: #141c27;
+  --bg-soft: rgba(255,255,255,0.03);
+  --bg-code: #0d1420;
+  --text-primary: #eef5ff;
+  --text-secondary: #9fb0c5;
+  --accent-1: #5eead4;
+  --accent-2: #60a5fa;
+  --accent-3: #fbbf24;
+  --accent-4: #fb7185;
+  --accent-5: #a78bfa;
+  --gradient-line: linear-gradient(90deg, #5eead4, #60a5fa, #a78bfa, #fbbf24, #fb7185);
+  --border-subtle: rgba(255,255,255,0.08);
+  --radius: 16px;
+  --radius-sm: 10px;
+  --shadow-card: 0 12px 38px rgba(0,0,0,0.35);
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+html { scroll-behavior: smooth; }
+body {
+  background: var(--bg-primary);
+  color: var(--text-primary);
+  font-family: 'Outfit', sans-serif;
+  line-height: 1.7;
+  overflow-x: hidden;
+  -webkit-font-smoothing: antialiased;
+}
+.scroll-progress { position: fixed; top: 0; left: 0; height: 3px; width: 0%; z-index: 1000; background: var(--gradient-line); }
+.hero {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  text-align: center;
+  position: relative;
+  overflow: hidden;
+  padding: 2rem;
+}
+.hero::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background:
+    radial-gradient(ellipse 760px 440px at 20% 25%, rgba(94,234,212,0.15), transparent),
+    radial-gradient(ellipse 560px 360px at 78% 35%, rgba(96,165,250,0.14), transparent),
+    radial-gradient(ellipse 680px 380px at 52% 80%, rgba(167,139,250,0.10), transparent);
+}
+.hero-particles { position: absolute; inset: 0; pointer-events: none; }
+.hero-particles .dot {
+  position: absolute; width: 4px; height: 4px; border-radius: 50%;
+  background: rgba(255,255,255,0.7); opacity: 0; animation: floatDot 7s ease-in-out infinite;
+}
+@keyframes floatDot {
+  0%,100% { opacity: 0; transform: translateY(0) scale(0.7); }
+  50% { opacity: 0.55; transform: translateY(-42px) scale(1); }
+}
+.hero-label {
+  position: relative; z-index: 1;
+  display: inline-flex; align-items: center; gap: 8px;
+  border-radius: 999px; padding: 7px 18px;
+  background: rgba(94,234,212,0.10);
+  border: 1px solid rgba(94,234,212,0.24);
+  color: var(--accent-1);
+  font-size: 0.78rem;
+  font-weight: 600;
+  letter-spacing: 1.6px;
+  text-transform: uppercase;
+  margin-bottom: 1.7rem;
+}
+.dot-indicator {
+  width: 7px; height: 7px; border-radius: 50%;
+  background: var(--accent-2); animation: pulse 2s ease-in-out infinite;
+}
+@keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: 0.35; } }
+.hero h1 {
+  position: relative; z-index: 1;
+  font-size: clamp(2.7rem, 6vw, 5rem);
+  line-height: 1.05;
+  letter-spacing: -2px;
+  font-weight: 900;
+  max-width: 980px;
+  margin-bottom: 1.3rem;
+}
+.gradient-text {
+  background: var(--gradient-line);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+.hero-subtitle {
+  position: relative; z-index: 1;
+  max-width: 860px;
+  color: var(--text-secondary);
+  font-family: 'Source Serif 4', serif;
+  font-size: clamp(1.05rem, 2vw, 1.24rem);
+  line-height: 1.85;
+}
+.hero-scroll-cue {
+  position: absolute; bottom: 2.8rem;
+  display: flex; flex-direction: column; align-items: center; gap: 8px;
+  color: var(--text-secondary); text-transform: uppercase; letter-spacing: 2px; font-size: 0.74rem;
+}
+.hero-scroll-cue .arrow {
+  width: 18px; height: 18px;
+  border-right: 2px solid var(--text-secondary);
+  border-bottom: 2px solid var(--text-secondary);
+  transform: rotate(45deg); animation: bounceArrow 2s ease-in-out infinite;
+}
+@keyframes bounceArrow {
+  0%,100% { transform: rotate(45deg) translateY(0); }
+  50% { transform: rotate(45deg) translateY(6px); }
+}
+.content-wrapper { max-width: 1080px; margin: 0 auto; padding: 0 2rem 6rem; }
+.section { margin-bottom: 5rem; }
+.section-number {
+  display: flex; align-items: center; gap: 10px;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.72rem; color: var(--accent-1); letter-spacing: 3px; text-transform: uppercase;
+  margin-bottom: 0.8rem;
+}
+.section-number::after {
+  content: ''; flex: 1; height: 1px; background: linear-gradient(90deg, var(--accent-1), transparent); opacity: 0.35;
+}
+h2 {
+  font-size: clamp(1.9rem, 3.6vw, 2.7rem);
+  line-height: 1.18;
+  letter-spacing: -0.6px;
+  margin-bottom: 1.4rem;
+}
+h3 { font-size: 1.35rem; margin: 2.2rem 0 1rem; }
+h4 { font-size: 1rem; margin-bottom: 0.5rem; color: var(--accent-3); }
+p { color: var(--text-secondary); margin-bottom: 1.15rem; font-size: 1.02rem; }
+ul, ol { color: var(--text-secondary); margin: 0 0 1.2rem 1.2rem; }
+li { margin-bottom: 0.55rem; }
+p strong, li strong, b { color: var(--text-primary); }
+code {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.9em;
+  background: rgba(255,255,255,0.06);
+  border-radius: 6px;
+  padding: 2px 6px;
+}
+.lead {
+  font-family: 'Source Serif 4', serif;
+  color: var(--text-primary);
+  font-size: 1.16rem;
+}
+.gradient-divider { height: 2px; margin: 4rem 0; border-radius: 2px; opacity: 0.55; background: var(--gradient-line); }
+.mini-card, .formula-card, .axis-card, .benchmark-card, .protocol-card, .debug-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-card);
+}
+.mini-card, .axis-card, .benchmark-card, .protocol-card, .debug-card { padding: 22px; }
+.goal-grid, .axis-grid, .benchmark-grid, .protocol-grid, .takeaway-grid, .debug-grid {
+  display: grid;
+  gap: 16px;
+  margin: 1.5rem 0;
+}
+.goal-grid { grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); }
+.axis-grid { grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); }
+.benchmark-grid { grid-template-columns: repeat(auto-fit, minmax(270px, 1fr)); }
+.protocol-grid { grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); }
+.takeaway-grid { grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); }
+.debug-grid { grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); }
+.formula-card {
+  position: relative;
+  padding: 24px 28px;
+  margin: 1.5rem 0;
+  overflow: hidden;
+}
+.formula-card::before {
+  content: '';
+  position: absolute; inset: 0 auto 0 0; width: 3px; background: var(--gradient-line);
+}
+.formula-label {
+  font-family: 'JetBrains Mono', monospace;
+  text-transform: uppercase; letter-spacing: 1.5px;
+  color: var(--accent-2); font-size: 0.72rem; margin-bottom: 10px;
+}
+.formula-math {
+  font-family: 'Source Serif 4', serif;
+  color: var(--text-primary);
+  font-size: 1.22rem;
+  margin-bottom: 10px;
+}
+.formula-explain { color: var(--text-secondary); font-size: 0.92rem; }
+.insight, .warning {
+  position: relative;
+  margin: 2rem 0;
+  padding: 20px 24px;
+  border-radius: var(--radius);
+}
+.insight {
+  background: linear-gradient(135deg, rgba(94,234,212,0.10), rgba(96,165,250,0.05));
+  border: 1px solid rgba(94,234,212,0.22);
+}
+.warning {
+  background: linear-gradient(135deg, rgba(251,113,133,0.10), rgba(251,191,36,0.06));
+  border: 1px solid rgba(251,113,133,0.22);
+}
+.insight::before, .warning::before {
+  position: absolute; top: -12px; left: 18px; background: var(--bg-primary); padding: 0 8px; font-size: 1.05rem;
+}
+.insight::before { content: '◎'; color: var(--accent-1); }
+.warning::before { content: '▲'; color: var(--accent-4); }
+.pipeline-stage {
+  margin: 2rem 0;
+  background: var(--bg-card);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-card);
+  padding: 22px;
+}
+.stage-header {
+  display: flex; align-items: center; justify-content: space-between; gap: 12px;
+  padding-bottom: 14px; margin-bottom: 16px; border-bottom: 1px solid var(--border-subtle);
+  font-family: 'JetBrains Mono', monospace; font-size: 0.75rem; color: var(--text-secondary);
+}
+.pipeline-flow {
+  display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 14px;
+}
+.pipeline-card {
+  background: var(--bg-soft);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-sm);
+  padding: 18px;
+  position: relative;
+  min-height: 205px;
+}
+.pipeline-card::after {
+  content: '→';
+  position: absolute; right: -12px; top: 50%; transform: translateY(-50%);
+  color: var(--accent-2); font-size: 1.15rem;
+}
+.pipeline-flow .pipeline-card:last-child::after { display: none; }
+.pipeline-tag {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.68rem; color: var(--accent-5); letter-spacing: 1px; text-transform: uppercase; margin-bottom: 8px;
+}
+.pipeline-visual {
+  display: grid; gap: 8px; margin-top: 12px;
+}
+.bar {
+  position: relative; height: 12px; border-radius: 999px; background: rgba(255,255,255,0.06); overflow: hidden;
+}
+.bar span {
+  position: absolute; inset: 0 auto 0 0; width: 60%; border-radius: 999px;
+  background: var(--gradient-line); animation: move 2.8s ease-in-out infinite;
+}
+.pipeline-card:nth-child(2) .bar span { animation-delay: 0.25s; }
+.pipeline-card:nth-child(3) .bar span { animation-delay: 0.5s; }
+.pipeline-card:nth-child(4) .bar span { animation-delay: 0.75s; }
+.pipeline-card:nth-child(5) .bar span { animation-delay: 1s; }
+@keyframes move {
+  0%,100% { transform: translateX(0); opacity: 0.72; }
+  50% { transform: translateX(18%); opacity: 1; }
+}
+.axis-card, .benchmark-card, .protocol-card, .debug-card {
+  position: relative; overflow: hidden;
+}
+.axis-card::before, .benchmark-card::before, .protocol-card::before, .debug-card::before {
+  content: ''; position: absolute; inset: 0 0 auto 0; height: 3px; background: var(--gradient-line);
+}
+.metric-chip-row {
+  display: flex; flex-wrap: wrap; gap: 8px; margin-top: 1rem;
+}
+.metric-chip {
+  display: inline-flex; align-items: center; justify-content: center;
+  padding: 8px 10px; border-radius: 999px; background: rgba(255,255,255,0.05);
+  border: 1px solid var(--border-subtle); color: var(--text-primary); font-size: 0.82rem;
+}
+.protocol-split {
+  display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px;
+  margin-top: 1rem;
+}
+.debug-flow {
+  display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 14px; margin: 1.5rem 0;
+}
+.debug-step {
+  position: relative;
+  border-radius: var(--radius-sm);
+  background: var(--bg-card);
+  border: 1px solid var(--border-subtle);
+  padding: 18px;
+  min-height: 175px;
+}
+.debug-step::after {
+  content: '→'; position: absolute; right: -12px; top: 50%; transform: translateY(-50%);
+  color: var(--accent-2); font-size: 1.15rem;
+}
+.debug-flow .debug-step:last-child::after { display: none; }
+.step-label {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.68rem; text-transform: uppercase; letter-spacing: 1px; color: var(--accent-4); margin-bottom: 8px;
+}
+@media (max-width: 980px) {
+  .pipeline-flow, .debug-flow, .protocol-split { grid-template-columns: 1fr; }
+  .pipeline-card::after, .debug-step::after { display: none; }
+}
+@media (max-width: 720px) {
+  .content-wrapper { padding: 0 1.15rem 5rem; }
+  .hero { padding: 1.35rem; }
+  .hero h1 { letter-spacing: -1.2px; }
+}
+</style>
+</head>
+<body>
+<div class="scroll-progress" id="scrollProgress"></div>
+
+<section class="hero">
+  <div class="hero-particles" id="heroParticles"></div>
+  <div class="hero-label"><span class="dot-indicator"></span> Multimodal RAG · Module 7 of 13</div>
+  <h1>Evaluation & <span class="gradient-text">Debugging</span> in Multimodal RAG</h1>
+  <p class="hero-subtitle">
+    Good MRAG systems do not become trustworthy by accident. They become trustworthy when we measure grounding,
+    citations, retrieval, and robustness with enough discipline to turn vague failures into fixable engineering work.
+  </p>
+  <div class="hero-scroll-cue"><span>Continue</span><div class="arrow"></div></div>
+</section>
+
+<div class="content-wrapper">
+
+<div class="section">
+  <div class="section-number">01 — Goal</div>
+  <h2>What This Module Is Trying to Make You Good At</h2>
+
+  <p class="lead">
+    The goal of this module is to equip you with a practical, production-oriented framework for measuring,
+    benchmarking, and debugging Multimodal RAG systems.
+  </p>
+
+  <div class="goal-grid">
+    <div class="mini-card">
+      <h4>You will learn</h4>
+      <ul>
+        <li>Core evaluation dimensions such as grounding, citation correctness, retrieval recall, robustness, and cost</li>
+        <li>Leading 2025 to 2026 multimodal benchmarks and how they matter in e-commerce</li>
+      </ul>
+    </div>
+    <div class="mini-card">
+      <h4>You will also learn</h4>
+      <ul>
+        <li>Human versus automated evaluation protocols</li>
+        <li>A systematic debugging workflow to isolate retriever, generator, reasoning, and modality-balance failures</li>
+      </ul>
+    </div>
+  </div>
+
+  <p>
+    In text-only RAG, teams often obsess over exact match and F1. In MRAG, that is not enough.
+    Answers describe visuals, tables, and videos, so evaluation has to focus on faithfulness, visual understanding,
+    citation quality, retrieval effectiveness, and robustness.
+  </p>
+
+  <div class="formula-card">
+    <div class="formula-label">Main Shift</div>
+    <div class="formula-math">from “Did the wording match?” to “Was the answer truly supported by the evidence?”</div>
+    <div class="formula-explain">
+      This is what turns “the model hallucinates” from a vague complaint into actionable insights for a production support bot.
+    </div>
+  </div>
+</div>
+
+<div class="gradient-divider"></div>
+
+<div class="section">
+  <div class="section-number">02 — Core Axes</div>
+  <h2>What Serious MRAG Evaluation Has to Measure</h2>
+
+  <p>
+    The core dimensions drawn from recent work such as MRAG-Bench, MME, MM-RAG-Eval, POPE, and ChartQA++ go beyond surface answer matching.
+  </p>
+
+  <div class="axis-grid">
+    <div class="axis-card">
+      <h4>Grounding / Faithfulness</h4>
+      <p>Does the answer say only what is directly supported by the retrieved multimodal evidence?</p>
+      <p>Failure example: the model says the crack is on the bottom left when the photo clearly shows the top right.</p>
+      <p>Automated proxies can include entailment models such as DeBERTa-v3 large fine-tuned on NLI, alongside strict judge prompts.</p>
+      <div class="metric-chip-row">
+        <span class="metric-chip">Human claim check</span>
+        <span class="metric-chip">NLI proxies</span>
+        <span class="metric-chip">GPT-4 judge</span>
+      </div>
+    </div>
+
+    <div class="axis-card">
+      <h4>Citation Correctness</h4>
+      <p>When the model says “see Table 2 on page 4” or “as shown in Image 3”, is that reference real, correct, and helpful?</p>
+      <p>Common failure: the model cites the wrong page, points to a nonexistent row, or references a visually irrelevant image.</p>
+      <p>Key metrics: Citation Recall, Citation Precision, and Hallucinated Citation Rate.</p>
+    </div>
+
+    <div class="axis-card">
+      <h4>Retrieval Hit-Rate / Recall@K</h4>
+      <p>Did the retriever surface the gold evidence in the top-K results?</p>
+      <p>MRAG needs separate recall for text, image, and table-region retrieval, plus multi-hop recall for chained evidence.</p>
+    </div>
+
+    <div class="axis-card">
+      <h4>Robustness</h4>
+      <p>Test blurry photos, bad OCR, outdated manuals, misleading captions, similar-looking damage patterns, and new product models.</p>
+      <p>This includes noise robustness, adversarial robustness, and distribution shift rather than only clean benchmark inputs.</p>
+    </div>
+
+    <div class="axis-card">
+      <h4>Conciseness vs Completeness</h4>
+      <p>Measure whether the answer is short enough to be useful without dropping critical evidence or nuance.</p>
+    </div>
+
+    <div class="axis-card">
+      <h4>Helpfulness, Cost, and Bias</h4>
+      <p>Production reality matters: latency, cost per query, helpfulness, and whether the model over-trusts manufacturer text over customer visual evidence.</p>
+    </div>
+  </div>
+
+  <p>
+    A single customer query can expose all of these axes at once. For <code>My earbuds case cracked here, warranty?</code>,
+    grounding can fail if the model ignores a visible crack, citation can fail if it points to the wrong policy page,
+    retrieval can fail if the damage photo never appears in the top results, and robustness can fail if the system works on clean product shots but breaks on a blurry customer upload.
+  </p>
+
+  <div class="warning">
+    <p>
+      The same customer query can fail in completely different ways.
+      “My earbuds case cracked here, warranty?” can fail because grounding is wrong, citation is fake, retrieval never found the damage photo,
+      or the system works on stock photos but breaks on real blurry uploads.
+    </p>
+  </div>
+</div>
+
+<div class="gradient-divider"></div>
+
+<div class="section">
+  <div class="section-number">03 — Benchmark Landscape</div>
+  <h2>The Multimodal Benchmarks That Actually Matter</h2>
+
+  <div class="benchmark-grid">
+    <div class="benchmark-card">
+      <h4>MRAG-Bench / Vision-Centric MRAG Evaluation</h4>
+      <p>Focuses on retrieval quality plus generation faithfulness for vision-heavy questions.</p>
+      <p>Includes visual fact verification, image-supported QA, and table or chart understanding with retrieval.</p>
+      <p>This is especially useful when you want to know whether retrieval and grounded generation are improving together rather than in isolation.</p>
+    </div>
+
+    <div class="benchmark-card">
+      <h4>MME + MME-Pro</h4>
+      <p>Covers subtasks like existence, count, position, color, OCR, celebrity, and landmark understanding.</p>
+      <p>Later extensions add retrieval-augmented variants.</p>
+      <p>These suites are strong for probing visual understanding primitives that often sit underneath downstream MRAG failures.</p>
+    </div>
+
+    <div class="benchmark-card">
+      <h4>ChartQA++ / Chart-MRAG</h4>
+      <p>Built for chart and table-heavy settings where the system must retrieve from a document corpus and answer complex chart questions.</p>
+      <p>This matters for spec-sheet and comparison-table scenarios where text extraction alone often loses the structure needed for correct reasoning.</p>
+    </div>
+
+    <div class="benchmark-card">
+      <h4>Dyn-VQA</h4>
+      <p>Dynamic and multi-turn evaluation for agentic systems that can retrieve more evidence if the first answer is uncertain.</p>
+      <p>It is a good fit for testing multi-hop MRAG loops rather than only single-shot question answering.</p>
+    </div>
+
+    <div class="benchmark-card">
+      <h4>MM-RAG-Eval / POPE</h4>
+      <p>Excellent for probing hallucination and object existence claims like “Is there a red charging cable in the image?”</p>
+      <p>POPE-style probing is particularly sensitive to plausible-looking visual hallucinations that are easy for users to miss but dangerous in production.</p>
+    </div>
+
+    <div class="benchmark-card">
+      <h4>Workshop Benchmark Suites</h4>
+      <p>Recent suites combine captioning, multimodal QA, fact verification, and reranking accuracy into one evaluation stack.</p>
+      <p>They are useful when you need a broader regression dashboard rather than one narrow benchmark score.</p>
+    </div>
+  </div>
+
+  <p>A strong benchmark set for e-commerce should include questions like:</p>
+  <ul>
+    <li><code>What’s the IP rating?</code> which needs table retrieval plus grounding</li>
+    <li><code>Is this damage similar to known hinge issues?</code> which needs image retrieval plus comparison</li>
+    <li><code>Explain why battery drains fast</code> with a screenshot, which needs a manual table and usage graph interpretation</li>
+  </ul>
+</div>
+
+<div class="gradient-divider"></div>
+
+<div class="section">
+  <div class="section-number">04 — Human vs Automated</div>
+  <h2>How Teams Actually Score These Systems</h2>
+
+  <div class="protocol-split">
+    <div class="protocol-card">
+      <h4>Human Evaluation</h4>
+      <p>The gold standard, but expensive.</p>
+      <ul>
+        <li>Use 3 to 5 annotators per example</li>
+        <li>Apply Likert scales from 1 to 5 for groundedness, helpfulness, citation quality, and visual understanding correctness</li>
+        <li>Use pairwise preference to compare answer A versus answer B for faithfulness</li>
+      </ul>
+      <p>Groundedness can be explicitly scored from 0 meaning completely hallucinated to 5 meaning every claim is visually or textually supported.</p>
+      <p>Pairwise preference is especially helpful when both answers are partly correct but one is clearly better grounded or cites evidence more cleanly.</p>
+    </div>
+
+    <div class="protocol-card">
+      <h4>Automated Metrics</h4>
+      <p>Cheaper and faster, but noisy.</p>
+      <ul>
+        <li>GPT-4 as judge with strict grounding prompts</li>
+        <li>Visual entailment models such as ViLT fine-tuned on SNLI-VE</li>
+        <li>Citation F1 using gold cited regions</li>
+        <li>POPE score for hallucination</li>
+        <li>RAGAS-style multimodal extensions for faithfulness, answer relevance, and context relevance</li>
+      </ul>
+      <p>Reality check: automated metrics correlate only around 0.6 to 0.7 with human judgments for grounding, so production models still need held-out human evaluation before launch or major model changes.</p>
+    </div>
+  </div>
+
+  <div class="formula-card">
+    <div class="formula-label">Production Rule</div>
+    <div class="formula-math">automate for speed, validate with humans for trust</div>
+    <div class="formula-explain">
+      Human eval remains the decision-making layer for launches and regressions, even when automation does most of the daily scoring.
+    </div>
+  </div>
+</div>
+
+<div class="gradient-divider"></div>
+
+<div class="section">
+  <div class="section-number">05 — Debugging Workflow</div>
+  <h2>The Systematic Way to Debug MRAG Failures</h2>
+
+  <p>
+    When an answer is wrong, the goal is to find the culprit precisely instead of blaming “the model” in the abstract.
+    Production teams use a staged debugging workflow so each failure becomes attributable.
+  </p>
+
+  <div class="pipeline-stage">
+    <div class="stage-header">
+      <span>Animated Debugging Pipeline</span>
+      <span>ISOLATE THE FAILURE</span>
+    </div>
+    <div class="debug-flow">
+      <div class="debug-step">
+        <div class="step-label">Step 1</div>
+        <h4>Retrieve-Only Test</h4>
+        <p>Run retrieval alone and inspect top-10 or Recall@K against gold evidence.</p>
+      </div>
+      <div class="debug-step">
+        <div class="step-label">Step 2</div>
+        <h4>Simple Generator Test</h4>
+        <p>Give the retrieved evidence to a tiny or frozen VLM with a strict summary-only prompt.</p>
+      </div>
+      <div class="debug-step">
+        <div class="step-label">Step 3</div>
+        <h4>Reasoner Loop Test</h4>
+        <p>Log each retrieve-reason-retrieve step and inspect query rewrites and intent detection.</p>
+      </div>
+      <div class="debug-step">
+        <div class="step-label">Step 4</div>
+        <h4>Modality Ablation</h4>
+        <p>Compare text-only, image-only, and fused performance.</p>
+      </div>
+      <div class="debug-step">
+        <div class="step-label">Step 5</div>
+        <h4>Error Taxonomy</h4>
+        <p>Tag the exact failure category so the fix becomes actionable.</p>
+      </div>
+    </div>
+  </div>
+
+  <div class="debug-grid">
+    <div class="debug-card">
+      <h4>Retrieve-Only Test</h4>
+      <p>If the gold chunk is missing, the failure is in embeddings, chunking, cross-modal alignment, or metadata filters such as reliability thresholds being too strict or too loose.</p>
+    </div>
+    <div class="debug-card">
+      <h4>Retriever + Simple Generator</h4>
+      <p>If a frozen model can summarize the evidence faithfully but the full model cannot, the problem is usually over-generation or weak prompting.</p>
+    </div>
+    <div class="debug-card">
+      <h4>Reasoner / Agent Loop</h4>
+      <p>In multi-hop systems, failure may come from bad query rewrite or wrong intent detection rather than retrieval itself.</p>
+    </div>
+    <div class="debug-card">
+      <h4>Modality Ablation</h4>
+      <p>If text-only wins, your vision path or fusion may be weak. If image-only wins, your text or OCR path may be noisy.</p>
+    </div>
+    <div class="debug-card">
+      <h4>Error Taxonomy</h4>
+      <p>Use categories such as retriever miss, grounding violation, citation error, visual misinterpretation, and robustness failure.</p>
+    </div>
+  </div>
+
+  <p>
+    The value of this workflow is that each step narrows the blame surface. Instead of saying “the model is bad,”
+    you learn whether the issue lives in retrieval quality, grounding behavior, reasoning, prompt control, or modality imbalance.
+    That is the difference between a vague bug report and a fixable engineering ticket.
+  </p>
+
+  <h3>Concrete Failure Example</h3>
+  <p><strong>Bad answer:</strong> <code>No crack visible, normal wear.</code></p>
+  <ul>
+    <li><strong>Step 1:</strong> retrieval check shows the gold damage photo is only rank 42, which points to a retriever failure.</li>
+    <li><strong>Step 2:</strong> feeding the top-10 to frozen LLaVA correctly yields <code>visible crack on top right</code>, which points to a generator failure.</li>
+    <li><strong>Fix:</strong> improve the vision-first embedding, add a stricter faithfulness prompt, and use preference tuning on grounding pairs.</li>
+  </ul>
+  <p>
+    Notice how this example isolates two different problems at once. The retriever is weak because the best evidence is buried at rank 42,
+    but the generator is also weak because a stricter model given the same evidence can already describe the crack correctly.
+    That is why good MRAG debugging rarely stops after the first discovered issue.
+  </p>
+
+  <div class="insight">
+    <p>
+      This loop is the real value of evaluation. It converts “it is hallucinating” into a fix list:
+      embedding issue, prompt issue, citation issue, or reasoning issue.
+    </p>
+  </div>
+</div>
+
+<div class="gradient-divider"></div>
+
+<div class="section">
+  <div class="section-number">06 — Conclusion</div>
+  <h2>Key Takeaways from Module 7</h2>
+
+  <p>
+    Evaluating and debugging MRAG is more involved than text RAG, but the payoff is a system that actually sees and cites evidence instead of sounding convincing without support.
+  </p>
+
+  <div class="takeaway-grid">
+    <div class="mini-card"><p><strong>Core axes:</strong> grounding and faithfulness are the most critical, followed by citation correctness, multimodal Recall@K, and robustness.</p></div>
+    <div class="mini-card"><p><strong>Benchmarks:</strong> MRAG-Bench, MME-Pro, ChartQA++, POPE, and Dyn-VQA are the right landmarks for progress.</p></div>
+    <div class="mini-card"><p><strong>Protocols:</strong> human evaluation remains gold, while GPT-4 judging and visual entailment speed up iteration.</p></div>
+    <div class="mini-card"><p><strong>Workflow:</strong> retrieve-only, simple generator, agent loop, modality ablation, and error taxonomy form the debugging backbone.</p></div>
+    <div class="mini-card"><p><strong>E-commerce impact:</strong> surfacing the right damage photo and enforcing grounding can dramatically reduce disputes and support escalations.</p></div>
+    <div class="mini-card"><p><strong>End goal:</strong> move from “sometimes helpful” to “reliably accurate and visually grounded.”</p></div>
+  </div>
+
+  <div class="warning">
+    <p>
+      In e-commerce, the difference between a good system and a trusted system is often one evaluation loop:
+      find the real defect photo, force grounding, verify the citation, and never let the model say “no crack” when a crack is visible.
+    </p>
+  </div>
+</div>
+
+</div>
+
+<script>
+window.addEventListener('scroll', () => {
+  const h = document.documentElement;
+  document.getElementById('scrollProgress').style.width = ((h.scrollTop / (h.scrollHeight - h.clientHeight)) * 100) + '%';
+});
+
+const heroParticles = document.getElementById('heroParticles');
+for (let i = 0; i < 34; i++) {
+  const dot = document.createElement('div');
+  dot.className = 'dot';
+  dot.style.left = Math.random() * 100 + '%';
+  dot.style.top = Math.random() * 100 + '%';
+  dot.style.animationDelay = Math.random() * 5 + 's';
+  dot.style.animationDuration = (5 + Math.random() * 4) + 's';
+  heroParticles.appendChild(dot);
+}
+</script>
+</body>
+</html>

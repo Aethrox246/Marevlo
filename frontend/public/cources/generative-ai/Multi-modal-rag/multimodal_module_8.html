@@ -1,0 +1,865 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Module 8 — Efficient Fine-Tuning & Preference Alignment in Multimodal AI</title>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&family=Outfit:wght@300;400;500;600;700;800;900&family=Source+Serif+4:ital,wght@0,300;0,400;0,600;1,300;1,400&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg-primary: #0b0f14;
+  --bg-card: #161c25;
+  --bg-soft: rgba(255,255,255,0.03);
+  --text-primary: #eef5ff;
+  --text-secondary: #9caec2;
+  --accent-1: #7dd3fc;
+  --accent-2: #86efac;
+  --accent-3: #fbbf24;
+  --accent-4: #fb7185;
+  --accent-5: #c084fc;
+  --gradient-line: linear-gradient(90deg, #7dd3fc, #86efac, #fbbf24, #fb7185, #c084fc);
+  --border-subtle: rgba(255,255,255,0.08);
+  --shadow-card: 0 12px 38px rgba(0,0,0,0.34);
+  --radius: 16px;
+  --radius-sm: 10px;
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+html { scroll-behavior: smooth; }
+body {
+  background: var(--bg-primary);
+  color: var(--text-primary);
+  font-family: 'Outfit', sans-serif;
+  line-height: 1.7;
+  overflow-x: hidden;
+  -webkit-font-smoothing: antialiased;
+}
+.scroll-progress { position: fixed; top: 0; left: 0; height: 3px; width: 0%; z-index: 1000; background: var(--gradient-line); }
+.hero {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  text-align: center;
+  position: relative;
+  overflow: hidden;
+  padding: 2rem;
+}
+.hero::before {
+  content: '';
+  position: absolute; inset: 0;
+  background:
+    radial-gradient(ellipse 720px 430px at 20% 28%, rgba(125,211,252,0.15), transparent),
+    radial-gradient(ellipse 560px 340px at 80% 30%, rgba(134,239,172,0.14), transparent),
+    radial-gradient(ellipse 680px 380px at 54% 78%, rgba(192,132,252,0.10), transparent);
+}
+.hero-particles { position: absolute; inset: 0; pointer-events: none; }
+.hero-particles .dot {
+  position: absolute; width: 4px; height: 4px; border-radius: 50%;
+  background: rgba(255,255,255,0.7); opacity: 0; animation: floatDot 7s ease-in-out infinite;
+}
+@keyframes floatDot {
+  0%,100% { opacity: 0; transform: translateY(0) scale(0.75); }
+  50% { opacity: 0.55; transform: translateY(-42px) scale(1); }
+}
+.hero-label {
+  position: relative; z-index: 1;
+  display: inline-flex; align-items: center; gap: 8px;
+  border-radius: 999px; padding: 7px 18px;
+  background: rgba(125,211,252,0.10);
+  border: 1px solid rgba(125,211,252,0.24);
+  color: var(--accent-1);
+  font-size: 0.78rem; font-weight: 600; letter-spacing: 1.6px; text-transform: uppercase;
+  margin-bottom: 1.7rem;
+}
+.dot-indicator {
+  width: 7px; height: 7px; border-radius: 50%;
+  background: var(--accent-2); animation: pulse 2s ease-in-out infinite;
+}
+@keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: 0.35; } }
+.hero h1 {
+  position: relative; z-index: 1;
+  font-size: clamp(2.7rem, 6vw, 5rem);
+  line-height: 1.05;
+  letter-spacing: -2px;
+  font-weight: 900;
+  max-width: 1020px;
+  margin-bottom: 1.3rem;
+}
+.gradient-text {
+  background: var(--gradient-line);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+.hero-subtitle {
+  position: relative; z-index: 1;
+  max-width: 860px;
+  color: var(--text-secondary);
+  font-family: 'Source Serif 4', serif;
+  font-size: clamp(1.05rem, 2vw, 1.24rem);
+  line-height: 1.85;
+}
+.hero-scroll-cue {
+  position: absolute; bottom: 2.8rem;
+  display: flex; flex-direction: column; align-items: center; gap: 8px;
+  color: var(--text-secondary); text-transform: uppercase; letter-spacing: 2px; font-size: 0.74rem;
+}
+.hero-scroll-cue .arrow {
+  width: 18px; height: 18px;
+  border-right: 2px solid var(--text-secondary);
+  border-bottom: 2px solid var(--text-secondary);
+  transform: rotate(45deg); animation: bounceArrow 2s ease-in-out infinite;
+}
+@keyframes bounceArrow {
+  0%,100% { transform: rotate(45deg) translateY(0); }
+  50% { transform: rotate(45deg) translateY(6px); }
+}
+.content-wrapper { max-width: 1080px; margin: 0 auto; padding: 0 2rem 6rem; }
+.section { margin-bottom: 5rem; }
+.section-number {
+  display: flex; align-items: center; gap: 10px;
+  font-family: 'JetBrains Mono', monospace; font-size: 0.72rem; letter-spacing: 3px;
+  text-transform: uppercase; color: var(--accent-1); margin-bottom: 0.8rem;
+}
+.section-number::after {
+  content: ''; flex: 1; height: 1px; background: linear-gradient(90deg, var(--accent-1), transparent); opacity: 0.35;
+}
+h2 {
+  font-size: clamp(1.9rem, 3.6vw, 2.7rem);
+  line-height: 1.18;
+  letter-spacing: -0.6px;
+  margin-bottom: 1.4rem;
+}
+h3 { font-size: 1.35rem; margin: 2.2rem 0 1rem; }
+h4 { font-size: 1rem; color: var(--accent-3); margin-bottom: 0.5rem; }
+p { color: var(--text-secondary); margin-bottom: 1.15rem; font-size: 1.02rem; }
+ul, ol { color: var(--text-secondary); margin: 0 0 1.2rem 1.2rem; }
+li { margin-bottom: 0.55rem; }
+p strong, li strong, b { color: var(--text-primary); }
+code {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.9em;
+  background: rgba(255,255,255,0.06);
+  border-radius: 6px;
+  padding: 2px 6px;
+}
+.lead {
+  font-family: 'Source Serif 4', serif;
+  color: var(--text-primary);
+  font-size: 1.16rem;
+}
+.gradient-divider { height: 2px; margin: 4rem 0; border-radius: 2px; opacity: 0.55; background: var(--gradient-line); }
+.mini-card, .formula-card, .quiz-card, .math-card, .choice-card, .pipeline-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-card);
+}
+.mini-card, .math-card, .choice-card, .pipeline-card { padding: 22px; }
+.goal-grid, .math-grid, .choice-grid, .takeaway-grid {
+  display: grid;
+  gap: 16px;
+  margin: 1.5rem 0;
+}
+.goal-grid { grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); }
+.math-grid { grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); }
+.choice-grid { grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); }
+.takeaway-grid { grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); }
+.formula-card {
+  position: relative;
+  overflow: hidden;
+  padding: 24px 28px;
+  margin: 1.5rem 0;
+}
+.formula-card::before {
+  content: '';
+  position: absolute; inset: 0 auto 0 0; width: 3px; background: var(--gradient-line);
+}
+.formula-label {
+  font-family: 'JetBrains Mono', monospace;
+  text-transform: uppercase; letter-spacing: 1.5px;
+  color: var(--accent-2); font-size: 0.72rem; margin-bottom: 10px;
+}
+.formula-math {
+  font-family: 'Source Serif 4', serif;
+  color: var(--text-primary);
+  font-size: 1.22rem;
+  margin-bottom: 10px;
+}
+.formula-explain { color: var(--text-secondary); font-size: 0.92rem; }
+.insight, .warning {
+  position: relative;
+  margin: 2rem 0;
+  padding: 20px 24px;
+  border-radius: var(--radius);
+}
+.insight {
+  background: linear-gradient(135deg, rgba(125,211,252,0.10), rgba(134,239,172,0.05));
+  border: 1px solid rgba(125,211,252,0.22);
+}
+.warning {
+  background: linear-gradient(135deg, rgba(251,113,133,0.10), rgba(251,191,36,0.06));
+  border: 1px solid rgba(251,113,133,0.22);
+}
+.insight::before, .warning::before {
+  position: absolute; top: -12px; left: 18px; background: var(--bg-primary); padding: 0 8px; font-size: 1.05rem;
+}
+.insight::before { content: '◎'; color: var(--accent-1); }
+.warning::before { content: '▲'; color: var(--accent-4); }
+.pipeline-stage {
+  margin: 2rem 0;
+  background: var(--bg-card);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-card);
+  padding: 22px;
+}
+.stage-header {
+  display: flex; align-items: center; justify-content: space-between; gap: 12px;
+  padding-bottom: 14px; margin-bottom: 16px; border-bottom: 1px solid var(--border-subtle);
+  font-family: 'JetBrains Mono', monospace; font-size: 0.75rem; color: var(--text-secondary);
+}
+.pipeline-flow {
+  display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 14px;
+}
+.pipeline-card {
+  position: relative;
+  min-height: 205px;
+  background: var(--bg-soft);
+}
+.pipeline-card::after {
+  content: '→';
+  position: absolute; right: -12px; top: 50%; transform: translateY(-50%);
+  color: var(--accent-2); font-size: 1.15rem;
+}
+.pipeline-flow .pipeline-card:last-child::after { display: none; }
+.pipeline-tag {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.68rem; text-transform: uppercase; letter-spacing: 1px; color: var(--accent-5); margin-bottom: 8px;
+}
+.pipeline-visual { display: grid; gap: 8px; margin-top: 12px; }
+.bar {
+  position: relative; height: 12px; border-radius: 999px; background: rgba(255,255,255,0.06); overflow: hidden;
+}
+.bar span {
+  position: absolute; inset: 0 auto 0 0; width: 60%;
+  border-radius: 999px; background: var(--gradient-line); animation: move 2.8s ease-in-out infinite;
+}
+.pipeline-card:nth-child(2) .bar span { animation-delay: 0.3s; }
+.pipeline-card:nth-child(3) .bar span { animation-delay: 0.6s; }
+.pipeline-card:nth-child(4) .bar span { animation-delay: 0.9s; }
+@keyframes move {
+  0%,100% { transform: translateX(0); opacity: 0.72; }
+  50% { transform: translateX(18%); opacity: 1; }
+}
+.comparison-stage {
+  margin: 2rem 0;
+  display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px;
+}
+.choice-card {
+  position: relative;
+  overflow: hidden;
+}
+.choice-card::before {
+  content: '';
+  position: absolute; inset: 0 0 auto 0; height: 3px; background: var(--gradient-line);
+}
+.choice-type {
+  display: inline-flex; align-items: center; gap: 8px;
+  font-family: 'JetBrains Mono', monospace; font-size: 0.7rem; letter-spacing: 1.2px;
+  text-transform: uppercase; color: var(--accent-1); margin-bottom: 12px;
+}
+.quiz-section-title {
+  margin-top: 1.4rem;
+  color: var(--accent-3);
+  font-size: 1.08rem;
+}
+.quiz-card { margin: 1rem 0; overflow: hidden; }
+.quiz-card-header {
+  padding: 14px 18px;
+  border-bottom: 1px solid var(--border-subtle);
+  background: rgba(255,255,255,0.03);
+  font-weight: 600;
+}
+.quiz-card-body { padding: 18px 22px; }
+.quiz-question { color: var(--text-primary); margin-bottom: 12px; }
+.quiz-options div { margin-bottom: 8px; color: var(--text-secondary); }
+.answer-grid {
+  display: grid; grid-template-columns: repeat(auto-fit, minmax(100px, 1fr)); gap: 10px; margin-top: 1rem;
+}
+.answer-chip {
+  display: inline-flex; align-items: center; justify-content: center;
+  min-height: 44px; padding: 10px 12px;
+  border-radius: 999px; background: rgba(255,255,255,0.04); border: 1px solid var(--border-subtle);
+  color: var(--text-primary); font-family: 'JetBrains Mono', monospace; font-size: 0.84rem;
+}
+details {
+  margin-top: 1.5rem;
+  background: var(--bg-card);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius);
+  padding: 16px 18px;
+}
+summary { cursor: pointer; color: var(--text-primary); font-weight: 600; }
+@media (max-width: 980px) {
+  .pipeline-flow, .comparison-stage { grid-template-columns: 1fr; }
+  .pipeline-card::after { display: none; }
+}
+@media (max-width: 720px) {
+  .content-wrapper { padding: 0 1.15rem 5rem; }
+  .hero { padding: 1.35rem; }
+  .hero h1 { letter-spacing: -1.2px; }
+}
+</style>
+</head>
+<body>
+<div class="scroll-progress" id="scrollProgress"></div>
+
+<section class="hero">
+  <div class="hero-particles" id="heroParticles"></div>
+  <div class="hero-label"><span class="dot-indicator"></span> Multimodal RAG · Module 8 of 13</div>
+  <h1>Efficient Fine-Tuning & <span class="gradient-text">Preference Alignment</span> in Multimodal AI</h1>
+  <p class="hero-subtitle">
+    This module is about turning giant pretrained multimodal models into domain experts without paying the price of retraining billions of parameters.
+    The real theme is simple: adapt cheaply, align carefully, and make the model truthful about what it actually sees.
+  </p>
+  <div class="hero-scroll-cue"><span>Continue</span><div class="arrow"></div></div>
+</section>
+
+<div class="content-wrapper">
+
+<div class="section">
+  <div class="section-number">01 — Goal</div>
+  <h2>Why Efficient Adaptation Matters</h2>
+
+  <p class="lead">
+    The goal here is to show how to adapt massive pretrained multimodal models such as LLaVA, GPT-4o,
+    or custom VLMs efficiently and reliably for specific domains without retraining billions of parameters.
+  </p>
+
+  <div class="goal-grid">
+    <div class="mini-card">
+      <h4>You will learn</h4>
+      <ul>
+        <li>LoRA as the go-to method for cheap, fast, parameter-efficient fine-tuning</li>
+        <li>Preference tuning with RLHF versus DPO</li>
+      </ul>
+    </div>
+    <div class="mini-card">
+      <h4>You will also learn</h4>
+      <ul>
+        <li>Practical steps, cost intuition, and math intuition</li>
+        <li>How this applies to domain examples like Odisha saree styling for a fashion app</li>
+      </ul>
+    </div>
+  </div>
+
+  <p>
+    The document’s core promise is practical: you can turn a general VLM into a specialized,
+    trustworthy expert such as an Odia-English saree stylist in days instead of weeks or months.
+  </p>
+
+  <div class="insight">
+    <p>
+      The statue metaphor from the source is useful: you do not re-carve the entire 7-billion-parameter statue.
+      You attach a tiny patch exactly where the behavior needs to change.
+    </p>
+  </div>
+</div>
+
+<div class="gradient-divider"></div>
+
+<div class="section">
+  <div class="section-number">02 — LoRA</div>
+  <h2>How LoRA Works, Intuitively and Mechanically</h2>
+
+  <p>
+    LoRA freezes the original pretrained weights and trains only a tiny low-rank update.
+    It is the default way to specialize a large multimodal model cheaply.
+  </p>
+
+  <div class="pipeline-stage">
+    <div class="stage-header">
+      <span>Animated LoRA Flow</span>
+      <span>FREEZE → ADAPT → MERGE</span>
+    </div>
+    <div class="pipeline-flow">
+      <div class="pipeline-card">
+        <div class="pipeline-tag">Step 1</div>
+        <h4>Freeze W</h4>
+        <p>The original large weight matrix <code>W</code> stays frozen, like the marble statue in the document’s analogy.</p>
+        <div class="pipeline-visual"><div class="bar"><span></span></div><div class="bar"><span></span></div></div>
+      </div>
+      <div class="pipeline-card">
+        <div class="pipeline-tag">Step 2</div>
+        <h4>Train A and B</h4>
+        <p>Instead of changing the whole matrix, learn two tiny matrices that form the update <code>ΔW</code>.</p>
+        <div class="pipeline-visual"><div class="bar"><span></span></div><div class="bar"><span></span></div></div>
+      </div>
+      <div class="pipeline-card">
+        <div class="pipeline-tag">Step 3</div>
+        <h4>Low-Rank Update</h4>
+        <p>Use a small rank such as <code>r = 8</code> or <code>16</code>, which keeps trainable parameters tiny.</p>
+        <div class="pipeline-visual"><div class="bar"><span></span></div><div class="bar"><span></span></div></div>
+      </div>
+      <div class="pipeline-card">
+        <div class="pipeline-tag">Step 4</div>
+        <h4>Merge for Inference</h4>
+        <p>After training, merge the update into <code>W</code> and discard the adapters for zero extra inference cost.</p>
+        <div class="pipeline-visual"><div class="bar"><span></span></div><div class="bar"><span></span></div></div>
+      </div>
+    </div>
+  </div>
+
+  <h3>Math Intuition</h3>
+  <div class="math-grid">
+    <div class="math-card">
+      <h4>Original Layer</h4>
+      <p>Each layer has a large weight matrix <code>W</code> of size <code>d × d</code>, where <code>d</code> might be 4096 or 8192.</p>
+    </div>
+    <div class="math-card">
+      <h4>LoRA Update</h4>
+      <p>Instead of updating the full matrix, LoRA adds a small update <code>ΔW</code> decomposed into <code>A</code> and <code>B</code>.</p>
+      <p><code>A</code> is <code>d × r</code> and <code>B</code> is <code>r × d</code>.</p>
+    </div>
+    <div class="math-card">
+      <h4>Parameter Savings</h4>
+      <p>Total trainable parameters become <code>2 × d × r</code>, often just 0.1% to 1% of the original model.</p>
+    </div>
+    <div class="math-card">
+      <h4>Training Behavior</h4>
+      <p><code>W</code> stays frozen. Only <code>A</code> and <code>B</code> change during training, then you merge them back after training.</p>
+    </div>
+  </div>
+
+  <div class="formula-card">
+    <div class="formula-label">LoRA Math</div>
+    <div class="formula-math">W' = W + ΔW &nbsp;&nbsp;&nbsp; where &nbsp;&nbsp;&nbsp; ΔW = B A</div>
+    <div class="formula-explain">
+      The core trick is that <code>ΔW</code> behaves like a full update but is represented by two tiny low-rank matrices instead of another giant <code>d × d</code> matrix.
+      With <code>r = 8</code> or <code>16</code>, the trainable slice is often only 0.1% to 1% of the original model.
+    </div>
+  </div>
+
+  <div class="formula-card">
+    <div class="formula-label">Merge Step</div>
+    <div class="formula-math">W ← W + ΔW</div>
+    <div class="formula-explain">
+      After training, you can fold the learned update directly into the base weights and discard the temporary adapter matrices,
+      which is why LoRA can give effectively zero extra cost during inference after merge.
+    </div>
+  </div>
+
+  <div class="formula-card">
+    <div class="formula-label">Economic Advantage</div>
+    <div class="formula-math">tiny trainable patch + frozen base model = fast adaptation at very low cost</div>
+    <div class="formula-explain">
+      This is why LoRA is the go-to parameter-efficient fine-tuning method in real multimodal systems.
+    </div>
+  </div>
+
+  <div class="code-block">
+    <div class="code-block-header"><span class="code-lang">PyTorch · Conceptual LoRA Layer</span></div>
+    <pre>import torch
+import torch.nn as nn
+
+class LoRALayer(nn.Module):
+    def __init__(self, in_features, out_features, rank=16, alpha=32):
+        super().__init__()
+        self.lora_A = nn.Parameter(torch.zeros(in_features, rank))
+        self.lora_B = nn.Parameter(torch.zeros(rank, out_features))
+        self.scaling = alpha / rank
+        # Original weight matrix W is frozen elsewhere
+
+    def forward(self, x):
+        delta = (x @ self.lora_A) @ self.lora_B * self.scaling
+        return delta  # add this to the original linear output</pre>
+  </div>
+
+  <h3>Fashion App Example</h3>
+  <ul>
+    <li>Base model: <code>LLaVA-1.5-7B</code> with a vision encoder and LLaMA backbone</li>
+    <li>Training data: 4,000 high-quality pairs of saree photos plus accurate styling advice and fabric details in Odia and English</li>
+    <li>Instead of spending about <code>₹5 lakh</code> and 4 days on 8 GPUs, LoRA is applied only to the LLM layers and projector with <code>rank = 16</code></li>
+    <li>The model trains on a single 24GB GPU in one evening</li>
+    <li>The output improves from hallucinating silk to grounded advice like cotton saree, ikat motifs, and suitable silver jhumkas</li>
+    <li>Adapter file size is only about 50 to 80 MB, which also makes adapter switching practical for wedding versus office wear</li>
+  </ul>
+  <p>
+    This is the practical reason LoRA became the default. Instead of retraining the whole statue, you specialize just the parts that need new behavior:
+    the language side for domain vocabulary and style, and often the projector so vision features map better into the language model for your specific use case.
+  </p>
+</div>
+
+<div class="gradient-divider"></div>
+
+<div class="section">
+  <div class="section-number">03 — Preference Tuning</div>
+  <h2>How We Teach the Model to Prefer Truthful Multimodal Answers</h2>
+
+  <p>
+    Even after LoRA or other supervised fine-tuning, a model can still confidently lie about an image.
+    Preference tuning is what teaches the system that grounded, helpful answers are better than helpful-but-hallucinated ones.
+  </p>
+
+  <div class="warning">
+    <p>
+      The source’s example is blunt for a reason: saying <code>heavy zari work</code> when the image shows a plain border is not a style mistake.
+      It is a trust failure.
+    </p>
+  </div>
+
+  <h3>What Preference Tuning Is Trying to Teach</h3>
+  <div class="formula-card">
+    <div class="formula-label">Preference Order</div>
+    <div class="formula-math">helpful + grounded in the actual photo &gt; helpful but hallucinated &gt; rude or vague</div>
+    <div class="formula-explain">
+      The ranking signal is the point. We want the model to move toward the winner and away from the loser.
+    </div>
+  </div>
+
+  <div class="comparison-stage">
+    <div class="choice-card">
+      <div class="choice-type">RLHF</div>
+      <h4>The Original Pipeline</h4>
+      <p>This is the InstructGPT and early GPT-4 style route. It is powerful, but operationally heavy.</p>
+      <ul>
+        <li>Start with supervised fine-tuning on good demonstrations</li>
+        <li>Train a separate reward model from human pairwise comparisons</li>
+        <li>Use PPO reinforcement learning to push the main model toward higher reward</li>
+        <li>Add a KL penalty so the model does not drift too far</li>
+      </ul>
+    </div>
+
+    <div class="choice-card">
+      <div class="choice-type">DPO</div>
+      <h4>The Simpler Winner</h4>
+      <p>DPO removes the reward-model-plus-RL complexity and directly optimizes preference pairs.</p>
+      <ul>
+        <li>Use the same prompt or image with a winner answer and a loser answer</li>
+        <li>Push the probability of the winner up and the loser down relative to a frozen reference model</li>
+        <li>No separate reward model</li>
+        <li>No PPO loop</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="formula-card">
+    <div class="formula-label">DPO Intuition</div>
+    <div class="formula-math">push winner probability up, loser probability down, relative to a frozen reference model</div>
+    <div class="formula-explain">
+      DPO keeps the preference-learning objective but removes the reward-model-plus-RL machinery. That is why it is simpler, stabler, and cheaper for most teams.
+    </div>
+  </div>
+
+  <h3>RLHF Step-by-Step</h3>
+  <ol>
+    <li>Supervised fine-tuning on demonstration examples such as how to describe a saree photo</li>
+    <li>Train a reward model from human preferences, for example preferring <code>soft cotton with minimal border</code> over a hallucinated silk claim</li>
+    <li>Run PPO so the model learns to chase higher reward while staying close to the base policy</li>
+  </ol>
+  <p>
+    In practice, this means the reward model becomes a learned judge of answer quality, and PPO keeps pushing the main model toward responses that score higher on groundedness and helpfulness.
+    It works, but the full pipeline is operationally expensive because you are managing supervised data, preference data, a reward model, and reinforcement-learning stability all at once.
+  </p>
+
+  <h3>DPO Step-by-Step</h3>
+  <ol>
+    <li>Collect preference pairs for the same image and prompt: <code>y_winner</code> and <code>y_loser</code></li>
+    <li>Use a direct preference loss that raises the probability of the winner and lowers the loser</li>
+    <li>Train in one cleaner optimization loop without a reward model</li>
+  </ol>
+  <p>
+    This is what makes DPO feel so clean in production. You keep the human judgment signal, but you avoid building and maintaining a separate reward model.
+    For a fashion app, that means your team can focus on collecting good photo-response pairs and grounded preferences rather than wrestling with RL infrastructure.
+  </p>
+
+  <div class="code-block">
+    <div class="code-block-header"><span class="code-lang">Python · Conceptual DPO Loss</span></div>
+    <pre>def dpo_loss(policy_logps_w, policy_logps_l, ref_logps_w, ref_logps_l, beta=0.1):
+    # winner should become more likely than loser relative to the reference model
+    diff_w = policy_logps_w - ref_logps_w
+    diff_l = policy_logps_l - ref_logps_l
+    loss = -torch.log(torch.sigmoid(beta * (diff_w - diff_l)))
+    return loss.mean()</pre>
+  </div>
+
+  <div class="insight">
+    <p>
+      The document is explicit here: DPO is the 2024 to 2026 winner for most real-world teams because it is simpler, more stable, and cheaper.
+    </p>
+  </div>
+
+  <h3>When to Use Which</h3>
+  <ul>
+    <li><strong>Use LoRA + DPO</strong> for about 95% of practical cases. It is the recommended path for the fashion app.</li>
+    <li><strong>Use full RLHF</strong> only when you need ultra-precise personality, stronger safety guarantees, or you already have a large reward-model team.</li>
+  </ul>
+
+  <p>
+    In the app example, after LoRA fine-tuning, you gather 2,000 preference pairs where humans mark whether the description truly matches the visible saree photo.
+    DPO then teaches the model rules like <code>Never say silk unless the image texture clearly shows sheen and drape.</code>
+  </p>
+  <p>
+    That preference-pair workflow is where trust gets manufactured. One answer might sound elegant but invent fabric type; another may be less flashy but actually match the image.
+    DPO teaches the model to prefer the grounded answer, which is exactly what reduces hallucinations in customer-facing styling advice.
+  </p>
+</div>
+
+<div class="gradient-divider"></div>
+
+<div class="section">
+  <div class="section-number">04 — Outcome</div>
+  <h2>What LoRA + DPO Gives You in Practice</h2>
+
+  <p>
+    The combined effect is not abstract. You get a domain-specific multimodal expert with lower hallucination,
+    much lower training cost, and stronger customer trust.
+  </p>
+
+  <div class="choice-grid">
+    <div class="choice-card">
+      <div class="choice-type">Cost</div>
+      <h4>Cheap Adaptation</h4>
+      <p>Train with less than 1% of the parameters, often on one GPU, instead of retraining the whole model.</p>
+    </div>
+    <div class="choice-card">
+      <div class="choice-type">Speed</div>
+      <h4>Fast Iteration</h4>
+      <p>Move from base model to domain specialist in days, not in long full-finetune cycles.</p>
+    </div>
+    <div class="choice-card">
+      <div class="choice-type">Quality</div>
+      <h4>Better Grounding</h4>
+      <p>Preference data reduces confident hallucinations and teaches the model to stay truthful to visible details.</p>
+    </div>
+    <div class="choice-card">
+      <div class="choice-type">Product Flexibility</div>
+      <h4>Adapter Switching</h4>
+      <p>Use multiple LoRA adapters for wedding, office, and casual styling while keeping the same base model.</p>
+    </div>
+  </div>
+
+  <div class="formula-card">
+    <div class="formula-label">Practical Recipe</div>
+    <div class="formula-math">targeted photo data + LoRA on LLM/projector + DPO on ranked pairs = large quality jump</div>
+    <div class="formula-explain">
+      This is the operational recipe the module recommends for domain-specific multimodal products.
+    </div>
+  </div>
+
+  <div class="warning">
+    <p>
+      The future edge called out in the source is important: multiple LoRA adapters plus DPO-tuned grounding gives you a personalized AI stylist that is still reliable.
+    </p>
+  </div>
+  <p>
+    In product terms, this means one shared base model can serve several sub-personalities or customer contexts, while preference alignment keeps each one anchored to what the photo actually shows.
+    That is how you get personalization without sacrificing truthfulness.
+  </p>
+</div>
+
+<div class="gradient-divider"></div>
+
+<div class="section">
+  <div class="section-number">05 — Conclusion</div>
+  <h2>Key Takeaways from Module 8</h2>
+
+  <p>
+    Efficient fine-tuning and preference alignment are what turn general multimodal giants into domain experts that are accurate, fast, and affordable.
+  </p>
+
+  <div class="takeaway-grid">
+    <div class="mini-card"><p><strong>LoRA:</strong> adapt billion-parameter VLMs with under 1% trainable parameters, often on one GPU, and merge for free inference.</p></div>
+    <div class="mini-card"><p><strong>DPO:</strong> the modern simpler winner over RLHF, avoiding separate reward models and reinforcement-learning complexity.</p></div>
+    <div class="mini-card"><p><strong>Best combo:</strong> LoRA plus DPO is the recommended path for most domain-specific multimodal apps.</p></div>
+    <div class="mini-card"><p><strong>Real workflow:</strong> collect targeted photos and correct advice, apply LoRA to the LLM and projector, then align with preference pairs.</p></div>
+    <div class="mini-card"><p><strong>Product impact:</strong> lower hallucination, higher trust, and much more believable styling advice.</p></div>
+    <div class="mini-card"><p><strong>Future edge:</strong> multiple adapters for different customer contexts while keeping grounding strong.</p></div>
+  </div>
+  <p>
+    In product terms, the default choice is clear: use LoRA when you want cheap, fast domain adaptation, and add DPO when you need the model to stop sounding plausible and start being reliably grounded in the image.
+  </p>
+</div>
+
+<div class="gradient-divider"></div>
+
+<div class="section">
+  <div class="section-number">06 — Quiz</div>
+  <h2>Assessment</h2>
+
+  <div class="quiz-section-title">Easy Questions</div>
+
+  <div class="quiz-card">
+    <div class="quiz-card-header">Question 1</div>
+    <div class="quiz-card-body">
+      <div class="quiz-question">What is the main idea behind LoRA?</div>
+      <div class="quiz-options">
+        <div>A) Retrain the entire model from scratch</div>
+        <div>B) Freeze the original weights and train only two small low-rank matrices that add a tiny update</div>
+        <div>C) Use full RLHF for every layer</div>
+        <div>D) Remove the vision encoder completely</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="quiz-card">
+    <div class="quiz-card-header">Question 2</div>
+    <div class="quiz-card-body">
+      <div class="quiz-question">In LoRA, after training, what do you do with the learned matrices A and B?</div>
+      <div class="quiz-options">
+        <div>A) Keep training them forever</div>
+        <div>B) Permanently merge them into the original weight matrix and throw A and B away</div>
+        <div>C) Delete the original model</div>
+        <div>D) Use them only during inference</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="quiz-card">
+    <div class="quiz-card-header">Question 3</div>
+    <div class="quiz-card-body">
+      <div class="quiz-question">What is the typical rank value used in LoRA for multimodal models?</div>
+      <div class="quiz-options">
+        <div>A) 1 or 2</div>
+        <div>B) 8 or 16</div>
+        <div>C) Equal to the hidden size 4096</div>
+        <div>D) 1000+</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="quiz-card">
+    <div class="quiz-card-header">Question 4</div>
+    <div class="quiz-card-body">
+      <div class="quiz-question">What does DPO stand for?</div>
+      <div class="quiz-options">
+        <div>A) Direct Preference Optimization</div>
+        <div>B) Deep Policy Optimization</div>
+        <div>C) Document Preference Output</div>
+        <div>D) Dynamic Parameter Optimization</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="quiz-section-title">Medium Questions</div>
+
+  <div class="quiz-card">
+    <div class="quiz-card-header">Question 5</div>
+    <div class="quiz-card-body">
+      <div class="quiz-question">Why is LoRA much cheaper than full fine-tuning?</div>
+      <div class="quiz-options">
+        <div>A) It trains only 0.1% to 1% of the parameters while freezing the original weights</div>
+        <div>B) It trains the entire model but slower</div>
+        <div>C) It requires 8 GPUs for one evening</div>
+        <div>D) It removes the need for any data</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="quiz-card">
+    <div class="quiz-card-header">Question 6</div>
+    <div class="quiz-card-body">
+      <div class="quiz-question">What is the key mathematical difference between RLHF and DPO?</div>
+      <div class="quiz-options">
+        <div>A) RLHF needs a separate reward model plus PPO, while DPO directly optimizes preference loss without reward modeling or RL</div>
+        <div>B) DPO is more complicated than RLHF</div>
+        <div>C) RLHF uses only one loss</div>
+        <div>D) Both are exactly the same</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="quiz-card">
+    <div class="quiz-card-header">Question 7</div>
+    <div class="quiz-card-body">
+      <div class="quiz-question">In the fashion app example, what does the model learn after LoRA plus DPO?</div>
+      <div class="quiz-options">
+        <div>A) To hallucinate silk when the photo shows cotton</div>
+        <div>B) To give truthful, grounded styling advice that matches the visible saree photo</div>
+        <div>C) Only generic English responses</div>
+        <div>D) To ignore the image completely</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="quiz-section-title">Hard Questions</div>
+
+  <div class="quiz-card">
+    <div class="quiz-card-header">Question 8</div>
+    <div class="quiz-card-body">
+      <div class="quiz-question">What is the final step after LoRA training that makes inference completely free of extra cost?</div>
+      <div class="quiz-options">
+        <div>A) Keep A and B separate forever</div>
+        <div>B) Merge the low-rank update permanently into the original weight matrix and discard A and B</div>
+        <div>C) Retrain the whole model</div>
+        <div>D) Use only the reward model</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="quiz-card">
+    <div class="quiz-card-header">Question 9</div>
+    <div class="quiz-card-body">
+      <div class="quiz-question">According to the document, when should you prefer DPO over classic RLHF?</div>
+      <div class="quiz-options">
+        <div>A) When you want the simplest, most stable, and cheapest preference alignment for most real-world cases</div>
+        <div>B) When you have a huge reward-model team and need ultra-precise safety</div>
+        <div>C) When you want to train on zero preference pairs</div>
+        <div>D) When you only need supervised fine-tuning</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="quiz-card">
+    <div class="quiz-card-header">Question 10</div>
+    <div class="quiz-card-body">
+      <div class="quiz-question">What is the overall outcome of combining LoRA plus DPO for a domain-specific multimodal app?</div>
+      <div class="quiz-options">
+        <div>A) You turn a general VLM into a specialized, low-hallucination expert in days on one GPU with a dramatic quality jump and high customer trust</div>
+        <div>B) You must retrain billions of parameters every time</div>
+        <div>C) You get slower and more expensive inference</div>
+        <div>D) You remove all preference alignment</div>
+      </div>
+    </div>
+  </div>
+
+  <details>
+    <summary>Answers</summary>
+    <div class="answer-grid">
+      <span class="answer-chip">1 · B</span>
+      <span class="answer-chip">2 · B</span>
+      <span class="answer-chip">3 · B</span>
+      <span class="answer-chip">4 · A</span>
+      <span class="answer-chip">5 · A</span>
+      <span class="answer-chip">6 · A</span>
+      <span class="answer-chip">7 · B</span>
+      <span class="answer-chip">8 · B</span>
+      <span class="answer-chip">9 · A</span>
+      <span class="answer-chip">10 · A</span>
+    </div>
+  </details>
+</div>
+
+</div>
+
+<script>
+window.addEventListener('scroll', () => {
+  const h = document.documentElement;
+  document.getElementById('scrollProgress').style.width = ((h.scrollTop / (h.scrollHeight - h.clientHeight)) * 100) + '%';
+});
+
+const heroParticles = document.getElementById('heroParticles');
+for (let i = 0; i < 34; i++) {
+  const dot = document.createElement('div');
+  dot.className = 'dot';
+  dot.style.left = Math.random() * 100 + '%';
+  dot.style.top = Math.random() * 100 + '%';
+  dot.style.animationDelay = Math.random() * 5 + 's';
+  dot.style.animationDuration = (5 + Math.random() * 4) + 's';
+  heroParticles.appendChild(dot);
+}
+</script>
+</body>
+</html>
