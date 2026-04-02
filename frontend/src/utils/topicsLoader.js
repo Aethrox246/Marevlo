@@ -15,6 +15,7 @@ const TOPIC_META = {
   arrays:         { name: 'Arrays',        icon: '📊' },
   'binary trees': { name: 'Binary Trees',  icon: '🌳' },
   'linked lists': { name: 'Linked Lists',  icon: '🔗' },
+  'liked list':   { name: 'Linked List',   icon: '🔗' },
   graph:          { name: 'Graph',         icon: '🕸️' },
   graphs:         { name: 'Graphs',        icon: '🕸️' },
   'dynamic programming': { name: 'Dynamic Programming', icon: '⚡' },
