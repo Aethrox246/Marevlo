@@ -29,7 +29,7 @@ export default function LandingPage({ onStart, onExplore }) {
                             <button onClick={onStart} className="px-8 py-4 bg-black text-white rounded-lg font-medium text-lg hover:bg-neutral-800 transition-all flex items-center justify-center shadow-lg hover:shadow-xl hover:-translate-y-0.5">
                                 Start Coding <ChevronRight className="ml-2 w-5 h-5" />
                             </button>
-                            <button onClick={onExplore} className="px-8 py-4 bg-white text-black border-2 border-black rounded-lg font-bold text-lg hover:bg-neutral-50 transition-all flex items-center justify-center">
+                            <button onClick={onExplore} className="px-8 py-4 bg-white text-black border-2 border-black rounded-lg font-bold text-lg hover:bg-neutral-50 transition-all flex items-center justify-center shadow-md hover:shadow-lg hover:-translate-y-0.5">
                                 Explore Community
                             </button>
                         </div>
