@@ -29,8 +29,10 @@ const TOPIC_META = {
   queues:         { name: 'Queues',        icon: '🎯' },
   heaps:          { name: 'Heaps',         icon: '⛰️' },
   trees:          { name: 'Trees',         icon: '🌲' },
-  recursion:      { name: 'Recursion',     icon: '🔄' },
-  maths:          { name: 'Maths',         icon: '➗' },
+  recursion:      { name: 'Recursion',           icon: '🔄' },
+  trie:           { name: 'Trie',                icon: '🌿' },
+  'stacks queues and heaps': { name: 'Stacks, Queues & Heaps', icon: '📚' },
+  maths:          { name: 'Maths',               icon: '➗' },
   mathematics:    { name: 'Mathematics',   icon: '🔢' },
   'bit manipulation': { name: 'Bit Manipulation', icon: '💡' },
 };
