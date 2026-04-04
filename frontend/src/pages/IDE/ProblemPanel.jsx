@@ -7,15 +7,6 @@ import {
 } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 import TabBar from './TabBar';
-import {
-    AlgorithmVisualizer,
-    generatePalindromeSteps,
-    generateParenthesesSteps,
-    generateLCPSteps,
-    generateNormalizeUserSteps,
-    generateRegexSteps,
-    generateValidPalindromeSteps,
-} from '@/components/AlgorithmVisualizer';
 
 /* ════════════════════════════════════════════════════════════════
    EXPLANATION PARSER — extracts every section from the raw text
@@ -417,7 +408,6 @@ const ProblemPanel = memo(({ problem, onBack, onActiveLadderChange, solvedLadder
     const [activeLadder, setActiveLadder] = useState(0);
     const [vote, setVote] = useState(null);
     const [readerMode, setReaderMode] = useState(null);
-    const [visualizationStates, setVisualizationStates] = useState({});
 
     const tabs = [
         { id: 'description', label: 'Description' },
@@ -476,59 +466,6 @@ const ProblemPanel = memo(({ problem, onBack, onActiveLadderChange, solvedLadder
         if (!text) return text;
         if (text.includes('\n')) return text;
         return text.replace(/(\s)(Step \d+:)/g, '\n$2').replace(/(\s)(Result:)/g, '\n\n$2').replace(/(\s)(Compare )/g, '\n  $2').trim();
-    };
-
-    const getAlgorithmType = (problemTitle) => {
-        const lower = problemTitle?.toLowerCase() || '';
-        if (lower.includes('valid palindrome')) return 'valid-palindrome';
-        if (lower.includes('palindrom')) return 'palindrome';
-        if (lower.includes('parenthes')) return 'parentheses';
-        if (lower.includes('common prefix') || lower.includes('vertical scan')) return 'lcp';
-        if (lower.includes('normalize') || lower.includes('deduplicate') || lower.includes('username')) return 'normalizeuser';
-        if (lower.includes('regex') || lower.includes('regular')) return 'regex';
-        if (lower.includes('binary')) return 'binarysearch';
-        if (lower.includes('linear')) return 'linearsearch';
-        return null;
-    };
-
-    const generateVisualizationSteps = (algType, example, inputString) => {
-        try {
-            if (algType === 'palindrome') {
-                return generatePalindromeSteps(inputString, example.trace);
-            }
-            if (algType === 'valid-palindrome') {
-                return generateValidPalindromeSteps(inputString, example.trace);
-            }
-            if (algType === 'parentheses') {
-                const nMatch = inputString.match(/\d+/);
-                const n = nMatch ? parseInt(nMatch[0]) : 1;
-                return generateParenthesesSteps(n, example.trace);
-            }
-            if (algType === 'lcp') {
-                try {
-                    const strings = JSON.parse(inputString);
-                    return generateLCPSteps(strings, example.trace);
-                } catch {
-                    return [];
-                }
-            }
-            if (algType === 'normalizeuser') {
-                try {
-                    const usernames = JSON.parse(inputString);
-                    return generateNormalizeUserSteps(usernames, example.trace);
-                } catch {
-                    return [];
-                }
-            }
-            if (algType === 'regex') {
-                // For regex, we need both s and p which are typically in the trace
-                return generateRegexSteps('', '', example.trace);
-            }
-            return [];
-        } catch (err) {
-            console.error('Error generating visualization steps:', err);
-            return [];
-        }
     };
 
     if (!problem) {
@@ -767,11 +704,6 @@ const ProblemPanel = memo(({ problem, onBack, onActiveLadderChange, solvedLadder
                                             <span style={{ width: 3, height: 12, borderRadius: 1, background: meta.color }} /> Examples
                                         </div>
                                         {lad.examples.map((ex, ei) => {
-                                            const visKey = `${approach?.id}-L${lad.level}-ex${ei}`;
-                                            const showViz = visualizationStates[visKey];
-                                            const algType = getAlgorithmType(problem?.title);
-                                            const vizSteps = showViz && algType && ei === 0 ? generateVisualizationSteps(algType, ex, ex.input.replace(/['"]/g, '')) : [];
-                                            
                                             return (
                                                 <div key={ei} style={{ borderRadius: 8, border: '1px solid var(--color-border)', overflow: 'hidden', marginBottom: 8 }}>
                                                     <div style={{ padding: '10px 12px', display: 'flex', flexDirection: 'column', gap: 8 }}>
@@ -790,51 +722,6 @@ const ProblemPanel = memo(({ problem, onBack, onActiveLadderChange, solvedLadder
                                                             </details>
                                                         )}
                                                         
-                                                        {/* Visualization Button - Only for Example 1 with supported algorithms */}
-                                                        {ei === 0 && algType && (
-                                                            <button
-                                                                onClick={() => setVisualizationStates(prev => ({ ...prev, [visKey]: !prev[visKey] }))}
-                                                                style={{
-                                                                    marginTop: 6,
-                                                                    padding: '6px 10px',
-                                                                    borderRadius: 6,
-                                                                    border: 'none',
-                                                                    background: showViz ? `color-mix(in srgb, ${meta.color} 15%, transparent)` : 'var(--color-surface-hover)',
-                                                                    color: showViz ? meta.color : 'var(--color-muted-text)',
-                                                                    fontSize: 11,
-                                                                    fontWeight: 600,
-                                                                    cursor: 'pointer',
-                                                                    display: 'flex',
-                                                                    alignItems: 'center',
-                                                                    gap: 4,
-                                                                    border: `1px solid ${showViz ? `color-mix(in srgb, ${meta.color} 22%, transparent)` : 'var(--color-border)'}`,
-                                                                    transition: 'all 0.2s ease',
-                                                                }}
-                                                                onMouseEnter={e => {
-                                                                    if (!showViz) {
-                                                                        e.currentTarget.style.background = 'color-mix(in srgb, var(--color-primary-text) 5%, var(--color-surface))';
-                                                                    }
-                                                                }}
-                                                                onMouseLeave={e => {
-                                                                    if (!showViz) {
-                                                                        e.currentTarget.style.background = 'var(--color-surface-hover)';
-                                                                    }
-                                                                }}
-                                                            >
-                                                                <Zap size={10} /> {showViz ? 'Hide' : 'Show'} Visualization
-                                                            </button>
-                                                        )}
-                                                        
-                                                        {/* Visualization Component */}
-                                                        {showViz && vizSteps.length > 0 && (
-                                                            <div style={{ marginTop: 8 }}>
-                                                                <AlgorithmVisualizer
-                                                                    steps={vizSteps}
-                                                                    algorithmType={algType}
-                                                                    inputData={{ string: ex.input.replace(/['"]/g, '') }}
-                                                                />
-                                                            </div>
-                                                        )}
                                                     </div>
                                                 </div>
                                             );
