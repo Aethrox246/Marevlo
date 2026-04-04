@@ -21,6 +21,7 @@ const Login = React.lazy(() => import('./pages/Login'));
 const Signup = React.lazy(() => import('./pages/Signup'));
 const Plan = React.lazy(() => import('./pages/Plan'));
 const AboutUs = React.lazy(() => import('./pages/AboutUs'));
+const Research = React.lazy(() => import('./pages/Research'));
 
 import { loadAllTopics } from './utils/topicsLoader';
 
@@ -83,6 +84,7 @@ function Navigation() {
                             <NavItem label="Plan" to="/plan" />
                             <NavItem label="Courses" to="/courses" />
                             <NavItem label="Problems" to="/problems" />
+                            <NavItem label="Research" to="/research" />
                         </div>
                     </div>
                 ) : (
@@ -329,6 +331,7 @@ export default function App() {
                             <Route path="/plan" element={<Plan />} />
                             <Route path="/profile" element={<Profile />} />
                             <Route path="/about" element={<AboutUs />} />
+                            <Route path="/research" element={<Research />} />
                         </Route>
                     </Routes>
                 </Router>
