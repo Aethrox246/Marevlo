@@ -27,6 +27,7 @@ import ReactDOM from 'react-dom';
 import parse, { domToReact } from 'html-react-parser';
 import InteractiveCodeBlock from '../components/InteractiveCodeBlock';
 import QuizModal from '../components/QuizModal';
+import CourseEngagement from '../components/CourseEngagement';
 /* ── Zoomable Image Component — rendered via Portal so it truly covers everything ── */
 const ZoomableImage = ({ src, alt }) => {
   const [zoomed, setZoomed] = useState(false);
@@ -1827,20 +1828,23 @@ export default function CourseContent() {
           {htmlFile ? (
             IFRAME_COURSES.has(id) ? (
               /* ── Full-page iframe for self-contained HTML courses (clustering) ── */
-              <iframe
-                key={htmlFile}
-                src={htmlFile}
-                title="Course Content"
-                style={{
-                  width: '100%',
-                  height: '100%',
-                  minHeight: 'calc(100vh - 56px)',
-                  border: 'none',
-                  display: 'block',
-                  background: '#0a0a0f',
-                }}
-                allowFullScreen
-              />
+              <div style={{ display: 'flex', flexDirection: 'column', minHeight: 'calc(100vh - 56px)' }}>
+                <iframe
+                  key={htmlFile}
+                  src={htmlFile}
+                  title="Course Content"
+                  style={{
+                    width: '100%',
+                    flex: '1 0 auto',
+                    minHeight: 'calc(100vh - 56px)',
+                    border: 'none',
+                    display: 'block',
+                    background: '#0a0a0f',
+                  }}
+                  allowFullScreen
+                />
+                <CourseEngagement courseId={id} />
+              </div>
             ) : (
             /* ── Immersive full-screen HTML reader ── */
             <div>
@@ -1898,6 +1902,7 @@ export default function CourseContent() {
                   ) : (
                     <MemoizedProseContent html={docHtml} innerRef={proseContentRef} />
                   )}
+                  <CourseEngagement courseId={id} />
                 </div>
 
               </div>
@@ -2052,6 +2057,7 @@ export default function CourseContent() {
                 </div>
               </div>
 
+              <CourseEngagement courseId={id} />
             </div>
           )}
         </div>

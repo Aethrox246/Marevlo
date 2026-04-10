@@ -660,89 +660,90 @@ const ProblemPanel = memo(({ problem, onBack, onActiveLadderChange, solvedLadder
                         {lad && (activeLadder + 1) <= current && (() => {
                             const isThisSolved = !!(solvedLadders[approach?.id] || {})[activeLadder];
                             return (
-                            <div className="pp-float" key={`${approach?.id}-${activeLadder}`} style={{ padding: 16 }}>
+                                <div className="pp-float" key={`${approach?.id}-${activeLadder}`} style={{ padding: 16 }}>
 
-                                {/* Ladder Header Card */}
-                                <div style={{ borderRadius: 9, border: `1px solid ${isThisSolved ? 'color-mix(in srgb, #f59e0b 30%, transparent)' : `color-mix(in srgb, ${meta.color} 22%, transparent)`}`, overflow: 'hidden', marginBottom: 16 }}>
-                                    {/* Solved gold bar */}
-                                    {isThisSolved && <div style={{ height: 3, background: 'linear-gradient(90deg, #f59e0b, #eab308)' }} />}
-                                    <div style={{ padding: '11px 14px', background: isThisSolved ? 'color-mix(in srgb, #f59e0b 5%, transparent)' : `color-mix(in srgb, ${meta.color} 5%, transparent)`, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                                        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                                            <div style={{
-                                                width: 34, height: 34, borderRadius: 8, display: 'flex', alignItems: 'center', justifyContent: 'center',
-                                                fontSize: 13, fontWeight: 800,
-                                                background: isThisSolved ? 'color-mix(in srgb, #f59e0b 14%, transparent)' : `color-mix(in srgb, ${meta.color} 14%, transparent)`,
-                                                color: isThisSolved ? '#f59e0b' : meta.color,
-                                                border: `1px solid ${isThisSolved ? 'color-mix(in srgb, #f59e0b 22%, transparent)' : `color-mix(in srgb, ${meta.color} 22%, transparent)`}`,
-                                            }}>
-                                                {isThisSolved ? '✓' : `L${lad.level}`}
-                                            </div>
-                                            <div>
-                                                <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--color-primary-text)', display: 'flex', alignItems: 'center', gap: 6 }}>
-                                                    {lad.title}
-                                                    {isThisSolved && (
-                                                        <span style={{ fontSize: 9, fontWeight: 700, padding: '2px 7px', borderRadius: 4, background: 'color-mix(in srgb, #f59e0b 12%, transparent)', color: '#f59e0b', border: '1px solid color-mix(in srgb, #f59e0b 22%, transparent)', textTransform: 'uppercase', letterSpacing: '0.04em' }}>Solved</span>
-                                                    )}
+                                    {/* Ladder Header Card */}
+                                    <div style={{ borderRadius: 9, border: `1px solid ${isThisSolved ? 'color-mix(in srgb, #f59e0b 30%, transparent)' : `color-mix(in srgb, ${meta.color} 22%, transparent)`}`, overflow: 'hidden', marginBottom: 16 }}>
+                                        {/* Solved gold bar */}
+                                        {isThisSolved && <div style={{ height: 3, background: 'linear-gradient(90deg, #f59e0b, #eab308)' }} />}
+                                        <div style={{ padding: '11px 14px', background: isThisSolved ? 'color-mix(in srgb, #f59e0b 5%, transparent)' : `color-mix(in srgb, ${meta.color} 5%, transparent)`, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                                            <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                                                <div style={{
+                                                    width: 34, height: 34, borderRadius: 8, display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                                    fontSize: 13, fontWeight: 800,
+                                                    background: isThisSolved ? 'color-mix(in srgb, #f59e0b 14%, transparent)' : `color-mix(in srgb, ${meta.color} 14%, transparent)`,
+                                                    color: isThisSolved ? '#f59e0b' : meta.color,
+                                                    border: `1px solid ${isThisSolved ? 'color-mix(in srgb, #f59e0b 22%, transparent)' : `color-mix(in srgb, ${meta.color} 22%, transparent)`}`,
+                                                }}>
+                                                    {isThisSolved ? '✓' : `L${lad.level}`}
                                                 </div>
-                                                <div style={{ fontSize: 10, color: isThisSolved ? '#f59e0b' : meta.color, fontWeight: 600, marginTop: 1, display: 'flex', alignItems: 'center', gap: 4 }}>
-                                                    <LIcon size={10} />{meta.label}
-                                                    {lad.testCases && <span style={{ color: 'var(--color-muted-text)', fontWeight: 400 }}>· {lad.testCases.length} test cases</span>}
-                                                </div>
-                                            </div>
-                                        </div>
-                                        <button onClick={() => setReaderMode({ lad, i: activeLadder })} style={{ width: 26, height: 26, borderRadius: 6, background: 'transparent', border: '1px solid var(--color-border)', color: 'var(--color-muted-text)', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', outline: 'none' }} title="Focus Mode"><Maximize2 size={12} /></button>
-                                    </div>
-                                </div>
-
-                                {/* Description */}
-                                {lad.desc && <p style={{ fontSize: 13, color: 'var(--color-muted-text)', lineHeight: 1.65, margin: '0 0 16px' }}>{lad.desc}</p>}
-
-                                {/* Examples */}
-                                {lad.examples && lad.examples.length > 0 && (
-                                    <div style={{ marginBottom: 16 }}>
-                                        <div style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', color: 'var(--color-muted-text)', marginBottom: 8, display: 'flex', alignItems: 'center', gap: 5 }}>
-                                            <span style={{ width: 3, height: 12, borderRadius: 1, background: meta.color }} /> Examples
-                                        </div>
-                                        {lad.examples.map((ex, ei) => {
-                                            return (
-                                                <div key={ei} style={{ borderRadius: 8, border: '1px solid var(--color-border)', overflow: 'hidden', marginBottom: 8 }}>
-                                                    <div style={{ padding: '10px 12px', display: 'flex', flexDirection: 'column', gap: 8 }}>
-                                                        <div style={{ display: 'flex', gap: 8 }}>
-                                                            <span style={{ fontSize: 10, fontWeight: 700, color: 'var(--color-muted-text)', width: 44, textTransform: 'uppercase', flexShrink: 0 }}>Input</span>
-                                                            <code style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 12, flex: 1, wordBreak: 'break-word', color: 'var(--color-primary-text)' }}>{ex.input}</code>
-                                                        </div>
-                                                        <div style={{ display: 'flex', gap: 8 }}>
-                                                            <span style={{ fontSize: 10, fontWeight: 700, color: 'var(--color-muted-text)', width: 44, textTransform: 'uppercase', flexShrink: 0 }}>Output</span>
-                                                            <code style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 12, color: '#10b981', flex: 1 }}>{ex.output}</code>
-                                                        </div>
-                                                        {ex.trace && (
-                                                            <details>
-                                                                <summary style={{ fontSize: 11, fontWeight: 600, color: meta.color, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4 }}><Eye size={11} /> Trace</summary>
-                                                                <pre style={{ marginTop: 6, fontSize: 11, lineHeight: 1.6, background: 'var(--color-surface-hover)', borderRadius: 6, padding: '8px 10px', whiteSpace: 'pre-wrap', fontFamily: "'JetBrains Mono', monospace", border: '1px solid var(--color-border)', maxHeight: 180, overflow: 'auto' }}>{ex.trace}</pre>
-                                                            </details>
+                                                <div>
+                                                    <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--color-primary-text)', display: 'flex', alignItems: 'center', gap: 6 }}>
+                                                        {lad.title}
+                                                        {isThisSolved && (
+                                                            <span style={{ fontSize: 9, fontWeight: 700, padding: '2px 7px', borderRadius: 4, background: 'color-mix(in srgb, #f59e0b 12%, transparent)', color: '#f59e0b', border: '1px solid color-mix(in srgb, #f59e0b 22%, transparent)', textTransform: 'uppercase', letterSpacing: '0.04em' }}>Solved</span>
                                                         )}
-                                                        
+                                                    </div>
+                                                    <div style={{ fontSize: 10, color: isThisSolved ? '#f59e0b' : meta.color, fontWeight: 600, marginTop: 1, display: 'flex', alignItems: 'center', gap: 4 }}>
+                                                        <LIcon size={10} />{meta.label}
+                                                        {lad.testCases && <span style={{ color: 'var(--color-muted-text)', fontWeight: 400 }}>· {lad.testCases.length} test cases</span>}
                                                     </div>
                                                 </div>
-                                            );
-                                        })}
+                                            </div>
+                                            <button onClick={() => setReaderMode({ lad, i: activeLadder })} style={{ width: 26, height: 26, borderRadius: 6, background: 'transparent', border: '1px solid var(--color-border)', color: 'var(--color-muted-text)', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', outline: 'none' }} title="Focus Mode"><Maximize2 size={12} /></button>
+                                        </div>
                                     </div>
-                                )}
 
-                                {/* ═══ FULL EXPLANATION — parsed into sections ═══ */}
-                                {lad.explanation && <ExplanationView text={lad.explanation} />}
+                                    {/* Description */}
+                                    {lad.desc && <p style={{ fontSize: 13, color: 'var(--color-muted-text)', lineHeight: 1.65, margin: '0 0 16px' }}>{lad.desc}</p>}
 
-                                {/* Test Cases indicator */}
-                                {lad.testCases && lad.testCases.length > 0 && (
-                                    <div style={{ marginTop: 14, padding: '8px 12px', borderRadius: 7, background: `color-mix(in srgb, ${meta.color} 5%, transparent)`, border: `1px solid color-mix(in srgb, ${meta.color} 14%, transparent)`, display: 'flex', alignItems: 'center', gap: 6, fontSize: 11 }}>
-                                        <Target size={11} style={{ color: meta.color }} />
-                                        <span style={{ fontWeight: 600, color: meta.color }}>{lad.testCases.length} test cases</span>
-                                        <ArrowRight size={10} style={{ color: 'var(--color-muted-text)' }} />
-                                        <span style={{ color: 'var(--color-muted-text)' }}>in testcase panel</span>
-                                    </div>
-                                )}
-                            </div>
-                        );})()}
+                                    {/* Examples */}
+                                    {lad.examples && lad.examples.length > 0 && (
+                                        <div style={{ marginBottom: 16 }}>
+                                            <div style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', color: 'var(--color-muted-text)', marginBottom: 8, display: 'flex', alignItems: 'center', gap: 5 }}>
+                                                <span style={{ width: 3, height: 12, borderRadius: 1, background: meta.color }} /> Examples
+                                            </div>
+                                            {lad.examples.map((ex, ei) => {
+                                                return (
+                                                    <div key={ei} style={{ borderRadius: 8, border: '1px solid var(--color-border)', overflow: 'hidden', marginBottom: 8 }}>
+                                                        <div style={{ padding: '10px 12px', display: 'flex', flexDirection: 'column', gap: 8 }}>
+                                                            <div style={{ display: 'flex', gap: 8 }}>
+                                                                <span style={{ fontSize: 10, fontWeight: 700, color: 'var(--color-muted-text)', width: 44, textTransform: 'uppercase', flexShrink: 0 }}>Input</span>
+                                                                <code style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 12, flex: 1, wordBreak: 'break-word', color: 'var(--color-primary-text)' }}>{ex.input}</code>
+                                                            </div>
+                                                            <div style={{ display: 'flex', gap: 8 }}>
+                                                                <span style={{ fontSize: 10, fontWeight: 700, color: 'var(--color-muted-text)', width: 44, textTransform: 'uppercase', flexShrink: 0 }}>Output</span>
+                                                                <code style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 12, color: '#10b981', flex: 1 }}>{ex.output}</code>
+                                                            </div>
+                                                            {ex.trace && (
+                                                                <details>
+                                                                    <summary style={{ fontSize: 11, fontWeight: 600, color: meta.color, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4 }}><Eye size={11} /> Trace</summary>
+                                                                    <pre style={{ marginTop: 6, fontSize: 11, lineHeight: 1.6, background: 'var(--color-surface-hover)', borderRadius: 6, padding: '8px 10px', whiteSpace: 'pre-wrap', fontFamily: "'JetBrains Mono', monospace", border: '1px solid var(--color-border)', maxHeight: 180, overflow: 'auto' }}>{ex.trace}</pre>
+                                                                </details>
+                                                            )}
+
+                                                        </div>
+                                                    </div>
+                                                );
+                                            })}
+                                        </div>
+                                    )}
+
+                                    {/* ═══ FULL EXPLANATION — parsed into sections ═══ */}
+                                    {lad.explanation && <ExplanationView text={lad.explanation} />}
+
+                                    {/* Test Cases indicator */}
+                                    {lad.testCases && lad.testCases.length > 0 && (
+                                        <div style={{ marginTop: 14, padding: '8px 12px', borderRadius: 7, background: `color-mix(in srgb, ${meta.color} 5%, transparent)`, border: `1px solid color-mix(in srgb, ${meta.color} 14%, transparent)`, display: 'flex', alignItems: 'center', gap: 6, fontSize: 11 }}>
+                                            <Target size={11} style={{ color: meta.color }} />
+                                            <span style={{ fontWeight: 600, color: meta.color }}>{lad.testCases.length} test cases</span>
+                                            <ArrowRight size={10} style={{ color: 'var(--color-muted-text)' }} />
+                                            <span style={{ color: 'var(--color-muted-text)' }}>in testcase panel</span>
+                                        </div>
+                                    )}
+                                </div>
+                            );
+                        })()}
 
                         {/* Unlock button */}
                         {current < ladders.length && (

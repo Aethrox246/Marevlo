@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef, Suspense } from 'react';
 import { BrowserRouter as Router, Routes, Route, useNavigate, useLocation, useParams, Outlet, Navigate } from 'react-router-dom';
-import { Layers, Zap, Sun, Moon } from 'lucide-react';
+import { Zap, Sun, Moon } from 'lucide-react';
 
 import NavItem from './components/NavItem';
 import { AuthProvider, useAuth } from './context/AuthContext';
@@ -57,19 +57,8 @@ function Navigation() {
             <div className="absolute inset-0 bg-gradient-to-b from-white/0 to-black/5 pointer-events-none"></div>
 
             <div className="relative max-w-7xl mx-auto px-4 h-[68px] flex items-center justify-between">
-                <div className="flex items-center space-x-3 cursor-pointer group" onClick={() => navigate('/')}>
-                    <div
-                        className="p-2 rounded-xl shadow-lg group-hover:scale-105 transition-transform duration-300"
-                        style={{
-                            backgroundColor: isDark ? '#ffffff' : '#000000',
-                            border: `1px solid ${isDark ? '#e5e5e5' : '#262626'}`
-                        }}
-                    >
-                        <Layers size={20} style={{ color: isDark ? '#000000' : '#ffffff' }} />
-                    </div>
-                    <span className="text-lg font-bold tracking-tight" style={{ color: 'var(--color-primary-text)' }}>
-                        Marevlo
-                    </span>
+                <div className="flex items-center cursor-pointer group" onClick={() => navigate('/')}>
+                    <img src="/logo/logo marevlo.svg" alt="Marevlo" className="h-10 w-auto group-hover:scale-105 transition-transform duration-300" />
                 </div>
 
                 {user ? (
@@ -236,10 +225,10 @@ function Navigation() {
 
 function Layout() {
     return (
-        <div className="h-screen flex flex-col font-sans transition-colors duration-200 overflow-auto" style={{ backgroundColor: 'var(--color-app-bg)', color: 'var(--color-primary-text)' }}>
+        <div className="h-screen flex flex-col font-sans transition-colors duration-200 overflow-hidden" style={{ backgroundColor: 'var(--color-app-bg)', color: 'var(--color-primary-text)' }}>
             <Navigation />
             <div className="h-[68px] shrink-0"></div> {/* Spacer matching exact nav height */}
-            <main className="flex-1 overflow-auto h-[calc(100vh-68px)]">
+            <main className="flex-1 overflow-hidden h-[calc(100vh-68px)]">
                 <Suspense fallback={<div className="flex items-center justify-center h-full w-full">Loading...</div>}>
                     <Outlet />
                 </Suspense>
