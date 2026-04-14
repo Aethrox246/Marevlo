@@ -1,0 +1,520 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>Eval Track 5 - Generation Quality Deep Dive</title>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&family=Outfit:wght@300;400;500;600;700;800;900&family=Source+Serif+4:ital,opsz,wght@0,8..144,300;0,8..144,400;0,8..144,600;1,8..144,300;1,8..144,400&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#0a0a0f;--t1:#ececf6;--t2:#b5b5c8;--tm:#7c7c95;--a1:#5eead4;--a2:#60a5fa;--a3:#f472b6;--a4:#fbbf24;--a5:#a78bfa;--ac:#5eead4;
+--gl:linear-gradient(90deg,#5eead4 0%,#60a5fa 28%,#a78bfa 55%,#f472b6 82%,#fbbf24 100%);
+--bs:rgba(255,255,255,0.07);--sh:0 20px 80px rgba(0,0,0,0.42);--r:20px;--cw:1120px}
+*{box-sizing:border-box;margin:0;padding:0}html{scroll-behavior:smooth}
+body{background:radial-gradient(circle at 18% 14%,rgba(94,234,212,.09),transparent 30%),radial-gradient(circle at 82% 22%,rgba(96,165,250,.05),transparent 28%),var(--bg);color:var(--t1);font-family:'Outfit',sans-serif;line-height:1.75;overflow-x:hidden;-webkit-font-smoothing:antialiased}
+.sp{position:fixed;top:0;left:0;height:3px;width:0%;z-index:1000;background:var(--gl);transition:width .12s linear}
+nav{position:fixed;top:3px;left:0;right:0;z-index:999;display:flex;align-items:center;justify-content:space-between;padding:.75rem 2rem;background:rgba(10,10,15,.88);backdrop-filter:blur(12px);border-bottom:1px solid var(--bs)}
+.nbr{font-family:'JetBrains Mono',monospace;font-size:.72rem;color:var(--ac);letter-spacing:.14em;text-transform:uppercase;text-decoration:none}
+.nm{font-size:.82rem;color:var(--tm)}.na{display:flex;gap:8px}
+.nb{display:inline-flex;align-items:center;gap:6px;padding:.4rem .9rem;border-radius:999px;border:1px solid var(--bs);background:rgba(255,255,255,.03);color:var(--t2);font-size:.8rem;text-decoration:none;transition:all .18s}
+.nb:hover{border-color:var(--ac);color:var(--ac)}
+.hero{min-height:100vh;display:flex;align-items:center;justify-content:center;padding:5rem 2rem 3rem;position:relative;overflow:hidden}
+.hg{position:absolute;inset:0;background-image:linear-gradient(rgba(255,255,255,.025) 1px,transparent 1px),linear-gradient(90deg,rgba(255,255,255,.025) 1px,transparent 1px);background-size:48px 48px;mask-image:radial-gradient(circle at center,black 30%,transparent 80%);pointer-events:none}
+.hero::before{content:"";position:absolute;inset:0;background:radial-gradient(ellipse 700px 350px at 20% 40%,rgba(94,234,212,.10),transparent),radial-gradient(ellipse 640px 360px at 80% 38%,rgba(96,165,250,.06),transparent);pointer-events:none}
+.hi{max-width:1000px;text-align:center;position:relative;z-index:1}
+.hl{display:inline-flex;align-items:center;gap:10px;padding:.55rem 1rem;border-radius:999px;border:1px solid rgba(94,234,212,.25);background:rgba(94,234,212,.08);color:var(--ac);letter-spacing:1.8px;text-transform:uppercase;font-size:.76rem;margin-bottom:1.7rem}
+.dot{width:7px;height:7px;border-radius:50%;background:var(--ac);animation:pulse 2s ease-in-out infinite}
+@keyframes pulse{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.3;transform:scale(.75)}}
+h1{font-size:clamp(2.4rem,5vw,4.4rem);line-height:1.04;letter-spacing:-.04em;font-weight:900;margin-bottom:1.3rem}
+.gt{background:var(--gl);-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent}
+.hs{font-family:'Source Serif 4',serif;color:var(--t2);font-size:clamp(1rem,2vw,1.2rem);max-width:820px;margin:0 auto 2rem;line-height:1.8}
+.hm{display:flex;flex-wrap:wrap;justify-content:center;gap:12px;margin-bottom:2.5rem}
+.mp{border:1px solid var(--bs);background:rgba(17,17,26,.75);border-radius:999px;padding:.65rem 1.1rem;color:var(--t2);font-size:.88rem}
+.sc{position:absolute;bottom:2.6rem;left:50%;transform:translateX(-50%);color:var(--tm);display:flex;flex-direction:column;gap:.6rem;align-items:center;text-transform:uppercase;letter-spacing:.22em;font-size:.7rem}
+.sc .arr{width:18px;height:18px;border-right:2px solid var(--tm);border-bottom:2px solid var(--tm);transform:rotate(45deg);animation:ba 2s ease-in-out infinite}
+@keyframes ba{0%,100%{transform:rotate(45deg) translateY(0)}50%{transform:rotate(45deg) translateY(7px)}}
+.cw{max-width:var(--cw);margin:0 auto;padding:0 2rem 6rem}
+.sec{margin-bottom:5.5rem;opacity:0;transform:translateY(28px);transition:opacity .65s ease,transform .65s ease}
+.sec.vis{opacity:1;transform:translateY(0)}
+.sn{display:flex;align-items:center;gap:12px;color:var(--ac);font-family:'JetBrains Mono',monospace;font-size:.68rem;text-transform:uppercase;letter-spacing:.22em;margin-bottom:.9rem}
+.sn::after{content:"";height:1px;flex:1;background:linear-gradient(90deg,rgba(94,234,212,.7),transparent)}
+.sec h2{font-size:clamp(1.9rem,4vw,2.75rem);line-height:1.08;margin-bottom:1rem;letter-spacing:-.04em}
+.lead{font-family:'Source Serif 4',serif;font-size:1.08rem;color:var(--t2);margin-bottom:2rem;line-height:1.85}
+.card{background:linear-gradient(180deg,rgba(24,24,38,.96),rgba(17,17,28,.96));border:1px solid var(--bs);border-radius:var(--r);box-shadow:var(--sh);padding:1.8rem;margin-bottom:1.4rem}
+.cc{background:linear-gradient(180deg,rgba(11,11,22,.99),rgba(9,9,17,.99));border:1px solid var(--bs);border-radius:var(--r);box-shadow:var(--sh);padding:0;margin-bottom:1.4rem;overflow:hidden}
+.ch{display:flex;align-items:center;justify-content:space-between;padding:1rem 1.5rem;border-bottom:1px solid var(--bs)}
+.ch h3{font-size:.9rem;font-family:'JetBrains Mono',monospace;color:var(--ac)}
+.cpb{display:inline-flex;align-items:center;gap:5px;padding:.28rem .7rem;border-radius:999px;border:1px solid var(--bs);background:transparent;color:var(--tm);font-size:.72rem;cursor:pointer;transition:all .18s;font-family:'JetBrains Mono',monospace}
+.cpb:hover{border-color:var(--a1);color:var(--a1)}
+.cbody{padding:1.5rem;overflow-x:auto}
+pre{white-space:pre;color:#d8e3ff;font-family:'JetBrains Mono',monospace;font-size:.86rem;line-height:1.75}
+.kw{color:#a78bfa}.fn{color:#60a5fa}.str{color:#5eead4}.cm{color:#3d3d5a;font-style:italic}.nu{color:#fbbf24}.cl{color:#f472b6}
+.g2{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:1.3rem;margin-bottom:1.4rem}
+.g3{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:1.3rem;margin-bottom:1.4rem}
+.g4{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:1rem;margin-bottom:1.2rem}
+.mc2{border:1px solid var(--bs);border-radius:16px;padding:1.3rem;background:rgba(255,255,255,.02)}
+.mc2 h4{font-size:1rem;margin-bottom:.55rem;color:var(--t1)}.mc2 p{font-size:.9rem;color:var(--t2);line-height:1.65}
+.cl2{border-radius:16px;padding:1.2rem 1.5rem;margin:1.5rem 0;display:flex;gap:1rem;align-items:flex-start}
+.cs{background:rgba(94,234,212,.06);border:1px solid rgba(94,234,212,.18)}
+.ci{background:rgba(96,165,250,.07);border:1px solid rgba(96,165,250,.18)}
+.cr{background:rgba(244,114,182,.06);border:1px solid rgba(244,114,182,.18)}
+.cw2{background:rgba(251,191,36,.06);border:1px solid rgba(251,191,36,.18)}
+.cp{background:rgba(167,139,250,.06);border:1px solid rgba(167,139,250,.18)}
+.cico{font-size:1.2rem;flex-shrink:0;margin-top:.1rem}
+.cbd h4{font-size:.95rem;margin-bottom:.35rem;color:var(--t1)}.cbd p{font-size:.9rem;color:var(--t2);line-height:1.65}
+.tbl{width:100%;border-collapse:collapse;font-size:.87rem}
+.tbl th{text-align:left;padding:.75rem 1rem;font-family:'JetBrains Mono',monospace;font-size:.65rem;text-transform:uppercase;color:var(--tm);border-bottom:1px solid var(--bs)}
+.tbl td{padding:.75rem 1rem;border-bottom:1px solid rgba(255,255,255,.04);color:var(--t2);vertical-align:top;line-height:1.65}
+.tbl td:first-child{color:var(--t1);font-weight:600}.tbl tr:last-child td{border-bottom:none}
+.bdg{display:inline-block;font-size:.7rem;padding:.18rem .55rem;border-radius:6px;font-weight:700}
+.bg-g{background:rgba(94,234,212,.12);color:var(--a1);border:1px solid rgba(94,234,212,.2)}
+.bg-b{background:rgba(96,165,250,.12);color:var(--a2);border:1px solid rgba(96,165,250,.2)}
+.bg-p{background:rgba(167,139,250,.12);color:var(--a5);border:1px solid rgba(167,139,250,.2)}
+.bg-y{background:rgba(251,191,36,.12);color:var(--a4);border:1px solid rgba(251,191,36,.2)}
+.bg-r{background:rgba(244,114,182,.12);color:var(--a3);border:1px solid rgba(244,114,182,.2)}
+.code-mini{background:rgba(11,11,22,.85);border:1px solid var(--bs);border-radius:9px;padding:.6rem .9rem;font-family:'JetBrains Mono',monospace;font-size:.78rem;line-height:1.7;color:var(--t2);margin-top:.5rem}
+.ex-box{border-radius:12px;padding:1rem 1.2rem;margin-bottom:.8rem}
+.ex-good{background:rgba(94,234,212,.05);border:1px solid rgba(94,234,212,.2)}
+.ex-bad{background:rgba(244,114,182,.05);border:1px solid rgba(244,114,182,.2)}
+.ex-label{font-family:'JetBrains Mono',monospace;font-size:.7rem;text-transform:uppercase;letter-spacing:.12em;margin-bottom:.4rem}
+.ex-text{font-size:.88rem;color:var(--t2);line-height:1.65}
+.num-card{border:1px solid var(--bs);border-radius:14px;padding:1.2rem;background:rgba(255,255,255,.02);text-align:center}
+.num-big{font-family:'JetBrains Mono',monospace;font-size:2.2rem;font-weight:700;margin-bottom:.3rem}
+.num-label{font-size:.82rem;color:var(--tm)}
+.qc{background:linear-gradient(180deg,rgba(24,24,38,.96),rgba(17,17,28,.96));border:1px solid var(--bs);border-radius:var(--r);box-shadow:var(--sh);padding:1.8rem}
+.qq{border:1px solid var(--bs);border-radius:16px;padding:1.3rem;background:rgba(255,255,255,.015);margin-bottom:1rem}
+.qq h4{font-size:1rem;margin-bottom:1rem;color:var(--t1);line-height:1.5}
+.qo{display:grid;gap:.6rem}
+.qob{border:1px solid var(--bs);border-radius:11px;padding:.9rem 1.1rem;background:rgba(255,255,255,.02);color:var(--t2);cursor:pointer;transition:all .2s;text-align:left;font-size:.9rem;font-family:'Outfit',sans-serif;width:100%;line-height:1.5}
+.qob:hover{border-color:rgba(94,234,212,.4);background:rgba(94,234,212,.04)}
+.qob.ok{border-color:rgba(94,234,212,.5);background:rgba(94,234,212,.09);color:var(--t1)}
+.qob.no{border-color:rgba(244,114,182,.4);background:rgba(244,114,182,.07)}
+.qf{font-size:.88rem;margin-top:.7rem;line-height:1.6;padding:.7rem .9rem;border-radius:10px;background:rgba(255,255,255,.02);display:none}
+.qf.show{display:block}
+.qs{padding:1.4rem;border-radius:16px;background:rgba(94,234,212,.06);border:1px solid rgba(94,234,212,.2);text-align:center;margin-top:1.2rem;display:none}
+.qs h3{font-size:2rem;color:var(--a1);margin-bottom:.4rem}.qs p{color:var(--t2);font-size:.92rem}
+.fn2{display:flex;align-items:center;justify-content:space-between;padding:2.2rem 0;border-top:1px solid var(--bs);margin-top:2rem}
+.fn2 a{display:inline-flex;align-items:center;gap:8px;padding:.75rem 1.5rem;border-radius:999px;border:1px solid var(--bs);color:var(--t2);text-decoration:none;font-size:.9rem;transition:all .2s}
+.fn2 a:hover{border-color:var(--ac);color:var(--ac)}
+.fn2 a.pr{background:rgba(167,139,250,.04);border-color:rgba(167,139,250,.2);color:var(--a5)}
+.fn2 a.nx{background:rgba(94,234,212,.04);border-color:rgba(94,234,212,.25);color:var(--ac)}
+.fcc{text-align:center;font-size:.82rem;color:var(--tm)}
+@media(max-width:720px){.g2,.g3,.g4{grid-template-columns:repeat(2,1fr)}}
+</style>
+</head>
+<body>
+<div class="sp" id="sp"></div>
+<nav>
+  <a href="eval_m0.html" class="nbr">Marevlo · Eval Track · Module 5</a>
+  <span class="nm">Generation Quality Deep Dive</span>
+  <div class="na">
+    <a href="eval_m4.html" class="nb">← M4: Retrieval IR Metrics</a>
+    <a href="eval_m6.html" class="nb">M6: Agentic Evaluation →</a>
+  </div>
+</nav>
+<section class="hero"><div class="hg"></div><div class="hi">
+  <div class="hl"><span class="dot"></span>Eval Track · Module 5 · GenAI Evaluation Engineering</div>
+  <h1>Generation Quality Deep Dive<br><span class="gt">NLI · FactScore · G-Eval · QA-Based · Calibration</span></h1>
+  <p class="hs">NLI-based faithfulness verification, FactScore's atomic claim decomposition, G-Eval's multi-criteria chain-of-thought rubric, SummaC, QA-based evaluation, and UniEval — the deep evaluation methods that go beyond surface n-gram matching to assess factual grounding, logical consistency, and structured quality dimensions with worked examples and Python implementations.</p>
+<div class="hm"><span class="mp">65 min</span><span class="mp">NLI entailment scoring</span><span class="mp">FactScore atomic claims</span><span class="mp">G-Eval chain-of-thought</span><span class="mp">QA-based evaluation</span><span class="mp">Calibration against humans</span><span class="mp">When each method lies</span></div>
+</div><div class="sc"><span>Scroll</span><div class="arr"></div></div></section>
+<div class="cw">
+
+<section class="sec" id="s1">
+<div class="sn">01 · Beyond Surface Metrics</div>
+<h2>Why n-gram Methods Fail<br><span class="gt">for Factual Quality Evaluation</span></h2>
+<p class="lead">BLEU, ROUGE, and BERTScore measure lexical or semantic similarity — they cannot verify whether a claim is factually correct. "The refund window is 30 days" and "The refund window is 90 days" have near-identical BERTScore (both are fluent, grammatically parallel, semantically similar sentences about refund windows). Generation quality metrics go deeper: they verify whether specific claims are entailed by source documents, decompose responses into verifiable atomic facts, and apply structured rubrics to assess quality dimensions independently.</p>
+<div class="g3">
+<div class="mc2" style="border-color:rgba(94,234,212,.3)"><h4 style="color:var(--a1)">NLI-based verification</h4><p>Uses natural language inference models to determine if a claim is entailed by, neutral to, or contradicted by a reference text. Binary judgment: supported or not supported.</p><div style="font-size:.8rem;color:var(--a1);margin-top:.4rem">Strength: fast, local, no API costs · Weakness: misses implied facts, struggles with negation</div></div>
+<div class="mc2" style="border-color:rgba(96,165,250,.3)"><h4 style="color:var(--a2)">FactScore decomposition</h4><p>Decomposes a response into atomic claims (one fact per claim), then verifies each claim independently against a knowledge source. Returns factual precision of the full response.</p><div style="font-size:.8rem;color:var(--a2);margin-top:.4rem">Strength: fine-grained fact-level scoring · Weakness: requires LLM for decomposition, expensive</div></div>
+<div class="mc2" style="border-color:rgba(251,191,36,.3)"><h4 style="color:var(--a4)">G-Eval rubric scoring</h4><p>Uses a chain-of-thought LLM judge with a structured multi-criteria rubric. The judge reasons step-by-step before giving a 1-5 score for each dimension. Most human-aligned approach.</p><div style="font-size:.8rem;color:var(--a4);margin-top:.4rem">Strength: high human correlation, explainable · Weakness: expensive, inconsistent on edge cases</div></div>
+</div>
+</section>
+
+<section class="sec" id="s2">
+<div class="sn">02 · NLI-Based Faithfulness Verification</div>
+<h2>Entailment, Contradiction, Neutral:<br><span class="gt">Using NLI Models for Fact Checking</span></h2>
+<p class="lead">Natural Language Inference (NLI) classifies the relationship between a "premise" (retrieved context) and a "hypothesis" (a claim from the generated answer) into three categories: ENTAILMENT (context supports the claim), CONTRADICTION (context contradicts the claim), or NEUTRAL (context neither supports nor contradicts). For faithfulness evaluation, we check whether each claim in the response is entailed by the retrieved context.</p>
+<div class="card"><h3 style="color:var(--a1);font-size:.95rem;margin-bottom:1rem">NLI verification: worked examples with probability scores</h3>
+<div style="background:rgba(11,11,22,.88);border:1px solid rgba(94,234,212,.2);border-radius:11px;padding:1rem 1.2rem;margin-bottom:1rem;font-size:.86rem;color:var(--t2);line-height:1.9">
+<strong style="color:var(--a4)">Premise (retrieved context):</strong> "Annual subscribers are eligible for a full refund within 30 calendar days of their subscription start date. Refunds are processed within 5-7 business days."
+</div>
+<div style="display:flex;flex-direction:column;gap:.5rem;margin-bottom:1rem">
+<div style="padding:.7rem 1rem;background:rgba(94,234,212,.04);border:1px solid rgba(94,234,212,.2);border-radius:10px">
+<p style="font-family:'JetBrains Mono',monospace;font-size:.74rem;color:var(--a1);margin-bottom:.2rem">Hypothesis A: "Annual plans have a 30-day refund period"</p>
+<p style="font-size:.84rem;color:var(--t2)">NLI output: ENTAILMENT (prob=0.94) | NEUTRAL (0.04) | CONTRADICTION (0.02)</p>
+<p style="font-size:.82rem;color:var(--a1)">→ Claim supported ✓ — direct paraphrase of "30 calendar days" and "annual subscribers"</p></div>
+<div style="padding:.7rem 1rem;background:rgba(251,191,36,.04);border:1px solid rgba(251,191,36,.2);border-radius:10px">
+<p style="font-family:'JetBrains Mono',monospace;font-size:.74rem;color:var(--a4);margin-bottom:.2rem">Hypothesis B: "Refunds are processed within a week"</p>
+<p style="font-size:.84rem;color:var(--t2)">NLI output: ENTAILMENT (0.61) | NEUTRAL (0.31) | CONTRADICTION (0.08)</p>
+<p style="font-size:.82rem;color:var(--a4)">→ Borderline ⚠ — "5-7 business days" does not precisely equal "a week" (could be 7-10 calendar days). NLI classifies as entailment but with lower confidence.</p></div>
+<div style="padding:.7rem 1rem;background:rgba(244,114,182,.04);border:1px solid rgba(244,114,182,.2);border-radius:10px">
+<p style="font-family:'JetBrains Mono',monospace;font-size:.74rem;color:var(--a3);margin-bottom:.2rem">Hypothesis C: "Monthly subscribers also get a 30-day refund"</p>
+<p style="font-size:.84rem;color:var(--t2)">NLI output: ENTAILMENT (0.07) | NEUTRAL (0.68) | CONTRADICTION (0.25)</p>
+<p style="font-size:.82rem;color:var(--a3)">→ Not supported ✗ — context only mentions annual subscribers. Monthly not addressed = NEUTRAL/CONTRADICTION depending on interpretation.</p></div>
+<div style="padding:.7rem 1rem;background:rgba(244,114,182,.04);border:1px solid rgba(244,114,182,.25);border-radius:10px">
+<p style="font-family:'JetBrains Mono',monospace;font-size:.74rem;color:var(--a3);margin-bottom:.2rem">Hypothesis D: "Refunds take less than 24 hours"</p>
+<p style="font-size:.84rem;color:var(--t2)">NLI output: ENTAILMENT (0.02) | NEUTRAL (0.11) | CONTRADICTION (0.87)</p>
+<p style="font-size:.82rem;color:var(--a3)">→ Contradiction detected ✗ — "5-7 business days" directly contradicts "less than 24 hours". Faithfulness = 0, this is an active hallucination.</p></div>
+</div></div>
+<div class="cc"><div class="ch"><h3>nli_faithfulness.py</h3><button class="cpb" onclick="cp(this,'c1')">⌘ Copy</button></div>
+<div class="cbody"><pre id="c1"><span class="kw">from</span> transformers <span class="kw">import</span> pipeline
+<span class="kw">import</span> re
+
+<span class="cm"># Fast, free, runs locally — ~90% accuracy vs LLM judge</span>
+nli_pipeline = pipeline(
+    <span class="str">"text-classification"</span>,
+    model=<span class="str">"cross-encoder/nli-deberta-v3-base"</span>,
+    device=-<span class="nu">1</span>  <span class="cm"># CPU; use 0 for GPU</span>
+)
+
+<span class="kw">def</span> <span class="fn">nli_score</span>(premise: str, hypothesis: str, threshold: float = <span class="nu">0.5</span>) -> dict:
+    <span class="str">"""Returns entailment probability and binary supported/not verdict."""</span>
+    input_text = <span class="str">f"{premise} [SEP] {hypothesis}"</span>
+    result = nli_pipeline(input_text)[<span class="nu">0</span>]
+    label = result[<span class="str">"label"</span>]
+    score = result[<span class="str">"score"</span>]
+    <span class="kw">return</span> {
+        <span class="str">"label"</span>: label,
+        <span class="str">"confidence"</span>: score,
+        <span class="str">"supported"</span>: label == <span class="str">"ENTAILMENT"</span> <span class="kw">and</span> score >= threshold
+    }
+
+DECOMPOSE_RE = re.compile(r<span class="str">r'\d+\.\s+'</span>)
+
+<span class="kw">def</span> <span class="fn">decompose_claims</span>(text: str) -> list[str]:
+    <span class="str">"""Simple sentence-level claim decomposition (no LLM needed)."""</span>
+    sentences = [s.strip() <span class="kw">for</span> s <span class="kw">in</span> text.split(<span class="str">"."</span>) <span class="kw">if</span> <span class="fn">len</span>(s.strip()) > <span class="nu">10</span>]
+    <span class="kw">return</span> sentences
+
+<span class="kw">def</span> <span class="fn">nli_faithfulness</span>(response: str, context: str) -> dict:
+    claims = <span class="fn">decompose_claims</span>(response)
+    results = []
+    <span class="kw">for</span> claim <span class="kw">in</span> claims:
+        verdict = <span class="fn">nli_score</span>(context, claim)
+        results.append({<span class="str">"claim"</span>: claim, **verdict})
+    supported = <span class="fn">sum</span>(<span class="nu">1</span> <span class="kw">for</span> r <span class="kw">in</span> results <span class="kw">if</span> r[<span class="str">"supported"</span>])
+    <span class="kw">return</span> {
+        <span class="str">"faithfulness"</span>: supported / <span class="fn">len</span>(claims) <span class="kw">if</span> claims <span class="kw">else</span> <span class="nu">1.0</span>,
+        <span class="str">"per_claim"</span>: results,
+        <span class="str">"method"</span>: <span class="str">"NLI/DeBERTa-v3-base"</span>
+    }
+
+<span class="cm"># Usage:</span>
+result = <span class="fn">nli_faithfulness</span>(
+    response=<span class="str">"Annual plans have a 30-day refund. Refunds take less than 24 hours."</span>,
+    context=<span class="str">"Annual subscribers eligible for refund within 30 days. Processing: 5-7 business days."</span>
+)
+<span class="cm"># {"faithfulness": 0.50, "per_claim": [{"claim": "...", "supported": True}, {"claim": "...", "supported": False}]}</span></pre></div></div>
+<div class="cl2 cr"><div class="cico">⚠️</div><div class="cbd"><h4>Three failure modes of NLI-based evaluation</h4>
+<p>(1) <strong>Negation confusion:</strong> "Refunds are not available" can score as NEUTRAL instead of CONTRADICTION for context saying "Refunds are available" — some NLI models struggle with negation. (2) <strong>Numerical imprecision:</strong> "a week" vs "5-7 business days" may score ENTAILMENT even though a week = 5 business days, not 7. (3) <strong>Implication failures:</strong> Context "Annual plan costs $99/month" does not ENTAIL "Annual plan costs more than $50" even though it is mathematically implied — NLI uses strict textual entailment, not logical inference. Use LLM-as-judge for these edge cases.</p></div></div>
+</section>
+
+<section class="sec" id="s3">
+<div class="sn">03 · FactScore — Atomic Claim Verification</div>
+<h2>Every Fact, Verified Independently:<br><span class="gt">Fine-Grained Factual Precision</span></h2>
+<p class="lead">FactScore decomposes a long-form generated text into atomic claims — each expressing exactly one verifiable fact — then verifies each claim against a knowledge source independently. The FactScore is the fraction of atomic claims that are supported. This gives per-sentence and per-claim visibility into where hallucinations occur, not just an aggregate number.</p>
+<div class="card"><h3 style="color:var(--a2);font-size:.95rem;margin-bottom:1rem">FactScore: full decomposition + verification example</h3>
+<div style="background:rgba(11,11,22,.88);border:1px solid rgba(96,165,250,.2);border-radius:11px;padding:1rem 1.2rem;margin-bottom:1rem;font-size:.86rem;color:var(--t2);line-height:1.8">
+<strong style="color:var(--a2)">Generated response to "Tell me about the annual subscription plan":</strong><br>
+"Our annual plan offers a <strong>[C1]</strong> 30-day refund window. <strong>[C2]</strong> It costs $99 per month. <strong>[C3]</strong> Annual subscribers get priority customer support. <strong>[C4]</strong> The plan auto-renews every 12 months. <strong>[C5]</strong> You can add up to 10 team members. <strong>[C6]</strong> The free trial lasts 14 days."
+</div>
+<div style="display:flex;flex-direction:column;gap:.4rem;margin-bottom:1rem">
+<div style="display:grid;grid-template-columns:2rem 1fr 8rem;gap:.5rem;align-items:center;padding:.5rem .8rem;background:rgba(94,234,212,.04);border:1px solid rgba(94,234,212,.2);border-radius:9px;font-size:.83rem">
+<span style="font-family:'JetBrains Mono',monospace;color:var(--a1)">C1</span><span style="color:var(--t2)">30-day refund window</span><span style="color:var(--a1);font-family:'JetBrains Mono',monospace;font-size:.75rem">SUPPORTED ✓</span></div>
+<div style="display:grid;grid-template-columns:2rem 1fr 8rem;gap:.5rem;align-items:center;padding:.5rem .8rem;background:rgba(94,234,212,.04);border:1px solid rgba(94,234,212,.2);border-radius:9px;font-size:.83rem">
+<span style="font-family:'JetBrains Mono',monospace;color:var(--a1)">C2</span><span style="color:var(--t2)">Costs $99 per month</span><span style="color:var(--a1);font-family:'JetBrains Mono',monospace;font-size:.75rem">SUPPORTED ✓</span></div>
+<div style="display:grid;grid-template-columns:2rem 1fr 8rem;gap:.5rem;align-items:center;padding:.5rem .8rem;background:rgba(244,114,182,.04);border:1px solid rgba(244,114,182,.2);border-radius:9px;font-size:.83rem">
+<span style="font-family:'JetBrains Mono',monospace;color:var(--a3)">C3</span><span style="color:var(--t2)">Priority customer support</span><span style="color:var(--a3);font-family:'JetBrains Mono',monospace;font-size:.75rem">NOT FOUND ✗</span></div>
+<div style="display:grid;grid-template-columns:2rem 1fr 8rem;gap:.5rem;align-items:center;padding:.5rem .8rem;background:rgba(94,234,212,.04);border:1px solid rgba(94,234,212,.2);border-radius:9px;font-size:.83rem">
+<span style="font-family:'JetBrains Mono',monospace;color:var(--a1)">C4</span><span style="color:var(--t2)">Auto-renews every 12 months</span><span style="color:var(--a1);font-family:'JetBrains Mono',monospace;font-size:.75rem">SUPPORTED ✓</span></div>
+<div style="display:grid;grid-template-columns:2rem 1fr 8rem;gap:.5rem;align-items:center;padding:.5rem .8rem;background:rgba(244,114,182,.04);border:1px solid rgba(244,114,182,.2);border-radius:9px;font-size:.83rem">
+<span style="font-family:'JetBrains Mono',monospace;color:var(--a3)">C5</span><span style="color:var(--t2)">Up to 10 team members</span><span style="color:var(--a3);font-family:'JetBrains Mono',monospace;font-size:.75rem">NOT FOUND ✗</span></div>
+<div style="display:grid;grid-template-columns:2rem 1fr 8rem;gap:.5rem;align-items:center;padding:.5rem .8rem;background:rgba(244,114,182,.04);border:1px solid rgba(244,114,182,.25);border-radius:9px;font-size:.83rem">
+<span style="font-family:'JetBrains Mono',monospace;color:var(--a3)">C6</span><span style="color:var(--t2)">Free trial lasts 14 days</span><span style="color:var(--a3);font-family:'JetBrains Mono',monospace;font-size:.75rem">CONTRADICTED ✗</span></div>
+</div>
+<div class="g3">
+<div class="num-card"><div class="num-big" style="color:var(--a1)">3</div><div class="num-label">Supported claims</div></div>
+<div class="num-card"><div class="num-big" style="color:var(--a3)">3</div><div class="num-label">Unsupported/contradicted</div></div>
+<div class="num-card"><div class="num-big" style="color:var(--a4)">0.50</div><div class="num-label">FactScore = 3/6<br>50% factual precision</div></div>
+</div></div>
+</section>
+
+<section class="sec" id="s4">
+<div class="sn">04 · G-Eval — Chain-of-Thought Rubric Scoring</div>
+<h2>Structured Multi-Criteria Evaluation<br><span class="gt">with LLM Reasoning Traces</span></h2>
+<p class="lead">G-Eval (Liu et al., 2023) uses a carefully structured LLM prompt with: (1) explicit evaluation criteria with definitions, (2) a numbered scoring rubric with examples at each level, and (3) a chain-of-thought instruction that asks the model to reason before scoring. The CoT trace makes the score interpretable and reduces inconsistency from the "LLM mood" effect.</p>
+<div class="card"><h3 style="color:var(--a4);font-size:.95rem;margin-bottom:1rem">G-Eval prompt structure and output example</h3>
+<div style="background:rgba(11,11,22,.88);border:1px solid rgba(251,191,36,.2);border-radius:11px;padding:1rem 1.2rem;margin-bottom:1rem;font-size:.83rem;color:var(--t2);line-height:1.85">
+<strong style="color:var(--a4)">G-Eval Faithfulness Prompt:</strong><br>
+"You are an expert evaluator. Your task is to evaluate the faithfulness of an AI response to its source context.<br><br>
+<strong>Evaluation Criteria:</strong> Faithfulness measures whether ALL factual claims in the response are supported by the provided context. A response is unfaithful if it adds ANY information not present in the context, even if that information might be true in general.<br><br>
+<strong>Scoring Rubric:</strong><br>
+5 - All claims are directly supported by the context. Zero hallucinations.<br>
+4 - One minor unsupported detail (e.g., a transitional phrase or small clarification) but all key claims are supported.<br>
+3 - One significant unsupported claim OR two minor unsupported claims.<br>
+2 - Multiple significant hallucinated claims that would mislead the user.<br>
+1 - Most claims are unsupported or actively contradicted by the context.<br><br>
+<strong>Task:</strong> First, list all factual claims in the response. For each claim, state whether it is supported, neutral, or contradicted. Then provide your score 1-5 with a one-sentence justification."
+</div>
+<div style="background:rgba(11,11,22,.88);border:1px solid rgba(94,234,212,.2);border-radius:11px;padding:1rem 1.2rem;font-size:.83rem;color:var(--t2);line-height:1.75">
+<strong style="color:var(--a1)">Example G-Eval output (CoT + score):</strong><br>
+"Claims analysis:<br>
+• 'Annual plans have a 30-day refund window' → SUPPORTED (context: 'within 30 calendar days')<br>
+• 'Submit via Account Settings' → SUPPORTED (context: 'via Account Settings portal')<br>
+• 'Monthly subscribers are also refundable' → NOT SUPPORTED (context only mentions annual subscribers)<br>
+• 'Customer support can expedite' → NOT SUPPORTED (not mentioned in context)<br><br>
+Score: 3/5. Two of four claims are supported, but two significant claims about monthly subscribers and expedited support are not present in the context and would mislead users."
+</div></div>
+<div class="cc"><div class="ch"><h3>g_eval_scorer.py</h3><button class="cpb" onclick="cp(this,'c2')">⌘ Copy</button></div>
+<div class="cbody"><pre id="c2"><span class="kw">from</span> langchain_anthropic <span class="kw">import</span> ChatAnthropic
+<span class="kw">from</span> langchain_core.prompts <span class="kw">import</span> ChatPromptTemplate
+<span class="kw">from</span> langchain_core.output_parsers <span class="kw">import</span> JsonOutputParser
+
+llm = ChatAnthropic(model=<span class="str">"claude-sonnet-4-20250514"</span>, temperature=<span class="nu">0</span>)
+
+G_EVAL_PROMPT = ChatPromptTemplate.from_messages([(<span class="str">"system"</span>, <span class="str">"""
+You are an expert NLP evaluator. Evaluate the response on these dimensions.
+
+Coherence (1-5): logical flow, no contradictions
+  5=perfect logic, 4=minor gaps, 3=some unclear transitions, 2=major gaps, 1=contradicts itself
+
+Consistency/Faithfulness (1-5): all claims supported by context
+  5=all supported, 4=one minor unsupported, 3=one major unsupported, 2=multiple major, 1=mostly hallucinated
+
+Fluency (1-5): grammatically correct, natural language
+  5=perfect, 4=minor errors, 3=some errors, 2=hard to read, 1=incomprehensible
+
+Relevance (1-5): directly addresses the question
+  5=completely on-topic, 4=mostly relevant, 3=partially relevant, 2=tangentially relevant, 1=off-topic
+
+For EACH dimension:
+1. List evidence (quote specific phrases from the response)
+2. Reasoning (why does this evidence support your score?)
+3. Score (integer 1-5)
+
+Output JSON:
+{
+  "coherence": {"evidence": "...", "reasoning": "...", "score": 1-5},
+  "faithfulness": {"evidence": "...", "reasoning": "...", "score": 1-5},
+  "fluency": {"evidence": "...", "reasoning": "...", "score": 1-5},
+  "relevance": {"evidence": "...", "reasoning": "...", "score": 1-5}
+}
+
+Context: {context}
+"""</span>), (<span class="str">"human"</span>, <span class="str">"Question: {question}
+Response: {response}"</span>)])
+
+g_eval_chain = G_EVAL_PROMPT | llm | JsonOutputParser()
+
+<span class="kw">def</span> <span class="fn">g_eval_score</span>(question: str, response: str, context: str = <span class="str">"N/A"</span>) -> dict:
+    scores = g_eval_chain.invoke({
+        <span class="str">"question"</span>: question, <span class="str">"response"</span>: response, <span class="str">"context"</span>: context
+    })
+    <span class="cm"># Run 3 times, average for stability (G-Eval recommendation)</span>
+    <span class="cm"># scores = mean of 3 independent runs</span>
+    overall = sum(dim[<span class="str">"score"</span>] <span class="kw">for</span> dim <span class="kw">in</span> scores.values()) / <span class="fn">len</span>(scores)
+    <span class="kw">return</span> {**scores, <span class="str">"overall"</span>: overall}
+
+<span class="cm"># Stability tip: run g_eval 3x and average scores</span>
+<span class="kw">def</span> <span class="fn">stable_g_eval</span>(question, response, context, n=<span class="nu">3</span>) -> dict:
+    all_scores = [g_eval_score(question, response, context) <span class="kw">for</span> _ <span class="kw">in</span> <span class="fn">range</span>(n)]
+    <span class="kw">return</span> {dim: sum(r[dim][<span class="str">"score"</span>] <span class="kw">for</span> r <span class="kw">in</span> all_scores)/n
+            <span class="kw">for</span> dim <span class="kw">in</span> [<span class="str">"coherence"</span>,<span class="str">"faithfulness"</span>,<span class="str">"fluency"</span>,<span class="str">"relevance"</span>]}</pre></div></div>
+</section>
+
+<section class="sec" id="s5">
+<div class="sn">05 · QA-Based Evaluation</div>
+<h2>Test Whether the Answer Contains<br><span class="gt">the Right Facts, Not Just the Right Words</span></h2>
+<p class="lead">QA-based evaluation generates factual questions from the reference answer, then asks those questions to the generated response. If the generated response contains the correct answers to these questions, it must contain the key facts — regardless of wording. This approach catches cases where BERTScore gives high similarity to a wrong answer because the sentence structure is similar.</p>
+<div class="g2">
+<div class="card" style="margin-bottom:0">
+<h4 style="color:var(--a5);margin-bottom:.7rem">QA-based evaluation: the pipeline</h4>
+<div style="display:flex;flex-direction:column;gap:.4rem">
+<div style="padding:.55rem .8rem;background:rgba(167,139,250,.05);border:1px solid rgba(167,139,250,.2);border-radius:9px;font-size:.84rem">
+<p style="font-family:'JetBrains Mono',monospace;font-size:.73rem;color:var(--a5);margin-bottom:.2rem">Step 1: Generate factual questions from reference</p>
+<p style="color:var(--t2)">Reference: "Annual plans have a 30-day refund window. Submit via Account Settings. Processing takes 5-7 business days."<br>→ Q1: "How many days is the refund window?" (answer: 30)<br>→ Q2: "Where do you submit a refund request?" (answer: Account Settings)<br>→ Q3: "How long does refund processing take?" (answer: 5-7 business days)</p></div>
+<div style="padding:.55rem .8rem;background:rgba(167,139,250,.05);border:1px solid rgba(167,139,250,.2);border-radius:9px;font-size:.84rem">
+<p style="font-family:'JetBrains Mono',monospace;font-size:.73rem;color:var(--a5);margin-bottom:.2rem">Step 2: Extract answers from generated response</p>
+<p style="color:var(--t2)">Generated: "You can get a refund on an annual plan within one month via the settings portal. It usually takes about a week."<br>→ Q1 answer extracted: "one month" → matches "30 days"? ≈ YES (30 days ≈ one month)<br>→ Q2 answer extracted: "settings portal" → matches "Account Settings"? YES<br>→ Q3 answer extracted: "about a week" → matches "5-7 business days"? BORDERLINE</p></div>
+<div style="padding:.55rem .8rem;background:rgba(167,139,250,.05);border:1px solid rgba(167,139,250,.2);border-radius:9px;font-size:.84rem">
+<p style="font-family:'JetBrains Mono',monospace;font-size:.73rem;color:var(--a5);margin-bottom:.2rem">Step 3: Compute QA-based accuracy</p>
+<p style="color:var(--t2)">2.5/3 facts correctly contained → QA-based accuracy ≈ 0.83</p></div>
+</div></div>
+<div class="card" style="margin-bottom:0">
+<h4 style="color:var(--a4);margin-bottom:.6rem">When QA-based evaluation catches what BERTScore misses</h4>
+<div style="display:flex;flex-direction:column;gap:.4rem">
+<div class="ex-box ex-bad" style="margin-bottom:0">
+<div class="ex-label" style="color:var(--a3)">BERTScore: 0.89 (misses the error)</div>
+<div class="ex-text">Reference: "The refund window is 30 days."<br>Generated: "The refund window is 90 days."<br>BERTScore: 0.89 — high (same sentence structure, similar embedding)<br>QA accuracy: 0/1 — "How many days?" → "90" ≠ "30" → WRONG</div></div>
+<div class="ex-box ex-good" style="margin-bottom:0">
+<div class="ex-label" style="color:var(--a1)">QA-based catches the numeric error</div>
+<div class="ex-text">QA generates "How long is the refund window?" → expected: "30 days". Extracted from generated response: "90 days". Exact match fails → QA accuracy = 0. The numeric error is caught even though BERTScore was fooled by structural similarity.</div></div>
+</div></div></div>
+</section>
+
+<section class="sec" id="s6">
+<div class="sn">06 · Calibrating Against Human Judgments</div>
+<h2>Validate Your Automated Metrics<br><span class="gt">Before Trusting Them at Scale</span></h2>
+<p class="lead">Every automated evaluation metric is only as trustworthy as its correlation with human judgments on YOUR domain. A metric that works well in academic benchmarks may fail on domain-specific enterprise text. Calibration measures the correlation between automated scores and human annotator scores on the same examples — establishing whether your metric can be trusted for production decisions.</p>
+<div class="card"><h3 style="color:var(--a1);font-size:.95rem;margin-bottom:1rem">Calibration study: 200-sample protocol</h3>
+<div style="display:flex;flex-direction:column;gap:.4rem;margin-bottom:1rem">
+<div style="padding:.65rem 1rem;background:rgba(255,255,255,.02);border:1px solid var(--bs);border-radius:11px">
+<p style="font-family:'JetBrains Mono',monospace;font-size:.74rem;color:var(--a1);margin-bottom:.2rem">Step 1: Sample 200 examples from your test set</p>
+<p style="font-size:.84rem;color:var(--t2)">Stratify by query type (factual, comparison, procedural) and quality level (sample from full score range, not just random). This ensures the calibration covers edge cases.</p></div>
+<div style="padding:.65rem 1rem;background:rgba(255,255,255,.02);border:1px solid var(--bs);border-radius:11px">
+<p style="font-family:'JetBrains Mono',monospace;font-size:.74rem;color:var(--a1);margin-bottom:.2rem">Step 2: Get 3 human annotators to score each example</p>
+<p style="font-size:.84rem;color:var(--t2)">Each annotator scores the dimension being calibrated (e.g., faithfulness) on a 1-5 scale using your rubric. Compute Fleiss' kappa — if &lt; 0.4, your rubric is ambiguous, revise before proceeding.</p></div>
+<div style="padding:.65rem 1rem;background:rgba(255,255,255,.02);border:1px solid var(--bs);border-radius:11px">
+<p style="font-family:'JetBrains Mono',monospace;font-size:.74rem;color:var(--a1);margin-bottom:.2rem">Step 3: Compute automated metric scores on the same 200 examples</p>
+<p style="font-size:.84rem;color:var(--t2)">Run NLI-faithfulness, RAGAS faithfulness, and G-Eval on the same examples. Scale scores to 1-5 if needed (RAGAS 0-1 × 4 + 1).</p></div>
+<div style="padding:.65rem 1rem;background:rgba(255,255,255,.02);border:1px solid var(--bs);border-radius:11px">
+<p style="font-family:'JetBrains Mono',monospace;font-size:.74rem;color:var(--a1);margin-bottom:.2rem">Step 4: Compute Spearman correlation between human and automated scores</p>
+<p style="font-size:.84rem;color:var(--t2)">Spearman &gt; 0.7 = metric is reliable for your domain. 0.5-0.7 = use with caution, check systematically failing examples. &lt; 0.5 = metric is unreliable, do not use for production decisions.</p></div>
+</div>
+<div class="card" style="padding:0;overflow:hidden;margin-bottom:0"><table class="tbl">
+<thead><tr><th>Metric</th><th>Typical Spearman (academic benchmarks)</th><th>Typical Spearman (domain-specific)</th><th>Recommendation</th></tr></thead>
+<tbody>
+<tr><td>BLEU-4</td><td style="color:var(--a3)">0.37 (translation only)</td><td style="color:var(--a3)">0.10-0.25</td><td>Do not use for RAG/QA evaluation</td></tr>
+<tr><td>BERTScore</td><td style="color:var(--a4)">0.55-0.65</td><td style="color:var(--a4)">0.40-0.55</td><td>Use as one signal among several</td></tr>
+<tr><td>RAGAS Faithfulness</td><td style="color:var(--a4)">0.60-0.70</td><td style="color:var(--a4)">0.50-0.65</td><td>Reliable for RAG; validate on your domain</td></tr>
+<tr><td>G-Eval (GPT-4 judge)</td><td style="color:var(--a1)">0.70-0.80</td><td style="color:var(--a1)">0.60-0.75</td><td>Best automated option; always calibrate first</td></tr>
+<tr><td>Human-Human agreement</td><td style="color:var(--a1)">0.75-0.85</td><td style="color:var(--a1)">0.65-0.80</td><td>Upper bound for any automated metric</td></tr>
+</tbody></table></div></div>
+</section>
+
+<section class="sec" id="s7">
+<div class="sn">07 · Choosing the Right Generation Quality Method</div>
+<h2>Method Selection Guide:<br><span class="gt">Speed vs Accuracy vs Cost</span></h2>
+<div class="card" style="padding:0;overflow:hidden"><table class="tbl">
+<thead><tr><th>Method</th><th>Speed</th><th>Cost</th><th>Accuracy</th><th>Best use case</th></tr></thead>
+<tbody>
+<tr><td>NLI (local DeBERTa)</td><td style="color:var(--a1)">Fast (100 req/s)</td><td style="color:var(--a1)">Free (local)</td><td style="color:var(--a4)">~85% vs human</td><td>Real-time monitoring, CI regression tests, initial screening</td></tr>
+<tr><td>FactScore (LLM decomp + NLI verify)</td><td style="color:var(--a4)">Medium (5-10s/sample)</td><td style="color:var(--a4)">~$0.01/sample</td><td style="color:var(--a1)">~90% vs human</td><td>Long-form generation audit, periodic deep evaluation</td></tr>
+<tr><td>G-Eval (LLM judge, CoT)</td><td style="color:var(--a4)">Medium (3-8s/sample)</td><td style="color:var(--a3)">~$0.005/sample</td><td style="color:var(--a1)">~88% vs human</td><td>Multi-dimension quality scoring, A/B evaluation, pre-launch certification</td></tr>
+<tr><td>QA-Based</td><td style="color:var(--a3)">Slow (10-20s/sample)</td><td style="color:var(--a3)">~$0.015/sample</td><td style="color:var(--a1)">~87% vs human</td><td>Numeric precision tasks, factual QA where exact values matter</td></tr>
+<tr><td>Human evaluation</td><td style="color:var(--a3)">Very slow (5 min/sample)</td><td style="color:var(--a3)">~$0.50-2/sample</td><td style="color:var(--a1)">Ground truth</td><td>Calibration, final pre-launch certification, high-stakes decisions</td></tr>
+</tbody></table></div>
+</section>
+
+<section class="sec" id="s8">
+<div class="sn">08 · Combining Methods: The Multi-Layer Quality Pipeline</div>
+<h2>Fast Screening + Deep Audit:<br><span class="gt">The Production Quality Stack</span></h2>
+<div class="cc"><div class="ch"><h3>multi_layer_quality_pipeline.py</h3><button class="cpb" onclick="cp(this,'c3')">⌘ Copy</button></div>
+<div class="cbody"><pre id="c3"><span class="kw">from</span> transformers <span class="kw">import</span> pipeline <span class="kw">as</span> hf_pipeline
+<span class="kw">from</span> langchain_anthropic <span class="kw">import</span> ChatAnthropic
+<span class="kw">import</span> asyncio
+
+nli = hf_pipeline(<span class="str">"text-classification"</span>, model=<span class="str">"cross-encoder/nli-deberta-v3-base"</span>)
+llm = ChatAnthropic(model=<span class="str">"claude-haiku-4-5-20251001"</span>)  <span class="cm"># fast model for judge</span>
+
+<span class="kw">class</span> <span class="cl">QualityPipeline</span>:
+    <span class="str">"""
+    Layer 1: NLI screening (fast, free, runs on everything)
+    Layer 2: G-Eval (sampled 10-20%, on examples where NLI is uncertain)
+    Layer 3: Human review (weekly, on worst examples from Layer 2)
+    """</span>
+
+    <span class="kw">def</span> <span class="fn">nli_screen</span>(self, response: str, context: str) -> dict:
+        <span class="cm"># Quick check: are all sentences entailed by context?</span>
+        sentences = [s.strip() <span class="kw">for</span> s <span class="kw">in</span> response.split(<span class="str">"."</span>) <span class="kw">if</span> <span class="fn">len</span>(s.strip()) > <span class="nu">10</span>]
+        scores = [nli(<span class="str">f"{context} [SEP] {s}"</span>)[<span class="nu">0</span>] <span class="kw">for</span> s <span class="kw">in</span> sentences]
+        entailed = [s <span class="kw">for</span> s <span class="kw">in</span> scores <span class="kw">if</span> s[<span class="str">"label"</span>] == <span class="str">"ENTAILMENT"</span>]
+        faith = <span class="fn">len</span>(entailed) / <span class="fn">len</span>(scores) <span class="kw">if</span> scores <span class="kw">else</span> <span class="nu">1.0</span>
+        <span class="kw">return</span> {<span class="str">"faithfulness_nli"</span>: faith, <span class="str">"flag_for_deep"</span>: faith < <span class="nu">0.8</span>}
+
+    <span class="kw">async def</span> <span class="fn">evaluate</span>(self, question: str, response: str, context: str,
+                         deep_sample_rate: float = <span class="nu">0.15</span>) -> dict:
+        <span class="cm"># Layer 1: always runs</span>
+        layer1 = self.nli_screen(response, context)
+        
+        <span class="cm"># Layer 2: run if flagged OR randomly sampled</span>
+        <span class="kw">import</span> random
+        <span class="kw">if</span> layer1[<span class="str">"flag_for_deep"</span>] <span class="kw">or</span> random.random() < deep_sample_rate:
+            layer2 = <span class="kw">await</span> self.<span class="fn">g_eval_async</span>(question, response, context)
+        <span class="kw">else</span>:
+            layer2 = {<span class="str">"g_eval"</span>: <span class="kw">None</span>, <span class="str">"skipped"</span>: <span class="kw">True</span>}
+        
+        <span class="kw">return</span> {<span class="str">"layer1_nli"</span>: layer1, <span class="str">"layer2_geval"</span>: layer2}
+
+pipeline = QualityPipeline()
+
+<span class="cm"># Production usage: evaluate every response with NLI</span>
+<span class="cm"># Deep-evaluate flagged + 15% sample with G-Eval</span>
+<span class="cm"># Weekly: human review of bottom-10% G-Eval scores</span></pre></div></div>
+</section>
+
+<section class="sec" id="s9">
+<div class="sn">09 · Assessment</div>
+<h2>Module 5 <span class="gt">Quiz</span></h2>
+<div class="qc">
+<div class="qq"><h4>1. NLI gives ENTAILMENT (prob=0.61) for: premise "Refunds processed in 5-7 business days" vs hypothesis "Refunds take about a week." Should you accept this as supported? What are the risks?</h4>
+<div class="qo">
+<button class="qob" onclick="cq(this,0,false)">A) Yes, 0.61 > 0.5 threshold so it is supported — accept it</button>
+<button class="qob" onclick="cq(this,0,true)">B) Accept with caution — but flag the low confidence (0.61) as a borderline case for human review. The semantic equivalence is arguable: 5 business days ≈ 7 calendar days ≈ "about a week" for most users. But for strict compliance contexts (SLA contracts, refund guarantees), "a week" could mean 7 calendar days = 14 business days if weekends are excluded differently. The NLI model cannot make this domain-specific judgment. For high-stakes domains, treat any ENTAILMENT below 0.80 confidence as uncertain and route to human review.</button>
+<button class="qob" onclick="cq(this,0,false)">C) Reject it — 5-7 business days and "a week" are factually different statements</button>
+<button class="qob" onclick="cq(this,0,false)">D) Run a second NLI model and average the results to resolve the ambiguity</button>
+</div><div class="qf" id="f0">Correct. NLI confidence thresholds are domain-sensitive. The default 0.50 threshold accepts too many borderline cases. A threshold of 0.80+ for production-grade faithfulness evaluation is more conservative and appropriate for domains where precise facts matter. Borderline cases (0.50-0.80 ENTAILMENT) should be routed to a more capable judge (G-Eval or human) rather than automatically classified. The key insight: NLI confidence reflects the model's uncertainty about whether the semantic relationship is entailment — and that uncertainty should propagate to your quality score.</div></div>
+
+<div class="qq"><h4>2. FactScore decomposes a response into 8 atomic claims. 6 are SUPPORTED, 1 is NOT FOUND (no source mentions it), 1 is CONTRADICTED by the context. How should you weight these differently, and what is the FactScore?</h4>
+<div class="qo">
+<button class="qob" onclick="cq(this,1,false)">A) FactScore = 6/8 = 0.75. All unsupported claims are equally wrong.</button>
+<button class="qob" onclick="cq(this,1,true)">B) Standard FactScore = 6/8 = 0.75. But for production use, weight them differently: CONTRADICTED claims (the model asserts something the context explicitly denies) are more dangerous than NOT FOUND claims (the model adds information not in context). Consider a weighted score: supported=1, not_found=0, contradicted=-0.5 → (6×1 + 1×0 + 1×(-0.5)) / 8 = 5.5/8 = 0.69. Flag CONTRADICTED claims separately as they represent active misinformation.</button>
+<button class="qob" onclick="cq(this,1,false)">C) FactScore = 7/8 = 0.875 because NOT FOUND claims are neutral and should not count as failures</button>
+<button class="qob" onclick="cq(this,1,false)">D) FactScore cannot be computed when any claims are CONTRADICTED — run it again on a different sample</button>
+</div><div class="qf" id="f1">Correct. The distinction between NOT FOUND and CONTRADICTED is operationally important. NOT FOUND: the model adds a fact that might be true but is not in the retrieved context (hallucination risk). CONTRADICTED: the model states something the context explicitly says is false (definitive misinformation). In a legal or medical context, a contradicted claim about dosage or contract terms is a liability issue — it actively misleads the user in a way a "not found" claim may not. Treating them equivalently in a flat FactScore understates the risk of contradicted claims.</div></div>
+
+<div class="qq"><h4>3. You run G-Eval three times on the same response and get faithfulness scores of 3, 4, and 5. The variance is 1 point per run. How do you handle this and what does it tell you about the response?</h4>
+<div class="qo">
+<button class="qob" onclick="cq(this,2,false)">A) Take the median (4) and discard the outliers (3 and 5)</button>
+<button class="qob" onclick="cq(this,2,true)">B) Average the three runs (score = 4.0) as G-Eval recommends. The high variance (3-5 range) itself is diagnostic: it means the response is in a genuinely ambiguous borderline zone where reasonable judges disagree. For clear failures, G-Eval converges tightly (5,5,5 or 1,1,1). High variance means the response has some hallucinations but also some supported content — exactly the "borderline" cases that are hardest to evaluate automatically and most benefit from human review. Flag high-variance examples for human inspection.</button>
+<button class="qob" onclick="cq(this,2,false)">C) Run it 10 times to get a more statistically stable average</button>
+<button class="qob" onclick="cq(this,2,false)">D) The variance indicates the prompt is poorly written — revise the G-Eval rubric</button>
+</div><div class="qf" id="f2">Correct. G-Eval variance is diagnostic, not just noise to average away. Clear cases (full hallucination or fully supported) produce tight variance. Borderline cases produce high variance because the rubric genuinely leaves room for different interpretations. G-Eval's own authors recommend averaging 3-5 runs precisely because of this — but they also note that high-variance examples are the ones most likely to be misclassified by automated evaluation. Routing high-variance examples to human review maximizes both efficiency (humans only review the hard cases) and accuracy (hard cases get human judgment).</div></div>
+
+<div class="qq"><h4>4. BERTScore gives 0.89 for "The refund window is 90 days" vs reference "The refund window is 30 days." Which evaluation method would correctly catch this error, and how?</h4>
+<div class="qo">
+<button class="qob" onclick="cq(this,3,false)">A) ROUGE-L, because it would catch the bigram difference "90 days" vs "30 days"</button>
+<button class="qob" onclick="cq(this,3,true)">B) QA-based evaluation: generate the question "How many days is the refund window?" from the reference → expected answer "30 days." Extract the answer from the generated text → "90 days." Exact match: "90" ≠ "30" → QA accuracy = 0. NLI also catches it: premise "refund window is 30 days" + hypothesis "refund window is 90 days" → CONTRADICTION (prob ~0.87). FactScore catches it via the CONTRADICTED label on this specific claim.</button>
+<button class="qob" onclick="cq(this,3,false)">C) Perplexity, because "90 days" is less likely in context than "30 days"</button>
+<button class="qob" onclick="cq(this,3,false)">D) METEOR, because it uses synonym matching that would detect 90 ≠ 30</button>
+</div><div class="qf" id="f3">Correct. This is the canonical numeric precision failure for BERTScore. Tokens "30" and "90" occupy similar positions in embedding space (both are numbers in temporal contexts) so BERTScore sees them as similar. Three methods that DO catch this: (1) QA-based — generates "how many days?" and checks if the extracted answer matches; (2) NLI — detects CONTRADICTION when comparing "30 days" vs "90 days" in context; (3) FactScore — marks the specific claim "90 days" as CONTRADICTED. This illustrates why no single metric is sufficient: different methods catch different error types.</div></div>
+
+<div class="qq"><h4>5. Your Spearman correlation between G-Eval faithfulness scores and human annotator scores is 0.45 on your domain. G-Eval achieves 0.75 on academic benchmarks. What does this tell you and how do you fix it?</h4>
+<div class="qo">
+<button class="qob" onclick="cq(this,4,false)">A) The Spearman correlation is wrong — re-compute it with more examples</button>
+<button class="qob" onclick="cq(this,4,true)">B) G-Eval is miscalibrated for your specific domain. The rubric definitions designed for general text do not capture domain-specific faithfulness requirements. Fix: (1) Analyze the 50 examples with highest human-G-Eval disagreement to find systematic patterns (e.g., G-Eval may not understand that technical jargon paraphrases are acceptable, or it may rate domain abbreviations as hallucinations); (2) Revise the rubric with domain-specific examples at each score level; (3) Add few-shot examples to the G-Eval prompt showing correct judgments on your domain; (4) Re-compute calibration on a fresh 100-example set and verify improvement above 0.65.</button>
+<button class="qob" onclick="cq(this,4,false)">C) 0.45 is acceptable — automated metrics always have lower correlation than 0.75 in production</button>
+<button class="qob" onclick="cq(this,4,false)">D) Switch to NLI-based evaluation which has better domain generalization</button>
+</div><div class="qf" id="f4">Correct. Spearman correlation drop from 0.75 (benchmark) to 0.45 (domain) is a significant calibration failure — it means the G-Eval judge disagrees with human judgment 55% of the time on your specific domain. This is common when: (1) your domain uses specialized vocabulary the judge misinterprets as hallucination; (2) your faithfulness definition is stricter or looser than the judge's default; (3) your documents have a different structure than the judge's training distribution. Domain-specific few-shot examples in the prompt are the most effective fix — 5-10 examples of correct judgments in your domain typically bring Spearman above 0.65.</div></div>
+
+<div class="qs" id="qs"><h3 id="sc">0/5</h3><p id="sm">Complete all 5 questions to see your score.</p></div>
+</div>
+</section>
+
+<div class="fn2">
+  <a href="eval_m4.html" class="pr">← M4: Retrieval IR Metrics</a>
+  <div class="fcc"><div>Module 5 · Generation Quality Deep Dive</div><div style="font-size:.75rem;margin-top:4px">GenAI Evaluation Engineering · Marevlo</div></div>
+  <a href="eval_m6.html" class="nx">M6: Agentic Evaluation →</a>
+</div>
+</div>
+<script>
+window.addEventListener("scroll",function(){var h=document.documentElement;document.getElementById("sp").style.width=((h.scrollTop/(h.scrollHeight-h.clientHeight))*100)+"%";});
+var obs=new IntersectionObserver(function(e){e.forEach(function(x){if(x.isIntersecting)x.target.classList.add("vis");});},{threshold:0.07});
+document.querySelectorAll(".sec").forEach(function(s){obs.observe(s);});
+function cp(btn,id){navigator.clipboard.writeText(document.getElementById(id).innerText).then(function(){btn.textContent="Copied!";setTimeout(function(){btn.textContent="Copy";},2000);});}
+var ans=[null,null,null,null,null];
+function cq(btn,qi,ok){
+  var opts=btn.parentElement.querySelectorAll(".qob");opts.forEach(function(o){o.disabled=true;});
+  if(ans[qi]!==null)return;ans[qi]=ok;
+  var f=document.getElementById("f"+qi);
+  if(ok){btn.classList.add("ok");f.classList.add("show");f.style.color="var(--a1)";}
+  else{btn.classList.add("no");opts.forEach(function(o){if(o!==btn&&o.getAttribute("onclick").indexOf(",true)")>-1)o.classList.add("ok");});f.classList.add("show");f.style.color="var(--a3)";}
+  var filled=ans.filter(function(a){return a!==null;}).length;
+  if(filled===5){var c=ans.filter(function(a){return a===true;}).length;
+    document.getElementById("qs").style.display="block";
+    document.getElementById("sc").textContent=c+"/5";
+    document.getElementById("sm").textContent=["Review NLI confidence thresholds.","Re-read FactScore NOT FOUND vs CONTRADICTED.","Good — check G-Eval variance diagnostics.","Almost perfect!","Perfect. Move to M6: Agentic AI Evaluation."][c];}
+}
+</script>
+</body>
+</html>

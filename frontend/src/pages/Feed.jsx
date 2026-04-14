@@ -362,7 +362,7 @@ export default function Feed({ setView }) {
 
     return (
         <div
-            className="min-h-screen w-full overflow-y-auto custom-scrollbar"
+            className="flex-1 h-full w-full overflow-y-auto custom-scrollbar"
             style={{
                 backgroundColor: 'var(--color-app-bg)',
                 color: 'var(--color-primary-text)',

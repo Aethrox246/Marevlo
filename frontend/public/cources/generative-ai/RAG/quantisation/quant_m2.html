@@ -1,0 +1,956 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Quantization for Modern AI · M2 — QAT, FP8 Training and Adaptive Precision</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;700&family=Source+Serif+4:ital,opsz,wght@0,8..60,400;0,8..60,600;1,8..60,400&display=swap" rel="stylesheet">
+<style>:root{--bg:#08080e;--t1:#ececf6;--t2:#b5b5c8;--tm:#6b6b85;
+--a1:#5eead4;--a2:#60a5fa;--a3:#f472b6;--a4:#fbbf24;--a5:#a78bfa;--ac:#5eead4;
+--gl:linear-gradient(90deg,#5eead4 0%,#60a5fa 28%,#a78bfa 55%,#f472b6 82%,#fbbf24 100%);
+--bs:rgba(255,255,255,0.06);--sh:0 24px 80px rgba(0,0,0,0.5);--r:18px;--cw:1160px}
+*{box-sizing:border-box;margin:0;padding:0}html{scroll-behavior:smooth}
+body{background:radial-gradient(ellipse 900px 500px at 15% 10%,rgba(94,234,212,.08),transparent 50%),radial-gradient(ellipse 700px 400px at 85% 20%,rgba(96,165,250,.05),transparent 40%),var(--bg);color:var(--t1);font-family:'Outfit',sans-serif;line-height:1.75;overflow-x:hidden;-webkit-font-smoothing:antialiased}
+/* Progress bar */
+.sp{position:fixed;top:0;left:0;height:3px;width:0%;z-index:1000;background:var(--gl);transition:width .1s linear}
+/* Nav */
+nav{position:fixed;top:3px;left:0;right:0;z-index:999;display:flex;align-items:center;justify-content:space-between;padding:.7rem 2rem;background:rgba(8,8,14,.9);backdrop-filter:blur(16px);border-bottom:1px solid var(--bs)}
+.nbr{font-family:'JetBrains Mono',monospace;font-size:.7rem;color:var(--ac);letter-spacing:.16em;text-transform:uppercase;text-decoration:none;display:flex;align-items:center;gap:8px}
+.nbr-dot{width:6px;height:6px;border-radius:50%;background:var(--ac);animation:pulse 2s ease-in-out infinite}
+.nm{font-size:.8rem;color:var(--tm);max-width:400px;text-overflow:ellipsis;overflow:hidden;white-space:nowrap}
+.na{display:flex;gap:8px}
+.nb{display:inline-flex;align-items:center;gap:6px;padding:.38rem .85rem;border-radius:999px;border:1px solid var(--bs);background:rgba(255,255,255,.02);color:var(--t2);font-size:.78rem;text-decoration:none;transition:all .18s}
+.nb:hover{border-color:var(--ac);color:var(--ac)}
+/* Hero */
+.hero{min-height:100vh;display:flex;align-items:center;justify-content:center;padding:5rem 2rem 3rem;position:relative;overflow:hidden}
+.hg{position:absolute;inset:0;background-image:linear-gradient(rgba(255,255,255,.018) 1px,transparent 1px),linear-gradient(90deg,rgba(255,255,255,.018) 1px,transparent 1px);background-size:52px 52px;mask-image:radial-gradient(circle at center,black 20%,transparent 75%);pointer-events:none}
+.hi{max-width:1000px;text-align:center;position:relative;z-index:1}
+.hl{display:inline-flex;align-items:center;gap:10px;padding:.5rem 1rem;border-radius:999px;border:1px solid rgba(94,234,212,.28);background:rgba(94,234,212,.07);color:var(--ac);letter-spacing:1.8px;text-transform:uppercase;font-size:.74rem;margin-bottom:1.8rem}
+h1{font-size:clamp(2.6rem,5.5vw,5rem);line-height:1.02;letter-spacing:-.05em;font-weight:900;margin-bottom:1.2rem}
+.gt{background:var(--gl);-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent}
+.sub{font-size:.82rem;color:var(--tm);font-family:'JetBrains Mono',monospace;margin-bottom:.6rem;letter-spacing:.04em}
+.hs{font-family:'Source Serif 4',serif;color:var(--t2);font-size:clamp(1rem,1.8vw,1.18rem);max-width:800px;margin:0 auto 2.2rem;line-height:1.85}
+.hm{display:flex;flex-wrap:wrap;justify-content:center;gap:10px;margin-bottom:2.5rem}
+.mp{border:1px solid var(--bs);background:rgba(17,17,28,.8);border-radius:999px;padding:.6rem 1.1rem;color:var(--t2);font-size:.86rem}
+.mp.hl2{border-color:rgba(94,234,212,.3);color:var(--ac);background:rgba(94,234,212,.06)}
+.sc{position:absolute;bottom:2.4rem;left:50%;transform:translateX(-50%);color:var(--tm);display:flex;flex-direction:column;gap:.5rem;align-items:center;text-transform:uppercase;letter-spacing:.22em;font-size:.68rem}
+.arr{width:17px;height:17px;border-right:2px solid var(--tm);border-bottom:2px solid var(--tm);transform:rotate(45deg);animation:ba 2s ease-in-out infinite}
+@keyframes pulse{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.25;transform:scale(.7)}}
+@keyframes ba{0%,100%{transform:rotate(45deg) translateY(0)}50%{transform:rotate(45deg) translateY(8px)}}
+/* Content */
+.cw{max-width:var(--cw);margin:0 auto;padding:0 2rem 7rem}
+.sec{margin-bottom:6rem;opacity:0;transform:translateY(32px);transition:opacity .6s ease,transform .6s ease}
+.sec.vis{opacity:1;transform:translateY(0)}
+.sn{display:flex;align-items:center;gap:14px;color:var(--ac);font-family:'JetBrains Mono',monospace;font-size:.67rem;text-transform:uppercase;letter-spacing:.24em;margin-bottom:1rem}
+.sn::after{content:"";height:1px;flex:1;background:linear-gradient(90deg,rgba(94,234,212,.6),transparent)}
+.sec h2{font-size:clamp(2rem,4vw,3rem);line-height:1.06;margin-bottom:1.1rem;letter-spacing:-.04em}
+.lead{font-family:'Source Serif 4',serif;font-size:1.1rem;color:var(--t2);margin-bottom:2.2rem;line-height:1.88;max-width:860px}
+/* Cards */
+.card{background:linear-gradient(160deg,rgba(20,20,36,.98),rgba(14,14,26,.98));border:1px solid var(--bs);border-radius:var(--r);box-shadow:var(--sh);padding:2rem;margin-bottom:1.6rem}
+.card-accent{border-color:rgba(94,234,212,.25);background:linear-gradient(160deg,rgba(94,234,212,.04),rgba(14,14,26,.98))}
+/* Code blocks */
+.cc{background:linear-gradient(180deg,rgba(10,10,20,.99),rgba(8,8,16,.99));border:1px solid var(--bs);border-radius:var(--r);box-shadow:var(--sh);padding:0;margin-bottom:1.6rem;overflow:hidden}
+.ch{display:flex;align-items:center;justify-content:space-between;padding:1rem 1.6rem;border-bottom:1px solid var(--bs);background:rgba(255,255,255,.015)}
+.ch h3{font-size:.88rem;font-family:'JetBrains Mono',monospace;color:var(--ac);display:flex;align-items:center;gap:8px}
+.ch h3::before{content:"⟩";opacity:.5}
+.cpb{display:inline-flex;align-items:center;gap:5px;padding:.26rem .7rem;border-radius:999px;border:1px solid var(--bs);background:transparent;color:var(--tm);font-size:.7rem;cursor:pointer;transition:all .18s;font-family:'JetBrains Mono',monospace}
+.cpb:hover{border-color:var(--a1);color:var(--a1)}
+.cbody{padding:1.6rem;overflow-x:auto}
+pre{white-space:pre;color:#d8e3ff;font-family:'JetBrains Mono',monospace;font-size:.84rem;line-height:1.78;tab-size:4}
+.kw{color:#c084fc}.fn{color:#60a5fa}.str{color:#5eead4}.cm{color:#3d4060;font-style:italic}.nu{color:#fbbf24}.cl{color:#f472b6}.de{color:#fb923c}.op{color:#94a3b8}
+/* Architecture containers */
+.arch{background:rgba(8,8,18,.96);border:1px solid rgba(94,234,212,.18);border-radius:var(--r);padding:1.8rem;margin-bottom:1.6rem;overflow-x:auto;text-align:center}
+.arch-title{font-family:'JetBrains Mono',monospace;font-size:.68rem;text-transform:uppercase;letter-spacing:.2em;color:var(--ac);margin-bottom:1.4rem;text-align:left;display:flex;align-items:center;gap:8px}
+.arch-title::before{content:"▸";opacity:.7}
+/* Callouts */
+.callout{border-radius:14px;padding:1.2rem 1.4rem;margin-bottom:1.2rem;display:flex;gap:1rem;align-items:flex-start}
+.callout-key{background:rgba(94,234,212,.05);border:1px solid rgba(94,234,212,.22)}
+.callout-warn{background:rgba(251,191,36,.05);border:1px solid rgba(251,191,36,.22)}
+.callout-insight{background:rgba(167,139,250,.05);border:1px solid rgba(167,139,250,.22)}
+.callout-scenario{background:rgba(96,165,250,.05);border:1px solid rgba(96,165,250,.22)}
+.callout-danger{background:rgba(244,114,182,.05);border:1px solid rgba(244,114,182,.22)}
+.callout-icon{font-size:1.35rem;flex-shrink:0;margin-top:.08rem}
+.callout-body h4{font-size:.96rem;margin-bottom:.35rem;color:var(--t1);font-weight:700}
+.callout-body p{font-size:.88rem;color:var(--t2);line-height:1.68}
+.callout-body code{font-family:'JetBrains Mono',monospace;font-size:.82rem;background:rgba(255,255,255,.06);padding:.1rem .3rem;border-radius:4px;color:var(--ac)}
+/* Grids */
+.g2{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:1.4rem;margin-bottom:1.6rem}
+.g3{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:1.2rem;margin-bottom:1.6rem}
+.g4{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:1rem;margin-bottom:1.4rem}
+@media(max-width:768px){.g2,.g3,.g4{grid-template-columns:1fr}}
+.mc2{border:1px solid var(--bs);border-radius:16px;padding:1.4rem;background:rgba(255,255,255,.02);transition:border-color .2s}
+.mc2:hover{border-color:rgba(94,234,212,.3)}
+.mc2 h4{font-size:1rem;margin-bottom:.6rem;color:var(--t1);font-weight:700}
+.mc2 p{font-size:.88rem;color:var(--t2);line-height:1.68}
+.mc2 .tag{display:inline-block;font-family:'JetBrains Mono',monospace;font-size:.68rem;padding:.2rem .55rem;border-radius:999px;margin-bottom:.6rem;text-transform:uppercase;letter-spacing:.1em}
+/* Tables */
+.tbl{width:100%;border-collapse:collapse;font-size:.86rem}
+.tbl th{text-align:left;padding:.8rem 1.1rem;font-family:'JetBrains Mono',monospace;font-size:.64rem;text-transform:uppercase;color:var(--tm);border-bottom:1px solid var(--bs);letter-spacing:.08em}
+.tbl td{padding:.8rem 1.1rem;border-bottom:1px solid rgba(255,255,255,.035);color:var(--t2);vertical-align:top;line-height:1.65}
+.tbl td:first-child{color:var(--t1);font-weight:600}.tbl tr:last-child td{border-bottom:none}
+.tbl tr:hover td{background:rgba(255,255,255,.015)}
+/* Scenario box */
+.scenario{background:linear-gradient(135deg,rgba(96,165,250,.04),rgba(167,139,250,.04));border:1px solid rgba(96,165,250,.2);border-radius:var(--r);padding:1.8rem;margin-bottom:1.6rem;position:relative}
+.scenario::before{content:"SCENARIO";position:absolute;top:-1px;left:1.5rem;background:var(--bg);padding:0 .6rem;font-family:'JetBrains Mono',monospace;font-size:.62rem;color:var(--a2);letter-spacing:.2em}
+.scenario h4{color:var(--a2);margin-bottom:.8rem;font-size:1.05rem}
+.scenario p{font-size:.9rem;color:var(--t2);line-height:1.72;margin-bottom:.6rem}
+.scenario p:last-child{margin-bottom:0}
+.scenario code{font-family:'JetBrains Mono',monospace;font-size:.82rem;background:rgba(96,165,250,.1);padding:.1rem .3rem;border-radius:4px;color:var(--a2)}
+/* Quiz */
+.qc{background:linear-gradient(180deg,rgba(18,18,32,.98),rgba(12,12,24,.98));border:1px solid var(--bs);border-radius:var(--r);box-shadow:var(--sh);padding:2.2rem}
+.qc-title{font-size:1.2rem;font-weight:800;margin-bottom:.25rem;color:var(--t1)}
+.qc-sub{font-size:.82rem;color:var(--tm);margin-bottom:1.8rem;font-family:'JetBrains Mono',monospace}
+.qq{border:1px solid var(--bs);border-radius:18px;padding:1.8rem;background:rgba(255,255,255,.012);margin-bottom:1.4rem;transition:border-color .3s,background .3s}
+.qq.answered{border-color:rgba(94,234,212,.3);background:rgba(94,234,212,.02)}
+.qnum{font-family:'JetBrains Mono',monospace;font-size:.66rem;color:var(--ac);text-transform:uppercase;letter-spacing:.18em;margin-bottom:.6rem;display:flex;align-items:center;gap:8px}
+.qnum::after{content:"";height:1px;flex:1;background:rgba(94,234,212,.2)}
+.qq h4{font-size:.97rem;margin-bottom:1.2rem;color:var(--t1);line-height:1.6;font-weight:600}
+.qo{display:grid;gap:.6rem}
+.qob{border:1px solid var(--bs);border-radius:12px;padding:1rem 1.2rem;background:rgba(255,255,255,.018);color:var(--t2);cursor:pointer;transition:all .22s;text-align:left;font-size:.88rem;font-family:'Outfit',sans-serif;width:100%;line-height:1.6;position:relative;padding-left:3.2rem}
+.qob::before{content:attr(data-opt);position:absolute;left:1rem;top:50%;transform:translateY(-50%);font-family:'JetBrains Mono',monospace;font-size:.76rem;font-weight:700;color:var(--tm);width:1.4rem;text-align:center;transition:color .2s}
+.qob:hover:not([disabled]){border-color:rgba(94,234,212,.5);background:rgba(94,234,212,.05);color:var(--t1)}
+.qob:hover:not([disabled])::before{color:var(--ac)}
+.qob.ok{border-color:rgba(94,234,212,.6);background:rgba(94,234,212,.08);color:var(--t1)}
+.qob.ok::before{color:#5eead4}
+.qob.no{border-color:rgba(244,114,182,.4);background:rgba(244,114,182,.06);color:var(--t2)}
+.qob.no::before{color:#f472b6}
+.qob[disabled]{cursor:default}
+.qfeed{margin-top:1rem;border-radius:14px;padding:1.2rem 1.4rem;display:none}
+.qfeed.correct{background:rgba(94,234,212,.05);border:1px solid rgba(94,234,212,.25)}
+.qfeed.wrong{background:rgba(244,114,182,.04);border:1px solid rgba(244,114,182,.2)}
+.qfeed-head{font-weight:700;margin-bottom:.4rem;font-size:.92rem}
+.qfeed.correct .qfeed-head{color:#5eead4}
+.qfeed.wrong .qfeed-head{color:#f472b6}
+.qfeed-why{color:var(--t2);font-size:.87rem;line-height:1.68}
+.qfeed-why strong{color:var(--t1)}
+.qfeed-why code{font-family:'JetBrains Mono',monospace;font-size:.8rem;background:rgba(255,255,255,.06);padding:.1rem .3rem;border-radius:4px;color:var(--ac)}
+.qprog{display:flex;align-items:center;gap:1.2rem;margin-bottom:1.8rem}
+.qprog-bar{flex:1;height:5px;background:rgba(255,255,255,.05);border-radius:999px;overflow:hidden}
+.qprog-fill{height:100%;background:var(--gl);border-radius:999px;width:0%;transition:width .5s ease}
+.qprog-text{font-family:'JetBrains Mono',monospace;font-size:.7rem;color:var(--tm);white-space:nowrap}
+.qs{text-align:center;padding:2rem;border:1px solid var(--bs);border-radius:18px;margin-top:1.8rem;background:rgba(255,255,255,.01)}
+.qs h3{font-size:1.8rem;margin-bottom:.5rem;font-weight:800}
+.qs p{color:var(--t2);font-size:.92rem}
+/* Nav buttons */
+.pr,.nx{display:inline-flex;align-items:center;gap:7px;padding:.55rem 1.2rem;border-radius:999px;border:1px solid var(--bs);background:rgba(255,255,255,.02);color:var(--t2);font-size:.84rem;text-decoration:none;transition:all .2s}
+.pr:hover,.nx:hover{border-color:var(--ac);color:var(--ac)}
+/* Metric bars */
+.metric-row{display:flex;align-items:center;gap:1rem;margin-bottom:.7rem}
+.metric-label{font-family:'JetBrains Mono',monospace;font-size:.76rem;color:var(--t2);min-width:140px}
+.metric-bar{flex:1;height:8px;background:rgba(255,255,255,.05);border-radius:999px;overflow:hidden}
+.metric-fill{height:100%;border-radius:999px;transition:width 1.2s ease}
+.metric-val{font-family:'JetBrains Mono',monospace;font-size:.76rem;color:var(--t1);min-width:40px;text-align:right}
+/* Footer */
+footer{border-top:1px solid var(--bs);padding:3rem 2rem;text-align:center;color:var(--tm);font-size:.82rem}</style>
+</head>
+<body>
+<div class="sp" id="sp"></div>
+<nav>
+  <a class="nbr" href="#"><div class="nbr-dot"></div>Quantization for Modern AI · M2</a>
+  <span class="nm">Straight-Through Estimator · LSQ · PACT · FP8 E4M3/E5M2 · H100 Transformer Engine · Delayed Scaling · SpQR · Token-Level KV · Mixed Precision</span>
+  <div class="na"><a href="quant_m1.html" class="pr">← M1: Vector Quantization</a><a href="quant_m3.html" class="nx">M3: Production Deployment →</a></div>
+</nav>
+<section class="hero">
+  <div class="hg"></div>
+  <div class="hi">
+    <div class="hl">Quantization for Modern AI · Module 2</div>
+    <h1>QAT, FP8 Training and Adaptive Precision</h1>
+    <p class="sub">Straight-Through Estimator · LSQ · PACT · FP8 E4M3/E5M2 · H100 Transformer Engine · Delayed Scaling · SpQR · Token-Level KV · Mixed Precision</p>
+    <p class="hs">Post-training quantization starts from a frozen model. But what if the model could learn to be quantization-friendly during training itself? Quantization-Aware Training (QAT) simulates quantization in every forward pass, letting weights and scales co-adapt through the Straight-Through Estimator — the elegant mathematical trick that bypasses the zero-gradient problem of rounding functions. Meanwhile, on H100 GPUs, FP8 has moved quantization from deployment-time to training-time: the forward pass runs in E4M3 for precision, the backward in E5M2 for range, and optimizer states stay in FP32 for stability — achieving 2× BF16 throughput at the same effective model quality. This module covers the full training-side quantization stack, from the STE derivation through adaptive per-layer precision, SpQR sparse-quantized weights, and the frontier of token-level KV compression.</p>
+<div class="hm">
+<span class="mp hl2">⏱ 120 min</span>
+<span class="mp">STE: forward + backward decomposed</span>
+<span class="mp">LSQ: learned step size ∂ℒ/∂s</span>
+<span class="mp">PACT: learned clipping bounds</span>
+<span class="mp">FP8 E4M3 vs E5M2</span>
+<span class="mp">H100 Transformer Engine</span>
+<span class="mp">Delayed scaling + loss scaling</span>
+<span class="mp">Layer sensitivity analysis</span>
+<span class="mp">SpQR: sparse + quantized</span>
+<span class="mp">Token-level KV compression</span>
+</div>
+  </div>
+  <div class="sc"><span>Scroll</span><div class="arr"></div></div>
+</section>
+<div class="cw">
+
+<section class="sec" id="s1">
+<div class="sn">01 · Quantization-Aware Training — The STE Trick</div>
+<h2>Making round() Differentiable:<br><span class="gt">The Straight-Through Estimator</span></h2>
+<p class="lead">The fundamental obstacle to training quantized networks is mathematical: <code>∂round(x)/∂x = 0</code> almost everywhere. This zero gradient kills backpropagation entirely — no gradient means no learning. The Straight-Through Estimator (Bengio 2013, Hinton 2012) resolves this with a deliberate mathematical lie: in the backward pass, pretend the quantization never happened and pass the upstream gradient straight through. This single trick enables training neural networks that are quantized in their forward computation while remaining differentiable for optimisation.</p>
+<div class="arch">
+<div class="arch-title">QAT forward/backward decomposed — FakeQuantize in forward, STE identity approximation in backward</div>
+<svg viewBox="0 0 900 308" xmlns="http://www.w3.org/2000/svg" style="width:100%;max-width:900px;display:block">
+<rect width="900" height="308" fill="#07070f" rx="14"/>
+<text x="450" y="24" font-family="JetBrains Mono,monospace" font-size="11" fill="#5eead4" text-anchor="middle" letter-spacing="2" font-weight="bold">QAT — STRAIGHT-THROUGH ESTIMATOR: FORWARD AND BACKWARD</text>
+<text x="219" y="44" font-family="JetBrains Mono,monospace" font-size="9" fill="#5eead4" text-anchor="middle" font-weight="bold">FORWARD PASS</text>
+<rect x="154" y="52" width="130" height="36" rx="8" fill="rgba(94,234,212,.08)" stroke="rgba(94,234,212,.35)" stroke-width="1.5"/>
+<text x="219" y="67" font-family="JetBrains Mono,monospace" font-size="8" fill="#5eead4" text-anchor="middle" font-weight="bold">W (float32 / BF16)</text>
+<text x="219" y="81" font-family="JetBrains Mono,monospace" font-size="7" fill="#7c7c95" text-anchor="middle">master weights — high precision</text>
+<line x1="219" y1="90" x2="219" y2="106" stroke="#5eead4" stroke-width="1.5"/>
+<polygon points="215,102 219,110 223,102" fill="#5eead4"/>
+<text x="230" y="101" font-family="JetBrains Mono,monospace" font-size="7" fill="#7c7c95">quantize</text>
+<rect x="124" y="108" width="190" height="56" rx="8" fill="rgba(251,191,36,.08)" stroke="rgba(251,191,36,.38)" stroke-width="1.5"/>
+<text x="219" y="126" font-family="JetBrains Mono,monospace" font-size="8" fill="#fbbf24" text-anchor="middle" font-weight="bold">FakeQuantize</text>
+<text x="219" y="141" font-family="JetBrains Mono,monospace" font-size="7" fill="#7c7c95" text-anchor="middle">Wq = s · clamp(round(W/s), −n, n)</text>
+<text x="219" y="154" font-family="JetBrains Mono,monospace" font-size="7" fill="#fbbf24" text-anchor="middle">still float — simulates quant error</text>
+<line x1="219" y1="166" x2="219" y2="180" stroke="#fbbf24" stroke-width="1.5"/>
+<polygon points="215,176 219,184 223,176" fill="#fbbf24"/>
+<text x="230" y="177" font-family="JetBrains Mono,monospace" font-size="7" fill="#7c7c95">dequantize</text>
+<rect x="144" y="184" width="150" height="36" rx="8" fill="rgba(96,165,250,.08)" stroke="rgba(96,165,250,.3)"/>
+<text x="219" y="200" font-family="JetBrains Mono,monospace" font-size="8" fill="#60a5fa" text-anchor="middle" font-weight="bold">Linear(Wq, x)</text>
+<text x="219" y="214" font-family="JetBrains Mono,monospace" font-size="7" fill="#7c7c95" text-anchor="middle">forward with quantized weights</text>
+<line x1="219" y1="222" x2="219" y2="236" stroke="#60a5fa" stroke-width="1.5"/>
+<polygon points="215,232 219,240 223,232" fill="#60a5fa"/>
+<rect x="164" y="238" width="110" height="32" rx="8" fill="rgba(244,114,182,.1)" stroke="rgba(244,114,182,.4)" stroke-width="2"/>
+<text x="219" y="257" font-family="JetBrains Mono,monospace" font-size="8" fill="#f472b6" text-anchor="middle" font-weight="bold">Loss  ℒ</text>
+<text x="219" y="270" font-family="JetBrains Mono,monospace" font-size="7" fill="#7c7c95" text-anchor="middle">cross-entropy / MSE</text>
+<rect x="14" y="278" width="410" height="24" rx="7" fill="rgba(251,191,36,.04)" stroke="rgba(251,191,36,.18)"/>
+<text x="219" y="290" font-family="JetBrains Mono,monospace" font-size="7" fill="#fbbf24" text-anchor="middle">∂round/∂x = 0 everywhere — gradient DEAD without STE</text>
+<text x="219" y="302" font-family="JetBrains Mono,monospace" font-size="7" fill="#7c7c95" text-anchor="middle">FakeQuantize: rounding in fwd, identity in bwd → autograd works</text>
+<line x1="436" y1="36" x2="436" y2="308" stroke="rgba(255,255,255,.06)" stroke-width="1.5"/>
+<text x="672" y="44" font-family="JetBrains Mono,monospace" font-size="9" fill="#f472b6" text-anchor="middle" font-weight="bold">BACKWARD PASS — STRAIGHT-THROUGH ESTIMATOR</text>
+<rect x="607" y="52" width="130" height="36" rx="8" fill="rgba(244,114,182,.08)" stroke="rgba(244,114,182,.35)" stroke-width="1.5"/>
+<text x="672" y="69" font-family="JetBrains Mono,monospace" font-size="8" fill="#f472b6" text-anchor="middle" font-weight="bold">∂ℒ/∂W upstream</text>
+<text x="672" y="82" font-family="JetBrains Mono,monospace" font-size="7" fill="#7c7c95" text-anchor="middle">gradient from loss</text>
+<line x1="672" y1="90" x2="672" y2="106" stroke="#f472b6" stroke-width="1.5"/>
+<polygon points="668,102 672,110 676,102" fill="#f472b6"/>
+<rect x="524" y="108" width="296" height="60" rx="8" fill="rgba(167,139,250,.08)" stroke="rgba(167,139,250,.45)" stroke-width="2"/>
+<text x="672" y="128" font-family="JetBrains Mono,monospace" font-size="9" fill="#a78bfa" text-anchor="middle" font-weight="bold">Straight-Through Estimator (STE)</text>
+<text x="672" y="145" font-family="JetBrains Mono,monospace" font-size="7" fill="#ececf6" text-anchor="middle">∂FakeQuant/∂W  ≈  𝟏[|W| ≤ clip_val]</text>
+<text x="672" y="159" font-family="JetBrains Mono,monospace" font-size="7" fill="#7c7c95" text-anchor="middle">gradient passes through if W within clipping range</text>
+<line x1="672" y1="170" x2="672" y2="184" stroke="#a78bfa" stroke-width="1.5"/>
+<polygon points="668,180 672,188 676,180" fill="#a78bfa"/>
+<rect x="564" y="188" width="216" height="36" rx="8" fill="rgba(96,165,250,.07)" stroke="rgba(96,165,250,.3)"/>
+<text x="672" y="204" font-family="JetBrains Mono,monospace" font-size="8" fill="#60a5fa" text-anchor="middle" font-weight="bold">∂ℒ/∂Wq · (∂Wq/∂W ≈ 1)</text>
+<text x="672" y="218" font-family="JetBrains Mono,monospace" font-size="7" fill="#7c7c95" text-anchor="middle">chain rule with STE approximation</text>
+<line x1="672" y1="226" x2="672" y2="240" stroke="#60a5fa" stroke-width="1.5"/>
+<polygon points="668,236 672,244 676,236" fill="#60a5fa"/>
+<rect x="584" y="244" width="176" height="36" rx="8" fill="rgba(94,234,212,.08)" stroke="rgba(94,234,212,.35)" stroke-width="1.5"/>
+<text x="672" y="260" font-family="JetBrains Mono,monospace" font-size="8" fill="#5eead4" text-anchor="middle" font-weight="bold">W ← W − η · ∂ℒ/∂W</text>
+<text x="672" y="273" font-family="JetBrains Mono,monospace" font-size="7" fill="#7c7c95" text-anchor="middle">Adam / SGD update on master weights</text>
+<rect x="458" y="278" width="428" height="24" rx="7" fill="rgba(167,139,250,.04)" stroke="rgba(167,139,250,.18)"/>
+<text x="672" y="290" font-family="JetBrains Mono,monospace" font-size="7" fill="#a78bfa" text-anchor="middle">STE: clipped weights get zero gradient · LSQ extension: backprop ∂ℒ/∂s → learn scale jointly with weights</text>
+<text x="672" y="302" font-family="JetBrains Mono,monospace" font-size="7" fill="#7c7c95" text-anchor="middle">PACT extension: also learn clip bound α → ∂ℒ/∂α flows through clamp operation via STE</text>
+</svg>
+</div>
+<div class="card card-accent" style="padding:0;overflow:hidden">
+<div style="padding:1.2rem 1.6rem;border-bottom:1px solid rgba(255,255,255,.06);display:flex;align-items:center;justify-content:space-between">
+  <div style="font-family:'JetBrains Mono',monospace;font-size:.75rem;color:var(--ac);text-transform:uppercase;letter-spacing:.18em">⟩ QAT Live Explorer — STE Gradient vs Bits vs Accuracy</div>
+  <div style="font-size:.75rem;color:var(--tm)">See how STE and scale interact in real time</div>
+</div>
+<div style="padding:1.6rem;display:grid;grid-template-columns:1fr 1fr;gap:2rem">
+  <div>
+    <div style="font-family:'JetBrains Mono',monospace;font-size:.75rem;color:var(--ac);margin-bottom:.5rem">Quantization Bits</div>
+    <input type="range" id="qat-bits" min="2" max="8" value="4" step="1" style="width:100%;accent-color:var(--ac);margin-bottom:.3rem">
+    <div style="display:flex;justify-content:space-between;font-family:'JetBrains Mono',monospace;font-size:.7rem;color:var(--tm)"><span>2-bit</span><span>8-bit</span></div>
+    <div style="margin-top:1rem;font-family:'JetBrains Mono',monospace;font-size:.75rem;color:var(--ac);margin-bottom:.5rem">Clip fraction (PACT α / max(|W|))</div>
+    <input type="range" id="qat-clip" min="0.3" max="1.0" value="1.0" step="0.05" style="width:100%;accent-color:var(--a3);margin-bottom:.3rem">
+    <div style="display:flex;justify-content:space-between;font-family:'JetBrains Mono',monospace;font-size:.7rem;color:var(--tm)"><span>clip 30%</span><span>no clip</span></div>
+    <div style="margin-top:1.2rem;display:grid;grid-template-columns:1fr 1fr;gap:.7rem" id="qat-stats"></div>
+  </div>
+  <div>
+    <div style="font-family:'JetBrains Mono',monospace;font-size:.75rem;color:var(--ac);margin-bottom:.6rem">WEIGHT DISTRIBUTION + QUANTIZATION LEVELS</div>
+    <canvas id="qatcanvas" width="320" height="180" style="width:100%;border-radius:10px;background:#0a0a18;border:1px solid rgba(255,255,255,.06)"></canvas>
+    <div style="margin-top:.5rem;font-size:.71rem;font-family:JetBrains Mono,monospace;color:var(--tm)" id="qat-insight"></div>
+  </div>
+</div>
+</div>
+<script>
+(function(){
+  var weights=[];
+  for(var i=0;i<120;i++){
+    weights.push((Math.random()-0.5)*2*0.8+
+      (Math.random()<0.05?(Math.random()>0.5?1:-1)*1.8:0));
+  }
+  function quantize(w,s,n){return Math.round(Math.max(-n,Math.min(n,w/s)))*s;}
+  function render(){
+    var bits=parseInt(document.getElementById('qat-bits').value);
+    var clip=parseFloat(document.getElementById('qat-clip').value);
+    var n=(1<<(bits-1))-1;
+    var wmax=Math.max.apply(null,weights.map(Math.abs));
+    var clipVal=clip*wmax;
+    var s=clipVal/n;
+    var qw=weights.map(function(w){
+      var wc=Math.max(-clipVal,Math.min(clipVal,w));
+      return quantize(wc,s,n);
+    });
+    var err=weights.reduce(function(a,w,i){return a+Math.abs(w-qw[i]);},0)/weights.length;
+    var clipped=weights.filter(function(w){return Math.abs(w)>clipVal;}).length;
+    var steGrad=weights.filter(function(w){return Math.abs(w)<=clipVal;}).length/weights.length;
+    var snr=10*Math.log10(weights.reduce(function(a,w){return a+w*w;},0)/
+            weights.reduce(function(a,w,i){return a+(w-qw[i])*(w-qw[i]);},0));
+    document.getElementById('qat-stats').innerHTML=[
+      ['Bits',bits+'b','#5eead4'],
+      ['Scale s',s.toFixed(4),'#fbbf24'],
+      ['Mean |err|',err.toFixed(4),err<0.05?'#5eead4':err<0.1?'#fbbf24':'#f472b6'],
+      ['SNR',snr.toFixed(1)+'dB',snr>30?'#5eead4':snr>20?'#fbbf24':'#f472b6'],
+      ['STE pass',Math.round(steGrad*100)+'%','#a78bfa'],
+      ['Clipped',clipped+' wts',clipped>10?'#f472b6':'#5eead4']
+    ].map(function(r){
+      return '<div style="background:rgba(255,255,255,.02);border:1px solid rgba(255,255,255,.06);border-radius:9px;padding:.6rem;text-align:center"><div style="font-family:JetBrains Mono,monospace;font-size:.6rem;color:var(--tm);text-transform:uppercase;margin-bottom:.2rem">'+r[0]+'</div><div style="font-size:1rem;font-weight:800;color:'+r[2]+'">'+r[1]+'</div></div>';
+    }).join('');
+    document.getElementById('qat-insight').textContent=
+      clipped>20?'High clipping — many weights get zero STE gradient. Increase clip fraction or bits.':
+      err>0.1?'High error — increase bits or tune clip fraction for this distribution.':
+      'Good quantization — STE passes gradient to most weights. Model will converge.';
+    drawChart(s,n,clipVal,qw);
+  }
+  function drawChart(s,n,clipVal,qw){
+    var c=document.getElementById('qatcanvas');
+    var ctx=c.getContext('2d');
+    ctx.clearRect(0,0,c.width,c.height);
+    var pad={l:10,r:10,t:10,b:20};
+    var W=c.width-pad.l-pad.r, H=c.height-pad.t-pad.b;
+    var rng=2.2, bins=50;
+    function toX(v){return pad.l+((v+rng)/(2*rng))*W;}
+    function toY(h){return pad.t+H-h;}
+    var hist=new Array(bins).fill(0);
+    weights.forEach(function(w){
+      var bi=Math.floor(((w+rng)/(2*rng))*bins);
+      if(bi>=0&&bi<bins)hist[bi]++;
+    });
+    var maxH=Math.max.apply(null,hist);
+    hist.forEach(function(h,i){
+      var x=pad.l+(i/bins)*W;
+      var bw=W/bins-1;
+      var bh=(h/maxH)*(H*0.7);
+      var binCenter=-rng+(i+0.5)*(2*rng/bins);
+      var isClipped=Math.abs(binCenter)>clipVal;
+      ctx.fillStyle=isClipped?'rgba(244,114,182,.3)':'rgba(96,165,250,.35)';
+      ctx.fillRect(x,toY(bh),bw,bh);
+    });
+    for(var qi=-n;qi<=n;qi++){
+      var xq=toX(qi*s);
+      if(xq<pad.l||xq>pad.l+W)continue;
+      ctx.strokeStyle='rgba(251,191,36,.55)';ctx.lineWidth=1;ctx.setLineDash([2,3]);
+      ctx.beginPath();ctx.moveTo(xq,pad.t);ctx.lineTo(xq,pad.t+H);ctx.stroke();ctx.setLineDash([]);
+    }
+    ctx.strokeStyle='#f472b6';ctx.lineWidth=1.5;ctx.setLineDash([4,3]);
+    var xclip=toX(clipVal);var xnclip=toX(-clipVal);
+    ctx.beginPath();ctx.moveTo(xclip,pad.t);ctx.lineTo(xclip,pad.t+H);ctx.stroke();
+    ctx.beginPath();ctx.moveTo(xnclip,pad.t);ctx.lineTo(xnclip,pad.t+H);ctx.stroke();ctx.setLineDash([]);
+    ctx.fillStyle='#f472b6';ctx.font='8px JetBrains Mono';ctx.fillText('clip',xclip+2,pad.t+12);
+    ctx.fillStyle='rgba(251,191,36,.7)';ctx.fillText('quant levels',pad.l+2,pad.t+10);
+    ctx.fillStyle='rgba(96,165,250,.7)';ctx.fillText('in-range (STE pass)',pad.l+2,pad.t+H-4);
+    ctx.fillStyle='rgba(255,255,255,.15)';ctx.font='8px JetBrains Mono';
+    ctx.fillText('-'+rng,pad.l,pad.t+H+12);ctx.fillText('0',toX(0)-3,pad.t+H+12);ctx.fillText(rng,pad.l+W-10,pad.t+H+12);
+  }
+  document.getElementById('qat-bits').addEventListener('input',render);
+  document.getElementById('qat-clip').addEventListener('input',render);
+  render();
+})();
+</script>
+<div class="cc">
+  <div class="ch"><h3>qat_toolkit.py — FakeQuantize, STE, LSQ learned scale, PACT clipping + full QAT training loop</h3><button class="cpb" onclick="cp(this,'c1')">Copy</button></div>
+  <div class="cbody"><pre id="c1"><span class="kw">import</span> torch
+<span class="kw">import</span> torch.nn <span class="kw">as</span> nn
+<span class="kw">import</span> torch.nn.functional <span class="kw">as</span> F
+
+<span class="cm"># ── 1. STRAIGHT-THROUGH ESTIMATOR (STE) ────────────────────────────────────</span>
+<span class="kw">class</span> <span class="cl">STEQuantize</span>(torch.autograd.Function):
+    <span class="str">"""
+    Straight-Through Estimator: the core trick that makes QAT trainable.
+
+    The fundamental problem: round() and clamp() have zero gradients almost
+    everywhere — backpropagating through them kills all weight updates.
+
+    STE solution: in the FORWARD pass, do the real quantization (round + clamp).
+    In the BACKWARD pass, pretend the quantization didn't happen — pass the
+    upstream gradient straight through as if the operation were the identity.
+
+    This is mathematically wrong (we're approximating the true gradient) but
+    empirically works because:
+    1. Quantization error is small — the true gradient is close to the STE gradient
+    2. The model learns to place weights in regions where rounding is stable
+    3. The scale s adapts to minimise rounding error during training
+
+    The STE is used in every major QAT framework: PyTorch fake_quantize,
+    TensorFlow QAT, NVIDIA TensorRT calibration, and Apple CoreML optimization.
+    """</span>
+    @staticmethod
+    <span class="kw">def</span> <span class="fn">forward</span>(ctx, x: torch.Tensor, scale: float, n_bits: int, clip: bool = <span class="kw">True</span>):
+        n   = <span class="nu">2</span> ** (n_bits - <span class="nu">1</span>) - <span class="nu">1</span>    <span class="cm"># 127 for INT8, 7 for INT4</span>
+        q   = (x / scale).round()
+        <span class="kw">if</span> clip: q = q.clamp(-n, n)
+        ctx.save_for_backward(x)
+        ctx.clip_val = n * scale         <span class="cm"># save for backward masking</span>
+        <span class="kw">return</span> scale * q                 <span class="cm"># dequantize — still float!</span>
+
+    @staticmethod
+    <span class="kw">def</span> <span class="fn">backward</span>(ctx, grad_output):
+        x, = ctx.saved_tensors
+        <span class="cm"># STE: pass gradient through only for in-range values</span>
+        <span class="cm"># Clipped values get zero gradient (weights outside range learn nothing)</span>
+        mask = (x.abs() <= ctx.clip_val).float()
+        grad_input = grad_output * mask
+        <span class="kw">return</span> grad_input, <span class="kw">None</span>, <span class="kw">None</span>, <span class="kw">None</span>
+
+
+<span class="cm"># ── 2. LSQ — LEARNED STEP SIZE QUANTIZATION (Esser et al. 2020) ────────────</span>
+<span class="kw">class</span> <span class="cl">LSQQuantize</span>(nn.Module):
+    <span class="str">"""
+    LSQ: jointly optimise scale s with network weights via backpropagation.
+
+    Standard QAT: scale s is set from calibration data and held fixed.
+    Problem: fixed s doesn't adapt as weights change during training.
+
+    LSQ: make s a learnable parameter. Backprop through the quantizer:
+        ∂ℒ/∂s  =  Σᵢ ∂ℒ/∂q_hat_i × ∂q_hat_i/∂s
+
+    For q_hat = s × clamp(round(x/s), -n, n):
+      ∂q_hat/∂s = clamp(round(x/s), -n, n)  if |x| < clip
+               = ±n                            if x at boundary
+
+    This means s learns to minimise the total quantization distortion.
+    LSQ typically recovers 0.3-0.8% accuracy vs FP32 on ResNet/Transformers
+    at INT4, outperforming fixed-scale QAT by ~0.5%.
+
+    Gradient scaling: divide ∂ℒ/∂s by √(N × n) for training stability
+    (N = number of quantized weights, n = quant levels).
+    """</span>
+    <span class="kw">def</span> <span class="fn">__init__</span>(self, n_bits: int = <span class="nu">4</span>, per_channel: bool = <span class="kw">False</span>,
+                 n_channels: int = <span class="nu">1</span>):
+        super().__init__()
+        self.n_bits = n_bits
+        self.n = <span class="nu">2</span> ** (n_bits - <span class="nu">1</span>) - <span class="nu">1</span>
+        size = (n_channels, <span class="nu">1</span>) <span class="kw">if</span> per_channel <span class="kw">else</span> (<span class="nu">1</span>,)
+        <span class="cm"># Initialise scale to sensible value (overridden by calibration)</span>
+        self.scale = nn.Parameter(torch.ones(size) * <span class="nu">0.1</span>)
+
+    <span class="kw">def</span> <span class="fn">forward</span>(self, x: torch.Tensor) -> torch.Tensor:
+        s = self.scale.abs()                <span class="cm"># ensure positive scale</span>
+        <span class="cm"># LSQ gradient scaling factor for stability</span>
+        grad_factor = <span class="nu">1.0</span> / (x.numel() * self.n) ** <span class="nu">0.5</span>
+        s_scaled = s * grad_factor           <span class="cm"># rescaled for gradient flow</span>
+        x_hat = STEQuantize.apply(x, s.item(), self.n_bits)
+        <span class="cm"># ∂ℒ/∂s gradient: computed implicitly via autograd on s_scaled</span>
+        <span class="kw">return</span> x_hat
+
+
+<span class="cm"># ── 3. PACT — PARAMETERIZED CLIPPING (Choi et al. 2018) ────────────────────</span>
+<span class="kw">class</span> <span class="cl">PACTActivation</span>(nn.Module):
+    <span class="str">"""
+    PACT: learn the clipping bound α for activations.
+
+    Problem: ReLU activations have unbounded positive range — outliers
+    waste INT8 precision by forcing a large scale s.
+
+    PACT: introduce learnable clip parameter α ≥ 0:
+        act = clamp(x, 0, α)   — soft clipping
+        quantize(act, scale=α/n)
+
+    The network learns to clip at exactly the right point: too low and
+    important activations are clipped; too high and precision is wasted
+    on outliers. Regularise with L2 penalty λ‖α‖ to encourage small α.
+
+    PACT reduces INT4 activation quantization error by ~20-30% vs fixed clipping.
+    Used in NVIDIA's QAT workflow for INT8 inference on Tensor Cores.
+    """</span>
+    <span class="kw">def</span> <span class="fn">__init__</span>(self, n_bits: int = <span class="nu">4</span>, init_clip: float = <span class="nu">6.0</span>):
+        super().__init__()
+        self.n_bits = n_bits
+        self.n = <span class="nu">2</span> ** n_bits - <span class="nu">1</span>                  <span class="cm"># unsigned: 0..15 for INT4</span>
+        self.alpha = nn.Parameter(torch.tensor(init_clip))
+
+    <span class="kw">def</span> <span class="fn">forward</span>(self, x: torch.Tensor) -> torch.Tensor:
+        alpha = F.softplus(self.alpha)             <span class="cm"># keep positive via softplus</span>
+        x_clipped = torch.clamp(x, <span class="nu">0</span>, alpha)     <span class="cm"># ReLU + soft upper clip</span>
+        scale = alpha.detach() / self.n            <span class="cm"># scale from learned clip</span>
+        <span class="kw">return</span> STEQuantize.apply(x_clipped, scale.item(), self.n_bits, <span class="kw">False</span>)
+
+
+<span class="cm"># ── 4. FULL QAT TRAINING LOOP ───────────────────────────────────────────────</span>
+<span class="kw">def</span> <span class="fn">run_qat</span>(model: nn.Module, train_loader, val_loader,
+            n_bits: int = <span class="nu">4</span>, epochs: int = <span class="nu">5</span>) -> nn.Module:
+    <span class="str">"""
+    Full QAT recipe for transformer models.
+
+    Phase 1 (warm-up, 1 epoch): train FP32 model normally to stabilise
+    Phase 2 (QAT, remaining epochs): insert FakeQuantize into all Linear layers
+
+    Strategy: quantize weights only first (activations are harder).
+    Add PACT activation quantizers after weight QAT stabilises.
+    Use lower LR than FP32 training (typically 1e-5 to 1e-4).
+    """</span>
+    optimizer = torch.optim.AdamW(model.parameters(), lr=<span class="nu">1e-5</span>)
+    scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=epochs)
+
+    <span class="kw">for</span> epoch <span class="kw">in</span> range(epochs):
+        model.train()
+        <span class="kw">for</span> batch_idx, (X, y) <span class="kw">in</span> enumerate(train_loader):
+            optimizer.zero_grad()
+            <span class="cm"># Insert fake-quantization into linear weight before forward</span>
+            <span class="kw">for</span> name, module <span class="kw">in</span> model.named_modules():
+                <span class="kw">if</span> isinstance(module, nn.Linear):
+                    <span class="cm"># Fake-quantize weights in-place during forward</span>
+                    scale = module.weight.data.abs().max() / (<span class="nu">2</span>**(n_bits-<span class="nu">1</span>)-<span class="nu">1</span>)
+                    module.weight.data = STEQuantize.apply(
+                        module.weight.data, scale.item(), n_bits)
+            loss = model(X).loss_fn(y)
+            loss.backward()    <span class="cm"># STE gradient flows through FakeQuantize</span>
+            optimizer.step()
+            <span class="kw">if</span> batch_idx % <span class="nu">100</span> == <span class="nu">0</span>:
+                print(f<span class="str">"Epoch {epoch} step {batch_idx}: loss={loss.item():.4f}"</span>)
+        scheduler.step()
+    <span class="kw">return</span> model</pre></div>
+</div>
+
+<div class="g3">
+<div class="mc2">
+  <div class="tag" style="background:rgba(94,234,212,.08);color:#5eead4;border:1px solid rgba(94,234,212,.2)">Standard QAT</div>
+  <h4>Fixed Scale STE</h4>
+  <p>Scale s set from calibration data, held fixed throughout training. Simple but suboptimal — the scale may not be right for the learned weight distribution.</p>
+</div>
+<div class="mc2">
+  <div class="tag" style="background:rgba(251,191,36,.08);color:#fbbf24;border:1px solid rgba(251,191,36,.2)">LSQ (2020)</div>
+  <h4>Learned Step Size</h4>
+  <p>Scale s is a learnable parameter updated by backprop: ∂ℒ/∂s = Σᵢ⌊wᵢ/s⌉_clipped · (∂ℒ/∂q̂ᵢ) · (1/√N·n). Best INT4 accuracy on ResNets and transformers.</p>
+</div>
+<div class="mc2">
+  <div class="tag" style="background:rgba(167,139,250,.08);color:#a78bfa;border:1px solid rgba(167,139,250,.2)">PACT (2018)</div>
+  <h4>Learned Clipping</h4>
+  <p>Clip bound α is a learnable parameter for activations. Replaces fixed clipping at max(|x|) with data-driven α that minimises total quantization error. Essential for aggressive INT4 activation quantization.</p>
+</div>
+</div>
+<div class="callout callout-key">
+  <div class="callout-icon">🔑</div>
+  <div class="callout-body">
+    <h4>QAT recipe: the two-phase training strategy</h4>
+    <p><strong>Phase 1 — Warm-up (1-2 epochs):</strong> Train with fixed scale s = amax(W)/(2^(b-1)-1) and STE. Scale adapts slowly. This ensures the model starts from a PTQ-equivalent state — you always know it's at least as good as PTQ. <strong>Phase 2 — LSQ+PACT (remaining epochs):</strong> Enable learned scales and clip bounds. Use LR 10× smaller than original training. Add L2 regularisation λ‖α‖ on PACT clip bounds to encourage tight clipping. This two-phase approach consistently achieves within 0.3% of FP32 accuracy at INT4 for models up to ~3B parameters.</p>
+  </div>
+</div>
+</section>
+
+<section class="sec" id="s2">
+<div class="sn">02 · FP8 Training on H100 — Quantization at Training Time</div>
+<h2>1979 TFLOPS at FP8:<br><span class="gt">2× BF16, 30× FP32</span></h2>
+<p class="lead">The NVIDIA H100 introduces FP8 Tensor Cores that execute matrix multiplications at twice the throughput of BF16. Unlike post-training quantization, FP8 training applies quantization during every training step — the model never sees FP32 activations during the forward or backward pass. Two complementary formats handle the different numerical requirements: E4M3 (high precision, limited range) for forward pass tensors where values are well-scaled, and E5M2 (wide range, limited precision) for backward pass gradients where spikes must not overflow.</p>
+<div class="arch">
+<div class="arch-title">FP8 training pipeline — H100 Transformer Engine with delayed scaling and E4M3/E5M2 hybrid</div>
+<svg viewBox="0 0 900 298" xmlns="http://www.w3.org/2000/svg" style="width:100%;max-width:900px;display:block">
+<rect width="900" height="298" fill="#07070f" rx="14"/>
+<text x="450" y="24" font-family="JetBrains Mono,monospace" font-size="11" fill="#fbbf24" text-anchor="middle" letter-spacing="2" font-weight="bold">FP8 TRAINING PIPELINE — H100 TRANSFORMER ENGINE</text>
+<rect x="14" y="36" width="168" height="188" rx="10" fill="rgba(94,234,212,.04)" stroke="rgba(94,234,212,.22)"/>
+<text x="98" y="55" font-family="JetBrains Mono,monospace" font-size="8" fill="#5eead4" text-anchor="middle" font-weight="bold">Master Weights</text>
+<text x="98" y="68" font-family="JetBrains Mono,monospace" font-size="7" fill="#7c7c95" text-anchor="middle">BF16 / FP32</text>
+<rect x="28"  y="76" width="128" height="18" rx="4" fill="rgba(94,234,212,.12)" stroke="rgba(94,234,212,.35)"/>
+<text x="92"  y="89" font-family="JetBrains Mono,monospace" font-size="7" fill="#5eead4" text-anchor="middle">W_q, W_k, W_v, W_o</text>
+<rect x="28"  y="98" width="128" height="18" rx="4" fill="rgba(94,234,212,.08)" stroke="rgba(94,234,212,.25)"/>
+<text x="92"  y="111" font-family="JetBrains Mono,monospace" font-size="7" fill="#5eead4" text-anchor="middle">W_ff1, W_ff2</text>
+<line x1="98" y1="118" x2="98" y2="136" stroke="rgba(94,234,212,.25)" stroke-width="1" stroke-dasharray="3,2"/>
+<rect x="28"  y="138" width="128" height="38" rx="6" fill="rgba(255,255,255,.03)" stroke="rgba(255,255,255,.08)"/>
+<text x="92"  y="154" font-family="JetBrains Mono,monospace" font-size="7" fill="#ececf6" text-anchor="middle" font-weight="bold">Optimizer States</text>
+<text x="92"  y="167" font-family="JetBrains Mono,monospace" font-size="7" fill="#7c7c95" text-anchor="middle">m₁, m₂ (Adam) — FP32</text>
+<text x="92"  y="180" font-family="JetBrains Mono,monospace" font-size="7" fill="#7c7c95" text-anchor="middle">never quantized</text>
+<line x1="184" y1="122" x2="216" y2="122" stroke="#fbbf24" stroke-width="2"/>
+<polygon points="212,118 220,122 212,126" fill="#fbbf24"/>
+<text x="200" y="115" font-family="JetBrains Mono,monospace" font-size="7" fill="#fbbf24" text-anchor="middle">cast FP8</text>
+<rect x="220" y="36" width="290" height="228" rx="10" fill="rgba(251,191,36,.05)" stroke="rgba(251,191,36,.4)" stroke-width="2"/>
+<text x="365" y="56" font-family="JetBrains Mono,monospace" font-size="9" fill="#fbbf24" text-anchor="middle" font-weight="bold">FP8 COMPUTE CORE</text>
+<text x="365" y="70" font-family="JetBrains Mono,monospace" font-size="7" fill="#7c7c95" text-anchor="middle">H100 Tensor Cores — 2× BF16 throughput</text>
+<rect x="234" y="78" width="262" height="64" rx="8" fill="rgba(251,191,36,.1)" stroke="rgba(251,191,36,.4)"/>
+<text x="365" y="97" font-family="JetBrains Mono,monospace" font-size="8" fill="#fbbf24" text-anchor="middle" font-weight="bold">FP8 Forward Pass (E4M3)</text>
+<text x="365" y="112" font-family="JetBrains Mono,monospace" font-size="7" fill="#ececf6" text-anchor="middle">Y = X_fp8 @ W_fp8  →  accum BF16</text>
+<text x="365" y="126" font-family="JetBrains Mono,monospace" font-size="7" fill="#7c7c95" text-anchor="middle">E4M3: max±448, high precision, limited range</text>
+<text x="365" y="137" font-family="JetBrains Mono,monospace" font-size="7" fill="#fbbf24" text-anchor="middle">Activations + weights in FP8</text>
+<rect x="234" y="148" width="124" height="30" rx="5" fill="rgba(255,255,255,.03)" stroke="rgba(255,255,255,.08)"/>
+<text x="296" y="162" font-family="JetBrains Mono,monospace" font-size="7" fill="#ececf6" text-anchor="middle" font-weight="bold">Scale W: amax/448</text>
+<text x="296" y="174" font-family="JetBrains Mono,monospace" font-size="7" fill="#7c7c95" text-anchor="middle">delayed — use history</text>
+<rect x="372" y="148" width="124" height="30" rx="5" fill="rgba(255,255,255,.03)" stroke="rgba(255,255,255,.08)"/>
+<text x="434" y="162" font-family="JetBrains Mono,monospace" font-size="7" fill="#ececf6" text-anchor="middle" font-weight="bold">Scale X: amax/448</text>
+<text x="434" y="174" font-family="JetBrains Mono,monospace" font-size="7" fill="#7c7c95" text-anchor="middle">per-tensor, per-step</text>
+<rect x="234" y="184" width="262" height="68" rx="8" fill="rgba(244,114,182,.08)" stroke="rgba(244,114,182,.35)" stroke-width="1.5"/>
+<text x="365" y="202" font-family="JetBrains Mono,monospace" font-size="8" fill="#f472b6" text-anchor="middle" font-weight="bold">FP8 Backward Pass (E5M2)</text>
+<text x="365" y="217" font-family="JetBrains Mono,monospace" font-size="7" fill="#ececf6" text-anchor="middle">∂ℒ/∂X = ∂ℒ/∂Y_fp8 @ W_fp8ᵀ</text>
+<text x="365" y="231" font-family="JetBrains Mono,monospace" font-size="7" fill="#7c7c95" text-anchor="middle">E5M2: max±57344, wider range for gradient spikes</text>
+<text x="365" y="244" font-family="JetBrains Mono,monospace" font-size="7" fill="#f472b6" text-anchor="middle">Loss scaling: ℒ×s → ∂÷s prevents underflow</text>
+<line x1="512" y1="150" x2="542" y2="150" stroke="#a78bfa" stroke-width="2"/>
+<polygon points="538,146 546,150 538,154" fill="#a78bfa"/>
+<text x="527" y="143" font-family="JetBrains Mono,monospace" font-size="7" fill="#a78bfa" text-anchor="middle">grads</text>
+<text x="527" y="162" font-family="JetBrains Mono,monospace" font-size="7" fill="#7c7c95" text-anchor="middle">BF16</text>
+<rect x="546" y="36" width="192" height="228" rx="10" fill="rgba(167,139,250,.05)" stroke="rgba(167,139,250,.3)"/>
+<text x="642" y="55" font-family="JetBrains Mono,monospace" font-size="8" fill="#a78bfa" text-anchor="middle" font-weight="bold">Grad Accum + Adam</text>
+<text x="642" y="68" font-family="JetBrains Mono,monospace" font-size="7" fill="#7c7c95" text-anchor="middle">BF16 → FP32 accumulation</text>
+<rect x="560" y="76" width="164" height="36" rx="6" fill="rgba(167,139,250,.1)" stroke="rgba(167,139,250,.3)"/>
+<text x="642" y="92" font-family="JetBrains Mono,monospace" font-size="7" fill="#a78bfa" text-anchor="middle" font-weight="bold">∂ℒ/∂W (FP32)</text>
+<text x="642" y="106" font-family="JetBrains Mono,monospace" font-size="7" fill="#7c7c95" text-anchor="middle">unscaled by loss scale s</text>
+<line x1="642" y1="114" x2="642" y2="130" stroke="#a78bfa" stroke-width="1.5"/>
+<polygon points="638,126 642,134 646,126" fill="#a78bfa"/>
+<rect x="560" y="132" width="164" height="56" rx="6" fill="rgba(94,234,212,.06)" stroke="rgba(94,234,212,.2)"/>
+<text x="642" y="150" font-family="JetBrains Mono,monospace" font-size="8" fill="#5eead4" text-anchor="middle" font-weight="bold">Optimizer Update</text>
+<text x="642" y="165" font-family="JetBrains Mono,monospace" font-size="7" fill="#ececf6" text-anchor="middle">m₁ ← β₁m₁ + (1-β₁)g</text>
+<text x="642" y="178" font-family="JetBrains Mono,monospace" font-size="7" fill="#ececf6" text-anchor="middle">m₂ ← β₂m₂ + (1-β₂)g²</text>
+<text x="642" y="191" font-family="JetBrains Mono,monospace" font-size="7" fill="#ececf6" text-anchor="middle">W ← W − η·m̂₁/√m̂₂</text>
+<line x1="642" y1="190" x2="642" y2="208" stroke="#5eead4" stroke-width="1.5"/>
+<polygon points="638,204 642,212 646,204" fill="#5eead4"/>
+<rect x="560" y="210" width="164" height="36" rx="6" fill="rgba(94,234,212,.08)" stroke="rgba(94,234,212,.28)"/>
+<text x="642" y="228" font-family="JetBrains Mono,monospace" font-size="7" fill="#5eead4" text-anchor="middle" font-weight="bold">Updated W (BF16)</text>
+<text x="642" y="241" font-family="JetBrains Mono,monospace" font-size="7" fill="#7c7c95" text-anchor="middle">copy back to master</text>
+<rect x="752" y="36" width="134" height="228" rx="10" fill="rgba(255,255,255,.02)" stroke="rgba(255,255,255,.07)"/>
+<text x="819" y="55" font-family="JetBrains Mono,monospace" font-size="8" fill="#ececf6" text-anchor="middle" font-weight="bold">Throughput</text>
+<text x="819" y="68" font-family="JetBrains Mono,monospace" font-size="7" fill="#7c7c95" text-anchor="middle">H100 SXM5</text>
+<line x1="764" y1="74" x2="878" y2="74" stroke="rgba(255,255,255,.06)"/>
+<text x="766" y="88" font-family="JetBrains Mono,monospace" font-size="7" fill="#7c7c95">FP32</text>
+<rect x="800" y="80" width="22" height="11" rx="2" fill="rgba(255,100,100,.4)" stroke="rgba(255,100,100,.6)"/>
+<text x="828" y="88" font-family="JetBrains Mono,monospace" font-size="7" fill="#7c7c95">67 TF</text>
+<text x="766" y="106" font-family="JetBrains Mono,monospace" font-size="7" fill="#7c7c95">BF16</text>
+<rect x="800" y="98" width="60" height="11" rx="2" fill="rgba(96,165,250,.45)" stroke="rgba(96,165,250,.6)"/>
+<text x="868" y="106" font-family="JetBrains Mono,monospace" font-size="7" fill="#60a5fa">989 TF</text>
+<text x="766" y="124" font-family="JetBrains Mono,monospace" font-size="7" fill="#fbbf24" font-weight="bold">FP8</text>
+<rect x="800" y="116" width="66" height="11" rx="2" fill="rgba(251,191,36,.5)" stroke="#fbbf24" stroke-width="1.5"/>
+<text x="872" y="124" font-family="JetBrains Mono,monospace" font-size="7" fill="#fbbf24" font-weight="bold">1979 TF</text>
+<line x1="764" y1="130" x2="878" y2="130" stroke="rgba(255,255,255,.06)"/>
+<text x="819" y="146" font-family="JetBrains Mono,monospace" font-size="7" fill="#5eead4" text-anchor="middle">FP8 = 2× BF16</text>
+<text x="819" y="160" font-family="JetBrains Mono,monospace" font-size="7" fill="#7c7c95" text-anchor="middle">= 30× FP32</text>
+<line x1="764" y1="168" x2="878" y2="168" stroke="rgba(255,255,255,.06)"/>
+<text x="819" y="184" font-family="JetBrains Mono,monospace" font-size="7" fill="#ececf6" text-anchor="middle" font-weight="bold">Memory</text>
+<text x="819" y="200" font-family="JetBrains Mono,monospace" font-size="7" fill="#7c7c95" text-anchor="middle">W: BF16→FP8</text>
+<text x="819" y="215" font-family="JetBrains Mono,monospace" font-size="7" fill="#5eead4" text-anchor="middle">2× fewer bytes</text>
+<text x="819" y="230" font-family="JetBrains Mono,monospace" font-size="7" fill="#7c7c95" text-anchor="middle">better cache</text>
+<text x="819" y="245" font-family="JetBrains Mono,monospace" font-size="7" fill="#5eead4" text-anchor="middle">hit rate → MFU↑</text>
+<rect x="14" y="272" width="872" height="22" rx="6" fill="rgba(251,191,36,.04)" stroke="rgba(251,191,36,.18)"/>
+<text x="450" y="286" font-family="JetBrains Mono,monospace" font-size="7" fill="#fbbf24" text-anchor="middle">Only GEMMs in FP8 — LayerNorm, softmax, residuals stay BF16 · Delayed scaling: use amax from previous step · E4M3 fwd, E5M2 bwd</text>
+</svg>
+</div>
+<div class="cc">
+  <div class="ch"><h3>fp8_training.py — H100 Transformer Engine FP8 training + adaptive precision + SpQR</h3><button class="cpb" onclick="cp(this,'c2')">Copy</button></div>
+  <div class="cbody"><pre id="c2"><span class="kw">import</span> torch
+<span class="kw">import</span> torch.nn <span class="kw">as</span> nn
+
+<span class="cm"># ── 1. FP8 TRAINING WITH TRANSFORMER ENGINE ─────────────────────────────────</span>
+<span class="cm"># Requires: pip install transformer-engine</span>
+<span class="cm"># Hardware: NVIDIA H100 (Hopper architecture — FP8 Tensor Cores)</span>
+<span class="kw">try</span>:
+    <span class="kw">import</span> transformer_engine.pytorch <span class="kw">as</span> te
+    <span class="kw">import</span> transformer_engine.common.recipe <span class="kw">as</span> recipe
+    TE_AVAILABLE = <span class="kw">True</span>
+<span class="kw">except</span> ImportError:
+    TE_AVAILABLE = <span class="kw">False</span>
+
+
+<span class="kw">def</span> <span class="fn">build_fp8_transformer_block</span>(d_model: int = <span class="nu">4096</span>, n_heads: int = <span class="nu">32</span>):
+    <span class="str">"""
+    Build a transformer block using NVIDIA's Transformer Engine for FP8.
+
+    Architecture:
+      te.TransformerLayer wraps attention + FFN with automatic FP8 casting.
+      Only GEMMs (matrix multiplications) run in FP8; everything else (LayerNorm,
+      softmax, residual additions) remains in BF16 for numerical stability.
+
+    FP8 formats used:
+      E4M3 (4 exponent, 3 mantissa bits): forward pass weights and activations.
+               Range: ±448. Higher precision, compact mantissa.
+               Max representable: 448. Suitable for well-scaled forward tensors.
+      E5M2 (5 exponent, 2 mantissa bits): backward pass gradients.
+               Range: ±57344. Wider range needed for gradient spikes during training.
+
+    Delayed scaling:
+      Computing amax(tensor) per step requires a synchronisation barrier across
+      the entire tensor — expensive for large activations. Delayed scaling uses
+      the amax from the PREVIOUS step (or a rolling average of recent steps).
+      This eliminates the synchronisation cost with negligible accuracy loss since
+      tensor ranges don't change dramatically between consecutive steps.
+    """</span>
+    <span class="kw">if not</span> TE_AVAILABLE:
+        <span class="kw">return</span> nn.TransformerEncoderLayer(d_model, n_heads, batch_first=<span class="kw">True</span>)
+
+    fp8_recipe = recipe.DelayedScaling(
+        margin=<span class="nu">0</span>,                             <span class="cm"># no extra scaling margin</span>
+        interval=<span class="nu">1</span>,                            <span class="cm"># update scale every step</span>
+        fp8_format=recipe.Format.HYBRID,       <span class="cm"># E4M3 fwd + E5M2 bwd</span>
+        amax_history_len=<span class="nu">16</span>,                  <span class="cm"># rolling window for scale</span>
+        amax_compute_algo=<span class="str">'max'</span>,              <span class="cm"># use max not mean</span>
+    )
+    <span class="kw">return</span> te.TransformerLayer(
+        hidden_size=d_model,
+        ffn_hidden_size=d_model * <span class="nu">4</span>,
+        num_attention_heads=n_heads,
+        layer_type=<span class="str">'encoder'</span>,
+    ), fp8_recipe
+
+
+<span class="kw">def</span> <span class="fn">fp8_training_step</span>(model, batch, optimizer, fp8_recipe,
+                       loss_scaler: torch.cuda.amp.GradScaler):
+    <span class="str">"""
+    Single FP8 training step on H100.
+
+    Note on loss scaling: even in FP8, gradient underflow can occur for very
+    small gradient values in early training. Loss scaling multiplies the loss
+    by a large constant (e.g. 2^15) before backward, scaling gradients up to
+    avoid FP8 underflow, then divides by the same constant before the optimizer
+    step. GradScaler handles this automatically and adapts the scale factor.
+    """</span>
+    optimizer.zero_grad()
+    <span class="kw">with</span> te.fp8_autocast(enabled=<span class="kw">True</span>, fp8_recipe=fp8_recipe):
+        output = model(batch[<span class="str">'input_ids'</span>])   <span class="cm"># FP8 GEMMs run here</span>
+        loss   = output.loss                    <span class="cm"># accumulated in BF16</span>
+    loss_scaler.scale(loss).backward()          <span class="cm"># FP8 E5M2 backward</span>
+    loss_scaler.unscale_(optimizer)             <span class="cm"># remove loss scale from grads</span>
+    torch.nn.utils.clip_grad_norm_(model.parameters(), <span class="nu">1.0</span>)
+    loss_scaler.step(optimizer)                 <span class="cm"># update BF16 master weights</span>
+    loss_scaler.update()                        <span class="cm"># adjust scale for next step</span>
+    <span class="kw">return</span> loss.item()
+
+
+<span class="cm"># ── 2. ADAPTIVE PRECISION — LAYER SENSITIVITY ANALYSIS ─────────────────────</span>
+<span class="kw">def</span> <span class="fn">compute_layer_sensitivity</span>(model: nn.Module, val_loader,
+                               base_metric: float) -> dict[str, float]:
+    <span class="str">"""
+    Measure how much each layer hurts accuracy when quantized to INT4.
+
+    Algorithm:
+    For each Linear layer L:
+      1. Quantize L to INT4 (leave all others in FP32)
+      2. Evaluate on val_loader → metric_L
+      3. Sensitivity(L) = base_metric - metric_L
+
+    High sensitivity → this layer needs higher precision.
+    Low sensitivity → safe to quantize aggressively.
+
+    Result: a per-layer precision assignment (INT4/INT8/BF16).
+    Example findings: first and last embedding layers are most sensitive;
+    middle FFN layers are most robust; attention Q/K projections are more
+    sensitive than V/O projections.
+    """</span>
+    model.eval()
+    sensitivity = {}
+    <span class="kw">for</span> name, module <span class="kw">in</span> model.named_modules():
+        <span class="kw">if not</span> isinstance(module, nn.Linear): <span class="kw">continue</span>
+        W_backup = module.weight.data.clone()   <span class="cm"># save original</span>
+        <span class="cm"># Quantize this layer to INT4</span>
+        n = <span class="nu">7</span>  <span class="cm"># INT4 range [-7, 7]</span>
+        s = W_backup.abs().max() / n
+        module.weight.data = (W_backup / s).round().clamp(-n, n) * s
+        <span class="cm"># Evaluate</span>
+        metric_L = _evaluate(model, val_loader)
+        sensitivity[name] = base_metric - metric_L
+        module.weight.data = W_backup           <span class="cm"># restore</span>
+    <span class="kw">return</span> sensitivity
+
+
+<span class="kw">def</span> <span class="fn">assign_mixed_precision</span>(sensitivity: dict, high_thresh: float = <span class="nu">0.02</span>,
+                            mid_thresh: float = <span class="nu">0.005</span>) -> dict[str, str]:
+    <span class="str">"""Assign INT4/INT8/BF16 per layer based on sensitivity thresholds."""</span>
+    assignment = {}
+    <span class="kw">for</span> name, sens <span class="kw">in</span> sensitivity.items():
+        <span class="kw">if</span> sens >= high_thresh:   assignment[name] = <span class="str">'BF16'</span>   <span class="cm"># critical</span>
+        <span class="kw">elif</span> sens >= mid_thresh:  assignment[name] = <span class="str">'INT8'</span>   <span class="cm"># moderate</span>
+        <span class="kw">else</span>:                     assignment[name] = <span class="str">'INT4'</span>   <span class="cm"># robust</span>
+    <span class="kw">return</span> assignment
+
+
+<span class="cm"># ── 3. SpQR — SPARSE + QUANTIZED (Dettmers et al. 2023) ────────────────────</span>
+<span class="kw">def</span> <span class="fn">spqr_compress</span>(W: torch.Tensor, base_bits: int = <span class="nu">4</span>,
+                  outlier_fraction: float = <span class="nu">0.01</span>) -> dict:
+    <span class="str">"""
+    SpQR: Sparse + Quantized Representation — best of both worlds.
+
+    Observation: most weight matrices have 1-5% of elements that are
+    significantly larger than average (outliers). These outliers cause
+    disproportionate quantization error when the scale must accommodate them.
+
+    SpQR strategy:
+      1. Identify top-p% outliers by magnitude.
+      2. Store outliers in full FP16 (sparse format — very few of them).
+      3. Quantize the remaining 99% to 3-4 bits.
+
+    Result: effectively 3.1-4.1 bits/weight (99% at 4-bit, 1% at 16-bit),
+    but with quantization error comparable to 8-bit for all weights.
+
+    Mathematical intuition: if 1% of weights are outliers, the quantization
+    scale is set by the outlier magnitude → 99% of weights use only a small
+    fraction of the representable range. By treating outliers separately,
+    the scale for the 99% is set optimally → 6-10× better error for those.
+
+    SpQR achieves better perplexity than GPTQ at 4-bit on LLaMA-2 models
+    because it handles the outlier problem directly rather than via Hessian
+    compensation.
+    """</span>
+    n_total  = W.numel()
+    n_outliers = int(n_total * outlier_fraction)
+    <span class="cm"># Find outlier positions</span>
+    flat     = W.abs().flatten()
+    threshold = torch.topk(flat, n_outliers).values.min().item()
+    outlier_mask = W.abs() >= threshold
+    <span class="cm"># Store outliers in FP16</span>
+    outliers_fp16 = W[outlier_mask].half()          <span class="cm"># sparse: (n_outliers,)</span>
+    outlier_indices = outlier_mask.nonzero(as_tuple=<span class="kw">True</span>)
+    <span class="cm"># Quantize remaining weights to base_bits</span>
+    W_inlier = W.clone()
+    W_inlier[outlier_mask] = <span class="nu">0</span>                    <span class="cm"># zero out outliers</span>
+    n = <span class="nu">2</span> ** (base_bits - <span class="nu">1</span>) - <span class="nu">1</span>
+    s = W_inlier.abs().max() / n
+    W_q = (W_inlier / s).round().clamp(-n, n).to(torch.int8)
+    effective_bpw = (n_total * base_bits + n_outliers * <span class="nu">16</span>) / n_total
+    print(f<span class="str">"SpQR: {outlier_fraction*100:.1f}% outliers in FP16"</span>)
+    print(f<span class="str">"  Effective bits/weight: {effective_bpw:.2f}"</span>)
+    <span class="kw">return</span> dict(W_q=W_q, scale=s, outliers=outliers_fp16, idx=outlier_indices)
+
+
+<span class="kw">def</span> <span class="fn">_evaluate</span>(model, loader) -> float:
+    <span class="str">"""Placeholder evaluation — returns accuracy/perplexity metric."""</span>
+    <span class="kw">return</span> <span class="nu">0.0</span>   <span class="cm"># replace with actual evaluation logic</span></pre></div>
+</div>
+
+<div class="g2">
+<div class="callout callout-warn">
+  <div class="callout-icon">⚠️</div>
+  <div class="callout-body">
+    <h4>What stays in high precision — the FP8 non-negotiables</h4>
+    <p><strong>Optimizer states (m₁, m₂) stay FP32:</strong> Adam's moment estimates accumulate over hundreds of steps — quantization error compounds, destroying convergence. A single FP32 copy of optimizer states costs 2× model size but is mandatory. <strong>Residual connections stay BF16:</strong> residuals sum across 96+ layers — accumulated rounding error in FP8 would degrade final layer outputs. <strong>LayerNorm + softmax stay BF16:</strong> these operations involve log, exp, and normalisation that are numerically sensitive to range. Only GEMMs (Linear layers) run in FP8 — where the 2× throughput gain actually matters.</p>
+  </div>
+</div>
+<div class="scenario">
+  <h4>FP8 vs BF16 training: LLaMA-3-70B on 256 H100s</h4>
+  <p><strong>BF16 baseline:</strong> 989 TFLOPS × 256 GPUs = 253 PFLOPs. Model FLOPs Utilisation (MFU) ~40% → effective 101 PFLOPs. Training tokens per second: ~130K. <strong>FP8 with TE:</strong> 1979 TFLOPS × 256 = 507 PFLOPs theoretical. MFU ~35% (FP8 casting overhead) → effective 177 PFLOPs. Training tokens per second: ~200K. <strong>Speedup: ~1.5× tokens/sec.</strong> Memory: FP8 activations = half BF16 → larger effective batch size → further amortises data loading overhead. Cost savings on a $10M training run: ~35% reduction in H100 node-hours.</p>
+</div>
+</div>
+</section>
+
+<section class="sec" id="s3">
+<div class="sn">03 · Adaptive Precision, SpQR and Frontier Research</div>
+<h2>Layer Sensitivity · SpQR · Token-Level KV:<br><span class="gt">The Next Quantization Frontier</span></h2>
+<div class="g2">
+<div class="callout callout-insight">
+  <div class="callout-icon">💡</div>
+  <div class="callout-body">
+    <h4>Adaptive Precision: not all layers are equal</h4>
+    <p>Sensitivity analysis (quantize one layer at a time, measure accuracy drop) consistently reveals: embedding and LM head are 10× more sensitive than middle FFN layers. Q/K projections are 2-3× more sensitive than V/O projections. Early transformer blocks are more sensitive than later ones. Production strategy: BF16 for embedding/LM-head (adds ~2GB to a 70B model), INT8 for attention Q/K, INT4 for FFN and V/O — total ~37GB vs 35GB pure INT4, but recovers 0.5-2.0 perplexity points. bitsandbytes and GGUF implement this automatically.</p>
+  </div>
+</div>
+<div class="callout callout-insight">
+  <div class="callout-icon">💡</div>
+  <div class="callout-body">
+    <h4>SpQR: when outliers refuse to be quantized</h4>
+    <p>Some weight matrices have 1-5% of elements that are 5-20× the typical magnitude. Standard quantization sets scale = max(|W|)/(2^b-1) — the scale accommodates the outlier but wastes 80-90% of precision levels on inliers. SpQR stores outliers exactly (FP16 sparse) and quantizes the 99% inliers to 3-bit with a scale set by their actual max. Effective bits: 0.99×3 + 0.01×16 = 3.13 bits/weight. Perplexity improvement over GPTQ 3-bit: 0.5-1.5 points on LLaMA-2 70B. Used in QMoE (quantized mixture-of-experts) for trillion-parameter models.</p>
+  </div>
+</div>
+</div>
+<div class="card" style="padding:0;overflow:hidden">
+<table class="tbl">
+<thead><tr><th>Method</th><th>Type</th><th>Training needed</th><th>Bits/weight</th><th>Quality vs FP16</th><th>Use case</th></tr></thead>
+<tbody>
+<tr><td><strong style="color:var(--a1)">STE QAT</strong></td><td>Training-time</td><td>Fine-tuning</td><td>4-8 bit</td><td>≤0.3% accuracy↓</td><td>&lt;3B models</td></tr>
+<tr><td><strong style="color:var(--a4)">LSQ</strong></td><td>Training-time</td><td>Fine-tuning</td><td>4 bit</td><td>Best INT4</td><td>BERT, ViT, GPT-2</td></tr>
+<tr><td><strong style="color:var(--a2)">FP8 TE</strong></td><td>Training-time</td><td>Full training</td><td>8 bit</td><td>Matches BF16</td><td>Any scale, H100</td></tr>
+<tr><td><strong style="color:var(--a3)">SpQR</strong></td><td>Post-training</td><td>None</td><td>3-4 bit</td><td>Best 3-bit</td><td>LLM outliers</td></tr>
+<tr><td><strong style="color:var(--a5)">Mixed Prec.</strong></td><td>Post-training</td><td>None</td><td>4-16 bit</td><td>&lt;0.5% vs INT4</td><td>All large LLMs</td></tr>
+</tbody>
+</table>
+</div>
+</section>
+
+<section class="sec" id="s4">
+<div class="sn">04 · Assessment — 8 Deep Questions</div>
+<h2>QAT and FP8 Training <span class="gt">Mastery Quiz</span></h2>
+<div class="qc"><div class="qc-title">Assessment — QAT, FP8 Training, Adaptive Precision, SpQR</div><div class="qc-sub">8 questions · STE gradient · scale initialisation · LSQ ∂ℒ/∂s · FP8 format choice · SpQR memory · token-level KV · mixed precision · QAT scalability</div><div class="qprog"><div class="qprog-bar"><div class="qprog-fill"></div></div><div class="qprog-text">0/8 answered</div></div><div class="qq"><div class="qnum">Question 1 of 8</div><h4>You implement QAT for a ViT-B/16 model targeting INT4 deployment. After 3 epochs of QAT training, you observe the validation accuracy is LOWER than vanilla PTQ INT4. What is the most likely cause and fix?</h4><div class="qo"><button class="qob" data-opt="A" data-correct="true" onclick="cq(this,0,true)">A: The learning rate is too high — QAT disrupts learned representations. Fix: reduce LR to 1e-6.</button>
+<button class="qob" data-opt="B" data-correct="false" onclick="cq(this,0,false)">B: The STE gradient is incorrect — use exact gradient through round() by computing it numerically.</button>
+<button class="qob" data-opt="C" data-correct="false" onclick="cq(this,0,false)">C: The scale s is initialised too small — weights quantize to all-zero causing gradient death. Fix: initialise s = max(|W|) / n from the pre-trained weights, then freeze s for the first epoch before switching to LSQ.</button>
+<button class="qob" data-opt="D" data-correct="false" onclick="cq(this,0,false)">D: INT4 is too aggressive for ViT — use INT6 quantization instead for vision transformers.</button>
+</div><div class="qfeed"><div class="qfeed-head"></div><div class="qfeed-why"><strong>Scale initialisation is the #1 QAT failure mode.</strong> If s is too small, most weights map to q=0 after rounding — the forward pass produces near-zero outputs (dead network). The STE backward pass passes gradients through but they update weights that then re-quantize to 0 again — a training loop that never converges. Fix: always initialise s = amax(W) / (2^(b-1) - 1) from the pre-trained weights. This ensures the initial FakeQuantize represents the weights faithfully, so training starts from a good point. Freeze s for epoch 1 (PTQ-equivalent) then enable LSQ learning from epoch 2 — this two-phase strategy consistently outperforms end-to-end LSQ from random init.</div></div></div><div class="qq"><div class="qnum">Question 2 of 8</div><h4>The STE approximation sets ∂(round)/∂x = 1 for |x| ≤ clip and 0 otherwise. This is mathematically incorrect — why does it still work for neural network training, and what goes wrong when it doesn't?</h4><div class="qo"><button class="qob" data-opt="A" data-correct="false" onclick="cq(this,1,false)">A: STE is actually the correct gradient — round() is differentiable almost everywhere with gradient 1.</button>
+<button class="qob" data-opt="B" data-correct="true" onclick="cq(this,1,true)">B: STE works because: (1) quantization error is small (≤ s/2) so the true gradient ∂ℒ/∂x ≈ ∂ℒ/∂x̂ for well-scaled weights — the approximation error is O(s); (2) neural networks are overparameterised — noisy gradient estimates still converge to good minima in expectation; (3) the model learns to place weights in regions where rounding is stable (weights cluster near quantization levels), making the STE approximation increasingly accurate over training. STE fails when: weights are frequently clipped (many get zero gradient → subset of parameters never update → representation collapse), quantization is very aggressive (s too large → large error → STE approximation poor), or LR is too high (updates jump weights between quantization levels before they stabilise).</button>
+<button class="qob" data-opt="C" data-correct="false" onclick="cq(this,1,false)">C: STE works because the round() function is smooth in expectation over the training data distribution.</button>
+<button class="qob" data-opt="D" data-correct="false" onclick="cq(this,1,false)">D: STE is only an approximation — it works but always underperforms exact gradient methods like straight-through in continuous domains.</button>
+</div><div class="qfeed"><div class="qfeed-head"></div><div class="qfeed-why"><strong>STE convergence theory (Yin et al. 2019):</strong> The key insight is that STE is an unbiased gradient estimator in a specific sense — averaging over training batches, the STE gradient has the same sign as the true gradient with high probability. This is sufficient for SGD convergence. The practical failure modes are well-documented: clipping too aggressively kills gradient flow, and very coarse quantization (2-bit) often fails because the STE error term dominates. Adaptive methods like LSQ (learned scale) and PACT (learned clip) reduce these failure modes by letting the quantiser parameters adapt to the distribution.</div></div></div><div class="qq"><div class="qnum">Question 3 of 8</div><h4>LSQ learns the step size s jointly with model weights via backpropagation. Write the gradient ∂ℒ/∂s for symmetric quantization with n levels, and explain why the gradient scaling factor 1/√(N·n) is needed.</h4><div class="qo"><button class="qob" data-opt="A" data-correct="false" onclick="cq(this,2,false)">A: ∂ℒ/∂s = Σᵢ (∂ℒ/∂q̂ᵢ) · round(wᵢ/s). Scaling by 1/√(N·n) normalises the gradient to have unit variance.</button>
+<button class="qob" data-opt="B" data-correct="true" onclick="cq(this,2,true)">B: For q̂ = s · clamp(round(w/s), -n, n), applying chain rule: ∂q̂/∂s = clamp(round(w/s), -n, n) for |w| < clip, and ±n at boundaries. Therefore ∂ℒ/∂s = Σᵢ (∂ℒ/∂q̂ᵢ) · ⌊wᵢ/s⌉_clipped. The gradient scaling factor 1/√(N·n) is needed because: (1) without it, ∂ℒ/∂s scales linearly with N (number of quantized weights) — for large layers (N=4096²=16M) the s gradient is huge relative to ∂ℒ/∂w; (2) the factor normalises so the RMS of ∂ℒ/∂s matches the RMS of ∂ℒ/∂w, allowing both to use the same learning rate; (3) this is proven to give scale-invariant convergence — the learning rate works the same regardless of tensor size.</button>
+<button class="qob" data-opt="C" data-correct="false" onclick="cq(this,2,false)">C: ∂ℒ/∂s = Σᵢ (∂ℒ/∂q̂ᵢ) · (wᵢ/s²). The scaling is needed to prevent s from becoming negative during training.</button>
+<button class="qob" data-opt="D" data-correct="false" onclick="cq(this,2,false)">D: ∂ℒ/∂s = (∂ℒ/∂q̂) · (1/n) — the scale gradient is the upstream gradient divided by the number of levels.</button>
+</div><div class="qfeed"><div class="qfeed-head"></div><div class="qfeed-why"><strong>LSQ gradient derivation:</strong> The chain rule gives ∂ℒ/∂s = Σᵢ (∂ℒ/∂q̂ᵢ)(∂q̂ᵢ/∂s). For in-range weights: ∂q̂/∂s = round(w/s) (the quantized integer value). For clipped weights: ∂q̂/∂s = ±n. The gradient scaling 1/√(N·n) is the key contribution of the LSQ paper — it makes the gradient magnitude comparable to ∂ℒ/∂w regardless of layer size, enabling a single shared learning rate for both weights and scale. Without this, a layer with N=1M weights produces ∂ℒ/∂s that is 1000× larger than ∂ℒ/∂w — the scale converges in 1 step while weights need 1000 steps, causing instability.</div></div></div><div class="qq"><div class="qnum">Question 4 of 8</div><h4>FP8 training uses E4M3 for the forward pass and E5M2 for the backward pass. Why does the backward pass need more dynamic range rather than more precision, and what specific numerical event makes E5M2 necessary?</h4><div class="qo"><button class="qob" data-opt="A" data-correct="false" onclick="cq(this,3,false)">A: The backward pass processes larger matrices — E5M2 is chosen for computational efficiency, not numerical range.</button>
+<button class="qob" data-opt="B" data-correct="false" onclick="cq(this,3,false)">B: E5M2 (5 exponent bits, 2 mantissa bits, range ±57344) vs E4M3 (4 exponent bits, 3 mantissa bits, range ±448). The backward pass needs wider range because: (1) gradient magnitudes vary enormously during training — early in training when the loss is high, gradients can be 10-100× larger than converged values; (2) gradient spikes (sudden large gradient batches) occur especially during early training on new data — these would overflow E4M3 (max 448) and produce NaN gradients, killing training; (3) gradient variance across layers spans many orders of magnitude — deep layers often have 100× smaller gradients than shallow layers. E4M3 prioritises precision (3 mantissa bits vs 2) because forward pass tensors (weights, activations) are well-scaled and need fine discrimination between values near zero. E5M2 prioritises range because gradient magnitudes are unpredictable and overflow is catastrophic. Loss scaling further extends the effective range by multiplying ℒ by 2^15 before backward, making tiny gradients large enough to be representable in E5M2.</button>
+<button class="qob" data-opt="C" data-correct="false" onclick="cq(this,3,false)">C: E5M2 is needed because gradient computation involves more floating point operations which accumulate rounding error requiring higher exponent range.</button>
+<button class="qob" data-opt="D" data-correct="true" onclick="cq(this,3,true)">D: Both E4M3 and E5M2 have the same range — the choice is purely based on which format has better hardware support on H100.</button>
+</div><div class="qfeed"><div class="qfeed-head"></div><div class="qfeed-why"><strong>The overflow catastrophe:</strong> E4M3 can represent values up to ±448. During training on a bad batch, gradient norms can easily exceed 1000 — this would saturate E4M3 to ±448 for all gradient values, completely destroying the gradient signal and making the weight update garbage. E5M2 extends the range to ±57344 (57344/448 = 128× wider) at the cost of precision (2 vs 3 mantissa bits). The precision loss in E5M2 is acceptable for gradients because gradient noise already dominates — you're training with noisy mini-batch gradients anyway, so losing 1 bit of gradient precision matters far less than overflow prevention.</div></div></div><div class="qq"><div class="qnum">Question 5 of 8</div><h4>SpQR stores 1% of weight elements as FP16 outliers and quantizes the rest to 3-bit. For a LLaMA-2-7B FFN weight W ∈ ℝ¹¹⁰⁰⁸ˣ⁴⁰⁹⁶: calculate (A) total storage and (B) effective bits/weight. Why does this beat GPTQ at 3-bit?</h4><div class="qo"><button class="qob" data-opt="A" data-correct="false" onclick="cq(this,4,false)">A: (A) 3-bit base: 11008×4096×0.375B = 16.9MB. FP16 outliers: 0.01×11008×4096×2B = 0.9MB. Total ≈ 17.8MB. Effective bpw = (99%×3 + 1%×16)/100% = 3.13 bits. Beats GPTQ because outliers are stored exactly.</button>
+<button class="qob" data-opt="B" data-correct="true" onclick="cq(this,4,true)">B: (A) Elements: N = 11008×4096 = 45,088,768. Base 3-bit: 45M×0.01×(16/8) + 45M×0.99×(3/8) = 0.9MB FP16 + 16.8MB INT3 = 17.7MB. Effective bpw: (0.99×3 + 0.01×16) = 2.97+0.16 = 3.13 bits/weight. (B) Why beats GPTQ 3-bit: GPTQ sets scale from amax(W) — the outlier (say 5.2) forces scale s = 5.2/3 = 1.73. Now a typical weight of 0.08 quantizes to q = round(0.08/1.73) = 0 — lost. With SpQR, the outlier is stored separately, so scale for the 99% inliers: s = typical_max/3 ≈ 0.8/3 = 0.27. Now 0.08 → round(0.08/0.27) = round(0.30) = 0 — still lost? Actually amax of inliers ≈ 0.4 → s = 0.4/3 = 0.13 → 0.08 → round(0.62) = 1 × 0.13 = 0.13 ≈ 0.08 ✓. Much better. By storing the handful of outliers exactly, SpQR completely eliminates their distortion effect on the scale — recovering information that GPTQ's Hessian correction only partially fixes.</button>
+<button class="qob" data-opt="C" data-correct="false" onclick="cq(this,4,false)">C: Total ≈ 18MB. Effective bpw = 3.13. GPTQ 3-bit fails because it doesn't use Hessian correction at 3-bit but SpQR does.</button>
+<button class="qob" data-opt="D" data-correct="false" onclick="cq(this,4,false)">D: Total ≈ 18MB. SpQR beats GPTQ because SpQR uses a larger codebook (k=16 for 4-level groups vs GPTQ's independent quantization).</button>
+</div><div class="qfeed"><div class="qfeed-head"></div><div class="qfeed-why"><strong>The outlier contamination effect:</strong> In a matrix W where 1% of elements are 10× larger than the rest, a single global scale s = max(|W|) / n means 99% of weights occupy only 1/10th of the quantization levels — 90% of the precision is wasted covering the outlier range that only 1% of weights use. SpQR eliminates this completely: the 99% get a scale set by their actual max (not the outliers'), using the full INT3 range. The 1% outliers get exact FP16 representation. The 3.13 bits/weight overhead is tiny compared to the accuracy recovery.</div></div></div><div class="qq"><div class="qnum">Question 6 of 8</div><h4>Token-level KV cache compression assigns different precision to different sequence positions — recent tokens stay FP16 while older tokens get INT2. On a 128K context: model GPT4-class (L=96, d=12288), what is the memory saving if the most recent 2K tokens stay FP16 and the remaining 126K tokens use INT2?</h4><div class="qo"><button class="qob" data-opt="A" data-correct="false" onclick="cq(this,5,false)">A: FP16 2K tokens: 2×96×2000×12288×2B = 9.0GB. INT2 126K tokens: 2×96×126000×12288×0.25B = 70.9GB. Total = 79.9GB vs FP16 all: 2×96×128000×12288×2B = 573.3GB. Saving: 87%.</button>
+<button class="qob" data-opt="B" data-correct="true" onclick="cq(this,5,true)">B: FP16 section (recent 2K tokens): 2 × 96 × 2000 × 12288 × 2B = 9.0GB. INT2 section (old 126K tokens): 2 × 96 × 126000 × 12288 × 0.25B = 70.9GB. Total adaptive: 79.9GB. FP16 baseline all 128K: 2 × 96 × 128000 × 12288 × 2B = 573.4GB. Memory saving: (573.4 - 79.9) / 573.4 = 86.1% reduction. This is the key insight: recent tokens are attended to by all subsequent tokens and must be precise. Old tokens are rarely the primary attention target — their KV vectors can be very coarsely approximated. The accuracy impact is mild (attention to old tokens is typically low-weight anyway) because LLMs exhibit recency bias in attention patterns. This enables million-token contexts: 1M tokens × 1M INT2 → 1M × 2 × 96 × 12288 × 0.25B = 566GB — still large but within 8-GPU reach.</button>
+<button class="qob" data-opt="C" data-correct="false" onclick="cq(this,5,false)">C: FP16 2K = 9GB. INT2 126K = 567GB/8 = 70.9GB. Total = 79.9GB. Saving = 86%. Accurate.</button>
+<button class="qob" data-opt="D" data-correct="false" onclick="cq(this,5,false)">D: INT2 provides 8× compression vs FP16, so total = 573.4/8 = 71.7GB. All in INT2, no FP16 section needed.</button>
+</div><div class="qfeed"><div class="qfeed-head"></div><div class="qfeed-why"><strong>Token-level precision arithmetic:</strong> The memory formula per section is 2 (K+V) × L × T × d × bytes_per_value. INT2 = 0.25 bytes vs FP16 = 2 bytes → 8× compression. The 86% saving enables dramatically longer contexts. The recency-biased precision assignment is justified by attention pattern analysis: in most transformer tasks, tokens attend most strongly to recent context and specific key positions — the bulk of the sequence gets low attention weights anyway, so quantising those KV vectors coarsely has minimal impact on attention output. This is validated empirically in H2O, SnapKV, and StreamingLLM papers.</div></div></div><div class="qq"><div class="qnum">Question 7 of 8</div><h4>Layer sensitivity analysis finds that the first embedding layer and last LM head of a 70B LLM have 10× higher quantization sensitivity than the middle FFN layers. If you use mixed precision (sensitive layers at BF16, others at INT4), how much additional memory does this cost vs pure INT4, and is it worth it?</h4><div class="qo"><button class="qob" data-opt="A" data-correct="false" onclick="cq(this,6,false)">A: Keeping 2 layers at BF16 costs negligible memory — the middle FFN layers are the bottleneck.</button>
+<button class="qob" data-opt="B" data-correct="false" onclick="cq(this,6,false)">B: Sensitivity analysis: for a 70B LLM with L=80 layers. Embedding layer: V×d = 128000×8192×2B = 2GB (BF16). LM head: d×V = 8192×128000×2B = 2GB (BF16). Total BF16 exception layers: 4GB. All other layers (80 transformer blocks) at INT4: 70B total × fraction_in_middle × 0.5B ≈ 66B params × 0.5B = 33GB. Total mixed precision: 4+33 = 37GB. Pure INT4 (all 70B at 0.5B): 35GB. Extra cost: 2GB (5.7% more memory). Worth it? Typically yes: the embedding/LM-head at FP16 recovers 0.5-2.0 perplexity points vs INT4 everywhere — these layers process vocabulary logits where precision directly affects token selection. The 2GB cost is negligible on a 2-GPU setup (2×80GB = 160GB). This is why bitsandbytes INT4 and GGUF always use higher precision for the first and last layers by default.</button>
+<button class="qob" data-opt="C" data-correct="true" onclick="cq(this,6,true)">C: Keeping 2 layers at BF16 adds ~4GB vs pure INT4 (37GB vs 35GB). The accuracy gain of 0.5-2.0 ppl points is worth the cost.</button>
+<button class="qob" data-opt="D" data-correct="false" onclick="cq(this,6,false)">D: BF16 layers in a 70B model: embedding (2GB) + LM head (2GB) = 4GB extra. But all-INT4 already fits in 35GB, so mixed precision at 37GB fits in 1× A100-40GB with some KV cache pressure.</button>
+</div><div class="qfeed"><div class="qfeed-head"></div><div class="qfeed-why"><strong>Mixed precision accounting:</strong> The total parameter count in embedding + LM head for typical LLMs is ~2-4% of total parameters (2×vocab×d / total_params ≈ 2×128K×8K / 70B ≈ 3%). But their quantization sensitivity is 10× higher — they directly map between discrete tokens and continuous representations. The extra 2GB for BF16 precision on these layers is unambiguously worth paying. In practice: use INT4 for all transformer blocks, INT8 for attention projections (slightly sensitive), BF16 for embedding/LM-head. This hybrid achieves accuracy within 0.3 perplexity of full BF16 at 35-37GB total.</div></div></div><div class="qq"><div class="qnum">Question 8 of 8</div><h4>A research team reports that QAT at INT4 matches FP32 training accuracy on a BERT-base model (110M parameters) for classification. However, when they apply the same QAT recipe to GPT-4-scale models (1T parameters), accuracy degrades severely. What fundamental difference causes QAT to fail to scale, and what alternatives exist?</h4><div class="qo"><button class="qob" data-opt="A" data-correct="false" onclick="cq(this,7,false)">A: QAT needs more training epochs at larger model sizes — the team simply didn't train long enough.</button>
+<button class="qob" data-opt="B" data-correct="true" onclick="cq(this,7,true)">B: QAT requires full gradient backpropagation through the quantized model. For 1T parameters: (1) Memory: forward activations for backward pass = O(batch × seq × d × L) stored in memory — at 1T scale with typical batch sizes, this requires 10-100× more GPU memory than PTQ, often requiring full model parallelism that makes QAT communication-bound. (2) Compute: a QAT epoch on 1T parameters costs roughly the same as pre-training (full forward+backward) — at $10M+ pre-training cost, QAT is economically infeasible. (3) The STE approximation error scales: with 1T parameters, the accumulated STE approximation error across all layers is much larger than for 110M — training may not converge to a good quantized optimum. Alternatives for large models: GPTQ (second-order PTQ, no training), AWQ (activation-aware PTQ, no training), AdaRound (adaptive rounding optimisation, no full backprop), FPTQ (feature pyramid PTQ), and SpQR (sparse+quantised, no training). QAT is primarily used for models under 1-3B parameters where a few epochs of fine-tuning are feasible.</button>
+<button class="qob" data-opt="C" data-correct="false" onclick="cq(this,7,false)">C: QAT doesn't scale because the STE gradient is numerically unstable in very deep models (depth > 100 layers).</button>
+<button class="qob" data-opt="D" data-correct="false" onclick="cq(this,7,false)">D: QAT fails at 1T scale because INT4 is not sufficient for 1T-parameter models — they need INT8 minimum.</button>
+</div><div class="qfeed"><div class="qfeed-head"></div><div class="qfeed-why"><strong>The QAT scalability wall:</strong> QAT training cost ≈ FP32 training cost × (QAT_epochs / pretrain_epochs). For BERT-base (110M), 5 QAT epochs on a V100 takes ~2 hours — trivial. For LLaMA-3-70B, 1 QAT epoch on 256 H100s takes ~40 hours and costs ~$50K. For GPT-4-class (1T), even 0.1 epochs is economically infeasible. PTQ methods (GPTQ, AWQ) run in minutes to hours and require only calibration data — no training. This is why the field has largely moved to PTQ for frontier models. QAT's remaining sweet spot: small models (BERT, T5-base, ViT-B) where a few fine-tuning epochs are cheap and INT4 accuracy is critical.</div></div></div><div class="qs" id="qs" style="display:none"><h3 id="sc">0/8</h3><p id="sm"></p></div></div>
+</section>
+</div>
+<footer>
+  <div style="max-width:var(--cw);margin:0 auto;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:1rem">
+    <div style="display:flex;gap:.8rem"><a href="quant_m1.html" class="pr">← M1: Vector Quantization</a><a href="quant_m3.html" class="nx">M3: Production Deployment →</a></div>
+    <span>Quantization for Modern AI · M2 · QAT, FP8 Training and Adaptive Precision</span>
+  </div>
+</footer>
+<script>
+window.addEventListener("scroll",function(){
+  var h=document.documentElement;
+  var pct=(h.scrollTop/(h.scrollHeight-h.clientHeight))*100;
+  document.getElementById("sp").style.width=pct+"%";
+});
+var obs=new IntersectionObserver(function(e){
+  e.forEach(function(x){if(x.isIntersecting)x.target.classList.add("vis");});
+},{threshold:0.06});
+document.querySelectorAll(".sec").forEach(function(s){obs.observe(s);});
+// Copy buttons
+function cp(btn,id){
+  navigator.clipboard.writeText(document.getElementById(id).innerText).then(function(){
+    var t=btn.textContent;btn.textContent="✓ Copied";
+    setTimeout(function(){btn.textContent=t;},2000);
+  });
+}
+// Metric bar animation
+window.addEventListener("load",function(){
+  document.querySelectorAll(".metric-fill[data-pct]").forEach(function(el){
+    setTimeout(function(){el.style.width=el.getAttribute("data-pct")+"%";},300);
+  });
+});
+// Quiz engine
+var qstate={};
+var qtotal=document.querySelectorAll(".qq").length;
+function updateProgress(){
+  var done=Object.keys(qstate).length;
+  var fill=document.querySelector(".qprog-fill");
+  var txt=document.querySelector(".qprog-text");
+  if(fill)fill.style.width=Math.round(done/qtotal*100)+"%";
+  if(txt)txt.textContent=done+"/"+qtotal+" answered";
+  if(done===qtotal)showScore();
+}
+function showScore(){
+  var c=Object.values(qstate).filter(function(v){return v;}).length;
+  var sc=document.getElementById("sc");
+  var sm=document.getElementById("sm");
+  if(sc)sc.textContent=c+"/"+qtotal+" correct";
+  if(sm){
+    var msgs=["Keep studying — revisit QAT: scale initialisation s = amax(W)/(2^(b-1)-1) from pretrained weights is critical. Start with PTQ-equivalent warm-up before enabling LSQ.","Good effort — review STE convergence: works because quantization error is O(s) small, networks are overparameterised, and weights cluster near quant levels during training.","Building — re-read LSQ gradient ∂ℒ/∂s = Σᵢ⌊wᵢ/s⌉_clip · upstream_grad, scaled by 1/√(N·n) for training stability.","Solid — review E4M3 vs E5M2: forward=E4M3 (more precision, range ±448), backward=E5M2 (wider range ±57344 prevents gradient overflow spikes).","Strong — revisit SpQR: 1% outliers stored FP16, 99% at 3-bit → 3.13 bpw. Outlier separation eliminates scale contamination that GPTQ only partially fixes.","Excellent — nearly mastered.","Outstanding — one question from perfect.","Perfect score — full mastery of QAT, FP8, adaptive precision and frontier quantization. Ready to design production training pipelines."][c];
+    sm.textContent=msgs[Math.min(c,msgs.length-1)];
+    sm.style.color=c>=Math.round(qtotal*0.8)?"#5eead4":"#f472b6";
+  }
+  var qs=document.getElementById("qs");
+  if(qs)qs.style.display="block";
+}
+function cq(btn,qi,isCorrect){
+  if(qstate[qi]!==undefined)return;
+  qstate[qi]=isCorrect;
+  var qq=btn.closest(".qq");
+  qq.classList.add("answered");
+  var allBtns=qq.querySelectorAll(".qob");
+  allBtns.forEach(function(b){
+    b.setAttribute("disabled","");
+    var bc=b.getAttribute("data-correct")==="true";
+    if(bc)b.classList.add("ok");
+    else if(b===btn&&!isCorrect)b.classList.add("no");
+  });
+  var feed=qq.querySelector(".qfeed");
+  if(feed){
+    feed.style.display="block";
+    feed.className="qfeed "+(isCorrect?"correct":"wrong");
+    var head=feed.querySelector(".qfeed-head");
+    if(head)head.textContent=isCorrect?"✓ Correct — "+btn.getAttribute("data-opt")+" is right":"✗ Not quite — see the explanation below";
+  }
+  updateProgress();
+}</script>
+</body></html>

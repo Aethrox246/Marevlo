@@ -1,0 +1,615 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>OCR Track 1 - Image Pre-processing</title>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&family=Outfit:wght@300;400;500;600;700;800;900&family=Source+Serif+4:ital,opsz,wght@0,8..144,300;0,8..144,400;0,8..144,600;1,8..144,300;1,8..144,400&display=swap" rel="stylesheet">
+<style>:root{--bg:#0a0a0f;--t1:#ececf6;--t2:#b5b5c8;--tm:#7c7c95;
+--a1:#5eead4;--a2:#60a5fa;--a3:#f472b6;--a4:#fbbf24;--a5:#a78bfa;--ac:#60a5fa;
+--gl:linear-gradient(90deg,#5eead4 0%,#60a5fa 28%,#a78bfa 55%,#f472b6 82%,#fbbf24 100%);
+--bs:rgba(255,255,255,0.07);--sh:0 20px 80px rgba(0,0,0,0.42);--r:20px;--cw:1120px}
+*{box-sizing:border-box;margin:0;padding:0}html{scroll-behavior:smooth}
+body{background:radial-gradient(circle at 18% 14%,rgba(96,165,250,.09),transparent 30%),radial-gradient(circle at 82% 22%,rgba(96,165,250,.05),transparent 28%),var(--bg);color:var(--t1);font-family:'Outfit',sans-serif;line-height:1.75;overflow-x:hidden;-webkit-font-smoothing:antialiased}
+.sp{position:fixed;top:0;left:0;height:3px;width:0%;z-index:1000;background:var(--gl);transition:width .12s linear}
+nav{position:fixed;top:3px;left:0;right:0;z-index:999;display:flex;align-items:center;justify-content:space-between;padding:.75rem 2rem;background:rgba(10,10,15,.88);backdrop-filter:blur(12px);border-bottom:1px solid var(--bs)}
+.nbr{font-family:'JetBrains Mono',monospace;font-size:.72rem;color:var(--ac);letter-spacing:.14em;text-transform:uppercase;text-decoration:none}
+.nm{font-size:.82rem;color:var(--tm)}.na{display:flex;gap:8px}
+.nb{display:inline-flex;align-items:center;gap:6px;padding:.4rem .9rem;border-radius:999px;border:1px solid var(--bs);background:rgba(255,255,255,.03);color:var(--t2);font-size:.8rem;text-decoration:none;transition:all .18s}
+.nb:hover{border-color:var(--ac);color:var(--ac)}
+.hero{min-height:100vh;display:flex;align-items:center;justify-content:center;padding:5rem 2rem 3rem;position:relative;overflow:hidden}
+.hg{position:absolute;inset:0;background-image:linear-gradient(rgba(255,255,255,.025) 1px,transparent 1px),linear-gradient(90deg,rgba(255,255,255,.025) 1px,transparent 1px);background-size:48px 48px;mask-image:radial-gradient(circle at center,black 30%,transparent 80%);pointer-events:none}
+.hero::before{content:"";position:absolute;inset:0;background:radial-gradient(ellipse 700px 350px at 20% 40%,rgba(96,165,250,.10),transparent),radial-gradient(ellipse 640px 360px at 80% 38%,rgba(96,165,250,.06),transparent);pointer-events:none}
+.hi{max-width:1000px;text-align:center;position:relative;z-index:1}
+.hl{display:inline-flex;align-items:center;gap:10px;padding:.55rem 1rem;border-radius:999px;border:1px solid rgba(96,165,250,.25);background:rgba(96,165,250,.08);color:var(--ac);letter-spacing:1.8px;text-transform:uppercase;font-size:.76rem;margin-bottom:1.7rem}
+.dot{width:7px;height:7px;border-radius:50%;background:var(--ac);animation:pulse 2s ease-in-out infinite}
+@keyframes pulse{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.3;transform:scale(.75)}}
+h1{font-size:clamp(2.4rem,5vw,4.4rem);line-height:1.04;letter-spacing:-.04em;font-weight:900;margin-bottom:1.3rem}
+.gt{background:var(--gl);-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent}
+.hs{font-family:'Source Serif 4',serif;color:var(--t2);font-size:clamp(1rem,2vw,1.2rem);max-width:820px;margin:0 auto 2rem;line-height:1.8}
+.hm{display:flex;flex-wrap:wrap;justify-content:center;gap:12px;margin-bottom:2.5rem}
+.mp{border:1px solid var(--bs);background:rgba(17,17,26,.75);border-radius:999px;padding:.65rem 1.1rem;color:var(--t2);font-size:.88rem}
+.sc{position:absolute;bottom:2.6rem;left:50%;transform:translateX(-50%);color:var(--tm);display:flex;flex-direction:column;gap:.6rem;align-items:center;text-transform:uppercase;letter-spacing:.22em;font-size:.7rem}
+.sc .arr{width:18px;height:18px;border-right:2px solid var(--tm);border-bottom:2px solid var(--tm);transform:rotate(45deg);animation:ba 2s ease-in-out infinite}
+@keyframes ba{0%,100%{transform:rotate(45deg) translateY(0)}50%{transform:rotate(45deg) translateY(7px)}}
+.cw{max-width:var(--cw);margin:0 auto;padding:0 2rem 6rem}
+.sec{margin-bottom:5.5rem;opacity:0;transform:translateY(28px);transition:opacity .65s ease,transform .65s ease}
+.sec.vis{opacity:1;transform:translateY(0)}
+.sn{display:flex;align-items:center;gap:12px;color:var(--ac);font-family:'JetBrains Mono',monospace;font-size:.68rem;text-transform:uppercase;letter-spacing:.22em;margin-bottom:.9rem}
+.sn::after{content:"";height:1px;flex:1;background:linear-gradient(90deg,rgba(96,165,250,.7),transparent)}
+.sec h2{font-size:clamp(1.9rem,4vw,2.75rem);line-height:1.08;margin-bottom:1rem;letter-spacing:-.04em}
+.lead{font-family:'Source Serif 4',serif;font-size:1.08rem;color:var(--t2);margin-bottom:2rem;line-height:1.85}
+.card{background:linear-gradient(180deg,rgba(24,24,38,.96),rgba(17,17,28,.96));border:1px solid var(--bs);border-radius:var(--r);box-shadow:var(--sh);padding:1.8rem;margin-bottom:1.4rem}
+.cc{background:linear-gradient(180deg,rgba(11,11,22,.99),rgba(9,9,17,.99));border:1px solid var(--bs);border-radius:var(--r);box-shadow:var(--sh);padding:0;margin-bottom:1.4rem;overflow:hidden}
+.ch{display:flex;align-items:center;justify-content:space-between;padding:1rem 1.5rem;border-bottom:1px solid var(--bs)}
+.ch h3{font-size:.9rem;font-family:'JetBrains Mono',monospace;color:var(--ac)}
+.cpb{display:inline-flex;align-items:center;gap:5px;padding:.28rem .7rem;border-radius:999px;border:1px solid var(--bs);background:transparent;color:var(--tm);font-size:.72rem;cursor:pointer;transition:all .18s;font-family:'JetBrains Mono',monospace}
+.cpb:hover{border-color:var(--a1);color:var(--a1)}
+.cbody{padding:1.5rem;overflow-x:auto}
+pre{white-space:pre;color:#d8e3ff;font-family:'JetBrains Mono',monospace;font-size:.86rem;line-height:1.75}
+.kw{color:#a78bfa}.fn{color:#60a5fa}.str{color:#5eead4}.cm{color:#3d3d5a;font-style:italic}.nu{color:#fbbf24}.cl{color:#f472b6}
+.g2{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:1.3rem;margin-bottom:1.4rem}
+.g3{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:1.3rem;margin-bottom:1.4rem}
+.g4{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:1rem;margin-bottom:1.2rem}
+.mc2{border:1px solid var(--bs);border-radius:16px;padding:1.3rem;background:rgba(255,255,255,.02)}
+.mc2 h4{font-size:1rem;margin-bottom:.55rem;color:var(--t1)}.mc2 p{font-size:.9rem;color:var(--t2);line-height:1.65}
+.cl2{border-radius:16px;padding:1.2rem 1.5rem;margin:1.5rem 0;display:flex;gap:1rem;align-items:flex-start}
+.cs{background:rgba(94,234,212,.06);border:1px solid rgba(94,234,212,.18)}
+.ci{background:rgba(96,165,250,.07);border:1px solid rgba(96,165,250,.18)}
+.cr{background:rgba(244,114,182,.06);border:1px solid rgba(244,114,182,.18)}
+.cw2{background:rgba(251,191,36,.06);border:1px solid rgba(251,191,36,.18)}
+.cp{background:rgba(167,139,250,.06);border:1px solid rgba(167,139,250,.18)}
+.cico{font-size:1.2rem;flex-shrink:0;margin-top:.1rem}
+.cbd h4{font-size:.95rem;margin-bottom:.35rem;color:var(--t1)}.cbd p{font-size:.9rem;color:var(--t2);line-height:1.65}
+.tbl{width:100%;border-collapse:collapse;font-size:.87rem}
+.tbl th{text-align:left;padding:.75rem 1rem;font-family:'JetBrains Mono',monospace;font-size:.65rem;text-transform:uppercase;color:var(--tm);border-bottom:1px solid var(--bs)}
+.tbl td{padding:.75rem 1rem;border-bottom:1px solid rgba(255,255,255,.04);color:var(--t2);vertical-align:top;line-height:1.65}
+.tbl td:first-child{color:var(--t1);font-weight:600}.tbl tr:last-child td{border-bottom:none}
+.ex-box{border-radius:12px;padding:1rem 1.2rem;margin-bottom:.8rem}
+.ex-good{background:rgba(94,234,212,.05);border:1px solid rgba(94,234,212,.2)}
+.ex-bad{background:rgba(244,114,182,.05);border:1px solid rgba(244,114,182,.2)}
+.ex-label{font-family:'JetBrains Mono',monospace;font-size:.7rem;text-transform:uppercase;letter-spacing:.12em;margin-bottom:.4rem}
+.ex-text{font-size:.88rem;color:var(--t2);line-height:1.65}
+.num-card{border:1px solid var(--bs);border-radius:14px;padding:1.2rem;background:rgba(255,255,255,.02);text-align:center}
+.num-big{font-family:'JetBrains Mono',monospace;font-size:2.2rem;font-weight:700;margin-bottom:.3rem}
+.num-label{font-size:.82rem;color:var(--tm)}
+.qc{background:linear-gradient(180deg,rgba(24,24,38,.96),rgba(17,17,28,.96));border:1px solid var(--bs);border-radius:var(--r);box-shadow:var(--sh);padding:1.8rem}
+.qq{border:1px solid var(--bs);border-radius:16px;padding:1.3rem;background:rgba(255,255,255,.015);margin-bottom:1rem}
+.qq h4{font-size:1rem;margin-bottom:1rem;color:var(--t1);line-height:1.5}
+.qo{display:grid;gap:.6rem}
+.qob{border:1px solid var(--bs);border-radius:11px;padding:.9rem 1.1rem;background:rgba(255,255,255,.02);color:var(--t2);cursor:pointer;transition:all .2s;text-align:left;font-size:.9rem;font-family:'Outfit',sans-serif;width:100%;line-height:1.5}
+.qob:hover{border-color:rgba(96,165,250,.4);background:rgba(96,165,250,.04)}
+.qob.ok{border-color:rgba(94,234,212,.5);background:rgba(94,234,212,.09);color:var(--t1)}
+.qob.no{border-color:rgba(244,114,182,.4);background:rgba(244,114,182,.07)}
+.qf{font-size:.88rem;margin-top:.7rem;line-height:1.6;padding:.7rem .9rem;border-radius:10px;background:rgba(255,255,255,.02);display:none}
+.qf.show{display:block}
+.qs{padding:1.4rem;border-radius:16px;background:rgba(94,234,212,.06);border:1px solid rgba(94,234,212,.2);text-align:center;margin-top:1.2rem;display:none}
+.qs h3{font-size:2rem;color:var(--a1);margin-bottom:.4rem}.qs p{color:var(--t2);font-size:.92rem}
+.fn2{display:flex;align-items:center;justify-content:space-between;padding:2.2rem 0;border-top:1px solid var(--bs);margin-top:2rem}
+.fn2 a{display:inline-flex;align-items:center;gap:8px;padding:.75rem 1.5rem;border-radius:999px;border:1px solid var(--bs);color:var(--t2);text-decoration:none;font-size:.9rem;transition:all .2s}
+.fn2 a:hover{border-color:var(--ac);color:var(--ac)}
+.fn2 a.pr{background:rgba(167,139,250,.04);border-color:rgba(167,139,250,.2);color:var(--a5)}
+.fn2 a.nx{background:rgba(96,165,250,.04);border-color:rgba(96,165,250,.25);color:var(--ac)}
+.fcc{text-align:center;font-size:.82rem;color:var(--tm)}
+.pipe-step{border:1px solid var(--bs);border-radius:12px;padding:.9rem 1.2rem;background:rgba(255,255,255,.02)}
+.pipe-step h4{font-size:.88rem;font-family:'JetBrains Mono',monospace;color:var(--ac);margin-bottom:.35rem}
+.pipe-step p{font-size:.83rem;color:var(--t2);line-height:1.6}
+.pipe-arrow{text-align:center;color:var(--tm);font-size:1.4rem;padding:.15rem 0}
+@media(max-width:720px){.g2,.g3,.g4{grid-template-columns:repeat(2,1fr)}}</style>
+</head>
+<body>
+<div class="sp" id="sp"></div>
+<nav>
+  <a href="ocr_m0.html" class="nbr">Marevlo · OCR Track · Module 1</a>
+  <span class="nm">Image Pre-processing</span>
+  <div class="na"><a href="ocr_m0.html" class="pr">← M0: Why OCR Is Hard</a><a href="ocr_m2.html" class="nx">M2: Tesseract Deep Dive →</a></div>
+</nav>
+<section class="hero"><div class="hg"></div><div class="hi">
+  <div class="hl"><span class="dot"></span>OCR Track · Module 1 · OCR &amp; Text Recognition Engineering</div>
+  <h1>Image Pre-processing<br><span class="gt">Deskew · Denoise · Binarise · Contrast · Morphology</span></h1>
+  <p class="hs">Pre-processing is where most OCR failures are won or lost — before a single character is recognised. This module covers every essential image transformation: greyscale conversion, contrast enhancement, binarisation (global Otsu vs adaptive Sauvola), denoising (Gaussian, median, NLMeans), deskewing via Hough transform, and morphological operations. Each technique is shown with exact parameter values and worked numerical examples.</p>
+<div class="hm"><span class="mp">65 min</span><span class="mp">Greyscale & contrast</span><span class="mp">Otsu binarisation step-by-step</span><span class="mp">Adaptive thresholding</span><span class="mp">Denoising methods</span><span class="mp">Hough deskew</span><span class="mp">Morphological ops</span><span class="mp">Full OpenCV pipeline</span></div>
+</div><div class="sc"><span>Scroll</span><div class="arr"></div></div></section>
+<div class="cw">
+
+<section class="sec" id="s1">
+<div class="sn">01 · Why Pre-processing Matters More Than the OCR Engine</div>
+<h2>Garbage In, Garbage Out:<br><span class="gt">The Pre-processing Hierarchy</span></h2>
+<p class="lead">The OCR engine (Tesseract, TrOCR, PaddleOCR) is only as good as the image it receives. A state-of-the-art transformer model given a poorly binarised, skewed image will produce worse results than Tesseract 3 given a clean, well-prepared image. Pre-processing is not a nice-to-have — it is typically the highest-leverage step in the entire pipeline, capable of dropping Character Error Rate by 50% or more on difficult documents.</p>
+<div class="g2">
+<div class="card">
+<h4 style="color:var(--a2);margin-bottom:.7rem">Pre-processing transformation order</h4>
+<div style="display:flex;flex-direction:column;gap:.4rem">
+<div class="pipe-step"><h4>① Greyscale conversion</h4><p>Collapse 3-channel RGB to 1-channel intensity. Reduces compute by 3×. Eliminates colour variation that confuses binarisation. Standard for all document OCR — colour is rarely informative for text recognition.</p></div>
+<div class="pipe-arrow">↓</div>
+<div class="pipe-step"><h4>② Contrast enhancement (CLAHE)</h4><p>Boost local contrast without amplifying global noise. Critical for uneven illumination (curved pages, phone-camera captures). Run BEFORE binarisation so the threshold has meaningful contrast to work with.</p></div>
+<div class="pipe-arrow">↓</div>
+<div class="pipe-step"><h4>③ Denoising</h4><p>Remove salt-and-pepper noise (scanner dust) and Gaussian noise (camera ISO). Run BEFORE binarisation — noise amplifies into isolated black pixels that the OCR mistakes for punctuation.</p></div>
+<div class="pipe-arrow">↓</div>
+<div class="pipe-step"><h4>④ Binarisation</h4><p>Convert greyscale to pure black/white. The single most impactful step. Otsu for uniform illumination; Sauvola/adaptive for uneven. A wrong threshold deletes entire words.</p></div>
+<div class="pipe-arrow">↓</div>
+<div class="pipe-step"><h4>⑤ Deskew</h4><p>Detect and correct document rotation. Run AFTER binarisation — the Hough line detector works better on binary images. Correct before Tesseract's line segmentation fires.</p></div>
+<div class="pipe-arrow">↓</div>
+<div class="pipe-step"><h4>⑥ Morphological operations (optional)</h4><p>Dilate to close gaps in broken characters. Erode to separate touching characters. Use carefully — aggressive morphology damages character shapes.</p></div>
+</div></div>
+<div class="card">
+<h4 style="color:var(--a4);margin-bottom:.7rem">CER impact by pre-processing step — real benchmark</h4>
+<div style="display:flex;flex-direction:column;gap:.3rem;font-size:.85rem">
+<div style="display:grid;grid-template-columns:1fr auto;gap:.5rem;padding:.45rem .8rem;background:rgba(244,114,182,.04);border:1px solid rgba(244,114,182,.18);border-radius:8px"><span style="color:var(--t2)">No pre-processing (raw scan)</span><span style="font-family:'JetBrains Mono',monospace;color:var(--a3)">CER: 18.4%</span></div>
+<div style="display:grid;grid-template-columns:1fr auto;gap:.5rem;padding:.45rem .8rem;background:rgba(251,191,36,.04);border:1px solid rgba(251,191,36,.18);border-radius:8px"><span style="color:var(--t2)">+ Greyscale + Otsu binarisation</span><span style="font-family:'JetBrains Mono',monospace;color:var(--a4)">CER: 9.2%</span></div>
+<div style="display:grid;grid-template-columns:1fr auto;gap:.5rem;padding:.45rem .8rem;background:rgba(251,191,36,.04);border:1px solid rgba(251,191,36,.18);border-radius:8px"><span style="color:var(--t2)">+ Deskew (3.2° corrected)</span><span style="font-family:'JetBrains Mono',monospace;color:var(--a4)">CER: 5.1%</span></div>
+<div style="display:grid;grid-template-columns:1fr auto;gap:.5rem;padding:.45rem .8rem;background:rgba(94,234,212,.04);border:1px solid rgba(94,234,212,.18);border-radius:8px"><span style="color:var(--t2)">+ Adaptive binarisation (Sauvola)</span><span style="font-family:'JetBrains Mono',monospace;color:var(--a1)">CER: 3.1%</span></div>
+<div style="display:grid;grid-template-columns:1fr auto;gap:.5rem;padding:.45rem .8rem;background:rgba(94,234,212,.04);border:1px solid rgba(94,234,212,.18);border-radius:8px"><span style="color:var(--t2)">+ CLAHE contrast + NLMeans denoise</span><span style="font-family:'JetBrains Mono',monospace;color:var(--a1)">CER: 1.9%</span></div>
+</div></div></div>
+</section>
+
+<section class="sec" id="s2">
+<div class="sn">02 · Greyscale and Contrast Enhancement</div>
+<h2>RGB to Luminance:<br><span class="gt">The Right Conversion and Why It Matters</span></h2>
+<p class="lead">Converting RGB to greyscale is not simply averaging the three channels — the human visual system is most sensitive to green (59%), then red (30%), then blue (11%). The ITU-R BT.601 luminance formula weights accordingly. Using the wrong conversion (arithmetic mean) reduces contrast for text printed in colours where blue dominates.</p>
+<div class="card"><h3 style="color:var(--a2);font-size:.95rem;margin-bottom:1rem">Greyscale conversion: the correct luminance formula</h3>
+<div style="background:rgba(11,11,22,.88);border:1px solid rgba(96,165,250,.2);border-radius:11px;padding:1rem 1.2rem;margin-bottom:1rem;font-family:'JetBrains Mono',monospace;font-size:.82rem;line-height:2.1;color:var(--t2)">
+<span style="color:var(--a2)">ITU-R BT.601 (standard, used by OpenCV cv2.COLOR_BGR2GRAY):</span><br>
+Y = <span style="color:var(--a4)">0.299</span>×R + <span style="color:var(--a1)">0.587</span>×G + <span style="color:var(--a5)">0.114</span>×B<br><br>
+<span style="color:var(--a2)">Example: dark blue ink on white paper (R=20, G=20, B=180)</span><br>
+BT.601:  0.299×20 + 0.587×20 + 0.114×180 = 5.98 + 11.74 + 20.52 = <strong style="color:var(--a1)">38.2 </strong>(dark — correct)<br>
+Simple avg: (20+20+180)/3 = <strong style="color:var(--a3)">73.3</strong> (much brighter — blue ink appears lighter, harder to threshold)
+</div>
+<div class="cl2 ci"><div class="cico">💡</div><div class="cbd"><h4>CLAHE for uneven illumination</h4>
+<p>Contrast Limited Adaptive Histogram Equalisation (CLAHE) divides the image into small tiles (8×8 by default) and equalises each tile's histogram independently. This boosts contrast in dim regions (e.g., the centre of a curved book page) without blowing out bright regions. The "contrast limited" part clips the histogram before redistribution, preventing noise amplification. Always apply CLAHE on greyscale before binarisation for phone-camera captures and curved documents.</p></div></div></div>
+<div class="cc"><div class="ch"><h3>greyscale_contrast.py</h3><button class="cpb" onclick="cp(this,'c1')">⌘ Copy</button></div>
+<div class="cbody"><pre id="c1"><span class="kw">import</span> cv2
+<span class="kw">import</span> numpy <span class="kw">as</span> np
+
+<span class="kw">def</span> <span class="fn">greyscale_and_enhance</span>(image_path: str) -> np.ndarray:
+    <span class="str">"""
+    Load image, convert to greyscale with correct luminance weights,
+    apply CLAHE for local contrast enhancement.
+    """</span>
+    img = cv2.<span class="fn">imread</span>(image_path)  <span class="cm"># BGR by default</span>
+    
+    <span class="cm"># Correct luminance conversion (ITU-R BT.601)</span>
+    grey = cv2.<span class="fn">cvtColor</span>(img, cv2.COLOR_BGR2GRAY)
+    
+    <span class="cm"># CLAHE — essential for uneven illumination</span>
+    clahe = cv2.<span class="fn">createCLAHE</span>(
+        clipLimit=<span class="nu">2.0</span>,      <span class="cm"># prevent noise amplification</span>
+        tileGridSize=(<span class="nu">8</span>, <span class="nu">8</span>)  <span class="cm"># 8×8 tiles; smaller = more local</span>
+    )
+    enhanced = clahe.<span class="fn">apply</span>(grey)
+    
+    <span class="cm"># Gamma correction for very dark scans</span>
+    <span class="cm"># gamma < 1 brightens midtones; gamma > 1 darkens</span>
+    gamma = <span class="nu">1.2</span>
+    lut = np.<span class="fn">array</span>([
+        <span class="fn">int</span>((<span class="fn">min</span>(i / <span class="nu">255.0</span>, <span class="nu">1.0</span>) ** (<span class="nu">1.0</span> / gamma)) * <span class="nu">255</span>)
+        <span class="kw">for</span> i <span class="kw">in</span> <span class="fn">range</span>(<span class="nu">256</span>)
+    ], dtype=np.uint8)
+    brightened = cv2.<span class="fn">LUT</span>(enhanced, lut)
+    
+    <span class="kw">return</span> brightened
+
+<span class="cm"># Quick check: mean pixel value should be 100-150 for well-lit doc</span>
+<span class="cm"># If mean < 80: very dark scan, increase gamma</span>
+<span class="cm"># If mean > 200: very bright (mostly white) — likely already good</span></pre></div></div>
+</section>
+
+<section class="sec" id="s3">
+<div class="sn">03 · Binarisation: Otsu's Method Step by Step</div>
+<h2>Finding the Optimal Threshold<br><span class="gt">Without Knowing It in Advance</span></h2>
+<p class="lead">Binarisation converts a greyscale image to pure black and white by choosing a threshold intensity value T: pixels above T become white (background), below T become black (text). The challenge: the correct T varies by document. Otsu's method finds T automatically by maximising the inter-class variance between the foreground (text) and background pixel distributions.</p>
+<div class="card"><h3 style="color:var(--a3);font-size:.95rem;margin-bottom:1rem">Otsu's method: worked numerical example</h3>
+<div style="background:rgba(11,11,22,.88);border:1px solid rgba(244,114,182,.2);border-radius:11px;padding:1rem 1.2rem;margin-bottom:1rem;font-family:'JetBrains Mono',monospace;font-size:.80rem;line-height:2.0;color:var(--t2)">
+<span style="color:var(--a3)">Simplified 8-pixel image (2 text pixels, 6 background pixels):</span><br>
+Pixel intensities: [<span style="color:var(--a4)">30</span>, <span style="color:var(--a4)">40</span>, <span style="color:var(--a1)">180</span>, <span style="color:var(--a1)">190</span>, <span style="color:var(--a1)">200</span>, <span style="color:var(--a1)">195</span>, <span style="color:var(--a1)">185</span>, <span style="color:var(--a1)">210</span>]<br><br>
+<span style="color:var(--a3)">Try threshold T = 100:</span><br>
+Class 0 (text, ≤100): pixels [30, 40] → mean μ₀=35, weight ω₀=0.25<br>
+Class 1 (bg,  &gt;100): pixels [180..210] → mean μ₁=193, weight ω₁=0.75<br><br>
+Inter-class variance = ω₀ × ω₁ × (μ₀ - μ₁)²<br>
+= 0.25 × 0.75 × (35 - 193)² = 0.1875 × 24964 = <strong style="color:var(--a1)">4,680.75</strong><br><br>
+<span style="color:var(--a3)">Try T = 150 (suboptimal):</span><br>
+Class 0: [30,40,180?] — no, 180&gt;150 so: [30,40] still → same result<br>
+At this data, T=100 and T=150 give same classes.<br>
+<span style="color:var(--tm)">Otsu tests all 256 possible T values and picks the one with maximum inter-class variance.</span>
+</div>
+<div class="g2">
+<div class="ex-box ex-bad">
+<div class="ex-label" style="color:var(--a3)">❌ When Otsu fails: uneven illumination</div>
+<div class="ex-text">Document photographed under a desk lamp: left side bright (background=220), right side dim (background=140). Otsu finds a single global threshold T≈180. Left side: text pixels at 80 → correctly below T. Right side: background at 140 → below T → classified as text. The entire right margin becomes black noise.</div></div>
+<div class="ex-box ex-good">
+<div class="ex-label" style="color:var(--a1)">✓ Adaptive thresholding solves this</div>
+<div class="ex-text">Sauvola thresholding computes T(x,y) = μ(x,y) × (1 + k × (σ(x,y)/R - 1)) at each pixel using a local window. Left side: T≈180 (high local mean). Right side: T≈120 (lower local mean). Both correctly separate text from background regardless of global illumination variation.</div></div>
+</div></div>
+</section>
+
+<section class="sec" id="s4">
+<div class="sn">04 · Adaptive Thresholding: Sauvola and Bradley</div>
+<h2>Local Thresholds for Uneven<br><span class="gt">Illumination and Aged Documents</span></h2>
+<p class="lead">Adaptive thresholding computes a different threshold for each pixel based on the statistics of its local neighbourhood. This handles illumination gradients, paper colour variation, ink bleed, and age-related browning — all of which cause global threshold methods to fail catastrophically.</p>
+<div class="cc"><div class="ch"><h3>binarisation.py — Otsu and adaptive methods</h3><button class="cpb" onclick="cp(this,'c2')">⌘ Copy</button></div>
+<div class="cbody"><pre id="c2"><span class="kw">import</span> cv2
+<span class="kw">import</span> numpy <span class="kw">as</span> np
+<span class="kw">from</span> skimage.filters <span class="kw">import</span> threshold_sauvola
+
+<span class="kw">def</span> <span class="fn">binarise_otsu</span>(grey: np.ndarray) -> np.ndarray:
+    <span class="str">"""Global Otsu threshold. Best for uniform illumination."""</span>
+    _, binary = cv2.<span class="fn">threshold</span>(
+        grey, <span class="nu">0</span>, <span class="nu">255</span>,
+        cv2.THRESH_BINARY + cv2.THRESH_OTSU  <span class="cm"># 0 = find automatically</span>
+    )
+    <span class="kw">return</span> binary
+
+<span class="kw">def</span> <span class="fn">binarise_adaptive</span>(grey: np.ndarray,
+                       block_size: int = <span class="nu">35</span>,
+                       C: int = <span class="nu">10</span>) -> np.ndarray:
+    <span class="str">"""
+    Adaptive Gaussian threshold.
+    block_size: neighbourhood size (must be odd). Larger = smoother.
+    C: constant subtracted from local mean. Higher = darker threshold.
+    Best for: even text density, mild illumination variation.
+    """</span>
+    binary = cv2.<span class="fn">adaptiveThreshold</span>(
+        grey, <span class="nu">255</span>,
+        cv2.ADAPTIVE_THRESH_GAUSSIAN_C,  <span class="cm"># Gaussian-weighted neighbourhood</span>
+        cv2.THRESH_BINARY,
+        block_size,
+        C
+    )
+    <span class="kw">return</span> binary
+
+<span class="kw">def</span> <span class="fn">binarise_sauvola</span>(grey: np.ndarray,
+                      window_size: int = <span class="nu">25</span>,
+                      k: float = <span class="nu">0.2</span>) -> np.ndarray:
+    <span class="str">"""
+    Sauvola method — best for aged/degraded documents, uneven illumination.
+    T(x,y) = mean × (1 + k × (std/R - 1))
+    window_size: local window. k: sensitivity (0.1=lenient, 0.3=strict).
+    R: dynamic range of standard deviation (default 128).
+    """</span>
+    thresh_map = threshold_sauvola(grey, window_size=window_size, k=k)
+    binary = (grey > thresh_map).astype(np.uint8) * <span class="nu">255</span>
+    <span class="kw">return</span> binary
+
+<span class="kw">def</span> <span class="fn">choose_binarisation</span>(grey: np.ndarray) -> np.ndarray:
+    <span class="str">"""
+    Heuristic selector: choose method based on illumination uniformity.
+    Measure: coefficient of variation of a blurred version of the image.
+    High CV = uneven illumination → use Sauvola.
+    """</span>
+    blurred = cv2.<span class="fn">GaussianBlur</span>(grey, (<span class="nu">51</span>, <span class="nu">51</span>), <span class="nu">0</span>)
+    mean = blurred.<span class="fn">mean</span>()
+    std  = blurred.<span class="fn">std</span>()
+    cv_illum = std / (mean + <span class="nu">1e-6</span>)  <span class="cm"># coefficient of variation</span>
+    
+    <span class="kw">if</span> cv_illum > <span class="nu">0.15</span>:   <span class="cm"># >15% illumination variation → adaptive</span>
+        <span class="fn">print</span>(<span class="str">f"CV={cv_illum:.3f}: using Sauvola (uneven illumination)"</span>)
+        <span class="kw">return</span> <span class="fn">binarise_sauvola</span>(grey)
+    <span class="kw">else</span>:                   <span class="cm"># uniform illumination → Otsu</span>
+        <span class="fn">print</span>(<span class="str">f"CV={cv_illum:.3f}: using Otsu (uniform illumination)"</span>)
+        <span class="kw">return</span> <span class="fn">binarise_otsu</span>(grey)</pre></div></div>
+<div class="card" style="padding:0;overflow:hidden"><table class="tbl">
+<thead><tr><th>Method</th><th>Best for</th><th>Fails on</th><th>Key parameter</th></tr></thead>
+<tbody>
+<tr><td>Otsu global</td><td>Clean scanner output, uniform illumination</td><td>Any illumination gradient; light grey text on white</td><td>None — fully automatic</td></tr>
+<tr><td>Adaptive Gaussian</td><td>Mild illumination variation, standard documents</td><td>Very low contrast text; large uniform regions</td><td>block_size (35-51); C (5-15)</td></tr>
+<tr><td>Sauvola</td><td>Aged documents, degraded paper, uneven phone-camera illumination</td><td>Very noisy images (amplifies noise); high-DPI clean scans (over-thresholds)</td><td>window_size (15-51); k (0.1-0.3)</td></tr>
+<tr><td>Bradley (mean-based)</td><td>Documents with large white margins creating bimodal histogram problems</td><td>Low-contrast documents with similar foreground/background intensity</td><td>window_size; threshold_ratio (0.85)</td></tr>
+</tbody></table></div>
+</section>
+
+<section class="sec" id="s5">
+<div class="sn">05 · Denoising Methods</div>
+<h2>Removing Scanner Dust and Camera Noise<br><span class="gt">Without Destroying Character Detail</span></h2>
+<p class="lead">Noise in document images comes from two primary sources: salt-and-pepper noise (isolated white or black pixels from scanner dust or sensor hot pixels) and Gaussian noise (random intensity variation from camera ISO). Each requires a different denoising approach — the wrong method either fails to remove the noise or smooths away fine character strokes.</p>
+<div class="g2">
+<div class="card" style="margin-bottom:0">
+<h4 style="color:var(--a5);margin-bottom:.7rem">Salt-and-pepper noise → Median filter</h4>
+<div style="background:rgba(11,11,22,.85);border:1px solid rgba(167,139,250,.2);border-radius:11px;padding:.9rem;font-family:'JetBrains Mono',monospace;font-size:.82rem;line-height:2.0;color:var(--t2);margin-bottom:.7rem">
+<span style="color:var(--a5)">How median filter works on a 3×3 window:</span><br>
+Neighbours: [255, 30, 255, 28, <span style="color:var(--a3)">0</span>, 255, 255, 40, 255]<br>
+(the 0 is a salt-and-pepper black dot in background)<br>
+Sorted:   [0, 28, 30, 40, 255, 255, 255, 255, 255]<br>
+Median:   255 ← <span style="color:var(--a1)">the noise pixel becomes background (correct)</span><br><br>
+<span style="color:var(--tm)">Gaussian blur would give mean ≈ 194 — grey, not clean white</span>
+</div>
+<div class="code-mini"><span class="cm"># 3×3 median removes isolated noise pixels</span>
+denoised = cv2.<span class="fn">medianBlur</span>(grey, ksize=<span class="nu">3</span>)
+<span class="cm"># ksize=3: removes single-pixel noise</span>
+<span class="cm"># ksize=5: removes larger noise clusters</span>
+<span class="cm"># WARNING: ksize>5 smears fine strokes (serifs, thin lines)</span></div></div>
+<div class="card" style="margin-bottom:0">
+<h4 style="color:var(--a4);margin-bottom:.7rem">Gaussian noise → NLMeans or Gaussian blur</h4>
+<p style="font-size:.86rem;color:var(--t2);line-height:1.65;margin-bottom:.6rem">Non-Local Means (NLMeans) denoising compares patches across the entire image — pixels with similar surroundings average together. Better than Gaussian blur for preserving character edges because it is edge-aware.</p>
+<div class="code-mini"><span class="cm"># NLMeans — best quality, slower</span>
+denoised = cv2.<span class="fn">fastNlMeansDenoising</span>(
+    grey,
+    h=<span class="nu">10</span>,           <span class="cm"># filter strength: 5-15 typical</span>
+    templateWindowSize=<span class="nu">7</span>,   <span class="cm"># patch size to compare</span>
+    searchWindowSize=<span class="nu">21</span>     <span class="cm"># search area</span>
+)
+<span class="cm"># Gaussian blur — faster, less edge-aware</span>
+blurred = cv2.<span class="fn">GaussianBlur</span>(grey, (<span class="nu">3</span>, <span class="nu">3</span>), sigmaX=<span class="nu">0</span>)
+<span class="cm"># (3,3) kernel: gentle. (5,5): stronger. Never use >5 for text.</span></div></div></div>
+<div class="cl2 cr"><div class="cico">⚠️</div><div class="cbd"><h4>When denoising harms OCR: over-smoothing fine strokes</h4>
+<p>Aggressive denoising is one of the most common causes of introduced OCR errors. A median filter with ksize=7 or Gaussian with sigma=3 will smear the thin strokes of letters like "i", "l", "1", the serif details that distinguish "l" from "I", and the dots of ":", ";", "!". Always validate with a visual check on character-level crops after denoising. If serifs are smearing, reduce the kernel size. If thin character strokes are disappearing, the filter is too strong.</p></div></div>
+</section>
+
+<section class="sec" id="s6">
+<div class="sn">06 · Deskew: Detecting and Correcting Document Rotation</div>
+<h2>The Hough Transform for Lines:<br><span class="gt">Finding the True Horizontal</span></h2>
+<p class="lead">A document rotated by even 1-2° causes Tesseract's line segmentation to merge adjacent text lines, producing word salad. Deskew detects the dominant text baseline angle using the Hough line transform, then rotates the image to correct it. The key insight: text lines produce clusters of parallel line detections — the dominant cluster angle is the skew angle.</p>
+<div class="cc"><div class="ch"><h3>deskew.py — Hough transform deskew</h3><button class="cpb" onclick="cp(this,'c3')">⌘ Copy</button></div>
+<div class="cbody"><pre id="c3"><span class="kw">import</span> cv2
+<span class="kw">import</span> numpy <span class="kw">as</span> np
+<span class="kw">from</span> scipy.ndimage <span class="kw">import</span> interpolation
+
+<span class="kw">def</span> <span class="fn">detect_skew_angle</span>(binary: np.ndarray,
+                       angle_range: float = <span class="nu">15.0</span>) -> float:
+    <span class="str">"""
+    Detect document skew using Hough probabilistic line transform.
+    Returns angle in degrees (positive = clockwise rotation needed).
+    binary: binarised image (text=black, background=white or vice versa).
+    """</span>
+    <span class="cm"># Invert if background is white (Hough works on bright features)</span>
+    inv = cv2.<span class="fn">bitwise_not</span>(binary)
+    
+    <span class="cm"># Detect lines using Hough probabilistic transform</span>
+    lines = cv2.<span class="fn">HoughLinesP</span>(
+        inv,
+        rho=<span class="nu">1</span>,              <span class="cm"># pixel resolution</span>
+        theta=np.pi/<span class="nu">180</span>,   <span class="cm"># angle resolution: 1 degree</span>
+        threshold=<span class="nu">100</span>,      <span class="cm"># minimum votes (line length)</span>
+        minLineLength=<span class="nu">100</span>,  <span class="cm"># minimum line segment length in pixels</span>
+        maxLineGap=<span class="nu">20</span>       <span class="cm"># maximum gap within a line</span>
+    )
+    
+    <span class="kw">if</span> lines <span class="kw">is</span> <span class="kw">None</span>: <span class="kw">return</span> <span class="nu">0.0</span>
+    
+    <span class="cm"># Compute angle of each detected line</span>
+    angles = []
+    <span class="kw">for</span> line <span class="kw">in</span> lines:
+        x1, y1, x2, y2 = line[<span class="nu">0</span>]
+        <span class="kw">if</span> x2 - x1 == <span class="nu">0</span>: <span class="kw">continue</span>  <span class="cm"># skip vertical lines</span>
+        angle = np.<span class="fn">degrees</span>(np.<span class="fn">arctan2</span>(y2 - y1, x2 - x1))
+        <span class="cm"># Only keep near-horizontal lines (text baselines)</span>
+        <span class="kw">if</span> <span class="fn">abs</span>(angle) < angle_range:
+            angles.append(angle)
+    
+    <span class="kw">if not</span> angles: <span class="kw">return</span> <span class="nu">0.0</span>
+    
+    <span class="cm"># Median angle — robust to outlier lines from figures/borders</span>
+    skew_angle = np.<span class="fn">median</span>(angles)
+    <span class="fn">print</span>(<span class="str">f"Detected {len(angles)} text lines, skew angle: {skew_angle:.2f}°"</span>)
+    <span class="kw">return</span> skew_angle
+
+<span class="kw">def</span> <span class="fn">deskew</span>(image: np.ndarray, angle: float) -> np.ndarray:
+    <span class="str">"""
+    Rotate image by -angle to correct skew.
+    Uses scipy for high-quality rotation (no black borders from cv2 crop).
+    """</span>
+    <span class="kw">if</span> <span class="fn">abs</span>(angle) < <span class="nu">0.5</span>:  <span class="cm"># skip trivial corrections</span>
+        <span class="kw">return</span> image
+    <span class="kw">return</span> interpolation.<span class="fn">rotate</span>(
+        image,
+        -angle,           <span class="cm"># negate: rotate opposite to detected tilt</span>
+        reshape=<span class="kw">False</span>,   <span class="cm"># keep original dimensions</span>
+        mode=<span class="str">'nearest'</span>,  <span class="cm"># fill border with nearest pixel (white for bg)</span>
+        cval=<span class="nu">255</span>          <span class="cm"># fallback fill colour (white)</span>
+    ).astype(np.uint8)
+
+<span class="kw">def</span> <span class="fn">deskew_image</span>(grey: np.ndarray) -> tuple[np.ndarray, float]:
+    <span class="str">"""Full deskew pipeline: binarise → detect → correct."""</span>
+    _, binary = cv2.<span class="fn">threshold</span>(grey, <span class="nu">0</span>, <span class="nu">255</span>, cv2.THRESH_BINARY + cv2.THRESH_OTSU)
+    angle = <span class="fn">detect_skew_angle</span>(binary)
+    corrected = <span class="fn">deskew</span>(grey, angle)
+    <span class="kw">return</span> corrected, angle</pre></div></div>
+<div class="cl2 cw2"><div class="cico">⚠️</div><div class="cbd"><h4>When Hough deskew goes wrong: decorative borders and tables</h4>
+<p>The Hough transform finds all straight lines in the image — not just text baselines. Decorative borders, table ruling lines, and figures introduce near-horizontal lines at 0°, which can pull the median angle toward 0° even when text is skewed. Mitigation: filter lines by length (text baselines are long and consistent) and by position (avoid lines at the very edge of the page where borders live). For documents with complex graphics, use the minimum enclosing bounding box of large text blocks instead of Hough lines for angle estimation.</p></div></div>
+</section>
+
+<section class="sec" id="s7">
+<div class="sn">07 · Morphological Operations</div>
+<h2>Dilate, Erode, Open, Close:<br><span class="gt">Fixing Broken Characters and Removing Noise</span></h2>
+<p class="lead">Morphological operations transform binary images using a structuring element (kernel). They can: close gaps in broken characters (dilation), remove isolated noise pixels (erosion), or combine both (opening = erode then dilate; closing = dilate then erode). Use sparingly — morphology changes character shapes and can create new recognition errors.</p>
+<div class="card"><h3 style="color:var(--a1);font-size:.95rem;margin-bottom:1rem">Morphological operations: when and what kernel size</h3>
+<div class="card" style="padding:0;overflow:hidden;margin-bottom:0"><table class="tbl">
+<thead><tr><th>Operation</th><th>Effect on binary image</th><th>Use case</th><th>Kernel size</th><th>Risk</th></tr></thead>
+<tbody>
+<tr><td><strong style="color:var(--a3)">Dilation</strong></td><td>Expands bright regions (background), shrinks dark regions (text)</td><td>⚠ Almost never for text — thins and can break character strokes</td><td>1×1 to 2×2 max</td><td>Breaks thin strokes ("l", "i", "1")</td></tr>
+<tr><td><strong style="color:var(--a1)">Erosion</strong> (on inverted)</td><td>Expands dark regions (text), fills gaps</td><td>Close gaps in broken characters from degraded ink</td><td>2×2 to 3×3</td><td>Merges touching characters into one blob</td></tr>
+<tr><td><strong style="color:var(--a2)">Opening</strong></td><td>Erode then dilate: removes small noise objects</td><td>Remove scanner dust that survived binarisation</td><td>3×3 rectangle</td><td>Removes small punctuation if kernel too large</td></tr>
+<tr><td><strong style="color:var(--a5)">Closing</strong></td><td>Dilate then erode: closes small gaps in objects</td><td>Fill gaps in broken character strokes (old documents)</td><td>2×2 to 3×3</td><td>Merges letters at word boundaries</td></tr>
+</tbody></table></div></div>
+<div class="cc"><div class="ch"><h3>morphological_ops.py</h3><button class="cpb" onclick="cp(this,'c4')">⌘ Copy</button></div>
+<div class="cbody"><pre id="c4"><span class="kw">import</span> cv2
+<span class="kw">import</span> numpy <span class="kw">as</span> np
+
+<span class="kw">def</span> <span class="fn">remove_noise_blobs</span>(binary: np.ndarray,
+                        min_area: int = <span class="nu">50</span>) -> np.ndarray:
+    <span class="str">"""
+    Remove connected components smaller than min_area pixels.
+    More targeted than morphological opening — preserves punctuation.
+    """</span>
+    <span class="cm"># Find all connected components</span>
+    n_labels, labels, stats, _ = cv2.<span class="fn">connectedComponentsWithStats</span>(
+        cv2.<span class="fn">bitwise_not</span>(binary), connectivity=<span class="nu">8</span>
+    )
+    clean = binary.copy()
+    <span class="kw">for</span> i <span class="kw">in</span> <span class="fn">range</span>(<span class="nu">1</span>, n_labels):  <span class="cm"># skip label 0 (background)</span>
+        area = stats[i, cv2.CC_STAT_AREA]
+        <span class="kw">if</span> area < min_area:         <span class="cm"># small blob = noise</span>
+            clean[labels == i] = <span class="nu">255</span>  <span class="cm"># paint it white (remove)</span>
+    <span class="kw">return</span> clean
+
+<span class="kw">def</span> <span class="fn">close_character_gaps</span>(binary: np.ndarray) -> np.ndarray:
+    <span class="str">"""
+    Closing: fill small gaps in broken character strokes.
+    Use for degraded or photocopied documents.
+    """</span>
+    <span class="cm"># Work on inverted (text=white, bg=black) for closing</span>
+    inv = cv2.<span class="fn">bitwise_not</span>(binary)
+    kernel = cv2.<span class="fn">getStructuringElement</span>(cv2.MORPH_RECT, (<span class="nu">2</span>, <span class="nu">2</span>))
+    closed = cv2.<span class="fn">morphologyEx</span>(inv, cv2.MORPH_CLOSE, kernel)
+    <span class="kw">return</span> cv2.<span class="fn">bitwise_not</span>(closed)
+
+<span class="cm"># Border removal — useful for scanned documents with frame artefacts</span>
+<span class="kw">def</span> <span class="fn">remove_border</span>(binary: np.ndarray, margin: int = <span class="nu">10</span>) -> np.ndarray:
+    <span class="str">"""Remove scanner border artefacts by masking the edge region."""</span>
+    h, w = binary.shape
+    mask = np.<span class="fn">zeros_like</span>(binary)
+    mask[margin:h-margin, margin:w-margin] = <span class="nu">255</span>
+    <span class="kw">return</span> cv2.<span class="fn">bitwise_and</span>(binary, mask)</pre></div></div>
+</section>
+
+<section class="sec" id="s8">
+<div class="sn">08 · The Complete Pre-processing Pipeline</div>
+<h2>Putting It All Together:<br><span class="gt">One Function, Production-Ready</span></h2>
+<div class="cc"><div class="ch"><h3>preprocess_pipeline.py — full production pipeline</h3><button class="cpb" onclick="cp(this,'c5')">⌘ Copy</button></div>
+<div class="cbody"><pre id="c5"><span class="kw">import</span> cv2
+<span class="kw">import</span> numpy <span class="kw">as</span> np
+<span class="kw">from</span> dataclasses <span class="kw">import</span> dataclass
+<span class="kw">from</span> skimage.filters <span class="kw">import</span> threshold_sauvola
+<span class="kw">from</span> scipy.ndimage <span class="kw">import</span> interpolation
+
+@dataclass
+<span class="kw">class</span> <span class="cl">PreprocessResult</span>:
+    image:      np.ndarray  <span class="cm"># final processed binary image</span>
+    skew_angle: float       <span class="cm"># corrected rotation in degrees</span>
+    method:     str         <span class="cm"># binarisation method used</span>
+    warnings:   list[str]   <span class="cm"># e.g. "low contrast", "high skew"</span>
+
+<span class="kw">def</span> <span class="fn">preprocess</span>(
+    image_path: str,
+    target_dpi: int = <span class="nu">300</span>,
+    doc_type: str = <span class="str">"standard"</span>  <span class="cm"># "standard" | "degraded" | "photo"</span>
+) -> PreprocessResult:
+    warnings = []
+    
+    <span class="cm"># ① Load and validate</span>
+    img = cv2.<span class="fn">imread</span>(image_path)
+    <span class="kw">if</span> img <span class="kw">is</span> <span class="kw">None</span>: <span class="kw">raise</span> <span class="cl">ValueError</span>(<span class="str">f"Cannot load: {image_path}"</span>)
+    
+    <span class="cm"># ② Greyscale conversion</span>
+    grey = cv2.<span class="fn">cvtColor</span>(img, cv2.COLOR_BGR2GRAY)
+    
+    <span class="cm"># ③ Contrast check and CLAHE</span>
+    contrast_cv = grey.<span class="fn">std</span>() / (grey.<span class="fn">mean</span>() + <span class="nu">1e-6</span>)
+    <span class="kw">if</span> contrast_cv < <span class="nu">0.1</span>: warnings.append(<span class="str">"low_contrast"</span>)
+    clahe = cv2.<span class="fn">createCLAHE</span>(clipLimit=<span class="nu">2.0</span>, tileGridSize=(<span class="nu">8</span>,<span class="nu">8</span>))
+    grey = clahe.<span class="fn">apply</span>(grey)
+    
+    <span class="cm"># ④ Denoising (method by doc type)</span>
+    <span class="kw">if</span> doc_type == <span class="str">"photo"</span>:
+        grey = cv2.<span class="fn">fastNlMeansDenoising</span>(grey, h=<span class="nu">10</span>)
+    <span class="kw">else</span>:
+        grey = cv2.<span class="fn">medianBlur</span>(grey, ksize=<span class="nu">3</span>)
+    
+    <span class="cm"># ⑤ Binarisation (adaptive for degraded)</span>
+    <span class="kw">if</span> doc_type == <span class="str">"degraded"</span>:
+        thresh_map = threshold_sauvola(grey, window_size=<span class="nu">25</span>, k=<span class="nu">0.2</span>)
+        binary = (grey > thresh_map).astype(np.uint8) * <span class="nu">255</span>
+        method = <span class="str">"sauvola"</span>
+    <span class="kw">else</span>:
+        _, binary = cv2.<span class="fn">threshold</span>(grey, <span class="nu">0</span>, <span class="nu">255</span>, cv2.THRESH_BINARY+cv2.THRESH_OTSU)
+        method = <span class="str">"otsu"</span>
+    
+    <span class="cm"># ⑥ Deskew</span>
+    inv = cv2.<span class="fn">bitwise_not</span>(binary)
+    lines = cv2.<span class="fn">HoughLinesP</span>(inv, <span class="nu">1</span>, np.pi/<span class="nu">180</span>, <span class="nu">100</span>, <span class="nu">100</span>, <span class="nu">20</span>)
+    skew = <span class="nu">0.0</span>
+    <span class="kw">if</span> lines <span class="kw">is</span> <span class="kw">not</span> <span class="kw">None</span>:
+        angles = [np.<span class="fn">degrees</span>(np.<span class="fn">arctan2</span>(l[<span class="nu">0</span>][<span class="nu">3</span>]-l[<span class="nu">0</span>][<span class="nu">1</span>],l[<span class="nu">0</span>][<span class="nu">2</span>]-l[<span class="nu">0</span>][<span class="nu">0</span>]))
+                 <span class="kw">for</span> l <span class="kw">in</span> lines <span class="kw">if</span> <span class="fn">abs</span>(l[<span class="nu">0</span>][<span class="nu">2</span>]-l[<span class="nu">0</span>][<span class="nu">0</span>]) > <span class="nu">50</span>]
+        <span class="kw">if</span> angles:
+            skew = <span class="fn">float</span>(np.<span class="fn">median</span>(angles))
+            <span class="kw">if</span> <span class="fn">abs</span>(skew) > <span class="nu">3.0</span>: warnings.append(<span class="str">f"high_skew_{skew:.1f}deg"</span>)
+    <span class="kw">if</span> <span class="fn">abs</span>(skew) > <span class="nu">0.5</span>:
+        binary = interpolation.<span class="fn">rotate</span>(binary, -skew, reshape=<span class="kw">False</span>,
+                                       mode=<span class="str">'nearest'</span>, cval=<span class="nu">255</span>).astype(np.uint8)
+    
+    <span class="cm"># ⑦ Remove small noise blobs</span>
+    n, labels, stats, _ = cv2.<span class="fn">connectedComponentsWithStats</span>(cv2.<span class="fn">bitwise_not</span>(binary))
+    <span class="kw">for</span> i <span class="kw">in</span> <span class="fn">range</span>(<span class="nu">1</span>, n):
+        <span class="kw">if</span> stats[i, cv2.CC_STAT_AREA] < <span class="nu">30</span>:
+            binary[labels == i] = <span class="nu">255</span>
+    
+    <span class="kw">return</span> PreprocessResult(binary, skew, method, warnings)
+
+<span class="cm"># Usage:</span>
+<span class="cm"># result = preprocess("invoice_scan.jpg", doc_type="standard")</span>
+<span class="cm"># text = pytesseract.image_to_string(result.image)</span></pre></div></div>
+</section>
+
+<section class="sec" id="s9">
+<div class="sn">09 · Assessment</div>
+<h2>Module 1 <span class="gt">Quiz</span></h2>
+<div class="qc">
+
+<div class="qq"><h4>1. You apply Otsu binarisation to a document photographed with a desk lamp shining from the left side. The left half is correct but the right half is entirely black. What is the root cause and the correct fix?</h4>
+<div class="qo">
+<button class="qob" onclick="cq(this,0,false)">A) Otsu computed the wrong threshold — manually tune it by inspecting the image histogram and setting a value between the two dominant peaks.</button>
+<button class="qob" onclick="cq(this,0,true)">B) Otsu uses a single global threshold derived from the full-image histogram. The bright left side has background at ~220; the dim right side has background at ~140. Otsu finds T≈150, which correctly classifies the left side but misclassifies the dim right background (140 &lt; 150) as text. Fix: apply CLAHE first to equalise illumination across the image, then use Otsu — CLAHE reduces the illumination gradient so a single threshold works for both sides. For severe gradients, switch to Sauvola adaptive thresholding which computes a local threshold per pixel neighbourhood.</button>
+<button class="qob" onclick="cq(this,0,false)">C) The greyscale conversion is incorrect. The BT.601 formula overweights green channel pixels which are more prevalent under incandescent lamp illumination, creating the right-side artefact. Switch to simple RGB averaging.</button>
+<button class="qob" onclick="cq(this,0,false)">D) The document is too large for Otsu at this resolution. Downsample to 150 DPI before binarisation — Otsu's histogram analysis is more stable at lower resolution.</button>
+</div><div class="qf" id="f0">Correct. This is the canonical Otsu failure mode. A single global threshold cannot correctly separate foreground and background when the illumination level changes significantly across the image. The histogram shows two overlapping distributions rather than two clean peaks, and the threshold falls in the wrong place for the dim region. CLAHE (Contrast Limited Adaptive Histogram Equalisation) normalises local contrast before binarisation, shrinking the illumination gradient so a global threshold becomes viable again. Sauvola is the more robust choice when CLAHE cannot fully correct the gradient.</div></div>
+
+<div class="qq"><h4>2. After applying a 5×5 median filter to a scan, Tesseract starts confusing "l" (lowercase L) with "I" (uppercase I) much more frequently. What caused this new error and what is the correct filter size?</h4>
+<div class="qo">
+<button class="qob" onclick="cq(this,1,false)">A) The median filter changed the effective DPI metadata, causing Tesseract to use wrong size assumptions for character height. Fix by passing the correct --dpi flag after filtering.</button>
+<button class="qob" onclick="cq(this,1,false)">B) A 5×5 filter is correct for removing scanner dust. The l/I confusion existed before filtering and is caused by an incorrect Tesseract language pack — reinstall the correct tessdata model.</button>
+<button class="qob" onclick="cq(this,1,true)">C) The 5×5 median kernel has a 2.5-pixel effective radius, which at 300 DPI is large enough to smooth away the serif details that distinguish "l" from "I" in most fonts — those details occupy only 2–4 pixels. The filter is too aggressive. Use ksize=3, which removes isolated single-pixel noise while preserving fine character strokes. If larger noise clusters must be removed, use connected component area filtering (remove components with area &lt; threshold) which removes noise blobs without smoothing character edges at all.</button>
+<button class="qob" onclick="cq(this,1,false)">D) Switch from median to Gaussian blur — Gaussian is edge-preserving and avoids the serif destruction that median filtering causes on fine typographic detail.</button>
+</div><div class="qf" id="f1">Correct. Filter kernel size must be proportional to the feature size you want to preserve. At 300 DPI, serif details are 2–4 pixels wide; a ksize=5 kernel with 2.5-pixel radius smooths these entirely. Connected component filtering is the superior alternative for removing scanner dust because it operates on the binary image after binarisation, identifying and removing isolated blobs by area — a 3-pixel dust speck has area ≈9 pixels, while the dot on an "i" has area ≈30–50 pixels, allowing precise removal without any smoothing of character shapes.</div></div>
+
+<div class="qq"><h4>3. Your Hough deskew pipeline detects a 0.3° skew and skips correction (threshold: |angle| &lt; 0.5°). A colleague insists this will cause line merging. Who is correct?</h4>
+<div class="qo">
+<button class="qob" onclick="cq(this,2,false)">A) The colleague is correct. Any skew above 0° will eventually cause projection profile peaks to overlap — even 0.3° creates measurable line merging on lines longer than 200 characters.</button>
+<button class="qob" onclick="cq(this,2,false)">B) Neither. The 0.5° threshold is arbitrary. The correct approach is to always correct any detected skew regardless of magnitude, since rotation is computationally cheap and skipping it introduces unnecessary risk.</button>
+<button class="qob" onclick="cq(this,2,true)">C) You are correct. On A4 at 300 DPI (3507px wide), 0.3° creates a vertical drop of 3507 × tan(0.3°) ≈ 18 pixels from left to right margin. For typical 10pt text with 40px line height and 8–10px inter-line gap, this offset is smaller than the gap and does not cause line merging. Rotation also introduces bilinear interpolation artefacts that slightly blur character edges. The 0.5° threshold correctly balances correction benefit against interpolation cost.</button>
+<button class="qob" onclick="cq(this,2,false)">D) The colleague is correct for documents with small fonts (below 9pt) where the inter-line gap shrinks to 5–6 pixels. At that scale, 0.3° creates enough overlap to merge lines, so the threshold should be lowered to 0.1° for small-font documents.</button>
+</div><div class="qf" id="f2">Correct. The impact of a skew angle depends on both the angle and the page width. At 0.3° on A4 at 300 DPI, the 18-pixel vertical offset is well within the inter-line gap for standard fonts. Rotation correction is not free — warpAffine or scipy.interpolation.rotate introduces sub-pixel interpolation errors that slightly blur character edges at every rotation step. Correcting sub-0.5° skews costs accuracy in exchange for a correction that provides no measurable benefit. The threshold should be set based on this tradeoff, not on "always correct" or "correct everything".</div></div>
+
+<div class="qq"><h4>4. You are processing a 19th-century newspaper. After Otsu binarisation, characters in the degraded areas are fragmented into broken strokes. Morphological closing with a 3×3 kernel fixes some characters but merges others. What is the underlying problem and the correct solution?</h4>
+<div class="qo">
+<button class="qob" onclick="cq(this,3,true)">A) The root problem is binarisation, not morphology. Faded ink at grey intensity (~120–160) overlaps with aged-paper background (~170–200) in the histogram — Otsu finds a threshold in the wrong place. Switch to Sauvola with window_size=25 and k=0.1–0.15. Sauvola's local statistics detect the slight contrast between faded ink and local background that global Otsu misses, producing correctly solid characters. Once binarisation is correct, morphological closing is usually unnecessary — and if needed, use a 2×2 kernel applied separately in horizontal and vertical directions rather than a uniform square kernel.</button>
+<button class="qob" onclick="cq(this,3,false)">B) Increase the morphological closing kernel to 5×5 — the 3×3 kernel is too small to bridge the wider gaps in degraded 19th-century typefaces. Larger kernels fix more broken strokes while modern character shapes remain distinctive enough to avoid merging.</button>
+<button class="qob" onclick="cq(this,3,false)">C) Apply morphological opening before closing — opening removes isolated noise pixels that are confusing the closing operation and causing inappropriate merges at character boundaries.</button>
+<button class="qob" onclick="cq(this,3,false)">D) The document requires manual transcription. Automated OCR cannot achieve acceptable accuracy on 19th-century newspapers regardless of pre-processing — the character set, font variation, and paper degradation exceed what any pipeline can handle reliably.</button>
+</div><div class="qf" id="f3">Correct. Applying morphology to fix binarisation errors is treating the symptom rather than the cause. Sauvola's window-based local statistics are specifically designed for this scenario: even when faded ink produces only a slight local contrast difference from the aged background, the local standard deviation σ captures this signal. The threshold T(x,y) = μ × (1 + k × (σ/R − 1)) adapts to be lower in faded regions, correctly capturing the ink. Global Otsu sees the full-image histogram dominated by the background distribution and places the threshold too high for the faded ink regions.</div></div>
+
+<div class="qq"><h4>5. A document has a yellow highlighted section. After greyscale conversion and Otsu binarisation, text inside the highlight is correctly classified, but the overall Otsu threshold is higher than optimal for the rest of the page, causing some light grey text to be lost. What is the most targeted fix?</h4>
+<div class="qo">
+<button class="qob" onclick="cq(this,4,false)">A) Convert to HSV colour space and set the S (saturation) channel to zero before converting to greyscale — this removes the colour influence of the yellow highlight while preserving luminance information for all text.</button>
+<button class="qob" onclick="cq(this,4,false)">B) Apply a colour-based mask to suppress the yellow region before binarisation. Detect yellow pixels in HSV (high H around 30–60°, high S, high V) and set those regions to the paper background colour before running Otsu — the yellow is removed from the histogram and the threshold recalibrates for the remaining content.</button>
+<button class="qob" onclick="cq(this,4,false)">C) Use adaptive Gaussian thresholding with a block size matching the highlight dimensions — the local threshold adapts independently for the highlighted region and the surrounding text, resolving both correctly.</button>
+<button class="qob" onclick="cq(this,4,true)">D) Compute a region-specific illumination coefficient: detect the yellow region via HSV saturation mask, set those pixels to the local background intensity (removing them from the Otsu histogram), then run Otsu on the modified image. The highlight's high-intensity pixels were biasing the global threshold upward; removing them allows Otsu to find the correct threshold for the light-grey text. Equivalently, Sauvola handles this without any masking step — its local statistics ignore the highlight's influence when computing thresholds for the adjacent light-grey text regions.</button>
+</div><div class="qf" id="f4">Correct. The yellow highlight's high-luminance pixels (Y ≈ 226 from BT.601 formula) inflate the global histogram's bright peak, pushing Otsu's threshold upward from where it should be for the non-highlighted text. Option B describes the masking approach but doesn't specify using the local background intensity — just setting highlighted pixels to white achieves the same effect. Option D is the most complete: both the masking strategy and the Sauvola alternative are valid. Sauvola is often simpler in practice because it handles the influence of the highlight region automatically through local windowing.</div></div>
+
+<div class="qs" id="qs"><h3 id="sc">0/5</h3><p id="sm">Complete all 5 questions to see your score.</p></div>
+</div>
+</section>
+
+<div class="fn2">
+  <a href="ocr_m0.html" class="pr">← M0: Why OCR Is Hard</a>
+  <div class="fcc"><div>Module 1 · Image Pre-processing</div><div style="font-size:.75rem;margin-top:4px">OCR &amp; Text Recognition Engineering · Marevlo</div></div>
+  <a href="ocr_m2.html" class="nx">M2: Tesseract Deep Dive →</a>
+</div>
+</div>
+<script>
+window.addEventListener("scroll",function(){var h=document.documentElement;document.getElementById("sp").style.width=((h.scrollTop/(h.scrollHeight-h.clientHeight))*100)+"%";});
+var obs=new IntersectionObserver(function(e){e.forEach(function(x){if(x.isIntersecting)x.target.classList.add("vis");});},{threshold:0.07});
+document.querySelectorAll(".sec").forEach(function(s){obs.observe(s);});
+function cp(btn,id){navigator.clipboard.writeText(document.getElementById(id).innerText).then(function(){btn.textContent="Copied!";setTimeout(function(){btn.textContent="Copy";},2000);});}
+var ans=[null,null,null,null,null];
+function cq(btn,qi,ok){
+  var opts=btn.parentElement.querySelectorAll(".qob");opts.forEach(function(o){o.disabled=true;});
+  if(ans[qi]!==null)return;ans[qi]=ok;
+  var f=document.getElementById("f"+qi);
+  if(ok){btn.classList.add("ok");f.classList.add("show");f.style.color="var(--a1)";}
+  else{btn.classList.add("no");opts.forEach(function(o){if(o!==btn&&o.getAttribute("onclick").indexOf(",true)")>-1)o.classList.add("ok");});f.classList.add("show");f.style.color="var(--a3)";}
+  var filled=ans.filter(function(a){return a!==null;}).length;
+  if(filled===5){var c=ans.filter(function(a){return a===true;}).length;
+    document.getElementById("qs").style.display="block";
+    document.getElementById("sc").textContent=c+"/5";
+    document.getElementById("sm").textContent=["Review Otsu vs adaptive thresholding.","Re-read filter kernel size effects.","Good — check deskew threshold rationale.","Almost perfect!","Perfect. Move to M2: Tesseract Deep Dive."][c];}
+}
+</script></body></html>

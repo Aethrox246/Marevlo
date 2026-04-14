@@ -1,0 +1,562 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Module 8 - Reranking</title>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&family=Outfit:wght@300;400;500;600;700;800;900&family=Source+Serif+4:ital,opsz,wght@0,8..144,300;0,8..144,400;0,8..144,600;1,8..144,300;1,8..144,400&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#0a0a0f;--t1:#ececf6;--t2:#b5b5c8;--tm:#7c7c95;--a1:#5eead4;--a2:#60a5fa;--a3:#f472b6;--a4:#fbbf24;--a5:#a78bfa;--gl:linear-gradient(90deg,#5eead4 0%,#60a5fa 28%,#a78bfa 55%,#f472b6 82%,#fbbf24 100%);--bs:rgba(255,255,255,0.07);--sh:0 20px 80px rgba(0,0,0,0.42);--r:20px;--cw:1120px}
+*{box-sizing:border-box;margin:0;padding:0}html{scroll-behavior:smooth}
+body{background:radial-gradient(circle at 18% 14%,rgba(244,114,182,.07),transparent 30%),radial-gradient(circle at 82% 22%,rgba(167,139,250,.06),transparent 28%),var(--bg);color:var(--t1);font-family:'Outfit',sans-serif;line-height:1.75;overflow-x:hidden;-webkit-font-smoothing:antialiased}
+.sp{position:fixed;top:0;left:0;height:3px;width:0%;z-index:1000;background:var(--gl);transition:width .12s linear}
+nav{position:fixed;top:3px;left:0;right:0;z-index:999;display:flex;align-items:center;justify-content:space-between;padding:.75rem 2rem;background:rgba(10,10,15,.88);backdrop-filter:blur(12px);border-bottom:1px solid var(--bs)}
+.nbr{font-family:'JetBrains Mono',monospace;font-size:.72rem;color:var(--a3);letter-spacing:.14em;text-transform:uppercase;text-decoration:none}
+.nm{font-size:.82rem;color:var(--tm)}.na{display:flex;gap:8px}
+.nb{display:inline-flex;align-items:center;gap:6px;padding:.4rem .9rem;border-radius:999px;border:1px solid var(--bs);background:rgba(255,255,255,.03);color:var(--t2);font-size:.8rem;text-decoration:none;transition:all .18s}
+.nb:hover{border-color:var(--a3);color:var(--a3)}
+.hero{min-height:100vh;display:flex;align-items:center;justify-content:center;padding:5rem 2rem 3rem;position:relative;overflow:hidden}
+.hg{position:absolute;inset:0;background-image:linear-gradient(rgba(255,255,255,.025) 1px,transparent 1px),linear-gradient(90deg,rgba(255,255,255,.025) 1px,transparent 1px);background-size:48px 48px;mask-image:radial-gradient(circle at center,black 30%,transparent 80%);pointer-events:none}
+.hero::before{content:"";position:absolute;inset:0;background:radial-gradient(ellipse 700px 350px at 20% 40%,rgba(244,114,182,.09),transparent),radial-gradient(ellipse 640px 360px at 80% 38%,rgba(167,139,250,.07),transparent);pointer-events:none}
+.hi{max-width:1000px;text-align:center;position:relative;z-index:1}
+.hl{display:inline-flex;align-items:center;gap:10px;padding:.55rem 1rem;border-radius:999px;border:1px solid rgba(244,114,182,.25);background:rgba(244,114,182,.08);color:var(--a3);letter-spacing:1.8px;text-transform:uppercase;font-size:.76rem;margin-bottom:1.7rem}
+.dot{width:7px;height:7px;border-radius:50%;background:var(--a3);animation:pulse 2s ease-in-out infinite}
+@keyframes pulse{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.3;transform:scale(.75)}}
+h1{font-size:clamp(2.4rem,5vw,4.4rem);line-height:1.04;letter-spacing:-.04em;font-weight:900;margin-bottom:1.3rem}
+.gt{background:var(--gl);-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent}
+.hs{font-family:'Source Serif 4',serif;color:var(--t2);font-size:clamp(1rem,2vw,1.2rem);max-width:820px;margin:0 auto 2rem;line-height:1.8}
+.hm{display:flex;flex-wrap:wrap;justify-content:center;gap:12px;margin-bottom:2.5rem}
+.mp{border:1px solid var(--bs);background:rgba(17,17,26,.75);border-radius:999px;padding:.65rem 1.1rem;color:var(--t2);font-size:.88rem}
+.sc{position:absolute;bottom:2.6rem;left:50%;transform:translateX(-50%);color:var(--tm);display:flex;flex-direction:column;gap:.6rem;align-items:center;text-transform:uppercase;letter-spacing:.22em;font-size:.7rem}
+.sc .arr{width:18px;height:18px;border-right:2px solid var(--tm);border-bottom:2px solid var(--tm);transform:rotate(45deg);animation:ba 2s ease-in-out infinite}
+@keyframes ba{0%,100%{transform:rotate(45deg) translateY(0)}50%{transform:rotate(45deg) translateY(7px)}}
+.cw{max-width:var(--cw);margin:0 auto;padding:0 2rem 6rem}
+.sec{margin-bottom:5.5rem;opacity:0;transform:translateY(28px);transition:opacity .65s ease,transform .65s ease}
+.sec.vis{opacity:1;transform:translateY(0)}
+.sn{display:flex;align-items:center;gap:12px;color:var(--a3);font-family:'JetBrains Mono',monospace;font-size:.68rem;text-transform:uppercase;letter-spacing:.22em;margin-bottom:.9rem}
+.sn::after{content:"";height:1px;flex:1;background:linear-gradient(90deg,rgba(244,114,182,.7),transparent)}
+.sec h2{font-size:clamp(1.9rem,4vw,2.75rem);line-height:1.08;margin-bottom:1rem;letter-spacing:-.04em}
+.lead{font-family:'Source Serif 4',serif;font-size:1.08rem;color:var(--t2);margin-bottom:2rem;line-height:1.85}
+.card{background:linear-gradient(180deg,rgba(24,24,38,.96),rgba(17,17,28,.96));border:1px solid var(--bs);border-radius:var(--r);box-shadow:var(--sh);padding:1.8rem;margin-bottom:1.4rem}
+.cc{background:linear-gradient(180deg,rgba(11,11,22,.99),rgba(9,9,17,.99));border:1px solid var(--bs);border-radius:var(--r);box-shadow:var(--sh);padding:0;margin-bottom:1.4rem;overflow:hidden}
+.ch{display:flex;align-items:center;justify-content:space-between;padding:1rem 1.5rem;border-bottom:1px solid var(--bs)}
+.ch h3{font-size:.9rem;font-family:'JetBrains Mono',monospace;color:var(--a3)}
+.cpb{display:inline-flex;align-items:center;gap:5px;padding:.28rem .7rem;border-radius:999px;border:1px solid var(--bs);background:transparent;color:var(--tm);font-size:.72rem;cursor:pointer;transition:all .18s;font-family:'JetBrains Mono',monospace}
+.cpb:hover{border-color:var(--a1);color:var(--a1)}
+.cbody{padding:1.5rem;overflow-x:auto}
+pre{white-space:pre;color:#d8e3ff;font-family:'JetBrains Mono',monospace;font-size:.86rem;line-height:1.75}
+.kw{color:#a78bfa}.fn{color:#60a5fa}.str{color:#5eead4}.cm{color:#3d3d5a;font-style:italic}.nu{color:#fbbf24}.cl{color:#f472b6}
+.g2{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:1.3rem;margin-bottom:1.4rem}
+.g3{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:1.3rem;margin-bottom:1.4rem}
+.mc2{border:1px solid var(--bs);border-radius:16px;padding:1.3rem;background:rgba(255,255,255,.02)}
+.mc2 h4{font-size:1rem;margin-bottom:.55rem;color:var(--t1)}.mc2 p{font-size:.9rem;color:var(--t2);line-height:1.65}
+.cl2{border-radius:16px;padding:1.2rem 1.5rem;margin:1.5rem 0;display:flex;gap:1rem;align-items:flex-start}
+.cs{background:rgba(94,234,212,.06);border:1px solid rgba(94,234,212,.18)}
+.ci{background:rgba(96,165,250,.07);border:1px solid rgba(96,165,250,.18)}
+.cr{background:rgba(244,114,182,.06);border:1px solid rgba(244,114,182,.18)}
+.cw2{background:rgba(251,191,36,.06);border:1px solid rgba(251,191,36,.18)}
+.cp{background:rgba(167,139,250,.06);border:1px solid rgba(167,139,250,.18)}
+.cico{font-size:1.2rem;flex-shrink:0;margin-top:.1rem}
+.cbd h4{font-size:.95rem;margin-bottom:.35rem;color:var(--t1)}.cbd p{font-size:.9rem;color:var(--t2);line-height:1.65}
+.fbox{background:rgba(244,114,182,.05);border:1px solid rgba(244,114,182,.2);border-radius:16px;padding:1.6rem;text-align:center;margin-bottom:1.2rem}
+.formula{font-family:'JetBrains Mono',monospace;font-size:1.05rem;color:var(--a3);line-height:2.1;margin-bottom:.6rem}
+.fdesc{font-size:.88rem;color:var(--t2);line-height:1.75}
+.fterm{display:inline-block;padding:.1rem .38rem;border-radius:5px;font-family:'JetBrains Mono',monospace;font-size:.88rem}
+.ft-g{background:rgba(94,234,212,.12);color:var(--a1)}.ft-b{background:rgba(96,165,250,.12);color:var(--a2)}.ft-p{background:rgba(167,139,250,.12);color:var(--a5)}.ft-r{background:rgba(244,114,182,.12);color:var(--a3)}
+.tbl{width:100%;border-collapse:collapse;font-size:.87rem}
+.tbl th{text-align:left;padding:.75rem 1rem;font-family:'JetBrains Mono',monospace;font-size:.65rem;text-transform:uppercase;color:var(--tm);border-bottom:1px solid var(--bs)}
+.tbl td{padding:.75rem 1rem;border-bottom:1px solid rgba(255,255,255,.04);color:var(--t2);vertical-align:top}
+.tbl td:first-child{color:var(--t1);font-weight:600}.tbl tr:last-child td{border-bottom:none}
+.pipe-stage{border:1px solid var(--bs);border-radius:14px;padding:1rem 1.2rem;background:rgba(15,15,25,.9);margin-bottom:.5rem}
+.pipe-label{font-family:'JetBrains Mono',monospace;font-size:.65rem;text-transform:uppercase;letter-spacing:.12em;margin-bottom:.3rem}
+.pipe-detail{font-size:.84rem;color:var(--t2);line-height:1.6}
+.model-card{border:1px solid var(--bs);border-radius:16px;padding:1.2rem;background:rgba(255,255,255,.02);margin-bottom:.8rem}
+.model-card h4{font-size:.95rem;color:var(--t1);margin-bottom:.4rem;display:flex;align-items:center;gap:.6rem;flex-wrap:wrap}
+.model-card p{font-size:.87rem;color:var(--t2);line-height:1.65}
+.model-card .stats{display:flex;gap:.5rem;flex-wrap:wrap;margin-top:.5rem}
+.bdg{display:inline-block;font-size:.7rem;padding:.18rem .55rem;border-radius:6px;font-weight:700}
+.bg-g{background:rgba(94,234,212,.12);color:var(--a1);border:1px solid rgba(94,234,212,.2)}
+.bg-b{background:rgba(96,165,250,.12);color:var(--a2);border:1px solid rgba(96,165,250,.2)}
+.bg-p{background:rgba(167,139,250,.12);color:var(--a5);border:1px solid rgba(167,139,250,.2)}
+.bg-y{background:rgba(251,191,36,.12);color:var(--a4);border:1px solid rgba(251,191,36,.2)}
+.bg-r{background:rgba(244,114,182,.12);color:var(--a3);border:1px solid rgba(244,114,182,.2)}
+.qc{background:linear-gradient(180deg,rgba(24,24,38,.96),rgba(17,17,28,.96));border:1px solid var(--bs);border-radius:var(--r);box-shadow:var(--sh);padding:1.8rem}
+.qq{border:1px solid var(--bs);border-radius:16px;padding:1.3rem;background:rgba(255,255,255,.015);margin-bottom:1rem}
+.qq h4{font-size:1rem;margin-bottom:1rem;color:var(--t1);line-height:1.5}
+.qo{display:grid;gap:.6rem}
+.qob{border:1px solid var(--bs);border-radius:11px;padding:.9rem 1.1rem;background:rgba(255,255,255,.02);color:var(--t2);cursor:pointer;transition:all .2s;text-align:left;font-size:.9rem;font-family:'Outfit',sans-serif;width:100%;line-height:1.5}
+.qob:hover{border-color:rgba(244,114,182,.4);background:rgba(244,114,182,.04)}
+.qob.ok{border-color:rgba(94,234,212,.5);background:rgba(94,234,212,.09);color:var(--t1)}
+.qob.no{border-color:rgba(244,114,182,.4);background:rgba(244,114,182,.07)}
+.qf{font-size:.88rem;margin-top:.7rem;line-height:1.6;padding:.7rem .9rem;border-radius:10px;background:rgba(255,255,255,.02);display:none}
+.qf.show{display:block}
+.qs{padding:1.4rem;border-radius:16px;background:rgba(94,234,212,.06);border:1px solid rgba(94,234,212,.2);text-align:center;margin-top:1.2rem;display:none}
+.qs h3{font-size:2rem;color:var(--a1);margin-bottom:.4rem}.qs p{color:var(--t2);font-size:.92rem}
+.fn2{display:flex;align-items:center;justify-content:space-between;padding:2.2rem 0;border-top:1px solid var(--bs);margin-top:2rem}
+.fn2 a{display:inline-flex;align-items:center;gap:8px;padding:.75rem 1.5rem;border-radius:999px;border:1px solid var(--bs);color:var(--t2);text-decoration:none;font-size:.9rem;transition:all .2s}
+.fn2 a:hover{border-color:var(--a3);color:var(--a3)}
+.fn2 a.pr{background:rgba(94,234,212,.04);border-color:rgba(94,234,212,.2);color:var(--a1)}
+.fn2 a.nx{background:rgba(167,139,250,.06);border-color:rgba(167,139,250,.3);color:var(--a5)}
+.fcc{text-align:center;font-size:.82rem;color:var(--tm)}
+@media(max-width:720px){.g2,.g3{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+<div class="sp" id="sp"></div>
+<nav>
+  <a href="#" class="nbr">Marevlo &middot; RAG Masterclass &middot; Module 8</a>
+  <span class="nm">Reranking &mdash; Cross-Encoders, Cohere, LLM Judges</span>
+  <div class="na">
+    <a href="rag_module_7.html" class="nb">&larr; M7: Hybrid</a>
+    <a href="rag_module_9.html" class="nb">M9: Generation &rarr;</a>
+  </div>
+</nav>
+
+<section class="hero">
+  <div class="hg"></div>
+  <div class="hi">
+    <div class="hl"><span class="dot"></span>Module 8 &middot; RAG Masterclass</div>
+    <h1>Reranking:<br><span class="gt">Cross-Encoders, Cohere, and LLM Judges</span></h1>
+    <p class="hs">Retrieval maximizes recall &mdash; getting the right documents into the candidate set. Reranking maximizes precision &mdash; putting the best documents first so the LLM generates from the highest-quality evidence. This module covers cross-encoder architecture, training losses, every production reranker, and LLM reranking patterns.</p>
+    <div class="hm">
+      <span class="mp">60 min</span><span class="mp">3-stage pipeline architecture</span>
+      <span class="mp">Cross-encoder deep dive</span><span class="mp">Training loss comparison</span>
+      <span class="mp">Full production model guide</span>
+    </div>
+  </div>
+  <div class="sc"><span>Scroll</span><div class="arr"></div></div>
+</section>
+<div class="cw">
+<section class="sec" id="s1">
+  <div class="sn">01 &middot; Why Retrieval Is Not Enough</div>
+  <h2>Recall vs Precision:<br><span class="gt">The Fundamental Tension</span></h2>
+  <p class="lead">Retrieval systems are optimized for recall: find as many relevant documents as possible from a large corpus at low latency. But recall is not precision. The top-100 candidates may contain the right answer, but if that answer sits at rank 47 and you pass only top-5 to the LLM, the generation is wrong. Reranking applies a slower but far more accurate model to re-score the shortlist and fix the ordering.</p>
+
+  <div class="card">
+    <h3 style="font-size:1.05rem;color:var(--a3);margin-bottom:1rem">Concrete failure: correct answer at rank #4, only top-3 passed to LLM</h3>
+    <p style="color:var(--t2);font-size:.88rem;margin-bottom:.9rem">Query: "What is the refund policy for annual subscriptions if Marevlo discontinues service?"</p>
+    <div style="display:flex;flex-direction:column;gap:.4rem;margin-bottom:1rem">
+      <div style="display:flex;align-items:center;gap:.7rem;padding:.55rem .9rem;background:rgba(255,255,255,.02);border:1px solid var(--bs);border-radius:9px;font-size:.84rem">
+        <span style="color:var(--a2);font-family:'JetBrains Mono',monospace;font-size:.7rem;min-width:24px">#1</span>
+        <span>"Marevlo offers a 30-day free trial on all plans." &nbsp;<em style="color:var(--tm)">Mentions trials, not relevant</em></span>
+        <span style="color:var(--a2);font-family:'JetBrains Mono',monospace;font-size:.7rem;margin-left:auto">0.82</span>
+      </div>
+      <div style="display:flex;align-items:center;gap:.7rem;padding:.55rem .9rem;background:rgba(255,255,255,.02);border:1px solid var(--bs);border-radius:9px;font-size:.84rem">
+        <span style="color:var(--a2);font-family:'JetBrains Mono',monospace;font-size:.7rem;min-width:24px">#2</span>
+        <span>"Annual subscriptions include priority support and API access." &nbsp;<em style="color:var(--tm)">Annual, not refunds</em></span>
+        <span style="color:var(--a2);font-family:'JetBrains Mono',monospace;font-size:.7rem;margin-left:auto">0.79</span>
+      </div>
+      <div style="display:flex;align-items:center;gap:.7rem;padding:.55rem .9rem;background:rgba(255,255,255,.02);border:1px solid var(--bs);border-radius:9px;font-size:.84rem">
+        <span style="color:var(--a2);font-family:'JetBrains Mono',monospace;font-size:.7rem;min-width:24px">#3</span>
+        <span>"Cancellation before 30 days results in a full refund." &nbsp;<em style="color:var(--tm)">Refunds but wrong scenario</em></span>
+        <span style="color:var(--a2);font-family:'JetBrains Mono',monospace;font-size:.7rem;margin-left:auto">0.77</span>
+      </div>
+      <div style="display:flex;align-items:center;gap:.7rem;padding:.55rem .9rem;background:rgba(94,234,212,.06);border:1px solid rgba(94,234,212,.25);border-radius:9px;font-size:.84rem">
+        <span style="color:var(--a4);font-family:'JetBrains Mono',monospace;font-size:.7rem;min-width:24px">#4</span>
+        <strong style="color:var(--a1)">"If Marevlo discontinues service, annual subscribers receive prorated refunds for unused months." &mdash; THE answer</strong>
+        <span style="color:var(--a4);font-family:'JetBrains Mono',monospace;font-size:.7rem;margin-left:auto">0.74</span>
+      </div>
+    </div>
+    <div class="cl2 cr" style="margin-bottom:0">
+      <div class="cico">&#9888;&#65039;</div>
+      <div class="cbd">
+        <h4>The problem in practice</h4>
+        <p>The correct answer is ranked #4. If only top-3 are passed to the LLM, it never sees the answer and either hallucinates or says "I don't know." A cross-encoder reranker sees the query and all candidates together, applies deep attention over (query, document) pairs, and correctly promotes document #4 to rank #1 because it is the only one that addresses both "annual subscriptions" AND "service discontinuation."</p>
+      </div>
+    </div>
+  </div>
+</section>
+<section class="sec" id="s2">
+  <div class="sn">02 &middot; The 3-Stage Retrieval Pipeline</div>
+  <h2>Architecture: Recall Then Precision<br><span class="gt">With Latency Budget Allocation</span></h2>
+  <p class="lead">A production RAG retrieval pipeline has three stages, each optimizing a different objective. First-stage retrieval maximizes recall at low latency across the full corpus. Second-stage reranking maximizes precision on the shortlist. Third-stage LLM context selection is optional for high-stakes applications.</p>
+
+  <div class="card" style="padding:1.5rem">
+    <h3 style="font-size:.95rem;color:var(--a3);margin-bottom:1.2rem">Full 3-stage pipeline with latency budgets</h3>
+    <div style="display:flex;flex-direction:column;gap:.5rem;margin-bottom:1rem">
+      <div class="pipe-stage" style="border-color:rgba(96,165,250,.25)">
+        <div class="pipe-label" style="color:var(--a2)">Stage 1: Retrieval (recall) &mdash; 20-50ms</div>
+        <div class="pipe-detail">BM25 + Dense hybrid search &rarr; top-100 candidates from 1M+ documents. Uses pre-computed document vectors (offline) and ANN index. Goal: capture every relevant document in the shortlist.</div>
+      </div>
+      <div style="text-align:center;color:var(--tm);font-size:.8rem">&#8595; pass top-100 candidates</div>
+      <div class="pipe-stage" style="border-color:rgba(244,114,182,.25)">
+        <div class="pipe-label" style="color:var(--a3)">Stage 2: Reranking (precision) &mdash; 200-800ms</div>
+        <div class="pipe-detail">Cross-encoder scores each (query, candidate) pair with full transformer attention. Cannot pre-compute: query must be present at encoding time. Returns top-5 to top-10 highly relevant documents with calibrated scores.</div>
+      </div>
+      <div style="text-align:center;color:var(--tm);font-size:.8rem">&#8595; pass top-5 to LLM</div>
+      <div class="pipe-stage" style="border-color:rgba(167,139,250,.25)">
+        <div class="pipe-label" style="color:var(--a5)">Stage 3: LLM generation (optional judge) &mdash; 1-5s</div>
+        <div class="pipe-detail">LLM receives final 3-10 chunks. Optional: a 3rd-stage LLM reranker applies chain-of-thought relevance reasoning before generation. Adds latency but catches cases cross-encoder misses on subtle reasoning.</div>
+      </div>
+    </div>
+    <div class="cl2 ci" style="margin-bottom:0">
+      <div class="cico">&#128161;</div>
+      <div class="cbd">
+        <h4>Why 3 stages instead of a better single-stage retriever?</h4>
+        <p>Cross-encoders see query and document together &mdash; this is what makes them accurate. But this means you cannot pre-compute document scores: every (query, doc) pair requires a fresh forward pass. Scoring 1M documents per query would take hours. The cascade architecture is the only way to achieve both recall (stage 1) and precision (stage 2) at production scale and latency.</p>
+      </div>
+    </div>
+  </div>
+</section>
+<section class="sec" id="s3">
+  <div class="sn">03 &middot; Cross-Encoder Architecture</div>
+  <h2>Joint Attention: How Cross-Encoders<br><span class="gt">See Query and Document Together</span></h2>
+  <p class="lead">A cross-encoder concatenates query and document as a single input: [CLS] query [SEP] document [SEP]. The full transformer self-attention operates over this combined sequence, allowing every query token to attend to every document token. This joint attention is what enables cross-encoders to detect temporal mismatches ("after 30 days" vs "within 30 days"), negations, and conditional relevance that bi-encoders miss completely.</p>
+
+  <div class="g2">
+    <div class="card" style="margin-bottom:0">
+      <h3 style="color:var(--a2);font-size:1rem;margin-bottom:.8rem">Bi-encoder (retriever): independent encoding</h3>
+      <div style="font-family:'JetBrains Mono',monospace;font-size:.8rem;color:var(--t2);line-height:1.9;background:rgba(11,11,22,.8);border:1px solid var(--bs);border-radius:10px;padding:.9rem;margin-bottom:.8rem">
+        query: "refund after 30 days" &rarr; BERT &rarr; [0.80, 0.20, ...]<br>
+        doc A: "refund within 30 days" &rarr; BERT &rarr; [0.78, 0.22, ...]<br>
+        score = dot(q, d_A) = 0.97 &mdash; both look like "refund + 30 days"
+      </div>
+      <p style="color:var(--t2);font-size:.88rem;line-height:1.65">Query and document encoded independently. Pooling loses the directional context. "After" vs "within" becomes invisible in the averaged 768-dim vector. Both look equally relevant.</p>
+    </div>
+    <div class="card" style="margin-bottom:0;border-color:rgba(244,114,182,.25)">
+      <h3 style="color:var(--a3);font-size:1rem;margin-bottom:.8rem">Cross-encoder (reranker): joint encoding</h3>
+      <div style="font-family:'JetBrains Mono',monospace;font-size:.8rem;color:var(--t2);line-height:1.9;background:rgba(11,11,22,.8);border:1px solid var(--bs);border-radius:10px;padding:.9rem;margin-bottom:.8rem">
+        input: [CLS] refund after 30 days [SEP]<br>
+               refund within 30 days policy [SEP]<br>
+        "after" attends to "within" &rarr; temporal mismatch detected<br>
+        score = linear(h_[CLS]) = 0.31 &mdash; low relevance
+      </div>
+      <p style="color:var(--t2);font-size:.88rem;line-height:1.65">The transformer layer connecting "after" in the query to "within" in the document learns they are opposite temporal conditions. The cross-encoder correctly assigns low relevance. Bi-encoder cannot see this interaction.</p>
+    </div>
+  </div>
+
+  <div class="card" style="padding:1.4rem">
+    <h3 style="font-size:.95rem;color:var(--a3);margin-bottom:1rem">What cross-encoders catch that bi-encoders miss</h3>
+    <div style="display:flex;flex-direction:column;gap:.6rem">
+      <div style="padding:.7rem 1rem;background:rgba(255,255,255,.02);border:1px solid var(--bs);border-radius:10px;font-size:.85rem">
+        <strong style="color:var(--a4)">Negation:</strong> Query "plans without annual contracts" &rarr; Doc "all plans require annual contracts." Bi-encoder: both about annual contracts, high score. Cross-encoder: "without" attends to "require", opposite meaning, low score.
+      </div>
+      <div style="padding:.7rem 1rem;background:rgba(255,255,255,.02);border:1px solid var(--bs);border-radius:10px;font-size:.85rem">
+        <strong style="color:var(--a4)">Conditional relevance:</strong> Query "refund for enterprise accounts" &rarr; Doc "individual accounts are non-refundable, enterprise accounts have custom terms." Bi-encoder misses the conditional. Cross-encoder attends to "enterprise" aligning in both.
+      </div>
+      <div style="padding:.7rem 1rem;background:rgba(255,255,255,.02);border:1px solid var(--bs);border-radius:10px;font-size:.85rem">
+        <strong style="color:var(--a4)">Specificity:</strong> Query "refund for subscription cancelled after 45 days" &rarr; Doc A covers the 30-day period only. Bi-encoder: both are about subscription refunds. Cross-encoder: 45 days falls outside the 30-day policy, low relevance for the specific question.
+      </div>
+    </div>
+  </div>
+</section>
+<section class="sec" id="s4">
+  <div class="sn">04 &middot; Training Cross-Encoders</div>
+  <h2>Pointwise, Pairwise, Listwise:<br><span class="gt">Three Loss Paradigms</span></h2>
+  <p class="lead">Cross-encoders can be trained with three different objective functions. The choice depends on what labeled data you have and whether you need absolute relevance scores or just relative ranking order.</p>
+
+  <div class="g3">
+    <div class="mc2" style="border-color:rgba(96,165,250,.25)">
+      <h4 style="color:var(--a2)">Pointwise Loss</h4>
+      <p style="margin-bottom:.6rem">Labels each (query, doc) pair independently with a relevance score (0=irrelevant, 1=relevant, or multi-level 0-3). Uses cross-entropy or MSE against the label.</p>
+      <div class="fbox" style="padding:.8rem;margin-bottom:.6rem"><div class="formula" style="font-size:.85rem">L = CE(sigmoid(score), label)</div></div>
+      <p>Pros: simple, works with binary annotation. Cons: does not optimize relative ordering. Two relevant docs can both score 0.9 with no ordering information.</p>
+    </div>
+    <div class="mc2" style="border-color:rgba(244,114,182,.25)">
+      <h4 style="color:var(--a3)">Pairwise Loss (recommended)</h4>
+      <p style="margin-bottom:.6rem">For each query, compare pairs of docs where one is more relevant. Train to score the positive doc higher than the negative.</p>
+      <div class="fbox" style="padding:.8rem;margin-bottom:.6rem"><div class="formula" style="font-size:.85rem">L = &minus;log(sigmoid(s<sup>+</sup> &minus; s<sup>&minus;</sup>))</div></div>
+      <p>Directly optimizes ranking order. Works perfectly with click-through data (clicked A over B). Standard approach for domain fine-tuning. Used in RLHF preference training.</p>
+    </div>
+    <div class="mc2" style="border-color:rgba(167,139,250,.25)">
+      <h4 style="color:var(--a5)">Listwise Loss</h4>
+      <p style="margin-bottom:.6rem">Scores the entire candidate list for each query simultaneously, matching the full ground-truth relevance ordering.</p>
+      <div class="fbox" style="padding:.8rem;margin-bottom:.6rem"><div class="formula" style="font-size:.85rem">L = &minus;&Sigma; y<sub>i</sub> log(softmax(scores)<sub>i</sub>)</div></div>
+      <p>Globally optimizes the ranking. Requires full relevance labels for all candidates per query &mdash; expensive to annotate. Used when distilling from GPT-4 full-list judgments.</p>
+    </div>
+  </div>
+
+  <div class="cl2 ci">
+    <div class="cico">&#128161;</div>
+    <div class="cbd">
+      <h4>Which loss to use when fine-tuning on your domain data</h4>
+      <p>Click-through logs or human preference pairs ("A is better than B") &rarr; pairwise loss. Binary relevance labels from annotation (relevant/not) &rarr; pointwise. Distillation from a GPT-4 judge ranking full candidate sets &rarr; listwise. For most domain adaptation projects, pairwise is the practical choice because preference pairs are cheapest to collect: show annotators two candidates, ask which one better answers the query.</p>
+    </div>
+  </div>
+</section>
+<section class="sec" id="s5">
+  <div class="sn">05 &middot; Production Reranker Models</div>
+  <h2>Every Reranker You Will Use<br><span class="gt">in Production, Compared</span></h2>
+
+  <div class="model-card" style="border-color:rgba(96,165,250,.3)">
+    <h4><span class="bdg bg-b">Cohere</span> Rerank 3.5 &mdash; recommended for managed deployment</h4>
+    <p>State-of-the-art reranker via API. Accepts a query and up to 1000 documents per call. Supports 100+ languages and 4096-token documents. Multilingual, no infrastructure required. Returns relevance scores and sorted rankings. Purpose-built for enterprise RAG. Per-call pricing (~$0.001 per call).</p>
+    <div class="stats"><span class="bdg bg-b">API only</span><span class="bdg bg-y">1000 docs/call</span><span class="bdg bg-g">100+ languages</span><span class="bdg bg-g">4096 token docs</span></div>
+  </div>
+
+  <div class="model-card" style="border-color:rgba(94,234,212,.3)">
+    <h4><span class="bdg bg-g">BAAI</span> BGE-reranker-v2-m3 &mdash; recommended for self-hosted</h4>
+    <p>Companion reranker to the BGE embedding family. Multilingual (100+ languages), 512 token context. Trained with pairwise loss on MS MARCO and domain-diverse datasets. The -large variant (560M params) outperforms -base (110M) by ~3 NDCG points. Fully open source, runs on a single GPU.</p>
+    <div class="stats"><span class="bdg bg-g">Open source</span><span class="bdg bg-p">110M or 560M params</span><span class="bdg bg-g">100+ languages</span><span class="bdg bg-b">512 tokens</span></div>
+  </div>
+
+  <div class="model-card" style="border-color:rgba(167,139,250,.3)">
+    <h4><span class="bdg bg-p">Microsoft</span> ms-marco-MiniLM-L-6-v2 &mdash; CPU-deployable lightweight option</h4>
+    <p>6-layer MiniLM cross-encoder fine-tuned on MS MARCO. 22M parameters. Runs on CPU at ~50ms per (query, doc) pair. Strong baseline for English-only applications. Good for latency-sensitive use cases where a 560M-param model is too slow. Surprisingly competitive given its size.</p>
+    <div class="stats"><span class="bdg bg-g">Open source</span><span class="bdg bg-y">22M params</span><span class="bdg bg-b">CPU-friendly</span><span class="bdg bg-b">English only</span></div>
+  </div>
+
+  <div class="model-card" style="border-color:rgba(244,114,182,.3)">
+    <h4><span class="bdg bg-r">Jina AI</span> jina-reranker-v2-base-multilingual &mdash; long document specialist</h4>
+    <p>Supports 8192 token context, critical for long legal or technical documents that overflow BGE-reranker's 512-token limit. Multilingual, available as open weights and API. Best choice when chunks are longer than 512 tokens or when you cannot afford to truncate legal/technical content.</p>
+    <div class="stats"><span class="bdg bg-r">Open weights + API</span><span class="bdg bg-y">8192 token context</span><span class="bdg bg-g">Multilingual</span></div>
+  </div>
+
+  <div class="model-card" style="border-color:rgba(251,191,36,.3)">
+    <h4><span class="bdg bg-y">Mixedbread</span> mxbai-rerank-v2 &mdash; high-throughput production</h4>
+    <p>Competitive quality at lower latency than BGE-reranker-large. Good for latency-sensitive applications. 512 token context. Strong on BEIR benchmarks relative to its model size. Fully open source, active development.</p>
+    <div class="stats"><span class="bdg bg-g">Open source</span><span class="bdg bg-y">Fast inference</span><span class="bdg bg-b">512 tokens</span></div>
+  </div>
+</section>
+<section class="sec" id="s6">
+  <div class="sn">06 &middot; LLM-as-Reranker</div>
+  <h2>GPT-4 and Claude as<br><span class="gt">Fine-Grained Relevance Judges</span></h2>
+  <p class="lead">Cross-encoders miss subtle reasoning: "This document discusses refunds for B2B enterprise contracts, but the user is asking about consumer annual subscriptions." Large LLMs reason about such distinctions with chain-of-thought. LLM reranking adds 500ms-3s of latency but catches cases cross-encoders consistently get wrong.</p>
+
+  <div class="g2">
+    <div class="card" style="margin-bottom:0">
+      <h3 style="color:var(--a4);font-size:1rem;margin-bottom:.7rem">Pattern 1: Pointwise scoring (1 call per candidate)</h3>
+      <div style="background:rgba(11,11,22,.8);border:1px solid var(--bs);border-radius:10px;padding:.9rem;font-size:.82rem;line-height:1.7;color:var(--t2)">
+        System: "Rate document relevance to query on 1-10."<br>
+        User: "Query: [query]
+Document: [document]
+Score:"<br><br>
+        Run N calls in parallel. Sort by score. Simple and interpretable. Latency: N x API latency. Cost: N x per-token cost.
+      </div>
+    </div>
+    <div class="card" style="margin-bottom:0">
+      <h3 style="color:var(--a5);font-size:1rem;margin-bottom:.7rem">Pattern 2: Listwise sliding window (1 call per window)</h3>
+      <div style="background:rgba(11,11,22,.8);border:1px solid var(--bs);border-radius:10px;padding:.9rem;font-size:.82rem;line-height:1.7;color:var(--t2)">
+        System: "Rerank these N documents for the query. Return doc IDs in order of relevance."<br>
+        User: "Query: [query]
+Doc 1: [...]
+Doc 2: [...]
+..."<br><br>
+        Window slides with overlap (window=10, step=5). More accurate, fewer calls. Implementation: LangChain RankGPT.
+      </div>
+    </div>
+  </div>
+
+  <div class="cl2 cw2">
+    <div class="cico">&#9888;&#65039;</div>
+    <div class="cbd">
+      <h4>When LLM reranking is worth the latency cost</h4>
+      <p>Use LLM reranking when: the task is high-stakes (medical, legal, financial decisions), a cross-encoder is already deployed but evaluation shows measurable quality gaps, or you have fewer than 20 candidates to rescore. Skip it for high-throughput consumer applications where latency matters more than marginal quality improvement and cross-encoder quality is sufficient.</p>
+    </div>
+  </div>
+</section>
+<section class="sec" id="s7">
+  <div class="sn">07 &middot; Pipeline Decision Guide</div>
+  <h2>Choosing the Right Number<br><span class="gt">of Retrieval Stages</span></h2>
+  <div class="card" style="padding:0;overflow:hidden">
+    <table class="tbl">
+      <thead><tr><th>Pipeline</th><th>Latency</th><th>Quality</th><th>Cost</th><th>When to Use</th></tr></thead>
+      <tbody>
+        <tr><td>BM25 only</td><td>~1ms</td><td>Baseline</td><td>Minimal</td><td>Prototyping, exact-match only, no GPU, sub-10ms SLA</td></tr>
+        <tr><td>Dense retriever only</td><td>~20ms</td><td>Good</td><td>GPU infra</td><td>Semantic queries, no exact-match needs, moderate corpus</td></tr>
+        <tr><td>Hybrid BM25 + Dense</td><td>~25ms</td><td>Better</td><td>GPU + vector DB</td><td>Production RAG default. Covers both retrieval modes.</td></tr>
+        <tr><td>Hybrid + Cross-encoder reranker</td><td>~300ms</td><td>High</td><td>Extra GPU</td><td>Enterprise RAG. Recommended for most deployments.</td></tr>
+        <tr><td>Hybrid + Reranker + LLM judge</td><td>2-5s</td><td>Very High</td><td>Significant</td><td>High-stakes (medical, legal, financial). Async acceptable.</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <div class="cl2 cs" style="margin-top:1.2rem">
+    <div class="cico">&#128161;</div>
+    <div class="cbd">
+      <h4>Recommended default: Hybrid + BGE-reranker</h4>
+      <p>For most enterprise RAG: retrieve top-100 with hybrid search (~25ms), rerank with BGE-reranker-v2-m3 (~200ms for 100 docs), pass top-5 to LLM. Total retrieval latency ~250ms, well within a 1-2 second user-acceptable budget. Add Cohere Rerank as a drop-in replacement if you prefer managed infra over self-hosted GPU.</p>
+    </div>
+  </div>
+</section>
+<section class="sec" id="s8">
+  <div class="sn">08 &middot; Production Code</div>
+  <h2>Cohere, BGE-Reranker, and<br><span class="gt">LangChain ContextualCompression</span></h2>
+  <div class="cc">
+    <div class="ch"><h3>reranking_production.py</h3><button class="cpb" onclick="cp(this,'c1')">&#10021; Copy</button></div>
+    <div class="cbody"><pre id="c1"><span class="cm"># ── Option 1: Cohere Rerank API (no infra, managed) ──────────</span>
+<span class="kw">import</span> cohere
+
+co = cohere.<span class="cl">Client</span>(<span class="str">"YOUR_COHERE_API_KEY"</span>)
+query = <span class="str">"What is the refund policy for annual subscriptions?"</span>
+candidates = [
+    <span class="str">"Annual subscriptions are non-refundable after 30 days."</span>,
+    <span class="str">"Monthly plans can be cancelled any time with no penalty."</span>,
+    <span class="str">"Refund requests require your subscription ID and purchase date."</span>,
+    <span class="str">"Enterprise accounts have custom refund terms negotiated at signup."</span>,
+]
+
+results = co.rerank(
+    query=query, documents=candidates,
+    model=<span class="str">"rerank-v3.5"</span>, top_n=<span class="nu">3</span>, return_documents=<span class="kw">True</span>
+)
+<span class="kw">for</span> r <span class="kw">in</span> results.results:
+    <span class="fn">print</span>(<span class="str">f"[{r.relevance_score:.4f}] {r.document.text[:70]}"</span>)
+
+<span class="cm"># ── Option 2: BGE-reranker (self-hosted, open source) ─────────</span>
+<span class="kw">from</span> sentence_transformers <span class="kw">import</span> <span class="cl">CrossEncoder</span>
+
+reranker = <span class="cl">CrossEncoder</span>(
+    <span class="str">"BAAI/bge-reranker-v2-m3"</span>,
+    max_length=<span class="nu">512</span>,
+    device=<span class="str">"cuda"</span>      <span class="cm"># use "cpu" for ms-marco-MiniLM-L-6-v2</span>
+)
+pairs = [(query, doc) <span class="kw">for</span> doc <span class="kw">in</span> candidates]
+scores = reranker.predict(pairs, batch_size=<span class="nu">32</span>)
+ranked = <span class="fn">sorted</span>(<span class="fn">zip</span>(candidates, scores), key=<span class="kw">lambda</span> x: -x[<span class="nu">1</span>])
+<span class="kw">for</span> doc, score <span class="kw">in</span> ranked:
+    <span class="fn">print</span>(<span class="str">f"[{score:.4f}] {doc[:70]}"</span>)
+
+<span class="cm"># ── Option 3: LangChain ContextualCompressionRetriever ────────</span>
+<span class="kw">from</span> langchain.retrievers <span class="kw">import</span> <span class="cl">ContextualCompressionRetriever</span>
+<span class="kw">from</span> langchain.retrievers.document_compressors <span class="kw">import</span> <span class="cl">CohereRerank</span>
+<span class="kw">from</span> langchain.retrievers <span class="kw">import</span> <span class="cl">EnsembleRetriever</span>
+<span class="kw">from</span> langchain_community.retrievers <span class="kw">import</span> <span class="cl">BM25Retriever</span>
+<span class="kw">from</span> langchain_community.vectorstores <span class="kw">import</span> <span class="cl">Qdrant</span>
+<span class="kw">from</span> langchain_community.embeddings <span class="kw">import</span> <span class="cl">HuggingFaceEmbeddings</span>
+<span class="kw">from</span> langchain.schema <span class="kw">import</span> <span class="cl">Document</span>
+
+docs = [<span class="cl">Document</span>(page_content=c) <span class="kw">for</span> c <span class="kw">in</span> candidates]
+embeddings = <span class="cl">HuggingFaceEmbeddings</span>(model_name=<span class="str">"BAAI/bge-large-en-v1.5"</span>,
+    encode_kwargs={<span class="str">"normalize_embeddings"</span>: <span class="kw">True</span>},
+    query_instruction=<span class="str">"Represent this sentence for searching relevant passages: "</span>)
+vectorstore = <span class="cl">Qdrant</span>.from_documents(docs, embeddings,
+    location=<span class="str">":memory:"</span>, collection_name=<span class="str">"docs"</span>)
+bm25 = <span class="cl">BM25Retriever</span>.from_documents(docs, k=<span class="nu">10</span>)
+hybrid = <span class="cl">EnsembleRetriever</span>(
+    retrievers=[bm25, vectorstore.as_retriever(search_kwargs={<span class="str">"k"</span>: <span class="nu">10</span>})],
+    weights=[<span class="nu">0.4</span>, <span class="nu">0.6</span>])
+
+<span class="cm"># Wrap hybrid retriever with Cohere reranker</span>
+<span class="cm"># Retrieves top-10, reranks and returns top-3</span>
+pipeline = <span class="cl">ContextualCompressionRetriever</span>(
+    base_compressor=<span class="cl">CohereRerank</span>(
+        cohere_api_key=<span class="str">"YOUR_KEY"</span>,
+        model=<span class="str">"rerank-v3.5"</span>,
+        top_n=<span class="nu">3</span>
+    ),
+    base_retriever=hybrid
+)
+final_docs = pipeline.invoke(<span class="str">"annual subscription refund policy"</span>)
+
+<span class="cm"># ── LLM pointwise reranker (works with any LangChain LLM) ─────</span>
+<span class="kw">def</span> <span class="fn">llm_rerank</span>(query: str, docs: list, llm) -&gt; list:
+    scored = []
+    prompt_template = (
+        <span class="str">"Rate relevance 1-10.
+Query: {q}
+Document: {d}
+Score:"</span>
+    )
+    <span class="kw">for</span> doc <span class="kw">in</span> docs:
+        prompt = prompt_template.<span class="fn">format</span>(
+            q=query, d=doc.page_content[:<span class="nu">500</span>])
+        score = <span class="fn">int</span>(llm.invoke(prompt).content.<span class="fn">strip</span>())
+        scored.append((doc, score))
+    <span class="kw">return</span> [d <span class="kw">for</span> d, _ <span class="kw">in</span> <span class="fn">sorted</span>(scored, key=<span class="kw">lambda</span> x: -x[<span class="nu">1</span>])]</pre>
+    </div>
+  </div>
+</section>
+<section class="sec" id="s9">
+  <div class="sn">09 &middot; Assessment</div>
+  <h2>Module 8 <span class="gt">Quiz</span></h2>
+  <div class="qc">
+    <div class="qq">
+      <h4>1. Your hybrid retriever returns the correct answer at rank #8 out of 50 candidates, but you only pass top-5 to the LLM. The retriever has recall@50=100%. What is the problem and how does reranking fix it?</h4>
+      <div class="qo">
+        <button class="qob" onclick="cq(this,0,false)">A) Insufficient recall &mdash; upgrade to a better embedding model</button>
+        <button class="qob" onclick="cq(this,0,true)">B) Sufficient recall (answer is in the top-50) but insufficient precision (rank #8, not top-5). A cross-encoder reranker processes all 50 (query, candidate) pairs with full attention, detecting the correct document's specific relevance. It promotes the answer from rank #8 to rank #1, and the LLM now receives it in its context window.</button>
+        <button class="qob" onclick="cq(this,0,false)">C) The LLM context window is too small &mdash; pass all 50 candidates directly</button>
+        <button class="qob" onclick="cq(this,0,false)">D) Increase top-k from 5 to 10 and the answer will appear</button>
+      </div>
+      <div class="qf" id="f0">Correct. Recall vs precision is the key distinction. Recall@50=100% means the retriever found the right document (it is in the top-50). But it is at rank #8. Reranking operates on the already-retrieved set to improve precision (the ranking order). If the answer were at rank #51, no reranker could help &mdash; you would need to improve recall first by increasing retriever top-k or using a better retrieval model.</div>
+    </div>
+    <div class="qq">
+      <h4>2. A cross-encoder detects that "Refunds available within 30 days" is NOT relevant to "Can I get a refund after 30 days?" but a bi-encoder misses this. What architectural property enables this?</h4>
+      <div class="qo">
+        <button class="qob" onclick="cq(this,1,false)">A) Cross-encoders are trained on larger datasets with more factual examples</button>
+        <button class="qob" onclick="cq(this,1,true)">B) The cross-encoder concatenates query and document as a single input. "After" in the query and "within" in the document are processed by the same self-attention layers. The transformer learns that these are opposite temporal conditions. A bi-encoder encodes them separately: both produce "refund + 30 days" vectors without the directional mismatch being visible after pooling.</button>
+        <button class="qob" onclick="cq(this,1,false)">C) Cross-encoders use larger embedding dimensions that capture more semantic nuance</button>
+        <button class="qob" onclick="cq(this,1,false)">D) Cross-encoders run BM25 internally to detect keyword mismatches</button>
+      </div>
+      <div class="qf" id="f1">Correct. The joint self-attention is the key property. When "after" in the query and "within" in the document appear in the same input sequence, every attention head in the transformer can attend from one to the other. Bi-encoders produce independent vectors where both "after 30 days" and "within 30 days" get similar representations for "temporal refund policy" without preserving the directional difference.</div>
+    </div>
+    <div class="qq">
+      <h4>3. You are fine-tuning BGE-reranker on your domain data. You have click-through logs: for each query, users clicked some documents over others. Which training loss is most appropriate?</h4>
+      <div class="qo">
+        <button class="qob" onclick="cq(this,2,false)">A) Pointwise loss, treating clicked=1 and not-clicked=0</button>
+        <button class="qob" onclick="cq(this,2,true)">B) Pairwise loss. Click-through gives you preference pairs: for query Q, document A was preferred over B by user clicks. Pairwise loss: L = -log(sigmoid(score_A - score_B)). This directly trains the model to rank clicked documents above unclicked ones, matching what the click data reveals about relative preferences.</button>
+        <button class="qob" onclick="cq(this,2,false)">C) Listwise loss, treating full session click ordering as ground truth</button>
+        <button class="qob" onclick="cq(this,2,false)">D) No fine-tuning needed &mdash; cross-encoders generalize across domains</button>
+      </div>
+      <div class="qf" id="f2">Correct. Click data is inherently pairwise preference data: the user clicked A over B, expressing a preference. Pairwise loss trains the reranker to score A above B for that query type. Pointwise loss would treat all non-clicked docs as irrelevant (label=0), which is wrong &mdash; a user may not have seen or reached other relevant documents. Pairwise avoids this assumption by only using the explicit preference signals.</div>
+    </div>
+    <div class="qq">
+      <h4>4. BGE-reranker-v2-m3 has a 512-token context limit. Your legal documents average 3000 tokens. What is the best approach?</h4>
+      <div class="qo">
+        <button class="qob" onclick="cq(this,3,false)">A) Truncate all documents to 512 tokens before reranking</button>
+        <button class="qob" onclick="cq(this,3,true)">B) Use Jina jina-reranker-v2-base-multilingual (8192 token context). Alternatively, implement chunk-level reranking: split 3000-token docs into 500-token chunks with overlap, rerank all chunks, then attribute each document the score of its highest-scoring chunk. Truncation discards 83% of each document which may contain the most relevant legal clause.</button>
+        <button class="qob" onclick="cq(this,3,false)">C) Average multiple 512-token window scores across each document</button>
+        <button class="qob" onclick="cq(this,3,false)">D) Cohere Rerank has unlimited token support and handles this automatically</button>
+      </div>
+      <div class="qf" id="f3">Correct. Legal documents often have the key clause (force majeure, liability cap, termination terms) buried in the latter half. Truncating at 512 tokens discards most of the document. Jina's 8192 context handles 3000-token documents natively. The chunk-level approach is a solid alternative: the document's most relevant 500-token segment gets promoted, which is often better than feeding the entire 3000-token document to any reranker. Note: Cohere Rerank has a 4096-token limit per document, not unlimited.</div>
+    </div>
+    <div class="qq">
+      <h4>5. You add a cross-encoder reranker to an existing RAG system. You pass the same 5 documents to the LLM before and after reranking. Why does generation quality improve even though the count is the same?</h4>
+      <div class="qo">
+        <button class="qob" onclick="cq(this,4,false)">A) The reranker compresses documents making them more concise for the LLM</button>
+        <button class="qob" onclick="cq(this,4,true)">B) Without reranking, the top-5 context contains less-relevant documents that dilute the signal. The LLM's attention is divided across relevant and irrelevant content ("lost in the middle" phenomenon), producing lower-quality answers. After reranking, all 5 documents are the most relevant to the query, giving the LLM a higher signal-to-noise context and consistently better generation.</button>
+        <button class="qob" onclick="cq(this,4,false)">C) Reranking changes the document order and LLMs prefer specific orderings</button>
+        <button class="qob" onclick="cq(this,4,false)">D) The reranker filters duplicate documents from the context window</button>
+      </div>
+      <div class="qf" id="f4">Correct. "Lost in the middle" (Liu et al. 2023) showed that LLMs perform worse when relevant information is surrounded by irrelevant content in the context window. Before reranking: the top-5 might include 2-3 genuinely relevant docs and 2-3 tangentially related noise. After reranking: all 5 are highly relevant. The LLM now generates from dense, high-quality evidence rather than diluted context, which reduces hallucination rates and improves specificity.</div>
+    </div>
+    <div class="qs" id="qs"><h3 id="sc">0/5</h3><p id="sm"></p></div>
+  </div>
+</section>
+<div class="fn2">
+  <a href="rag_module_7.html" class="pr">&larr; Module 7: Hybrid Search + RRF</a>
+  <div class="fcc"><div>Module 8 &middot; Reranking</div><div style="font-size:.75rem;margin-top:4px">RAG Masterclass &middot; Marevlo</div></div>
+  <a href="rag_module_9.html" class="nx">Module 9: Generation &rarr;</a>
+</div>
+</div>
+
+<script>
+window.addEventListener('scroll', function() {
+  var h = document.documentElement;
+  document.getElementById('sp').style.width = ((h.scrollTop/(h.scrollHeight-h.clientHeight))*100)+'%';
+});
+var obs = new IntersectionObserver(function(entries) {
+  entries.forEach(function(e){ if(e.isIntersecting) e.target.classList.add('vis'); });
+},{threshold:0.07});
+document.querySelectorAll('.sec').forEach(function(s){ obs.observe(s); });
+
+function cp(btn,id) {
+  navigator.clipboard.writeText(document.getElementById(id).innerText).then(function(){
+    btn.textContent='Copied!';
+    setTimeout(function(){ btn.textContent='Copy'; },2000);
+  });
+}
+
+var ans=[null,null,null,null,null];
+function cq(btn,qi,ok){
+  var opts=btn.parentElement.querySelectorAll('.qob');
+  opts.forEach(function(o){ o.disabled=true; });
+  if(ans[qi]!==null) return;
+  ans[qi]=ok;
+  var f=document.getElementById('f'+qi);
+  if(ok){ btn.classList.add('ok'); f.classList.add('show'); f.style.color='var(--a1)'; }
+  else{
+    btn.classList.add('no');
+    opts.forEach(function(o){ if(o!==btn&&o.getAttribute('onclick').indexOf(',true)')>-1) o.classList.add('ok'); });
+    f.classList.add('show'); f.style.color='var(--a3)';
+  }
+  var filled=ans.filter(function(a){ return a!==null; }).length;
+  if(filled===5){
+    var c=ans.filter(function(a){ return a===true; }).length;
+    document.getElementById('qs').style.display='block';
+    document.getElementById('sc').textContent=c+'/5';
+    document.getElementById('sm').textContent=['Review pipeline architecture.','Re-read cross-encoder section.','Good. Check training losses.','Almost perfect!','Perfect. Move to Module 9: Generation.'][c];
+  }
+}
+</script>
+</body>
+</html>

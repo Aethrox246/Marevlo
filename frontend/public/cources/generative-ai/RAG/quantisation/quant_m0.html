@@ -1,0 +1,871 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Quantization for Modern AI · M0 — Quantization — From INT4 to TurboQuant</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;700&family=Source+Serif+4:ital,opsz,wght@0,8..60,400;0,8..60,600;1,8..60,400&display=swap" rel="stylesheet">
+<style>:root{--bg:#08080e;--t1:#ececf6;--t2:#b5b5c8;--tm:#6b6b85;
+--a1:#5eead4;--a2:#60a5fa;--a3:#f472b6;--a4:#fbbf24;--a5:#a78bfa;--ac:#fbbf24;
+--gl:linear-gradient(90deg,#5eead4 0%,#60a5fa 28%,#a78bfa 55%,#f472b6 82%,#fbbf24 100%);
+--bs:rgba(255,255,255,0.06);--sh:0 24px 80px rgba(0,0,0,0.5);--r:18px;--cw:1160px}
+*{box-sizing:border-box;margin:0;padding:0}html{scroll-behavior:smooth}
+body{background:radial-gradient(ellipse 900px 500px at 15% 10%,rgba(251,191,36,.08),transparent 50%),radial-gradient(ellipse 700px 400px at 85% 20%,rgba(96,165,250,.05),transparent 40%),var(--bg);color:var(--t1);font-family:'Outfit',sans-serif;line-height:1.75;overflow-x:hidden;-webkit-font-smoothing:antialiased}
+/* Progress bar */
+.sp{position:fixed;top:0;left:0;height:3px;width:0%;z-index:1000;background:var(--gl);transition:width .1s linear}
+/* Nav */
+nav{position:fixed;top:3px;left:0;right:0;z-index:999;display:flex;align-items:center;justify-content:space-between;padding:.7rem 2rem;background:rgba(8,8,14,.9);backdrop-filter:blur(16px);border-bottom:1px solid var(--bs)}
+.nbr{font-family:'JetBrains Mono',monospace;font-size:.7rem;color:var(--ac);letter-spacing:.16em;text-transform:uppercase;text-decoration:none;display:flex;align-items:center;gap:8px}
+.nbr-dot{width:6px;height:6px;border-radius:50%;background:var(--ac);animation:pulse 2s ease-in-out infinite}
+.nm{font-size:.8rem;color:var(--tm);max-width:400px;text-overflow:ellipsis;overflow:hidden;white-space:nowrap}
+.na{display:flex;gap:8px}
+.nb{display:inline-flex;align-items:center;gap:6px;padding:.38rem .85rem;border-radius:999px;border:1px solid var(--bs);background:rgba(255,255,255,.02);color:var(--t2);font-size:.78rem;text-decoration:none;transition:all .18s}
+.nb:hover{border-color:var(--ac);color:var(--ac)}
+/* Hero */
+.hero{min-height:100vh;display:flex;align-items:center;justify-content:center;padding:5rem 2rem 3rem;position:relative;overflow:hidden}
+.hg{position:absolute;inset:0;background-image:linear-gradient(rgba(255,255,255,.018) 1px,transparent 1px),linear-gradient(90deg,rgba(255,255,255,.018) 1px,transparent 1px);background-size:52px 52px;mask-image:radial-gradient(circle at center,black 20%,transparent 75%);pointer-events:none}
+.hi{max-width:1000px;text-align:center;position:relative;z-index:1}
+.hl{display:inline-flex;align-items:center;gap:10px;padding:.5rem 1rem;border-radius:999px;border:1px solid rgba(251,191,36,.28);background:rgba(251,191,36,.07);color:var(--ac);letter-spacing:1.8px;text-transform:uppercase;font-size:.74rem;margin-bottom:1.8rem}
+h1{font-size:clamp(2.6rem,5.5vw,5rem);line-height:1.02;letter-spacing:-.05em;font-weight:900;margin-bottom:1.2rem}
+.gt{background:var(--gl);-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent}
+.sub{font-size:.82rem;color:var(--tm);font-family:'JetBrains Mono',monospace;margin-bottom:.6rem;letter-spacing:.04em}
+.hs{font-family:'Source Serif 4',serif;color:var(--t2);font-size:clamp(1rem,1.8vw,1.18rem);max-width:800px;margin:0 auto 2.2rem;line-height:1.85}
+.hm{display:flex;flex-wrap:wrap;justify-content:center;gap:10px;margin-bottom:2.5rem}
+.mp{border:1px solid var(--bs);background:rgba(17,17,28,.8);border-radius:999px;padding:.6rem 1.1rem;color:var(--t2);font-size:.86rem}
+.mp.hl2{border-color:rgba(251,191,36,.3);color:var(--ac);background:rgba(251,191,36,.06)}
+.sc{position:absolute;bottom:2.4rem;left:50%;transform:translateX(-50%);color:var(--tm);display:flex;flex-direction:column;gap:.5rem;align-items:center;text-transform:uppercase;letter-spacing:.22em;font-size:.68rem}
+.arr{width:17px;height:17px;border-right:2px solid var(--tm);border-bottom:2px solid var(--tm);transform:rotate(45deg);animation:ba 2s ease-in-out infinite}
+@keyframes pulse{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.25;transform:scale(.7)}}
+@keyframes ba{0%,100%{transform:rotate(45deg) translateY(0)}50%{transform:rotate(45deg) translateY(8px)}}
+/* Content */
+.cw{max-width:var(--cw);margin:0 auto;padding:0 2rem 7rem}
+.sec{margin-bottom:6rem;opacity:0;transform:translateY(32px);transition:opacity .6s ease,transform .6s ease}
+.sec.vis{opacity:1;transform:translateY(0)}
+.sn{display:flex;align-items:center;gap:14px;color:var(--ac);font-family:'JetBrains Mono',monospace;font-size:.67rem;text-transform:uppercase;letter-spacing:.24em;margin-bottom:1rem}
+.sn::after{content:"";height:1px;flex:1;background:linear-gradient(90deg,rgba(251,191,36,.6),transparent)}
+.sec h2{font-size:clamp(2rem,4vw,3rem);line-height:1.06;margin-bottom:1.1rem;letter-spacing:-.04em}
+.lead{font-family:'Source Serif 4',serif;font-size:1.1rem;color:var(--t2);margin-bottom:2.2rem;line-height:1.88;max-width:860px}
+/* Cards */
+.card{background:linear-gradient(160deg,rgba(20,20,36,.98),rgba(14,14,26,.98));border:1px solid var(--bs);border-radius:var(--r);box-shadow:var(--sh);padding:2rem;margin-bottom:1.6rem}
+.card-accent{border-color:rgba(251,191,36,.25);background:linear-gradient(160deg,rgba(251,191,36,.04),rgba(14,14,26,.98))}
+/* Code blocks */
+.cc{background:linear-gradient(180deg,rgba(10,10,20,.99),rgba(8,8,16,.99));border:1px solid var(--bs);border-radius:var(--r);box-shadow:var(--sh);padding:0;margin-bottom:1.6rem;overflow:hidden}
+.ch{display:flex;align-items:center;justify-content:space-between;padding:1rem 1.6rem;border-bottom:1px solid var(--bs);background:rgba(255,255,255,.015)}
+.ch h3{font-size:.88rem;font-family:'JetBrains Mono',monospace;color:var(--ac);display:flex;align-items:center;gap:8px}
+.ch h3::before{content:"⟩";opacity:.5}
+.cpb{display:inline-flex;align-items:center;gap:5px;padding:.26rem .7rem;border-radius:999px;border:1px solid var(--bs);background:transparent;color:var(--tm);font-size:.7rem;cursor:pointer;transition:all .18s;font-family:'JetBrains Mono',monospace}
+.cpb:hover{border-color:var(--a1);color:var(--a1)}
+.cbody{padding:1.6rem;overflow-x:auto}
+pre{white-space:pre;color:#d8e3ff;font-family:'JetBrains Mono',monospace;font-size:.84rem;line-height:1.78;tab-size:4}
+.kw{color:#c084fc}.fn{color:#60a5fa}.str{color:#5eead4}.cm{color:#3d4060;font-style:italic}.nu{color:#fbbf24}.cl{color:#f472b6}.de{color:#fb923c}.op{color:#94a3b8}
+/* Architecture containers */
+.arch{background:rgba(8,8,18,.96);border:1px solid rgba(251,191,36,.18);border-radius:var(--r);padding:1.8rem;margin-bottom:1.6rem;overflow-x:auto;text-align:center}
+.arch-title{font-family:'JetBrains Mono',monospace;font-size:.68rem;text-transform:uppercase;letter-spacing:.2em;color:var(--ac);margin-bottom:1.4rem;text-align:left;display:flex;align-items:center;gap:8px}
+.arch-title::before{content:"▸";opacity:.7}
+/* Callouts */
+.callout{border-radius:14px;padding:1.2rem 1.4rem;margin-bottom:1.2rem;display:flex;gap:1rem;align-items:flex-start}
+.callout-key{background:rgba(94,234,212,.05);border:1px solid rgba(94,234,212,.22)}
+.callout-warn{background:rgba(251,191,36,.05);border:1px solid rgba(251,191,36,.22)}
+.callout-insight{background:rgba(167,139,250,.05);border:1px solid rgba(167,139,250,.22)}
+.callout-scenario{background:rgba(96,165,250,.05);border:1px solid rgba(96,165,250,.22)}
+.callout-danger{background:rgba(244,114,182,.05);border:1px solid rgba(244,114,182,.22)}
+.callout-icon{font-size:1.35rem;flex-shrink:0;margin-top:.08rem}
+.callout-body h4{font-size:.96rem;margin-bottom:.35rem;color:var(--t1);font-weight:700}
+.callout-body p{font-size:.88rem;color:var(--t2);line-height:1.68}
+.callout-body code{font-family:'JetBrains Mono',monospace;font-size:.82rem;background:rgba(255,255,255,.06);padding:.1rem .3rem;border-radius:4px;color:var(--ac)}
+/* Grids */
+.g2{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:1.4rem;margin-bottom:1.6rem}
+.g3{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:1.2rem;margin-bottom:1.6rem}
+.g4{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:1rem;margin-bottom:1.4rem}
+@media(max-width:768px){.g2,.g3,.g4{grid-template-columns:1fr}}
+.mc2{border:1px solid var(--bs);border-radius:16px;padding:1.4rem;background:rgba(255,255,255,.02);transition:border-color .2s}
+.mc2:hover{border-color:rgba(251,191,36,.3)}
+.mc2 h4{font-size:1rem;margin-bottom:.6rem;color:var(--t1);font-weight:700}
+.mc2 p{font-size:.88rem;color:var(--t2);line-height:1.68}
+.mc2 .tag{display:inline-block;font-family:'JetBrains Mono',monospace;font-size:.68rem;padding:.2rem .55rem;border-radius:999px;margin-bottom:.6rem;text-transform:uppercase;letter-spacing:.1em}
+/* Tables */
+.tbl{width:100%;border-collapse:collapse;font-size:.86rem}
+.tbl th{text-align:left;padding:.8rem 1.1rem;font-family:'JetBrains Mono',monospace;font-size:.64rem;text-transform:uppercase;color:var(--tm);border-bottom:1px solid var(--bs);letter-spacing:.08em}
+.tbl td{padding:.8rem 1.1rem;border-bottom:1px solid rgba(255,255,255,.035);color:var(--t2);vertical-align:top;line-height:1.65}
+.tbl td:first-child{color:var(--t1);font-weight:600}.tbl tr:last-child td{border-bottom:none}
+.tbl tr:hover td{background:rgba(255,255,255,.015)}
+/* Scenario box */
+.scenario{background:linear-gradient(135deg,rgba(96,165,250,.04),rgba(167,139,250,.04));border:1px solid rgba(96,165,250,.2);border-radius:var(--r);padding:1.8rem;margin-bottom:1.6rem;position:relative}
+.scenario::before{content:"SCENARIO";position:absolute;top:-1px;left:1.5rem;background:var(--bg);padding:0 .6rem;font-family:'JetBrains Mono',monospace;font-size:.62rem;color:var(--a2);letter-spacing:.2em}
+.scenario h4{color:var(--a2);margin-bottom:.8rem;font-size:1.05rem}
+.scenario p{font-size:.9rem;color:var(--t2);line-height:1.72;margin-bottom:.6rem}
+.scenario p:last-child{margin-bottom:0}
+.scenario code{font-family:'JetBrains Mono',monospace;font-size:.82rem;background:rgba(96,165,250,.1);padding:.1rem .3rem;border-radius:4px;color:var(--a2)}
+/* Quiz */
+.qc{background:linear-gradient(180deg,rgba(18,18,32,.98),rgba(12,12,24,.98));border:1px solid var(--bs);border-radius:var(--r);box-shadow:var(--sh);padding:2.2rem}
+.qc-title{font-size:1.2rem;font-weight:800;margin-bottom:.25rem;color:var(--t1)}
+.qc-sub{font-size:.82rem;color:var(--tm);margin-bottom:1.8rem;font-family:'JetBrains Mono',monospace}
+.qq{border:1px solid var(--bs);border-radius:18px;padding:1.8rem;background:rgba(255,255,255,.012);margin-bottom:1.4rem;transition:border-color .3s,background .3s}
+.qq.answered{border-color:rgba(251,191,36,.3);background:rgba(251,191,36,.02)}
+.qnum{font-family:'JetBrains Mono',monospace;font-size:.66rem;color:var(--ac);text-transform:uppercase;letter-spacing:.18em;margin-bottom:.6rem;display:flex;align-items:center;gap:8px}
+.qnum::after{content:"";height:1px;flex:1;background:rgba(251,191,36,.2)}
+.qq h4{font-size:.97rem;margin-bottom:1.2rem;color:var(--t1);line-height:1.6;font-weight:600}
+.qo{display:grid;gap:.6rem}
+.qob{border:1px solid var(--bs);border-radius:12px;padding:1rem 1.2rem;background:rgba(255,255,255,.018);color:var(--t2);cursor:pointer;transition:all .22s;text-align:left;font-size:.88rem;font-family:'Outfit',sans-serif;width:100%;line-height:1.6;position:relative;padding-left:3.2rem}
+.qob::before{content:attr(data-opt);position:absolute;left:1rem;top:50%;transform:translateY(-50%);font-family:'JetBrains Mono',monospace;font-size:.76rem;font-weight:700;color:var(--tm);width:1.4rem;text-align:center;transition:color .2s}
+.qob:hover:not([disabled]){border-color:rgba(251,191,36,.5);background:rgba(251,191,36,.05);color:var(--t1)}
+.qob:hover:not([disabled])::before{color:var(--ac)}
+.qob.ok{border-color:rgba(94,234,212,.6);background:rgba(94,234,212,.08);color:var(--t1)}
+.qob.ok::before{color:#5eead4}
+.qob.no{border-color:rgba(244,114,182,.4);background:rgba(244,114,182,.06);color:var(--t2)}
+.qob.no::before{color:#f472b6}
+.qob[disabled]{cursor:default}
+.qfeed{margin-top:1rem;border-radius:14px;padding:1.2rem 1.4rem;display:none}
+.qfeed.correct{background:rgba(94,234,212,.05);border:1px solid rgba(94,234,212,.25)}
+.qfeed.wrong{background:rgba(244,114,182,.04);border:1px solid rgba(244,114,182,.2)}
+.qfeed-head{font-weight:700;margin-bottom:.4rem;font-size:.92rem}
+.qfeed.correct .qfeed-head{color:#5eead4}
+.qfeed.wrong .qfeed-head{color:#f472b6}
+.qfeed-why{color:var(--t2);font-size:.87rem;line-height:1.68}
+.qfeed-why strong{color:var(--t1)}
+.qfeed-why code{font-family:'JetBrains Mono',monospace;font-size:.8rem;background:rgba(255,255,255,.06);padding:.1rem .3rem;border-radius:4px;color:var(--ac)}
+.qprog{display:flex;align-items:center;gap:1.2rem;margin-bottom:1.8rem}
+.qprog-bar{flex:1;height:5px;background:rgba(255,255,255,.05);border-radius:999px;overflow:hidden}
+.qprog-fill{height:100%;background:var(--gl);border-radius:999px;width:0%;transition:width .5s ease}
+.qprog-text{font-family:'JetBrains Mono',monospace;font-size:.7rem;color:var(--tm);white-space:nowrap}
+.qs{text-align:center;padding:2rem;border:1px solid var(--bs);border-radius:18px;margin-top:1.8rem;background:rgba(255,255,255,.01)}
+.qs h3{font-size:1.8rem;margin-bottom:.5rem;font-weight:800}
+.qs p{color:var(--t2);font-size:.92rem}
+/* Nav buttons */
+.pr,.nx{display:inline-flex;align-items:center;gap:7px;padding:.55rem 1.2rem;border-radius:999px;border:1px solid var(--bs);background:rgba(255,255,255,.02);color:var(--t2);font-size:.84rem;text-decoration:none;transition:all .2s}
+.pr:hover,.nx:hover{border-color:var(--ac);color:var(--ac)}
+/* Metric bars */
+.metric-row{display:flex;align-items:center;gap:1rem;margin-bottom:.7rem}
+.metric-label{font-family:'JetBrains Mono',monospace;font-size:.76rem;color:var(--t2);min-width:140px}
+.metric-bar{flex:1;height:8px;background:rgba(255,255,255,.05);border-radius:999px;overflow:hidden}
+.metric-fill{height:100%;border-radius:999px;transition:width 1.2s ease}
+.metric-val{font-family:'JetBrains Mono',monospace;font-size:.76rem;color:var(--t1);min-width:40px;text-align:right}
+/* Footer */
+footer{border-top:1px solid var(--bs);padding:3rem 2rem;text-align:center;color:var(--tm);font-size:.82rem}</style>
+</head>
+<body>
+<div class="sp" id="sp"></div>
+<nav>
+  <a class="nbr" href="#"><div class="nbr-dot"></div>Quantization for Modern AI · M0</a>
+  <span class="nm">Scalar · Per-Channel · GPTQ · AWQ · QLoRA · SmoothQuant · KV Cache · TurboQuant · PQ · GQA · Production Deployment</span>
+  <div class="na"><span></span><span></span></div>
+</nav>
+<section class="hero">
+  <div class="hg"></div>
+  <div class="hi">
+    <div class="hl">Quantization for Modern AI · Module 0</div>
+    <h1>Quantization — From INT4 to TurboQuant</h1>
+    <p class="sub">Scalar · Per-Channel · GPTQ · AWQ · QLoRA · SmoothQuant · KV Cache · TurboQuant · PQ · GQA · Production Deployment</p>
+    <p class="hs">Quantization is how we run hundred-billion-parameter models on hardware that should not be able to hold them. It is the difference between a 70B LLM running on 2 consumer GPUs instead of 8 data-centre A100s — and the difference between serving a 128K context to 64 simultaneous users instead of 3. This module covers the full stack: from the mathematical foundations of scalar quantization, through production methods GPTQ / AWQ / QLoRA / SmoothQuant, to the bleeding edge of KV cache vector compression with TurboQuant — with live interactive explorations, full numeric walkthroughs, production code, and deep scenario-based assessment.</p>
+<div class="hm">
+<span class="mp hl2">⏱ 120 min</span>
+<span class="mp">Scalar → vector quantization</span>
+<span class="mp">Per-tensor · per-channel · symmetric</span>
+<span class="mp">GPTQ · AWQ · QLoRA · NF4</span>
+<span class="mp">SmoothQuant outlier migration</span>
+<span class="mp">KV cache math + bottleneck</span>
+<span class="mp">GQA · MQA · PagedAttention</span>
+<span class="mp">PQ · RQ · TurboQuant pipeline</span>
+<span class="mp">vLLM · TensorRT-LLM deployment</span>
+</div>
+  </div>
+  <div class="sc"><span>Scroll</span><div class="arr"></div></div>
+</section>
+<div class="cw">
+
+<section class="sec" id="s1">
+<div class="sn">01 · Foundations — The Mathematics of Quantization</div>
+<h2>From FP32 to INT4:<br><span class="gt">The Precision–Memory Equation</span></h2>
+<p class="lead">Quantization maps a continuous floating-point value x to a discrete integer q using a scale factor s: <strong>q = round(x/s)</strong>, reconstructed as <strong>x̂ = s·q</strong>. This single equation, applied across billions of model weights and activation tensors, is what makes modern LLM deployment economically viable. Every design decision in the quantization stack — how to choose s, whether to use per-tensor or per-channel scales, symmetric vs asymmetric, when to calibrate — flows from understanding this fundamental trade-off: fewer bits means smaller scale steps, which means more rounding error, which means lower model accuracy.</p>
+<div class="arch">
+<div class="arch-title">Quantization applied across the full LLM inference stack — four targets, different techniques</div>
+<svg viewBox="0 0 900 320" xmlns="http://www.w3.org/2000/svg" style="width:100%;max-width:900px;display:block">
+<rect width="900" height="320" fill="#07070f" rx="14"/>
+<text x="450" y="26" font-family="JetBrains Mono,monospace" font-size="11" fill="#fbbf24" text-anchor="middle" letter-spacing="2" font-weight="bold">QUANTIZATION ACROSS THE LLM INFERENCE STACK</text>
+<rect x="14" y="42" width="160" height="262" rx="10" fill="rgba(255,255,255,.02)" stroke="rgba(255,255,255,.08)"/>
+<text x="94" y="62" font-family="JetBrains Mono,monospace" font-size="8" fill="#7c7c95" text-anchor="middle">Transformer Block</text>
+<rect x="28" y="70" width="132" height="28" rx="5" fill="rgba(255,255,255,.04)" stroke="rgba(255,255,255,.1)"/>
+<text x="94" y="88" font-family="JetBrains Mono,monospace" font-size="7" fill="#ececf6" text-anchor="middle">LayerNorm</text>
+<rect x="28" y="106" width="132" height="42" rx="5" fill="rgba(251,191,36,.1)" stroke="rgba(251,191,36,.4)" stroke-width="1.5"/>
+<text x="94" y="122" font-family="JetBrains Mono,monospace" font-size="8" fill="#fbbf24" text-anchor="middle" font-weight="bold">Multi-Head Attn</text>
+<text x="94" y="138" font-family="JetBrains Mono,monospace" font-size="7" fill="#7c7c95" text-anchor="middle">WQ WK WV WO</text>
+<rect x="28" y="156" width="132" height="24" rx="5" fill="rgba(244,114,182,.1)" stroke="rgba(244,114,182,.4)" stroke-width="1.5"/>
+<text x="94" y="172" font-family="JetBrains Mono,monospace" font-size="7" fill="#f472b6" text-anchor="middle" font-weight="bold">KV Cache K,V ∈ ℝᵀˣᵈ</text>
+<rect x="28" y="188" width="132" height="24" rx="5" fill="rgba(255,255,255,.04)" stroke="rgba(255,255,255,.1)"/>
+<text x="94" y="204" font-family="JetBrains Mono,monospace" font-size="7" fill="#ececf6" text-anchor="middle">Add &amp; Norm</text>
+<rect x="28" y="220" width="132" height="42" rx="5" fill="rgba(94,234,212,.1)" stroke="rgba(94,234,212,.4)" stroke-width="1.5"/>
+<text x="94" y="236" font-family="JetBrains Mono,monospace" font-size="8" fill="#5eead4" text-anchor="middle" font-weight="bold">Feed-Forward</text>
+<text x="94" y="250" font-family="JetBrains Mono,monospace" font-size="7" fill="#7c7c95" text-anchor="middle">W1 ∈ ℝᵈˣ⁴ᵈ W2 ∈ ℝ⁴ᵈˣᵈ</text>
+<rect x="28" y="270" width="132" height="24" rx="5" fill="rgba(255,255,255,.04)" stroke="rgba(255,255,255,.1)"/>
+<text x="94" y="286" font-family="JetBrains Mono,monospace" font-size="7" fill="#ececf6" text-anchor="middle">Add &amp; Norm</text>
+<rect x="196" y="42" width="216" height="106" rx="9" fill="rgba(251,191,36,.06)" stroke="rgba(251,191,36,.35)" stroke-width="1.5"/>
+<text x="304" y="61" font-family="JetBrains Mono,monospace" font-size="9" fill="#fbbf24" text-anchor="middle" font-weight="bold">① Weight Quantization</text>
+<text x="304" y="77" font-family="JetBrains Mono,monospace" font-size="7" fill="#7c7c95" text-anchor="middle">Reduce WQ WK WV W1 W2 precision</text>
+<text x="304" y="92" font-family="JetBrains Mono,monospace" font-size="7" fill="#fbbf24" text-anchor="middle">GPTQ · AWQ · QLoRA · GGUF</text>
+<text x="304" y="107" font-family="JetBrains Mono,monospace" font-size="7" fill="#ececf6" text-anchor="middle">FP32 → INT4/INT8 · 4–8× size reduction</text>
+<text x="304" y="122" font-family="JetBrains Mono,monospace" font-size="7" fill="#7c7c95" text-anchor="middle">70B model: 140GB → 35GB at INT4</text>
+<text x="304" y="137" font-family="JetBrains Mono,monospace" font-size="7" fill="#7c7c95" text-anchor="middle">No retraining needed (PTQ)</text>
+<line x1="160" y1="127" x2="194" y2="92" stroke="rgba(251,191,36,.4)" stroke-width="1.5" stroke-dasharray="4,2"/>
+<rect x="430" y="42" width="216" height="106" rx="9" fill="rgba(94,234,212,.06)" stroke="rgba(94,234,212,.35)" stroke-width="1.5"/>
+<text x="538" y="61" font-family="JetBrains Mono,monospace" font-size="9" fill="#5eead4" text-anchor="middle" font-weight="bold">② Activation Quantization</text>
+<text x="538" y="77" font-family="JetBrains Mono,monospace" font-size="7" fill="#7c7c95" text-anchor="middle">Quantize intermediate tensors</text>
+<text x="538" y="92" font-family="JetBrains Mono,monospace" font-size="7" fill="#5eead4" text-anchor="middle">SmoothQuant · LLM.int8()</text>
+<text x="538" y="107" font-family="JetBrains Mono,monospace" font-size="7" fill="#ececf6" text-anchor="middle">INT8 activations · 2× memory savings</text>
+<text x="538" y="122" font-family="JetBrains Mono,monospace" font-size="7" fill="#7c7c95" text-anchor="middle">Challenge: activation outliers</text>
+<text x="538" y="137" font-family="JetBrains Mono,monospace" font-size="7" fill="#7c7c95" text-anchor="middle">SmoothQuant migrates to weights</text>
+<rect x="196" y="156" width="216" height="106" rx="9" fill="rgba(244,114,182,.06)" stroke="rgba(244,114,182,.45)" stroke-width="2"/>
+<text x="304" y="175" font-family="JetBrains Mono,monospace" font-size="9" fill="#f472b6" text-anchor="middle" font-weight="bold">③ KV Cache Compression</text>
+<text x="304" y="191" font-family="JetBrains Mono,monospace" font-size="7" fill="#7c7c95" text-anchor="middle">CRITICAL bottleneck for long contexts</text>
+<text x="304" y="206" font-family="JetBrains Mono,monospace" font-size="7" fill="#f472b6" text-anchor="middle">GQA · MQA · INT8 · TurboQuant</text>
+<text x="304" y="221" font-family="JetBrains Mono,monospace" font-size="7" fill="#ececf6" text-anchor="middle">128K tokens = 342GB FP16</text>
+<text x="304" y="236" font-family="JetBrains Mono,monospace" font-size="7" fill="#ececf6" text-anchor="middle">TurboQuant: 3–4 bits/dim</text>
+<text x="304" y="251" font-family="JetBrains Mono,monospace" font-size="7" fill="#7c7c95" text-anchor="middle">PagedAttention for memory mgmt</text>
+<line x1="160" y1="168" x2="194" y2="192" stroke="rgba(244,114,182,.4)" stroke-width="1.5" stroke-dasharray="4,2"/>
+<rect x="430" y="156" width="216" height="106" rx="9" fill="rgba(167,139,250,.06)" stroke="rgba(167,139,250,.35)" stroke-width="1.5"/>
+<text x="538" y="175" font-family="JetBrains Mono,monospace" font-size="9" fill="#a78bfa" text-anchor="middle" font-weight="bold">④ Embedding Compression</text>
+<text x="538" y="191" font-family="JetBrains Mono,monospace" font-size="7" fill="#7c7c95" text-anchor="middle">Compress retrieval vectors at scale</text>
+<text x="538" y="206" font-family="JetBrains Mono,monospace" font-size="7" fill="#a78bfa" text-anchor="middle">PQ · RQ · FAISS · ScaNN</text>
+<text x="538" y="221" font-family="JetBrains Mono,monospace" font-size="7" fill="#ececf6" text-anchor="middle">D=1024 FP32 → 8 bytes (128× comp.)</text>
+<text x="538" y="236" font-family="JetBrains Mono,monospace" font-size="7" fill="#ececf6" text-anchor="middle">k-means codebook learned offline</text>
+<text x="538" y="251" font-family="JetBrains Mono,monospace" font-size="7" fill="#7c7c95" text-anchor="middle">Fast ANN search via ADC lookups</text>
+<rect x="664" y="42" width="222" height="220" rx="10" fill="rgba(255,255,255,.02)" stroke="rgba(255,255,255,.07)"/>
+<text x="775" y="62" font-family="JetBrains Mono,monospace" font-size="8" fill="#ececf6" text-anchor="middle" font-weight="bold">Memory vs Precision</text>
+<text x="672" y="82" font-family="JetBrains Mono,monospace" font-size="7" fill="#7c7c95">FP32</text>
+<rect x="712" y="72" width="160" height="12" rx="3" fill="rgba(255,100,100,.5)" stroke="rgba(255,100,100,.6)"/><text x="878" y="82" font-family="JetBrains Mono,monospace" font-size="7" fill="#ececf6">32b</text>
+<text x="672" y="104" font-family="JetBrains Mono,monospace" font-size="7" fill="#7c7c95">BF16</text>
+<rect x="712" y="94" width="80" height="12" rx="3" fill="rgba(251,191,36,.5)" stroke="rgba(251,191,36,.6)"/><text x="878" y="104" font-family="JetBrains Mono,monospace" font-size="7" fill="#ececf6">16b</text>
+<text x="672" y="126" font-family="JetBrains Mono,monospace" font-size="7" fill="#7c7c95">FP8</text>
+<rect x="712" y="116" width="40" height="12" rx="3" fill="rgba(94,234,212,.5)" stroke="rgba(94,234,212,.6)"/><text x="878" y="126" font-family="JetBrains Mono,monospace" font-size="7" fill="#ececf6">8b</text>
+<text x="672" y="148" font-family="JetBrains Mono,monospace" font-size="7" fill="#7c7c95">INT4</text>
+<rect x="712" y="138" width="20" height="12" rx="3" fill="rgba(167,139,250,.5)" stroke="rgba(167,139,250,.6)"/><text x="878" y="148" font-family="JetBrains Mono,monospace" font-size="7" fill="#ececf6">4b</text>
+<text x="672" y="170" font-family="JetBrains Mono,monospace" font-size="7" fill="#f472b6" font-weight="bold">TurboQ</text>
+<rect x="712" y="160" width="15" height="12" rx="3" fill="rgba(244,114,182,.6)" stroke="#f472b6" stroke-width="1.5"/><text x="878" y="170" font-family="JetBrains Mono,monospace" font-size="7" fill="#f472b6" font-weight="bold">3-4b</text>
+<text x="672" y="192" font-family="JetBrains Mono,monospace" font-size="7" fill="#7c7c95">PQ idx</text>
+<rect x="712" y="182" width="6" height="12" rx="3" fill="rgba(255,255,255,.3)" stroke="rgba(255,255,255,.4)"/><text x="878" y="192" font-family="JetBrains Mono,monospace" font-size="7" fill="#ececf6">&lt;1b</text>
+<line x1="672" y1="202" x2="876" y2="202" stroke="rgba(255,255,255,.06)"/>
+<text x="775" y="218" font-family="JetBrains Mono,monospace" font-size="7" fill="#7c7c95" text-anchor="middle">← accurate    small →</text>
+<text x="775" y="235" font-family="JetBrains Mono,monospace" font-size="7" fill="#7c7c95" text-anchor="middle">fewer bits = less memory</text>
+<text x="775" y="252" font-family="JetBrains Mono,monospace" font-size="7" fill="#fbbf24" text-anchor="middle">H100 supports FP8 natively</text>
+<rect x="14" y="278" width="872" height="30" rx="8" fill="rgba(255,255,255,.02)" stroke="rgba(255,255,255,.06)"/>
+<text x="450" y="297" font-family="JetBrains Mono,monospace" font-size="7" fill="#7c7c95" text-anchor="middle">70B FP16=140GB · INT4=35GB · KV@128K tokens FP16=342GB per-request · PQ embeddings: 128× smaller · H100: FP8 Tensor Cores at 2× FP16 throughput</text>
+</svg>
+</div>
+<div class="card card-accent" style="padding:0;overflow:hidden">
+<div style="padding:1.2rem 1.6rem;border-bottom:1px solid rgba(255,255,255,.06);display:flex;align-items:center;justify-content:space-between">
+  <div style="font-family:'JetBrains Mono',monospace;font-size:.75rem;color:var(--ac);text-transform:uppercase;letter-spacing:.18em">⟩ Live Quantization Explorer</div>
+  <div style="font-size:.75rem;color:var(--tm)">Adjust precision → see error in real time</div>
+</div>
+<div style="padding:1.6rem;display:grid;grid-template-columns:1fr 1fr;gap:1.6rem">
+  <div>
+    <div style="font-family:'JetBrains Mono',monospace;font-size:.75rem;color:var(--ac);margin-bottom:.8rem">PRECISION</div>
+    <div style="display:flex;gap:.5rem;flex-wrap:wrap;margin-bottom:1.2rem" id="btn-prec">
+      <button onclick="setPrec(32,'FP32')" style="padding:.3rem .8rem;border-radius:999px;border:1px solid rgba(255,255,255,.1);background:rgba(255,255,255,.03);color:var(--t2);font-size:.78rem;cursor:pointer;font-family:'JetBrains Mono',monospace" class="qp-active">FP32</button>
+      <button onclick="setPrec(16,'FP16')" style="padding:.3rem .8rem;border-radius:999px;border:1px solid rgba(255,255,255,.1);background:rgba(255,255,255,.03);color:var(--t2);font-size:.78rem;cursor:pointer;font-family:'JetBrains Mono',monospace">FP16</button>
+      <button onclick="setPrec(8,'INT8')" style="padding:.3rem .8rem;border-radius:999px;border:1px solid rgba(255,255,255,.1);background:rgba(255,255,255,.03);color:var(--t2);font-size:.78rem;cursor:pointer;font-family:'JetBrains Mono',monospace">INT8</button>
+      <button onclick="setPrec(4,'INT4')" style="padding:.3rem .8rem;border-radius:999px;border:1px solid rgba(255,255,255,.1);background:rgba(255,255,255,.03);color:var(--t2);font-size:.78rem;cursor:pointer;font-family:'JetBrains Mono',monospace">INT4</button>
+      <button onclick="setPrec(2,'INT2')" style="padding:.3rem .8rem;border-radius:999px;border:1px solid rgba(255,255,255,.1);background:rgba(255,255,255,.03);color:var(--t2);font-size:.78rem;cursor:pointer;font-family:'JetBrains Mono',monospace">INT2</button>
+    </div>
+    <div id="qval-display" style="font-family:'JetBrains Mono',monospace;font-size:.82rem;color:var(--t2);line-height:2"></div>
+    <div style="margin-top:1rem;display:flex;gap:1.2rem">
+      <div style="text-align:center">
+        <div style="font-family:'JetBrains Mono',monospace;font-size:.65rem;color:var(--tm);text-transform:uppercase;margin-bottom:.3rem">Memory</div>
+        <div id="mem-val" style="font-size:1.4rem;font-weight:800;color:var(--ac)">4 B</div>
+      </div>
+      <div style="text-align:center">
+        <div style="font-family:'JetBrains Mono',monospace;font-size:.65rem;color:var(--tm);text-transform:uppercase;margin-bottom:.3rem">Avg Error</div>
+        <div id="err-val" style="font-size:1.4rem;font-weight:800;color:#5eead4">0.00</div>
+      </div>
+      <div style="text-align:center">
+        <div style="font-family:'JetBrains Mono',monospace;font-size:.65rem;color:var(--tm);text-transform:uppercase;margin-bottom:.3rem">SNR (dB)</div>
+        <div id="snr-val" style="font-size:1.4rem;font-weight:800;color:#fbbf24">∞</div>
+      </div>
+    </div>
+  </div>
+  <div>
+    <div style="font-family:'JetBrains Mono',monospace;font-size:.75rem;color:var(--ac);margin-bottom:.8rem">SIGNAL vs QUANTIZED</div>
+    <canvas id="qcanvas" width="340" height="160" style="width:100%;border-radius:10px;background:#0a0a18;border:1px solid rgba(255,255,255,.06)"></canvas>
+    <div style="margin-top:.6rem;display:flex;gap:1rem;font-size:.72rem;font-family:'JetBrains Mono',monospace">
+      <span style="color:#5eead4">— original</span>
+      <span style="color:#f472b6">— quantized</span>
+      <span style="color:rgba(255,255,255,.3)">· error</span>
+    </div>
+  </div>
+</div>
+</div>
+<script>
+(function(){
+  var orig=[0.83,-0.31,0.27,0.11,0.65,-0.82,0.44,-0.55,0.19,0.71,-0.43,0.38,0.52,-0.67,0.29,0.91];
+  var curBits=32;
+  function quant(x,bits){
+    if(bits>=32)return x;
+    var n=Math.pow(2,bits-1)-1;
+    var mx=Math.max.apply(null,orig.map(Math.abs));
+    var s=mx/n;
+    return Math.round(x/s)*s;
+  }
+  function snrDB(orig,q){
+    var sig=orig.reduce(function(a,v){return a+v*v;},0)/orig.length;
+    var err=orig.reduce(function(a,v,i){return a+(v-q[i])*(v-q[i]);},0)/orig.length;
+    if(err<1e-12)return 999;
+    return Math.round(10*Math.log10(sig/err));
+  }
+  function setPrec(bits,label){
+    curBits=bits;
+    document.querySelectorAll('#btn-prec button').forEach(function(b){b.style.borderColor='rgba(255,255,255,.1)';b.style.color='var(--t2)';b.style.background='rgba(255,255,255,.03)';});
+    event.target.style.borderColor='var(--ac)';event.target.style.color='var(--ac)';event.target.style.background='rgba(251,191,36,.08)';
+    render();
+  }
+  window.setPrec=setPrec;
+  function render(){
+    var qv=orig.map(function(v){return quant(v,curBits);});
+    var avgErr=orig.reduce(function(a,v,i){return a+Math.abs(v-qv[i]);},0)/orig.length;
+    var bytes=curBits>=32?4:curBits>=16?2:curBits>=8?1:0.5;
+    document.getElementById('mem-val').textContent=(bytes*orig.length)+'B';
+    document.getElementById('err-val').textContent=avgErr.toFixed(4);
+    var snr=snrDB(orig,qv);
+    document.getElementById('snr-val').textContent=snr>500?'∞':snr+'dB';
+    document.getElementById('snr-val').style.color=snr>40?'#5eead4':snr>20?'#fbbf24':'#f472b6';
+    var html='';
+    for(var i=0;i<Math.min(8,orig.length);i++){
+      var err=Math.abs(orig[i]-qv[i]);
+      var col=err<0.01?'#5eead4':err<0.05?'#fbbf24':'#f472b6';
+      html+='x['+i+']=<span style="color:#ececf6">'+orig[i].toFixed(4)+'</span> → <span style="color:'+col+'">'+qv[i].toFixed(4)+'</span> err=<span style="color:'+col+'">'+err.toFixed(4)+'</span><br>';
+    }
+    document.getElementById('qval-display').innerHTML=html;
+    drawCanvas(qv);
+  }
+  function drawCanvas(qv){
+    var c=document.getElementById('qcanvas');
+    var ctx=c.getContext('2d');
+    ctx.clearRect(0,0,c.width,c.height);
+    var pad=20,W=c.width-2*pad,H=c.height-2*pad;
+    var n=orig.length;
+    var mx=1.1;
+    function ys(v){return pad+H/2-(v/mx)*(H/2);}
+    function xs(i){return pad+i*(W/(n-1));}
+    ctx.strokeStyle='rgba(255,255,255,.06)';
+    ctx.lineWidth=1;ctx.beginPath();ctx.moveTo(pad,H/2+pad);ctx.lineTo(pad+W,H/2+pad);ctx.stroke();
+    ctx.strokeStyle='#5eead4';ctx.lineWidth=1.5;ctx.beginPath();
+    for(var i=0;i<n;i++){if(i===0)ctx.moveTo(xs(i),ys(orig[i]));else ctx.lineTo(xs(i),ys(orig[i]));}
+    ctx.stroke();
+    ctx.strokeStyle='#f472b6';ctx.lineWidth=1.5;ctx.beginPath();
+    for(var i=0;i<n;i++){if(i===0)ctx.moveTo(xs(i),ys(qv[i]));else ctx.lineTo(xs(i),ys(qv[i]));}
+    ctx.stroke();
+    for(var i=0;i<n;i++){
+      ctx.strokeStyle='rgba(255,255,255,.18)';ctx.lineWidth=1;ctx.setLineDash([2,3]);ctx.beginPath();
+      ctx.moveTo(xs(i),ys(orig[i]));ctx.lineTo(xs(i),ys(qv[i]));ctx.stroke();ctx.setLineDash([]);
+      ctx.fillStyle='#5eead4';ctx.beginPath();ctx.arc(xs(i),ys(orig[i]),2.5,0,2*Math.PI);ctx.fill();
+      ctx.fillStyle='#f472b6';ctx.beginPath();ctx.arc(xs(i),ys(qv[i]),2.5,0,2*Math.PI);ctx.fill();
+    }
+  }
+  render();
+})();
+</script>
+<div class="cc">
+  <div class="ch"><h3>quantization_toolkit.py — scalar, per-channel, symmetric/asymmetric + SmoothQuant</h3><button class="cpb" onclick="cp(this,'c1')">Copy</button></div>
+  <div class="cbody"><pre id="c1"><span class="kw">import</span> torch
+<span class="kw">import</span> torch.nn <span class="kw">as</span> nn
+
+<span class="cm"># ── 1. SCALAR QUANTIZATION FUNDAMENTALS ────────────────────────────────────</span>
+<span class="kw">def</span> <span class="fn">quantize_symmetric</span>(x: torch.Tensor, bits: int = <span class="nu">8</span>) -> tuple:
+    <span class="str">"""
+    Symmetric uniform scalar quantization.
+    q = round(x / s)  where  s = max(|x|) / (2^(bits-1) - 1)
+    Reconstruction: x̂ = s * q
+
+    Why symmetric? Weights are approximately zero-centred — no zero-point needed.
+    INT8 range: [-127, 127]  (exclude -128 to avoid asymmetry issues)
+    INT4 range: [-7, 7]
+    """</span>
+    n = <span class="nu">2</span> ** (bits - <span class="nu">1</span>) - <span class="nu">1</span>                   <span class="cm"># 127 for INT8, 7 for INT4</span>
+    s = x.abs().max() / n                         <span class="cm"># scale factor</span>
+    q = (x / s).round().clamp(-n, n).to(torch.int8)
+    x_hat = s * q.float()
+    err = (x - x_hat).abs().mean().item()
+    <span class="kw">return</span> q, s, x_hat, err
+
+
+<span class="kw">def</span> <span class="fn">quantize_asymmetric</span>(x: torch.Tensor, bits: int = <span class="nu">8</span>) -> tuple:
+    <span class="str">"""
+    Asymmetric quantization: includes zero-point offset z.
+    q = round(x / s) + z   where s = (max-min) / (2^bits - 1), z = -round(min/s)
+    Reconstruction: x̂ = s * (q - z)
+
+    Why asymmetric? ReLU activations are non-negative — using full [0, 255] range
+    is more efficient than centering at zero.
+    """</span>
+    n = <span class="nu">2</span>**bits - <span class="nu">1</span>
+    x_min, x_max = x.min().item(), x.max().item()
+    s = (x_max - x_min) / n
+    z = -round(x_min / s)
+    q = ((x / s) + z).round().clamp(<span class="nu">0</span>, n).to(torch.uint8)
+    x_hat = s * (q.float() - z)
+    <span class="kw">return</span> q, s, z, x_hat
+
+
+<span class="cm"># ── 2. PER-CHANNEL QUANTIZATION (critical for weight matrices) ─────────────</span>
+<span class="kw">def</span> <span class="fn">per_channel_quantize</span>(W: torch.Tensor, bits: int = <span class="nu">8</span>) -> tuple:
+    <span class="str">"""
+    Each output channel has its own scale factor.
+    W: (out_features, in_features) — scale per row.
+
+    Why per-channel? Different channels of a weight matrix have very different
+    value distributions. A single global scale wastes bits on small-magnitude
+    channels while clipping large-magnitude ones.
+    Accuracy improvement over per-tensor: ~1-3% on INT8, ~5-8% on INT4.
+    """</span>
+    n = <span class="nu">2</span> ** (bits - <span class="nu">1</span>) - <span class="nu">1</span>
+    <span class="cm"># Per-row scale: shape (out_features, 1) for broadcasting</span>
+    s = W.abs().max(dim=<span class="nu">1</span>, keepdim=<span class="kw">True</span>).values / n
+    q = (W / s).round().clamp(-n, n).to(torch.int8)
+    W_hat = s * q.float()
+    <span class="kw">return</span> q, s.squeeze(), W_hat
+
+
+<span class="cm"># ── 3. SMOOTHQUANT — KEY INSIGHT: migrate outliers from activations to weights</span>
+<span class="kw">def</span> <span class="fn">smoothquant_transform</span>(X: torch.Tensor, W: torch.Tensor,
+                           alpha: float = <span class="nu">0.5</span>) -> tuple:
+    <span class="str">"""
+    SmoothQuant (Xiao et al., ICML 2023) — INT8 LLM inference without accuracy loss.
+
+    The Problem: Activations X have HUGE outliers in certain channels (up to 1000×
+    the typical value). Quantizing these destroys accuracy — the scale must cover
+    the outlier, wasting bits on small values elsewhere.
+
+    The Insight: The linear operation Y = X @ W is unchanged by:
+        Y = (X @ diag(s)^-1) @ (diag(s) @ W)
+    Move the hard-to-quantize part (outliers) from activations to weights.
+
+    smoothing_factor: s_j = max(|X_j|)^alpha * max(|W_j|)^(1-alpha)
+    - alpha=0.5: balanced migration
+    - alpha→0: keep difficulty in activations (avoid if activations are hard)
+    - alpha→1: migrate all difficulty to weights
+    """</span>
+    <span class="cm"># Compute per-channel smoothing factor</span>
+    act_max = X.abs().max(dim=<span class="nu">0</span>).values              <span class="cm"># (in_features,)</span>
+    w_max   = W.abs().max(dim=<span class="nu">0</span>).values              <span class="cm"># (in_features,)</span>
+    s = (act_max ** alpha) * (w_max ** (<span class="nu">1</span> - alpha))
+    s = s.clamp(min=<span class="nu">1e-5</span>)                            <span class="cm"># prevent div/0</span>
+    X_smooth = X / s.unsqueeze(<span class="nu">0</span>)                    <span class="cm"># (seq, in_features)</span>
+    W_smooth = W * s.unsqueeze(<span class="nu">1</span>) <span class="kw">if</span> W.dim() == <span class="nu">2</span> <span class="kw">else</span> W * s  <span class="cm"># (out, in)</span>
+    <span class="cm"># Now quantize the smoothed tensors — both have manageable ranges</span>
+    q_X, sX, _, _ = quantize_symmetric(X_smooth.float(), bits=<span class="nu">8</span>)
+    q_W, sW,    _ = per_channel_quantize(W_smooth.float(), bits=<span class="nu">8</span>)
+    <span class="kw">return</span> q_X, q_W, sX, sW, s
+
+
+<span class="cm"># ── 4. QUANTIZATION ERROR ANALYSIS ─────────────────────────────────────────</span>
+<span class="kw">def</span> <span class="fn">quantization_snr</span>(x: torch.Tensor, x_hat: torch.Tensor) -> float:
+    <span class="str">"""Signal-to-noise ratio in dB: higher = better quantization."""</span>
+    signal_power = (x**<span class="nu">2</span>).mean()
+    noise_power  = ((x - x_hat)**<span class="nu">2</span>).mean()
+    <span class="kw">return</span> <span class="nu">10</span> * torch.log10(signal_power / (noise_power + <span class="nu">1e-10</span>)).item()</pre></div>
+</div>
+
+<div class="g3">
+<div class="mc2">
+  <div class="tag" style="background:rgba(251,191,36,.08);color:#fbbf24;border:1px solid rgba(251,191,36,.2)">INT8 Symmetric</div>
+  <h4>Weights</h4>
+  <p>s = max(|W|) / 127. Best for zero-centred weight distributions. Hardware directly executes INT8 matmuls on A100/H100 Tensor Cores at 2–4× FP32 throughput.</p>
+</div>
+<div class="mc2">
+  <div class="tag" style="background:rgba(94,234,212,.08);color:#5eead4;border:1px solid rgba(94,234,212,.2)">INT8 Asymmetric</div>
+  <h4>Activations</h4>
+  <p>s = (max−min) / 255, z = −round(min/s). Required for ReLU outputs [0, ∞) — shifts the quantization window to cover only positive values, halving wasted bits.</p>
+</div>
+<div class="mc2">
+  <div class="tag" style="background:rgba(167,139,250,.08);color:#a78bfa;border:1px solid rgba(167,139,250,.2)">Per-Channel</div>
+  <h4>Accuracy Critical</h4>
+  <p>One scale s_i per output channel. Each row of W has its own max → optimal range coverage. Improves INT4 accuracy by 5–8% on transformer weight matrices. Always use for weights.</p>
+</div>
+</div>
+<div class="callout callout-key">
+  <div class="callout-icon">🔑</div>
+  <div class="callout-body">
+    <h4>The Quantization Error Equation</h4>
+    <p>Quantization error ε = x − x̂ is bounded by the step size: <code>|ε| ≤ s/2</code>. With b bits, step size s = range / 2^b. Doubling bits halves the maximum error. But neural networks are surprisingly robust: averaging across millions of parameters means small per-element errors cancel. <strong>SNR = 6.02b + 1.76 dB</strong> for ideal quantization — each bit adds 6dB of SNR. INT8 gives ~49dB; INT4 gives ~25dB. Empirically, transformers tolerate INT4 weights with &lt; 1% quality loss, but INT4 activations are harder — the outlier problem.</p>
+  </div>
+</div>
+</section>
+
+<section class="sec" id="s2">
+<div class="sn">02 · Modern LLM Quantization Methods</div>
+<h2>GPTQ · AWQ · QLoRA · SmoothQuant:<br><span class="gt">Production-Grade INT4</span></h2>
+<p class="lead">Getting INT4 right requires more than applying the scalar formula. Weights have outliers, activations have channel-wise structure, and fine-tuning requires gradient flow through discrete operations. Four methods have emerged as the production standard, each targeting a different failure mode of naïve quantization.</p>
+<div class="cc">
+  <div class="ch"><h3>turboquant.py — TurboQuant KV cache compression: random rotation + sketch + sign</h3><button class="cpb" onclick="cp(this,'c2')">Copy</button></div>
+  <div class="cbody"><pre id="c2"><span class="kw">import</span> torch
+<span class="kw">import</span> torch.nn.functional <span class="kw">as</span> F
+<span class="kw">from</span> dataclasses <span class="kw">import</span> dataclass
+
+@dataclass
+<span class="kw">class</span> <span class="cl">TurboQuantState</span>:
+    <span class="str">"""Compressed KV vector state — all you need to reconstruct."""</span>
+    q_coarse:   torch.Tensor    <span class="cm"># INT4 quantized rotated vector</span>
+    scale:      float           <span class="cm"># scalar quantization scale</span>
+    sign_sketch: torch.Tensor   <span class="cm"># ±1 bit sketch of residual projection</span>
+    R:          torch.Tensor    <span class="cm"># rotation matrix (shared across all KV vectors)</span>
+    S:          torch.Tensor    <span class="cm"># sketch matrix (shared across all KV vectors)</span>
+    alpha:      float           <span class="cm"># sketch reconstruction scale</span>
+
+
+<span class="kw">class</span> <span class="cl">TurboQuantCompressor</span>:
+    <span class="str">"""
+    TurboQuant: Vector quantization for KV cache (Google Research, 2024).
+    
+    Key innovation over scalar INT4:
+    - Scalar INT4 quantizes each element independently: treats 4096-dim KV
+      vector as 4096 unrelated scalars. Misses inter-dimensional structure.
+    - TurboQuant encodes the residual error as a random projection SIGN SKETCH,
+      recovering correlation information scalar methods ignore.
+    
+    Bit budget (d=4096, m=256 sketch dimensions):
+      INT4 coarse:    4 bits × 4096  =  16,384 bits
+      Sign sketch:    1 bit  × 256   =     256 bits
+      Scale:          16 bits (fp16) =      16 bits  
+      Total:          ~16,656 bits / 4096 dims ≈ 4.06 bits/dim
+    
+    Compared to FP16: 16 bits → 4 bits = 4× compression
+    Accuracy vs INT4 standalone: 20-40% lower perplexity degradation
+    at same bit rate. Why? Residual sketch recovers systematic errors.
+    """</span>
+
+    <span class="kw">def</span> <span class="fn">__init__</span>(self, dim: int, sketch_dim: int, bits: int = <span class="nu">4</span>):
+        <span class="str">"""
+        dim:        KV vector dimension (e.g. 4096 for LLaMA-2-70B)
+        sketch_dim: residual sketch size (m << d, e.g. 256)
+        bits:       coarse quantization bits (4 for INT4)
+        """</span>
+        self.dim = dim
+        self.m   = sketch_dim
+        self.bits = bits
+        self.n   = <span class="nu">2</span> ** (bits - <span class="nu">1</span>) - <span class="nu">1</span>   <span class="cm"># 7 for INT4</span>
+        <span class="cm"># Shared matrices: generated ONCE per model, reused for all KV vectors</span>
+        self.R = self._hadamard_rotation(dim)  <span class="cm"># orthogonal rotation</span>
+        self.S = (torch.randn(sketch_dim, dim) / dim**<span class="nu">0.5</span>)  <span class="cm"># random proj</span>
+        self.alpha = (dim / sketch_dim) ** <span class="nu">0.5</span>   <span class="cm"># JL lemma scaling</span>
+
+    <span class="kw">def</span> <span class="fn">_hadamard_rotation</span>(self, n: int) -> torch.Tensor:
+        <span class="str">"""Randomised Hadamard Transform — O(n log n) instead of O(n²)."""</span>
+        <span class="kw">import</span> math
+        signs = (torch.randint(<span class="nu">0</span>, <span class="nu">2</span>, (n,)) * <span class="nu">2</span> - <span class="nu">1</span>).float()
+        <span class="cm"># Build Hadamard via butterfly operations (efficient, exact orthogonal)</span>
+        H = torch.eye(n)
+        step = <span class="nu">1</span>
+        <span class="kw">while</span> step < n:
+            H_new = torch.zeros_like(H)
+            H_new[:, ::<span class="nu">2</span>*step] = (H[:, :step] + H[:, step:<span class="nu">2</span>*step]) / <span class="nu">2</span>**<span class="nu">0.5</span>
+            H_new[:, step:<span class="nu">2</span>*step::step] = (H[:, :step] - H[:, step:<span class="nu">2</span>*step]) / <span class="nu">2</span>**<span class="nu">0.5</span>
+            H = H_new; step *= <span class="nu">2</span>
+        <span class="kw">return</span> H * signs  <span class="cm"># randomised signs break structure for better compression</span>
+
+    <span class="kw">def</span> <span class="fn">compress</span>(self, kv: torch.Tensor) -> <span class="cl">TurboQuantState</span>:
+        <span class="str">"""Compress one KV vector: (d,) float → TurboQuantState."""</span>
+        <span class="cm"># Step 1: Random rotation — spreads outliers uniformly</span>
+        y = self.R @ kv                                     <span class="cm"># (d,)</span>
+        <span class="cm"># Step 2: Coarse scalar quantization</span>
+        s = y.abs().max().item() / self.n
+        q = (y / s).round().clamp(-self.n, self.n)
+        <span class="cm"># Step 3: Residual (quantization error in rotated space)</span>
+        y_tilde = s * q
+        r = y - y_tilde                                     <span class="cm"># (d,)</span>
+        <span class="cm"># Step 4+5: Random projection + sign compression</span>
+        z = self.S @ r                                      <span class="cm"># (m,)</span>
+        b = z.sign()                                        <span class="cm"># ±1, 1 bit each</span>
+        <span class="kw">return</span> <span class="cl">TurboQuantState</span>(
+            q_coarse=q.to(torch.int8), scale=s,
+            sign_sketch=b, R=self.R, S=self.S, alpha=self.alpha
+        )
+
+    <span class="kw">def</span> <span class="fn">decompress</span>(self, state: <span class="cl">TurboQuantState</span>) -> torch.Tensor:
+        <span class="str">"""Reconstruct KV vector from compressed state."""</span>
+        y_tilde = state.scale * state.q_coarse.float()
+        r_hat   = state.alpha * (state.S.T @ state.sign_sketch)
+        y_hat   = y_tilde + r_hat
+        <span class="kw">return</span> state.R.T @ y_hat                          <span class="cm"># inverse rotation</span>
+
+    <span class="kw">def</span> <span class="fn">bits_per_dim</span>(self) -> float:
+        <span class="str">"""Effective bits per dimension stored."""</span>
+        coarse_bits = self.bits * self.dim
+        sketch_bits = <span class="nu">1</span> * self.m             <span class="cm"># 1 bit per sign</span>
+        scale_bits  = <span class="nu">16</span>                      <span class="cm"># one fp16 scale factor</span>
+        <span class="kw">return</span> (coarse_bits + sketch_bits + scale_bits) / self.dim</pre></div>
+</div>
+
+<div class="g2">
+<div class="callout callout-insight">
+  <div class="callout-icon">💡</div>
+  <div class="callout-body">
+    <h4>GPTQ — Second-Order Weight Quantization</h4>
+    <p>Quantizes weights one-at-a-time, updating remaining weights to compensate via the OBQ algorithm. After quantizing w[i,j]: <code>W[i,k:] -= (w[i,j] − wq[i,j]) × H⁻¹[j,k:] / H⁻¹[j,j]</code>. The Hessian H captures how much the loss cares about each weight — high-curvature weights are compensated most aggressively. Result: INT4 that matches INT8 PTQ accuracy on most LLMs. Quantizes LLaMA-70B in ~4 GPU-hours.</p>
+  </div>
+</div>
+<div class="callout callout-insight">
+  <div class="callout-icon">💡</div>
+  <div class="callout-body">
+    <h4>AWQ — Activation-Aware Scaling</h4>
+    <p>AWQ identifies the 1% of weight channels that cause the most output change (high activation magnitude × weight magnitude product), and protects them with higher precision or a per-channel scale multiplier. Unlike GPTQ, AWQ is hardware-friendly: the scales are folded into preceding LayerNorm parameters, so inference requires no extra operations. AWQ achieves equivalent accuracy to GPTQ at INT4 with 30% less quantization compute.</p>
+  </div>
+</div>
+</div>
+<div class="scenario">
+  <h4>Production stack: serving LLaMA-3-70B at scale</h4>
+  <p><strong>Weights:</strong> AWQ INT4 (model size: 35GB, fits on 2×A100 80GB or 1×H100 80GB with flash attn). <strong>Activations:</strong> FP16 (SmoothQuant for INT8 activations adds 1-2% throughput, acceptable quality). <strong>KV cache:</strong> FP16 for short contexts (&lt;8K), GQA reduces from 64→8 heads (8× savings), INT8 for long contexts. <strong>Inference engine:</strong> vLLM with PagedAttention for multi-request batching. <strong>Hardware:</strong> H100 (FP8 Tensor Cores for forward pass, INT4 weight loading). <strong>Result:</strong> 70B model serving 100+ concurrent 8K-context users on 2 H100 nodes vs 8 nodes for naïve FP16.</p>
+</div>
+<div class="card" style="padding:0;overflow:hidden">
+<table class="tbl">
+<thead><tr><th>Method</th><th>Algorithm</th><th>Bits</th><th>Training Needed</th><th>Quality vs FP16</th><th>Best Use</th></tr></thead>
+<tbody>
+<tr><td><strong style="color:var(--a4)">GPTQ</strong></td><td>OBQ row update</td><td>INT4/INT3</td><td>None (calibration only)</td><td>&lt;0.5% perplexity↑</td><td>Offline inference</td></tr>
+<tr><td><strong style="color:var(--a2)">AWQ</strong></td><td>Activation-aware scale</td><td>INT4</td><td>None</td><td>&lt;0.5% perplexity↑</td><td>Deployment + serving</td></tr>
+<tr><td><strong style="color:var(--a5)">QLoRA</strong></td><td>NF4 base + LoRA BF16</td><td>4+16</td><td>Fine-tuning adapters</td><td>Matches FP16 FT</td><td>Parameter-efficient FT</td></tr>
+<tr><td><strong style="color:var(--a1)">SmoothQuant</strong></td><td>Channel-wise migration</td><td>INT8 W+A</td><td>None</td><td>&lt;1% accuracy↓</td><td>High-throughput serving</td></tr>
+<tr><td><strong style="color:var(--a3)">GGUF/Q4_K_M</strong></td><td>K-means optimised</td><td>4.5-bit avg</td><td>None</td><td>&lt;1% perplexity↑</td><td>CPU / edge inference</td></tr>
+</tbody>
+</table>
+</div>
+</section>
+
+<section class="sec" id="s3">
+<div class="sn">03 · KV Cache Compression — The Long-Context Bottleneck</div>
+<h2>128K Tokens = 342GB:<br><span class="gt">Why KV Cache Needs Vector Quantization</span></h2>
+<p class="lead">Model weights are a fixed one-time cost. KV cache grows linearly with every token in every request — and at 128K context lengths, it dwarfs the model itself. Scalar INT4 helps, but still leaves tens of gigabytes per request. The fundamental insight of TurboQuant is that KV vectors are not random: they exhibit structured correlations across dimensions that scalar methods ignore completely. Vector quantization of the residual error captures this structure.</p>
+<div class="arch">
+<div class="arch-title">TurboQuant 7-step pipeline — random rotation + coarse INT4 + residual sign sketch → 3-4 bits/dim</div>
+<svg viewBox="0 0 900 298" xmlns="http://www.w3.org/2000/svg" style="width:100%;max-width:900px;display:block">
+<rect width="900" height="298" fill="#07070f" rx="14"/>
+<text x="450" y="26" font-family="JetBrains Mono,monospace" font-size="11" fill="#f472b6" text-anchor="middle" letter-spacing="2" font-weight="bold">TURBOQUANT — 7-STEP VECTOR QUANTIZATION PIPELINE</text>
+<rect x="14"  y="38" width="98"  height="68" rx="8" fill="rgba(255,255,255,.04)" stroke="rgba(255,255,255,.12)"/>
+<text x="63"  y="56" font-family="JetBrains Mono,monospace" font-size="8" fill="#ececf6" text-anchor="middle" font-weight="bold">① Input</text>
+<text x="63"  y="70" font-family="JetBrains Mono,monospace" font-size="7" fill="#7c7c95" text-anchor="middle">KV vector x ∈ ℝᵈ</text>
+<text x="63"  y="84" font-family="JetBrains Mono,monospace" font-size="7" fill="#7c7c95" text-anchor="middle">d=4096 typical</text>
+<text x="63"  y="98" font-family="JetBrains Mono,monospace" font-size="7" fill="#7c7c95" text-anchor="middle">FP16 = 8KB</text>
+<line x1="114" y1="72" x2="122" y2="72" stroke="rgba(255,255,255,.4)" stroke-width="1.5"/>
+<polygon points="118,68 126,72 118,76" fill="rgba(255,255,255,.4)"/>
+<rect x="126" y="38" width="100" height="68" rx="8" fill="rgba(167,139,250,.08)" stroke="rgba(167,139,250,.4)" stroke-width="1.5"/>
+<text x="176" y="56" font-family="JetBrains Mono,monospace" font-size="8" fill="#a78bfa" text-anchor="middle" font-weight="bold">② Rotate</text>
+<text x="176" y="70" font-family="JetBrains Mono,monospace" font-size="7" fill="#7c7c95" text-anchor="middle">y = Rx</text>
+<text x="176" y="84" font-family="JetBrains Mono,monospace" font-size="7" fill="#ececf6" text-anchor="middle">Hadamard R</text>
+<text x="176" y="98" font-family="JetBrains Mono,monospace" font-size="7" fill="#a78bfa" text-anchor="middle">spread outliers</text>
+<line x1="228" y1="72" x2="236" y2="72" stroke="#a78bfa" stroke-width="1.5"/>
+<polygon points="232,68 240,72 232,76" fill="#a78bfa"/>
+<rect x="238" y="38" width="100" height="68" rx="8" fill="rgba(251,191,36,.08)" stroke="rgba(251,191,36,.4)" stroke-width="1.5"/>
+<text x="288" y="56" font-family="JetBrains Mono,monospace" font-size="8" fill="#fbbf24" text-anchor="middle" font-weight="bold">③ Coarse Q</text>
+<text x="288" y="70" font-family="JetBrains Mono,monospace" font-size="7" fill="#7c7c95" text-anchor="middle">ỹ=s·round(y/s)</text>
+<text x="288" y="84" font-family="JetBrains Mono,monospace" font-size="7" fill="#ececf6" text-anchor="middle">INT4 bits</text>
+<text x="288" y="98" font-family="JetBrains Mono,monospace" font-size="7" fill="#fbbf24" text-anchor="middle">fast approx</text>
+<line x1="340" y1="72" x2="348" y2="72" stroke="#fbbf24" stroke-width="1.5"/>
+<polygon points="344,68 352,72 344,76" fill="#fbbf24"/>
+<rect x="350" y="38" width="100" height="68" rx="8" fill="rgba(96,165,250,.08)" stroke="rgba(96,165,250,.4)" stroke-width="1.5"/>
+<text x="400" y="56" font-family="JetBrains Mono,monospace" font-size="8" fill="#60a5fa" text-anchor="middle" font-weight="bold">④ Residual</text>
+<text x="400" y="70" font-family="JetBrains Mono,monospace" font-size="7" fill="#7c7c95" text-anchor="middle">r = y − ỹ</text>
+<text x="400" y="84" font-family="JetBrains Mono,monospace" font-size="7" fill="#ececf6" text-anchor="middle">error vector</text>
+<text x="400" y="98" font-family="JetBrains Mono,monospace" font-size="7" fill="#60a5fa" text-anchor="middle">captures loss</text>
+<line x1="452" y1="72" x2="460" y2="72" stroke="#60a5fa" stroke-width="1.5"/>
+<polygon points="456,68 464,72 456,76" fill="#60a5fa"/>
+<rect x="462" y="38" width="100" height="68" rx="8" fill="rgba(94,234,212,.08)" stroke="rgba(94,234,212,.4)" stroke-width="1.5"/>
+<text x="512" y="56" font-family="JetBrains Mono,monospace" font-size="8" fill="#5eead4" text-anchor="middle" font-weight="bold">⑤ Sketch</text>
+<text x="512" y="70" font-family="JetBrains Mono,monospace" font-size="7" fill="#7c7c95" text-anchor="middle">z = Sr, m&lt;&lt;d</text>
+<text x="512" y="84" font-family="JetBrains Mono,monospace" font-size="7" fill="#ececf6" text-anchor="middle">random proj</text>
+<text x="512" y="98" font-family="JetBrains Mono,monospace" font-size="7" fill="#5eead4" text-anchor="middle">d→m compress</text>
+<line x1="564" y1="72" x2="572" y2="72" stroke="#5eead4" stroke-width="1.5"/>
+<polygon points="568,68 576,72 568,76" fill="#5eead4"/>
+<rect x="574" y="38" width="100" height="68" rx="8" fill="rgba(244,114,182,.08)" stroke="rgba(244,114,182,.4)" stroke-width="1.5"/>
+<text x="624" y="56" font-family="JetBrains Mono,monospace" font-size="8" fill="#f472b6" text-anchor="middle" font-weight="bold">⑥ Sign</text>
+<text x="624" y="70" font-family="JetBrains Mono,monospace" font-size="7" fill="#7c7c95" text-anchor="middle">b = sign(z)</text>
+<text x="624" y="84" font-family="JetBrains Mono,monospace" font-size="7" fill="#ececf6" text-anchor="middle">1 bit/dim</text>
+<text x="624" y="98" font-family="JetBrains Mono,monospace" font-size="7" fill="#f472b6" text-anchor="middle">extreme compress</text>
+<line x1="676" y1="72" x2="748" y2="72" stroke="#f472b6" stroke-width="1.5"/>
+<polygon points="744,68 752,72 744,76" fill="#f472b6"/>
+<rect x="750" y="38" width="136" height="68" rx="8" fill="rgba(251,191,36,.1)" stroke="rgba(251,191,36,.55)" stroke-width="2"/>
+<text x="818" y="56" font-family="JetBrains Mono,monospace" font-size="8" fill="#fbbf24" text-anchor="middle" font-weight="bold">⑦ Store + Recon</text>
+<text x="818" y="70" font-family="JetBrains Mono,monospace" font-size="7" fill="#7c7c95" text-anchor="middle">store: ỹ, s, b</text>
+<text x="818" y="84" font-family="JetBrains Mono,monospace" font-size="7" fill="#ececf6" text-anchor="middle">recon: Rᵀ(ỹ+αSᵀb)</text>
+<text x="818" y="98" font-family="JetBrains Mono,monospace" font-size="7" fill="#fbbf24" text-anchor="middle">3–4 bits/dim</text>
+<text x="450" y="118" font-family="JetBrains Mono,monospace" font-size="8" fill="#7c7c95" text-anchor="middle">── Worked example: x = [0.83, −0.31, 0.27, 0.11] ──</text>
+<rect x="14"  y="122" width="98"  height="76" rx="6" fill="rgba(255,255,255,.02)" stroke="rgba(255,255,255,.06)"/>
+<text x="63"  y="138" font-family="JetBrains Mono,monospace" font-size="7" fill="#7c7c95" text-anchor="middle">Input</text>
+<text x="63"  y="152" font-family="JetBrains Mono,monospace" font-size="7" fill="#ececf6" text-anchor="middle">[0.83, −0.31,</text>
+<text x="63"  y="164" font-family="JetBrains Mono,monospace" font-size="7" fill="#ececf6" text-anchor="middle">0.27, 0.11]</text>
+<rect x="126" y="122" width="100" height="76" rx="6" fill="rgba(167,139,250,.04)" stroke="rgba(167,139,250,.14)"/>
+<text x="176" y="138" font-family="JetBrains Mono,monospace" font-size="7" fill="#a78bfa" text-anchor="middle">After Rx = y</text>
+<text x="176" y="154" font-family="JetBrains Mono,monospace" font-size="7" fill="#ececf6" text-anchor="middle">[0.45, 0.65,</text>
+<text x="176" y="166" font-family="JetBrains Mono,monospace" font-size="7" fill="#ececf6" text-anchor="middle">0.07, 0.49]</text>
+<rect x="238" y="122" width="100" height="76" rx="6" fill="rgba(251,191,36,.04)" stroke="rgba(251,191,36,.14)"/>
+<text x="288" y="138" font-family="JetBrains Mono,monospace" font-size="7" fill="#fbbf24" text-anchor="middle">ỹ (s=0.25)</text>
+<text x="288" y="154" font-family="JetBrains Mono,monospace" font-size="7" fill="#ececf6" text-anchor="middle">[0.50, 0.75,</text>
+<text x="288" y="166" font-family="JetBrains Mono,monospace" font-size="7" fill="#ececf6" text-anchor="middle">0.00, 0.50]</text>
+<rect x="350" y="122" width="100" height="76" rx="6" fill="rgba(96,165,250,.04)" stroke="rgba(96,165,250,.14)"/>
+<text x="400" y="138" font-family="JetBrains Mono,monospace" font-size="7" fill="#60a5fa" text-anchor="middle">r = y − ỹ</text>
+<text x="400" y="154" font-family="JetBrains Mono,monospace" font-size="7" fill="#ececf6" text-anchor="middle">[−0.05, −0.10,</text>
+<text x="400" y="166" font-family="JetBrains Mono,monospace" font-size="7" fill="#ececf6" text-anchor="middle">+0.07, −0.01]</text>
+<rect x="462" y="122" width="100" height="76" rx="6" fill="rgba(94,234,212,.04)" stroke="rgba(94,234,212,.14)"/>
+<text x="512" y="138" font-family="JetBrains Mono,monospace" font-size="7" fill="#5eead4" text-anchor="middle">z = Sr</text>
+<text x="512" y="154" font-family="JetBrains Mono,monospace" font-size="7" fill="#ececf6" text-anchor="middle">[+0.055,</text>
+<text x="512" y="166" font-family="JetBrains Mono,monospace" font-size="7" fill="#ececf6" text-anchor="middle">−0.115]</text>
+<rect x="574" y="122" width="100" height="76" rx="6" fill="rgba(244,114,182,.04)" stroke="rgba(244,114,182,.14)"/>
+<text x="624" y="138" font-family="JetBrains Mono,monospace" font-size="7" fill="#f472b6" text-anchor="middle">sign(z)</text>
+<text x="624" y="158" font-family="JetBrains Mono,monospace" font-size="9" fill="#fbbf24" text-anchor="middle" font-weight="bold">[+1, −1]</text>
+<text x="624" y="174" font-family="JetBrains Mono,monospace" font-size="7" fill="#7c7c95" text-anchor="middle">2 bits stored!</text>
+<rect x="750" y="122" width="136" height="76" rx="6" fill="rgba(251,191,36,.06)" stroke="rgba(251,191,36,.28)"/>
+<text x="818" y="138" font-family="JetBrains Mono,monospace" font-size="7" fill="#fbbf24" text-anchor="middle">Reconstructed x̂</text>
+<text x="818" y="154" font-family="JetBrains Mono,monospace" font-size="7" fill="#ececf6" text-anchor="middle">[0.875, 0.125,</text>
+<text x="818" y="166" font-family="JetBrains Mono,monospace" font-size="7" fill="#ececf6" text-anchor="middle">−0.125, 0.125]</text>
+<text x="818" y="180" font-family="JetBrains Mono,monospace" font-size="7" fill="#7c7c95" text-anchor="middle">vs [0.83, −0.31, 0.27, 0.11]</text>
+<text x="818" y="192" font-family="JetBrains Mono,monospace" font-size="7" fill="#7c7c95" text-anchor="middle">d=4 toy: error large</text>
+<rect x="14" y="212" width="872" height="50" rx="8" fill="rgba(255,255,255,.02)" stroke="rgba(255,255,255,.06)"/>
+<text x="40" y="230" font-family="JetBrains Mono,monospace" font-size="7" fill="#fbbf24">INT4 coarse:</text>
+<rect x="120" y="220" width="120" height="10" rx="3" fill="rgba(251,191,36,.4)" stroke="rgba(251,191,36,.5)"/>
+<text x="248" y="230" font-family="JetBrains Mono,monospace" font-size="7" fill="#fbbf24">4 bits/dim</text>
+<text x="310" y="230" font-family="JetBrains Mono,monospace" font-size="7" fill="#f472b6">Sign sketch:</text>
+<rect x="392" y="220" width="30" height="10" rx="3" fill="rgba(244,114,182,.4)" stroke="rgba(244,114,182,.5)"/>
+<text x="430" y="230" font-family="JetBrains Mono,monospace" font-size="7" fill="#f472b6">m/d bits ≈ 0.5b</text>
+<text x="560" y="230" font-family="JetBrains Mono,monospace" font-size="7" fill="#5eead4" font-weight="bold">Total ≈ 3–4 bits vs FP16 = 16 bits · 4× savings</text>
+<text x="40" y="253" font-family="JetBrains Mono,monospace" font-size="7" fill="#7c7c95">At d=4096: error/dim &lt; 0.01 typical · vs INT4 alone: 20-40% less perplexity degradation at same bit rate · KV 128K tokens: 342GB → ~86GB</text>
+<rect x="14" y="268" width="872" height="22" rx="6" fill="rgba(244,114,182,.05)" stroke="rgba(244,114,182,.2)"/>
+<text x="450" y="283" font-family="JetBrains Mono,monospace" font-size="7" fill="#a78bfa" text-anchor="middle">Key insight: Random rotation neutralises outliers · Sketch captures residual structure scalar methods miss · JL Lemma guarantees reconstruction quality</text>
+</svg>
+</div>
+<div class="g2">
+<div class="callout callout-warn">
+  <div class="callout-icon">⚠️</div>
+  <div class="callout-body">
+    <h4>Why the KV cache problem is different from weight quantization</h4>
+    <p>Weights are quantized once and stay fixed — calibration can be expensive and careful. KV vectors are generated dynamically for every token in every request — compression must happen in microseconds with no offline calibration. Weights are shared across requests — quantization error amortises. KV entries are per-token and per-request — reconstruction quality directly affects attention scores for every subsequent token. This is why TurboQuant uses a fixed random rotation R and sketch matrix S (shared, precomputed) rather than data-dependent codebooks.</p>
+  </div>
+</div>
+<div class="callout callout-scenario">
+  <div class="callout-icon">📐</div>
+  <div class="callout-body">
+    <h4>Math: TurboQuant bit budget</h4>
+    <p><strong>Setup:</strong> d=4096, m=256 sketch dims, INT4 coarse. <strong>Coarse:</strong> 4 bits × 4096 = 16,384 bits. <strong>Sketch:</strong> 1 bit × 256 = 256 bits. <strong>Scale:</strong> 16 bits (FP16). <strong>Total:</strong> 16,656 bits / 4096 dims ≈ <strong>4.07 bits/dim</strong>. vs FP16 (16 bits/dim) → 3.9× compression. vs INT4 standalone (4.0 bits/dim) → nearly identical bit rate but 20-40% less perplexity degradation because the sign sketch captures residual structure that scalar INT4 misses entirely. At 128K context: 342GB FP16 → ~88GB TurboQuant.</p>
+  </div>
+</div>
+</div>
+<div class="card" style="padding:0;overflow:hidden">
+<table class="tbl">
+<thead><tr><th>Technique</th><th>Mechanism</th><th>KV reduction</th><th>Quality</th><th>Inference overhead</th></tr></thead>
+<tbody>
+<tr><td><strong style="color:var(--a1)">GQA (G=8)</strong></td><td>Share KV across Q groups</td><td>8×</td><td>Negligible loss</td><td>None (architectural)</td></tr>
+<tr><td><strong style="color:var(--a2)">INT8 KV</strong></td><td>Scalar quantize K,V</td><td>2×</td><td>&lt;0.3% perplexity↑</td><td>~5% decode overhead</td></tr>
+<tr><td><strong style="color:var(--a4)">INT4 KV</strong></td><td>Scalar quantize K,V</td><td>4×</td><td>~1% perplexity↑</td><td>~8% decode overhead</td></tr>
+<tr><td><strong style="color:var(--a3)">TurboQuant</strong></td><td>Rotation + INT4 + sign sketch</td><td>~4×</td><td>&lt;0.5% perplexity↑</td><td>Rotation + sketch ops</td></tr>
+<tr><td><strong style="color:var(--a5)">MQA (G=1)</strong></td><td>All queries share 1 KV head</td><td>H×</td><td>~2% perplexity↑</td><td>None (architectural)</td></tr>
+</tbody>
+</table>
+</div>
+</section>
+
+<section class="sec" id="s4">
+<div class="sn">04 · Assessment — 8 Deep Questions</div>
+<h2>Quantization <span class="gt">Mastery Quiz</span></h2>
+<div class="qc"><div class="qc-title">Assessment — Quantization from Fundamentals to TurboQuant</div><div class="qc-sub">8 questions · SmoothQuant · GPTQ · KV cache math · PQ · TurboQuant rotation · NF4 · GQA · vector search</div><div class="qprog"><div class="qprog-bar"><div class="qprog-fill"></div></div><div class="qprog-text">0/8 answered</div></div><div class="qq"><div class="qnum">Question 1 of 8</div><h4>A vector x = [3.2, 0.01, 0.008, 0.003] is quantized to INT8 symmetrically. The tiny values 0.01, 0.008, 0.003 all quantize to 0. Why, and how does SmoothQuant fix this?</h4><div class="qo"><button class="qob" data-opt="A" data-correct="true" onclick="cq(this,0,true)">A: Per-channel quantization fixes this — each element gets its own scale factor.</button>
+<button class="qob" data-opt="B" data-correct="false" onclick="cq(this,0,false)">B: The scale s = max(|x|) / 127 = 3.2 / 127 ≈ 0.0252. Values below s/2 ≈ 0.0126 round to 0, so 0.01, 0.008, 0.003 are all lost — 75% of the information vanishes. This is the activation outlier problem that devastates INT8 LLM inference. SmoothQuant introduces per-channel smoothing: s_j = max(|X_j|)^α × max(|W_j|)^(1-α), then scales X down by s and W up by s so Y = X·W is unchanged. After smoothing, the effective max of X is reduced, so the scale s fits smaller values without loss. SmoothQuant enables INT8 LLMs with &lt; 1% accuracy degradation vs FP16.</button>
+<button class="qob" data-opt="C" data-correct="false" onclick="cq(this,0,false)">C: INT8 is simply not enough for this vector — use FP8 E4M3 instead.</button>
+<button class="qob" data-opt="D" data-correct="false" onclick="cq(this,0,false)">D: Asymmetric quantization with zero-point offset moves the range to cover small positive values.</button>
+</div><div class="qfeed"><div class="qfeed-head"></div><div class="qfeed-why"><strong>SmoothQuant's core insight:</strong> the problem is not that INT8 is too coarse — it's that outliers in one channel force the scale to be set too high, wasting all precision on covering the outlier while leaving small values underrepresented. The mathematical identity Y = (X·diag(s)⁻¹)·(diag(s)·W) lets us migrate the outlier magnitude from the hard-to-quantize activations to the easier-to-quantize weight side, leveling the difficulty across both.</div></div></div><div class="qq"><div class="qnum">Question 2 of 8</div><h4>GPTQ quantizes a weight matrix W to INT4 by minimising ‖W − Wq‖_H where H is the approximate Hessian of the loss. What is the intuition behind using the Hessian here, and why is INT4 possible without QAT?</h4><div class="qo"><button class="qob" data-opt="A" data-correct="false" onclick="cq(this,1,false)">A: The Hessian tells us which weights have the highest gradient — high-gradient weights get higher precision.</button>
+<button class="qob" data-opt="B" data-correct="true" onclick="cq(this,1,true)">B: The Hessian H captures the curvature of the loss with respect to each weight. High-curvature directions matter a lot for model output — a small perturbation in those directions causes large loss changes. GPTQ weights the quantization error by H: ‖W−Wq‖_H = (W−Wq)ᵀH(W−Wq), so weights that matter most to the loss are quantized least aggressively. After quantizing one weight, the remaining weights are updated (via the OBQ/OBC algorithm) to compensate for the error — one weight is quantized per step, with all others updated to correct the accumulated error. This second-order correction makes INT4 possible without retraining: the remaining weights absorb the error that would otherwise degrade accuracy.</button>
+<button class="qob" data-opt="C" data-correct="false" onclick="cq(this,1,false)">C: The Hessian regularises the optimisation to prevent catastrophic forgetting during quantization.</button>
+<button class="qob" data-opt="D" data-correct="false" onclick="cq(this,1,false)">D: GPTQ uses the Hessian to identify and prune zero weights before quantization, allowing aggressive compression.</button>
+</div><div class="qfeed"><div class="qfeed-head"></div><div class="qfeed-why"><strong>GPTQ (Frantar et al. 2022):</strong> The key algorithmic element is the OBC (Optimal Brain Compression) row update. After quantizing weight W[i,j], all remaining weights in row i are updated: W[i,k:] -= (W[i,j] − Wq[i,j]) × (H⁻¹[j,k:] / H⁻¹[j,j]). This error correction propagates the quantization mistake backward through the Hessian inverse, allowing INT4 to match INT8 PTQ quality on most LLMs. GPTQ quantizes a 175B model in ~4 hours on 1 GPU.</div></div></div><div class="qq"><div class="qnum">Question 3 of 8</div><h4>The KV cache for a 70B model (L=80 layers, d=8192, FP16) at 128K sequence length is 342GB per request. A production system serves 64 concurrent users. With GQA reducing KV heads from 64 to 8 (8× reduction), plus INT4 quantization, what is the total KV memory per GPU required? Assume a single A100 80GB GPU.</h4><div class="qo"><button class="qob" data-opt="A" data-correct="false" onclick="cq(this,2,false)">A: 342GB / 8 (GQA) / 4 (INT4) × 64 users ≈ 684GB — far exceeds one GPU, needs 9 GPUs.</button>
+<button class="qob" data-opt="B" data-correct="false" onclick="cq(this,2,false)">B: Per-user KV at FP16: 342GB. GQA 8×: 342/8 = 42.75GB. INT4 4×: 42.75/4 ≈ 10.7GB. 64 users: 10.7 × 64 = 684GB. An A100 has 80GB → need 684/80 ≈ 9 GPUs just for KV cache. Model weights at INT4 = 35GB on top → total ~720GB → ~10 A100s required. This is why TurboQuant targeting 3-4 bits (vs INT4's 4 bits) helps, but the bigger lever at this scale is GQA (8× by itself) combined with PagedAttention's memory efficiency. Real production systems use GQA + INT4 KV + PagedAttention, serving 128K contexts on 8-16 GPU nodes.</button>
+<button class="qob" data-opt="C" data-correct="true" onclick="cq(this,2,true)">C: Per-user KV with GQA+INT4: 10.7GB. 64 users = 685GB. Need ~9 A100s for KV alone.</button>
+<button class="qob" data-opt="D" data-correct="false" onclick="cq(this,2,false)">D: GQA and INT4 together reduce KV to 342GB/32 ≈ 10.7GB total, serving all 64 users on one GPU.</button>
+</div><div class="qfeed"><div class="qfeed-head"></div><div class="qfeed-why"><strong>Memory arithmetic:</strong> Always compute per-user first: Memory = 2 × L × T × d × bytes = 2 × 80 × 131072 × 8192 × 2 = 342GB. GQA with ratio r reduces this by r (KV heads, not query heads). INT4 is 0.5 bytes → ÷4 vs FP16. The 64-user multiplication shows why serving long-context models at scale requires careful planning: even with aggressive compression, multi-user KV cache dominates GPU memory. Options C and B give the same final number (≈9 GPUs for KV) — the key step is recognizing GQA and INT4 are independent multipliers applied sequentially.</div></div></div><div class="qq"><div class="qnum">Question 4 of 8</div><h4>Product Quantization (PQ) with m=32 subvectors and k=256 entries per codebook compresses 1024-dim FP32 embeddings. What is the total storage (including codebook) for a database of 1M vectors, and why is approximate distance computation (ADC) O(m) rather than O(d)?</h4><div class="qo"><button class="qob" data-opt="A" data-correct="false" onclick="cq(this,3,false)">A: Compressed vectors: 1M × 32 bytes = 32MB. Codebook: 32 × 256 × 1024/32 × 4B = 32MB. Total ≈ 64MB vs original 4GB — 62× compression. ADC is O(m) because sub-distances are precomputed.</button>
+<button class="qob" data-opt="B" data-correct="false" onclick="cq(this,3,false)">B: PQ storage for 1M vectors: each vector → m=32 indices, each 8 bits (log₂256) → 32 bytes/vector → 1M × 32B = 32MB. Codebook: m × k × (d/m) floats = 32 × 256 × 32 × 4B = 1MB. Total ≈ 33MB vs 1M × 1024 × 4B = 4GB original → 121× compression. ADC works by precomputing m partial distance tables: for query q, split into m sub-queries and compute dist(q_j, c_j_i) for all k codebook entries in each subspace — k × m = 256 × 32 = 8192 distances, stored as a lookup table. Then each database vector distance = sum of m table lookups, costing exactly m operations regardless of d. This makes nearest-neighbor search over 1M vectors ≈ 32M operations vs 1B for exact L2.</button>
+<button class="qob" data-opt="C" data-correct="false" onclick="cq(this,3,false)">C: Storage 32MB vectors + 1MB codebook = 33MB. ADC is O(d) because we reconstruct each vector before comparison.</button>
+<button class="qob" data-opt="D" data-correct="true" onclick="cq(this,3,true)">D: Storage is 1M × 8B = 8MB (one 64-bit index per vector). Codebook not counted as it is shared.</button>
+</div><div class="qfeed"><div class="qfeed-head"></div><div class="qfeed-why"><strong>PQ compression math:</strong> The key formula: compressed_size = N × m × log₂(k) bits = 1M × 32 × 8 bits = 256Mb = 32MB. Codebook size = m × k × (d/m) × sizeof(float) = 32 × 256 × 32 × 4 = 1MB. The ADC efficiency comes from precomputing the partial distance table at query time (cost = m × k) once, then each DB vector lookup costs just m additions. This is why FAISS can search 1B vectors in milliseconds on a CPU — the bottleneck is the lookup table reads, not vector arithmetic.</div></div></div><div class="qq"><div class="qnum">Question 5 of 8</div><h4>TurboQuant applies a random rotation y = Rx before quantization. Why does this improve INT4 accuracy, and what mathematical property of R is essential for reconstruction?</h4><div class="qo"><button class="qob" data-opt="A" data-correct="false" onclick="cq(this,4,false)">A: Rotation decorrelates the dimensions, making them independent — this reduces quantization error.</button>
+<button class="qob" data-opt="B" data-correct="true" onclick="cq(this,4,true)">B: The random orthogonal rotation R (Randomised Hadamard Transform) spreads outlier values across all dimensions before quantization. In the original KV vector, certain dimensions may have magnitude 10× larger than others — a single outlier forces the INT4 scale to cover the full range, wasting 4-bit resolution on small values. After rotation y = Rx, the energy is spread: if one original dimension had outlier value A, its energy A² is distributed across all d dimensions, each getting A/√d from that component. The scale factor s = max(|y|) / 7 (INT4) is now much smaller relative to typical values, so all dimensions are represented accurately. Reconstruction requires R to be orthogonal (R⁻¹ = Rᵀ): xhat = Rᵀ ŷ preserves exact inversion without numerical drift, and ‖Rx‖ = ‖x‖ ensures no amplitude distortion.</button>
+<button class="qob" data-opt="C" data-correct="false" onclick="cq(this,4,false)">C: The rotation matrix R is learned during model training to optimally distribute KV vector energy.</button>
+<button class="qob" data-opt="D" data-correct="false" onclick="cq(this,4,false)">D: Random rotation is equivalent to data whitening — it normalises the covariance matrix to identity.</button>
+</div><div class="qfeed"><div class="qfeed-head"></div><div class="qfeed-why"><strong>The orthogonality condition is load-bearing:</strong> R must satisfy RᵀR = I for two reasons. First, reconstruction: xhat = Rᵀŷ gives the exact inverse if ŷ were perfect. Second, distance preservation: ‖Rx - Ry‖ = ‖x - y‖ — quantization errors in the rotated space have the same L2 norm as in the original space. The Randomised Hadamard Transform (RHT) achieves O(d log d) vs O(d²) for a dense rotation, making it practical for d=4096. Theoretically, this is a Johnson-Lindenstrauss rotation — the outlier spreading follows from the JL lemma.</div></div></div><div class="qq"><div class="qnum">Question 6 of 8</div><h4>QLoRA fine-tunes a 70B model by quantizing the base model to 4-bit NF4 (Normal Float 4) and adding LoRA adapters in BF16. Why is NF4 preferable to INT4 for weight quantization, and what happens computationally during the forward pass?</h4><div class="qo"><button class="qob" data-opt="A" data-correct="false" onclick="cq(this,5,false)">A: NF4 is a floating-point format so it handles the dynamic range of neural network weights better than INT4.</button>
+<button class="qob" data-opt="B" data-correct="true" onclick="cq(this,5,true)">B: NF4 (Normal Float 4) is designed specifically for neural network weights, which follow a near-Gaussian distribution. INT4 divides the range [-max, max] into 16 equal intervals — but most weights cluster near zero, wasting most of the 16 levels on the tails. NF4 uses quantile-based level placement: the 16 NF4 values are chosen so that equal numbers of weights fall in each bin, matching the Gaussian weight distribution. This is information-theoretically optimal for Gaussian inputs. In the forward pass: (1) base weights are dequantized from NF4 → BF16 on-the-fly, (2) the BF16 computation proceeds normally, (3) LoRA adapters (also BF16) are added. The NF4 weights stay in 4-bit storage; dequantization happens per-block just-in-time. This means: 70B weights at 4-bit ≈ 35GB storage, LoRA adapters at BF16 are tiny (rank r << d), total ≈ 36GB → fits on 2× A100 80GB.</button>
+<button class="qob" data-opt="C" data-correct="false" onclick="cq(this,5,false)">C: NF4 uses a non-uniform grid matching the normal distribution, saving bits on common values.</button>
+<button class="qob" data-opt="D" data-correct="false" onclick="cq(this,5,false)">D: QLoRA uses NF4 because it supports hardware-accelerated 4-bit arithmetic on H100 GPUs unlike INT4.</button>
+</div><div class="qfeed"><div class="qfeed-head"></div><div class="qfeed-why"><strong>NF4 information theory:</strong> For a Gaussian weight distribution N(0,σ²), the optimal 4-bit quantizer minimises expected squared error E[(w - q(w))²]. This is achieved by quantile quantization: place boundaries at the 1/16, 2/16, ... quantiles of the distribution. NF4 tables these boundaries at initialization. The result: NF4 uses 0 bits on the weight's overall magnitude (handled by block-wise scaling) and all 4 bits on relative position within the distribution. Empirically, NF4 matches BF16 fine-tuning quality while using 4× less base model memory.</div></div></div><div class="qq"><div class="qnum">Question 7 of 8</div><h4>Grouped Query Attention (GQA) with G groups and H query heads uses H/G KV heads. LLaMA-3-70B uses H=64 query heads and G=8 KV heads. A 128K context with this model at FP16: calculate the KV cache memory, and explain why GQA doesn't hurt quality as much as MQA (G=1).</h4><div class="qo"><button class="qob" data-opt="A" data-correct="false" onclick="cq(this,6,false)">A: KV memory = 2 × 80 × 128000 × (8192/64 × 8) × 2 = 21.5GB. GQA keeps 8 independent KV heads while MQA uses 1.</button>
+<button class="qob" data-opt="B" data-correct="false" onclick="cq(this,6,false)">B: LLaMA-3-70B: L=80, d_head=128 (= d/H = 8192/64), KV heads=8. KV mem = 2 (K+V) × 80 layers × 128K tokens × 8 heads × 128 dims × 2 bytes (FP16) = 2×80×131072×8×128×2 ≈ 43GB. Vs MHA: 2×80×131072×64×128×2 ≈ 343GB — GQA gives 8× reduction. GQA quality vs MQA: in MQA (1 KV head), all 64 query heads share the same key and value — the model cannot attend to different positions with different value projections. This collapses the expressive power of multi-head attention. In GQA with 8 KV heads, each KV head serves 8 query heads — 8 different value projections remain. Empirically, GQA at 8 groups matches MHA within 0.3 perplexity points; MQA degrades ~1-2 points. GQA is the production sweet spot: 8× KV savings with negligible quality loss.</button>
+<button class="qob" data-opt="C" data-correct="true" onclick="cq(this,6,true)">C: KV memory = 43GB. GQA preserves 8 independent attention patterns while MQA collapses to 1.</button>
+<button class="qob" data-opt="D" data-correct="false" onclick="cq(this,6,false)">D: KV memory = 43GB. GQA is preferred because it requires fewer training steps to converge than MQA.</button>
+</div><div class="qfeed"><div class="qfeed-head"></div><div class="qfeed-why"><strong>GQA arithmetic:</strong> The formula is Memory(GQA) = 2 × L × T × G × d_head × bytes. Here G=8, d_head = d_model/H_total = 8192/64 = 128. Key conceptual point: GQA retains G independent KV projections, so each group of H/G queries can attend to different content aspects. MQA's single KV head creates a bottleneck where all 64 queries compete for the same attention pattern — quality suffers. GQA was introduced in the Ainslie et al. 2023 paper and is now standard in all major LLMs (LLaMA-2+, Mistral, Gemma).</div></div></div><div class="qq"><div class="qnum">Question 8 of 8</div><h4>You are deploying a RAG system with 100M documents (1024-dim FP32 embeddings). Compare the total storage and query latency trade-off for: (A) exact FP32 FAISS flat index, (B) PQ with m=64, k=256, (C) HNSW exact index at M=32. Which do you choose for a latency-critical production system at &lt;50ms p99?</h4><div class="qo"><button class="qob" data-opt="A" data-correct="false" onclick="cq(this,7,false)">A: FP32 flat: 400GB storage, O(N×d) search, ~10s per query on CPU — ruled out. HNSW: ~5GB storage, O(log N) search, ~1-5ms. HNSW is best.</button>
+<button class="qob" data-opt="B" data-correct="true" onclick="cq(this,7,true)">B: FP32 flat index: 100M × 1024 × 4B = 400GB, O(N·d) = 100B ops per query — 500ms+ on GPU, ruled out for p99&lt;50ms. PQ (m=64, k=256): stored bytes = 100M × 64B = 6.4GB compressed + 64×256×16×4B ≈ 1MB codebook ≈ 6.4GB total. Query: precompute 64×256=16K distances, then 100M × 64 additions = 6.4B ops — 30-100ms CPU, 5-15ms GPU. HNSW (M=32): storage = ~5-10GB (graph edges ~M×N×8B + vectors in FP32), query = O(log N × M × d) ≈ 128×32×1024 ≈ 4M ops — &lt;1ms for single query. Choice: HNSW for &lt;50ms p99 at this scale — it gives sub-5ms query latency with ~95-99% recall@10. Use PQ+HNSW (IVFPQ in FAISS) for 100M+ where HNSW memory becomes limiting (~50GB+ for M=64).</button>
+<button class="qob" data-opt="C" data-correct="false" onclick="cq(this,7,false)">C: PQ with GPU FAISS: 6.4GB storage, &lt;10ms query. PQ is the best balance for this use case.</button>
+<button class="qob" data-opt="D" data-correct="false" onclick="cq(this,7,false)">D: FP32 flat on GPU (A100): 400GB needed, ruled out. Use quantised HNSW — PQ compression inside HNSW graph edges.</button>
+</div><div class="qfeed"><div class="qfeed-head"></div><div class="qfeed-why"><strong>Production vector search decision:</strong> The key insight is that latency budgets determine the algorithm. FP32 flat is trivially correct but impossibly slow at 100M scale. PQ is fast but introduces recall degradation (~90-95%) — acceptable for recommendation but risky for RAG where missing the right context is costly. HNSW gives 99%+ recall with sub-5ms queries. At 100M scale, HNSW storage (~10-30GB for M=32) fits on a single A100 80GB. For 1B+ vectors, IVFPQ (inverted file + PQ) or ScaNN are the right choices. Always benchmark recall@K and p99 latency together — optimising latency at the cost of recall destroys RAG answer quality.</div></div></div><div class="qs" id="qs" style="display:none"><h3 id="sc">0/8</h3><p id="sm"></p></div></div>
+</section>
+</div>
+<footer>
+  <div style="max-width:var(--cw);margin:0 auto;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:1rem">
+    <div style="display:flex;gap:.8rem"><span></span><span></span></div>
+    <span>Quantization for Modern AI · M0 · Quantization — From INT4 to TurboQuant</span>
+  </div>
+</footer>
+<script>
+window.addEventListener("scroll",function(){
+  var h=document.documentElement;
+  var pct=(h.scrollTop/(h.scrollHeight-h.clientHeight))*100;
+  document.getElementById("sp").style.width=pct+"%";
+});
+var obs=new IntersectionObserver(function(e){
+  e.forEach(function(x){if(x.isIntersecting)x.target.classList.add("vis");});
+},{threshold:0.06});
+document.querySelectorAll(".sec").forEach(function(s){obs.observe(s);});
+// Copy buttons
+function cp(btn,id){
+  navigator.clipboard.writeText(document.getElementById(id).innerText).then(function(){
+    var t=btn.textContent;btn.textContent="✓ Copied";
+    setTimeout(function(){btn.textContent=t;},2000);
+  });
+}
+// Metric bar animation
+window.addEventListener("load",function(){
+  document.querySelectorAll(".metric-fill[data-pct]").forEach(function(el){
+    setTimeout(function(){el.style.width=el.getAttribute("data-pct")+"%";},300);
+  });
+});
+// Quiz engine
+var qstate={};
+var qtotal=document.querySelectorAll(".qq").length;
+function updateProgress(){
+  var done=Object.keys(qstate).length;
+  var fill=document.querySelector(".qprog-fill");
+  var txt=document.querySelector(".qprog-text");
+  if(fill)fill.style.width=Math.round(done/qtotal*100)+"%";
+  if(txt)txt.textContent=done+"/"+qtotal+" answered";
+  if(done===qtotal)showScore();
+}
+function showScore(){
+  var c=Object.values(qstate).filter(function(v){return v;}).length;
+  var sc=document.getElementById("sc");
+  var sm=document.getElementById("sm");
+  if(sc)sc.textContent=c+"/"+qtotal+" correct";
+  if(sm){
+    var msgs=["Keep studying — revisit: s = max(|x|)/127 for INT8. When scale covers an outlier, tiny values below s/2 map to 0 — this is why SmoothQuant exists.","Good effort — review GPTQ: the OBQ row update after each weight quantization compensates remaining weights using the Hessian inverse.","Building — re-read KV cache math: Memory = 2×L×T×d×bytes. GQA and INT4 are independent multipliers: 342GB → 342/8/4 = 10.7GB per user.","Solid — review PQ ADC: precompute m×k distance table once, then each DB vector lookup costs just m additions — O(m) not O(d).","Strong — revisit TurboQuant rotation: orthogonal R spreads outlier energy across d dims, reducing max(|y|) so INT4 scale covers all values efficiently.","Excellent — one more question separates you from mastery.","Outstanding — nearly perfect quantization mastery.","Perfect score — you understand quantization from scalar fundamentals to TurboQuant vector compression. Ready for production ML systems."][c];
+    sm.textContent=msgs[Math.min(c,msgs.length-1)];
+    sm.style.color=c>=Math.round(qtotal*0.8)?"#5eead4":"#f472b6";
+  }
+  var qs=document.getElementById("qs");
+  if(qs)qs.style.display="block";
+}
+function cq(btn,qi,isCorrect){
+  if(qstate[qi]!==undefined)return;
+  qstate[qi]=isCorrect;
+  var qq=btn.closest(".qq");
+  qq.classList.add("answered");
+  var allBtns=qq.querySelectorAll(".qob");
+  allBtns.forEach(function(b){
+    b.setAttribute("disabled","");
+    var bc=b.getAttribute("data-correct")==="true";
+    if(bc)b.classList.add("ok");
+    else if(b===btn&&!isCorrect)b.classList.add("no");
+  });
+  var feed=qq.querySelector(".qfeed");
+  if(feed){
+    feed.style.display="block";
+    feed.className="qfeed "+(isCorrect?"correct":"wrong");
+    var head=feed.querySelector(".qfeed-head");
+    if(head)head.textContent=isCorrect?"✓ Correct — "+btn.getAttribute("data-opt")+" is right":"✗ Not quite — see the explanation below";
+  }
+  updateProgress();
+}</script>
+</body></html>

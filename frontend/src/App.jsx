@@ -228,7 +228,7 @@ function Layout() {
         <div className="h-screen flex flex-col font-sans transition-colors duration-200 overflow-hidden" style={{ backgroundColor: 'var(--color-app-bg)', color: 'var(--color-primary-text)' }}>
             <Navigation />
             <div className="h-[68px] shrink-0"></div> {/* Spacer matching exact nav height */}
-            <main className="flex-1 overflow-hidden h-[calc(100vh-68px)]">
+            <main className="flex-1 flex flex-col overflow-hidden h-[calc(100vh-68px)]">
                 <Suspense fallback={<div className="flex items-center justify-center h-full w-full">Loading...</div>}>
                     <Outlet />
                 </Suspense>

@@ -1,0 +1,883 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Quantization for Modern AI · M3 — Production Deployment — vLLM, TensorRT-LLM and the Decision Framework</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;700&family=Source+Serif+4:ital,opsz,wght@0,8..60,400;0,8..60,600;1,8..60,400&display=swap" rel="stylesheet">
+<style>:root{--bg:#08080e;--t1:#ececf6;--t2:#b5b5c8;--tm:#6b6b85;
+--a1:#5eead4;--a2:#60a5fa;--a3:#f472b6;--a4:#fbbf24;--a5:#a78bfa;--ac:#a78bfa;
+--gl:linear-gradient(90deg,#5eead4 0%,#60a5fa 28%,#a78bfa 55%,#f472b6 82%,#fbbf24 100%);
+--bs:rgba(255,255,255,0.06);--sh:0 24px 80px rgba(0,0,0,0.5);--r:18px;--cw:1160px}
+*{box-sizing:border-box;margin:0;padding:0}html{scroll-behavior:smooth}
+body{background:radial-gradient(ellipse 900px 500px at 15% 10%,rgba(167,139,250,.08),transparent 50%),radial-gradient(ellipse 700px 400px at 85% 20%,rgba(96,165,250,.05),transparent 40%),var(--bg);color:var(--t1);font-family:'Outfit',sans-serif;line-height:1.75;overflow-x:hidden;-webkit-font-smoothing:antialiased}
+/* Progress bar */
+.sp{position:fixed;top:0;left:0;height:3px;width:0%;z-index:1000;background:var(--gl);transition:width .1s linear}
+/* Nav */
+nav{position:fixed;top:3px;left:0;right:0;z-index:999;display:flex;align-items:center;justify-content:space-between;padding:.7rem 2rem;background:rgba(8,8,14,.9);backdrop-filter:blur(16px);border-bottom:1px solid var(--bs)}
+.nbr{font-family:'JetBrains Mono',monospace;font-size:.7rem;color:var(--ac);letter-spacing:.16em;text-transform:uppercase;text-decoration:none;display:flex;align-items:center;gap:8px}
+.nbr-dot{width:6px;height:6px;border-radius:50%;background:var(--ac);animation:pulse 2s ease-in-out infinite}
+.nm{font-size:.8rem;color:var(--tm);max-width:400px;text-overflow:ellipsis;overflow:hidden;white-space:nowrap}
+.na{display:flex;gap:8px}
+.nb{display:inline-flex;align-items:center;gap:6px;padding:.38rem .85rem;border-radius:999px;border:1px solid var(--bs);background:rgba(255,255,255,.02);color:var(--t2);font-size:.78rem;text-decoration:none;transition:all .18s}
+.nb:hover{border-color:var(--ac);color:var(--ac)}
+/* Hero */
+.hero{min-height:100vh;display:flex;align-items:center;justify-content:center;padding:5rem 2rem 3rem;position:relative;overflow:hidden}
+.hg{position:absolute;inset:0;background-image:linear-gradient(rgba(255,255,255,.018) 1px,transparent 1px),linear-gradient(90deg,rgba(255,255,255,.018) 1px,transparent 1px);background-size:52px 52px;mask-image:radial-gradient(circle at center,black 20%,transparent 75%);pointer-events:none}
+.hi{max-width:1000px;text-align:center;position:relative;z-index:1}
+.hl{display:inline-flex;align-items:center;gap:10px;padding:.5rem 1rem;border-radius:999px;border:1px solid rgba(167,139,250,.28);background:rgba(167,139,250,.07);color:var(--ac);letter-spacing:1.8px;text-transform:uppercase;font-size:.74rem;margin-bottom:1.8rem}
+h1{font-size:clamp(2.6rem,5.5vw,5rem);line-height:1.02;letter-spacing:-.05em;font-weight:900;margin-bottom:1.2rem}
+.gt{background:var(--gl);-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent}
+.sub{font-size:.82rem;color:var(--tm);font-family:'JetBrains Mono',monospace;margin-bottom:.6rem;letter-spacing:.04em}
+.hs{font-family:'Source Serif 4',serif;color:var(--t2);font-size:clamp(1rem,1.8vw,1.18rem);max-width:800px;margin:0 auto 2.2rem;line-height:1.85}
+.hm{display:flex;flex-wrap:wrap;justify-content:center;gap:10px;margin-bottom:2.5rem}
+.mp{border:1px solid var(--bs);background:rgba(17,17,28,.8);border-radius:999px;padding:.6rem 1.1rem;color:var(--t2);font-size:.86rem}
+.mp.hl2{border-color:rgba(167,139,250,.3);color:var(--ac);background:rgba(167,139,250,.06)}
+.sc{position:absolute;bottom:2.4rem;left:50%;transform:translateX(-50%);color:var(--tm);display:flex;flex-direction:column;gap:.5rem;align-items:center;text-transform:uppercase;letter-spacing:.22em;font-size:.68rem}
+.arr{width:17px;height:17px;border-right:2px solid var(--tm);border-bottom:2px solid var(--tm);transform:rotate(45deg);animation:ba 2s ease-in-out infinite}
+@keyframes pulse{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.25;transform:scale(.7)}}
+@keyframes ba{0%,100%{transform:rotate(45deg) translateY(0)}50%{transform:rotate(45deg) translateY(8px)}}
+/* Content */
+.cw{max-width:var(--cw);margin:0 auto;padding:0 2rem 7rem}
+.sec{margin-bottom:6rem;opacity:0;transform:translateY(32px);transition:opacity .6s ease,transform .6s ease}
+.sec.vis{opacity:1;transform:translateY(0)}
+.sn{display:flex;align-items:center;gap:14px;color:var(--ac);font-family:'JetBrains Mono',monospace;font-size:.67rem;text-transform:uppercase;letter-spacing:.24em;margin-bottom:1rem}
+.sn::after{content:"";height:1px;flex:1;background:linear-gradient(90deg,rgba(167,139,250,.6),transparent)}
+.sec h2{font-size:clamp(2rem,4vw,3rem);line-height:1.06;margin-bottom:1.1rem;letter-spacing:-.04em}
+.lead{font-family:'Source Serif 4',serif;font-size:1.1rem;color:var(--t2);margin-bottom:2.2rem;line-height:1.88;max-width:860px}
+/* Cards */
+.card{background:linear-gradient(160deg,rgba(20,20,36,.98),rgba(14,14,26,.98));border:1px solid var(--bs);border-radius:var(--r);box-shadow:var(--sh);padding:2rem;margin-bottom:1.6rem}
+.card-accent{border-color:rgba(167,139,250,.25);background:linear-gradient(160deg,rgba(167,139,250,.04),rgba(14,14,26,.98))}
+/* Code blocks */
+.cc{background:linear-gradient(180deg,rgba(10,10,20,.99),rgba(8,8,16,.99));border:1px solid var(--bs);border-radius:var(--r);box-shadow:var(--sh);padding:0;margin-bottom:1.6rem;overflow:hidden}
+.ch{display:flex;align-items:center;justify-content:space-between;padding:1rem 1.6rem;border-bottom:1px solid var(--bs);background:rgba(255,255,255,.015)}
+.ch h3{font-size:.88rem;font-family:'JetBrains Mono',monospace;color:var(--ac);display:flex;align-items:center;gap:8px}
+.ch h3::before{content:"⟩";opacity:.5}
+.cpb{display:inline-flex;align-items:center;gap:5px;padding:.26rem .7rem;border-radius:999px;border:1px solid var(--bs);background:transparent;color:var(--tm);font-size:.7rem;cursor:pointer;transition:all .18s;font-family:'JetBrains Mono',monospace}
+.cpb:hover{border-color:var(--a1);color:var(--a1)}
+.cbody{padding:1.6rem;overflow-x:auto}
+pre{white-space:pre;color:#d8e3ff;font-family:'JetBrains Mono',monospace;font-size:.84rem;line-height:1.78;tab-size:4}
+.kw{color:#c084fc}.fn{color:#60a5fa}.str{color:#5eead4}.cm{color:#3d4060;font-style:italic}.nu{color:#fbbf24}.cl{color:#f472b6}.de{color:#fb923c}.op{color:#94a3b8}
+/* Architecture containers */
+.arch{background:rgba(8,8,18,.96);border:1px solid rgba(167,139,250,.18);border-radius:var(--r);padding:1.8rem;margin-bottom:1.6rem;overflow-x:auto;text-align:center}
+.arch-title{font-family:'JetBrains Mono',monospace;font-size:.68rem;text-transform:uppercase;letter-spacing:.2em;color:var(--ac);margin-bottom:1.4rem;text-align:left;display:flex;align-items:center;gap:8px}
+.arch-title::before{content:"▸";opacity:.7}
+/* Callouts */
+.callout{border-radius:14px;padding:1.2rem 1.4rem;margin-bottom:1.2rem;display:flex;gap:1rem;align-items:flex-start}
+.callout-key{background:rgba(94,234,212,.05);border:1px solid rgba(94,234,212,.22)}
+.callout-warn{background:rgba(251,191,36,.05);border:1px solid rgba(251,191,36,.22)}
+.callout-insight{background:rgba(167,139,250,.05);border:1px solid rgba(167,139,250,.22)}
+.callout-scenario{background:rgba(96,165,250,.05);border:1px solid rgba(96,165,250,.22)}
+.callout-danger{background:rgba(244,114,182,.05);border:1px solid rgba(244,114,182,.22)}
+.callout-icon{font-size:1.35rem;flex-shrink:0;margin-top:.08rem}
+.callout-body h4{font-size:.96rem;margin-bottom:.35rem;color:var(--t1);font-weight:700}
+.callout-body p{font-size:.88rem;color:var(--t2);line-height:1.68}
+.callout-body code{font-family:'JetBrains Mono',monospace;font-size:.82rem;background:rgba(255,255,255,.06);padding:.1rem .3rem;border-radius:4px;color:var(--ac)}
+/* Grids */
+.g2{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:1.4rem;margin-bottom:1.6rem}
+.g3{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:1.2rem;margin-bottom:1.6rem}
+.g4{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:1rem;margin-bottom:1.4rem}
+@media(max-width:768px){.g2,.g3,.g4{grid-template-columns:1fr}}
+.mc2{border:1px solid var(--bs);border-radius:16px;padding:1.4rem;background:rgba(255,255,255,.02);transition:border-color .2s}
+.mc2:hover{border-color:rgba(167,139,250,.3)}
+.mc2 h4{font-size:1rem;margin-bottom:.6rem;color:var(--t1);font-weight:700}
+.mc2 p{font-size:.88rem;color:var(--t2);line-height:1.68}
+.mc2 .tag{display:inline-block;font-family:'JetBrains Mono',monospace;font-size:.68rem;padding:.2rem .55rem;border-radius:999px;margin-bottom:.6rem;text-transform:uppercase;letter-spacing:.1em}
+/* Tables */
+.tbl{width:100%;border-collapse:collapse;font-size:.86rem}
+.tbl th{text-align:left;padding:.8rem 1.1rem;font-family:'JetBrains Mono',monospace;font-size:.64rem;text-transform:uppercase;color:var(--tm);border-bottom:1px solid var(--bs);letter-spacing:.08em}
+.tbl td{padding:.8rem 1.1rem;border-bottom:1px solid rgba(255,255,255,.035);color:var(--t2);vertical-align:top;line-height:1.65}
+.tbl td:first-child{color:var(--t1);font-weight:600}.tbl tr:last-child td{border-bottom:none}
+.tbl tr:hover td{background:rgba(255,255,255,.015)}
+/* Scenario box */
+.scenario{background:linear-gradient(135deg,rgba(96,165,250,.04),rgba(167,139,250,.04));border:1px solid rgba(96,165,250,.2);border-radius:var(--r);padding:1.8rem;margin-bottom:1.6rem;position:relative}
+.scenario::before{content:"SCENARIO";position:absolute;top:-1px;left:1.5rem;background:var(--bg);padding:0 .6rem;font-family:'JetBrains Mono',monospace;font-size:.62rem;color:var(--a2);letter-spacing:.2em}
+.scenario h4{color:var(--a2);margin-bottom:.8rem;font-size:1.05rem}
+.scenario p{font-size:.9rem;color:var(--t2);line-height:1.72;margin-bottom:.6rem}
+.scenario p:last-child{margin-bottom:0}
+.scenario code{font-family:'JetBrains Mono',monospace;font-size:.82rem;background:rgba(96,165,250,.1);padding:.1rem .3rem;border-radius:4px;color:var(--a2)}
+/* Quiz */
+.qc{background:linear-gradient(180deg,rgba(18,18,32,.98),rgba(12,12,24,.98));border:1px solid var(--bs);border-radius:var(--r);box-shadow:var(--sh);padding:2.2rem}
+.qc-title{font-size:1.2rem;font-weight:800;margin-bottom:.25rem;color:var(--t1)}
+.qc-sub{font-size:.82rem;color:var(--tm);margin-bottom:1.8rem;font-family:'JetBrains Mono',monospace}
+.qq{border:1px solid var(--bs);border-radius:18px;padding:1.8rem;background:rgba(255,255,255,.012);margin-bottom:1.4rem;transition:border-color .3s,background .3s}
+.qq.answered{border-color:rgba(167,139,250,.3);background:rgba(167,139,250,.02)}
+.qnum{font-family:'JetBrains Mono',monospace;font-size:.66rem;color:var(--ac);text-transform:uppercase;letter-spacing:.18em;margin-bottom:.6rem;display:flex;align-items:center;gap:8px}
+.qnum::after{content:"";height:1px;flex:1;background:rgba(167,139,250,.2)}
+.qq h4{font-size:.97rem;margin-bottom:1.2rem;color:var(--t1);line-height:1.6;font-weight:600}
+.qo{display:grid;gap:.6rem}
+.qob{border:1px solid var(--bs);border-radius:12px;padding:1rem 1.2rem;background:rgba(255,255,255,.018);color:var(--t2);cursor:pointer;transition:all .22s;text-align:left;font-size:.88rem;font-family:'Outfit',sans-serif;width:100%;line-height:1.6;position:relative;padding-left:3.2rem}
+.qob::before{content:attr(data-opt);position:absolute;left:1rem;top:50%;transform:translateY(-50%);font-family:'JetBrains Mono',monospace;font-size:.76rem;font-weight:700;color:var(--tm);width:1.4rem;text-align:center;transition:color .2s}
+.qob:hover:not([disabled]){border-color:rgba(167,139,250,.5);background:rgba(167,139,250,.05);color:var(--t1)}
+.qob:hover:not([disabled])::before{color:var(--ac)}
+.qob.ok{border-color:rgba(94,234,212,.6);background:rgba(94,234,212,.08);color:var(--t1)}
+.qob.ok::before{color:#5eead4}
+.qob.no{border-color:rgba(244,114,182,.4);background:rgba(244,114,182,.06);color:var(--t2)}
+.qob.no::before{color:#f472b6}
+.qob[disabled]{cursor:default}
+.qfeed{margin-top:1rem;border-radius:14px;padding:1.2rem 1.4rem;display:none}
+.qfeed.correct{background:rgba(94,234,212,.05);border:1px solid rgba(94,234,212,.25)}
+.qfeed.wrong{background:rgba(244,114,182,.04);border:1px solid rgba(244,114,182,.2)}
+.qfeed-head{font-weight:700;margin-bottom:.4rem;font-size:.92rem}
+.qfeed.correct .qfeed-head{color:#5eead4}
+.qfeed.wrong .qfeed-head{color:#f472b6}
+.qfeed-why{color:var(--t2);font-size:.87rem;line-height:1.68}
+.qfeed-why strong{color:var(--t1)}
+.qfeed-why code{font-family:'JetBrains Mono',monospace;font-size:.8rem;background:rgba(255,255,255,.06);padding:.1rem .3rem;border-radius:4px;color:var(--ac)}
+.qprog{display:flex;align-items:center;gap:1.2rem;margin-bottom:1.8rem}
+.qprog-bar{flex:1;height:5px;background:rgba(255,255,255,.05);border-radius:999px;overflow:hidden}
+.qprog-fill{height:100%;background:var(--gl);border-radius:999px;width:0%;transition:width .5s ease}
+.qprog-text{font-family:'JetBrains Mono',monospace;font-size:.7rem;color:var(--tm);white-space:nowrap}
+.qs{text-align:center;padding:2rem;border:1px solid var(--bs);border-radius:18px;margin-top:1.8rem;background:rgba(255,255,255,.01)}
+.qs h3{font-size:1.8rem;margin-bottom:.5rem;font-weight:800}
+.qs p{color:var(--t2);font-size:.92rem}
+/* Nav buttons */
+.pr,.nx{display:inline-flex;align-items:center;gap:7px;padding:.55rem 1.2rem;border-radius:999px;border:1px solid var(--bs);background:rgba(255,255,255,.02);color:var(--t2);font-size:.84rem;text-decoration:none;transition:all .2s}
+.pr:hover,.nx:hover{border-color:var(--ac);color:var(--ac)}
+/* Metric bars */
+.metric-row{display:flex;align-items:center;gap:1rem;margin-bottom:.7rem}
+.metric-label{font-family:'JetBrains Mono',monospace;font-size:.76rem;color:var(--t2);min-width:140px}
+.metric-bar{flex:1;height:8px;background:rgba(255,255,255,.05);border-radius:999px;overflow:hidden}
+.metric-fill{height:100%;border-radius:999px;transition:width 1.2s ease}
+.metric-val{font-family:'JetBrains Mono',monospace;font-size:.76rem;color:var(--t1);min-width:40px;text-align:right}
+/* Footer */
+footer{border-top:1px solid var(--bs);padding:3rem 2rem;text-align:center;color:var(--tm);font-size:.82rem}</style>
+</head>
+<body>
+<div class="sp" id="sp"></div>
+<nav>
+  <a class="nbr" href="#"><div class="nbr-dot"></div>Quantization for Modern AI · M3</a>
+  <span class="nm">PagedAttention · Continuous Batching · Prefix Caching · Speculative Decoding · TRT-LLM · Benchmarks · Cost/Token · Decision Framework · Edge Deployment</span>
+  <div class="na"><a href="quant_m2.html" class="pr">← M2: QAT and FP8 Training</a><span></span></div>
+</nav>
+<section class="hero">
+  <div class="hg"></div>
+  <div class="hi">
+    <div class="hl">Quantization for Modern AI · Module 3</div>
+    <h1>Production Deployment — vLLM, TensorRT-LLM and the Decision Framework</h1>
+    <p class="sub">PagedAttention · Continuous Batching · Prefix Caching · Speculative Decoding · TRT-LLM · Benchmarks · Cost/Token · Decision Framework · Edge Deployment</p>
+    <p class="hs">Understanding quantization theory is necessary but not sufficient. The gap between a working quantized model and a production serving system spans PagedAttention block tables, continuous batching schedulers, CUDA kernel fusion pipelines, and cost-per-token arithmetic across hardware generations. This module closes that gap — covering vLLM internals deeply enough to tune it, TensorRT-LLM's kernel-level advantages, the complete benchmark landscape from perplexity to cost-per-million-tokens, and a systematic decision framework that tells you exactly which stack to use for any model-hardware-latency combination. After this module you can design a quantized serving system from scratch, size the hardware correctly, and detect quality regressions before they hit users.</p>
+<div class="hm">
+<span class="mp hl2">⏱ 120 min</span>
+<span class="mp">PagedAttention block table</span>
+<span class="mp">Continuous batching (Orca)</span>
+<span class="mp">Prefix caching (RadixAttention)</span>
+<span class="mp">Speculative decoding math</span>
+<span class="mp">TensorRT-LLM kernel fusion</span>
+<span class="mp">vLLM vs TRT-LLM trade-offs</span>
+<span class="mp">Benchmark: ppl · throughput · cost</span>
+<span class="mp">Production decision framework</span>
+<span class="mp">llama.cpp edge deployment</span>
+</div>
+  </div>
+  <div class="sc"><span>Scroll</span><div class="arr"></div></div>
+</section>
+<div class="cw">
+
+<section class="sec" id="s1">
+<div class="sn">01 · vLLM Internals — PagedAttention and Continuous Batching</div>
+<h2>The OS Memory Manager<br><span class="gt">Inside Your LLM Server</span></h2>
+<p class="lead">Traditional LLM serving pre-allocates a contiguous GPU memory block for each request's KV cache at request arrival — sized for the maximum possible output length. This wastes 40-60% of GPU memory: a request that generates 100 tokens but was allocated 2048 slots wastes 1948 slots of KV cache. PagedAttention (Kwon et al. 2023) borrows the OS virtual memory abstraction: KV cache is divided into fixed-size blocks (pages), mapped via a block table, allocated on-demand as tokens are generated, and freed immediately when the request completes. Combined with continuous batching, vLLM achieves 2-4× higher throughput than static batching approaches.</p>
+<div class="arch">
+<div class="arch-title">PagedAttention: traditional contiguous allocation (wasted) vs paged block pool with block table</div>
+<svg viewBox="0 0 900 310" xmlns="http://www.w3.org/2000/svg" style="width:100%;max-width:900px;display:block">
+<rect width="900" height="310" fill="#07070f" rx="14"/>
+<text x="450" y="24" font-family="JetBrains Mono,monospace" font-size="11" fill="#a78bfa" text-anchor="middle" letter-spacing="2" font-weight="bold">PAGED ATTENTION — BLOCK TABLE + CONTINUOUS BATCHING</text>
+<rect x="14" y="36" width="256" height="232" rx="10" fill="rgba(244,114,182,.03)" stroke="rgba(244,114,182,.25)"/>
+<text x="142" y="56" font-family="JetBrains Mono,monospace" font-size="9" fill="#f472b6" text-anchor="middle" font-weight="bold">Traditional: Contiguous Allocation</text>
+<text x="142" y="70" font-family="JetBrains Mono,monospace" font-size="7" fill="#7c7c95" text-anchor="middle">GPU memory reserved upfront per request</text>
+<rect x="28" y="82" width="228" height="38" rx="4" fill="rgba(96,165,250,.12)" stroke="rgba(96,165,250,.4)"/>
+<text x="44" y="96" font-family="JetBrains Mono,monospace" font-size="7" fill="#60a5fa">Req A:</text>
+<rect x="80" y="86" width="80" height="28" rx="2" fill="rgba(96,165,250,.35)" stroke="rgba(96,165,250,.6)"/>
+<text x="120" y="104" font-family="JetBrains Mono,monospace" font-size="7" fill="#ececf6" text-anchor="middle">used tokens</text>
+<rect x="162" y="86" width="86" height="28" rx="2" fill="rgba(244,114,182,.15)" stroke="rgba(244,114,182,.3)" stroke-dasharray="3,2"/>
+<text x="205" y="104" font-family="JetBrains Mono,monospace" font-size="7" fill="#f472b6" text-anchor="middle">WASTED</text>
+<rect x="28" y="126" width="228" height="38" rx="4" fill="rgba(94,234,212,.12)" stroke="rgba(94,234,212,.4)"/>
+<text x="44" y="140" font-family="JetBrains Mono,monospace" font-size="7" fill="#5eead4">Req B:</text>
+<rect x="80" y="130" width="34" height="28" rx="2" fill="rgba(94,234,212,.35)" stroke="rgba(94,234,212,.6)"/>
+<rect x="116" y="130" width="132" height="28" rx="2" fill="rgba(244,114,182,.15)" stroke="rgba(244,114,182,.3)" stroke-dasharray="3,2"/>
+<text x="182" y="148" font-family="JetBrains Mono,monospace" font-size="7" fill="#f472b6" text-anchor="middle">75% WASTED</text>
+<rect x="28" y="170" width="228" height="38" rx="4" fill="rgba(251,191,36,.12)" stroke="rgba(251,191,36,.4)"/>
+<text x="44" y="184" font-family="JetBrains Mono,monospace" font-size="7" fill="#fbbf24">Req C:</text>
+<rect x="80" y="174" width="58" height="28" rx="2" fill="rgba(251,191,36,.35)" stroke="rgba(251,191,36,.6)"/>
+<rect x="140" y="174" width="108" height="28" rx="2" fill="rgba(244,114,182,.15)" stroke="rgba(244,114,182,.3)" stroke-dasharray="3,2"/>
+<text x="194" y="192" font-family="JetBrains Mono,monospace" font-size="7" fill="#f472b6" text-anchor="middle">65% WASTED</text>
+<rect x="28" y="216" width="228" height="40" rx="6" fill="rgba(244,114,182,.05)" stroke="rgba(244,114,182,.2)"/>
+<text x="142" y="232" font-family="JetBrains Mono,monospace" font-size="7" fill="#f472b6" text-anchor="middle">Max allocated = max(seq_len) upfront</text>
+<text x="142" y="246" font-family="JetBrains Mono,monospace" font-size="7" fill="#7c7c95" text-anchor="middle">Avg waste: 40–60% GPU memory</text>
+<text x="142" y="258" font-family="JetBrains Mono,monospace" font-size="7" fill="#7c7c95" text-anchor="middle">Cannot serve more requests</text>
+<rect x="284" y="36" width="232" height="232" rx="10" fill="rgba(167,139,250,.05)" stroke="rgba(167,139,250,.4)" stroke-width="2"/>
+<text x="400" y="56" font-family="JetBrains Mono,monospace" font-size="9" fill="#a78bfa" text-anchor="middle" font-weight="bold">Block Table (Virtual→Physical)</text>
+<text x="400" y="70" font-family="JetBrains Mono,monospace" font-size="7" fill="#7c7c95" text-anchor="middle">OS virtual memory analogy</text>
+<text x="296" y="86" font-family="JetBrains Mono,monospace" font-size="7" fill="#60a5fa">Req A logical:</text>
+<text x="296" y="100" font-family="JetBrains Mono,monospace" font-size="7" fill="#7c7c95">block 0 → phys 7</text>
+<text x="296" y="112" font-family="JetBrains Mono,monospace" font-size="7" fill="#7c7c95">block 1 → phys 2</text>
+<text x="296" y="124" font-family="JetBrains Mono,monospace" font-size="7" fill="#7c7c95">block 2 → phys 11</text>
+<line x1="294" y1="130" x2="506" y2="130" stroke="rgba(255,255,255,.05)"/>
+<text x="296" y="144" font-family="JetBrains Mono,monospace" font-size="7" fill="#5eead4">Req B logical:</text>
+<text x="296" y="158" font-family="JetBrains Mono,monospace" font-size="7" fill="#7c7c95">block 0 → phys 5</text>
+<line x1="294" y1="164" x2="506" y2="164" stroke="rgba(255,255,255,.05)"/>
+<text x="296" y="178" font-family="JetBrains Mono,monospace" font-size="7" fill="#fbbf24">Req C logical:</text>
+<text x="296" y="192" font-family="JetBrains Mono,monospace" font-size="7" fill="#7c7c95">block 0 → phys 3</text>
+<text x="296" y="204" font-family="JetBrains Mono,monospace" font-size="7" fill="#7c7c95">block 1 → phys 9</text>
+<rect x="294" y="216" width="214" height="40" rx="6" fill="rgba(167,139,250,.07)" stroke="rgba(167,139,250,.25)"/>
+<text x="401" y="231" font-family="JetBrains Mono,monospace" font-size="7" fill="#a78bfa" text-anchor="middle">Blocks: 16–32 tokens each</text>
+<text x="401" y="245" font-family="JetBrains Mono,monospace" font-size="7" fill="#7c7c95" text-anchor="middle">Allocated on demand per step</text>
+<text x="401" y="257" font-family="JetBrains Mono,monospace" font-size="7" fill="#7c7c95" text-anchor="middle">Freed when request finishes</text>
+<rect x="530" y="36" width="356" height="232" rx="10" fill="rgba(94,234,212,.03)" stroke="rgba(94,234,212,.3)" stroke-width="1.5"/>
+<text x="708" y="56" font-family="JetBrains Mono,monospace" font-size="9" fill="#5eead4" text-anchor="middle" font-weight="bold">PagedAttention: Physical Block Pool</text>
+<text x="708" y="70" font-family="JetBrains Mono,monospace" font-size="7" fill="#7c7c95" text-anchor="middle">All blocks equal size, allocated on demand</text>
+<text x="544" y="80" font-family="JetBrains Mono,monospace" font-size="6" fill="#7c7c95">phys</text>
+<rect x="544" y="84" width="42" height="22" rx="3" fill="rgba(96,165,250,.35)" stroke="rgba(96,165,250,.6)"/><text x="565" y="99" font-family="JetBrains Mono,monospace" font-size="6" fill="#60a5fa" text-anchor="middle">A·b2</text>
+<rect x="592" y="84" width="42" height="22" rx="3" fill="rgba(94,234,212,.35)" stroke="rgba(94,234,212,.6)"/><text x="613" y="99" font-family="JetBrains Mono,monospace" font-size="6" fill="#5eead4" text-anchor="middle">B·b0</text>
+<rect x="640" y="84" width="42" height="22" rx="3" fill="rgba(255,255,255,.05)" stroke="rgba(255,255,255,.12)"/><text x="661" y="99" font-family="JetBrains Mono,monospace" font-size="6" fill="#7c7c95" text-anchor="middle">free</text>
+<rect x="688" y="84" width="42" height="22" rx="3" fill="rgba(167,139,250,.35)" stroke="rgba(167,139,250,.6)"/><text x="709" y="99" font-family="JetBrains Mono,monospace" font-size="6" fill="#a78bfa" text-anchor="middle">prefix</text>
+<rect x="736" y="84" width="42" height="22" rx="3" fill="rgba(255,255,255,.05)" stroke="rgba(255,255,255,.12)"/><text x="757" y="99" font-family="JetBrains Mono,monospace" font-size="6" fill="#7c7c95" text-anchor="middle">free</text>
+<rect x="784" y="84" width="42" height="22" rx="3" fill="rgba(255,255,255,.05)" stroke="rgba(255,255,255,.12)"/><text x="805" y="99" font-family="JetBrains Mono,monospace" font-size="6" fill="#7c7c95" text-anchor="middle">free</text>
+<rect x="832" y="84" width="42" height="22" rx="3" fill="rgba(251,191,36,.35)" stroke="rgba(251,191,36,.6)"/><text x="853" y="99" font-family="JetBrains Mono,monospace" font-size="6" fill="#fbbf24" text-anchor="middle">C·b1</text>
+<rect x="544" y="112" width="42" height="22" rx="3" fill="rgba(255,255,255,.05)" stroke="rgba(255,255,255,.12)"/><text x="565" y="127" font-family="JetBrains Mono,monospace" font-size="6" fill="#7c7c95" text-anchor="middle">free</text>
+<rect x="592" y="112" width="42" height="22" rx="3" fill="rgba(96,165,250,.35)" stroke="rgba(96,165,250,.6)"/><text x="613" y="127" font-family="JetBrains Mono,monospace" font-size="6" fill="#60a5fa" text-anchor="middle">A·b0</text>
+<rect x="640" y="112" width="42" height="22" rx="3" fill="rgba(251,191,36,.35)" stroke="rgba(251,191,36,.6)"/><text x="661" y="127" font-family="JetBrains Mono,monospace" font-size="6" fill="#fbbf24" text-anchor="middle">C·b0</text>
+<rect x="688" y="112" width="42" height="22" rx="3" fill="rgba(255,255,255,.05)" stroke="rgba(255,255,255,.12)"/><text x="709" y="127" font-family="JetBrains Mono,monospace" font-size="6" fill="#7c7c95" text-anchor="middle">free</text>
+<rect x="736" y="112" width="42" height="22" rx="3" fill="rgba(255,255,255,.05)" stroke="rgba(255,255,255,.12)"/><text x="757" y="127" font-family="JetBrains Mono,monospace" font-size="6" fill="#7c7c95" text-anchor="middle">free</text>
+<rect x="784" y="112" width="42" height="22" rx="3" fill="rgba(96,165,250,.35)" stroke="rgba(96,165,250,.6)"/><text x="805" y="127" font-family="JetBrains Mono,monospace" font-size="6" fill="#60a5fa" text-anchor="middle">A·b1</text>
+<rect x="832" y="112" width="42" height="22" rx="3" fill="rgba(255,255,255,.05)" stroke="rgba(255,255,255,.12)"/><text x="853" y="127" font-family="JetBrains Mono,monospace" font-size="6" fill="#7c7c95" text-anchor="middle">free</text>
+<rect x="544" y="140" width="42" height="22" rx="3" fill="rgba(255,255,255,.05)" stroke="rgba(255,255,255,.12)"/><text x="565" y="155" font-family="JetBrains Mono,monospace" font-size="6" fill="#7c7c95" text-anchor="middle">free</text>
+<rect x="592" y="140" width="42" height="22" rx="3" fill="rgba(255,255,255,.05)" stroke="rgba(255,255,255,.12)"/><text x="613" y="155" font-family="JetBrains Mono,monospace" font-size="6" fill="#7c7c95" text-anchor="middle">free</text>
+<rect x="640" y="140" width="42" height="22" rx="3" fill="rgba(167,139,250,.35)" stroke="rgba(167,139,250,.6)"/><text x="661" y="155" font-family="JetBrains Mono,monospace" font-size="6" fill="#a78bfa" text-anchor="middle">prefix</text>
+<rect x="688" y="140" width="42" height="22" rx="3" fill="rgba(255,255,255,.05)" stroke="rgba(255,255,255,.12)"/><text x="709" y="155" font-family="JetBrains Mono,monospace" font-size="6" fill="#7c7c95" text-anchor="middle">free</text>
+<rect x="736" y="140" width="42" height="22" rx="3" fill="rgba(255,255,255,.05)" stroke="rgba(255,255,255,.12)"/><text x="757" y="155" font-family="JetBrains Mono,monospace" font-size="6" fill="#7c7c95" text-anchor="middle">free</text>
+<rect x="784" y="140" width="42" height="22" rx="3" fill="rgba(255,255,255,.05)" stroke="rgba(255,255,255,.12)"/><text x="805" y="155" font-family="JetBrains Mono,monospace" font-size="6" fill="#7c7c95" text-anchor="middle">free</text>
+<rect x="832" y="140" width="42" height="22" rx="3" fill="rgba(255,255,255,.05)" stroke="rgba(255,255,255,.12)"/><text x="853" y="155" font-family="JetBrains Mono,monospace" font-size="6" fill="#7c7c95" text-anchor="middle">free</text>
+<text x="544" y="178" font-family="JetBrains Mono,monospace" font-size="7" fill="#7c7c95">Legend:</text>
+<rect x="600" y="170" width="12" height="12" rx="2" fill="rgba(96,165,250,.4)" stroke="rgba(96,165,250,.6)"/><text x="616" y="181" font-family="JetBrains Mono,monospace" font-size="7" fill="#60a5fa">Req A</text>
+<rect x="655" y="170" width="12" height="12" rx="2" fill="rgba(94,234,212,.4)" stroke="rgba(94,234,212,.6)"/><text x="671" y="181" font-family="JetBrains Mono,monospace" font-size="7" fill="#5eead4">Req B</text>
+<rect x="710" y="170" width="12" height="12" rx="2" fill="rgba(251,191,36,.4)" stroke="rgba(251,191,36,.6)"/><text x="726" y="181" font-family="JetBrains Mono,monospace" font-size="7" fill="#fbbf24">Req C</text>
+<rect x="765" y="170" width="12" height="12" rx="2" fill="rgba(167,139,250,.4)" stroke="rgba(167,139,250,.6)"/><text x="781" y="181" font-family="JetBrains Mono,monospace" font-size="7" fill="#a78bfa">Shared prefix</text>
+<rect x="858" y="170" width="12" height="12" rx="2" fill="rgba(255,255,255,.08)" stroke="rgba(255,255,255,.14)"/><text x="874" y="181" font-family="JetBrains Mono,monospace" font-size="7" fill="#7c7c95">free</text>
+<rect x="540" y="190" width="342" height="68" rx="8" fill="rgba(255,255,255,.02)" stroke="rgba(255,255,255,.06)"/>
+<text x="711" y="208" font-family="JetBrains Mono,monospace" font-size="8" fill="#5eead4" text-anchor="middle" font-weight="bold">Benefits of PagedAttention</text>
+<text x="548" y="222" font-family="JetBrains Mono,monospace" font-size="7" fill="#5eead4">✓ Zero internal fragmentation (blocks exact size)</text>
+<text x="548" y="235" font-family="JetBrains Mono,monospace" font-size="7" fill="#5eead4">✓ Prefix caching: shared system prompt → one copy</text>
+<text x="548" y="248" font-family="JetBrains Mono,monospace" font-size="7" fill="#5eead4">✓ Copy-on-write for beam search: shared blocks</text>
+<text x="548" y="260" font-family="JetBrains Mono,monospace" font-size="7" fill="#5eead4">✓ KV FP8: 2× more blocks in same GPU memory</text>
+<rect x="14" y="278" width="872" height="24" rx="8" fill="rgba(167,139,250,.04)" stroke="rgba(167,139,250,.2)"/>
+<text x="450" y="294" font-family="JetBrains Mono,monospace" font-size="7" fill="#a78bfa" text-anchor="middle">PagedAttention: 2–4× over naive HuggingFace · Continuous batching fills GPU gaps from finished requests · Prefix cache RAG hit rate: 60–80%</text>
+</svg>
+</div>
+<div class="cc">
+  <div class="ch"><h3>vllm_production.py — AsyncLLMEngine lifecycle, quantized model loading, prefix caching</h3><button class="cpb" onclick="cp(this,'c1')">Copy</button></div>
+  <div class="cbody"><pre id="c1"><span class="kw">from</span> vllm <span class="kw">import</span> AsyncLLMEngine, AsyncEngineArgs, SamplingParams
+<span class="kw">from</span> vllm.engine.arg_utils <span class="kw">import</span> EngineArgs
+<span class="kw">import</span> asyncio, time
+
+<span class="cm"># ── 1. ENGINE CONFIGURATION WITH QUANTIZATION ───────────────────────────────</span>
+<span class="kw">def</span> <span class="fn">create_quantized_engine</span>(
+    model: str        = <span class="str">'meta-llama/Meta-Llama-3-70B-Instruct'</span>,
+    quantization: str = <span class="str">'awq'</span>,          <span class="cm"># 'awq'|'gptq'|'squeezellm'|None</span>
+    gpu_util: float   = <span class="nu">0.92</span>,           <span class="cm"># fraction of GPU memory for KV cache</span>
+    tp_size: int      = <span class="nu">2</span>,               <span class="cm"># tensor parallel across N GPUs</span>
+    max_model_len: int = <span class="nu">32768</span>,          <span class="cm"># max sequence length (context window)</span>
+    block_size: int   = <span class="nu">16</span>,             <span class="cm"># KV cache block size (tokens per page)</span>
+    enable_prefix_caching: bool = <span class="kw">True</span>,  <span class="cm"># RadixAttention prefix cache</span>
+    kv_cache_dtype: str = <span class="str">'fp8'</span>,        <span class="cm"># 'auto'|'fp8'|'fp8_e5m2'</span>
+) -> <span class="cl">AsyncLLMEngine</span>:
+    <span class="str">"""
+    Production vLLM engine setup for quantized LLM serving.
+
+    Key configuration decisions:
+    gpu_memory_utilization: controls KV cache size.
+      KV_cache_bytes = GPU_memory × gpu_util − model_weights_bytes
+      For LLaMA-3-70B AWQ-INT4 on 2×A100-80GB:
+        model_weights = 35GB (INT4) across 2 GPUs = 17.5GB each
+        KV_cache = (80 × 0.92) − 17.5 = 56.1GB per GPU = 112GB total
+        At FP16 per token: 112GB / (2×96×128×2) = ~28K concurrent tokens
+
+    block_size: must balance memory waste vs overhead.
+      Too small (4): many block table entries, high metadata overhead
+      Too large (64): up to 63 tokens wasted per request tail
+      Default 16 is optimal for most workloads
+
+    enable_prefix_caching: RadixAttention stores KV blocks by hash of token sequence.
+      Requests sharing a system prompt (RAG) reuse the prefix KV blocks.
+      Hit rate in RAG: 60–80%. Saves: hit_rate × prefix_len × KV_size per request.
+
+    kv_cache_dtype='fp8': store KV cache in FP8 instead of FP16.
+      2× memory reduction → 2× more concurrent requests.
+      Accuracy: <0.3% perplexity degradation on standard benchmarks.
+    """</span>
+    engine_args = AsyncEngineArgs(
+        model=model,
+        quantization=quantization,
+        gpu_memory_utilization=gpu_util,
+        tensor_parallel_size=tp_size,
+        max_model_len=max_model_len,
+        block_size=block_size,
+        enable_prefix_caching=enable_prefix_caching,
+        kv_cache_dtype=kv_cache_dtype,
+        enforce_eager=<span class="kw">False</span>,           <span class="cm"># CUDA graph for decode step</span>
+        max_num_batched_tokens=<span class="nu">32768</span>,   <span class="cm"># max tokens across all concurrent seqs</span>
+        max_num_seqs=<span class="nu">256</span>,               <span class="cm"># max concurrent requests</span>
+    )
+    <span class="kw">return</span> AsyncLLMEngine.from_engine_args(engine_args)
+
+
+<span class="cm"># ── 2. CONTINUOUS BATCHING REQUEST HANDLER ───────────────────────────────────</span>
+<span class="kw">async def</span> <span class="fn">handle_request</span>(engine: <span class="cl">AsyncLLMEngine</span>, prompt: str,
+                          request_id: str, max_tokens: int = <span class="nu">512</span>) -> dict:
+    <span class="str">"""
+    Async streaming generation with continuous batching.
+
+    Continuous batching (Orca algorithm):
+    vLLM processes tokens from MULTIPLE requests in each GPU kernel call.
+    When request A finishes at step 50, request D (waiting) is immediately
+    added to the batch at step 51 — no GPU idle time waiting for a full batch.
+
+    Contrast with static batching: all requests in a batch must finish
+    before new ones start. With varied output lengths, the GPU is idle
+    waiting for the slowest request. Continuous batching eliminates this:
+    GPU utilisation approaches 100% under load.
+
+    Metrics to track:
+      TTFT (Time To First Token): measures prefill latency
+      TBT  (Time Between Tokens): measures decode throughput per token
+      ITL  (Inter-Token Latency): same as TBT at application level
+    """</span>
+    params = SamplingParams(
+        temperature=<span class="nu">0.7</span>, top_p=<span class="nu">0.9</span>,
+        max_tokens=max_tokens,
+        stop=[<span class="str">"&lt;/s&gt;"</span>, <span class="str">"[INST]"</span>],
+    )
+    t0 = time.perf_counter()
+    first_token_time = <span class="kw">None</span>
+    output_tokens = []
+
+    <span class="kw">async for</span> request_output <span class="kw">in</span> engine.generate(prompt, params, request_id):
+        <span class="kw">if</span> first_token_time <span class="kw">is None</span>:
+            first_token_time = time.perf_counter() - t0   <span class="cm"># TTFT</span>
+        <span class="kw">if</span> request_output.outputs:
+            output_tokens = request_output.outputs[<span class="nu">0</span>].token_ids
+
+    total_time = time.perf_counter() - t0
+    n_out = len(output_tokens)
+    <span class="kw">return</span> {
+        <span class="str">'ttft_ms'</span>:      round(first_token_time * <span class="nu">1000</span>, <span class="nu">2</span>),
+        <span class="str">'total_s'</span>:      round(total_time, <span class="nu">3</span>),
+        <span class="str">'output_tokens'</span>: n_out,
+        <span class="str">'tbt_ms'</span>:       round((total_time - first_token_time) / max(n_out-<span class="nu">1</span>,<span class="nu">1</span>) * <span class="nu">1000</span>, <span class="nu">2</span>),
+        <span class="str">'tokens_per_sec'</span>: round(n_out / total_time, <span class="nu">1</span>),
+    }
+
+
+<span class="cm"># ── 3. SPECULATIVE DECODING CONFIG ─────────────────────────────────────────</span>
+<span class="kw">def</span> <span class="fn">create_speculative_engine</span>(
+    target_model: str = <span class="str">'meta-llama/Meta-Llama-3-70B-Instruct'</span>,
+    draft_model:  str = <span class="str">'meta-llama/Meta-Llama-3-8B-Instruct'</span>,
+    num_speculative_tokens: int = <span class="nu">5</span>,
+) -> <span class="cl">AsyncLLMEngine</span>:
+    <span class="str">"""
+    Speculative decoding: draft model proposes K tokens, target verifies in parallel.
+
+    Mechanism:
+    1. Draft model (8B) generates K=5 candidate tokens autoregressively (~5× faster)
+    2. Target model (70B) evaluates all K+1 positions in ONE forward pass
+       (parallel evaluation — same cost as generating 1 token normally)
+    3. Accept tokens where P_target(token) ≥ P_draft(token) (rejection sampling)
+    4. On rejection, resample from target distribution and restart
+
+    Expected speedup: K × acceptance_rate. For K=5 and rate=70%: 3.5×.
+    Effective throughput: 70B speed × 3.5 = ~comparable to 8B alone.
+    Accuracy: mathematically identical to target model (rejection sampling guarantee).
+
+    When to use: latency-critical applications where target quality is required.
+    Cost: extra GPU memory for draft model (8B AWQ ≈ 4GB).
+    """</span>
+    engine_args = AsyncEngineArgs(
+        model=target_model,
+        speculative_model=draft_model,
+        num_speculative_tokens=num_speculative_tokens,
+        speculative_draft_tensor_parallel_size=<span class="nu">1</span>,
+        use_v2_block_manager=<span class="kw">True</span>,
+    )
+    <span class="kw">return</span> AsyncLLMEngine.from_engine_args(engine_args)</pre></div>
+</div>
+
+<div class="g2">
+<div class="callout callout-key">
+  <div class="callout-icon">🔑</div>
+  <div class="callout-body">
+    <h4>Continuous batching: why GPU utilisation approaches 100%</h4>
+    <p>Static batching: all requests in a batch must finish before new ones start. With mixed output lengths (some 50 tokens, some 500 tokens), the GPU idles waiting for the slowest request while the fast requests' slots sit empty. <strong>Continuous batching (Orca, 2022):</strong> the scheduler makes a decision at EVERY decode step — which sequences should participate in this step's forward pass? When request R finishes (outputs EOS token), its KV blocks are freed and a queued request S is immediately scheduled for the next step. The GPU sees a continuous stream of full-batch forward passes with no idle gaps. Practical improvement: 2-4× throughput at high load.</p>
+  </div>
+</div>
+<div class="callout callout-insight">
+  <div class="callout-icon">💡</div>
+  <div class="callout-body">
+    <h4>Speculative decoding: parallelise the sequential bottleneck</h4>
+    <p>Autoregressive decode is inherently sequential — each token depends on all previous. Speculative decoding breaks this: the small draft model (8B) generates K=5 candidate tokens in K sequential steps (fast). The large target model (70B) verifies all K+1 positions in ONE parallel forward pass (same cost as 1 token). Tokens are accepted via rejection sampling — mathematically identical to running the target alone. Expected speedup: 1.5-3× for K=5 at α=70-80% acceptance. Best for: single-request, latency-critical scenarios where batch_size=1.</p>
+  </div>
+</div>
+</div>
+</section>
+
+<section class="sec" id="s2">
+<div class="sn">02 · TensorRT-LLM and Benchmark Reality</div>
+<h2>Kernel Fusion vs System Scheduling:<br><span class="gt">Real Numbers</span></h2>
+<p class="lead">TensorRT-LLM (NVIDIA) and vLLM optimise at different layers of the stack. TRT-LLM pre-compiles fused CUDA kernels for each model architecture — QKV projection + rotary embedding + grouped query attention in a single kernel launch, eliminating memory round-trips between operations. vLLM optimises the request scheduling layer — PagedAttention, continuous batching, prefix caching, speculative decoding — using standard PyTorch kernels. The result: TRT-LLM wins on latency (single-request, fixed model), vLLM wins on throughput (multi-request, diverse models).</p>
+<div class="card card-accent" style="padding:0;overflow:hidden">
+<div style="padding:1.2rem 1.6rem;border-bottom:1px solid rgba(255,255,255,.06);display:flex;align-items:center;justify-content:space-between">
+  <div style="font-family:'JetBrains Mono',monospace;font-size:.75rem;color:var(--ac);text-transform:uppercase;letter-spacing:.18em">⟩ Quantization Benchmark Explorer — LLaMA-2-7B on A100/H100</div>
+  <div style="font-size:.75rem;color:var(--tm)">Click a method to compare against FP16 baseline</div>
+</div>
+<div style="padding:1.6rem">
+  <div style="display:flex;flex-wrap:wrap;gap:.5rem;margin-bottom:1.4rem" id="bench-btns"></div>
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:1.4rem">
+    <div>
+      <canvas id="benchcanvas" width="380" height="220" style="width:100%;border-radius:10px;background:#0a0a18;border:1px solid rgba(255,255,255,.06)"></canvas>
+      <div style="margin-top:.5rem;font-size:.72rem;font-family:JetBrains Mono,monospace;color:var(--tm)" id="bench-note"></div>
+    </div>
+    <div id="bench-detail" style="display:grid;grid-template-columns:1fr 1fr;gap:.6rem;align-content:start"></div>
+  </div>
+</div>
+</div>
+<script>
+(function(){
+var data=[
+  {name:'FP16 baseline', bits:16, mem:13.5, ppl:5.47, tps:1820, ttft:38,  tbt:0.55, cost:0.17, col:'#7c7c95', gpu:'A100'},
+  {name:'INT8 bb',       bits:8,  mem:7.0,  ppl:5.52, tps:2100, ttft:34,  tbt:0.48, cost:0.14, col:'#5eead4', gpu:'A100'},
+  {name:'GPTQ INT4',     bits:4,  mem:3.9,  ppl:5.63, tps:2650, ttft:28,  tbt:0.38, cost:0.11, col:'#a78bfa', gpu:'A100'},
+  {name:'AWQ INT4',      bits:4,  mem:3.8,  ppl:5.60, tps:2700, ttft:27,  tbt:0.37, cost:0.11, col:'#60a5fa', gpu:'A100'},
+  {name:'AWQ+vLLM',      bits:4,  mem:3.8,  ppl:5.60, tps:6800, ttft:22,  tbt:0.37, cost:0.04, col:'#fbbf24', gpu:'A100'},
+  {name:'GGUF Q4_K_M',   bits:4.5,mem:4.4,  ppl:5.58, tps:32,   ttft:420, tbt:31,   cost:0.48, col:'#f472b6', gpu:'CPU'},
+  {name:'TRT-LLM FP8',   bits:8,  mem:7.2,  ppl:5.49, tps:4200, ttft:18,  tbt:0.24, cost:0.07, col:'#fb923c', gpu:'H100'},
+];
+var sel=4;
+function render(){
+  var btnDiv=document.getElementById('bench-btns');
+  btnDiv.innerHTML=data.map(function(d,i){
+    var active=i===sel;
+    return '<button onclick="window.__bsel('+i+')" style="padding:.3rem .8rem;border-radius:999px;border:1px solid '+(active?d.col:'rgba(255,255,255,.1)')+';background:'+(active?'rgba(255,255,255,.06)':'rgba(255,255,255,.02)')+';color:'+(active?d.col:'var(--t2)')+';font-family:JetBrains Mono,monospace;font-size:.7rem;cursor:pointer">'+d.name+'</button>';
+  }).join('');
+  var s=data[sel], b=data[0];
+  var metrics=[
+    {label:'GPU Memory', val:s.mem.toFixed(1)+'GB', sub:'vs '+b.mem+'GB', pct:-(1-s.mem/b.mem)*100, good:true},
+    {label:'Perplexity', val:s.ppl.toFixed(2),       sub:'vs '+b.ppl+' baseline', pct:((s.ppl-b.ppl)/b.ppl)*100, good:false},
+    {label:'Throughput', val:s.tps.toLocaleString()+' t/s', sub:'vs '+b.tps.toLocaleString(), pct:((s.tps-b.tps)/b.tps)*100, good:true},
+    {label:'TTFT',       val:s.ttft+'ms',             sub:'vs '+b.ttft+'ms', pct:-(1-s.ttft/b.ttft)*100, good:true},
+    {label:'Cost/1M tok',val:'$'+s.cost.toFixed(2),  sub:'vs $'+b.cost.toFixed(2), pct:-(1-s.cost/b.cost)*100, good:true},
+    {label:'GPU/Platform',val:s.gpu, sub:s.bits+'b format', pct:0, good:true},
+  ];
+  document.getElementById('bench-detail').innerHTML=metrics.map(function(m){
+    var good=m.pct!==0&&((m.good&&m.pct>0)||(!m.good&&m.pct<0));
+    var bad=m.pct!==0&&((m.good&&m.pct<0)||(!m.good&&m.pct>0));
+    var col=m.pct===0?'var(--t2)':good?'#5eead4':'#f472b6';
+    var sign=m.pct>0?'+':'';
+    return '<div style="background:rgba(255,255,255,.02);border:1px solid rgba(255,255,255,.07);border-radius:10px;padding:.8rem"><div style="font-family:JetBrains Mono,monospace;font-size:.6rem;color:var(--tm);text-transform:uppercase;margin-bottom:.2rem">'+m.label+'</div><div style="font-size:1.05rem;font-weight:800;color:'+col+'">'+m.val+'</div><div style="font-size:.7rem;color:var(--tm)">'+m.sub+(m.pct!==0?' ('+sign+m.pct.toFixed(1)+'%)':'')+'</div></div>';
+  }).join('');
+  document.getElementById('bench-note').textContent=
+    sel===4?'AWQ+vLLM: continuous batching dramatically increases throughput (server-side batching of concurrent requests).':
+    sel===5?'CPU inference: much lower throughput but no GPU cost. Good for development and low-traffic APIs.':
+    sel===6?'TRT-LLM FP8 on H100: fastest inference, lowest latency. Requires NVIDIA H100 GPU.':
+    'Standard PTQ quantization on A100. Single-request throughput.';
+  drawChart();
+}
+function drawChart(){
+  var c=document.getElementById('benchcanvas');
+  var ctx=c.getContext('2d');
+  ctx.clearRect(0,0,c.width,c.height);
+  var pad={l:60,r:20,t:24,b:50};
+  var W=c.width-pad.l-pad.r, H=c.height-pad.t-pad.b;
+  var maxTps=7000;
+  ctx.fillStyle='rgba(255,255,255,.3)';ctx.font='9px JetBrains Mono';
+  ctx.fillText('Throughput (tokens/sec)',pad.l+W/2-40,12);
+  for(var i=0;i<=4;i++){
+    var v=i*(maxTps/4);
+    var x=pad.l+(v/maxTps)*W;
+    ctx.strokeStyle='rgba(255,255,255,.05)';ctx.lineWidth=1;
+    ctx.beginPath();ctx.moveTo(x,pad.t);ctx.lineTo(x,pad.t+H);ctx.stroke();
+    ctx.fillStyle='rgba(255,255,255,.3)';ctx.font='8px JetBrains Mono';
+    ctx.fillText((v/1000).toFixed(1)+'K',x-12,pad.t+H+14);
+  }
+  data.forEach(function(d,i){
+    if(d.tps>maxTps)return;
+    var y=pad.t+i*(H/(data.length-1));
+    var bw=(d.tps/maxTps)*W;
+    var isBase=i===0,isSel=i===sel;
+    ctx.fillStyle=isSel?d.col:isBase?'rgba(255,255,255,.12)':'rgba(255,255,255,.06)';
+    ctx.fillRect(pad.l,y-8,bw,16);
+    if(isSel){ctx.strokeStyle=d.col;ctx.lineWidth=2;ctx.strokeRect(pad.l,y-8,bw,16);}
+    ctx.fillStyle=isSel?d.col:'var(--tm)';ctx.font=(isSel?'bold ':'')+'8px JetBrains Mono';
+    ctx.fillText(d.name,2,y+4);
+    ctx.fillStyle=isSel?d.col:'rgba(255,255,255,.5)';
+    ctx.fillText(d.tps.toLocaleString(),pad.l+bw+4,y+4);
+  });
+}
+window.__bsel=function(i){sel=i;render();};
+render();
+})();
+</script>
+<div class="cc">
+  <div class="ch"><h3>benchmark_harness.py — quantization benchmark: throughput · latency · perplexity · cost/token</h3><button class="cpb" onclick="cp(this,'c2')">Copy</button></div>
+  <div class="cbody"><pre id="c2"><span class="kw">import</span> torch, time, math, json
+<span class="kw">from</span> dataclasses <span class="kw">import</span> dataclass, asdict
+<span class="kw">from</span> transformers <span class="kw">import</span> AutoModelForCausalLM, AutoTokenizer
+
+@dataclass
+<span class="kw">class</span> <span class="cl">BenchmarkResult</span>:
+    method:          str
+    model:           str
+    gpu:             str
+    bits:            float
+    gpu_memory_gb:   float
+    perplexity:      float       <span class="cm"># WikiText-2</span>
+    throughput_tps:  float       <span class="cm"># tokens/sec on A100</span>
+    ttft_ms:         float       <span class="cm"># time to first token (prefill)</span>
+    tbt_ms:          float       <span class="cm"># time between tokens (decode)</span>
+    cost_per_1m_tok: float       <span class="cm"># USD at $2.50/H100-hr</span>
+
+
+<span class="cm"># ── REFERENCE BENCHMARK DATA (LLaMA-2-7B on A100-80GB) ─────────────────────</span>
+BENCHMARK_DATA = [
+    <span class="cl">BenchmarkResult</span>(<span class="str">'FP16 baseline'</span>,     <span class="str">'LLaMA-2-7B'</span>, <span class="str">'A100-80GB'</span>,  <span class="nu">16.0</span>, <span class="nu">13.5</span>,  <span class="nu">5.47</span>,  <span class="nu">1820</span>, <span class="nu">38</span>, <span class="nu">0.55</span>, <span class="nu">0.17</span>),
+    <span class="cl">BenchmarkResult</span>(<span class="str">'BF16 baseline'</span>,     <span class="str">'LLaMA-2-7B'</span>, <span class="str">'A100-80GB'</span>,  <span class="nu">16.0</span>, <span class="nu">13.2</span>,  <span class="nu">5.47</span>,  <span class="nu">1900</span>, <span class="nu">36</span>, <span class="nu">0.53</span>, <span class="nu">0.16</span>),
+    <span class="cl">BenchmarkResult</span>(<span class="str">'INT8 bitsandbytes'</span>, <span class="str">'LLaMA-2-7B'</span>, <span class="str">'A100-80GB'</span>,   <span class="nu">8.0</span>,  <span class="nu">7.0</span>,  <span class="nu">5.52</span>,  <span class="nu">2100</span>, <span class="nu">34</span>, <span class="nu">0.48</span>, <span class="nu">0.14</span>),
+    <span class="cl">BenchmarkResult</span>(<span class="str">'GPTQ INT4'</span>,         <span class="str">'LLaMA-2-7B'</span>, <span class="str">'A100-80GB'</span>,   <span class="nu">4.0</span>,  <span class="nu">3.9</span>,  <span class="nu">5.63</span>,  <span class="nu">2650</span>, <span class="nu">28</span>, <span class="nu">0.38</span>, <span class="nu">0.11</span>),
+    <span class="cl">BenchmarkResult</span>(<span class="str">'AWQ INT4'</span>,          <span class="str">'LLaMA-2-7B'</span>, <span class="str">'A100-80GB'</span>,   <span class="nu">4.0</span>,  <span class="nu">3.8</span>,  <span class="nu">5.60</span>,  <span class="nu">2700</span>, <span class="nu">27</span>, <span class="nu">0.37</span>, <span class="nu">0.11</span>),
+    <span class="cl">BenchmarkResult</span>(<span class="str">'AWQ INT4 + vLLM'</span>,   <span class="str">'LLaMA-2-7B'</span>, <span class="str">'A100-80GB'</span>,   <span class="nu">4.0</span>,  <span class="nu">3.8</span>,  <span class="nu">5.60</span>,  <span class="nu">6800</span>, <span class="nu">22</span>, <span class="nu">0.37</span>, <span class="nu">0.04</span>),
+    <span class="cl">BenchmarkResult</span>(<span class="str">'GGUF Q4_K_M'</span>,       <span class="str">'LLaMA-2-7B'</span>, <span class="str">'CPU'</span>,          <span class="nu">4.5</span>,  <span class="nu">4.4</span>,  <span class="nu">5.58</span>,    <span class="nu">32</span>,  <span class="nu">420</span>, <span class="nu">31</span>,   <span class="nu">0.48</span>),
+    <span class="cl">BenchmarkResult</span>(<span class="str">'TRT-LLM FP8'</span>,       <span class="str">'LLaMA-2-7B'</span>, <span class="str">'H100-80GB'</span>,   <span class="nu">8.0</span>,  <span class="nu">7.2</span>,  <span class="nu">5.49</span>,  <span class="nu">4200</span>, <span class="nu">18</span>, <span class="nu">0.24</span>, <span class="nu">0.07</span>),
+]
+
+
+<span class="kw">def</span> <span class="fn">measure_perplexity</span>(model: <span class="cl">AutoModelForCausalLM</span>,
+                       tokenizer: <span class="cl">AutoTokenizer</span>,
+                       text_path: str = <span class="str">'wikitext2_test.txt'</span>,
+                       stride: int = <span class="nu">512</span>,
+                       max_tokens: int = <span class="nu">8192</span>) -> float:
+    <span class="str">"""
+    Compute perplexity on WikiText-2 test set — standard LLM benchmark.
+
+    Algorithm: sliding window perplexity to handle long documents.
+    Process in chunks of max_context with stride (overlap) to handle
+    context boundary effects. Average NLL across all tokens.
+
+    Standard values for reference:
+      LLaMA-2-7B FP16:  5.47 ppl  (WikiText-2)
+      LLaMA-2-7B INT8:  5.52 ppl  (+0.09% vs FP16)
+      LLaMA-2-7B GPTQ4: 5.63 ppl  (+2.9% vs FP16)
+      LLaMA-2-7B GGUF4: 5.58 ppl  (+2.0% vs FP16)
+
+    Rule of thumb: &lt;0.5 ppl increase → acceptable for most tasks.
+    &gt;2.0 ppl → noticeable quality degradation in generation.
+    """</span>
+    encodings = tokenizer(open(text_path).read(), return_tensors=<span class="str">'pt'</span>)
+    input_ids = encodings.input_ids[<span class="nu">0</span>, :max_tokens]
+    total_nll, total_tokens = <span class="nu">0.0</span>, <span class="nu">0</span>
+    max_ctx = model.config.max_position_embeddings
+    <span class="kw">for</span> start <span class="kw">in</span> range(<span class="nu">0</span>, len(input_ids) - <span class="nu">1</span>, stride):
+        end = min(start + max_ctx, len(input_ids))
+        ids = input_ids[start:end].unsqueeze(<span class="nu">0</span>).to(model.device)
+        target_len = end - start - stride <span class="kw">if</span> start > <span class="nu">0</span> <span class="kw">else</span> end - start - <span class="nu">1</span>
+        <span class="kw">with</span> torch.no_grad():
+            loss = model(ids, labels=ids).loss
+        total_nll += loss.item() * target_len
+        total_tokens += target_len
+    <span class="kw">return</span> math.exp(total_nll / total_tokens)
+
+
+<span class="kw">def</span> <span class="fn">benchmark_throughput</span>(engine_url: str, n_requests: int = <span class="nu">100</span>,
+                          prompt_len: int = <span class="nu">512</span>, output_len: int = <span class="nu">256</span>) -> dict:
+    <span class="str">"""
+    Measure serving throughput: send N concurrent requests, record metrics.
+
+    Key metrics:
+      throughput = total_output_tokens / total_wall_time
+      p50/p95/p99 TTFT: distribution of time-to-first-token
+      p50/p95/p99 TBT:  inter-token latency distribution
+    """</span>
+    <span class="kw">import</span> httpx, asyncio
+    prompt = <span class="str">" the"</span> * prompt_len  <span class="cm"># synthetic prompt of target length</span>
+    results = []
+    <span class="kw">async def</span> <span class="fn">send</span>(client, req_id):
+        t0 = time.perf_counter()
+        async <span class="kw">with</span> client.stream(<span class="str">'POST'</span>, f<span class="str">'{engine_url}/generate'</span>, json={
+            <span class="str">'prompt'</span>: prompt, <span class="str">'max_tokens'</span>: output_len, <span class="str">'stream'</span>: <span class="kw">True</span>
+        }, timeout=<span class="nu">120</span>) <span class="kw">as</span> resp:
+            first, chunks = <span class="kw">None</span>, <span class="nu">0</span>
+            <span class="kw">async for</span> _ <span class="kw">in</span> resp.aiter_lines():
+                <span class="kw">if</span> first <span class="kw">is None</span>: first = time.perf_counter() - t0
+                chunks += <span class="nu">1</span>
+        results.append({<span class="str">'ttft'</span>: first, <span class="str">'total'</span>: time.perf_counter()-t0, <span class="str">'tokens'</span>: chunks})
+    <span class="kw">async def</span> <span class="fn">run_all</span>():
+        <span class="kw">async with</span> httpx.AsyncClient() <span class="kw">as</span> c:
+            <span class="kw">await</span> asyncio.gather(*[send(c, i) <span class="kw">for</span> i <span class="kw">in</span> range(n_requests)])
+    asyncio.run(run_all())
+    ttfts = sorted(r[<span class="str">'ttft'</span>] <span class="kw">for</span> r <span class="kw">in</span> results)
+    total_tok = sum(r[<span class="str">'tokens'</span>] <span class="kw">for</span> r <span class="kw">in</span> results)
+    wall = max(r[<span class="str">'total'</span>] <span class="kw">for</span> r <span class="kw">in</span> results)
+    <span class="kw">return</span> {<span class="str">'throughput_tps'</span>: round(total_tok / wall),
+            <span class="str">'ttft_p50_ms'</span>: round(ttfts[n_requests//2]*<span class="nu">1000</span>),
+            <span class="str">'ttft_p99_ms'</span>: round(ttfts[int(n_requests*.99)]*<span class="nu">1000</span>)}</pre></div>
+</div>
+
+<div class="card" style="padding:0;overflow:hidden">
+<table class="tbl">
+<thead><tr><th>Method</th><th>Bits</th><th>GPU Mem</th><th>Perplexity</th><th>Throughput</th><th>TTFT</th><th>Cost/1M tok</th></tr></thead>
+<tbody>
+<tr><td><strong style="color:var(--tm)">FP16 baseline</strong></td><td>16</td><td>13.5GB</td><td>5.47</td><td>1,820 t/s</td><td>38ms</td><td>$0.17</td></tr>
+<tr><td><strong style="color:var(--a1)">INT8 bitsandbytes</strong></td><td>8</td><td>7.0GB</td><td>5.52 (+0.9%)</td><td>2,100 t/s</td><td>34ms</td><td>$0.14</td></tr>
+<tr><td><strong style="color:var(--a5)">GPTQ INT4</strong></td><td>4</td><td>3.9GB</td><td>5.63 (+2.9%)</td><td>2,650 t/s</td><td>28ms</td><td>$0.11</td></tr>
+<tr><td><strong style="color:var(--a2)">AWQ INT4</strong></td><td>4</td><td>3.8GB</td><td>5.60 (+2.4%)</td><td>2,700 t/s</td><td>27ms</td><td>$0.11</td></tr>
+<tr><td><strong style="color:var(--a4)">AWQ + vLLM</strong></td><td>4</td><td>3.8GB</td><td>5.60 (+2.4%)</td><td>6,800 t/s</td><td>22ms</td><td>$0.04</td></tr>
+<tr><td><strong style="color:var(--a3)">TRT-LLM FP8</strong></td><td>8</td><td>7.2GB</td><td>5.49 (+0.4%)</td><td>4,200 t/s</td><td>18ms</td><td>$0.07</td></tr>
+<tr><td><strong style="color:var(--tm)">GGUF Q4_K_M</strong></td><td>4.5</td><td>4.4GB</td><td>5.58 (+2.0%)</td><td>32 t/s</td><td>420ms</td><td>$0.48</td></tr>
+</tbody>
+</table>
+</div>
+<div class="callout callout-warn">
+  <div class="callout-icon">⚠️</div>
+  <div class="callout-body">
+    <h4>The continuous batching multiplier — why AWQ+vLLM costs 4× less</h4>
+    <p>AWQ INT4 single-request: 2700 tokens/sec. AWQ+vLLM under load: 6800 tokens/sec. The difference is continuous batching amortising fixed overhead (model weight reads, CUDA launch latency) across many concurrent requests. This directly reduces cost-per-token: the GPU serves 2.5× more tokens per unit time → cost/token drops proportionally. At $3/hr for an A100, FP16 single-request costs $0.17/1M tokens; AWQ+vLLM costs $0.04/1M — a 4.25× cost reduction. This is why model quantization + serving stack optimization together yield 10-15× cost reduction vs naïve FP16 single-request serving.</p>
+  </div>
+</div>
+</section>
+
+<section class="sec" id="s3">
+<div class="sn">03 · Decision Framework and Production Operations</div>
+<h2>The Complete Stack:<br><span class="gt">From Model to Cost-Per-Token</span></h2>
+<div class="arch">
+<div class="arch-title">Production quantization decision flowchart — training vs inference, edge vs cloud, model size, priority</div>
+<svg viewBox="0 0 900 310" xmlns="http://www.w3.org/2000/svg" style="width:100%;max-width:900px;display:block">
+<rect width="900" height="310" fill="#07070f" rx="14"/>
+<text x="450" y="24" font-family="JetBrains Mono,monospace" font-size="11" fill="#60a5fa" text-anchor="middle" letter-spacing="2" font-weight="bold">PRODUCTION QUANTIZATION DECISION FRAMEWORK</text>
+<rect x="376" y="34" width="148" height="28" rx="14" fill="rgba(96,165,250,.15)" stroke="#60a5fa" stroke-width="2"/>
+<text x="450" y="52" font-family="JetBrains Mono,monospace" font-size="8" fill="#60a5fa" text-anchor="middle" font-weight="bold">Deployment goal?</text>
+<line x1="450" y1="62" x2="450" y2="76" stroke="#60a5fa" stroke-width="1.5"/>
+<polygon points="446,72 450,80 454,72" fill="#60a5fa"/>
+<polygon points="450,76 530,100 450,122 370,100" fill="rgba(96,165,250,.08)" stroke="#60a5fa" stroke-width="1.5"/>
+<text x="450" y="96" font-family="JetBrains Mono,monospace" font-size="7" fill="#60a5fa" text-anchor="middle">Training</text>
+<text x="450" y="108" font-family="JetBrains Mono,monospace" font-size="7" fill="#60a5fa" text-anchor="middle">or Inference?</text>
+<line x1="370" y1="100" x2="238" y2="100" stroke="#fbbf24" stroke-width="1.5"/>
+<polygon points="234,96 226,100 234,104" fill="#fbbf24"/>
+<text x="304" y="95" font-family="JetBrains Mono,monospace" font-size="7" fill="#fbbf24" text-anchor="middle">Training</text>
+<polygon points="170,84 238,100 170,116 102,100" fill="rgba(251,191,36,.08)" stroke="#fbbf24" stroke-width="1.5"/>
+<text x="170" y="97" font-family="JetBrains Mono,monospace" font-size="7" fill="#fbbf24" text-anchor="middle">H100</text>
+<text x="170" y="108" font-family="JetBrains Mono,monospace" font-size="7" fill="#fbbf24" text-anchor="middle">avail?</text>
+<line x1="170" y1="116" x2="170" y2="142" stroke="#fbbf24" stroke-width="1.5"/>
+<polygon points="166,138 170,146 174,138" fill="#fbbf24"/>
+<text x="178" y="133" font-family="JetBrains Mono,monospace" font-size="7" fill="#fbbf24">Yes</text>
+<rect x="90" y="144" width="160" height="32" rx="7" fill="rgba(251,191,36,.12)" stroke="rgba(251,191,36,.5)" stroke-width="1.5"/>
+<text x="170" y="158" font-family="JetBrains Mono,monospace" font-size="8" fill="#fbbf24" text-anchor="middle" font-weight="bold">FP8 (Transformer Engine)</text>
+<text x="170" y="170" font-family="JetBrains Mono,monospace" font-size="7" fill="#7c7c95" text-anchor="middle">E4M3 fwd + E5M2 bwd · 2× BF16</text>
+<line x1="102" y1="100" x2="30" y2="100" stroke="#fbbf24" stroke-width="1.5"/>
+<polygon points="34,96 26,100 34,104" fill="#fbbf24"/>
+<text x="66" y="95" font-family="JetBrains Mono,monospace" font-size="7" fill="#fbbf24" text-anchor="middle">No</text>
+<line x1="30" y1="100" x2="30" y2="142" stroke="#fbbf24" stroke-width="1.5"/>
+<polygon points="26,138 30,146 34,138" fill="#fbbf24"/>
+<rect x="14" y="144" width="130" height="32" rx="7" fill="rgba(94,234,212,.1)" stroke="rgba(94,234,212,.45)" stroke-width="1.5"/>
+<text x="79" y="158" font-family="JetBrains Mono,monospace" font-size="8" fill="#5eead4" text-anchor="middle" font-weight="bold">BF16 + AMP</text>
+<text x="79" y="170" font-family="JetBrains Mono,monospace" font-size="7" fill="#7c7c95" text-anchor="middle">Standard mixed precision</text>
+<line x1="530" y1="100" x2="618" y2="100" stroke="#5eead4" stroke-width="1.5"/>
+<polygon points="614,96 622,100 614,104" fill="#5eead4"/>
+<text x="574" y="95" font-family="JetBrains Mono,monospace" font-size="7" fill="#5eead4" text-anchor="middle">Inference</text>
+<polygon points="690,84 762,100 690,116 618,100" fill="rgba(94,234,212,.08)" stroke="#5eead4" stroke-width="1.5"/>
+<text x="690" y="97" font-family="JetBrains Mono,monospace" font-size="7" fill="#5eead4" text-anchor="middle">Edge</text>
+<text x="690" y="108" font-family="JetBrains Mono,monospace" font-size="7" fill="#5eead4" text-anchor="middle">or Cloud?</text>
+<line x1="690" y1="116" x2="690" y2="142" stroke="#5eead4" stroke-width="1.5"/>
+<polygon points="686,138 690,146 694,138" fill="#5eead4"/>
+<text x="698" y="133" font-family="JetBrains Mono,monospace" font-size="7" fill="#5eead4">Edge</text>
+<rect x="610" y="144" width="160" height="42" rx="7" fill="rgba(94,234,212,.1)" stroke="rgba(94,234,212,.4)" stroke-width="1.5"/>
+<text x="690" y="160" font-family="JetBrains Mono,monospace" font-size="8" fill="#5eead4" text-anchor="middle" font-weight="bold">GGUF Q4_K_M</text>
+<text x="690" y="173" font-family="JetBrains Mono,monospace" font-size="7" fill="#7c7c95" text-anchor="middle">llama.cpp · Ollama · 4.5 bits</text>
+<text x="690" y="183" font-family="JetBrains Mono,monospace" font-size="7" fill="#7c7c95" text-anchor="middle">CPU / Apple Silicon</text>
+<line x1="762" y1="100" x2="820" y2="100" stroke="#5eead4" stroke-width="1.5"/>
+<polygon points="816,96 824,100 816,104" fill="#5eead4"/>
+<text x="791" y="95" font-family="JetBrains Mono,monospace" font-size="7" fill="#5eead4" text-anchor="middle">Cloud</text>
+<polygon points="858,84 900,100 858,116 816,100" fill="rgba(94,234,212,.08)" stroke="#5eead4" stroke-width="1.5"/>
+<text x="858" y="97" font-family="JetBrains Mono,monospace" font-size="6" fill="#5eead4" text-anchor="middle">Latency</text>
+<text x="858" y="108" font-family="JetBrains Mono,monospace" font-size="6" fill="#5eead4" text-anchor="middle">critical?</text>
+<line x1="858" y1="116" x2="858" y2="142" stroke="#f472b6" stroke-width="1.5"/>
+<polygon points="854,138 858,146 862,138" fill="#f472b6"/>
+<text x="866" y="133" font-family="JetBrains Mono,monospace" font-size="7" fill="#f472b6">Yes</text>
+<rect x="790" y="144" width="96" height="42" rx="7" fill="rgba(244,114,182,.1)" stroke="rgba(244,114,182,.4)" stroke-width="1.5"/>
+<text x="838" y="160" font-family="JetBrains Mono,monospace" font-size="7" fill="#f472b6" text-anchor="middle" font-weight="bold">TRT-LLM FP8</text>
+<text x="838" y="173" font-family="JetBrains Mono,monospace" font-size="7" fill="#7c7c95" text-anchor="middle">+ Speculative</text>
+<text x="838" y="183" font-family="JetBrains Mono,monospace" font-size="7" fill="#7c7c95" text-anchor="middle">Decoding</text>
+<line x1="450" y1="122" x2="450" y2="196" stroke="#60a5fa" stroke-width="1.5"/>
+<polygon points="446,192 450,200 454,192" fill="#60a5fa"/>
+<text x="458" y="168" font-family="JetBrains Mono,monospace" font-size="7" fill="#7c7c95">Model</text>
+<text x="458" y="180" font-family="JetBrains Mono,monospace" font-size="7" fill="#7c7c95">size?</text>
+<rect x="272" y="196" width="120" height="44" rx="7" fill="rgba(96,165,250,.1)" stroke="rgba(96,165,250,.4)" stroke-width="1.5"/>
+<text x="332" y="214" font-family="JetBrains Mono,monospace" font-size="8" fill="#60a5fa" text-anchor="middle" font-weight="bold">&lt;7B params</text>
+<text x="332" y="226" font-family="JetBrains Mono,monospace" font-size="7" fill="#ececf6" text-anchor="middle">INT8 bitsandbytes</text>
+<text x="332" y="237" font-family="JetBrains Mono,monospace" font-size="7" fill="#7c7c95" text-anchor="middle">or QAT INT4</text>
+<rect x="402" y="196" width="120" height="44" rx="7" fill="rgba(167,139,250,.1)" stroke="rgba(167,139,250,.4)" stroke-width="1.5"/>
+<text x="462" y="214" font-family="JetBrains Mono,monospace" font-size="8" fill="#a78bfa" text-anchor="middle" font-weight="bold">7B–70B</text>
+<text x="462" y="226" font-family="JetBrains Mono,monospace" font-size="7" fill="#ececf6" text-anchor="middle">AWQ INT4 + vLLM</text>
+<text x="462" y="237" font-family="JetBrains Mono,monospace" font-size="7" fill="#7c7c95" text-anchor="middle">PagedAttention</text>
+<rect x="532" y="196" width="120" height="44" rx="7" fill="rgba(244,114,182,.1)" stroke="rgba(244,114,182,.4)" stroke-width="1.5"/>
+<text x="592" y="214" font-family="JetBrains Mono,monospace" font-size="8" fill="#f472b6" text-anchor="middle" font-weight="bold">&gt;70B params</text>
+<text x="592" y="226" font-family="JetBrains Mono,monospace" font-size="7" fill="#ececf6" text-anchor="middle">GPTQ INT4 + GQA</text>
+<text x="592" y="237" font-family="JetBrains Mono,monospace" font-size="7" fill="#7c7c95" text-anchor="middle">Tensor parallel</text>
+<line x1="420" y1="122" x2="332" y2="196" stroke="rgba(96,165,250,.35)" stroke-width="1" stroke-dasharray="3,2"/>
+<line x1="450" y1="122" x2="462" y2="196" stroke="rgba(167,139,250,.35)" stroke-width="1" stroke-dasharray="3,2"/>
+<line x1="480" y1="122" x2="592" y2="196" stroke="rgba(244,114,182,.35)" stroke-width="1" stroke-dasharray="3,2"/>
+<rect x="14"  y="254" width="208" height="44" rx="8" fill="rgba(251,191,36,.06)" stroke="rgba(251,191,36,.3)"/>
+<text x="118" y="272" font-family="JetBrains Mono,monospace" font-size="7" fill="#fbbf24" text-anchor="middle" font-weight="bold">Accuracy critical?</text>
+<text x="118" y="284" font-family="JetBrains Mono,monospace" font-size="7" fill="#ececf6" text-anchor="middle">QAT INT4 + LSQ</text>
+<text x="118" y="295" font-family="JetBrains Mono,monospace" font-size="7" fill="#7c7c95" text-anchor="middle">Fine-tune for quantization</text>
+<rect x="232" y="254" width="208" height="44" rx="8" fill="rgba(94,234,212,.06)" stroke="rgba(94,234,212,.3)"/>
+<text x="336" y="272" font-family="JetBrains Mono,monospace" font-size="7" fill="#5eead4" text-anchor="middle" font-weight="bold">Throughput priority?</text>
+<text x="336" y="284" font-family="JetBrains Mono,monospace" font-size="7" fill="#ececf6" text-anchor="middle">AWQ + vLLM + cont. batch</text>
+<text x="336" y="295" font-family="JetBrains Mono,monospace" font-size="7" fill="#7c7c95" text-anchor="middle">Maximise tokens/sec/GPU</text>
+<rect x="450" y="254" width="208" height="44" rx="8" fill="rgba(167,139,250,.06)" stroke="rgba(167,139,250,.3)"/>
+<text x="554" y="272" font-family="JetBrains Mono,monospace" font-size="7" fill="#a78bfa" text-anchor="middle" font-weight="bold">Latency priority?</text>
+<text x="554" y="284" font-family="JetBrains Mono,monospace" font-size="7" fill="#ececf6" text-anchor="middle">TRT-LLM FP8 + speculative</text>
+<text x="554" y="295" font-family="JetBrains Mono,monospace" font-size="7" fill="#7c7c95" text-anchor="middle">Minimise TTFT + TBT</text>
+<rect x="668" y="254" width="218" height="44" rx="8" fill="rgba(244,114,182,.06)" stroke="rgba(244,114,182,.3)"/>
+<text x="777" y="272" font-family="JetBrains Mono,monospace" font-size="7" fill="#f472b6" text-anchor="middle" font-weight="bold">Long context (&gt;32K)?</text>
+<text x="777" y="284" font-family="JetBrains Mono,monospace" font-size="7" fill="#ececf6" text-anchor="middle">GQA + KV INT8 + PagedAttn</text>
+<text x="777" y="295" font-family="JetBrains Mono,monospace" font-size="7" fill="#7c7c95" text-anchor="middle">TurboQuant for &gt;128K</text>
+</svg>
+</div>
+<div class="g2">
+<div class="scenario">
+  <h4>Production operations: quantization regression in CI/CD</h4>
+  <p><strong>Tier 1 (5 min, blocks merge):</strong> Perplexity on WikiText-2 sample. Reject if Δppl &gt; 0.3 vs FP16 baseline. <strong>Tier 2 (30 min, pre-deploy):</strong> Domain perplexity on production data sample + MMLU/HumanEval accuracy. Reject if accuracy drop &gt; 1% vs FP16. <strong>Tier 3 (continuous, production):</strong> Shadow traffic — compare quantized vs FP16 on identical requests. Track output entropy, response length distribution, task-specific metrics (BLEU, pass@1, ROUGE). Alert on &gt;2σ deviation from 30-day baseline. <strong>Quantization drift detection:</strong> Recalibrate AWQ/GPTQ scales quarterly on recent production traffic sample — prevents distribution shift from degrading quantization quality.</p>
+</div>
+<div class="callout callout-key">
+  <div class="callout-icon">🔑</div>
+  <div class="callout-body">
+    <h4>Hardware cost arithmetic — the full picture</h4>
+    <p><strong>H100 SXM5:</strong> $10/hr on-demand → $7200/month. Serves LLaMA-3-70B AWQ at 12K tokens/sec → $0.024/1M tokens. <strong>A100-80GB:</strong> $3/hr → $2160/month. AWQ+vLLM: 6800 tokens/sec → $0.12/1M tokens. <strong>L40S:</strong> $1.50/hr → $1080/month. AWQ 7B: 2800 tokens/sec → $0.15/1M tokens. <strong>Rule of thumb:</strong> H100 is worth it only for models &gt;30B or latency SLAs &lt;30ms TTFT. For 7B models, A100 or even L40S gives better cost efficiency. Always multiply single-GPU numbers by your QPS/capacity ratio to get actual GPU count needed.</p>
+  </div>
+</div>
+</div>
+<div class="card" style="padding:0;overflow:hidden">
+<table class="tbl">
+<thead><tr><th>Scenario</th><th>Model</th><th>Stack</th><th>Hardware</th><th>Est. Cost</th><th>QPS capacity</th></tr></thead>
+<tbody>
+<tr><td><strong style="color:var(--a4)">Startup API</strong></td><td>LLaMA-3-8B</td><td>AWQ + vLLM</td><td>1× A100-40GB</td><td>$1080/mo</td><td>~300 QPS</td></tr>
+<tr><td><strong style="color:var(--a2)">Mid-scale product</strong></td><td>LLaMA-3-70B</td><td>GPTQ + vLLM</td><td>2× A100-80GB</td><td>$4320/mo</td><td>~80 QPS</td></tr>
+<tr><td><strong style="color:var(--a3)">Low-latency premium</strong></td><td>LLaMA-3-70B</td><td>TRT-LLM FP8</td><td>2× H100-80GB</td><td>$14400/mo</td><td>~200 QPS</td></tr>
+<tr><td><strong style="color:var(--a1)">Edge / on-prem</strong></td><td>Mistral-7B</td><td>GGUF Q4_K_M</td><td>Apple M2 Max</td><td>$0 GPU</td><td>~5 QPS</td></tr>
+<tr><td><strong style="color:var(--a5)">Long context RAG</strong></td><td>LLaMA-3-70B</td><td>AWQ + GQA + vLLM</td><td>4× H100-80GB</td><td>$28800/mo</td><td>~500 QPS @32K</td></tr>
+</tbody>
+</table>
+</div>
+</section>
+
+<section class="sec" id="s4">
+<div class="sn">04 · Assessment — 8 Deep Questions</div>
+<h2>Production Deployment <span class="gt">Mastery Quiz</span></h2>
+<div class="qc"><div class="qc-title">Assessment — Production Deployment: vLLM, TRT-LLM, Benchmarks, Decision Framework</div><div class="qc-sub">8 questions · PagedAttention KV math · prefix caching · speculative decoding · TRT-LLM vs vLLM · continuous batching · regression testing · startup sizing · CPU vs GPU</div><div class="qprog"><div class="qprog-bar"><div class="qprog-fill"></div></div><div class="qprog-text">0/8 answered</div></div><div class="qq"><div class="qnum">Question 1 of 8</div><h4>A vLLM deployment of LLaMA-3-70B-Instruct (AWQ INT4, 2×A100-80GB, gpu_memory_utilization=0.92) receives 500 concurrent requests each with 512 input tokens and 256 output tokens. Why does throughput with vLLM's continuous batching massively exceed the naive HuggingFace approach, and what is the theoretical max concurrent tokens in flight?</h4><div class="qo"><button class="qob" data-opt="A" data-correct="true" onclick="cq(this,0,true)">A: vLLM uses CUDA graphs that precompile the forward pass for specific batch sizes, eliminating per-step Python overhead.</button>
+<button class="qob" data-opt="B" data-correct="false" onclick="cq(this,0,false)">B: Naive HuggingFace batches requests statically: all 500 requests are padded to 768 tokens (512+256), run together, and the GPU waits for the slowest request before starting new ones. With 256 output tokens and variable actual lengths, ~40% of compute is wasted on padding. Continuous batching (Orca algorithm): when request R17 finishes at decode step 89, a waiting request R501 is immediately inserted into the batch at step 90 — zero GPU idle time. KV cache arithmetic: model weights INT4 = 35GB across 2 GPUs = 17.5GB each. Available KV: (80 × 0.92) − 17.5 = 56.1GB per GPU = 112GB total. At FP16 per token (LLaMA-3-70B: L=80, d_head=128, H=8 GQA): bytes/token = 2×80×8×128×2 = 327,680 B ≈ 0.32MB. Max tokens: 112GB / 0.32MB ≈ 350K concurrent tokens. At 768 tokens/request: ~455 concurrent requests max.</button>
+<button class="qob" data-opt="C" data-correct="false" onclick="cq(this,0,false)">C: vLLM pre-quantizes all intermediate activations to INT4 during serving, reducing memory bandwidth by 4×.</button>
+<button class="qob" data-opt="D" data-correct="false" onclick="cq(this,0,false)">D: vLLM distributes requests across both GPUs with pipeline parallelism, while HuggingFace only uses one GPU.</button>
+</div><div class="qfeed"><div class="qfeed-head"></div><div class="qfeed-why"><strong>Continuous batching mechanics:</strong> The critical insight is that 'batch' in vLLM is not fixed across decode steps. At each step, the scheduler checks: which sequences need a decode step? Those form the batch. When a sequence finishes (outputs EOS), it's immediately evicted from the KV cache and replaced by a queued request. This keeps the GPU maximally busy regardless of output length variance. The practical throughput improvement: 2-4× over static batching at high load, measured in tokens/second across all concurrent requests.</div></div></div><div class="qq"><div class="qnum">Question 2 of 8</div><h4>PagedAttention uses a block table to map logical KV cache positions to physical GPU memory blocks. Explain how this enables prefix caching (RadixAttention) and calculate the memory saving for a RAG system with a 2048-token system prompt serving 10K requests per hour.</h4><div class="qo"><button class="qob" data-opt="A" data-correct="false" onclick="cq(this,1,false)">A: Prefix caching stores the system prompt once and references it via the block table — all requests sharing the prefix share the physical blocks without copying.</button>
+<button class="qob" data-opt="B" data-correct="true" onclick="cq(this,1,true)">B: PagedAttention assigns KV cache to fixed-size blocks (e.g. 16 tokens each). A 2048-token system prompt = 2048/16 = 128 blocks. For prefix caching (RadixAttention): these 128 blocks are stored once and marked as 'prefix blocks'. Each new request gets a logical block table pointing to these same physical blocks for positions 0-2047, then new physical blocks are allocated for its unique tokens only. Copy-on-write semantics: if a block is shared and must be modified, it's copied first. Memory saving calculation: without prefix cache: 10K requests × 2048 tokens × KV_bytes/token = 10K × 2048 × 0.32MB = 6.55TB of KV cache written per hour. With prefix cache: 2048 tokens stored once + 10K × unique_tokens. The prefix 128 blocks are never evicted (hot cache) — saving 10K × 2048 × 0.32MB = 6.55TB in KV computation and 99.9% of KV memory for the shared prefix. In practice: the system prompt occupies ~0.65MB of KV permanently vs 0.65MB × 10K requests allocated/freed per hour without caching — eliminating 6.5TB of KV memory I/O per hour.</button>
+<button class="qob" data-opt="C" data-correct="false" onclick="cq(this,1,false)">C: Prefix caching recomputes the system prompt KV for each request but stores it in shared CPU memory for fast retrieval.</button>
+<button class="qob" data-opt="D" data-correct="false" onclick="cq(this,1,false)">D: PagedAttention cannot support prefix caching — the block table only maps non-overlapping memory regions.</button>
+</div><div class="qfeed"><div class="qfeed-head"></div><div class="qfeed-why"><strong>RadixAttention (vLLM v0.4+):</strong> The block table is the key enabler. Because logical and physical addresses are decoupled, multiple requests can have their logical positions 0-N pointing to the same physical blocks — this is shared-memory semantics, exactly like OS page sharing for shared libraries. The hash of a token sequence prefix uniquely identifies which physical blocks represent it. On cache hit: attach those blocks to the new request's logical table in O(1). On cache miss: allocate new blocks, compute KV, store by hash. Eviction: LRU, with recently-completed requests' unique blocks freed first.</div></div></div><div class="qq"><div class="qnum">Question 3 of 8</div><h4>Speculative decoding uses a small draft model to propose K tokens, which the large target model verifies in one forward pass. With a 70B target and 8B draft model, K=5 speculative tokens, and a token acceptance rate α=0.72: calculate the expected speedup and explain when speculative decoding fails to help.</h4><div class="qo"><button class="qob" data-opt="A" data-correct="false" onclick="cq(this,2,false)">A: Expected speedup = K × α = 5 × 0.72 = 3.6×. Fails when batch size > 1.</button>
+<button class="qob" data-opt="B" data-correct="false" onclick="cq(this,2,false)">B: Expected speedup formula: E[speedup] = (1 − α^(K+1)) / ((1 − α) × (1 + K × cost_ratio)). Where cost_ratio = draft_cost / target_cost. For 8B vs 70B: cost_ratio ≈ 8/70 ≈ 0.11 (draft is 11% of target cost). With α=0.72, K=5: E[accepted] = (1 − 0.72^6) / (1 − 0.72) = (1 − 0.165)/0.28 = 2.98 tokens accepted per target call. Each cycle costs 1 target_call + K × 0.11 target_equivalents = 1 + 0.55 = 1.55 target calls. Speedup = 2.98/1.55 ≈ 1.92×. Note: the naive K×α formula assumes zero draft cost — the correct formula accounts for draft overhead. Speculative decoding fails to help when: (1) batch_size > 1 (verification cannot be parallelised across batched requests with different token positions), (2) α is low (domain shift — draft model doesn't match target's distribution, e.g. target is instruction-tuned but draft is base model), (3) prompt is long (TTFT is bottlenecked by prefill, not decode — speculation only helps decode), (4) output is very short (overhead not amortised).</button>
+<button class="qob" data-opt="C" data-correct="true" onclick="cq(this,2,true)">C: Expected speedup = K × α / (1 + K × cost_ratio) = 5 × 0.72 / (1 + 0.55) ≈ 2.32×. Fails when acceptance rate α &lt; 0.5.</button>
+<button class="qob" data-opt="D" data-correct="false" onclick="cq(this,2,false)">D: Expected speedup = 1 / (1 − α^K) = 1 / (1 − 0.72^5) ≈ 1.2×. Fails when the draft model is larger than 10B.</button>
+</div><div class="qfeed"><div class="qfeed-head"></div><div class="qfeed-why"><strong>Speculative decoding analysis:</strong> The correct speedup formula captures draft overhead. The key insight is that each target forward pass now produces ~E[accepted] ≈ 3 tokens instead of 1 — but costs slightly more than 1 target call due to draft inference. The batch_size=1 requirement is the most important practical limitation: at high throughput with many concurrent requests, the verification step must check all K+1 positions for each request independently, and the batch cannot mix different speculative positions. This is why speculative decoding is primarily used for latency-critical single-request scenarios (chatbots, coding assistants) not throughput-maximising serving (batch APIs).</div></div></div><div class="qq"><div class="qnum">Question 4 of 8</div><h4>TensorRT-LLM achieves lower latency than vLLM for the same model and hardware. What architectural difference explains this, and under what deployment scenario would you choose vLLM over TensorRT-LLM despite the latency advantage?</h4><div class="qo"><button class="qob" data-opt="A" data-correct="false" onclick="cq(this,3,false)">A: TensorRT-LLM uses smaller batch sizes which reduce memory pressure and improve cache efficiency.</button>
+<button class="qob" data-opt="B" data-correct="true" onclick="cq(this,3,true)">B: TensorRT-LLM differs from vLLM at the kernel level: TRT-LLM pre-compiles optimised CUDA kernels for the exact model architecture, fuses operations (QKV projection + rotary embedding + attention in one kernel), and uses cuBLAS/cuDNN optimised GEMM implementations tuned for specific GPU architectures. vLLM focuses on system-level scheduling: PagedAttention, continuous batching, prefix caching — using PyTorch kernels that are not architecture-specific. Choose vLLM when: (1) model variety is high — new model each week, TRT-LLM requires recompilation (hours) for each new model architecture; (2) multi-tenancy — vLLM's scheduler handles diverse request patterns better; (3) memory management is the bottleneck — PagedAttention reduces fragmentation that TRT-LLM cannot address; (4) quantization flexibility — vLLM supports AWQ/GPTQ out of box, TRT-LLM requires quantization before compilation. TRT-LLM when: (5) fixed model in production for months, latency is SLA, NVIDIA-only hardware.</button>
+<button class="qob" data-opt="C" data-correct="false" onclick="cq(this,3,false)">C: TensorRT-LLM uses INT4 weights while vLLM uses INT8 — the precision difference explains the latency gap.</button>
+<button class="qob" data-opt="D" data-correct="false" onclick="cq(this,3,false)">D: vLLM is always preferable because TensorRT-LLM requires paid NVIDIA licensing for production use.</button>
+</div><div class="qfeed"><div class="qfeed-head"></div><div class="qfeed-why"><strong>The kernel vs scheduling dichotomy:</strong> TRT-LLM achieves 20-40% lower TTFT vs vLLM for single-request scenarios through kernel fusion and architecture-specific optimisations. But this comes at a cost: compilation takes hours, new model architectures require engineering effort, and the system is less flexible. vLLM's strength is its scheduler: continuous batching can improve throughput 4-10× over naive serving. The practical recommendation: use TRT-LLM for a fixed flagship model with strict latency SLAs (e.g. production coding assistant). Use vLLM for diverse model serving, rapid iteration, or when throughput > latency matters.</div></div></div><div class="qq"><div class="qnum">Question 5 of 8</div><h4>A production RAG system serves 1000 QPS with mixed request types: 70% short queries (128 input, 128 output tokens) and 30% long context (4096 input, 512 output tokens). AWQ INT4 LLaMA-3-70B on 4×H100-80GB. Estimate the KV cache memory split and explain why continuous batching handles this workload better than static batching.</h4><div class="qo"><button class="qob" data-opt="A" data-correct="false" onclick="cq(this,4,false)">A: KV memory dominated by long context requests. Static batching wastes GPU on idle sequences while waiting for long requests to finish.</button>
+<button class="qob" data-opt="B" data-correct="true" onclick="cq(this,4,true)">B: Model weights AWQ INT4: 35GB across 4 GPUs = 8.75GB each. KV cache available: (80 × 0.92) − 8.75 = 64.85GB per GPU = 259GB total (4 GPUs). KV bytes/token for LLaMA-3-70B GQA (8 KV heads, d_head=128): 2 × 80 × 8 × 128 × 2B = 327,680 B ≈ 0.31MB per token. Max concurrent tokens: 259GB / 0.31MB = 836K tokens. Short request KV: 256 tokens × 0.31MB = 79MB. Long request KV: 4608 tokens × 0.31MB = 1.43GB. At 1000 QPS steady state: avg tokens in flight = 0.7×256 + 0.3×4608 = 1561 avg tokens/request. Active requests in flight ≈ 1000 × avg_latency. If avg latency ≈ 0.3s: ~300 requests × 1561 tokens = 468K tokens — well within 836K. Static batching fails here because: mixed short/long requests in the same batch mean short requests finish in 128 decode steps but the batch must wait for long requests (512 steps). Wasted compute: 70% of batch slots idle for 384 steps (waiting). Continuous batching: when each short request finishes, a new request replaces it immediately — the 70% slots cycle at 4× the rate of the 30% long slots, achieving near-100% GPU utilisation.</button>
+<button class="qob" data-opt="C" data-correct="false" onclick="cq(this,4,false)">C: Static batching works fine here because the 70/30 split creates naturally balanced batches. KV memory is not the bottleneck.</button>
+<button class="qob" data-opt="D" data-correct="false" onclick="cq(this,4,false)">D: Long context requests dominate — you should reject them with a 2048 token limit to maintain SLA for short requests.</button>
+</div><div class="qfeed"><div class="qfeed-head"></div><div class="qfeed-why"><strong>Mixed workload dynamics:</strong> The core challenge is that static batching treats all requests in a batch as atomic — the batch is only done when ALL requests finish. With 70% short requests that finish 4× faster, static batching wastes 70% of batch capacity for 75% of the execution time. Continuous batching's per-step scheduling means short requests never block new arrivals. The KV memory calculation shows the system is compute-bound (not memory-bound) at these parameters — 468K tokens in flight vs 836K capacity means 56% utilisation, leaving headroom for bursts.</div></div></div><div class="qq"><div class="qnum">Question 6 of 8</div><h4>Your company's CI/CD pipeline needs to detect quantization quality regression automatically. You have access to: a held-out evaluation dataset (WikiText-2 + internal domain data), a baseline FP16 model, and any quantized model variant. Design a regression testing framework with thresholds, and explain what 'quantization drift' means in production.</h4><div class="qo"><button class="qob" data-opt="A" data-correct="false" onclick="cq(this,5,false)">A: Run perplexity on WikiText-2 and alert if >0.5 absolute increase vs FP16 baseline.</button>
+<button class="qob" data-opt="B" data-correct="false" onclick="cq(this,5,false)">B: A comprehensive quantization regression test has three tiers. Tier 1 — Fast gating (5 min): Perplexity on WikiText-2 sample. Threshold: &lt;0.3 absolute increase (FP16=5.47 → reject if >5.77). This catches catastrophic failures. Tier 2 — Quality gate (30 min): Domain-specific perplexity on internal data + accuracy on 500-sample benchmark (MMLU subset, HumanEval-50). Threshold: &lt;1% accuracy drop vs FP16. Catches subtle degradation invisible in WikiText-2. Tier 3 — Calibration check (production): Track output token entropy, response length distribution, and task-specific metrics (BLEU for translation, pass@1 for code) in shadow traffic. Quantization drift: in production, the effective precision of quantized weights degrades when the input distribution shifts from the calibration data used to set quantization scales. Example: a model calibrated on English text may have poorly-scaled activations on code inputs (different token distributions → different activation magnitudes → scales set for English outliers aren't optimal for code outliers → higher quantization error on code tasks). Mitigation: recalibrate quarterly on a sample of recent production inputs; track per-task quality metrics separately.</button>
+<button class="qob" data-opt="C" data-correct="false" onclick="cq(this,5,false)">C: Monitor GPU memory usage and throughput — quantization regression always manifests as sudden changes in these hardware metrics.</button>
+<button class="qob" data-opt="D" data-correct="true" onclick="cq(this,5,true)">D: Only test perplexity and accuracy — 'quantization drift' is a theoretical concept that doesn't occur in production with fixed weights.</button>
+</div><div class="qfeed"><div class="qfeed-head"></div><div class="qfeed-why"><strong>Quantization drift in production:</strong> Fixed quantized weights don't change, but the input distribution does — and quantization quality is distribution-dependent. The scale factors s_j set during calibration assume the activation magnitudes follow a certain distribution. When production inputs shift (new language, new topic domain, seasonal events, user behaviour changes), activations may develop different outlier patterns than calibration data, causing previously-adequate scales to produce higher quantization error. This is analogous to covariate shift in ML but at the numerical precision level. The three-tier regression framework ensures: fast CI/CD gating, thorough quality validation, and continuous production monitoring.</div></div></div><div class="qq"><div class="qnum">Question 7 of 8</div><h4>For a startup deploying a 7B LLM for a coding assistant product with 50 QPS peak, &lt;2s TTFT SLA, $5K/month GPU budget: design the minimal viable quantization + serving stack. Show your cost calculation.</h4><div class="qo"><button class="qob" data-opt="A" data-correct="false" onclick="cq(this,6,false)">A: Use FP16 on 2×A100-40GB: $3200/month. Meets all requirements trivially.</button>
+<button class="qob" data-opt="B" data-correct="true" onclick="cq(this,6,true)">B: Optimal stack: AWQ INT4 + vLLM on 1×A100-40GB (spot). Cost analysis: 1 A100-40GB on AWS = ~$1.50/hr spot = $1080/month. Model fits: AWQ-INT4 7B = 4GB weights + KV cache. KV per token at 7B (L=32, d=4096, H=32 MHA): 2×32×32×128×2B = 524K B/token. KV available: (40 × 0.92) − 4 = 32.8GB → 32.8GB / 0.52MB/tok = 63K concurrent tokens. At 50 QPS × (512+256 avg tokens) = 38.4K tokens in flight → fits. TTFT at 50 QPS: prefill 512 tokens on 7B takes ~50ms on A100 → well under 2s. Throughput: AWQ+vLLM gets ~3000 tokens/sec on A100 for 7B. 50 QPS × 768 avg tokens = 38.4K tokens/min = 640 tokens/sec — far below capacity. Recommendation: 1 A100-40GB spot + 1 A100-40GB on-demand (failover) = ~$1080+$800 = $1880/month. Leaves $3.1K/month for other infra. INT8 bitsandbytes would also work (7GB, slightly higher throughput headroom) but INT4 gives 2× more KV cache headroom for burst handling.</button>
+<button class="qob" data-opt="C" data-correct="false" onclick="cq(this,6,false)">C: Use 2×L4 GPU (24GB each): cheaper than A100, AWQ INT4 7B fits in 4GB, cost ~$700/month.</button>
+<button class="qob" data-opt="D" data-correct="false" onclick="cq(this,6,false)">D: Use GGUF Q4_K_M on CPU cluster: cheapest option at ~$200/month, meets 50 QPS with 100 CPU cores.</button>
+</div><div class="qfeed"><div class="qfeed-head"></div><div class="qfeed-why"><strong>Production sizing for startups:</strong> The exercise demonstrates that for 7B models, A100-40GB with AWQ INT4 is genuinely all you need for 50 QPS. The calculation shows: 50 QPS × avg_output_time ≈ 640 tokens/sec required vs 3000 available — 4.7× headroom for bursts. The spot+on-demand combination gives cost efficiency with reliability. Option C (L4 GPUs) is also viable but L4s have lower memory bandwidth (300 GB/s vs A100's 2TB/s) which hurts decode throughput. Option D (CPU) fails on TTFT: GGUF CPU TTFT for 512 input tokens on a 7B model is ~2-5 seconds on a good CPU — already at or over the 2s SLA.</div></div></div><div class="qq"><div class="qnum">Question 8 of 8</div><h4>Comparing vLLM, TensorRT-LLM, and llama.cpp for deploying AWQ INT4 LLaMA-2-13B: throughput is 4800 tokens/sec (vLLM), 6200 tokens/sec (TRT-LLM), and 45 tokens/sec (llama.cpp CPU). Why is llama.cpp so much slower, and under what real business scenario would you choose it over the GPU options?</h4><div class="qo"><button class="qob" data-opt="A" data-correct="false" onclick="cq(this,7,false)">A: llama.cpp is slower because it lacks proper INT4 kernel support — GPU options have optimised CUDA kernels.</button>
+<button class="qob" data-opt="B" data-correct="true" onclick="cq(this,7,true)">B: llama.cpp is 100-140× slower because CPU memory bandwidth is 100-140× lower than GPU HBM2e/HBM3 bandwidth. LLM decode is memory-bandwidth-bound (not compute-bound): each decode step requires reading all model weights once for a single-token forward pass. LLaMA-2-13B INT4 = 6.5GB. GPU (A100): HBM2e bandwidth = 2TB/s → reads 6.5GB in 3.25ms → 308 tokens/sec (single stream). In practice: vLLM with batching achieves ~370 tokens/sec/GPU-stream by batching multiple decode steps. CPU (modern Xeon): DDR5 bandwidth ≈ 89GB/s → reads 6.5GB in 73ms → ~14 tokens/sec (single stream), llama.cpp achieves 45 tokens/sec via AVX-512 INT4 kernel optimisation and multi-core parallelism. Business scenario for llama.cpp: (1) Privacy-absolute requirements — medical, legal, or defence where data cannot leave the premises and GPU cloud is not approved; (2) Very low volume — internal tool with 5-10 users where $1500/month GPU cost doesn't justify; (3) Offline/disconnected deployment — field hardware, air-gapped networks; (4) Development/prototyping — laptop testing before GPU deployment; (5) Apple Silicon — llama.cpp's Metal backend on M2 Pro achieves 50-80 tokens/sec with excellent MBW, cost-effective for small teams.</button>
+<button class="qob" data-opt="C" data-correct="false" onclick="cq(this,7,false)">C: llama.cpp is slower because it doesn't support continuous batching — each request is processed sequentially.</button>
+<button class="qob" data-opt="D" data-correct="false" onclick="cq(this,7,false)">D: llama.cpp should always be used for INT4 models because it has the best INT4 kernel implementation across all platforms.</button>
+</div><div class="qfeed"><div class="qfeed-head"></div><div class="qfeed-why"><strong>Memory bandwidth determines decode speed:</strong> This is the central insight of LLM serving. At batch_size=1, each forward pass reads every weight once — this is fully memory-bandwidth-bound. The 100× CPU-GPU gap maps almost exactly to the 100× memory bandwidth gap. llama.cpp on Apple M2 Max is a notable exception: M2 Max has 400GB/s unified memory bandwidth and achieves 60-70 tokens/sec for 13B models — 4-7× faster than CPU-only. The llama.cpp CPU path makes genuine business sense for privacy-critical on-premises deployments where $10K/year for a single GPU node is too expensive or not allowed by compliance requirements.</div></div></div><div class="qs" id="qs" style="display:none"><h3 id="sc">0/8</h3><p id="sm"></p></div></div>
+</section>
+</div>
+<footer>
+  <div style="max-width:var(--cw);margin:0 auto;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:1rem">
+    <div style="display:flex;gap:.8rem"><a href="quant_m2.html" class="pr">← M2: QAT and FP8 Training</a><span></span></div>
+    <span>Quantization for Modern AI · M3 · Production Deployment — vLLM, TensorRT-LLM and the Decision Framework</span>
+  </div>
+</footer>
+<script>
+window.addEventListener("scroll",function(){
+  var h=document.documentElement;
+  var pct=(h.scrollTop/(h.scrollHeight-h.clientHeight))*100;
+  document.getElementById("sp").style.width=pct+"%";
+});
+var obs=new IntersectionObserver(function(e){
+  e.forEach(function(x){if(x.isIntersecting)x.target.classList.add("vis");});
+},{threshold:0.06});
+document.querySelectorAll(".sec").forEach(function(s){obs.observe(s);});
+// Copy buttons
+function cp(btn,id){
+  navigator.clipboard.writeText(document.getElementById(id).innerText).then(function(){
+    var t=btn.textContent;btn.textContent="✓ Copied";
+    setTimeout(function(){btn.textContent=t;},2000);
+  });
+}
+// Metric bar animation
+window.addEventListener("load",function(){
+  document.querySelectorAll(".metric-fill[data-pct]").forEach(function(el){
+    setTimeout(function(){el.style.width=el.getAttribute("data-pct")+"%";},300);
+  });
+});
+// Quiz engine
+var qstate={};
+var qtotal=document.querySelectorAll(".qq").length;
+function updateProgress(){
+  var done=Object.keys(qstate).length;
+  var fill=document.querySelector(".qprog-fill");
+  var txt=document.querySelector(".qprog-text");
+  if(fill)fill.style.width=Math.round(done/qtotal*100)+"%";
+  if(txt)txt.textContent=done+"/"+qtotal+" answered";
+  if(done===qtotal)showScore();
+}
+function showScore(){
+  var c=Object.values(qstate).filter(function(v){return v;}).length;
+  var sc=document.getElementById("sc");
+  var sm=document.getElementById("sm");
+  if(sc)sc.textContent=c+"/"+qtotal+" correct";
+  if(sm){
+    var msgs=["Keep studying — revisit continuous batching: requests join/leave the batch each decode step. KV calc: (GPU×util − weights) / (2×L×H_kv×d_head×bytes_per_tok).","Good effort — review prefix caching: 128 blocks stored once, block table maps them to all 10K requests → near-zero KV memory for shared system prompt.","Building — re-read speculative decoding: correct speedup formula accounts for draft cost. Fails at batch_size>1 because verification cannot parallelise across different speculative positions.","Solid — review TRT-LLM vs vLLM: kernel fusion (TRT) vs system scheduling (vLLM). Choose vLLM when model variety is high or memory management is the bottleneck.","Strong — revisit continuous batching mixed workload: short requests cycle 4× faster than long ones, keeping GPU slots filled continuously.","Excellent — quantization regression and drift testing mastered.","Outstanding — nearly perfect production deployment knowledge.","Perfect score — you can design, size, benchmark, and monitor a production quantized LLM serving system from scratch."][c];
+    sm.textContent=msgs[Math.min(c,msgs.length-1)];
+    sm.style.color=c>=Math.round(qtotal*0.8)?"#5eead4":"#f472b6";
+  }
+  var qs=document.getElementById("qs");
+  if(qs)qs.style.display="block";
+}
+function cq(btn,qi,isCorrect){
+  if(qstate[qi]!==undefined)return;
+  qstate[qi]=isCorrect;
+  var qq=btn.closest(".qq");
+  qq.classList.add("answered");
+  var allBtns=qq.querySelectorAll(".qob");
+  allBtns.forEach(function(b){
+    b.setAttribute("disabled","");
+    var bc=b.getAttribute("data-correct")==="true";
+    if(bc)b.classList.add("ok");
+    else if(b===btn&&!isCorrect)b.classList.add("no");
+  });
+  var feed=qq.querySelector(".qfeed");
+  if(feed){
+    feed.style.display="block";
+    feed.className="qfeed "+(isCorrect?"correct":"wrong");
+    var head=feed.querySelector(".qfeed-head");
+    if(head)head.textContent=isCorrect?"✓ Correct — "+btn.getAttribute("data-opt")+" is right":"✗ Not quite — see the explanation below";
+  }
+  updateProgress();
+}</script>
+</body></html>

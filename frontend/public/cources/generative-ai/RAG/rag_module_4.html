@@ -1,0 +1,416 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Module 4 — Ingestion Pipeline</title>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&family=Outfit:wght@300;400;500;600;700;800;900&family=Source+Serif+4:ital,wght@0,300;0,400;0,600;1,300;1,400&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#0a0a0f;--t1:#ececf6;--t2:#b5b5c8;--tm:#7c7c95;--a1:#5eead4;--a2:#60a5fa;--a3:#f472b6;--a4:#fbbf24;--a5:#a78bfa;--gl:linear-gradient(90deg,#5eead4 0%,#60a5fa 28%,#a78bfa 55%,#f472b6 82%,#fbbf24 100%);--bs:rgba(255,255,255,0.08);--sh:0 20px 80px rgba(0,0,0,0.42);--r:22px;--cw:1080px}
+*{box-sizing:border-box;margin:0;padding:0}html{scroll-behavior:smooth}
+body{background:radial-gradient(circle at 18% 14%,rgba(244,114,182,0.09),transparent 28%),radial-gradient(circle at 82% 22%,rgba(94,234,212,0.07),transparent 28%),var(--bg);color:var(--t1);font-family:'Outfit',sans-serif;line-height:1.75;overflow-x:hidden;-webkit-font-smoothing:antialiased}
+.sp{position:fixed;top:0;left:0;height:3px;width:0%;z-index:1000;background:var(--gl);transition:width .12s linear}
+nav{position:fixed;top:3px;left:0;right:0;z-index:999;display:flex;align-items:center;justify-content:space-between;padding:.75rem 2rem;background:rgba(10,10,15,.85);backdrop-filter:blur(12px);border-bottom:1px solid var(--bs)}
+.nbr{font-family:'JetBrains Mono',monospace;font-size:.75rem;color:var(--a1);letter-spacing:.12em;text-transform:uppercase;text-decoration:none}
+.nm{font-size:.82rem;color:var(--tm)}.na{display:flex;gap:8px}
+.nb{display:inline-flex;align-items:center;gap:6px;padding:.4rem .9rem;border-radius:999px;border:1px solid var(--bs);background:rgba(255,255,255,.03);color:var(--t2);font-size:.8rem;text-decoration:none;transition:all .18s}
+.nb:hover{border-color:var(--a3);color:var(--a3)}
+.hero{min-height:100vh;display:flex;align-items:center;justify-content:center;padding:5rem 2rem 3rem;position:relative;overflow:hidden}
+.hg{position:absolute;inset:0;background-image:linear-gradient(rgba(255,255,255,.03) 1px,transparent 1px),linear-gradient(90deg,rgba(255,255,255,.03) 1px,transparent 1px);background-size:44px 44px;mask-image:radial-gradient(circle at center,black 32%,transparent 82%);pointer-events:none}
+.hero::before{content:"";position:absolute;inset:0;background:radial-gradient(ellipse 580px 300px at 22% 40%,rgba(244,114,182,.11),transparent),radial-gradient(ellipse 640px 350px at 78% 35%,rgba(94,234,212,.09),transparent);pointer-events:none}
+.hi{max-width:980px;text-align:center;position:relative;z-index:1}
+.hl{display:inline-flex;align-items:center;gap:10px;padding:.55rem 1rem;border-radius:999px;border:1px solid rgba(244,114,182,.24);background:rgba(244,114,182,.08);color:var(--a3);letter-spacing:1.7px;text-transform:uppercase;font-size:.78rem;margin-bottom:1.6rem}
+.dot{width:8px;height:8px;border-radius:50%;background:var(--a3);animation:pulse 2s ease-in-out infinite}
+@keyframes pulse{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.35;transform:scale(.78)}}
+h1{font-size:clamp(2.8rem,6vw,5rem);line-height:1.02;letter-spacing:-.04em;font-weight:900;margin-bottom:1.25rem}
+.gt{background:var(--gl);-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent}
+.hs{font-family:'Source Serif 4',serif;color:var(--t2);font-size:clamp(1rem,2.2vw,1.24rem);max-width:800px;margin:0 auto 2rem}
+.hm{display:flex;flex-wrap:wrap;justify-content:center;gap:12px;margin-bottom:2.5rem}
+.mp{border:1px solid var(--bs);background:rgba(17,17,26,.75);border-radius:999px;padding:.7rem 1rem;color:var(--t2);font-size:.92rem}
+.sc{position:absolute;bottom:2.6rem;left:50%;transform:translateX(-50%);color:var(--tm);display:flex;flex-direction:column;gap:.6rem;align-items:center;text-transform:uppercase;letter-spacing:.22em;font-size:.72rem}
+.sc .arr{width:20px;height:20px;border-right:2px solid var(--tm);border-bottom:2px solid var(--tm);transform:rotate(45deg);animation:ba 2s ease-in-out infinite}
+@keyframes ba{0%,100%{transform:rotate(45deg) translateY(0)}50%{transform:rotate(45deg) translateY(8px)}}
+.cw{max-width:var(--cw);margin:0 auto;padding:0 2rem 6rem}
+.mm{display:grid;grid-template-columns:repeat(auto-fill,minmax(155px,1fr));gap:10px;margin-bottom:4rem}
+.mc{background:rgba(15,15,25,.88);border:1px solid var(--bs);border-radius:16px;padding:.9rem 1rem;text-decoration:none;transition:all .2s;display:block}
+.mc:hover{border-color:rgba(244,114,182,.3);background:rgba(244,114,182,.04)}
+.mc.cur{border-color:rgba(244,114,182,.5);background:rgba(244,114,182,.08)}
+.mc .cn{color:var(--a3);font-family:'JetBrains Mono',monospace;font-size:.65rem;text-transform:uppercase;letter-spacing:.14em;margin-bottom:.35rem}
+.mc .ct{color:var(--t1);font-size:.88rem;line-height:1.35}
+.sec{margin-bottom:5rem;opacity:0;transform:translateY(30px);transition:opacity .7s ease,transform .7s ease}
+.sec.vis{opacity:1;transform:translateY(0)}
+.sn{display:flex;align-items:center;gap:12px;color:var(--a3);font-family:'JetBrains Mono',monospace;font-size:.7rem;text-transform:uppercase;letter-spacing:.2em;margin-bottom:.9rem}
+.sn::after{content:"";height:1px;flex:1;background:linear-gradient(90deg,rgba(244,114,182,.75),transparent)}
+.sec h2{font-size:clamp(2rem,4vw,2.8rem);line-height:1.08;margin-bottom:1rem;letter-spacing:-.04em}
+.lead{font-family:'Source Serif 4',serif;font-size:1.1rem;color:var(--t2);margin-bottom:1.8rem;line-height:1.8}
+.card{background:linear-gradient(180deg,rgba(24,24,38,.96),rgba(17,17,28,.96));border:1px solid var(--bs);border-radius:var(--r);box-shadow:var(--sh);padding:1.6rem}
+.cc{background:linear-gradient(180deg,rgba(13,13,24,.98),rgba(10,10,18,.98));border:1px solid var(--bs);border-radius:var(--r);box-shadow:var(--sh);padding:0;margin-bottom:1.2rem}
+.qc{background:linear-gradient(180deg,rgba(24,24,38,.96),rgba(17,17,28,.96));border:1px solid var(--bs);border-radius:var(--r);box-shadow:var(--sh);padding:1.6rem}
+.ch{display:flex;align-items:center;justify-content:space-between;padding:1rem 1.4rem;border-bottom:1px solid var(--bs)}
+.ch h3{font-size:.95rem;font-family:'JetBrains Mono',monospace;color:var(--a3)}
+.clg{font-size:.72rem;color:var(--tm);font-family:'JetBrains Mono',monospace;text-transform:uppercase;letter-spacing:.1em}
+.cpb{display:inline-flex;align-items:center;gap:6px;padding:.3rem .75rem;border-radius:999px;border:1px solid var(--bs);background:transparent;color:var(--tm);font-size:.75rem;cursor:pointer;transition:all .18s;font-family:'JetBrains Mono',monospace}
+.cpb:hover{border-color:var(--a1);color:var(--a1)}
+.cbody{padding:1.4rem;overflow-x:auto}
+pre{white-space:pre;color:#d8e3ff;font-family:'JetBrains Mono',monospace;font-size:.875rem;line-height:1.7}
+.kw{color:#a78bfa}.fn{color:#60a5fa}.str{color:#5eead4}.cm{color:#4a4a6a;font-style:italic}.nu{color:#fbbf24}.cl{color:#f472b6}
+.g2{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:1.2rem}
+.mc2{border:1px solid var(--bs);border-radius:18px;padding:1.2rem;background:rgba(255,255,255,.02)}
+.mc2 h4{font-size:1rem;margin-bottom:.5rem;color:var(--t1)}.mc2 p{font-size:.92rem;color:var(--t2);line-height:1.6}
+.cl2{border-radius:16px;padding:1.2rem 1.4rem;margin:1.5rem 0;display:flex;gap:1rem;align-items:flex-start}
+.cw2{background:rgba(251,191,36,.07);border:1px solid rgba(251,191,36,.2)}
+.cs{background:rgba(94,234,212,.07);border:1px solid rgba(94,234,212,.2)}
+.cico{font-size:1.2rem;flex-shrink:0;margin-top:.1rem}
+.cbd h4{font-size:.95rem;margin-bottom:.35rem;color:var(--t1)}.cbd p{font-size:.9rem;color:var(--t2);line-height:1.6}
+.stages{display:grid;grid-template-columns:repeat(4,1fr);gap:.8rem;margin-bottom:1.5rem}
+.stg{padding:1rem;border-radius:14px;border:1px solid var(--bs)}
+.stg-n{font-family:'JetBrains Mono',monospace;font-size:.7rem;text-transform:uppercase;letter-spacing:.12em;margin-bottom:.5rem}
+.tbl{width:100%;border-collapse:collapse;font-size:.88rem}
+.tbl th{text-align:left;padding:.8rem 1rem;font-family:'JetBrains Mono',monospace;font-size:.68rem;text-transform:uppercase;letter-spacing:.1em;color:var(--tm);border-bottom:1px solid var(--bs)}
+.tbl td{padding:.8rem 1rem;border-bottom:1px solid rgba(255,255,255,.04);color:var(--t2);vertical-align:top}
+.tbl td:first-child{color:var(--t1);font-weight:600}
+.tbl tr:last-child td{border-bottom:none}
+.bdg{display:inline-block;font-size:.72rem;padding:.2rem .6rem;border-radius:6px;font-weight:600;background:rgba(96,165,250,.12);color:var(--a2);border:1px solid rgba(96,165,250,.2)}
+.qq{border:1px solid var(--bs);border-radius:18px;padding:1.2rem;background:rgba(255,255,255,.02);margin-bottom:1rem}
+.qq h4{font-size:1rem;margin-bottom:.9rem;color:var(--t1)}
+.qo{display:grid;gap:.6rem}
+.qob{border:1px solid var(--bs);border-radius:12px;padding:.85rem 1rem;background:rgba(255,255,255,.02);color:var(--t2);cursor:pointer;transition:all .2s;text-align:left;font-size:.9rem;font-family:'Outfit',sans-serif;width:100%}
+.qob:hover{border-color:rgba(244,114,182,.4);background:rgba(244,114,182,.04)}
+.qob.ok{border-color:rgba(94,234,212,.5);background:rgba(94,234,212,.10);color:var(--t1)}
+.qob.no{border-color:rgba(244,114,182,.45);background:rgba(244,114,182,.08)}
+.qf{min-height:1.2rem;font-size:.88rem;color:var(--tm);margin-top:.6rem;line-height:1.5}
+.qs{padding:1.2rem;border-radius:16px;background:rgba(94,234,212,.06);border:1px solid rgba(94,234,212,.2);text-align:center;margin-top:1rem;display:none}
+.qs h3{font-size:1.8rem;color:var(--a1);margin-bottom:.4rem}.qs p{color:var(--t2);font-size:.9rem}
+.fn2{display:flex;align-items:center;justify-content:space-between;padding:2rem 0;border-top:1px solid var(--bs);margin-top:2rem}
+.fn2 a{display:inline-flex;align-items:center;gap:8px;padding:.7rem 1.4rem;border-radius:999px;border:1px solid var(--bs);color:var(--t2);text-decoration:none;font-size:.9rem;transition:all .2s}
+.fn2 a:hover{border-color:var(--a3);color:var(--a3)}
+.fn2 a.pr{background:rgba(244,114,182,.04);border-color:rgba(244,114,182,.2)}
+.fn2 a.nx{background:rgba(94,234,212,.06);border-color:rgba(94,234,212,.3);color:var(--a1)}
+.fcc{text-align:center;font-size:.82rem;color:var(--tm)}
+@media(max-width:700px){.g2,.stages{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+<div class="sp" id="sp"></div>
+<nav>
+  <a href="#" class="nbr">Marevlo · RAG Masterclass</a>
+  <span class="nm">Module 4 — Ingestion Pipeline</span>
+  <div class="na">
+    <a href="rag_module_3.html" class="nb">← Prev</a>
+    <a href="rag_module_5.html" class="nb">Next →</a>
+  </div>
+</nav>
+
+<section class="hero">
+  <div class="hg"></div>
+  <div class="hi">
+    <div class="hl"><span class="dot"></span>RAG Masterclass · Module 4</div>
+    <h1>Ingestion Pipeline: <span class="gt">Load, Clean, Enrich</span></h1>
+    <p class="hs">How to prepare any document for RAG. Loaders, cleaning strategies, metadata design, and deduplication — the phase where 60% of RAG projects fail silently.</p>
+    <div class="hm">
+      <span class="mp">⏱ 35 min</span>
+      <span class="mp">📥 Document loaders</span>
+      <span class="mp">🧹 Cleaning strategies</span>
+      <span class="mp">🏷 Metadata design</span>
+    </div>
+  </div>
+  <div class="sc"><span>Scroll</span><div class="arr"></div></div>
+</section>
+
+<div class="cw">
+<div class="mm">
+  <a href="rag_module_0.html" class="mc"><div class="cn">M-00</div><div class="ct">What is RAG?</div></a>
+  <a href="rag_module_1.html" class="mc"><div class="cn">M-01</div><div class="ct">LLM Limitations</div></a>
+  <a href="rag_module_2.html" class="mc"><div class="cn">M-02</div><div class="ct">Embeddings</div></a>
+  <a href="rag_module_3.html" class="mc"><div class="cn">M-03</div><div class="ct">Vector Databases</div></a>
+  <a href="rag_module_4.html" class="mc cur"><div class="cn">M-04</div><div class="ct">Ingestion Pipeline</div></a>
+  <a href="rag_module_5.html" class="mc"><div class="cn">M-05</div><div class="ct">Chunking Strategies</div></a>
+  <a href="rag_module_6.html" class="mc"><div class="cn">M-06</div><div class="ct">Retrieval Methods</div></a>
+  <a href="rag_module_7.html" class="mc"><div class="cn">M-07</div><div class="ct">Hybrid Search</div></a>
+  <a href="rag_module_8.html" class="mc"><div class="cn">M-08</div><div class="ct">Reranking</div></a>
+  <a href="rag_module_9.html" class="mc"><div class="cn">M-09</div><div class="ct">Generation</div></a>
+  <a href="rag_module_10.html" class="mc"><div class="cn">M-10</div><div class="ct">Advanced RAG</div></a>
+  <a href="rag_module_11.html" class="mc"><div class="cn">M-11</div><div class="ct">Structured Data RAG</div></a>
+  <a href="rag_module_12.html" class="mc"><div class="cn">M-12</div><div class="ct">Agentic RAG</div></a>
+  <a href="rag_module_13.html" class="mc"><div class="cn">M-13</div><div class="ct">Production RAG</div></a>
+  <a href="rag_module_14.html" class="mc"><div class="cn">M-14</div><div class="ct">Evaluation</div></a>
+</div>
+
+<section class="sec" id="s1">
+  <div class="sn">01 · The Four Stages</div>
+  <h2>What Happens Before <span class="gt">Embedding</span></h2>
+  <p class="lead">Ingestion is the offline phase — run once, or whenever documents change. Most teams rush this and pay for it with poor retrieval forever. Errors here are permanent: bad embeddings, missing metadata, and duplicate chunks all cascade downstream and cannot be fixed at query time.</p>
+  <div class="stages">
+    <div class="stg" style="border-color:rgba(244,114,182,.3);background:rgba(244,114,182,.05)">
+      <div class="stg-n" style="color:var(--a3)">Stage 1</div>
+      <strong style="display:block;margin-bottom:.3rem">Load</strong>
+      <small style="color:var(--tm)">Extract raw text from PDFs, Word, HTML, databases, Confluence, Slack</small>
+    </div>
+    <div class="stg" style="border-color:rgba(251,191,36,.3);background:rgba(251,191,36,.05)">
+      <div class="stg-n" style="color:var(--a4)">Stage 2</div>
+      <strong style="display:block;margin-bottom:.3rem">Clean</strong>
+      <small style="color:var(--tm)">Remove noise, fix OCR artifacts, normalize whitespace, strip boilerplate</small>
+    </div>
+    <div class="stg" style="border-color:rgba(94,234,212,.3);background:rgba(94,234,212,.05)">
+      <div class="stg-n" style="color:var(--a1)">Stage 3</div>
+      <strong style="display:block;margin-bottom:.3rem">Enrich</strong>
+      <small style="color:var(--tm)">Add metadata: source, date, section, department, language, doc type</small>
+    </div>
+    <div class="stg" style="border-color:rgba(96,165,250,.3);background:rgba(96,165,250,.05)">
+      <div class="stg-n" style="color:var(--a2)">Stage 4</div>
+      <strong style="display:block;margin-bottom:.3rem">Chunk + Embed</strong>
+      <small style="color:var(--tm)">Split, embed, store in vector DB (Modules 2, 3, 5)</small>
+    </div>
+  </div>
+  <div class="cl2 cw2">
+    <div class="cico">⚠️</div>
+    <div class="cbd">
+      <h4>Why 60% of RAG projects fail at ingestion</h4>
+      <p>Noisy text produces bad embeddings. Missing metadata makes filtering impossible. Poor deduplication stores redundant chunks that confuse retrieval. You cannot fix bad ingestion at query time — you must rebuild the entire index from scratch.</p>
+    </div>
+  </div>
+</section>
+
+<section class="sec" id="s2">
+  <div class="sn">02 · Document Loaders</div>
+  <h2>Loading From <span class="gt">Any Source</span></h2>
+  <p class="lead">LangChain provides 100+ document loaders. These are the ones that matter in production — with the quirks you need to know before deploying.</p>
+  <div class="g2" style="margin-bottom:1.5rem">
+    <div class="mc2">
+      <h4>📄 PDF — the tricky one</h4>
+      <p>PDFs are positioned text boxes, not documents. PyPDFLoader loses tables. Use <strong style="color:var(--a1)">pymupdf4llm</strong> for markdown-preserving extraction. Scanned PDFs need OCR first (see Track 3).</p>
+    </div>
+    <div class="mc2">
+      <h4>🌐 Web pages</h4>
+      <p>RecursiveUrlLoader crawls sites. For JS-heavy pages, use PlaywrightURLLoader. Strip navigation and footer boilerplate with Unstructured.io — it detects repeated elements automatically.</p>
+    </div>
+    <div class="mc2">
+      <h4>📊 Tables and spreadsheets</h4>
+      <p>Tables are the hardest to chunk well. UnstructuredExcelLoader with table-to-markdown preserves row relationships. Consider storing rows as individual documents with the table header in metadata.</p>
+    </div>
+    <div class="mc2">
+      <h4>💬 Databases and APIs</h4>
+      <p>SQLDatabaseLoader, ConfluenceLoader, NotionDirectoryLoader, SlackDirectoryLoader all work. Always add sync timestamps to metadata so you know when to re-ingest stale content.</p>
+    </div>
+  </div>
+  <div class="cc">
+    <div class="ch">
+      <h3>ingestion_pipeline.py</h3>
+      <div style="display:flex;gap:8px;align-items:center">
+        <span class="clg">Python</span>
+        <button class="cpb" onclick="copyCode(this,'c1')">⧉ Copy</button>
+      </div>
+    </div>
+    <div class="cbody"><pre id="c1"><span class="kw">from</span> pathlib <span class="kw">import</span> <span class="cl">Path</span>
+<span class="kw">from</span> langchain_community.document_loaders <span class="kw">import</span> <span class="cl">PyMuPDFLoader</span>
+<span class="kw">import</span> hashlib, re
+
+<span class="kw">def</span> <span class="fn">clean_text</span>(text: str) -> str:
+    text = re.sub(<span class="str">r'\n{3,}'</span>, <span class="str">'\n\n'</span>, text)
+    text = re.sub(<span class="str">r' {2,}'</span>, <span class="str">' '</span>, text)
+    text = re.sub(<span class="str">r'Page \d+ of \d+'</span>, <span class="str">''</span>, text)
+    text = re.sub(<span class="str">r'CONFIDENTIAL|DRAFT'</span>, <span class="str">''</span>, text)
+    <span class="kw">return</span> text.strip()
+
+<span class="kw">def</span> <span class="fn">enrich_metadata</span>(doc, source_path: str) -> dict:
+    path = <span class="cl">Path</span>(source_path)
+    <span class="kw">return</span> {
+        <span class="str">"source"</span>: str(path),
+        <span class="str">"filename"</span>: path.name,
+        <span class="str">"extension"</span>: path.suffix.lower(),
+        <span class="str">"department"</span>: <span class="fn">infer_department</span>(path),
+        <span class="str">"content_hash"</span>: hashlib.md5(doc.page_content.encode()).hexdigest(),
+        <span class="str">"char_count"</span>: <span class="fn">len</span>(doc.page_content),
+        <span class="str">"is_empty"</span>: <span class="fn">len</span>(doc.page_content.strip()) < <span class="nu">50</span>,
+    }
+
+<span class="kw">def</span> <span class="fn">infer_department</span>(path: <span class="cl">Path</span>) -> str:
+    parts = [p.lower() <span class="kw">for</span> p <span class="kw">in</span> path.parts]
+    dept_map = {<span class="str">"legal"</span>: <span class="str">"legal"</span>, <span class="str">"hr"</span>: <span class="str">"hr"</span>,
+                <span class="str">"finance"</span>: <span class="str">"finance"</span>, <span class="str">"product"</span>: <span class="str">"product"</span>}
+    <span class="kw">for</span> part <span class="kw">in</span> parts:
+        <span class="kw">for</span> key, dept <span class="kw">in</span> dept_map.items():
+            <span class="kw">if</span> key <span class="kw">in</span> part:
+                <span class="kw">return</span> dept
+    <span class="kw">return</span> <span class="str">"general"</span>
+
+<span class="kw">def</span> <span class="fn">deduplicate</span>(docs: list) -> list:
+    seen, unique = <span class="fn">set</span>(), []
+    <span class="kw">for</span> doc <span class="kw">in</span> docs:
+        h = hashlib.md5(doc.page_content.encode()).hexdigest()
+        <span class="kw">if</span> h <span class="kw">not in</span> seen:
+            seen.add(h)
+            unique.append(doc)
+    <span class="kw">return</span> unique
+
+<span class="kw">def</span> <span class="fn">ingest_folder</span>(folder: str) -> list:
+    docs = []
+    <span class="kw">for</span> pdf <span class="kw">in</span> <span class="cl">Path</span>(folder).glob(<span class="str">"**/*.pdf"</span>):
+        loaded = <span class="cl">PyMuPDFLoader</span>(<span class="fn">str</span>(pdf)).load()
+        <span class="kw">for</span> doc <span class="kw">in</span> loaded:
+            doc.page_content = <span class="fn">clean_text</span>(doc.page_content)
+            doc.metadata.update(<span class="fn">enrich_metadata</span>(doc, <span class="fn">str</span>(pdf)))
+            <span class="kw">if not</span> doc.metadata[<span class="str">"is_empty"</span>]:
+                docs.append(doc)
+    docs = <span class="fn">deduplicate</span>(docs)
+    <span class="fn">print</span>(<span class="str">f"Loaded {len(docs)} clean unique pages"</span>)
+    <span class="kw">return</span> docs</pre>
+    </div>
+  </div>
+</section>
+
+<section class="sec" id="s3">
+  <div class="sn">03 · Metadata Design</div>
+  <h2>Metadata: The <span class="gt">Secret Weapon</span></h2>
+  <p class="lead">Good metadata turns a vector database into a structured, filterable knowledge base. Design your metadata schema before you ingest — adding a new filter field later means re-ingesting your entire corpus.</p>
+  <div class="card">
+    <table class="tbl">
+      <thead>
+        <tr><th>Field</th><th>Type</th><th>Use at Query Time</th><th>Example</th></tr>
+      </thead>
+      <tbody>
+        <tr><td>source</td><td><span class="bdg">string</span></td><td>Citation and attribution</td><td>"refund_policy_v3.pdf"</td></tr>
+        <tr><td>department</td><td><span class="bdg">string</span></td><td>Filter: "only search HR docs"</td><td>"legal", "hr", "finance"</td></tr>
+        <tr><td>doc_type</td><td><span class="bdg">string</span></td><td>Filter: "only policies, not meeting notes"</td><td>"policy", "contract", "report"</td></tr>
+        <tr><td>created_at</td><td><span class="bdg">timestamp</span></td><td>Time filter, freshness weighting</td><td>"2024-11-15"</td></tr>
+        <tr><td>section</td><td><span class="bdg">string</span></td><td>Structured citation in answers</td><td>"Introduction", "§4.2"</td></tr>
+        <tr><td>language</td><td><span class="bdg">string</span></td><td>Route queries to matching language docs</td><td>"en", "hi", "ta"</td></tr>
+        <tr><td>access_level</td><td><span class="bdg">string</span></td><td>Permission filtering per user</td><td>"public", "internal", "confidential"</td></tr>
+        <tr><td>content_hash</td><td><span class="bdg">string</span></td><td>Deduplication and change detection</td><td>"a1b2c3d4..."</td></tr>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<section class="sec" id="s4">
+  <div class="sn">04 · Quiz</div>
+  <h2>Module <span class="gt">Quiz</span></h2>
+  <p class="lead">5 questions on ingestion, loading, cleaning, and metadata design.</p>
+  <div class="qc">
+    <div class="qq">
+      <h4>1. A PDF contains scanned images of pages rather than embedded text. Which approach should you use?</h4>
+      <div class="qo">
+        <button class="qob" onclick="cq(this,0,false)">A) PyPDFLoader — it handles all PDF types automatically</button>
+        <button class="qob" onclick="cq(this,0,true)">B) An OCR pipeline before any loader — scanned PDFs have no extractable text layer</button>
+        <button class="qob" onclick="cq(this,0,false)">C) UnstructuredHTMLLoader after converting to HTML</button>
+        <button class="qob" onclick="cq(this,0,false)">D) Skip scanned PDFs — they cannot be indexed</button>
+      </div>
+      <div class="qf" id="f0"></div>
+    </div>
+    <div class="qq">
+      <h4>2. Why does clean_text remove "Page X of Y" patterns?</h4>
+      <div class="qo">
+        <button class="qob" onclick="cq(this,1,true)">A) These patterns repeat across many chunks and add noise to embeddings without contributing any semantic meaning</button>
+        <button class="qob" onclick="cq(this,1,false)">B) Page numbers cause the vector database index to break</button>
+        <button class="qob" onclick="cq(this,1,false)">C) The embedding model cannot process numbers</button>
+        <button class="qob" onclick="cq(this,1,false)">D) Page numbers are stored in metadata instead</button>
+      </div>
+      <div class="qf" id="f1"></div>
+    </div>
+    <div class="qq">
+      <h4>3. A user asks "Show me only the latest HR policies from 2024." Which metadata fields make this filter possible?</h4>
+      <div class="qo">
+        <button class="qob" onclick="cq(this,2,false)">A) content_hash only</button>
+        <button class="qob" onclick="cq(this,2,true)">B) created_at + department — combining both narrows results to HR policies from 2024 specifically</button>
+        <button class="qob" onclick="cq(this,2,false)">C) source filename only</button>
+        <button class="qob" onclick="cq(this,2,false)">D) char_count only</button>
+      </div>
+      <div class="qf" id="f2"></div>
+    </div>
+    <div class="qq">
+      <h4>4. You discover 30% of your chunks are near-identical duplicates from versioned documents. What does deduplication fix?</h4>
+      <div class="qo">
+        <button class="qob" onclick="cq(this,3,true)">A) Duplicate chunks bias retrieval — the same passage occupies multiple top-k slots, crowding out diverse content and wasting vector DB storage</button>
+        <button class="qob" onclick="cq(this,3,false)">B) Duplicate chunks cause embedding model errors</button>
+        <button class="qob" onclick="cq(this,3,false)">C) Deduplication improves embedding model accuracy directly</button>
+        <button class="qob" onclick="cq(this,3,false)">D) Duplicates only matter in keyword search, not vector search</button>
+      </div>
+      <div class="qf" id="f3"></div>
+    </div>
+    <div class="qq">
+      <h4>5. For an enterprise with English, Hindi, and Tamil documents, which metadata field is most critical?</h4>
+      <div class="qo">
+        <button class="qob" onclick="cq(this,4,true)">A) language — so Hindi queries only search Hindi documents, avoiding cross-lingual confusion from a monolingual embedding model</button>
+        <button class="qob" onclick="cq(this,4,false)">B) char_count — longer documents are more reliable</button>
+        <button class="qob" onclick="cq(this,4,false)">C) content_hash — same importance for all languages</button>
+        <button class="qob" onclick="cq(this,4,false)">D) doc_type — language does not affect retrieval quality</button>
+      </div>
+      <div class="qf" id="f4"></div>
+    </div>
+    <div class="qs" id="qs">
+      <h3 id="sc">0/5</h3>
+      <p id="sm"></p>
+    </div>
+  </div>
+</section>
+
+<div class="fn2">
+  <a href="rag_module_3.html" class="pr">← Module 3: Vector Databases</a>
+  <div class="fcc"><div>Module 4 of 14</div><div style="font-size:.75rem;margin-top:4px">RAG Masterclass · Marevlo</div></div>
+  <a href="rag_module_5.html" class="nx">Module 5: Chunking Strategies →</a>
+</div>
+</div>
+
+<script>
+window.addEventListener('scroll', function() {
+  var h = document.documentElement;
+  document.getElementById('sp').style.width = ((h.scrollTop / (h.scrollHeight - h.clientHeight)) * 100) + '%';
+});
+
+var obs = new IntersectionObserver(function(entries) {
+  entries.forEach(function(e) {
+    if (e.isIntersecting) e.target.classList.add('vis');
+  });
+}, { threshold: 0.08 });
+document.querySelectorAll('.sec').forEach(function(s) { obs.observe(s); });
+
+function copyCode(btn, id) {
+  navigator.clipboard.writeText(document.getElementById(id).innerText).then(function() {
+    btn.textContent = '✓ Copied';
+    setTimeout(function() { btn.textContent = '⧉ Copy'; }, 2000);
+  });
+}
+
+var fb = [
+  'Correct! Scanned PDFs are images with no embedded text layer. OCR must convert those images to text before any document loader can extract it.',
+  'Correct! Boilerplate like "Page 3 of 47" repeats across every chunk from that document, adding noise to embeddings without any semantic value.',
+  'Correct! created_at enables time filtering and department enables topic filtering. Both are needed to precisely target "HR policies from 2024".',
+  'Correct! Duplicate chunks occupy multiple top-k slots during retrieval, reducing the diversity of results and wasting storage and compute.',
+  'Correct! Language metadata lets you route queries to matching-language chunks, avoiding cross-lingual retrieval confusion.'
+];
+var fw = [
+  'Not quite. PyMuPDFLoader also cannot extract text from scanned images. OCR must run first to create a text layer.',
+  'Not quite. The embedding model handles numbers fine. The issue is that these patterns are high-frequency noise that inflates spurious similarity between unrelated chunks.',
+  'Not quite. Neither char_count nor source filename enables time or department filtering. You need the specific fields that match each filter dimension.',
+  'Not quite. Vector databases do not deduplicate automatically. Duplicate vectors actively harm retrieval diversity.',
+  'Not quite. Language is not inferred automatically by the embedding model. You must store it explicitly in metadata.'
+];
+var ans = [null, null, null, null, null];
+
+function cq(btn, qi, ok) {
+  var opts = btn.parentElement.querySelectorAll('.qob');
+  opts.forEach(function(o) { o.disabled = true; });
+  if (ans[qi] !== null) return;
+  ans[qi] = ok;
+  var f = document.getElementById('f' + qi);
+  if (ok) {
+    btn.classList.add('ok');
+    f.style.color = 'var(--a1)';
+    f.textContent = '✓ ' + fb[qi];
+  } else {
+    btn.classList.add('no');
+    f.style.color = 'var(--a3)';
+    f.textContent = '✗ ' + fw[qi];
+    opts.forEach(function(o) { if (o !== btn) o.style.opacity = '.5'; });
+  }
+  var filled = ans.filter(function(a) { return a !== null; }).length;
+  if (filled === 5) {
+    var c = ans.filter(function(a) { return a === true; }).length;
+    document.getElementById('qs').style.display = 'block';
+    document.getElementById('sc').textContent = c + '/5';
+    var msgs = ['Review all sections carefully.', 'Check the metadata section.', 'Good effort!', 'Almost perfect!', 'Perfect! Module 5 awaits.'];
+    document.getElementById('sm').textContent = msgs[c];
+  }
+}
+</script>
+</body>
+</html>
