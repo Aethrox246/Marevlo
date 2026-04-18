@@ -12,11 +12,13 @@ from app.auth.routers.auth import router as auth_router
 from app.chat.routers.chat import router as chat_router
 from app.feed.routers.feed import router as feed_router
 from app.profile.routers.me import router as profile_router
+from app.courses.routers import router as courses_router
 # Import models so SQLAlchemy registers FK targets in metadata
 from app.problems.models.problem import Problem  # noqa: F401
 from app.auth.models.session import UserSession  # noqa: F401
 from app.profile.models.profile import UserProfile  # noqa: F401
 from app.profile.models.user_achievement import UserAchievement  # noqa: F401
+from app.courses.models import CourseReaction, CourseComment  # noqa: F401
 
 limiter = Limiter(key_func=get_remote_address)
 
@@ -64,6 +66,9 @@ app.include_router(feed_router)
 
 # Profile router
 app.include_router(profile_router)
+
+# Courses engagement router (reactions + comments)
+app.include_router(courses_router)
 
 
 
