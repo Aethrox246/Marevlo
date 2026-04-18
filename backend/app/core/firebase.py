@@ -21,17 +21,35 @@ _app: firebase_admin.App | None = None
 
 
 def _init_firebase() -> firebase_admin.App:
+    import json, os
+
     global _app
     if _app is not None:
         return _app
 
-    # 🔥 Load Firebase credentials from Secret Manager (mounted file)
-    cred = credentials.Certificate("/secrets/firebase-service-account")
+    # Strategy 1: JSON string via env var (Cloud Run / secrets manager)
+    json_str = os.getenv("FIREBASE_CREDENTIALS_JSON", "").strip()
+    if json_str:
+        cred = credentials.Certificate(json.loads(json_str))
+        _app = firebase_admin.initialize_app(cred)
+        logger.info("Firebase initialized from FIREBASE_CREDENTIALS_JSON env var")
+        return _app
 
-    _app = firebase_admin.initialize_app(cred)
-    logger.info("Firebase initialized from Secret Manager")
+    # Strategy 2: File path via env var or Docker volume mount default
+    path = os.getenv(
+        "FIREBASE_CREDENTIALS_PATH",
+        "/app/secrets/firebase-credentials.json",
+    )
+    if os.path.isfile(path):
+        cred = credentials.Certificate(path)
+        _app = firebase_admin.initialize_app(cred)
+        logger.info("Firebase initialized from file: %s", path)
+        return _app
 
-    return _app
+    raise RuntimeError(
+        f"Firebase credentials not found. Set FIREBASE_CREDENTIALS_JSON or "
+        f"FIREBASE_CREDENTIALS_PATH (tried '{path}')"
+    )
 
 
 def verify_firebase_id_token(id_token: str) -> dict:

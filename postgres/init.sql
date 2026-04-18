@@ -2,7 +2,8 @@ CREATE TABLE users (
     id SERIAL PRIMARY KEY,
     username VARCHAR(50) UNIQUE NOT NULL,
     email VARCHAR(255) UNIQUE NOT NULL,
-    password_hash VARCHAR(255) NOT NULL,
+    password_hash VARCHAR(255) NULL,
+    google_uid VARCHAR(128) UNIQUE NULL,
     is_active BOOLEAN NOT NULL DEFAULT TRUE,
     created_at TIMESTAMPTZ DEFAULT NOW(),
     updated_at TIMESTAMPTZ DEFAULT NOW(),
@@ -179,3 +180,27 @@ CREATE TABLE IF NOT EXISTS message_reads (
 CREATE INDEX IF NOT EXISTS idx_message_reads_message_id ON message_reads(message_id);
 CREATE INDEX IF NOT EXISTS idx_message_reads_reader_id ON message_reads(reader_id);
 
+-- Course engagement: YouTube-style like/dislike reactions
+CREATE TABLE IF NOT EXISTS course_reactions (
+    user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
+    course_id VARCHAR(128) NOT NULL,
+    reaction_type VARCHAR(10) NOT NULL CHECK (reaction_type IN ('like', 'dislike')),
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    updated_at TIMESTAMPTZ DEFAULT NOW(),
+    PRIMARY KEY (user_id, course_id)
+);
+
+CREATE INDEX IF NOT EXISTS idx_course_reactions_course_id ON course_reactions(course_id);
+
+-- Course engagement: community discussion comments
+CREATE TABLE IF NOT EXISTS course_comments (
+    id SERIAL PRIMARY KEY,
+    user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
+    course_id VARCHAR(128) NOT NULL,
+    content TEXT NOT NULL,
+    created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_course_comments_course_id ON course_comments(course_id);
+CREATE INDEX IF NOT EXISTS idx_course_comments_user_id ON course_comments(user_id);
+CREATE INDEX IF NOT EXISTS idx_course_comments_created_at ON course_comments(created_at);
