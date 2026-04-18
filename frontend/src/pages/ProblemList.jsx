@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { ArrowRight, ChevronDown, BookOpen, Zap, Target } from 'lucide-react';
+import { ArrowRight, ChevronDown, BookOpen, Zap, Target, Sparkles } from 'lucide-react';
 import { loadAllTopics } from '../utils/topicsLoader';
 
 function FeatureCard({ icon, title, desc, color }) {
@@ -173,57 +173,81 @@ export default function ProblemList({ onSelect }) {
 
     return (
         <div className="flex-1 overflow-y-auto custom-scrollbar">
-            {/* ── Hero Header ─────────────────────────────────────────── */}
-            <div
-                className="relative overflow-hidden border-b"
-                style={{ borderColor: 'var(--color-border)', background: 'var(--color-surface)' }}
-            >
-                {/* Dot-grid background */}
-                <div
-                    className="absolute inset-0 pointer-events-none opacity-30"
-                    style={{
-                        backgroundImage: 'radial-gradient(circle, var(--color-border) 1px, transparent 1px)',
-                        backgroundSize: '20px 20px',
-                    }}
-                />
-                {/* Blurred orbs */}
-                <div className="absolute -top-16 -left-16 w-64 h-64 rounded-full opacity-10 pointer-events-none"
-                    style={{ background: 'radial-gradient(circle, #6366f1, #8b5cf6)', filter: 'blur(60px)' }} />
-                <div className="absolute -bottom-10 right-0 w-48 h-48 rounded-full opacity-10 pointer-events-none"
-                    style={{ background: 'radial-gradient(circle, #06b6d4, #0ea5e9)', filter: 'blur(50px)' }} />
+            {/* ── Hero Header — dark banner matching Projects / Courses pages ── */}
+            <div style={{
+                position: 'relative', overflow: 'hidden',
+                background: '#09090f',
+                borderBottom: '1px solid rgba(255,255,255,0.06)',
+            }}>
+                {/* Left glow — teal */}
+                <div style={{
+                    position: 'absolute', top: '50%', left: -130,
+                    transform: 'translateY(-50%)',
+                    width: 380, height: 380, borderRadius: '50%',
+                    background: 'radial-gradient(circle, rgba(6,182,212,0.52) 0%, transparent 65%)',
+                    filter: 'blur(68px)', pointerEvents: 'none',
+                }} />
+                {/* Right glow — indigo */}
+                <div style={{
+                    position: 'absolute', top: '50%', right: -130,
+                    transform: 'translateY(-50%)',
+                    width: 340, height: 340, borderRadius: '50%',
+                    background: 'radial-gradient(circle, rgba(99,102,241,0.45) 0%, transparent 65%)',
+                    filter: 'blur(68px)', pointerEvents: 'none',
+                }} />
 
-                <div className="relative max-w-4xl mx-auto px-8 py-10">
-                    <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-bold uppercase tracking-widest mb-4"
-                        style={{ background: 'var(--color-surface-hover)', border: '1px solid var(--color-border)', color: 'var(--color-muted-text)' }}>
-                        <Zap size={11} style={{ color: '#6366f1' }} />
+                <div style={{ position: 'relative', zIndex: 1, textAlign: 'center', padding: '48px 24px 44px' }}>
+                    {/* Pill badge */}
+                    <div style={{
+                        display: 'inline-flex', alignItems: 'center', gap: 7,
+                        padding: '5px 14px', borderRadius: 999,
+                        background: 'rgba(255,255,255,0.055)',
+                        border: '1px solid rgba(255,255,255,0.1)',
+                        fontSize: '0.68rem', fontWeight: 700,
+                        color: 'rgba(255,255,255,0.5)',
+                        letterSpacing: '0.12em', textTransform: 'uppercase',
+                        marginBottom: 20, backdropFilter: 'blur(8px)',
+                    }}>
+                        <Sparkles size={10} style={{ color: '#06b6d4' }} />
                         Algorithm Practice
                     </div>
 
-                    <h1
-                        className="text-4xl font-extrabold tracking-tight mb-3"
-                        style={{
-                            background: 'linear-gradient(135deg, var(--color-primary-text) 40%, #6366f1 100%)',
-                            WebkitBackgroundClip: 'text',
-                            WebkitTextFillColor: 'transparent',
-                            backgroundClip: 'text',
-                        }}
-                    >
+                    <h1 style={{
+                        margin: '0 0 12px',
+                        fontSize: 'clamp(1.9rem, 5vw, 2.8rem)',
+                        fontWeight: 900, letterSpacing: '-0.04em', lineHeight: 1.1,
+                        color: '#ffffff',
+                    }}>
                         Practice Problems
                     </h1>
-                    <p className="text-sm mb-6" style={{ color: 'var(--color-muted-text)' }}>
+
+                    <p style={{
+                        margin: '0 auto 26px',
+                        fontSize: '0.93rem',
+                        color: 'rgba(255,255,255,0.38)',
+                        lineHeight: 1.7, maxWidth: 420,
+                    }}>
                         Master data structures and algorithms — one problem at a time.
                     </p>
 
                     {/* Stat chips */}
-                    <div className="flex flex-wrap items-center gap-3">
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, flexWrap: 'wrap' }}>
                         {[
-                            { icon: <BookOpen size={13} />, label: `${loading ? '—' : totalProblems} Problems` },
-                            { icon: <Target    size={13} />, label: `${loading ? '—' : topics.length} Topics`   },
+                            { icon: <BookOpen size={13} />, label: `${loading ? '…' : totalProblems} Problems` },
+                            { icon: <Target    size={13} />, label: `${loading ? '…' : topics.length} Topics`   },
+                            { icon: <Zap      size={13} />, label: '6-Level Ladder' },
                         ].map(({ icon, label }) => (
-                            <div key={label}
-                                className="inline-flex items-center gap-2 px-4 py-2 rounded-full text-sm font-semibold transition-transform hover:-translate-y-0.5"
-                                style={{ background: 'var(--color-surface-hover)', border: '1px solid var(--color-border)', color: 'var(--color-primary-text)' }}>
-                                {icon}{label}
+                            <div key={label} style={{
+                                display: 'inline-flex', alignItems: 'center', gap: 6,
+                                padding: '6px 14px', borderRadius: 999,
+                                background: 'rgba(255,255,255,0.055)',
+                                border: '1px solid rgba(255,255,255,0.09)',
+                                fontSize: '0.76rem', fontWeight: 600,
+                                color: 'rgba(255,255,255,0.6)',
+                                backdropFilter: 'blur(8px)',
+                            }}>
+                                <span style={{ color: 'rgba(255,255,255,0.35)' }}>{icon}</span>
+                                {label}
                             </div>
                         ))}
                     </div>

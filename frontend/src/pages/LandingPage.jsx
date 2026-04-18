@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { ChevronRight, Layers, Users, Briefcase, Code, Terminal, Globe, ArrowUpRight, CheckCircle2, Zap, MessageSquare, Brain, Cpu, GitBranch } from 'lucide-react';
+import { useTheme } from '../context/ThemeContext';
 
 // ── Animated Typing Terminal ─────────────────────────────────────────────────
 const CODE_SNIPPETS = [
@@ -1294,6 +1295,7 @@ function LaddersCard() {
 }
 
 export default function LandingPage({ onStart, onExplore }) {
+    const { isDark } = useTheme();
     return (
         <div className="overflow-y-auto h-full text-primary-text scroll-smooth bg-app-bg">
             {/* Background Blobs */}
@@ -1594,16 +1596,16 @@ export default function LandingPage({ onStart, onExplore }) {
 
 
             {/* HOW IT WORKS - REDESIGNED */}
-            <section className="py-32 relative overflow-hidden bg-[#0A0A15]">
+            <section className={`py-32 relative overflow-hidden ${isDark ? 'bg-[#0A0A15]' : 'bg-slate-50'}`}>
                 {/* Background glow effects */}
                 <div className="absolute inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-[0.03] mix-blend-overlay"></div>
-                <div className="absolute top-0 right-1/4 w-[500px] h-[500px] bg-indigo-600/20 rounded-full blur-[120px] pointer-events-none"></div>
-                <div className="absolute bottom-0 left-1/4 w-[600px] h-[600px] bg-purple-600/10 rounded-full blur-[150px] pointer-events-none"></div>
+                <div className={`absolute top-0 right-1/4 w-[500px] h-[500px] rounded-full blur-[120px] pointer-events-none ${isDark ? 'bg-indigo-600/20' : 'bg-indigo-400/10'}`}></div>
+                <div className={`absolute bottom-0 left-1/4 w-[600px] h-[600px] rounded-full blur-[150px] pointer-events-none ${isDark ? 'bg-purple-600/10' : 'bg-purple-400/10'}`}></div>
 
                 <div className="max-w-7xl mx-auto px-4 relative z-10">
                     <div className="text-center mb-24">
-                        <h2 className="text-4xl md:text-5xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-white via-indigo-100 to-indigo-300 mb-6 tracking-tight">Your Path to Mastery</h2>
-                        <p className="text-neutral-400 text-lg max-w-2xl mx-auto leading-relaxed">
+                        <h2 className={`text-4xl md:text-5xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r mb-6 tracking-tight ${isDark ? 'from-white via-indigo-100 to-indigo-300' : 'from-gray-900 via-indigo-800 to-indigo-600'}`}>Your Path to Mastery</h2>
+                        <p className={`text-lg max-w-2xl mx-auto leading-relaxed ${isDark ? 'text-neutral-400' : 'text-neutral-600'}`}>
                             A structured, scientifically-backed workflow designed to take you from novice to expert through consistent practice and AI-driven feedback.
                         </p>
                     </div>
@@ -1633,9 +1635,13 @@ export default function LandingPage({ onStart, onExplore }) {
                             ].map((item, i) => (
                                 <div key={i} className={`relative group w-full max-w-[300px] md:w-[280px] p-8 md:p-10 rounded-[2.5rem] transition-all duration-700 hover:scale-[1.15] hover:z-50 ${item.anim} ${item.offset} backdrop-blur-2xl`}
                                     style={{
-                                        background: 'linear-gradient(145deg, rgba(30,30,50,0.6) 0%, rgba(10,10,20,0.9) 100%)',
-                                        border: `1px solid ${item.color}50`,
-                                        boxShadow: `0 30px 60px -20px rgba(0,0,0,0.8), inset 0 0 20px ${item.color}15`
+                                        background: isDark
+                                            ? 'linear-gradient(145deg, rgba(30,30,50,0.6) 0%, rgba(10,10,20,0.9) 100%)'
+                                            : 'linear-gradient(145deg, rgba(255,255,255,0.9) 0%, rgba(241,245,249,0.95) 100%)',
+                                        border: `1px solid ${item.color}${isDark ? '50' : '30'}`,
+                                        boxShadow: isDark
+                                            ? `0 30px 60px -20px rgba(0,0,0,0.8), inset 0 0 20px ${item.color}15`
+                                            : `0 20px 40px -15px rgba(0,0,0,0.1), inset 0 0 20px ${item.color}08`
                                     }}>
 
                                     {/* Intense Hover Aura */}
@@ -1643,15 +1649,15 @@ export default function LandingPage({ onStart, onExplore }) {
                                     <div className="absolute -inset-[2px] rounded-[2.6rem] opacity-0 group-hover:opacity-100 transition-opacity duration-1000 -z-10 blur-xl block" style={{ background: `linear-gradient(45deg, ${item.color}, transparent, ${item.color})`, animation: 'spinSlow 10s linear infinite' }}></div>
 
                                     {/* Number Badge */}
-                                    <div className="absolute -top-6 -right-6 w-16 h-16 rounded-full flex flex-col items-center justify-center font-black text-xl text-white shadow-2xl border-4 border-[#0A0A15] group-hover:rotate-[360deg] transition-transform duration-[1.5s] ease-in-out"
-                                        style={{ background: `linear-gradient(135deg, ${item.color}, #000)`, boxShadow: `0 10px 40px -5px ${item.color}` }}>
+                                    <div className={`absolute -top-6 -right-6 w-16 h-16 rounded-full flex flex-col items-center justify-center font-black text-xl text-white shadow-2xl border-4 group-hover:rotate-[360deg] transition-transform duration-[1.5s] ease-in-out ${isDark ? 'border-[#0A0A15]' : 'border-slate-50'}`}
+                                        style={{ background: `linear-gradient(135deg, ${item.color}, ${isDark ? '#000' : '#334155'})`, boxShadow: `0 10px 40px -5px ${item.color}` }}>
                                         {item.step}
                                     </div>
 
                                     {/* Icon & Content */}
                                     <div className="text-6xl mb-6 group-hover:-translate-y-4 group-hover:scale-125 transition-transform duration-500 drop-shadow-[0_10px_20px_rgba(0,0,0,0.5)]">{item.icon}</div>
-                                    <h3 className="text-2xl font-black text-white mb-3 tracking-tighter" style={{ textShadow: `0 0 20px ${item.color}40` }}>{item.title}</h3>
-                                    <p className="text-sm text-neutral-300 leading-relaxed font-medium group-hover:text-white transition-colors">{item.desc}</p>
+                                    <h3 className={`text-2xl font-black mb-3 tracking-tighter ${isDark ? 'text-white' : 'text-gray-900'}`} style={{ textShadow: isDark ? `0 0 20px ${item.color}40` : 'none' }}>{item.title}</h3>
+                                    <p className={`text-sm leading-relaxed font-medium transition-colors ${isDark ? 'text-neutral-300 group-hover:text-white' : 'text-neutral-600 group-hover:text-gray-900'}`}>{item.desc}</p>
                                 </div>
                             ))}
                         </div>
@@ -1660,33 +1666,32 @@ export default function LandingPage({ onStart, onExplore }) {
             </section>
 
             {/* "Start Building" Footer Banner - REDESIGNED */}
-            <section className="py-32 relative overflow-hidden flex items-center justify-center border-t border-white/5"
-                style={{ background: 'radial-gradient(ellipse at bottom, #1B1B3A 0%, #05050A 100%)' }}>
+            <section className={`py-32 relative overflow-hidden flex items-center justify-center border-t ${isDark ? 'border-white/5' : 'border-gray-200'}`}
+                style={{ background: isDark
+                    ? 'radial-gradient(ellipse at bottom, #1B1B3A 0%, #05050A 100%)'
+                    : 'radial-gradient(ellipse at bottom, #eef2ff 0%, #f8fafc 100%)'
+                }}>
                 <div className="absolute inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-[0.03]"></div>
 
                 {/* Glowing Grid Background */}
-                <div className="absolute inset-0 bg-[linear-gradient(rgba(255,255,255,0.03)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.03)_1px,transparent_1px)] bg-[size:40px_40px] [mask-image:radial-gradient(ellipse_60%_60%_at_50%_50%,#000_20%,transparent_100%)] pointer-events-none"></div>
+                <div className={`absolute inset-0 bg-[size:40px_40px] [mask-image:radial-gradient(ellipse_60%_60%_at_50%_50%,#000_20%,transparent_100%)] pointer-events-none ${isDark ? 'bg-[linear-gradient(rgba(255,255,255,0.03)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.03)_1px,transparent_1px)]' : 'bg-[linear-gradient(rgba(0,0,0,0.04)_1px,transparent_1px),linear-gradient(90deg,rgba(0,0,0,0.04)_1px,transparent_1px)]'}`}></div>
 
                 <div className="max-w-4xl mx-auto px-6 relative z-10 text-center flex flex-col items-center">
-                    <div className="inline-flex items-center gap-3 px-5 py-2 rounded-full bg-white/5 border border-white/10 backdrop-blur-md mb-8 hover:bg-white/10 transition-colors">
-                        <span className="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-pulse shadow-[0_0_10px_#34d399]"></span>
-                        <span className="text-neutral-300 text-xs font-bold tracking-[0.15em] uppercase">No credit card required</span>
-                    </div>
 
-                    <h2 className="text-5xl md:text-7xl font-black text-white mb-10 tracking-tighter leading-[1.1] drop-shadow-2xl">
+                    <h2 className={`text-5xl md:text-7xl font-black mb-10 tracking-tighter leading-[1.1] ${isDark ? 'text-white drop-shadow-2xl' : 'text-gray-900'}`}>
                         Ready to level up? <br />
-                        <span className="text-transparent bg-clip-text bg-gradient-to-r from-indigo-400 via-purple-400 to-cyan-400">Start coding today.</span>
+                        <span className={`text-transparent bg-clip-text bg-gradient-to-r ${isDark ? 'from-indigo-400 via-purple-400 to-cyan-400' : 'from-indigo-600 via-purple-600 to-cyan-600'}`}>Start coding today.</span>
                     </h2>
 
-                    <button onClick={onStart} className="group relative inline-flex items-center justify-center px-10 py-5 bg-white text-black text-xl md:text-2xl font-bold rounded-full overflow-hidden transition-all duration-300 hover:scale-105 shadow-[0_0_40px_rgba(255,255,255,0.15)] hover:shadow-[0_0_60px_rgba(99,102,241,0.4)]">
-                        <div className="absolute inset-0 bg-gradient-to-r from-indigo-100 via-white to-purple-100 opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
+                    <button onClick={onStart} className={`group relative inline-flex items-center justify-center px-10 py-5 text-xl md:text-2xl font-bold rounded-full overflow-hidden transition-all duration-300 hover:scale-105 ${isDark ? 'bg-white text-black shadow-[0_0_40px_rgba(255,255,255,0.15)] hover:shadow-[0_0_60px_rgba(99,102,241,0.4)]' : 'bg-indigo-600 text-white shadow-[0_0_40px_rgba(99,102,241,0.2)] hover:shadow-[0_0_60px_rgba(99,102,241,0.4)]'}`}>
+                        <div className={`absolute inset-0 bg-gradient-to-r opacity-0 group-hover:opacity-100 transition-opacity duration-500 ${isDark ? 'from-indigo-100 via-white to-purple-100' : 'from-indigo-500 via-indigo-600 to-purple-600'}`}></div>
                         <span className="relative z-10 flex items-center gap-3">
                             Start building for free
                             <svg className="w-6 h-6 group-hover:translate-x-1 group-hover:-translate-y-1 transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17 8l4 4m0 0l-4 4m4-4H3"></path></svg>
                         </span>
                     </button>
 
-                    <p className="mt-8 text-neutral-500 text-sm font-medium">Join thousands of developers mastering algorithms.</p>
+                    <p className={`mt-8 text-sm font-medium ${isDark ? 'text-neutral-500' : 'text-neutral-500'}`}>Join thousands of developers mastering algorithms.</p>
                 </div>
             </section>
         </div>

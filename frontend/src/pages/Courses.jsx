@@ -5,7 +5,7 @@ import {
     Database, FileText, Search, Zap, Globe, Code2,
     Cpu, GitBranch, FlaskConical, Video, Image, ScanText,
     Hash, Network, ServerCog, Sparkles, Home, ArrowLeft,
-    Clock, Star, Lock
+    Clock, Star, Lock, GraduationCap, Filter, X, ScanEye, MousePointer2
 } from 'lucide-react';
 
 // ─────────────────────────────────────────────
@@ -139,9 +139,106 @@ const COURSE_TREE = [
                                     },
                                 ],
                             },
-                            { id: 'rag-ingestion-dit', label: 'DIT', description: 'Document Image Transformer for visual document understanding.', icon: Image, isLeaf: true, duration: '30m', level: 'Intermediate' },
+                            {
+                                id: 'rag-ingestion-dit',
+                                label: 'DIT',
+                                description: 'Document Image Transformer for visual document understanding.',
+                                icon: Image,
+                                isLeaf: false,
+                                duration: '6h',
+                                level: 'Intermediate',
+                                children: [
+                                    { id: 'dit-module-0', label: 'Module 0', description: 'Introduction to Document Image Transformers.', icon: BookOpen, isLeaf: true, duration: '30m', level: 'Beginner' },
+                                    { id: 'dit-module-1', label: 'Module 1', description: 'Vision Transformer (ViT) basics for document images.', icon: Layers, isLeaf: true, duration: '30m', level: 'Beginner' },
+                                    { id: 'dit-module-2', label: 'Module 2', description: 'Patch embedding and positional encoding.', icon: Search, isLeaf: true, duration: '30m', level: 'Intermediate' },
+                                    { id: 'dit-module-3', label: 'Module 3', description: 'Self-attention mechanisms on document patches.', icon: Database, isLeaf: true, duration: '30m', level: 'Intermediate' },
+                                    { id: 'dit-module-4', label: 'Module 4', description: 'Multi-modal fusion: Text and visual features.', icon: FileText, isLeaf: true, duration: '30m', level: 'Advanced' },
+                                    { id: 'dit-module-5', label: 'Module 5', description: 'Pre-training objectives for DiT.', icon: Brain, isLeaf: true, duration: '30m', level: 'Advanced' },
+                                    { id: 'dit-module-6', label: 'Module 6', description: 'Fine-tuning DiT for downstream tasks.', icon: Zap, isLeaf: true, duration: '30m', level: 'Advanced' },
+                                    { id: 'dit-module-7', label: 'Module 7', description: 'Document layout analysis with DiT.', icon: Globe, isLeaf: true, duration: '30m', level: 'Advanced' },
+                                    { id: 'dit-module-8', label: 'Module 8', description: 'Information extraction using DiT.', icon: Code2, isLeaf: true, duration: '30m', level: 'Advanced' },
+                                    { id: 'dit-module-9', label: 'Module 9', description: 'Handling varying document resolutions.', icon: Cpu, isLeaf: true, duration: '30m', level: 'Expert' },
+                                    { id: 'dit-module-10', label: 'Module 10', description: 'Optimizing DiT inference speed.', icon: Network, isLeaf: true, duration: '30m', level: 'Expert' },
+                                    { id: 'dit-module-11', label: 'Module 11', description: 'Real-world case studies and deployment.', icon: GitBranch, isLeaf: true, duration: '30m', level: 'Expert' },
+                                ]
+                            },
                             { id: 'rag-ingestion-doc', label: 'DOC', description: 'Document parsing and structured extraction pipelines.', icon: FileText, isLeaf: true, duration: '30m', level: 'Intermediate' },
                             { id: 'rag-ingestion-msp', label: 'MSP', description: 'Maximal Sequential Phrases for semantic chunking.', icon: Hash, isLeaf: true, duration: '30m', level: 'Intermediate' },
+                            {
+                                id: 'rag-ingestion-docformer',
+                                label: 'Docformer',
+                                description: 'Multi-modal transformer that fuses text, layout, and image features for end-to-end document understanding.',
+                                icon: ScanEye,
+                                isLeaf: false,
+                                duration: '5h',
+                                level: 'Advanced',
+                                children: [
+                                    { id: 'docformer-module-1', label: 'Module 1', description: 'Module 1 content.', icon: BookOpen, isLeaf: true, duration: '30m', level: 'Intermediate' },
+                                    { id: 'docformer-module-2', label: 'Module 2', description: 'Module 2 content.', icon: Layers, isLeaf: true, duration: '30m', level: 'Intermediate' },
+                                    { id: 'docformer-module-3', label: 'Module 3', description: 'Module 3 content.', icon: Search, isLeaf: true, duration: '30m', level: 'Intermediate' },
+                                    { id: 'docformer-module-4', label: 'Module 4', description: 'Module 4 content.', icon: Database, isLeaf: true, duration: '30m', level: 'Intermediate' },
+                                    { id: 'docformer-module-5', label: 'Module 5', description: 'Module 5 content.', icon: FileText, isLeaf: true, duration: '30m', level: 'Advanced' },
+                                    { id: 'docformer-module-6', label: 'Module 6', description: 'Module 6 content.', icon: Brain, isLeaf: true, duration: '30m', level: 'Advanced' },
+                                    { id: 'docformer-module-7', label: 'Module 7', description: 'Module 7 content.', icon: Zap, isLeaf: true, duration: '30m', level: 'Advanced' },
+                                    { id: 'docformer-module-8', label: 'Module 8', description: 'Module 8 content.', icon: Globe, isLeaf: true, duration: '30m', level: 'Advanced' },
+                                    { id: 'docformer-module-9', label: 'Module 9', description: 'Module 9 content.', icon: Code2, isLeaf: true, duration: '30m', level: 'Advanced' },
+                                    { id: 'docformer-module-10', label: 'Module 10', description: 'Module 10 content.', icon: Cpu, isLeaf: true, duration: '30m', level: 'Advanced' },
+                                ]
+                            },
+                            {
+                                id: 'rag-ingestion-infonce',
+                                label: 'InfoNCE',
+                                description: 'Noise-Contrastive Estimation — the foundational loss function for modern contrastive learning and embedding models.',
+                                icon: Sparkles,
+                                isLeaf: false,
+                                duration: '6h',
+                                level: 'Advanced',
+                                children: [
+                                    { id: 'infonce-module-0', label: 'Module 0', description: 'Module 0 content.', icon: BookOpen, isLeaf: true, duration: '30m', level: 'Intermediate' },
+                                    { id: 'infonce-module-1', label: 'Module 1', description: 'Module 1 content.', icon: Layers, isLeaf: true, duration: '30m', level: 'Intermediate' },
+                                    { id: 'infonce-module-2', label: 'Module 2', description: 'Module 2 content.', icon: Search, isLeaf: true, duration: '30m', level: 'Intermediate' },
+                                    { id: 'infonce-module-3', label: 'Module 3', description: 'Module 3 content.', icon: Database, isLeaf: true, duration: '30m', level: 'Intermediate' },
+                                    { id: 'infonce-module-4', label: 'Module 4', description: 'Module 4 content.', icon: FileText, isLeaf: true, duration: '30m', level: 'Intermediate' },
+                                    { id: 'infonce-module-5', label: 'Module 5', description: 'Module 5 content.', icon: Brain, isLeaf: true, duration: '30m', level: 'Intermediate' },
+                                    { id: 'infonce-module-6', label: 'Module 6', description: 'Module 6 content.', icon: Zap, isLeaf: true, duration: '30m', level: 'Intermediate' },
+                                    { id: 'infonce-module-7', label: 'Module 7', description: 'Module 7 content.', icon: Globe, isLeaf: true, duration: '30m', level: 'Advanced' },
+                                    { id: 'infonce-module-8', label: 'Module 8', description: 'Module 8 content.', icon: Code2, isLeaf: true, duration: '30m', level: 'Advanced' },
+                                    { id: 'infonce-module-9', label: 'Module 9', description: 'Module 9 content.', icon: Cpu, isLeaf: true, duration: '30m', level: 'Advanced' },
+                                    { id: 'infonce-module-10', label: 'Module 10', description: 'Module 10 content.', icon: Network, isLeaf: true, duration: '30m', level: 'Advanced' },
+                                    { id: 'infonce-module-11', label: 'Module 11', description: 'Module 11 content.', icon: GitBranch, isLeaf: true, duration: '30m', level: 'Advanced' },
+                                ]
+                            },
+                            {
+                                id: 'rag-ingestion-mfp',
+                                label: 'MFP',
+                                description: 'Multi-Feature Parsing — advanced pipelines for extracting and integrating diverse document structure features.',
+                                icon: Layers,
+                                isLeaf: false,
+                                duration: '2h',
+                                level: 'Advanced',
+                                children: [
+                                    { id: 'mfp-module-0', label: 'Module 0', description: 'Module 0 content.', icon: BookOpen, isLeaf: true, duration: '30m', level: 'Intermediate' },
+                                    { id: 'mfp-module-1', label: 'Module 1', description: 'Module 1 content.', icon: Layers, isLeaf: true, duration: '30m', level: 'Intermediate' },
+                                    { id: 'mfp-module-2', label: 'Module 2', description: 'Module 2 content.', icon: Search, isLeaf: true, duration: '30m', level: 'Intermediate' },
+                                    { id: 'mfp-module-3', label: 'Module 3', description: 'Module 3 content.', icon: Database, isLeaf: true, duration: '30m', level: 'Intermediate' },
+                                    { id: 'mfp-module-4', label: 'Module 4', description: 'Module 4 content.', icon: FileText, isLeaf: true, duration: '30m', level: 'Advanced' },
+                                ]
+                            },
+                            {
+                                id: 'rag-ingestion-vmi',
+                                label: 'VMI',
+                                description: 'Vision Mamba — state-of-the-art state space models (SSMs) for efficient, high-resolution visual feature extraction.',
+                                icon: Zap,
+                                isLeaf: false,
+                                duration: '2h',
+                                level: 'Expert',
+                                children: [
+                                    { id: 'vmi-module-0', label: 'Module 0', description: 'Module 0 content.', icon: BookOpen, isLeaf: true, duration: '30m', level: 'Advanced' },
+                                    { id: 'vmi-module-1', label: 'Module 1', description: 'Module 1 content.', icon: Layers, isLeaf: true, duration: '30m', level: 'Advanced' },
+                                    { id: 'vmi-module-2', label: 'Module 2', description: 'Module 2 content.', icon: Search, isLeaf: true, duration: '30m', level: 'Advanced' },
+                                    { id: 'vmi-module-3', label: 'Module 3', description: 'Module 3 content.', icon: Database, isLeaf: true, duration: '30m', level: 'Expert' },
+                                ]
+                            },
                         ],
                     },
                     {
@@ -184,19 +281,47 @@ const COURSE_TREE = [
                 tag: 'Deep Dive',
                 tagColor: '#06b6d4',
                 children: [
-                    { id: 'mrag-module-1', label: 'Introduction', description: 'Learn the fundamentals of multimodal AI and how it extends traditional RAG.', icon: BookOpen, isLeaf: true, duration: '20m', level: 'Beginner' },
-                    { id: 'mrag-module-2', label: 'Embedding Spaces', description: 'Deep dive into models that bridge the gap between vision and language.', icon: Search, isLeaf: true, duration: '45m', level: 'Intermediate' },
-                    { id: 'mrag-module-3', label: 'Pretraining Signals to Vision-Language Models', description: 'Explore how images and text are mapped into shared semantic spaces.', icon: Layers, isLeaf: true, duration: '35m', level: 'Intermediate' },
-                    { id: 'mrag-module-4', label: 'Vision-Language Models', description: 'Understand the diverse signals used to train next-gen visual models.', icon: FlaskConical, isLeaf: true, duration: '40m', level: 'Advanced' },
-                    { id: 'mrag-module-5', label: 'Storage, Chunking, metadata&retrival', description: 'Master the core architecture of Multimodal Retrieval-Augmented Generation.', icon: Database, isLeaf: true, duration: '50m', level: 'Advanced' },
-                    { id: 'mrag-module-6', label: 'MRAG', description: 'Introduction to autonomous agents, reasoning loops, and tool-use.', icon: Cpu, isLeaf: true, duration: '25m', level: 'Beginner' },
-                    { id: 'mrag-module-7', label: 'Evaluation & Debugging in Multimodal RAG', description: 'Design and implement complex behaviors for individual AI agents.', icon: Zap, isLeaf: true, duration: '45m', level: 'Intermediate' },
-                    { id: 'mrag-module-8', label: 'Efficient Fine-Tuning & Preference Alignment', description: 'Orchestrate multiple agents to solve complex, distributed tasks.', icon: GitBranch, isLeaf: true, duration: '60m', level: 'Advanced' },
-                    { id: 'mrag-module-9', label: 'Chatbots, AI Agents, and Multimodal Agents', description: 'Combine the power of RAG with the autonomy of AI agents.', icon: Sparkles, isLeaf: true, duration: '55m', level: 'Advanced' },
-                    { id: 'mrag-module-10', label: 'Single-Agent Paradigms Beyond ReAct', description: 'Strategies for measuring performance and debugging multimodal pipelines.', icon: FlaskConical, isLeaf: true, duration: '40m', level: 'Intermediate' },
-                    { id: 'mrag-module-11', label: 'Agentic Retrieval-Augmented Generation', description: 'Techniques for adapting large models to specific multimodal tasks efficiently.', icon: Cpu, isLeaf: true, duration: '50m', level: 'Advanced' },
-                    { id: 'mrag-module-12', label: 'Multi-Agent Systems in Multimodal AI', description: 'Implementing safe and reliable memory systems for long-running agents.', icon: Lock, isLeaf: true, duration: '30m', level: 'Intermediate' },
-                    { id: 'mrag-module-13', label: 'Memory, Safety, Evaluation & Optimization', description: 'Advanced integration patterns and real-world deployment strategies.', icon: Sparkles, isLeaf: true, duration: '60m', level: 'Advanced' },
+                    {
+                        id: 'mrag-agentic-ai',
+                        label: 'Agentic AI',
+                        description: 'Build agentic multimodal RAG workflows with tool-use, planning, and iterative reasoning.',
+                        icon: Cpu,
+                        isLeaf: false,
+                        duration: '4h',
+                        level: 'Intermediate',
+                        children: [
+                            { id: 'mrag-agentic-ai-module-1', label: 'Module 1', description: 'Data formats and representations for agentic pipelines.', icon: FileText, isLeaf: true, duration: '30m', level: 'Beginner' },
+                            { id: 'mrag-agentic-ai-module-2', label: 'Module 2', description: 'JSON schema design and validation for structured outputs.', icon: Layers, isLeaf: true, duration: '30m', level: 'Beginner' },
+                            { id: 'mrag-agentic-ai-module-3', label: 'Module 3', description: 'XML + Markdown patterns for robust tool I/O.', icon: ScanText, isLeaf: true, duration: '30m', level: 'Intermediate' },
+                            { id: 'mrag-agentic-ai-module-4', label: 'Module 4', description: 'BAML and Pydantic: typed, reliable LLM outputs.', icon: Brain, isLeaf: true, duration: '30m', level: 'Intermediate' },
+                            { id: 'mrag-agentic-ai-module-5', label: 'Module 5', description: 'Jinja2 templating for prompts and structured generation.', icon: Sparkles, isLeaf: true, duration: '30m', level: 'Intermediate' },
+                            { id: 'mrag-agentic-ai-module-6', label: 'Module 6', description: 'CI/CD and deployment basics for agentic systems.', icon: ServerCog, isLeaf: true, duration: '30m', level: 'Advanced' },
+                        ],
+                    },
+                    {
+                        id: 'mrag-multiagent',
+                        label: 'Multiagent',
+                        description: 'Design multi-agent multimodal systems for collaboration, routing, and orchestration.',
+                        icon: GitBranch,
+                        isLeaf: false,
+                        duration: '6h',
+                        level: 'Intermediate',
+                        children: [
+                            { id: 'mrag-multiagent-module-0', label: 'Module 0', description: 'Module 0 content.', icon: BookOpen, isLeaf: true, duration: '30m', level: 'Beginner' },
+                            { id: 'mrag-multiagent-module-1', label: 'Module 1', description: 'Module 1 content.', icon: Layers, isLeaf: true, duration: '30m', level: 'Beginner' },
+                            { id: 'mrag-multiagent-module-2', label: 'Module 2', description: 'Module 2 content.', icon: Search, isLeaf: true, duration: '30m', level: 'Intermediate' },
+                            { id: 'mrag-multiagent-module-3', label: 'Module 3', description: 'Module 3 content.', icon: Database, isLeaf: true, duration: '30m', level: 'Intermediate' },
+                            { id: 'mrag-multiagent-module-4', label: 'Module 4', description: 'Module 4 content.', icon: FileText, isLeaf: true, duration: '30m', level: 'Intermediate' },
+                            { id: 'mrag-multiagent-module-5', label: 'Module 5', description: 'Module 5 content.', icon: Brain, isLeaf: true, duration: '30m', level: 'Intermediate' },
+                            { id: 'mrag-multiagent-module-6', label: 'Module 6', description: 'Module 6 content.', icon: Zap, isLeaf: true, duration: '30m', level: 'Advanced' },
+                            { id: 'mrag-multiagent-module-7', label: 'Module 7', description: 'Module 7 content.', icon: Globe, isLeaf: true, duration: '30m', level: 'Advanced' },
+                            { id: 'mrag-multiagent-module-9', label: 'Module 9', description: 'Module 9 content.', icon: Cpu, isLeaf: true, duration: '30m', level: 'Advanced' },
+                            { id: 'mrag-multiagent-module-10', label: 'Module 10', description: 'Module 10 content.', icon: Network, isLeaf: true, duration: '30m', level: 'Advanced' },
+                            { id: 'mrag-multiagent-module-11', label: 'Module 11', description: 'Module 11 content.', icon: GitBranch, isLeaf: true, duration: '30m', level: 'Advanced' },
+                            { id: 'mrag-multiagent-module-12', label: 'Module 12', description: 'Module 12 content.', icon: Lock, isLeaf: true, duration: '30m', level: 'Advanced' },
+                            { id: 'mrag-multiagent-module-13', label: 'Module 13', description: 'Module 13 content.', icon: Sparkles, isLeaf: true, duration: '30m', level: 'Advanced' },
+                        ],
+                    },
                     {
                         id: 'mrag-evaluation',
                         label: 'Evaluation',
@@ -277,9 +402,53 @@ const COURSE_TREE = [
                 lineGradient: 'from-sky-500 via-cyan-500 to-teal-500',
                 tag: 'Core',
                 tagColor: '#0ea5e9',
-                isLeaf: true,
+                isLeaf: false,
                 duration: '8h',
                 level: 'Beginner',
+                children: [
+                    { id: 'module_1_1', label: 'Module 1.1', description: 'Statistics & Probability Module 1.1', icon: BookOpen, isLeaf: true, duration: '30m', level: 'Beginner' },
+                    { id: 'module_1_2', label: 'Module 1.2', description: 'Statistics & Probability Module 1.2', icon: BookOpen, isLeaf: true, duration: '30m', level: 'Beginner' },
+                    { id: 'module_1_3', label: 'Module 1.3', description: 'Statistics & Probability Module 1.3', icon: BookOpen, isLeaf: true, duration: '30m', level: 'Beginner' },
+                    { id: 'module_1_4', label: 'Module 1.4', description: 'Statistics & Probability Module 1.4', icon: BookOpen, isLeaf: true, duration: '30m', level: 'Beginner' },
+                    { id: 'module_1_5', label: 'Module 1.5', description: 'Statistics & Probability Module 1.5', icon: BookOpen, isLeaf: true, duration: '30m', level: 'Beginner' },
+                    { id: 'module_1_6', label: 'Module 1.6', description: 'Statistics & Probability Module 1.6', icon: BookOpen, isLeaf: true, duration: '30m', level: 'Beginner' },
+                    { id: 'module_1_7', label: 'Module 1.7', description: 'Statistics & Probability Module 1.7', icon: BookOpen, isLeaf: true, duration: '30m', level: 'Beginner' },
+                    { id: 'module_2_1', label: 'Module 2.1', description: 'Statistics & Probability Module 2.1', icon: BookOpen, isLeaf: true, duration: '30m', level: 'Beginner' },
+                    { id: 'module_2_2', label: 'Module 2.2', description: 'Statistics & Probability Module 2.2', icon: BookOpen, isLeaf: true, duration: '30m', level: 'Beginner' },
+                    { id: 'module_2_3', label: 'Module 2.3', description: 'Statistics & Probability Module 2.3', icon: BookOpen, isLeaf: true, duration: '30m', level: 'Beginner' },
+                    { id: 'module_2_4', label: 'Module 2.4', description: 'Statistics & Probability Module 2.4', icon: BookOpen, isLeaf: true, duration: '30m', level: 'Beginner' },
+                    { id: 'module_2_5', label: 'Module 2.5', description: 'Statistics & Probability Module 2.5', icon: BookOpen, isLeaf: true, duration: '30m', level: 'Beginner' },
+                    { id: 'module_2_6', label: 'Module 2.6', description: 'Statistics & Probability Module 2.6', icon: BookOpen, isLeaf: true, duration: '30m', level: 'Beginner' },
+                    { id: 'module_2_7', label: 'Module 2.7', description: 'Statistics & Probability Module 2.7', icon: BookOpen, isLeaf: true, duration: '30m', level: 'Beginner' },
+                    { id: 'module_3_1', label: 'Module 3.1', description: 'Statistics & Probability Module 3.1', icon: BookOpen, isLeaf: true, duration: '30m', level: 'Beginner' },
+                    { id: 'module_3_2', label: 'Module 3.2', description: 'Statistics & Probability Module 3.2', icon: BookOpen, isLeaf: true, duration: '30m', level: 'Beginner' },
+                    { id: 'module_3_3', label: 'Module 3.3', description: 'Statistics & Probability Module 3.3', icon: BookOpen, isLeaf: true, duration: '30m', level: 'Beginner' },
+                    { id: 'module_3_4', label: 'Module 3.4', description: 'Statistics & Probability Module 3.4', icon: BookOpen, isLeaf: true, duration: '30m', level: 'Beginner' },
+                    { id: 'module_3_5', label: 'Module 3.5', description: 'Statistics & Probability Module 3.5', icon: BookOpen, isLeaf: true, duration: '30m', level: 'Beginner' },
+                    { id: 'module_3_6', label: 'Module 3.6', description: 'Statistics & Probability Module 3.6', icon: BookOpen, isLeaf: true, duration: '30m', level: 'Beginner' },
+                    { id: 'module_3_7', label: 'Module 3.7', description: 'Statistics & Probability Module 3.7', icon: BookOpen, isLeaf: true, duration: '30m', level: 'Beginner' },
+                    { id: 'module_3_8', label: 'Module 3.8', description: 'Statistics & Probability Module 3.8', icon: BookOpen, isLeaf: true, duration: '30m', level: 'Beginner' },
+                    { id: 'module_4_1', label: 'Module 4.1', description: 'Statistics & Probability Module 4.1', icon: BookOpen, isLeaf: true, duration: '30m', level: 'Beginner' },
+                    { id: 'module_4_2', label: 'Module 4.2', description: 'Statistics & Probability Module 4.2', icon: BookOpen, isLeaf: true, duration: '30m', level: 'Beginner' },
+                    { id: 'module_4_3', label: 'Module 4.3', description: 'Statistics & Probability Module 4.3', icon: BookOpen, isLeaf: true, duration: '30m', level: 'Beginner' },
+                    { id: 'module_4_4', label: 'Module 4.4', description: 'Statistics & Probability Module 4.4', icon: BookOpen, isLeaf: true, duration: '30m', level: 'Beginner' },
+                    { id: 'module_4_5', label: 'Module 4.5', description: 'Statistics & Probability Module 4.5', icon: BookOpen, isLeaf: true, duration: '30m', level: 'Beginner' },
+                    { id: 'module_4_6', label: 'Module 4.6', description: 'Statistics & Probability Module 4.6', icon: BookOpen, isLeaf: true, duration: '30m', level: 'Beginner' },
+                    { id: 'module_4_7', label: 'Module 4.7', description: 'Statistics & Probability Module 4.7', icon: BookOpen, isLeaf: true, duration: '30m', level: 'Beginner' },
+                    { id: 'module_4_8', label: 'Module 4.8', description: 'Statistics & Probability Module 4.8', icon: BookOpen, isLeaf: true, duration: '30m', level: 'Beginner' },
+                    { id: 'module_5_1', label: 'Module 5.1', description: 'Statistics & Probability Module 5.1', icon: BookOpen, isLeaf: true, duration: '30m', level: 'Beginner' },
+                    { id: 'module_5_2', label: 'Module 5.2', description: 'Statistics & Probability Module 5.2', icon: BookOpen, isLeaf: true, duration: '30m', level: 'Beginner' },
+                    { id: 'module_5_3', label: 'Module 5.3', description: 'Statistics & Probability Module 5.3', icon: BookOpen, isLeaf: true, duration: '30m', level: 'Beginner' },
+                    { id: 'module_5_4', label: 'Module 5.4', description: 'Statistics & Probability Module 5.4', icon: BookOpen, isLeaf: true, duration: '30m', level: 'Beginner' },
+                    { id: 'module_5_5', label: 'Module 5.5', description: 'Statistics & Probability Module 5.5', icon: BookOpen, isLeaf: true, duration: '30m', level: 'Beginner' },
+                    { id: 'module_5_6', label: 'Module 5.6', description: 'Statistics & Probability Module 5.6', icon: BookOpen, isLeaf: true, duration: '30m', level: 'Beginner' },
+                    { id: 'module_6_1', label: 'Module 6.1', description: 'Statistics & Probability Module 6.1', icon: BookOpen, isLeaf: true, duration: '30m', level: 'Beginner' },
+                    { id: 'module_6_2', label: 'Module 6.2', description: 'Statistics & Probability Module 6.2', icon: BookOpen, isLeaf: true, duration: '30m', level: 'Beginner' },
+                    { id: 'module_6_3', label: 'Module 6.3', description: 'Statistics & Probability Module 6.3', icon: BookOpen, isLeaf: true, duration: '30m', level: 'Beginner' },
+                    { id: 'module_6_4', label: 'Module 6.4', description: 'Statistics & Probability Module 6.4', icon: BookOpen, isLeaf: true, duration: '30m', level: 'Beginner' },
+                    { id: 'module_6_5', label: 'Module 6.5', description: 'Statistics & Probability Module 6.5', icon: BookOpen, isLeaf: true, duration: '30m', level: 'Beginner' },
+                    { id: 'module_6_6', label: 'Module 6.6', description: 'Statistics & Probability Module 6.6', icon: BookOpen, isLeaf: true, duration: '30m', level: 'Beginner' },
+                ],
             },
             {
                 id: 'data-analysis',
@@ -335,19 +504,41 @@ const COURSE_TREE = [
                 tag: 'Expert',
                 tagColor: '#8b5cf6',
                 children: [
-                    { id: 'dl-preliminaries', label: 'Preliminaries', description: 'Foundational concepts and setup for deep learning workflows.', icon: BookOpen, isLeaf: true, duration: '1h', level: 'Beginner' },
-                    { id: 'dl-perceptron-ff', label: 'Perceptron Feed Forward', description: 'Perceptrons and feed-forward neural network fundamentals.', icon: Network, isLeaf: true, duration: '1h 15m', level: 'Beginner' },
-                    { id: 'dl-classification', label: 'Classification with Examples', description: 'Classification tasks, losses, and worked deep learning examples.', icon: Search, isLeaf: true, duration: '1h 30m', level: 'Intermediate' },
-                    { id: 'dl-linear-regression', label: 'Linear Regression (DL)', description: 'Linear regression framed in deep learning notation and training loops.', icon: Zap, isLeaf: true, duration: '1h', level: 'Beginner' },
-                    { id: 'dl-optimization-technique', label: 'Optimization Technique', description: 'Gradient-based optimization methods, schedules, and convergence intuition.', icon: Sparkles, isLeaf: true, duration: '1h 20m', level: 'Intermediate' },
-                    { id: 'dl-computational-performance', label: 'Computational Performance', description: 'Performance tuning, efficiency, and compute-aware model design.', icon: Cpu, isLeaf: true, duration: '1h 15m', level: 'Advanced' },
-                    { id: 'dl-cnn', label: 'CNN', description: 'Convolutional neural networks for image understanding and feature extraction.', icon: Image, isLeaf: true, duration: '1h 30m', level: 'Intermediate' },
-                    { id: 'dl-rnn', label: 'RNN', description: 'Recurrent neural networks and sequence modeling fundamentals.', icon: ScanText, isLeaf: true, duration: '1h 20m', level: 'Intermediate' },
-                    { id: 'dl-nlp', label: 'NLP', description: 'Natural language processing with deep learning models and embeddings.', icon: FileText, isLeaf: true, duration: '1h 30m', level: 'Intermediate' },
-                    { id: 'dl-attention-transformers', label: 'Attention Transformers with Examples', description: 'Attention mechanisms and transformer architectures with practical examples.', icon: Brain, isLeaf: true, duration: '1h 45m', level: 'Advanced' },
-                    { id: 'dl-gaussian-processes', label: 'Gaussian Processes', description: 'Uncertainty-aware modeling and Gaussian process intuition in ML pipelines.', icon: FlaskConical, isLeaf: true, duration: '1h 10m', level: 'Advanced' },
-                    { id: 'dl-gan', label: 'GAN', description: 'Generative adversarial networks, training dynamics, and common pitfalls.', icon: Layers, isLeaf: true, duration: '1h 30m', level: 'Advanced' },
-                    { id: 'dl-builder-guide', label: 'Builder Guide with Examples', description: 'Practical deep learning model-building patterns with end-to-end examples.', icon: Code2, isLeaf: true, duration: '1h 15m', level: 'Intermediate' },
+                    { id: 'dl-module-0-1-why-deep-learning', label: 'Module 0.1', description: 'Why Deep Learning?', icon: BookOpen, isLeaf: true, duration: '30m', level: 'Beginner' },
+                    { id: 'dl-module-0-2-tensors', label: 'Module 0.2', description: 'Tensors: the core data structure.', icon: Layers, isLeaf: true, duration: '30m', level: 'Beginner' },
+                    { id: 'dl-module-0-3-calculus-autograd', label: 'Module 0.3', description: 'Calculus + Autograd intuition.', icon: GitBranch, isLeaf: true, duration: '30m', level: 'Beginner' },
+                    { id: 'dl-module-0-4-cinematch-setup', label: 'Module 0.4', description: 'Cinematch setup and environment.', icon: ServerCog, isLeaf: true, duration: '30m', level: 'Beginner' },
+
+                    { id: 'dl-module-1-1-linear-regression', label: 'Module 1.1', description: 'Linear regression foundations.', icon: Search, isLeaf: true, duration: '30m', level: 'Beginner' },
+                    { id: 'dl-module-1-2-loss-landscapes', label: 'Module 1.2', description: 'Loss landscapes and optimization intuition.', icon: Globe, isLeaf: true, duration: '30m', level: 'Intermediate' },
+                    { id: 'dl-module-1-3-classification', label: 'Module 1.3', description: 'Classification basics and decision boundaries.', icon: ScanEye, isLeaf: true, duration: '30m', level: 'Intermediate' },
+                    { id: 'dl-module-1-4-perceptron', label: 'Module 1.4', description: 'Perceptron and early neural networks.', icon: Brain, isLeaf: true, duration: '30m', level: 'Intermediate' },
+
+                    { id: 'dl-module-2-1-mlp', label: 'Module 2.1', description: 'Multi-layer perceptrons (MLP).', icon: Network, isLeaf: true, duration: '30m', level: 'Intermediate' },
+                    { id: 'dl-module-2-2-backprop', label: 'Module 2.2', description: 'Backpropagation: how learning happens.', icon: Zap, isLeaf: true, duration: '30m', level: 'Intermediate' },
+                    { id: 'dl-module-2-3-pytorch-builder', label: 'Module 2.3', description: 'Build models with PyTorch.', icon: Cpu, isLeaf: true, duration: '30m', level: 'Intermediate' },
+                    { id: 'dl-module-2-4-optimization-practice', label: 'Module 2.4', description: 'Optimization practice.', icon: Sparkles, isLeaf: true, duration: '30m', level: 'Intermediate' },
+                    { id: 'dl-module-2-5-optimization-theory', label: 'Module 2.5', description: 'Optimization theory.', icon: FlaskConical, isLeaf: true, duration: '30m', level: 'Intermediate' },
+                    { id: 'dl-module-2-6-regularization', label: 'Module 2.6', description: 'Regularization and generalization.', icon: Lock, isLeaf: true, duration: '30m', level: 'Advanced' },
+                    { id: 'dl-module-2-7-computational-performance', label: 'Module 2.7', description: 'Computational performance and efficiency.', icon: Clock, isLeaf: true, duration: '30m', level: 'Advanced' },
+
+                    { id: 'dl-module-3-1-cnns', label: 'Module 3.1', description: 'Convolutional neural networks (CNNs).', icon: Image, isLeaf: true, duration: '30m', level: 'Advanced' },
+                    { id: 'dl-module-3-2-cnn-architectures', label: 'Module 3.2', description: 'CNN architectures and design patterns.', icon: Layers, isLeaf: true, duration: '30m', level: 'Advanced' },
+                    { id: 'dl-module-3-3-rnns', label: 'Module 3.3', description: 'Recurrent neural networks (RNNs).', icon: Code2, isLeaf: true, duration: '30m', level: 'Advanced' },
+                    { id: 'dl-module-3-4-lstm-gru', label: 'Module 3.4', description: 'LSTM and GRU.', icon: Hash, isLeaf: true, duration: '30m', level: 'Advanced' },
+                    { id: 'dl-module-3-5-capstone', label: 'Module 3.5', description: 'Capstone.', icon: GraduationCap, isLeaf: true, duration: '30m', level: 'Advanced' },
+
+                    { id: 'dl-module-4-1-attention', label: 'Module 4.1', description: 'Attention mechanism.', icon: MousePointer2, isLeaf: true, duration: '30m', level: 'Advanced' },
+                    { id: 'dl-module-4-2-transformer', label: 'Module 4.2', description: 'Transformer architecture.', icon: Cpu, isLeaf: true, duration: '30m', level: 'Advanced' },
+                    { id: 'dl-module-4-3-word2vec', label: 'Module 4.3', description: 'Word2Vec embeddings.', icon: ScanText, isLeaf: true, duration: '30m', level: 'Advanced' },
+                    { id: 'dl-module-4-4-pretraining', label: 'Module 4.4', description: 'Pretraining and transfer learning.', icon: Star, isLeaf: true, duration: '30m', level: 'Advanced' },
+                    { id: 'dl-module-4-5-gans', label: 'Module 4.5', description: 'GANs.', icon: Sparkles, isLeaf: true, duration: '30m', level: 'Advanced' },
+
+                    { id: 'dl-module-5-1-gaussian-processes', label: 'Module 5.1', description: 'Gaussian processes.', icon: Globe, isLeaf: true, duration: '30m', level: 'Advanced' },
+                    { id: 'dl-module-5-2-bayesian-hpo', label: 'Module 5.2', description: 'Bayesian hyperparameter optimization.', icon: Filter, isLeaf: true, duration: '30m', level: 'Advanced' },
+
+                    { id: 'dl-capstone-phase-1-linear', label: 'Capstone Phase 1', description: 'Capstone phase 1: Linear.', icon: BookOpen, isLeaf: true, duration: '30m', level: 'Advanced' },
+                    { id: 'dl-capstone-phase-2-mlp', label: 'Capstone Phase 2', description: 'Capstone phase 2: MLP.', icon: Network, isLeaf: true, duration: '30m', level: 'Advanced' },
                 ],
             },
             {
@@ -360,139 +551,20 @@ const COURSE_TREE = [
                 tag: 'Advanced',
                 tagColor: '#8b5cf6',
                 duration: '15h',
+                isLeaf: false,
                 children: [
-                    {
-                        id: 'pytorch-tensors',
-                        label: 'Tensors',
-                        description: 'The fundamental data structure in PyTorch — creation, manipulation, broadcasting, and GPU transfer.',
-                        icon: Layers,
-                        isLeaf: true,
-                        duration: '1h 15m',
-                        level: 'Beginner',
-                        lineGradient: 'from-indigo-500 to-violet-500',
-                        gradient: 'linear-gradient(135deg,#6366f1,#8b5cf6)',
-                    },
-                    {
-                        id: 'pytorch-autograd',
-                        label: 'Autograd',
-                        description: 'Automatic differentiation engine — computation graphs, gradients, and backward passes.',
-                        icon: GitBranch,
-                        isLeaf: true,
-                        duration: '1h',
-                        level: 'Intermediate',
-                        lineGradient: 'from-violet-500 to-pink-500',
-                        gradient: 'linear-gradient(135deg,#8b5cf6,#ec4899)',
-                    },
-                    {
-                        id: 'pytorch-neural-network',
-                        label: 'Neural Network',
-                        description: 'Build neural networks using nn.Module, layers, activations, and loss functions.',
-                        icon: Network,
-                        isLeaf: true,
-                        duration: '1h 30m',
-                        level: 'Intermediate',
-                        lineGradient: 'from-pink-500 to-rose-500',
-                        gradient: 'linear-gradient(135deg,#ec4899,#f43f5e)',
-                    },
-                    {
-                        id: 'pytorch-training-loop',
-                        label: 'Training Loop',
-                        description: 'Write the complete training loop — forward pass, loss computation, backprop, and optimizer step.',
-                        icon: Zap,
-                        isLeaf: true,
-                        duration: '1h 15m',
-                        level: 'Intermediate',
-                        lineGradient: 'from-rose-500 to-amber-500',
-                        gradient: 'linear-gradient(135deg,#f43f5e,#f59e0b)',
-                    },
-                    {
-                        id: 'pytorch-data-pipeline',
-                        label: 'Data Pipeline',
-                        description: 'Efficient data loading with Dataset, DataLoader, transforms, and custom samplers.',
-                        icon: Database,
-                        isLeaf: true,
-                        duration: '1h 15m',
-                        level: 'Intermediate',
-                        lineGradient: 'from-amber-500 to-emerald-500',
-                        gradient: 'linear-gradient(135deg,#f59e0b,#10b981)',
-                    },
-                    {
-                        id: 'pytorch-evaluation',
-                        label: 'Evaluation',
-                        description: 'Model evaluation strategies — metrics, validation loops, overfitting detection, and checkpointing.',
-                        icon: FlaskConical,
-                        isLeaf: true,
-                        duration: '1h',
-                        level: 'Intermediate',
-                        lineGradient: 'from-emerald-500 to-cyan-500',
-                        gradient: 'linear-gradient(135deg,#10b981,#06b6d4)',
-                    },
-                    {
-                        id: 'pytorch-cnn',
-                        label: 'Convolutional Neural Network',
-                        description: 'Build CNNs for image tasks — Conv2d, pooling, batch norm, and transfer learning.',
-                        icon: Image,
-                        isLeaf: true,
-                        duration: '1h 30m',
-                        level: 'Advanced',
-                        lineGradient: 'from-cyan-500 to-blue-500',
-                        gradient: 'linear-gradient(135deg,#06b6d4,#3b82f6)',
-                    },
-                    {
-                        id: 'pytorch-sequence-models',
-                        label: 'Sequence Models',
-                        description: 'RNNs, LSTMs, GRUs, and Transformers for sequence and NLP tasks.',
-                        icon: ScanText,
-                        isLeaf: true,
-                        duration: '1h 30m',
-                        level: 'Advanced',
-                        lineGradient: 'from-blue-500 to-indigo-500',
-                        gradient: 'linear-gradient(135deg,#3b82f6,#6366f1)',
-                    },
-                    {
-                        id: 'pytorch-training-tricks',
-                        label: 'Training Tricks',
-                        description: 'Learning rate scheduling, gradient clipping, mixed precision, and regularization techniques.',
-                        icon: Sparkles,
-                        isLeaf: true,
-                        duration: '1h 15m',
-                        level: 'Advanced',
-                        lineGradient: 'from-indigo-500 to-violet-500',
-                        gradient: 'linear-gradient(135deg,#6366f1,#8b5cf6)',
-                    },
-                    {
-                        id: 'pytorch-debugging',
-                        label: 'Debugging',
-                        description: 'Debug vanishing/exploding gradients, NaN losses, memory leaks, and shape mismatches.',
-                        icon: Code2,
-                        isLeaf: true,
-                        duration: '1h',
-                        level: 'Advanced',
-                        lineGradient: 'from-violet-500 to-fuchsia-500',
-                        gradient: 'linear-gradient(135deg,#8b5cf6,#d946ef)',
-                    },
-                    {
-                        id: 'pytorch-distributed',
-                        label: 'Distributed Training',
-                        description: 'Scale training across multiple GPUs and nodes using DistributedDataParallel and torchrun.',
-                        icon: ServerCog,
-                        isLeaf: true,
-                        duration: '1h 30m',
-                        level: 'Expert',
-                        lineGradient: 'from-fuchsia-500 to-rose-500',
-                        gradient: 'linear-gradient(135deg,#d946ef,#f43f5e)',
-                    },
-                    {
-                        id: 'pytorch-deployment',
-                        label: 'Deployment',
-                        description: 'Export models with TorchScript and ONNX, serve with TorchServe, and optimize for production.',
-                        icon: Globe,
-                        isLeaf: true,
-                        duration: '1h 30m',
-                        level: 'Expert',
-                        lineGradient: 'from-rose-500 to-orange-500',
-                        gradient: 'linear-gradient(135deg,#f43f5e,#f97316)',
-                    },
+                    { id: 'pytorch-tensors', label: 'Module 1: Tensors', description: 'PyTorch Module 1: Tensors', icon: BookOpen, isLeaf: true, duration: '30m', level: 'Beginner' },
+                    { id: 'pytorch-autograd', label: 'Module 2: Autograd', description: 'PyTorch Module 2: Autograd', icon: BookOpen, isLeaf: true, duration: '30m', level: 'Beginner' },
+                    { id: 'pytorch-neural-network', label: 'Module 3: Neural Network Module', description: 'PyTorch Module 3: nn.Module', icon: BookOpen, isLeaf: true, duration: '30m', level: 'Beginner' },
+                    { id: 'pytorch-training-loop', label: 'Module 4: Training Loop', description: 'PyTorch Module 4: Training Loop', icon: BookOpen, isLeaf: true, duration: '30m', level: 'Beginner' },
+                    { id: 'pytorch-data-pipeline', label: 'Module 5: Data Pipelines', description: 'PyTorch Module 5: Data Pipelines', icon: BookOpen, isLeaf: true, duration: '30m', level: 'Beginner' },
+                    { id: 'pytorch-evaluation', label: 'Module 6: Evaluation', description: 'PyTorch Module 6: Evaluation', icon: BookOpen, isLeaf: true, duration: '30m', level: 'Intermediate' },
+                    { id: 'pytorch-cnn', label: 'Module 7: CNNs', description: 'PyTorch Module 7: CNNs', icon: BookOpen, isLeaf: true, duration: '30m', level: 'Intermediate' },
+                    { id: 'pytorch-sequence-models', label: 'Module 8: Sequence Models', description: 'PyTorch Module 8: Sequence Models', icon: BookOpen, isLeaf: true, duration: '30m', level: 'Intermediate' },
+                    { id: 'pytorch-training-tricks', label: 'Module 9: Training Tricks', description: 'PyTorch Module 9: Training Tricks', icon: BookOpen, isLeaf: true, duration: '30m', level: 'Intermediate' },
+                    { id: 'pytorch-debugging', label: 'Module 10: Debugging', description: 'PyTorch Module 10: Debugging', icon: BookOpen, isLeaf: true, duration: '30m', level: 'Intermediate' },
+                    { id: 'pytorch-distributed', label: 'Module 11: Distributed Training', description: 'PyTorch Module 11: Distributed Training', icon: BookOpen, isLeaf: true, duration: '30m', level: 'Advanced' },
+                    { id: 'pytorch-deployment', label: 'Module 12: Deployment', description: 'PyTorch Module 12: Deployment', icon: BookOpen, isLeaf: true, duration: '30m', level: 'Advanced' },
                 ],
             },
         ],
@@ -800,6 +872,54 @@ export default function Courses() {
     const location = useLocation();
     // pathIds = array of node IDs from root to current folder
     const [pathIds, setPathIds] = useState(location.state?.pathIds || []);
+    const [search, setSearch] = useState('');
+    const [activeLevels, setActiveLevels] = useState([]);
+    const [showLevelFilters, setShowLevelFilters] = useState(false);
+    const searchRef = useRef(null);
+
+    // Keyboard shortcut: Cmd/Ctrl+K → focus search
+    React.useEffect(() => {
+        const handler = e => {
+            if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
+                e.preventDefault();
+                searchRef.current?.focus();
+            }
+        };
+        window.addEventListener('keydown', handler);
+        return () => window.removeEventListener('keydown', handler);
+    }, []);
+
+    const toggleLevel = level => {
+        setActiveLevels(prev =>
+            prev.includes(level) ? prev.filter(l => l !== level) : [...prev, level]
+        );
+    };
+
+    // Recursive search in COURSE_TREE
+    const findMatches = (nodes, query, levels) => {
+        let results = [];
+        for (const node of nodes) {
+            const matchesQuery = query === '' || 
+                node.label.toLowerCase().includes(query) || 
+                (node.description && node.description.toLowerCase().includes(query)) ||
+                (node.tag && node.tag.toLowerCase().includes(query));
+            
+            const matchesLevel = levels.length === 0 || levels.includes(node.level);
+
+            if (matchesQuery && matchesLevel && node.isLeaf) {
+                results.push(node);
+            }
+            if (node.children) {
+                results = [...results, ...findMatches(node.children, query, levels)];
+            }
+        }
+        return results;
+    };
+
+    const filteredResults = React.useMemo(() => {
+        if (!search.trim() && activeLevels.length === 0) return null;
+        return findMatches(COURSE_TREE, search.toLowerCase(), activeLevels);
+    }, [search, activeLevels]);
 
     // Resolve current items to display
     const getCurrentItems = () => {
@@ -846,64 +966,210 @@ export default function Courses() {
     return (
         <div className="min-h-screen w-full overflow-y-auto custom-scrollbar"
             style={{ backgroundColor: 'var(--color-app-bg)', color: 'var(--color-primary-text)' }}>
-
-            {/* Ambient orbs */}
-            <div className="fixed inset-0 z-0 pointer-events-none overflow-hidden">
-                <div style={{ position: 'absolute', width: 420, height: 420, borderRadius: '50%', top: -120, left: -100, background: 'radial-gradient(circle, rgba(99,102,241,0.1), transparent 70%)', filter: 'blur(70px)' }} />
-                <div style={{ position: 'absolute', width: 320, height: 320, borderRadius: '50%', bottom: '5%', right: -80, background: 'radial-gradient(circle, rgba(6,182,212,0.09), transparent 70%)', filter: 'blur(60px)' }} />
-            </div>
+            
+            <style>{`
+                @keyframes searchGradientTracer {
+                    0% { background-position: 0% 50%; }
+                    50% { background-position: 100% 50%; }
+                    100% { background-position: 0% 50%; }
+                }
+                .search-focus:focus { outline:none; }
+            `}</style>
 
             <div className="relative z-10 max-w-6xl mx-auto px-4 py-8 sm:py-12">
 
-                {/* ── Home-level header ── */}
+                {/* ── Home-level header — dark hero matching Projects page ── */}
                 {!pathIds.length && (
-                    <header className="mb-10 text-center">
-                        <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full mb-4"
-                            style={{ background: 'rgba(99,102,241,0.1)', border: '1px solid rgba(99,102,241,0.25)' }}>
-                            <Sparkles size={13} style={{ color: '#6366f1' }} />
-                            <span style={{ fontSize: '0.7rem', fontWeight: 700, color: '#6366f1', letterSpacing: '0.1em', textTransform: 'uppercase' }}>
-                                Structured Curriculum
-                            </span>
-                        </div>
-                        <h1 className="text-3xl sm:text-4xl font-extrabold mb-3"
-                            style={{ color: 'var(--color-primary-text)', letterSpacing: '-0.03em' }}>
-                            Course Library
-                        </h1>
-                        <p style={{ color: 'var(--color-muted-text)', maxWidth: 460, margin: '0 auto', fontSize: '0.95rem' }}>
-                            Explore our structured learning paths. Dive deep into any topic to start learning.
-                        </p>
-                        {/* Stats */}
-                        <div className="flex items-center justify-center gap-8 mt-6 flex-wrap">
-                            {[
-                                { label: 'Categories', value: COURSE_TREE.length },
-                                { label: 'Total Lessons', value: totalAllLessons },
-                                { label: 'Difficulty', value: 'All Levels' },
-                            ].map(({ label, value }) => (
-                                <div key={label} className="flex flex-col items-center">
-                                    <span className="text-2xl font-extrabold" style={{ background: 'linear-gradient(135deg,#6366f1,#06b6d4)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>
-                                        {value}
-                                    </span>
-                                    <span style={{ fontSize: '0.68rem', color: 'var(--color-muted-text)', fontWeight: 600, letterSpacing: '0.06em', textTransform: 'uppercase' }}>
-                                        {label}
-                                    </span>
+                    <header className="mb-10">
+                        {/* Dark hero banner */}
+                        <div style={{
+                            position: 'relative', overflow: 'hidden',
+                            background: '#09090f',
+                            borderRadius: 24,
+                            padding: '52px 24px 46px',
+                            marginBottom: 0,
+                            border: '1px solid rgba(255,255,255,0.06)',
+                        }}>
+                            {/* Left glow — teal */}
+                            <div style={{
+                                position: 'absolute', top: '50%', left: -140, transform: 'translateY(-50%)',
+                                width: 400, height: 400, borderRadius: '50%',
+                                background: 'radial-gradient(circle, rgba(6,182,212,0.5) 0%, transparent 65%)',
+                                filter: 'blur(70px)', pointerEvents: 'none',
+                            }} />
+                            {/* Right glow — indigo */}
+                            <div style={{
+                                position: 'absolute', top: '50%', right: -140, transform: 'translateY(-50%)',
+                                width: 360, height: 360, borderRadius: '50%',
+                                background: 'radial-gradient(circle, rgba(99,102,241,0.45) 0%, transparent 65%)',
+                                filter: 'blur(70px)', pointerEvents: 'none',
+                            }} />
+
+                            <div style={{ position: 'relative', zIndex: 1, textAlign: 'center' }}>
+                                {/* Pill badge */}
+                                <div style={{
+                                    display: 'inline-flex', alignItems: 'center', gap: 7,
+                                    padding: '5px 14px', borderRadius: 999,
+                                    background: 'rgba(255,255,255,0.055)',
+                                    border: '1px solid rgba(255,255,255,0.1)',
+                                    fontSize: '0.68rem', fontWeight: 700,
+                                    color: 'rgba(255,255,255,0.5)',
+                                    letterSpacing: '0.12em', textTransform: 'uppercase',
+                                    marginBottom: 20,
+                                    backdropFilter: 'blur(8px)',
+                                }}>
+                                    <GraduationCap size={10} style={{ color: '#06b6d4' }} />
+                                    Structured Curriculum
                                 </div>
-                            ))}
+
+                                <h1 style={{
+                                    margin: '0 0 14px',
+                                    fontSize: 'clamp(2rem, 5vw, 2.9rem)',
+                                    fontWeight: 900, letterSpacing: '-0.04em', lineHeight: 1.1,
+                                    color: '#ffffff',
+                                }}>
+                                    Course Library
+                                </h1>
+
+                                <p style={{
+                                    margin: '0 auto 28px',
+                                    fontSize: '0.95rem',
+                                    color: 'rgba(255,255,255,0.38)',
+                                    lineHeight: 1.7, maxWidth: 460,
+                                }}>
+                                    Explore structured learning paths — from Python basics to production AI systems.
+                                </p>
+
+                                {/* Stat chips */}
+                                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, flexWrap: 'wrap' }}>
+                                    {[
+                                        { icon: <Layers size={13} />,       label: `${COURSE_TREE.length} Categories` },
+                                        { icon: <BookOpen size={13} />,     label: `${totalAllLessons} Lessons` },
+                                        { icon: <Sparkles size={13} />,    label: 'All Levels' },
+                                        { icon: <Zap size={13} />,         label: 'New Courses Weekly' },
+                                    ].map(({ icon, label }) => (
+                                        <div key={label} style={{
+                                            display: 'inline-flex', alignItems: 'center', gap: 6,
+                                            padding: '6px 14px', borderRadius: 999,
+                                            background: 'rgba(255,255,255,0.055)',
+                                            border: '1px solid rgba(255,255,255,0.09)',
+                                            fontSize: '0.76rem', fontWeight: 600,
+                                            color: 'rgba(255,255,255,0.6)',
+                                            backdropFilter: 'blur(8px)',
+                                        }}>
+                                            <span style={{ color: 'rgba(255,255,255,0.35)' }}>{icon}</span>
+                                            {label}
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
                         </div>
                     </header>
                 )}
 
-                {/* ── Breadcrumb (when inside a folder) ── */}
-                {pathIds.length > 0 && (
+                {/* ── Filter Bar (Sticky) ── */}
+                <div style={{
+                    position: 'sticky', top: 0, zIndex: 100,
+                    margin: '0 -16px 24px', padding: '12px 16px',
+                    background: 'rgba(var(--color-app-bg-rgb, 10, 10, 15), 0.8)',
+                    backdropFilter: 'blur(12px)',
+                    borderBottom: '1px solid var(--color-border)',
+                }}>
+                    <div className="max-w-6xl mx-auto flex flex-col gap-4">
+                        <div className="flex items-center gap-3">
+                            {/* Search Input with Gradient Tracer */}
+                            <div style={{
+                                flex: 1, padding: '1.5px', borderRadius: 14,
+                                background: search ? 'linear-gradient(90deg, #6366f1, #06b6d4, #8b5cf6, #06b6d4, #6366f1)' : 'var(--color-border)',
+                                backgroundSize: '300% 300%',
+                                animation: search ? 'searchGradientTracer 3s linear infinite' : 'none',
+                                transition: 'all 0.3s ease',
+                                boxShadow: search ? '0 8px 32px -8px rgba(6,182,212,0.3)' : 'none',
+                            }}>
+                                <div style={{
+                                    display: 'flex', alignItems: 'center', gap: 10,
+                                    background: 'var(--color-app-bg)', borderRadius: 13,
+                                    padding: '10px 16px',
+                                }}>
+                                    <Search size={18} style={{ color: search ? '#06b6d4' : 'var(--color-muted-text)', transition: 'color 0.3s' }} />
+                                    <input
+                                        ref={searchRef}
+                                        value={search}
+                                        onChange={e => setSearch(e.target.value)}
+                                        placeholder="Search courses, modules, skills... (Ctrl+K)"
+                                        className="search-focus flex-1 bg-transparent border-none text-sm font-medium focus:ring-0"
+                                        style={{ color: 'var(--color-primary-text)' }}
+                                    />
+                                    {search && (
+                                        <button onClick={() => setSearch('')} className="p-1 hover:bg-red-500/10 rounded-full text-red-500 transition-colors">
+                                            <X size={14} />
+                                        </button>
+                                    )}
+                                </div>
+                            </div>
+
+                            {/* Level Filter Toggle */}
+                            <button
+                                onClick={() => setShowLevelFilters(!showLevelFilters)}
+                                className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-bold transition-all"
+                                style={{
+                                    background: showLevelFilters ? 'rgba(99,102,241,0.1)' : 'var(--color-surface)',
+                                    border: `1px solid ${showLevelFilters ? '#6366f1' : 'var(--color-border)'}`,
+                                    color: showLevelFilters ? '#6366f1' : 'var(--color-muted-text)',
+                                }}
+                            >
+                                <Filter size={16} />
+                                <span className="hidden sm:inline">Levels</span>
+                                {activeLevels.length > 0 && <span className="ml-1 px-1.5 py-0.5 rounded-md bg-indigo-500 text-white text-[10px]">{activeLevels.length}</span>}
+                            </button>
+                        </div>
+
+                        {/* Level Filter Chips */}
+                        {showLevelFilters && (
+                            <div className="flex flex-wrap gap-2 animate-in fade-in slide-in-from-top-2 duration-300">
+                                {Object.keys(LEVEL_COLORS).map(level => {
+                                    const isActive = activeLevels.includes(level);
+                                    const colors = LEVEL_COLORS[level];
+                                    return (
+                                        <button
+                                            key={level}
+                                            onClick={() => toggleLevel(level)}
+                                            className="px-3 py-1.5 rounded-full text-[11px] font-extrabold uppercase tracking-wider transition-all"
+                                            style={{
+                                                background: isActive ? colors.bg.replace('0.12', '0.25') : 'var(--color-surface)',
+                                                border: `1px solid ${isActive ? colors.color : 'var(--color-border)'}`,
+                                                color: isActive ? colors.color : 'var(--color-muted-text)',
+                                            }}
+                                        >
+                                            {level}
+                                        </button>
+                                    );
+                                })}
+                                {activeLevels.length > 0 && (
+                                    <button
+                                        onClick={() => setActiveLevels([])}
+                                        className="px-3 py-1.5 rounded-full text-[11px] font-extrabold uppercase tracking-wider text-red-500 hover:bg-red-500/10 transition-all border border-transparent"
+                                    >
+                                        Clear All
+                                    </button>
+                                )}
+                            </div>
+                        )}
+                    </div>
+                </div>
+
+                {/* ── Breadcrumb (when inside a folder and not searching) ── */}
+                {pathIds.length > 0 && !filteredResults && (
                     <Breadcrumb path={breadcrumbs} onNavigate={handleNavigate} />
                 )}
 
-                {/* ── Root category hero (shown when drilling into a category) ── */}
-                {isInsideRootCategory && rootCatNode && (
+                {/* ── Root category hero (shown when drilling into a category and not searching) ── */}
+                {isInsideRootCategory && rootCatNode && !filteredResults && (
                     <RootCategoryHero node={rootCatNode} />
                 )}
 
-                {/* ── Section title for sub-folders ── */}
-                {parentNode && !isInsideRootCategory && (
+                {/* ── Section title for sub-folders (not searching) ── */}
+                {parentNode && !isInsideRootCategory && !filteredResults && (
                     <div className="mb-6 flex items-center gap-3">
                         <button
                             onClick={() => handleNavigate(pathIds.slice(0, -1))}
@@ -926,7 +1192,40 @@ export default function Courses() {
                 )}
 
                 {/* ── Cards Grid ── */}
-                {currentItems.length === 0 ? (
+                {filteredResults ? (
+                    <div>
+                        <div className="mb-6 flex items-center justify-between">
+                            <h3 className="text-lg font-bold flex items-center gap-2">
+                                <Search size={18} className="text-indigo-500" />
+                                Search Results ({filteredResults.length})
+                            </h3>
+                            <button onClick={() => { setSearch(''); setActiveLevels([]); }} className="text-sm text-indigo-500 hover:underline font-semibold">
+                                Clear search
+                            </button>
+                        </div>
+                        {filteredResults.length === 0 ? (
+                            <div className="text-center py-20 rounded-2xl" style={{ border: '1px dashed var(--color-border)', background: 'rgba(99,102,241,0.03)' }}>
+                                <div style={{ width: 64, height: 64, borderRadius: '50%', margin: '0 auto 16px', background: 'var(--color-surface-hover)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                                    <Search size={28} className="text-muted-text" />
+                                </div>
+                                <h3 className="text-xl font-bold mb-2">No matches found</h3>
+                                <p style={{ color: 'var(--color-muted-text)', fontSize: '0.9rem' }}>Try different keywords or check your level filters.</p>
+                            </div>
+                        ) : (
+                            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
+                                {filteredResults.map(node => (
+                                    <CourseCard
+                                        key={node.id}
+                                        node={node}
+                                        onDrillDown={handleDrillDown}
+                                        onStartLeaf={handleStartLeaf}
+                                        isRootCategory={false}
+                                    />
+                                ))}
+                            </div>
+                        )}
+                    </div>
+                ) : currentItems.length === 0 ? (
                     <div className="text-center py-20 rounded-2xl" style={{ border: '1px dashed var(--color-border)', background: 'rgba(99,102,241,0.03)' }}>
                         <div style={{ width: 64, height: 64, borderRadius: '50%', margin: '0 auto 16px', background: 'linear-gradient(135deg,#6366f1,#8b5cf6)', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 8px 24px rgba(99,102,241,0.35)' }}>
                             <BookOpen size={28} color="#fff" />

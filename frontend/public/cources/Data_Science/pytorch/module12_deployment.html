@@ -1,210 +1,2340 @@
-<p><strong>Module12—Packaging&amp;Deployment:DS→Production</strong></p><p><strong>Export,Serve,Monitor,andRollBack</strong></p><p>PyTorchforDataScience</p><p><strong>Module Goal:</strong>Take a trained PyTorch model all the way to a monitored production endpoint.LearnwhentouseTorchScriptvsONNX,structureaFastAPIinference service,andinstrumentyourservicewithlatencytracking,driftdetection,anda rollbackstrategy.</p><p><strong>1.Export:TorchScriptvsONNX</strong></p><p><strong>DecisionGuide</strong></p><python>TorchScript
-ONNX
-What itis In-fer-ence run-time Best for
-PyTorch’snativeserialisation
-OpenformatforML models ONNXRuntime, TensorRT,CoreML,etc.
-PythonorC++PyTorch
-StayinginPyTorchecosystem
-Cross-framework/edge deployment</python><p>1</p><python>TorchScript
-ONNX
-Sup-	Yes(trace+script) ports dy-namic con-trol flow Startup Faster time
-Limited
-Faster</python><p><strong>Rule:</strong>UseTorchScriptwhendeployingwithinaPython/PyTorchstack.UseONNXwhenyou needruntimeportability(mobile,edge,non-Python).</p><p><strong>TorchScript</strong></p><p>&lt;python&gt;</p><python>importtorch importtorch.nnasnn</python><python>torch.manual_seed(42)</python><python>classProductionModel(nn.Module): 	def__init__(self,in_dim:int=10,n_classes:int=3): 		super().__init__() 		self.net=nn.Sequential( 		nn.Linear(in_dim,64),nn.LayerNorm(64),nn.ReLU(), 		nn.Linear(64,32),nn.ReLU(), 		nn.Linear(32,n_classes) 		)</python><python>defforward(self,x:torch.Tensor)->torch.Tensor: 	returnself.net(x)</python><python>model=ProductionModel() example_input=torch.randn(1,10)</python><p>2</p><p>#Method1:torch.jit.trace—fastest,forstaticgraphs(nodynamiccontrolflow) traced=torch.jit.trace(model,example_input) <br />torch.jit.save(traced,"model_traced.pt") <br />print("Tracedmodelsaved.")</p><p>#Method2:torch.jit.script—handlesdynamiccontrolflow <br />#Note:@torch.jit.exportcanbeaddedtoexposeextramethodsinscriptmode, #buttraceandscriptcannotbecombinedonthesameclassinstance.</p><p>scripted=torch.jit.script(model) <br />torch.jit.save(scripted,"model_scripted.pt") print("Scriptedmodelsaved.")</p><p>#Loadandverify <br />loaded=torch.jit.load("model_scripted.pt") loaded.eval()</p><p>x_test=torch.randn(4,10) <br /><strong>with</strong>torch.no_grad(): <br />	out =loaded(x_test) <br />	proba=torch.softmax(out,dim=1)</p><p>print(f"Inferenceoutputshape:{out.shape}") <br />print(f"Probabilitiessumto1:{proba.sum(dim=1).round(decimals=4)}")</p><p>Tracedmodelsaved.</p><p>Scriptedmodelsaved.</p><p>Inferenceoutputshape:torch.Size([4,3]) <br />Probabilitiessumto1:tensor([1.,1.,1.,1.])</p><p>&lt;python&gt;</p><p><strong>ONNXExport</strong></p><p>&lt;python&gt;</p><python>#ONNXexportrequires:pipinstallonnxonnxruntime #Bothareoptional—thecellwillskipgracefullyifnotinstalled.
-onnx_path="model.onnx"</python><python>try: 	torch.onnx.export( 		model, 		example_input, 		onnx_path,</python><p>3</p><python>dynamo=False, opset_version=17, input_names=['input'], output_names=['logits'], dynamic_axes={
-'input':
-{0:'batch_size'},
-	'logits':{0:'batch_size'} 	} ) print(f"ONNXmodelexportedto{onnx_path}")
-try: importonnxruntimeasort sess=ort.InferenceSession(onnx_path)
-out
-=sess.run(None,{'input':example_input.numpy()})
-	print(f"ONNXRuntimeinferenceoutputshape:{out[0].shape}") exceptImportError:
-print("Tip:pipinstallonnxruntime
-toverifyONNXinference")
-exceptExceptionase: 	print(f"ONNXexportskipped—installdependencieswith:")
-print(f"
-pipinstallonnxonnxruntime")
-print(f"
-({type(e).__name__}:{e})")</python><p>ONNXexportskipped—installdependencieswith: pipinstallonnxonnxruntime <br />(OnnxExporterError:Moduleonnxisnotinstalled!)</p><p>C:\Users\ujanp\AppData\Local\Temp\ipykernel_11308\3704396464.py:6:DeprecationWarning:</p><p>YouareusingthelegacyTorchScript-basedONNXexport.StartinginPyTorch2.9,thenewtorc basedONNXexporterhasbecomethedefault.Learnmoreaboutthenewexportlogic:https://do</p><p>&lt;python&gt;</p><p><strong>2.ServingPatterns:BatchvsRealtime</strong></p><p>4</p><p>&lt;python&gt;</p><python>#Batchinference—processmanysamplesoffline defbatch_inference(model_path:str,data:torch.Tensor, 		batch_size:int=256)->torch.Tensor: 	"""Loadascriptedmodelandruninferenceinbatches.""" 	model=torch.jit.load(model_path) 	model.eval()
-results=[] foriinrange(0,len(data),batch_size): 	batch=data[i:i+batch_size] 	withtorch.no_grad():
-logits=model(batch)
-#forward()—alwaysavailable
-probs
-=torch.softmax(logits,dim=1)
-#applysoftmaxhere
-results.append(probs)</python><python>returntorch.cat(results,dim=0)
-#Test
-test_data=torch.randn(1000,10)
-probs
-=batch_inference("model_scripted.pt",test_data)
-print(f"Batchinference:{len(test_data)}samples→{probs.shape}")</python><p>Batchinference:1000samples→torch.Size([1000,3])</p><p>&lt;python&gt;</p><p><strong>3.FastAPIInferenceServiceStructure</strong></p><p>&lt;python&gt;</p><python>#ThisisthecompleteFastAPIservice—saveasinference_service.py #Runwith:uvicorninference_service:app--host0.0.0.0--port8000</python><python>FASTAPI_SERVICE=''' fromfastapiimportFastAPI,HTTPException frompydanticimportBaseModel importtorch importtime importlogging fromtypingimportList</python><p>5</p><p>logging.basicConfig(level=logging.INFO) <br />logger=logging.getLogger(__name__)</p><python>app=FastAPI(title="PyTorchModelInferenceService")
-#ModelLoading(onceatstartup) classModelRegistry: 	def__init__(self):
-self.models
-={}
-self.active
-=None</python><python>defload(self,name:str,path:str): model=torch.jit.load(path) model.eval() self.models[name]=model logger.info(f"Loadedmodel:{name}")</python><python>defpredict(self,name:str,x:torch.Tensor)->torch.Tensor: 	ifnamenotinself.models: 	raiseValueError(f"Model{name}notloaded") 	withtorch.no_grad(): 	logits=self.models[name](x) 	returntorch.softmax(logits,dim=1)</python><p>registry=ModelRegistry()</p><python>@app.on_event("startup") defstartup(): 	registry.load("v1","model_scripted.pt") 	registry.active="v1"
-#Request/Responseschemas classPredictRequest(BaseModel):
-features:
-List[List[float]]
-#Batchoffeaturevectors
-model_name:
-str="v1"
-classPredictResponse(BaseModel):
-predictions:
-List[int]</python><p>6</p><python>probabilities:List[List[float]]
-model_name:
-str
-latency_ms:
-float
-#Endpoints @app.post("/predict",response_model=PredictResponse) defpredict(request:PredictRequest): 	start=time.perf_counter() 	try:
-x
-=torch.tensor(request.features,dtype=torch.float32)
-probs
-=registry.predict(request.model_name,x)
-preds
-=probs.argmax(dim=1).tolist()
-latency=(time.perf_counter()-start)*1000</python><p>logger.info(f"Predicted{len(preds)}samplesin{latency:.2f}ms")</p><python>	returnPredictResponse( 	predictions=preds, 	probabilities=probs.tolist(), 	model_name=request.model_name, 	latency_ms=latency 	) exceptExceptionase: 	raiseHTTPException(status_code=500,detail=str(e))</python><python>@app.get("/health") defhealth(): 	return{"status":"ok","active_model":registry.active}</python><python>@app.post("/models/{name}/activate") defactivate_model(name:str): 	"""A/Btestingorrollback:switchtheactivemodel.""" 	ifnamenotinregistry.models: 		raiseHTTPException(status_code=404,detail="Modelnotfound") 	registry.active=name 	return{"activated":name} '''</python><p>print("FastAPIservicetemplateready.")</p><p>7</p><python>print("Savetoinference_service.pyandrun:")
-print("
-pipinstallfastapiuvicorntorch")
-print("
-uvicorninference_service:app--host0.0.0.0--port8000")</python><p>FastAPIservicetemplateready.</p><p>Savetoinference_service.pyandrun: <br />pipinstallfastapiuvicorntorch <br />uvicorninference_service:app--host0.0.0.0--port8000</p><p>&lt;python&gt;</p><p><strong>4.Monitoring:Latency,Drift,FailurePatterns</strong></p><p><strong>LatencyMonitoring</strong></p><p>&lt;python&gt;</p><python>importtime importstatistics</python><python>classLatencyMonitor: 	"""Trackinferencelatencywithrollingstatistics."""
-def__init__(self,window:int=1000):
-self.window
-=window
-self.latencies=[]</python><python>defrecord(self,latency_ms:float): 	self.latencies.append(latency_ms) 	iflen(self.latencies)>self.window: 	self.latencies.pop(0)
-defstats(self)->dict: 	ifnotself.latencies: 	return{} 	return{
-'count':
-len(self.latencies),
-'mean':
-statistics.mean(self.latencies),
-'p50':
-statistics.median(self.latencies),
-'p95':
-sorted(self.latencies)[int(0.95*len(self.latencies))],
-'p99':
-sorted(self.latencies)[int(0.99*len(self.latencies))],</python><p>8</p><python>}
-'max':
-max(self.latencies)</python><python>monitor=LatencyMonitor() #Simulateinferencecallswithsomeslowoutliers importrandom random.seed(42) foriinrange(200):
-latency=random.gauss(5,1)
-#Normal~5ms
-ifrandom.random()<0.02:
-latency=random.gauss(50,5)
-#2%slowrequests
-monitor.record(abs(latency)) stats=monitor.stats() print("Latencystatistics(ms):") fork,vinstats.items():
-print(f"
-{k:8s}:{v:.2f}")</python><python>#Alertifp99exceedsSLA SLA_P99_MS=30 ifstats['p99']>SLA_P99_MS:
-Latencystatistics(ms):
-count
-:200.00
-mean
-:6.33
-p50
-:5.03
-p95
-:7.15
-p99
-:55.98
-max
-:59.27</python><p>print(f"\nALERT:p99latency{stats['p99']:.1f}msexceedsSLAof{SLA_P99_MS}ms")</p><p>	ALERT:p99latency56.0msexceedsSLAof30ms </p><p><strong>&lt;python&gt;</strong></p><p><strong>InputDriftDetection</strong></p><p>&lt;python&gt;</p><python>classDriftMonitor: """ Detectinputdistributiondriftbycomparinglivefeaturestats</python><p>9</p><python>toreference(training)stats.
-Usespopulationstabilityindex(PSI)asthedriftmetric.
-"""
-def__init__(self,reference_mean:torch.Tensor,reference_std:torch.Tensor, 	n_features:int,z_threshold:float=3.0):
-self.ref_mean
-=reference_mean
-self.ref_std
-=reference_std
-self.z_threshold=z_threshold
-defcheck(self,batch:torch.Tensor)->dict: """Checkifbatchfeatureshavedriftedfromreference.""" batch_mean=batch.mean(dim=0)
-batch_std
-=batch.std(dim=0)</python><p>#Z-score:howmanystddeviationsisthelivemeanfromreference? z_scores=(batch_mean-self.ref_mean).abs()/(self.ref_std+1e-6)</p><p>drifted_features=(z_scores&gt;self.z_threshold).nonzero(as_tuple=True)[0].tolist()</p><python>return{
-'drift_detected':
-len(drifted_features)>0,
-'drifted_features':
-drifted_features,
-'max_z_score':
-z_scores.max().item(),
-'z_scores':
-z_scores
-}
-#Simulatedriftdetection
-ref_mean=torch.zeros(10)
-ref_std
-=torch.ones(10)
-drift_m
-=DriftMonitor(ref_mean,ref_std,n_features=10)
-#Normalbatch—nodrift normal_batch=torch.randn(100,10) result=drift_m.check(normal_batch)
-print(f"Normalbatch:
-drift={result['drift_detected']}
-max_z={result['max_z_score']:.2f}")
-#Driftedbatch—feature3and7shifted drifted_batch=torch.randn(100,10)
-drifted_batch[:,3]+=5.0
-#Bigshiftinfeature3
-drifted_batch[:,7]+=4.0
-#Shiftinfeature7</python><p>10</p><python>result=drift_m.check(drifted_batch) print(f"Driftedbatch:drift={result['drift_detected']} print(f"Driftedfeatures:{result['drifted_features']}")
-max_z={result['max_z_score']:.2f}")
-Normalbatch:
-drift=False
-max_z=0.16
-Driftedbatch:drift=True
-max_z=5.02
-Driftedfeatures:[3,7]</python><p><strong>&lt;python&gt;</strong></p><p><strong>5.A/BTestingandRollbackMindset</strong></p><p>&lt;python&gt;</p><python>classModelVersionManager: """ ManagesmultiplemodelversionsforA/Btestingandsaferollback.
-"""
-def__init__(self):
-self.versions
-={}
-#name→model
-self.traffic
-={}
-#name→trafficfraction
-self.metrics
-={}
-#name→{calls,errors,mean_latency}
-self.active_v
-=None
-defregister(self,name:str,model,traffic_pct:float=0.0):
-self.versions[name]
-=model
-self.traffic[name]
-=traffic_pct
-self.metrics[name]
-={'calls':0,'errors':0,'latencies':[]}
-	print(f"Registeredmodel:{name}({traffic_pct*100:.0f}%traffic)") defroute(self)->str: 	"""Routearequestbasedontrafficpercentages."""
-r
-=random.random()
-cum=0.0 forname,pctinself.traffic.items(): cum+=pct ifr<cum: 	returnname returnself.active_v</python><p>11</p><python>defrecord_call(self,name:str,latency_ms:float,success:bool): 	m=self.metrics[name]
-m['calls']
-+=1
-m['latencies'].append(latency_ms) ifnotsuccess: m['errors']+=1
-defsummary(self): 	print("\nModelperformancesummary:") 	forname,minself.metrics.items(): 	ifm['calls']==0:continue 	error_rate=m['errors']/m['calls']
-mean_lat
-=statistics.mean(m['latencies'])ifm['latencies']else0
-print(f"
-{name}:calls={m['calls']},error_rate={error_rate:.3f},"
-f"mean_lat={mean_lat:.1f}ms,traffic={self.traffic[name]*100:.0f}%")
-defpromote(self,name:str): 	"""Promoteamodelto100%traffic(aftersuccessfulA/Btest).""" 	forkinself.traffic: 	self.traffic[k]=0.0 	self.traffic[name]=1.0
-self.active_v
-=name
-print(f"Promoted{name}to100%traffic.")
-defrollback(self,name:str): """Emergencyrollbacktoapreviousversion.""" self.promote(name)
-print(f"
-ROLLBACK:revertedto{name}")
-#SimulateA/Btest vm=ModelVersionManager()
-vm.register("v1",None,traffic_pct=0.9)
-#90%tostablev1
-vm.register("v2",None,traffic_pct=0.1)
-#10%tonewv2
-#Simulatetraffic random.seed(0) for_inrange(1000):
-version
-=vm.route()
-latency
-=random.gauss(5,1)ifversion=="v1"elserandom.gauss(4,0.8)
-success
-=random.random()>(0.01ifversion=="v1"else0.02)
-vm.record_call(version,abs(latency),success)</python><p>12</p><python>vm.summary()</python><python>#v2isbetter—promoteit vm.promote("v2") vm.summary()</python><p>Registeredmodel:v1(90%traffic) <br />Registeredmodel:v2(10%traffic)</p><p>Modelperformancesummary: <br />	v1:calls=889,error_rate=0.013,mean_lat=5.0ms,traffic=90% 	v2:calls=111,error_rate=0.027,mean_lat=4.1ms,traffic=10% Promotedv2to100%traffic.</p><p>Modelperformancesummary: <br />v1:calls=889,error_rate=0.013,mean_lat=5.0ms,traffic=0% v2:calls=111,error_rate=0.027,mean_lat=4.1ms,traffic=100%</p><p><strong>&lt;python&gt;</strong></p><p><strong>6.FullDeploymentChecklist</strong></p><python>DEPLOYMENT_CHECKLIST=""" Pre-deployment: 	Modelevaluatedonheld-outtestset(lastlook) 	TorchScriptorONNXexportverifiedwithexampleinputs 	Inferenceoutputmatchestraining-timepredictions 	Inputpreprocessing(normalisation,encoding)includedintheservice 	Edgecasestested:emptybatch,singlesample,maxbatchsize</python><python>Service: Healthendpointimplementedandtested Structuredlogging(requestID,modelversion,latency,prediction) Timeoutsetforallinferencecalls BatchsizecaptopreventOOM</python><python>Monitoring: 	Latencypercentilestracked(p50,p95,p99)</python><p>13</p><python>Errorratealertconfigured Inputdriftmonitorrunning</python><p>Predictiondistributiontracked(ifoutputsaredrifting,modelmaybedegrading)</p><python>Rollback: 	Previousmodelversionregisteredandreadytoactivate 	Rollbackrunbookdocumentedandtested 	Rollbacktestedinstagingenvironment """</python><python>print(DEPLOYMENT_CHECKLIST)</python><p>Pre-deployment: <br />Modelevaluatedonheld-outtestset(lastlook) <br />TorchScriptorONNXexportverifiedwithexampleinputs <br />Inferenceoutputmatchestraining-timepredictions <br />Inputpreprocessing(normalisation,encoding)includedintheservice Edgecasestested:emptybatch,singlesample,maxbatchsize</p><p>Service: <br />Healthendpointimplementedandtested <br />Structuredlogging(requestID,modelversion,latency,prediction) Timeoutsetforallinferencecalls <br />BatchsizecaptopreventOOM</p><p>Monitoring: <br />Latencypercentilestracked(p50,p95,p99) <br />Errorratealertconfigured <br />Inputdriftmonitorrunning <br />Predictiondistributiontracked(ifoutputsaredrifting,modelmaybedegrading)</p><p>Rollback: <br />Previousmodelversionregisteredandreadytoactivate Rollbackrunbookdocumentedandtested <br />Rollbacktestedinstagingenvironment</p><p><strong>ModuleSummary</strong></p><p>14</p><python>Concept
-KeyTakeaway
-TorchScript ONNX FastAPI Latency Drift A/Btesting Rollback
-Usetorch.jit.scriptfordynamicmodels;trace forstaticones.
-Forcross-frameworkportabilityoredgedeployment. Structure:modelloadedatstartup;requestschema withPydantic;health+predictendpoints.
-Trackp95/p99,notjustmean.Alertwhenp99 exceedsyourSLA.
-Monitorinputfeaturestatisticsvstraining distribution.Z-score>3=investigate.
-Routeapercentageoftraffictothenewmodel; compareerrorratesandlatency.
-Alwayskeepthepreviousversionregisteredand tested.</python><p><strong>CourseComplete</strong></p><p>Youhavenowcovered:</p><p><strong>CoreModules(1–12):</strong>Tensors→Autograd→nn.Module→TrainingLoop→Data Pipelines→Evaluation→CNNs→SequenceModels→TrainingTricks→Debugging→Distributed→Deployment.</p><p>Everymodulebuildsdirectlyonthepreviousone.Younowhavethefoundationtotackleany ofthefive<strong>SpecialisationTracks</strong>:</p><p>•<strong>Track1</strong>:PyTorchforDataScience&amp;Tabular<br />•<strong>Track2</strong>:AIOpswithPyTorch(Logs,Metrics,Incidents)•<strong>Track3</strong>:DeepGraphs/GNNswithPyTorchGeometric•<strong>Track4</strong>:NLP+LLM-adjacentPyTorch<br />•<strong>Track5</strong>:MultimodalPyTorch</p><p><em>Eachtrackfollowsthesameformat:concept→analogy→visual→code→project.</em></p><p>15</p>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Module 12 — Packaging &amp; Deployment: DS → Production</title>
+  <meta name="description" content="Module 12 — Packaging &amp; Deployment: DS → Production rendered into premium HTML with exact page text preserved.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;700;800&family=Space+Grotesk:wght@500;700&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg: #040a13;
+      --bg-2: #081321;
+      --panel: rgba(9, 18, 32, 0.9);
+      --panel-soft: rgba(14, 27, 47, 0.72);
+      --line: rgba(146, 201, 255, 0.15);
+      --text: #eef4ff;
+      --muted: #aec4df;
+      --soft: #7f99bb;
+      --accent: #92d2ff;
+      --accent-2: #7cffd7;
+      --accent-3: #ffc98c;
+      --accent-4: #a08fff;
+      --shadow: 0 24px 80px rgba(0, 0, 0, 0.42);
+      --radius: 28px;
+      --content: min(1240px, calc(100vw - 28px));
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    html {
+      scroll-behavior: smooth;
+    }
+
+    body {
+      margin: 0;
+      color: var(--text);
+      font-family: "Manrope", sans-serif;
+      background:
+        radial-gradient(circle at 10% 8%, rgba(124, 255, 215, 0.1), transparent 22%),
+        radial-gradient(circle at 84% 6%, rgba(146, 201, 255, 0.14), transparent 22%),
+        radial-gradient(circle at 50% 100%, rgba(255, 201, 140, 0.08), transparent 25%),
+        linear-gradient(180deg, #02060d 0%, #06101b 38%, #030711 100%);
+      overflow-x: hidden;
+    }
+
+    body::before {
+      content: "";
+      position: fixed;
+      inset: 0;
+      pointer-events: none;
+      background-image:
+        linear-gradient(rgba(255,255,255,0.03) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(255,255,255,0.03) 1px, transparent 1px);
+      background-size: 48px 48px;
+      mask-image: radial-gradient(circle at center, black 24%, transparent 74%);
+      opacity: 0.45;
+    }
+
+    .progress {
+      position: fixed;
+      top: 0;
+      left: 0;
+      height: 4px;
+      width: 0;
+      z-index: 1000;
+      background: linear-gradient(90deg, var(--accent), var(--accent-2), var(--accent-3), var(--accent-4));
+      box-shadow: 0 0 24px rgba(124, 255, 215, 0.35);
+    }
+
+    .status-chip {
+      position: fixed;
+      right: 16px;
+      bottom: 16px;
+      z-index: 1001;
+      padding: 12px 16px;
+      border-radius: 999px;
+      background: rgba(7, 15, 27, 0.92);
+      border: 1px solid rgba(146, 201, 255, 0.18);
+      box-shadow: var(--shadow);
+      color: var(--text);
+      font-size: 0.9rem;
+      backdrop-filter: blur(18px);
+    }
+
+    .sidebar-toggle {
+      display: none;
+      position: fixed;
+      right: 16px;
+      bottom: 72px;
+      z-index: 1002;
+      padding: 12px 16px;
+      border: 0;
+      border-radius: 999px;
+      background: linear-gradient(90deg, rgba(146, 201, 255, 0.18), rgba(124, 255, 215, 0.18));
+      color: var(--text);
+      font: inherit;
+      box-shadow: var(--shadow);
+      backdrop-filter: blur(18px);
+      cursor: pointer;
+    }
+
+    .sidebar-overlay {
+      position: fixed;
+      inset: 0;
+      z-index: 999;
+      background: rgba(1, 6, 11, 0.56);
+      backdrop-filter: blur(4px);
+    }
+
+    .orb {
+      position: fixed;
+      border-radius: 50%;
+      filter: blur(30px);
+      opacity: 0.35;
+      pointer-events: none;
+      animation: drift 16s ease-in-out infinite;
+      z-index: 0;
+    }
+
+    .orb.one {
+      width: 240px;
+      height: 240px;
+      left: -60px;
+      top: 16vh;
+      background: rgba(146, 201, 255, 0.22);
+    }
+
+    .orb.two {
+      width: 220px;
+      height: 220px;
+      right: -40px;
+      top: 50vh;
+      background: rgba(124, 255, 215, 0.18);
+      animation-delay: -6s;
+    }
+
+    .orb.three {
+      width: 190px;
+      height: 190px;
+      left: 44vw;
+      bottom: -40px;
+      background: rgba(255, 201, 140, 0.13);
+      animation-delay: -9s;
+    }
+
+    .shell {
+      position: relative;
+      z-index: 1;
+      width: var(--content);
+      margin: 0 auto;
+      padding: 20px 0 72px;
+    }
+
+    .glass {
+      background: linear-gradient(180deg, rgba(10, 19, 33, 0.94), rgba(6, 12, 22, 0.98));
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      backdrop-filter: blur(22px);
+    }
+
+    .hero {
+      min-height: 100vh;
+      display: grid;
+      grid-template-columns: 1.08fr 0.92fr;
+      gap: 24px;
+      align-items: center;
+      padding: 20px 0 24px;
+    }
+
+    .hero-copy {
+      padding: 36px;
+    }
+
+    .eyebrow {
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
+      padding: 10px 14px;
+      border-radius: 999px;
+      background: rgba(124, 255, 215, 0.08);
+      border: 1px solid rgba(124, 255, 215, 0.18);
+      color: var(--accent-2);
+      font-size: 0.78rem;
+      letter-spacing: 0.16em;
+      text-transform: uppercase;
+    }
+
+    .eyebrow::before {
+      content: "";
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: var(--accent-2);
+      box-shadow: 0 0 16px rgba(124, 255, 215, 0.78);
+      animation: pulse 2.8s infinite;
+    }
+
+    h1 {
+      margin: 18px 0 12px;
+      font-family: "Space Grotesk", sans-serif;
+      font-size: clamp(2.8rem, 7vw, 5.2rem);
+      line-height: 0.94;
+      letter-spacing: -0.05em;
+    }
+
+    .subtitle {
+      margin: 0 0 14px;
+      color: var(--muted);
+      font-size: 1.04rem;
+      line-height: 1.85;
+      max-width: 68ch;
+    }
+
+    .hero-grid {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 14px;
+      margin-top: 26px;
+    }
+
+    .metric {
+      padding: 16px;
+      border-radius: 22px;
+      background: rgba(255,255,255,0.03);
+      border: 1px solid rgba(255,255,255,0.06);
+    }
+
+    .metric strong {
+      display: block;
+      font-size: 1.32rem;
+      margin-bottom: 4px;
+    }
+
+    .metric span {
+      color: var(--muted);
+      font-size: 0.9rem;
+    }
+
+    .hero-stage {
+      padding: 26px;
+      display: grid;
+      gap: 16px;
+      min-height: 520px;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .hero-stage::after {
+      content: "";
+      position: absolute;
+      width: 240px;
+      height: 240px;
+      right: -60px;
+      bottom: -80px;
+      border-radius: 50%;
+      background: radial-gradient(circle, rgba(160, 143, 255, 0.22), transparent 70%);
+    }
+
+    .code-shell {
+      display: grid;
+      gap: 10px;
+    }
+
+    .hero-card {
+      padding: 20px;
+      border-radius: 24px;
+      border: 1px solid rgba(255,255,255,0.07);
+      background: linear-gradient(135deg, rgba(146, 201, 255, 0.1), rgba(124, 255, 215, 0.06));
+    }
+
+    .hero-card span {
+      display: block;
+      margin-bottom: 10px;
+      color: var(--muted);
+      font-size: 0.78rem;
+      text-transform: uppercase;
+      letter-spacing: 0.14em;
+    }
+
+    .hero-card strong {
+      display: block;
+      white-space: pre-line;
+      font-family: "JetBrains Mono", monospace;
+      font-size: clamp(0.96rem, 1.7vw, 1.22rem);
+      line-height: 1.85;
+    }
+
+    .hero-pre {
+      margin: 0;
+      padding: 18px;
+      border-radius: 24px;
+      border: 1px solid rgba(255,255,255,0.07);
+      background: #06101c;
+      color: #d7eaff;
+      font-family: "JetBrains Mono", monospace;
+      line-height: 1.8;
+      white-space: pre-wrap;
+      overflow: auto;
+      position: relative;
+    }
+
+    .hero-pre::before {
+      content: "";
+      position: absolute;
+      top: 0;
+      left: -40%;
+      width: 35%;
+      height: 100%;
+      transform: skewX(-18deg);
+      background: linear-gradient(90deg, transparent, rgba(255,255,255,0.08), transparent);
+      animation: scan 8s linear infinite;
+    }
+
+    .block-actions {
+      display: flex;
+      justify-content: flex-end;
+    }
+
+    .copy-btn {
+      border: 0;
+      border-radius: 999px;
+      padding: 10px 14px;
+      background: linear-gradient(90deg, rgba(146, 201, 255, 0.16), rgba(124, 255, 215, 0.16));
+      color: var(--text);
+      font: inherit;
+      cursor: pointer;
+      transition: 180ms ease;
+    }
+
+    .copy-btn:hover {
+      transform: translateY(-1px);
+    }
+
+    .layout {
+      display: grid;
+      grid-template-columns: 290px minmax(0, 1fr);
+      gap: 24px;
+      align-items: start;
+    }
+
+    .sidebar {
+      position: sticky;
+      top: 18px;
+      padding: 18px;
+    }
+
+    .sidebar h2 {
+      margin: 0 0 12px;
+      font-size: 0.92rem;
+      letter-spacing: 0.16em;
+      text-transform: uppercase;
+      color: var(--accent);
+    }
+
+    .nav {
+      display: grid;
+      gap: 10px;
+      margin-bottom: 18px;
+    }
+
+    .nav a {
+      display: grid;
+      gap: 4px;
+      text-decoration: none;
+      color: var(--text);
+      padding: 12px 14px;
+      border-radius: 18px;
+      background: rgba(255,255,255,0.03);
+      border: 1px solid transparent;
+      transition: 180ms ease;
+    }
+
+    .nav a span {
+      color: var(--soft);
+      font-size: 0.76rem;
+      text-transform: uppercase;
+      letter-spacing: 0.14em;
+    }
+
+    .nav a:hover,
+    .nav a.active {
+      border-color: rgba(146, 201, 255, 0.18);
+      background: rgba(146, 201, 255, 0.08);
+      transform: translateX(4px);
+    }
+
+    .sidebar-note {
+      padding: 14px;
+      border-radius: 20px;
+      background: rgba(255,255,255,0.03);
+      border: 1px solid rgba(255,255,255,0.05);
+      color: var(--muted);
+      line-height: 1.7;
+      font-size: 0.92rem;
+    }
+
+    .sidebar-search {
+      margin-bottom: 12px;
+    }
+
+    .sidebar-search input {
+      width: 100%;
+      border: 1px solid rgba(255,255,255,0.07);
+      border-radius: 16px;
+      background: rgba(255,255,255,0.04);
+      color: var(--text);
+      padding: 12px 14px;
+      font: inherit;
+    }
+
+    .sidebar-search input::placeholder {
+      color: var(--soft);
+    }
+
+    .sidebar-meta {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 10px;
+      margin-bottom: 14px;
+    }
+
+    .sidebar-stat {
+      padding: 12px 14px;
+      border-radius: 16px;
+      background: rgba(255,255,255,0.03);
+      border: 1px solid rgba(255,255,255,0.05);
+    }
+
+    .sidebar-stat span {
+      display: block;
+      font-size: 0.72rem;
+      color: var(--soft);
+      text-transform: uppercase;
+      letter-spacing: 0.12em;
+      margin-bottom: 4px;
+    }
+
+    .sidebar-stat strong {
+      font-size: 1rem;
+      color: var(--text);
+    }
+
+    .content {
+      display: grid;
+      gap: 22px;
+    }
+
+    .page {
+      padding: 28px;
+      border-radius: 30px;
+      background: linear-gradient(180deg, rgba(8, 16, 28, 0.94), rgba(4, 9, 17, 0.98));
+      border: 1px solid var(--line);
+      box-shadow: var(--shadow);
+      transform: translateY(34px);
+      opacity: 0;
+      transition: transform 700ms cubic-bezier(.22,.9,.25,1), opacity 700ms ease;
+    }
+
+    .page.visible {
+      transform: translateY(0);
+      opacity: 1;
+    }
+
+    .page-meta {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      gap: 14px;
+      margin-bottom: 16px;
+    }
+
+    .page-head {
+      display: grid;
+      gap: 6px;
+    }
+
+    .page-label {
+      color: var(--accent-2);
+      font-size: 0.78rem;
+      letter-spacing: 0.18em;
+      text-transform: uppercase;
+    }
+
+    .page-title {
+      color: var(--text);
+      font-size: 1rem;
+      font-weight: 700;
+      line-height: 1.5;
+    }
+
+    .page-link {
+      color: var(--soft);
+      text-decoration: none;
+      font-size: 0.92rem;
+    }
+
+    .page-link:hover {
+      color: var(--text);
+    }
+
+    .page-actions {
+      display: flex;
+      gap: 10px;
+      align-items: center;
+      flex-wrap: wrap;
+    }
+
+    .page-body {
+      display: grid;
+      gap: 16px;
+    }
+
+    .page-progress {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 8px 12px;
+      border-radius: 999px;
+      background: rgba(124, 255, 215, 0.08);
+      border: 1px solid rgba(124, 255, 215, 0.12);
+      color: var(--accent-2);
+      font-size: 0.78rem;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+    }
+
+    .text-block,
+    .math-block,
+    .output-block,
+    .callout-block {
+      margin: 0;
+      padding: 18px;
+      border-radius: 24px;
+      background: rgba(255,255,255,0.03);
+      border: 1px solid rgba(255,255,255,0.06);
+      overflow: auto;
+    }
+
+    .text-block p,
+    .callout-block p {
+      margin: 0;
+      color: #e6f1ff;
+      line-height: 1.85;
+      font-size: 0.98rem;
+    }
+
+    .text-block {
+      display: grid;
+      gap: 12px;
+    }
+
+    .text-block pre {
+      margin: 0;
+      color: #e6f1ff;
+      white-space: pre-wrap;
+      word-break: break-word;
+      font-family: "JetBrains Mono", monospace;
+      line-height: 1.82;
+      font-size: 0.92rem;
+    }
+
+    .inline-heading {
+      margin: 0;
+      font-family: "Space Grotesk", sans-serif;
+      font-size: clamp(1.1rem, 2vw, 1.45rem);
+      color: var(--text);
+      letter-spacing: -0.03em;
+    }
+
+    .math-block {
+      background: linear-gradient(135deg, rgba(160, 143, 255, 0.12), rgba(146, 201, 255, 0.08));
+      border-color: rgba(160, 143, 255, 0.18);
+    }
+
+    .math-block pre,
+    .output-block pre {
+      margin: 0;
+      color: #e6f1ff;
+      white-space: pre-wrap;
+      word-break: break-word;
+      overflow: auto;
+      font-family: "JetBrains Mono", monospace;
+      line-height: 1.82;
+      font-size: 0.92rem;
+    }
+
+    .output-block {
+      background: rgba(8, 15, 27, 0.92);
+      border-color: rgba(124, 255, 215, 0.12);
+    }
+
+    .callout-block {
+      background: linear-gradient(135deg, rgba(146, 201, 255, 0.1), rgba(124, 255, 215, 0.06));
+      border-color: rgba(146, 201, 255, 0.16);
+    }
+
+    .callout-block.warning {
+      background: linear-gradient(135deg, rgba(255, 201, 140, 0.14), rgba(146, 201, 255, 0.06));
+      border-color: rgba(255, 201, 140, 0.18);
+    }
+
+    .callout-block strong {
+      display: block;
+      margin-bottom: 6px;
+      color: var(--text);
+    }
+
+    .code-panel {
+      border-radius: 24px;
+      background: #06101c;
+      border: 1px solid rgba(255,255,255,0.06);
+      overflow: hidden;
+    }
+
+    .code-panel-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 10px;
+      padding: 12px 16px;
+      border-bottom: 1px solid rgba(255,255,255,0.06);
+      background: rgba(255,255,255,0.03);
+    }
+
+    .code-label {
+      color: var(--soft);
+      font-size: 0.78rem;
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+    }
+
+    .code-lines {
+      margin: 0;
+      padding: 16px 16px 16px 54px;
+      color: #d7eaff;
+      font-family: "JetBrains Mono", monospace;
+      font-size: 0.92rem;
+      line-height: 1.8;
+      overflow: auto;
+    }
+
+    .code-lines li {
+      white-space: pre;
+      padding-left: 10px;
+    }
+
+    .takeaway-box,
+    .knowledge-check,
+    .pager {
+      padding: 18px;
+      border-radius: 24px;
+      border: 1px solid rgba(255,255,255,0.06);
+      background: rgba(255,255,255,0.03);
+    }
+
+    .takeaway-box strong,
+    .knowledge-check strong {
+      display: block;
+      margin-bottom: 8px;
+      color: var(--text);
+      font-size: 0.92rem;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+    }
+
+    .takeaway-box p,
+    .knowledge-check li {
+      margin: 0;
+      color: var(--muted);
+      line-height: 1.8;
+    }
+
+    .knowledge-check ol {
+      margin: 0;
+      padding-left: 18px;
+      display: grid;
+      gap: 10px;
+    }
+
+    .page-learning {
+      display: grid;
+      gap: 16px;
+      grid-template-columns: 1.05fr 0.95fr;
+    }
+
+    .pager {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+
+    .pager a {
+      text-decoration: none;
+      color: var(--text);
+      padding: 10px 14px;
+      border-radius: 999px;
+      background: linear-gradient(90deg, rgba(146, 201, 255, 0.16), rgba(124, 255, 215, 0.16));
+      border: 1px solid rgba(146, 201, 255, 0.12);
+    }
+
+    .pager span {
+      color: var(--soft);
+      font-size: 0.88rem;
+    }
+
+    .footer-banner {
+      padding: 24px;
+      border-radius: 30px;
+      background: linear-gradient(135deg, rgba(146, 201, 255, 0.12), rgba(124, 255, 215, 0.08), rgba(255, 201, 140, 0.08));
+      border: 1px solid rgba(146, 201, 255, 0.16);
+      box-shadow: var(--shadow);
+    }
+
+    .footer-banner h2 {
+      margin: 0 0 10px;
+      font-family: "Space Grotesk", sans-serif;
+      font-size: clamp(1.5rem, 3vw, 2.2rem);
+    }
+
+    .footer-banner p {
+      margin: 0;
+      color: var(--muted);
+      line-height: 1.85;
+    }
+
+    @keyframes pulse {
+      0%, 100% { transform: scale(1); opacity: 1; }
+      50% { transform: scale(0.72); opacity: 0.5; }
+    }
+
+    @keyframes drift {
+      0%, 100% { transform: translate3d(0, 0, 0); }
+      50% { transform: translate3d(0, -24px, 0); }
+    }
+
+    @keyframes scan {
+      from { left: -40%; }
+      to { left: 140%; }
+    }
+
+    @media (max-width: 1080px) {
+      .hero,
+      .layout {
+        grid-template-columns: 1fr;
+      }
+
+      .sidebar {
+        position: relative;
+        top: 0;
+      }
+    }
+
+    @media (max-width: 720px) {
+      .shell {
+        width: min(100vw - 16px, 100%);
+      }
+
+      .hero-copy,
+      .hero-stage,
+      .sidebar,
+      .page,
+      .footer-banner {
+        padding: 20px;
+      }
+
+      .hero-grid {
+        grid-template-columns: 1fr;
+      }
+
+      .page-meta {
+        flex-direction: column;
+        align-items: flex-start;
+      }
+
+      .page-learning {
+        grid-template-columns: 1fr;
+      }
+
+      .sidebar-toggle {
+        display: inline-flex;
+        align-items: center;
+      }
+
+      .sidebar {
+        position: fixed;
+        top: 0;
+        right: 0;
+        width: min(88vw, 360px);
+        height: 100vh;
+        z-index: 1000;
+        overflow-y: auto;
+        transform: translateX(110%);
+        transition: transform 220ms ease;
+      }
+
+      .sidebar.is-open {
+        transform: translateX(0);
+      }
+
+      .status-chip {
+        left: 16px;
+        right: 16px;
+        bottom: 16px;
+        text-align: center;
+      }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      html {
+        scroll-behavior: auto;
+      }
+
+      * {
+        animation: none !important;
+        transition: none !important;
+      }
+
+      .page {
+        opacity: 1;
+        transform: none;
+      }
+    }
+  </style>
+</head>
+<body id="top" data-module="module12_deployment" data-sections="7">
+  <div class="progress" id="progressBar"></div>
+  <div class="status-chip" id="statusChip">Exploring module</div>
+  <button class="sidebar-toggle" id="sidebarToggle" type="button" aria-expanded="false" aria-controls="sidebarPanel">Navigate</button>
+  <div class="sidebar-overlay" id="sidebarOverlay" hidden></div>
+  <div class="orb one"></div>
+  <div class="orb two"></div>
+  <div class="orb three"></div>
+
+  <div class="shell">
+    <section class="hero">
+      <article class="glass hero-copy">
+        <div class="eyebrow">PyTorch for Data Science</div>
+        <h1>Module 12 — Packaging &amp; Deployment: DS<br>→ Production</h1>
+        <p class="subtitle">Export, Serve, Monitor, and Roll Back</p>
+        <p class="subtitle">PyTorch for Data Science Module Goal: Take a trained PyTorch model all the way to a monitored production endpoint. Learn when to use TorchScript vs ONNX, structure a FastAPI inference service, and instrument your service with latency tracking, drift detection, and a rollback strategy.</p>
+        <div class="hero-grid">
+          <div class="metric"><strong>15</strong><span>source pages</span></div>
+          <div class="metric"><strong>7</strong><span>named sections</span></div>
+          <div class="metric"><strong>11 min</strong><span>estimated reading time</span></div>
+          <div class="metric"><strong>12</strong><span>deep learning module</span></div>
+          <div class="metric"><strong id="completionBadge">In progress</strong><span>completion status</span></div>
+        </div>
+      </article>
+
+      <aside class="glass hero-stage">
+        <div class="hero-card">
+          <span>Quick Glimpse</span>
+          <strong> Module 12 — Packaging &amp; Deployment: DS
+             → Production
+                       Export, Serve, Monitor, and Roll Back
+                             PyTorch for Data Science
+     Module Goal: Take a trained PyTorch model all the way to a monitored production</strong>
+        </div>
+        <div class="code-shell">
+          <div class="block-actions">
+            <button class="copy-btn" type="button" data-copy="import torch
+import torch.nn as nn" data-default-label="Copy example">Copy example</button>
+          </div>
+          <pre class="hero-pre">import torch
+import torch.nn as nn</pre>
+        </div>
+      </aside>
+    </section>
+
+    <section class="layout">
+      <aside class="glass sidebar" id="sidebarPanel">
+        <h2>Navigate Module</h2>
+        <div class="sidebar-search">
+          <input id="sectionSearch" type="search" placeholder="Search sections" aria-label="Search sections">
+        </div>
+        <div class="sidebar-meta">
+          <div class="sidebar-stat"><span>Sections</span><strong>7</strong></div>
+          <div class="sidebar-stat"><span>Reading Time</span><strong>11 min</strong></div>
+        </div>
+        <nav class="nav" id="sidebarNav">
+          <a href="#page-01"><span>Section</span>1. Export: TorchScript vs ONNX</a><a href="#page-04"><span>Section</span>2. Serving Patterns: Batch vs Realtime</a><a href="#page-05"><span>Section</span>3. FastAPI Inference Service Structure</a><a href="#page-08"><span>Section</span>4. Monitoring: Latency, Drift, Failure Patterns</a><a href="#page-11"><span>Section</span>5. A/B Testing and Rollback Mindset</a><a href="#page-13"><span>Section</span>6. Full Deployment Checklist</a><a href="#page-14"><span>Section</span>Module Summary</a>
+        </nav>
+        <div class="sidebar-note">
+          This module is rendered from the original PDF with exact extracted wording preserved page by page, while the surrounding experience is upgraded with premium layout, animation, and navigation.
+        </div>
+      </aside>
+
+      <main class="content">
+        
+        <section class="page" id="page-01">
+          <div class="page-meta">
+            <div class="page-head">
+              <div class="page-label">Page 01</div>
+              <div class="page-title">Module 12 — Packaging &amp; Deployment: DS</div>
+            </div>
+            <div class="page-actions">
+              <div class="page-progress">Page 01 / 15</div>
+              <a class="page-link" href="#top">Back to top</a>
+            </div>
+          </div>
+          <div class="page-body">
+            <h3 class="inline-heading">→ Production</h3><h3 class="inline-heading">Export, Serve, Monitor, and Roll Back</h3><h3 class="inline-heading">PyTorch for Data Science</h3><div class="text-block"><pre>Module Goal: Take a trained PyTorch model all the way to a monitored production
+     endpoint. Learn when to use TorchScript vs ONNX, structure a FastAPI inference
+     service, and instrument your service with latency tracking, drift detection, and a
+     rollback strategy.</pre></div><h3 class="inline-heading">1. Export: TorchScript vs ONNX</h3><h3 class="inline-heading">Decision Guide</h3><h3 class="inline-heading">TorchScript                                                 ONNX</h3><div class="text-block"><pre>What PyTorch’s native serialisation                               Open format for ML
+it is                                                             models
+In-   Python or C++ PyTorch                                       ONNX Runtime,
+fer-                                                              TensorRT, CoreML, etc.
+ence
+run-
+time</pre></div>
+      <div class="math-block">
+        <pre>Best Staying in PyTorch ecosystem                                 Cross-framework / edge</pre>
+      </div>
+      <div class="code-panel">
+        <div class="code-panel-header">
+          <span class="code-label">Code Example</span>
+          <button class="copy-btn" type="button" data-copy="for                                                               deployment" data-default-label="Copy code">Copy code</button>
+        </div>
+        <ol class="code-lines"><li>for                                                               deployment</li></ol>
+      </div>
+            <div class="page-learning">
+              <div class="takeaway-box">
+                <strong>Key Takeaway</strong>
+                <p>Module Goal: Take a trained PyTorch model all the way to a monitored production endpoint. Learn when to use TorchScript vs ONNX, structure a FastAPI inference</p>
+              </div>
+              
+      <div class="knowledge-check">
+        <strong>Knowledge Check</strong>
+        <ol>
+          <li>What is the first debugging check you would make when applying module 12 — packaging &amp; deployment: ds in a real notebook?</li>
+          <li>Which code example or pattern from module 12 — packaging &amp; deployment: ds is worth reusing directly in your own project?</li>
+        </ol>
+      </div>
+            </div>
+            
+      <div class="pager">
+        <a href="#top">Course top</a>
+        <span>Page 01 of 15</span>
+        <a href="#page-02">Next page</a>
+      </div>
+          </div>
+        </section>
+        <section class="page" id="page-02">
+          <div class="page-meta">
+            <div class="page-head">
+              <div class="page-label">Page 02</div>
+              <div class="page-title">TorchScript                                           ONNX</div>
+            </div>
+            <div class="page-actions">
+              <div class="page-progress">Page 02 / 15</div>
+              <a class="page-link" href="#top">Back to top</a>
+            </div>
+          </div>
+          <div class="page-body">
+            
+      <div class="math-block">
+        <pre>Sup- Yes (trace + script)                                   Limited</pre>
+      </div><div class="text-block"><p>ports dy- namic con- trol flow</p></div><h3 class="inline-heading">Startup</h3><h3 class="inline-heading">Faster                                                Faster</h3><div class="text-block"><p>time</p><p>Rule: Use TorchScript when deploying within a Python/PyTorch stack. Use ONNX when you need runtime portability (mobile, edge, non-Python).</p></div><h3 class="inline-heading">TorchScript</h3>
+      <div class="code-panel">
+        <div class="code-panel-header">
+          <span class="code-label">Code Example</span>
+          <button class="copy-btn" type="button" data-copy="import torch
+import torch.nn as nn
+
+torch.manual_seed(42)
+
+class ProductionModel(nn.Module):
+    def __init__(self, in_dim: int = 10, n_classes: int = 3):" data-default-label="Copy code">Copy code</button>
+        </div>
+        <ol class="code-lines"><li>import torch</li><li>import torch.nn as nn</li><li>&nbsp;</li><li>torch.manual_seed(42)</li><li>&nbsp;</li><li>class ProductionModel(nn.Module):</li><li>    def __init__(self, in_dim: int = 10, n_classes: int = 3):</li></ol>
+      </div><div class="text-block"><pre>super().__init__()</pre></div>
+      <div class="code-panel">
+        <div class="code-panel-header">
+          <span class="code-label">Code Example</span>
+          <button class="copy-btn" type="button" data-copy="        self.net = nn.Sequential(" data-default-label="Copy code">Copy code</button>
+        </div>
+        <ol class="code-lines"><li>        self.net = nn.Sequential(</li></ol>
+      </div><div class="text-block"><pre>nn.Linear(in_dim, 64), nn.LayerNorm(64), nn.ReLU(),</pre></div>
+      <div class="math-block">
+        <pre>            nn.Linear(64, 32), nn.ReLU(),</pre>
+      </div><div class="text-block"><pre>nn.Linear(32, n_classes)
+        )</pre></div>
+      <div class="code-panel">
+        <div class="code-panel-header">
+          <span class="code-label">Code Example</span>
+          <button class="copy-btn" type="button" data-copy="    def forward(self, x: torch.Tensor) -&gt; torch.Tensor:
+        return self.net(x)
+
+
+model = ProductionModel()
+example_input = torch.randn(1, 10)" data-default-label="Copy code">Copy code</button>
+        </div>
+        <ol class="code-lines"><li>    def forward(self, x: torch.Tensor) -&gt; torch.Tensor:</li><li>        return self.net(x)</li><li>&nbsp;</li><li>&nbsp;</li><li>model = ProductionModel()</li><li>example_input = torch.randn(1, 10)</li></ol>
+      </div>
+            <div class="page-learning">
+              <div class="takeaway-box">
+                <strong>Key Takeaway</strong>
+                <p>Sup- Yes (trace + script)                                   Limited ports dy-</p>
+              </div>
+              
+      <div class="knowledge-check">
+        <strong>Knowledge Check</strong>
+        <ol>
+          <li>What is the first debugging check you would make when applying torchscript                                           onnx in a real notebook?</li>
+          <li>Which code example or pattern from torchscript                                           onnx is worth reusing directly in your own project?</li>
+        </ol>
+      </div>
+            </div>
+            
+      <div class="pager">
+        <a href="#page-01">Previous page</a>
+        <span>Page 02 of 15</span>
+        <a href="#page-03">Next page</a>
+      </div>
+          </div>
+        </section>
+        <section class="page" id="page-03">
+          <div class="page-meta">
+            <div class="page-head">
+              <div class="page-label">Page 03</div>
+              <div class="page-title">traced = torch.jit.trace(model, example_input)</div>
+            </div>
+            <div class="page-actions">
+              <div class="page-progress">Page 03 / 15</div>
+              <a class="page-link" href="#top">Back to top</a>
+            </div>
+          </div>
+          <div class="page-body">
+            
+      <div class="code-panel">
+        <div class="code-panel-header">
+          <span class="code-label">Code Example</span>
+          <button class="copy-btn" type="button" data-copy="# Method 1: torch.jit.trace — fastest, for static graphs (no dynamic control flow)
+traced = torch.jit.trace(model, example_input)
+torch.jit.save(traced, &quot;model_traced.pt&quot;)
+print(&quot;Traced model saved.&quot;)
+
+# Method 2: torch.jit.script — handles dynamic control flow
+# Note: @torch.jit.export can be added to expose extra methods in script mode,
+# but trace and script cannot be combined on the same class instance.
+scripted = torch.jit.script(model)
+torch.jit.save(scripted, &quot;model_scripted.pt&quot;)
+print(&quot;Scripted model saved.&quot;)
+
+# Load and verify
+loaded = torch.jit.load(&quot;model_scripted.pt&quot;)" data-default-label="Copy code">Copy code</button>
+        </div>
+        <ol class="code-lines"><li># Method 1: torch.jit.trace — fastest, for static graphs (no dynamic control flow)</li><li>traced = torch.jit.trace(model, example_input)</li><li>torch.jit.save(traced, &quot;model_traced.pt&quot;)</li><li>print(&quot;Traced model saved.&quot;)</li><li>&nbsp;</li><li># Method 2: torch.jit.script — handles dynamic control flow</li><li># Note: @torch.jit.export can be added to expose extra methods in script mode,</li><li># but trace and script cannot be combined on the same class instance.</li><li>scripted = torch.jit.script(model)</li><li>torch.jit.save(scripted, &quot;model_scripted.pt&quot;)</li><li>print(&quot;Scripted model saved.&quot;)</li><li>&nbsp;</li><li># Load and verify</li><li>loaded = torch.jit.load(&quot;model_scripted.pt&quot;)</li></ol>
+      </div><div class="text-block"><p>loaded.eval()</p></div>
+      <div class="code-panel">
+        <div class="code-panel-header">
+          <span class="code-label">Code Example</span>
+          <button class="copy-btn" type="button" data-copy="x_test = torch.randn(4, 10)
+with torch.no_grad():
+    out   = loaded(x_test)
+    proba = torch.softmax(out, dim=1)
+
+print(f&quot;Inference output shape: {out.shape}&quot;)
+print(f&quot;Probabilities sum to 1: {proba.sum(dim=1).round(decimals=4)}&quot;)" data-default-label="Copy code">Copy code</button>
+        </div>
+        <ol class="code-lines"><li>x_test = torch.randn(4, 10)</li><li>with torch.no_grad():</li><li>    out   = loaded(x_test)</li><li>    proba = torch.softmax(out, dim=1)</li><li>&nbsp;</li><li>print(f&quot;Inference output shape: {out.shape}&quot;)</li><li>print(f&quot;Probabilities sum to 1: {proba.sum(dim=1).round(decimals=4)}&quot;)</li></ol>
+      </div><div class="text-block"><p>Traced model saved. Scripted model saved.</p></div>
+      <div class="code-panel">
+        <div class="code-panel-header">
+          <span class="code-label">Code Example</span>
+          <button class="copy-btn" type="button" data-copy="Inference output shape: torch.Size([4, 3])" data-default-label="Copy code">Copy code</button>
+        </div>
+        <ol class="code-lines"><li>Inference output shape: torch.Size([4, 3])</li></ol>
+      </div>
+      <div class="output-block">
+        <div class="block-actions">
+          <button class="copy-btn" type="button" data-copy="Probabilities sum to 1: tensor([1., 1., 1., 1.])" data-default-label="Copy output">Copy output</button>
+        </div>
+        <pre>Probabilities sum to 1: tensor([1., 1., 1., 1.])</pre>
+      </div><h3 class="inline-heading">ONNX Export</h3>
+      <div class="code-panel">
+        <div class="code-panel-header">
+          <span class="code-label">Code Example</span>
+          <button class="copy-btn" type="button" data-copy="# ONNX export requires: pip install onnx onnxruntime
+# Both are optional — the cell will skip gracefully if not installed.
+onnx_path = &quot;model.onnx&quot;
+
+try:
+       torch.onnx.export(" data-default-label="Copy code">Copy code</button>
+        </div>
+        <ol class="code-lines"><li># ONNX export requires: pip install onnx onnxruntime</li><li># Both are optional — the cell will skip gracefully if not installed.</li><li>onnx_path = &quot;model.onnx&quot;</li><li>&nbsp;</li><li>try:</li><li>       torch.onnx.export(</li></ol>
+      </div><div class="text-block"><pre>model,
+           example_input,
+           onnx_path,</pre></div>
+            <div class="page-learning">
+              <div class="takeaway-box">
+                <strong>Key Takeaway</strong>
+                <p>Focus on how traced = torch.jit.trace(model, example_input) shows up in real PyTorch workflows and examples.</p>
+              </div>
+              
+      <div class="knowledge-check">
+        <strong>Knowledge Check</strong>
+        <ol>
+          <li>What is the first debugging check you would make when applying traced = torch.jit.trace(model, example_input) in a real notebook?</li>
+          <li>Which code example or pattern from traced = torch.jit.trace(model, example_input) is worth reusing directly in your own project?</li>
+        </ol>
+      </div>
+            </div>
+            
+      <div class="pager">
+        <a href="#page-02">Previous page</a>
+        <span>Page 03 of 15</span>
+        <a href="#page-04">Next page</a>
+      </div>
+          </div>
+        </section>
+        <section class="page" id="page-04">
+          <div class="page-meta">
+            <div class="page-head">
+              <div class="page-label">Page 04</div>
+              <div class="page-title">dynamo=False,</div>
+            </div>
+            <div class="page-actions">
+              <div class="page-progress">Page 04 / 15</div>
+              <a class="page-link" href="#top">Back to top</a>
+            </div>
+          </div>
+          <div class="page-body">
+            
+      <div class="code-panel">
+        <div class="code-panel-header">
+          <span class="code-label">Code Example</span>
+          <button class="copy-btn" type="button" data-copy="          opset_version=17,
+          input_names=[&#x27;input&#x27;],
+          output_names=[&#x27;logits&#x27;],
+          dynamic_axes={" data-default-label="Copy code">Copy code</button>
+        </div>
+        <ol class="code-lines"><li>          opset_version=17,</li><li>          input_names=[&#x27;input&#x27;],</li><li>          output_names=[&#x27;logits&#x27;],</li><li>          dynamic_axes={</li></ol>
+      </div><div class="text-block"><pre>&#x27;input&#x27;: {0: &#x27;batch_size&#x27;},
+              &#x27;logits&#x27;: {0: &#x27;batch_size&#x27;}
+          }
+   )</pre></div>
+      <div class="code-panel">
+        <div class="code-panel-header">
+          <span class="code-label">Code Example</span>
+          <button class="copy-btn" type="button" data-copy="   print(f&quot;ONNX model exported to {onnx_path}&quot;)
+
+   try:
+       import onnxruntime as ort
+       sess = ort.InferenceSession(onnx_path)
+       out = sess.run(None, {&#x27;input&#x27;: example_input.numpy()})
+       print(f&quot;ONNX Runtime inference output shape: {out[0].shape}&quot;)
+   except ImportError:
+       print(&quot;Tip: pip install onnxruntime to verify ONNX inference&quot;)
+
+except Exception as e:
+    print(f&quot;ONNX export skipped — install dependencies with:&quot;)
+    print(f&quot; pip install onnx onnxruntime&quot;)
+    print(f&quot; ({type(e).__name__}: {e})&quot;)" data-default-label="Copy code">Copy code</button>
+        </div>
+        <ol class="code-lines"><li>   print(f&quot;ONNX model exported to {onnx_path}&quot;)</li><li>&nbsp;</li><li>   try:</li><li>       import onnxruntime as ort</li><li>       sess = ort.InferenceSession(onnx_path)</li><li>       out = sess.run(None, {&#x27;input&#x27;: example_input.numpy()})</li><li>       print(f&quot;ONNX Runtime inference output shape: {out[0].shape}&quot;)</li><li>   except ImportError:</li><li>       print(&quot;Tip: pip install onnxruntime to verify ONNX inference&quot;)</li><li>&nbsp;</li><li>except Exception as e:</li><li>    print(f&quot;ONNX export skipped — install dependencies with:&quot;)</li><li>    print(f&quot; pip install onnx onnxruntime&quot;)</li><li>    print(f&quot; ({type(e).__name__}: {e})&quot;)</li></ol>
+      </div><div class="text-block"><pre>ONNX export skipped — install dependencies with:
+  pip install onnx onnxruntime</pre></div>
+      <div class="output-block">
+        <div class="block-actions">
+          <button class="copy-btn" type="button" data-copy="  (OnnxExporterError: Module onnx is not installed!)" data-default-label="Copy output">Copy output</button>
+        </div>
+        <pre>  (OnnxExporterError: Module onnx is not installed!)</pre>
+      </div><div class="text-block"><p>C:\Users\ujanp\AppData\Local\Temp\ipykernel_11308\3704396464.py:6: DeprecationWarning:</p><p>You are using the legacy TorchScript-based ONNX export. Starting in PyTorch 2.9, the new torc based ONNX exporter has become the default. Learn more about the new export logic: https://do</p></div><h3 class="inline-heading">2. Serving Patterns: Batch vs Realtime</h3>
+            <div class="page-learning">
+              <div class="takeaway-box">
+                <strong>Key Takeaway</strong>
+                <p>ONNX export skipped — install dependencies with: pip install onnx onnxruntime</p>
+              </div>
+              
+      <div class="knowledge-check">
+        <strong>Knowledge Check</strong>
+        <ol>
+          <li>What is the first debugging check you would make when applying dynamo=false, in a real notebook?</li>
+          <li>Which code example or pattern from dynamo=false, is worth reusing directly in your own project?</li>
+        </ol>
+      </div>
+            </div>
+            
+      <div class="pager">
+        <a href="#page-03">Previous page</a>
+        <span>Page 04 of 15</span>
+        <a href="#page-05">Next page</a>
+      </div>
+          </div>
+        </section>
+        <section class="page" id="page-05">
+          <div class="page-meta">
+            <div class="page-head">
+              <div class="page-label">Page 05</div>
+              <div class="page-title">def batch_inference(model_path: str, data: torch.Tensor,</div>
+            </div>
+            <div class="page-actions">
+              <div class="page-progress">Page 05 / 15</div>
+              <a class="page-link" href="#top">Back to top</a>
+            </div>
+          </div>
+          <div class="page-body">
+            
+      <div class="code-panel">
+        <div class="code-panel-header">
+          <span class="code-label">Code Example</span>
+          <button class="copy-btn" type="button" data-copy="# Batch inference — process many samples offline
+def batch_inference(model_path: str, data: torch.Tensor,
+                    batch_size: int = 256) -&gt; torch.Tensor:" data-default-label="Copy code">Copy code</button>
+        </div>
+        <ol class="code-lines"><li># Batch inference — process many samples offline</li><li>def batch_inference(model_path: str, data: torch.Tensor,</li><li>                    batch_size: int = 256) -&gt; torch.Tensor:</li></ol>
+      </div><div class="text-block"><pre>&quot;&quot;&quot;Load a scripted model and run inference in batches.&quot;&quot;&quot;</pre></div>
+      <div class="code-panel">
+        <div class="code-panel-header">
+          <span class="code-label">Code Example</span>
+          <button class="copy-btn" type="button" data-copy="    model = torch.jit.load(model_path)" data-default-label="Copy code">Copy code</button>
+        </div>
+        <ol class="code-lines"><li>    model = torch.jit.load(model_path)</li></ol>
+      </div><div class="text-block"><pre>model.eval()</pre></div>
+      <div class="code-panel">
+        <div class="code-panel-header">
+          <span class="code-label">Code Example</span>
+          <button class="copy-btn" type="button" data-copy="   results = []
+   for i in range(0, len(data), batch_size):
+       batch = data[i:i+batch_size]
+       with torch.no_grad():
+           logits = model(batch)                        # forward() — always available
+           probs = torch.softmax(logits, dim=1)         # apply softmax here" data-default-label="Copy code">Copy code</button>
+        </div>
+        <ol class="code-lines"><li>   results = []</li><li>   for i in range(0, len(data), batch_size):</li><li>       batch = data[i:i+batch_size]</li><li>       with torch.no_grad():</li><li>           logits = model(batch)                        # forward() — always available</li><li>           probs = torch.softmax(logits, dim=1)         # apply softmax here</li></ol>
+      </div><div class="text-block"><pre>results.append(probs)</pre></div>
+      <div class="code-panel">
+        <div class="code-panel-header">
+          <span class="code-label">Code Example</span>
+          <button class="copy-btn" type="button" data-copy="   return torch.cat(results, dim=0)" data-default-label="Copy code">Copy code</button>
+        </div>
+        <ol class="code-lines"><li>   return torch.cat(results, dim=0)</li></ol>
+      </div><h3 class="inline-heading"># Test</h3>
+      <div class="code-panel">
+        <div class="code-panel-header">
+          <span class="code-label">Code Example</span>
+          <button class="copy-btn" type="button" data-copy="test_data = torch.randn(1000, 10)
+probs     = batch_inference(&quot;model_scripted.pt&quot;, test_data)
+print(f&quot;Batch inference: {len(test_data)} samples → {probs.shape}&quot;)
+
+
+Batch inference: 1000 samples → torch.Size([1000, 3])" data-default-label="Copy code">Copy code</button>
+        </div>
+        <ol class="code-lines"><li>test_data = torch.randn(1000, 10)</li><li>probs     = batch_inference(&quot;model_scripted.pt&quot;, test_data)</li><li>print(f&quot;Batch inference: {len(test_data)} samples → {probs.shape}&quot;)</li><li>&nbsp;</li><li>&nbsp;</li><li>Batch inference: 1000 samples → torch.Size([1000, 3])</li></ol>
+      </div><h3 class="inline-heading">3. FastAPI Inference Service Structure</h3>
+      <div class="code-panel">
+        <div class="code-panel-header">
+          <span class="code-label">Code Example</span>
+          <button class="copy-btn" type="button" data-copy="# This is the complete FastAPI service — save as inference_service.py
+# Run with: uvicorn inference_service:app --host 0.0.0.0 --port 8000
+
+FASTAPI_SERVICE = &#x27;&#x27;&#x27;
+from fastapi import FastAPI, HTTPException
+from pydantic import BaseModel
+import torch
+import time
+import logging
+from typing import List" data-default-label="Copy code">Copy code</button>
+        </div>
+        <ol class="code-lines"><li># This is the complete FastAPI service — save as inference_service.py</li><li># Run with: uvicorn inference_service:app --host 0.0.0.0 --port 8000</li><li>&nbsp;</li><li>FASTAPI_SERVICE = &#x27;&#x27;&#x27;</li><li>from fastapi import FastAPI, HTTPException</li><li>from pydantic import BaseModel</li><li>import torch</li><li>import time</li><li>import logging</li><li>from typing import List</li></ol>
+      </div>
+            <div class="page-learning">
+              <div class="takeaway-box">
+                <strong>Key Takeaway</strong>
+                <p>&quot;&quot;&quot;Load a scripted model and run inference in batches.&quot;&quot;&quot;</p>
+              </div>
+              
+      <div class="knowledge-check">
+        <strong>Knowledge Check</strong>
+        <ol>
+          <li>What is the first debugging check you would make when applying def batch_inference(model_path: str, data: torch.tensor, in a real notebook?</li>
+          <li>Which code example or pattern from def batch_inference(model_path: str, data: torch.tensor, is worth reusing directly in your own project?</li>
+        </ol>
+      </div>
+            </div>
+            
+      <div class="pager">
+        <a href="#page-04">Previous page</a>
+        <span>Page 05 of 15</span>
+        <a href="#page-06">Next page</a>
+      </div>
+          </div>
+        </section>
+        <section class="page" id="page-06">
+          <div class="page-meta">
+            <div class="page-head">
+              <div class="page-label">Page 06</div>
+              <div class="page-title">logging.basicConfig(level=logging.INFO)</div>
+            </div>
+            <div class="page-actions">
+              <div class="page-progress">Page 06 / 15</div>
+              <a class="page-link" href="#top">Back to top</a>
+            </div>
+          </div>
+          <div class="page-body">
+            
+      <div class="code-panel">
+        <div class="code-panel-header">
+          <span class="code-label">Code Example</span>
+          <button class="copy-btn" type="button" data-copy="logger = logging.getLogger(__name__)
+
+app = FastAPI(title=&quot;PyTorch Model Inference Service&quot;)
+
+
+#  Model Loading (once at startup)
+class ModelRegistry:
+     def __init__(self):
+         self.models = {}
+         self.active = None
+
+     def load(self, name: str, path: str):
+         model = torch.jit.load(path)" data-default-label="Copy code">Copy code</button>
+        </div>
+        <ol class="code-lines"><li>logger = logging.getLogger(__name__)</li><li>&nbsp;</li><li>app = FastAPI(title=&quot;PyTorch Model Inference Service&quot;)</li><li>&nbsp;</li><li>&nbsp;</li><li>#  Model Loading (once at startup)</li><li>class ModelRegistry:</li><li>     def __init__(self):</li><li>         self.models = {}</li><li>         self.active = None</li><li>&nbsp;</li><li>     def load(self, name: str, path: str):</li><li>         model = torch.jit.load(path)</li></ol>
+      </div><div class="text-block"><pre>model.eval()</pre></div>
+      <div class="code-panel">
+        <div class="code-panel-header">
+          <span class="code-label">Code Example</span>
+          <button class="copy-btn" type="button" data-copy="         self.models[name] = model" data-default-label="Copy code">Copy code</button>
+        </div>
+        <ol class="code-lines"><li>         self.models[name] = model</li></ol>
+      </div><div class="text-block"><pre>logger.info(f&quot;Loaded model: {name}&quot;)</pre></div>
+      <div class="code-panel">
+        <div class="code-panel-header">
+          <span class="code-label">Code Example</span>
+          <button class="copy-btn" type="button" data-copy="     def predict(self, name: str, x: torch.Tensor) -&gt; torch.Tensor:
+         if name not in self.models:" data-default-label="Copy code">Copy code</button>
+        </div>
+        <ol class="code-lines"><li>     def predict(self, name: str, x: torch.Tensor) -&gt; torch.Tensor:</li><li>         if name not in self.models:</li></ol>
+      </div><div class="text-block"><pre>raise ValueError(f&quot;Model {name} not loaded&quot;)</pre></div>
+      <div class="code-panel">
+        <div class="code-panel-header">
+          <span class="code-label">Code Example</span>
+          <button class="copy-btn" type="button" data-copy="         with torch.no_grad():
+             logits = self.models[name](x)
+             return torch.softmax(logits, dim=1)
+
+
+registry = ModelRegistry()" data-default-label="Copy code">Copy code</button>
+        </div>
+        <ol class="code-lines"><li>         with torch.no_grad():</li><li>             logits = self.models[name](x)</li><li>             return torch.softmax(logits, dim=1)</li><li>&nbsp;</li><li>&nbsp;</li><li>registry = ModelRegistry()</li></ol>
+      </div><div class="text-block"><p>@app.on_event(&quot;startup&quot;)</p></div>
+      <div class="code-panel">
+        <div class="code-panel-header">
+          <span class="code-label">Code Example</span>
+          <button class="copy-btn" type="button" data-copy="def startup():" data-default-label="Copy code">Copy code</button>
+        </div>
+        <ol class="code-lines"><li>def startup():</li></ol>
+      </div><div class="text-block"><pre>registry.load(&quot;v1&quot;, &quot;model_scripted.pt&quot;)</pre></div>
+      <div class="code-panel">
+        <div class="code-panel-header">
+          <span class="code-label">Code Example</span>
+          <button class="copy-btn" type="button" data-copy="    registry.active = &quot;v1&quot;
+
+
+#  Request / Response schemas
+class PredictRequest(BaseModel):" data-default-label="Copy code">Copy code</button>
+        </div>
+        <ol class="code-lines"><li>    registry.active = &quot;v1&quot;</li><li>&nbsp;</li><li>&nbsp;</li><li>#  Request / Response schemas</li><li>class PredictRequest(BaseModel):</li></ol>
+      </div><div class="text-block"><pre>features:    List[List[float]]          # Batch of feature vectors</pre></div>
+      <div class="math-block">
+        <pre>     model_name: str = &quot;v1&quot;</pre>
+      </div>
+      <div class="code-panel">
+        <div class="code-panel-header">
+          <span class="code-label">Code Example</span>
+          <button class="copy-btn" type="button" data-copy="class PredictResponse(BaseModel):" data-default-label="Copy code">Copy code</button>
+        </div>
+        <ol class="code-lines"><li>class PredictResponse(BaseModel):</li></ol>
+      </div><div class="text-block"><pre>predictions:   List[int]</pre></div>
+            <div class="page-learning">
+              <div class="takeaway-box">
+                <strong>Key Takeaway</strong>
+                <p>logger.info(f&quot;Loaded model: {name}&quot;)</p>
+              </div>
+              
+      <div class="knowledge-check">
+        <strong>Knowledge Check</strong>
+        <ol>
+          <li>What is the first debugging check you would make when applying logging.basicconfig(level=logging.info) in a real notebook?</li>
+          <li>Which code example or pattern from logging.basicconfig(level=logging.info) is worth reusing directly in your own project?</li>
+        </ol>
+      </div>
+            </div>
+            
+      <div class="pager">
+        <a href="#page-05">Previous page</a>
+        <span>Page 06 of 15</span>
+        <a href="#page-07">Next page</a>
+      </div>
+          </div>
+        </section>
+        <section class="page" id="page-07">
+          <div class="page-meta">
+            <div class="page-head">
+              <div class="page-label">Page 07</div>
+              <div class="page-title">probabilities: List[List[float]]</div>
+            </div>
+            <div class="page-actions">
+              <div class="page-progress">Page 07 / 15</div>
+              <a class="page-link" href="#top">Back to top</a>
+            </div>
+          </div>
+          <div class="page-body">
+            <div class="text-block"><pre>model_name:    str
+    latency_ms:    float</pre></div><h3 class="inline-heading">#  Endpoints</h3><div class="text-block"><p>@app.post(&quot;/predict&quot;, response_model=PredictResponse)</p></div>
+      <div class="code-panel">
+        <div class="code-panel-header">
+          <span class="code-label">Code Example</span>
+          <button class="copy-btn" type="button" data-copy="def predict(request: PredictRequest):
+     start = time.perf_counter()
+     try:
+         x         = torch.tensor(request.features, dtype=torch.float32)
+         probs     = registry.predict(request.model_name, x)
+         preds     = probs.argmax(dim=1).tolist()
+         latency = (time.perf_counter() - start) * 1000" data-default-label="Copy code">Copy code</button>
+        </div>
+        <ol class="code-lines"><li>def predict(request: PredictRequest):</li><li>     start = time.perf_counter()</li><li>     try:</li><li>         x         = torch.tensor(request.features, dtype=torch.float32)</li><li>         probs     = registry.predict(request.model_name, x)</li><li>         preds     = probs.argmax(dim=1).tolist()</li><li>         latency = (time.perf_counter() - start) * 1000</li></ol>
+      </div><div class="text-block"><pre>logger.info(f&quot;Predicted {len(preds)} samples in {latency:.2f}ms&quot;)</pre></div>
+      <div class="code-panel">
+        <div class="code-panel-header">
+          <span class="code-label">Code Example</span>
+          <button class="copy-btn" type="button" data-copy="        return PredictResponse(
+            predictions=preds,
+            probabilities=probs.tolist(),
+            model_name=request.model_name,
+            latency_ms=latency" data-default-label="Copy code">Copy code</button>
+        </div>
+        <ol class="code-lines"><li>        return PredictResponse(</li><li>            predictions=preds,</li><li>            probabilities=probs.tolist(),</li><li>            model_name=request.model_name,</li><li>            latency_ms=latency</li></ol>
+      </div><div class="text-block"><pre>)</pre></div>
+      <div class="code-panel">
+        <div class="code-panel-header">
+          <span class="code-label">Code Example</span>
+          <button class="copy-btn" type="button" data-copy="    except Exception as e:" data-default-label="Copy code">Copy code</button>
+        </div>
+        <ol class="code-lines"><li>    except Exception as e:</li></ol>
+      </div><div class="text-block"><pre>raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get(&quot;/health&quot;)</pre></div>
+      <div class="code-panel">
+        <div class="code-panel-header">
+          <span class="code-label">Code Example</span>
+          <button class="copy-btn" type="button" data-copy="def health():
+    return {&quot;status&quot;: &quot;ok&quot;, &quot;active_model&quot;: registry.active}" data-default-label="Copy code">Copy code</button>
+        </div>
+        <ol class="code-lines"><li>def health():</li><li>    return {&quot;status&quot;: &quot;ok&quot;, &quot;active_model&quot;: registry.active}</li></ol>
+      </div><div class="text-block"><p>@app.post(&quot;/models/{name}/activate&quot;)</p></div>
+      <div class="code-panel">
+        <div class="code-panel-header">
+          <span class="code-label">Code Example</span>
+          <button class="copy-btn" type="button" data-copy="def activate_model(name: str):" data-default-label="Copy code">Copy code</button>
+        </div>
+        <ol class="code-lines"><li>def activate_model(name: str):</li></ol>
+      </div><div class="text-block"><pre>&quot;&quot;&quot;A/B testing or rollback: switch the active model.&quot;&quot;&quot;</pre></div>
+      <div class="code-panel">
+        <div class="code-panel-header">
+          <span class="code-label">Code Example</span>
+          <button class="copy-btn" type="button" data-copy="    if name not in registry.models:" data-default-label="Copy code">Copy code</button>
+        </div>
+        <ol class="code-lines"><li>    if name not in registry.models:</li></ol>
+      </div><div class="text-block"><pre>raise HTTPException(status_code=404, detail=&quot;Model not found&quot;)</pre></div>
+      <div class="code-panel">
+        <div class="code-panel-header">
+          <span class="code-label">Code Example</span>
+          <button class="copy-btn" type="button" data-copy="    registry.active = name
+    return {&quot;activated&quot;: name}" data-default-label="Copy code">Copy code</button>
+        </div>
+        <ol class="code-lines"><li>    registry.active = name</li><li>    return {&quot;activated&quot;: name}</li></ol>
+      </div><div class="text-block"><p>&#x27;&#x27;&#x27;</p></div>
+      <div class="code-panel">
+        <div class="code-panel-header">
+          <span class="code-label">Code Example</span>
+          <button class="copy-btn" type="button" data-copy="print(&quot;FastAPI service template ready.&quot;)" data-default-label="Copy code">Copy code</button>
+        </div>
+        <ol class="code-lines"><li>print(&quot;FastAPI service template ready.&quot;)</li></ol>
+      </div>
+            <div class="page-learning">
+              <div class="takeaway-box">
+                <strong>Key Takeaway</strong>
+                <p>@app.post(&quot;/predict&quot;, response_model=PredictResponse)</p>
+              </div>
+              
+      <div class="knowledge-check">
+        <strong>Knowledge Check</strong>
+        <ol>
+          <li>What is the first debugging check you would make when applying probabilities: list[list[float]] in a real notebook?</li>
+          <li>Which code example or pattern from probabilities: list[list[float]] is worth reusing directly in your own project?</li>
+        </ol>
+      </div>
+            </div>
+            
+      <div class="pager">
+        <a href="#page-06">Previous page</a>
+        <span>Page 07 of 15</span>
+        <a href="#page-08">Next page</a>
+      </div>
+          </div>
+        </section>
+        <section class="page" id="page-08">
+          <div class="page-meta">
+            <div class="page-head">
+              <div class="page-label">Page 08</div>
+              <div class="page-title">FastAPI service template ready.</div>
+            </div>
+            <div class="page-actions">
+              <div class="page-progress">Page 08 / 15</div>
+              <a class="page-link" href="#top">Back to top</a>
+            </div>
+          </div>
+          <div class="page-body">
+            
+      <div class="code-panel">
+        <div class="code-panel-header">
+          <span class="code-label">Code Example</span>
+          <button class="copy-btn" type="button" data-copy="print(&quot;Save to inference_service.py and run:&quot;)
+print(&quot; pip install fastapi uvicorn torch&quot;)
+print(&quot; uvicorn inference_service:app --host 0.0.0.0 --port 8000&quot;)" data-default-label="Copy code">Copy code</button>
+        </div>
+        <ol class="code-lines"><li>print(&quot;Save to inference_service.py and run:&quot;)</li><li>print(&quot; pip install fastapi uvicorn torch&quot;)</li><li>print(&quot; uvicorn inference_service:app --host 0.0.0.0 --port 8000&quot;)</li></ol>
+      </div><div class="text-block"><pre>FastAPI service template ready.
+Save to inference_service.py and run:
+  pip install fastapi uvicorn torch
+  uvicorn inference_service:app --host 0.0.0.0 --port 8000</pre></div><h3 class="inline-heading">4. Monitoring: Latency, Drift, Failure Patterns</h3><h3 class="inline-heading">Latency Monitoring</h3>
+      <div class="code-panel">
+        <div class="code-panel-header">
+          <span class="code-label">Code Example</span>
+          <button class="copy-btn" type="button" data-copy="import time
+import statistics
+
+class LatencyMonitor:" data-default-label="Copy code">Copy code</button>
+        </div>
+        <ol class="code-lines"><li>import time</li><li>import statistics</li><li>&nbsp;</li><li>class LatencyMonitor:</li></ol>
+      </div><div class="text-block"><pre>&quot;&quot;&quot;Track inference latency with rolling statistics.&quot;&quot;&quot;</pre></div>
+      <div class="code-panel">
+        <div class="code-panel-header">
+          <span class="code-label">Code Example</span>
+          <button class="copy-btn" type="button" data-copy="    def __init__(self, window: int = 1000):
+        self.window   = window
+        self.latencies = []
+
+    def record(self, latency_ms: float):" data-default-label="Copy code">Copy code</button>
+        </div>
+        <ol class="code-lines"><li>    def __init__(self, window: int = 1000):</li><li>        self.window   = window</li><li>        self.latencies = []</li><li>&nbsp;</li><li>    def record(self, latency_ms: float):</li></ol>
+      </div><div class="text-block"><pre>self.latencies.append(latency_ms)</pre></div>
+      <div class="code-panel">
+        <div class="code-panel-header">
+          <span class="code-label">Code Example</span>
+          <button class="copy-btn" type="button" data-copy="        if len(self.latencies) &gt; self.window:" data-default-label="Copy code">Copy code</button>
+        </div>
+        <ol class="code-lines"><li>        if len(self.latencies) &gt; self.window:</li></ol>
+      </div><div class="text-block"><pre>self.latencies.pop(0)</pre></div>
+      <div class="code-panel">
+        <div class="code-panel-header">
+          <span class="code-label">Code Example</span>
+          <button class="copy-btn" type="button" data-copy="    def stats(self) -&gt; dict:
+        if not self.latencies:
+            return {}
+        return {" data-default-label="Copy code">Copy code</button>
+        </div>
+        <ol class="code-lines"><li>    def stats(self) -&gt; dict:</li><li>        if not self.latencies:</li><li>            return {}</li><li>        return {</li></ol>
+      </div><div class="text-block"><pre>&#x27;count&#x27;: len(self.latencies),
+            &#x27;mean&#x27;:   statistics.mean(self.latencies),
+            &#x27;p50&#x27;:    statistics.median(self.latencies),
+            &#x27;p95&#x27;:    sorted(self.latencies)[int(0.95 * len(self.latencies))],
+            &#x27;p99&#x27;:    sorted(self.latencies)[int(0.99 * len(self.latencies))],</pre></div>
+            <div class="page-learning">
+              <div class="takeaway-box">
+                <strong>Key Takeaway</strong>
+                <p>Save to inference_service.py and run: pip install fastapi uvicorn torch uvicorn inference_service:app --host 0.0.0.0 --port 8000</p>
+              </div>
+              
+      <div class="knowledge-check">
+        <strong>Knowledge Check</strong>
+        <ol>
+          <li>What is the first debugging check you would make when applying fastapi service template ready. in a real notebook?</li>
+          <li>Which code example or pattern from fastapi service template ready. is worth reusing directly in your own project?</li>
+        </ol>
+      </div>
+            </div>
+            
+      <div class="pager">
+        <a href="#page-07">Previous page</a>
+        <span>Page 08 of 15</span>
+        <a href="#page-09">Next page</a>
+      </div>
+          </div>
+        </section>
+        <section class="page" id="page-09">
+          <div class="page-meta">
+            <div class="page-head">
+              <div class="page-label">Page 09</div>
+              <div class="page-title">&#x27;max&#x27;:      max(self.latencies)</div>
+            </div>
+            <div class="page-actions">
+              <div class="page-progress">Page 09 / 15</div>
+              <a class="page-link" href="#top">Back to top</a>
+            </div>
+          </div>
+          <div class="page-body">
+            <div class="text-block"><pre>}</pre></div>
+      <div class="code-panel">
+        <div class="code-panel-header">
+          <span class="code-label">Code Example</span>
+          <button class="copy-btn" type="button" data-copy="monitor = LatencyMonitor()
+
+# Simulate inference calls with some slow outliers
+import random" data-default-label="Copy code">Copy code</button>
+        </div>
+        <ol class="code-lines"><li>monitor = LatencyMonitor()</li><li>&nbsp;</li><li># Simulate inference calls with some slow outliers</li><li>import random</li></ol>
+      </div><div class="text-block"><p>random.seed(42)</p></div>
+      <div class="code-panel">
+        <div class="code-panel-header">
+          <span class="code-label">Code Example</span>
+          <button class="copy-btn" type="button" data-copy="for i in range(200):
+    latency = random.gauss(5, 1)    # Normal ~5ms
+    if random.random() &lt; 0.02:
+        latency = random.gauss(50, 5) # 2% slow requests" data-default-label="Copy code">Copy code</button>
+        </div>
+        <ol class="code-lines"><li>for i in range(200):</li><li>    latency = random.gauss(5, 1)    # Normal ~5ms</li><li>    if random.random() &lt; 0.02:</li><li>        latency = random.gauss(50, 5) # 2% slow requests</li></ol>
+      </div><div class="text-block"><pre>monitor.record(abs(latency))</pre></div>
+      <div class="code-panel">
+        <div class="code-panel-header">
+          <span class="code-label">Code Example</span>
+          <button class="copy-btn" type="button" data-copy="stats = monitor.stats()
+print(&quot;Latency statistics (ms):&quot;)
+for k, v in stats.items():
+    print(f&quot; {k:8s}: {v:.2f}&quot;)
+
+# Alert if p99 exceeds SLA
+SLA_P99_MS = 30
+if stats[&#x27;p99&#x27;] &gt; SLA_P99_MS:
+    print(f&quot;\n ALERT: p99 latency {stats[&#x27;p99&#x27;]:.1f}ms exceeds SLA of {SLA_P99_MS}ms&quot;)" data-default-label="Copy code">Copy code</button>
+        </div>
+        <ol class="code-lines"><li>stats = monitor.stats()</li><li>print(&quot;Latency statistics (ms):&quot;)</li><li>for k, v in stats.items():</li><li>    print(f&quot; {k:8s}: {v:.2f}&quot;)</li><li>&nbsp;</li><li># Alert if p99 exceeds SLA</li><li>SLA_P99_MS = 30</li><li>if stats[&#x27;p99&#x27;] &gt; SLA_P99_MS:</li><li>    print(f&quot;\n ALERT: p99 latency {stats[&#x27;p99&#x27;]:.1f}ms exceeds SLA of {SLA_P99_MS}ms&quot;)</li></ol>
+      </div><div class="text-block"><pre>Latency statistics (ms):
+  count   : 200.00
+  mean    : 6.33
+  p50     : 5.03
+  p95     : 7.15
+  p99     : 55.98
+  max     : 59.27
+
+ ALERT: p99 latency 56.0ms exceeds SLA of 30ms</pre></div><h3 class="inline-heading">Input Drift Detection</h3>
+      <div class="code-panel">
+        <div class="code-panel-header">
+          <span class="code-label">Code Example</span>
+          <button class="copy-btn" type="button" data-copy="class DriftMonitor:" data-default-label="Copy code">Copy code</button>
+        </div>
+        <ol class="code-lines"><li>class DriftMonitor:</li></ol>
+      </div><div class="text-block"><pre>&quot;&quot;&quot;
+    Detect input distribution drift by comparing live feature stats</pre></div>
+            <div class="page-learning">
+              <div class="takeaway-box">
+                <strong>Key Takeaway</strong>
+                <p>ALERT: p99 latency 56.0ms exceeds SLA of 30ms</p>
+              </div>
+              
+      <div class="knowledge-check">
+        <strong>Knowledge Check</strong>
+        <ol>
+          <li>What is the first debugging check you would make when applying &#x27;max&#x27;:      max(self.latencies) in a real notebook?</li>
+          <li>Which code example or pattern from &#x27;max&#x27;:      max(self.latencies) is worth reusing directly in your own project?</li>
+        </ol>
+      </div>
+            </div>
+            
+      <div class="pager">
+        <a href="#page-08">Previous page</a>
+        <span>Page 09 of 15</span>
+        <a href="#page-10">Next page</a>
+      </div>
+          </div>
+        </section>
+        <section class="page" id="page-10">
+          <div class="page-meta">
+            <div class="page-head">
+              <div class="page-label">Page 10</div>
+              <div class="page-title">to reference (training) stats.</div>
+            </div>
+            <div class="page-actions">
+              <div class="page-progress">Page 10 / 15</div>
+              <a class="page-link" href="#top">Back to top</a>
+            </div>
+          </div>
+          <div class="page-body">
+            <div class="text-block"><pre>Uses population stability index (PSI) as the drift metric.
+   &quot;&quot;&quot;</pre></div>
+      <div class="code-panel">
+        <div class="code-panel-header">
+          <span class="code-label">Code Example</span>
+          <button class="copy-btn" type="button" data-copy="   def __init__(self, reference_mean: torch.Tensor, reference_std: torch.Tensor," data-default-label="Copy code">Copy code</button>
+        </div>
+        <ol class="code-lines"><li>   def __init__(self, reference_mean: torch.Tensor, reference_std: torch.Tensor,</li></ol>
+      </div>
+      <div class="math-block">
+        <pre>                n_features: int, z_threshold: float = 3.0):</pre>
+      </div>
+      <div class="code-panel">
+        <div class="code-panel-header">
+          <span class="code-label">Code Example</span>
+          <button class="copy-btn" type="button" data-copy="       self.ref_mean    = reference_mean
+       self.ref_std     = reference_std
+       self.z_threshold = z_threshold
+
+   def check(self, batch: torch.Tensor) -&gt; dict:" data-default-label="Copy code">Copy code</button>
+        </div>
+        <ol class="code-lines"><li>       self.ref_mean    = reference_mean</li><li>       self.ref_std     = reference_std</li><li>       self.z_threshold = z_threshold</li><li>&nbsp;</li><li>   def check(self, batch: torch.Tensor) -&gt; dict:</li></ol>
+      </div><div class="text-block"><pre>&quot;&quot;&quot;Check if batch features have drifted from reference.&quot;&quot;&quot;</pre></div>
+      <div class="code-panel">
+        <div class="code-panel-header">
+          <span class="code-label">Code Example</span>
+          <button class="copy-btn" type="button" data-copy="       batch_mean = batch.mean(dim=0)
+       batch_std = batch.std(dim=0)
+
+       # Z-score: how many std deviations is the live mean from reference?
+       z_scores = (batch_mean - self.ref_mean).abs() / (self.ref_std + 1e-6)
+
+       drifted_features = (z_scores &gt; self.z_threshold).nonzero(as_tuple=True)[0].tolist()
+
+       return {" data-default-label="Copy code">Copy code</button>
+        </div>
+        <ol class="code-lines"><li>       batch_mean = batch.mean(dim=0)</li><li>       batch_std = batch.std(dim=0)</li><li>&nbsp;</li><li>       # Z-score: how many std deviations is the live mean from reference?</li><li>       z_scores = (batch_mean - self.ref_mean).abs() / (self.ref_std + 1e-6)</li><li>&nbsp;</li><li>       drifted_features = (z_scores &gt; self.z_threshold).nonzero(as_tuple=True)[0].tolist()</li><li>&nbsp;</li><li>       return {</li></ol>
+      </div><div class="text-block"><pre>&#x27;drift_detected&#x27;:     len(drifted_features) &gt; 0,
+           &#x27;drifted_features&#x27;:   drifted_features,</pre></div>
+      <div class="code-panel">
+        <div class="code-panel-header">
+          <span class="code-label">Code Example</span>
+          <button class="copy-btn" type="button" data-copy="           &#x27;max_z_score&#x27;:        z_scores.max().item()," data-default-label="Copy code">Copy code</button>
+        </div>
+        <ol class="code-lines"><li>           &#x27;max_z_score&#x27;:        z_scores.max().item(),</li></ol>
+      </div><div class="text-block"><pre>&#x27;z_scores&#x27;:           z_scores
+       }</pre></div>
+      <div class="code-panel">
+        <div class="code-panel-header">
+          <span class="code-label">Code Example</span>
+          <button class="copy-btn" type="button" data-copy="# Simulate drift detection
+ref_mean = torch.zeros(10)
+ref_std = torch.ones(10)
+drift_m = DriftMonitor(ref_mean, ref_std, n_features=10)
+
+# Normal batch — no drift
+normal_batch = torch.randn(100, 10)
+result = drift_m.check(normal_batch)
+print(f&quot;Normal batch: drift={result[&#x27;drift_detected&#x27;]}   max_z={result[&#x27;max_z_score&#x27;]:.2f}&quot;)
+
+# Drifted batch — feature 3 and 7 shifted
+drifted_batch = torch.randn(100, 10)" data-default-label="Copy code">Copy code</button>
+        </div>
+        <ol class="code-lines"><li># Simulate drift detection</li><li>ref_mean = torch.zeros(10)</li><li>ref_std = torch.ones(10)</li><li>drift_m = DriftMonitor(ref_mean, ref_std, n_features=10)</li><li>&nbsp;</li><li># Normal batch — no drift</li><li>normal_batch = torch.randn(100, 10)</li><li>result = drift_m.check(normal_batch)</li><li>print(f&quot;Normal batch: drift={result[&#x27;drift_detected&#x27;]}   max_z={result[&#x27;max_z_score&#x27;]:.2f}&quot;)</li><li>&nbsp;</li><li># Drifted batch — feature 3 and 7 shifted</li><li>drifted_batch = torch.randn(100, 10)</li></ol>
+      </div><div class="text-block"><pre>drifted_batch[:, 3] += 5.0   # Big shift in feature 3
+drifted_batch[:, 7] += 4.0   # Shift in feature 7</pre></div>
+            <div class="page-learning">
+              <div class="takeaway-box">
+                <strong>Key Takeaway</strong>
+                <p>Uses population stability index (PSI) as the drift metric. &quot;&quot;&quot;</p>
+              </div>
+              
+      <div class="knowledge-check">
+        <strong>Knowledge Check</strong>
+        <ol>
+          <li>What is the first debugging check you would make when applying to reference (training) stats. in a real notebook?</li>
+          <li>Which code example or pattern from to reference (training) stats. is worth reusing directly in your own project?</li>
+        </ol>
+      </div>
+            </div>
+            
+      <div class="pager">
+        <a href="#page-09">Previous page</a>
+        <span>Page 10 of 15</span>
+        <a href="#page-11">Next page</a>
+      </div>
+          </div>
+        </section>
+        <section class="page" id="page-11">
+          <div class="page-meta">
+            <div class="page-head">
+              <div class="page-label">Page 11</div>
+              <div class="page-title">result = drift_m.check(drifted_batch)</div>
+            </div>
+            <div class="page-actions">
+              <div class="page-progress">Page 11 / 15</div>
+              <a class="page-link" href="#top">Back to top</a>
+            </div>
+          </div>
+          <div class="page-body">
+            
+      <div class="code-panel">
+        <div class="code-panel-header">
+          <span class="code-label">Code Example</span>
+          <button class="copy-btn" type="button" data-copy="print(f&quot;Drifted batch: drift={result[&#x27;drift_detected&#x27;]} max_z={result[&#x27;max_z_score&#x27;]:.2f}&quot;)
+print(f&quot;Drifted features: {result[&#x27;drifted_features&#x27;]}&quot;)" data-default-label="Copy code">Copy code</button>
+        </div>
+        <ol class="code-lines"><li>print(f&quot;Drifted batch: drift={result[&#x27;drift_detected&#x27;]} max_z={result[&#x27;max_z_score&#x27;]:.2f}&quot;)</li><li>print(f&quot;Drifted features: {result[&#x27;drifted_features&#x27;]}&quot;)</li></ol>
+      </div><div class="text-block"><p>Normal batch: drift=False max_z=0.16 Drifted batch: drift=True max_z=5.02 Drifted features: [3, 7]</p></div><h3 class="inline-heading">5. A/B Testing and Rollback Mindset</h3>
+      <div class="code-panel">
+        <div class="code-panel-header">
+          <span class="code-label">Code Example</span>
+          <button class="copy-btn" type="button" data-copy="class ModelVersionManager:" data-default-label="Copy code">Copy code</button>
+        </div>
+        <ol class="code-lines"><li>class ModelVersionManager:</li></ol>
+      </div><div class="text-block"><pre>&quot;&quot;&quot;
+    Manages multiple model versions for A/B testing and safe rollback.
+    &quot;&quot;&quot;</pre></div>
+      <div class="code-panel">
+        <div class="code-panel-header">
+          <span class="code-label">Code Example</span>
+          <button class="copy-btn" type="button" data-copy="   def __init__(self):
+       self.versions     = {}        # name → model
+       self.traffic      = {}        # name → traffic fraction
+       self.metrics      = {}        # name → {calls, errors, mean_latency}
+       self.active_v     = None
+
+   def register(self, name: str, model, traffic_pct: float = 0.0):
+       self.versions[name] = model
+       self.traffic[name]   = traffic_pct
+       self.metrics[name]   = {&#x27;calls&#x27;: 0, &#x27;errors&#x27;: 0, &#x27;latencies&#x27;: []}
+       print(f&quot;Registered model: {name} ({traffic_pct*100:.0f}% traffic)&quot;)
+
+   def route(self) -&gt; str:" data-default-label="Copy code">Copy code</button>
+        </div>
+        <ol class="code-lines"><li>   def __init__(self):</li><li>       self.versions     = {}        # name → model</li><li>       self.traffic      = {}        # name → traffic fraction</li><li>       self.metrics      = {}        # name → {calls, errors, mean_latency}</li><li>       self.active_v     = None</li><li>&nbsp;</li><li>   def register(self, name: str, model, traffic_pct: float = 0.0):</li><li>       self.versions[name] = model</li><li>       self.traffic[name]   = traffic_pct</li><li>       self.metrics[name]   = {&#x27;calls&#x27;: 0, &#x27;errors&#x27;: 0, &#x27;latencies&#x27;: []}</li><li>       print(f&quot;Registered model: {name} ({traffic_pct*100:.0f}% traffic)&quot;)</li><li>&nbsp;</li><li>   def route(self) -&gt; str:</li></ol>
+      </div><div class="text-block"><pre>&quot;&quot;&quot;Route a request based on traffic percentages.&quot;&quot;&quot;</pre></div>
+      <div class="code-panel">
+        <div class="code-panel-header">
+          <span class="code-label">Code Example</span>
+          <button class="copy-btn" type="button" data-copy="       r   = random.random()
+       cum = 0.0
+       for name, pct in self.traffic.items():" data-default-label="Copy code">Copy code</button>
+        </div>
+        <ol class="code-lines"><li>       r   = random.random()</li><li>       cum = 0.0</li><li>       for name, pct in self.traffic.items():</li></ol>
+      </div><div class="text-block"><pre>cum += pct</pre></div>
+      <div class="code-panel">
+        <div class="code-panel-header">
+          <span class="code-label">Code Example</span>
+          <button class="copy-btn" type="button" data-copy="           if r &lt; cum:
+               return name
+       return self.active_v" data-default-label="Copy code">Copy code</button>
+        </div>
+        <ol class="code-lines"><li>           if r &lt; cum:</li><li>               return name</li><li>       return self.active_v</li></ol>
+      </div>
+            <div class="page-learning">
+              <div class="takeaway-box">
+                <strong>Key Takeaway</strong>
+                <p>Normal batch: drift=False max_z=0.16 Drifted batch: drift=True max_z=5.02 Drifted features: [3, 7]</p>
+              </div>
+              
+      <div class="knowledge-check">
+        <strong>Knowledge Check</strong>
+        <ol>
+          <li>What is the first debugging check you would make when applying result = drift_m.check(drifted_batch) in a real notebook?</li>
+          <li>Which code example or pattern from result = drift_m.check(drifted_batch) is worth reusing directly in your own project?</li>
+        </ol>
+      </div>
+            </div>
+            
+      <div class="pager">
+        <a href="#page-10">Previous page</a>
+        <span>Page 11 of 15</span>
+        <a href="#page-12">Next page</a>
+      </div>
+          </div>
+        </section>
+        <section class="page" id="page-12">
+          <div class="page-meta">
+            <div class="page-head">
+              <div class="page-label">Page 12</div>
+              <div class="page-title">def record_call(self, name: str, latency_ms: float, success: bool):</div>
+            </div>
+            <div class="page-actions">
+              <div class="page-progress">Page 12 / 15</div>
+              <a class="page-link" href="#top">Back to top</a>
+            </div>
+          </div>
+          <div class="page-body">
+            
+      <div class="code-panel">
+        <div class="code-panel-header">
+          <span class="code-label">Code Example</span>
+          <button class="copy-btn" type="button" data-copy="       m = self.metrics[name]" data-default-label="Copy code">Copy code</button>
+        </div>
+        <ol class="code-lines"><li>       m = self.metrics[name]</li></ol>
+      </div><div class="text-block"><pre>m[&#x27;calls&#x27;]      += 1
+       m[&#x27;latencies&#x27;].append(latency_ms)</pre></div>
+      <div class="code-panel">
+        <div class="code-panel-header">
+          <span class="code-label">Code Example</span>
+          <button class="copy-btn" type="button" data-copy="       if not success:" data-default-label="Copy code">Copy code</button>
+        </div>
+        <ol class="code-lines"><li>       if not success:</li></ol>
+      </div><div class="text-block"><pre>m[&#x27;errors&#x27;] += 1</pre></div>
+      <div class="code-panel">
+        <div class="code-panel-header">
+          <span class="code-label">Code Example</span>
+          <button class="copy-btn" type="button" data-copy="   def summary(self):
+       print(&quot;\nModel performance summary:&quot;)
+       for name, m in self.metrics.items():
+           if m[&#x27;calls&#x27;] == 0: continue
+           error_rate = m[&#x27;errors&#x27;] / m[&#x27;calls&#x27;]
+           mean_lat   = statistics.mean(m[&#x27;latencies&#x27;]) if m[&#x27;latencies&#x27;] else 0
+           print(f&quot; {name}: calls={m[&#x27;calls&#x27;]}, error_rate={error_rate:.3f}, &quot;" data-default-label="Copy code">Copy code</button>
+        </div>
+        <ol class="code-lines"><li>   def summary(self):</li><li>       print(&quot;\nModel performance summary:&quot;)</li><li>       for name, m in self.metrics.items():</li><li>           if m[&#x27;calls&#x27;] == 0: continue</li><li>           error_rate = m[&#x27;errors&#x27;] / m[&#x27;calls&#x27;]</li><li>           mean_lat   = statistics.mean(m[&#x27;latencies&#x27;]) if m[&#x27;latencies&#x27;] else 0</li><li>           print(f&quot; {name}: calls={m[&#x27;calls&#x27;]}, error_rate={error_rate:.3f}, &quot;</li></ol>
+      </div><div class="text-block"><pre>f&quot;mean_lat={mean_lat:.1f}ms, traffic={self.traffic[name]*100:.0f}%&quot;)</pre></div>
+      <div class="code-panel">
+        <div class="code-panel-header">
+          <span class="code-label">Code Example</span>
+          <button class="copy-btn" type="button" data-copy="   def promote(self, name: str):" data-default-label="Copy code">Copy code</button>
+        </div>
+        <ol class="code-lines"><li>   def promote(self, name: str):</li></ol>
+      </div><div class="text-block"><pre>&quot;&quot;&quot;Promote a model to 100% traffic (after successful A/B test).&quot;&quot;&quot;</pre></div>
+      <div class="code-panel">
+        <div class="code-panel-header">
+          <span class="code-label">Code Example</span>
+          <button class="copy-btn" type="button" data-copy="       for k in self.traffic:
+           self.traffic[k] = 0.0
+       self.traffic[name] = 1.0
+       self.active_v      = name
+       print(f&quot;Promoted {name} to 100% traffic.&quot;)
+
+   def rollback(self, name: str):" data-default-label="Copy code">Copy code</button>
+        </div>
+        <ol class="code-lines"><li>       for k in self.traffic:</li><li>           self.traffic[k] = 0.0</li><li>       self.traffic[name] = 1.0</li><li>       self.active_v      = name</li><li>       print(f&quot;Promoted {name} to 100% traffic.&quot;)</li><li>&nbsp;</li><li>   def rollback(self, name: str):</li></ol>
+      </div><div class="text-block"><pre>&quot;&quot;&quot;Emergency rollback to a previous version.&quot;&quot;&quot;
+       self.promote(name)</pre></div>
+      <div class="code-panel">
+        <div class="code-panel-header">
+          <span class="code-label">Code Example</span>
+          <button class="copy-btn" type="button" data-copy="       print(f&quot; ROLLBACK: reverted to {name}&quot;)
+
+
+# Simulate A/B test
+vm = ModelVersionManager()" data-default-label="Copy code">Copy code</button>
+        </div>
+        <ol class="code-lines"><li>       print(f&quot; ROLLBACK: reverted to {name}&quot;)</li><li>&nbsp;</li><li>&nbsp;</li><li># Simulate A/B test</li><li>vm = ModelVersionManager()</li></ol>
+      </div><div class="text-block"><pre>vm.register(&quot;v1&quot;, None, traffic_pct=0.9)   # 90% to stable v1
+vm.register(&quot;v2&quot;, None, traffic_pct=0.1)   # 10% to new v2</pre></div>
+      <div class="code-panel">
+        <div class="code-panel-header">
+          <span class="code-label">Code Example</span>
+          <button class="copy-btn" type="button" data-copy="# Simulate traffic" data-default-label="Copy code">Copy code</button>
+        </div>
+        <ol class="code-lines"><li># Simulate traffic</li></ol>
+      </div><div class="text-block"><p>random.seed(0)</p></div>
+      <div class="code-panel">
+        <div class="code-panel-header">
+          <span class="code-label">Code Example</span>
+          <button class="copy-btn" type="button" data-copy="for _ in range(1000):
+    version = vm.route()
+    latency = random.gauss(5, 1) if version == &quot;v1&quot; else random.gauss(4, 0.8)
+    success = random.random() &gt; (0.01 if version == &quot;v1&quot; else 0.02)" data-default-label="Copy code">Copy code</button>
+        </div>
+        <ol class="code-lines"><li>for _ in range(1000):</li><li>    version = vm.route()</li><li>    latency = random.gauss(5, 1) if version == &quot;v1&quot; else random.gauss(4, 0.8)</li><li>    success = random.random() &gt; (0.01 if version == &quot;v1&quot; else 0.02)</li></ol>
+      </div><div class="text-block"><pre>vm.record_call(version, abs(latency), success)</pre></div>
+            <div class="page-learning">
+              <div class="takeaway-box">
+                <strong>Key Takeaway</strong>
+                <p>f&quot;mean_lat={mean_lat:.1f}ms, traffic={self.traffic[name]*100:.0f}%&quot;)</p>
+              </div>
+              
+      <div class="knowledge-check">
+        <strong>Knowledge Check</strong>
+        <ol>
+          <li>What is the first debugging check you would make when applying def record_call(self, name: str, latency_ms: float, success: bool): in a real notebook?</li>
+          <li>Which code example or pattern from def record_call(self, name: str, latency_ms: float, success: bool): is worth reusing directly in your own project?</li>
+        </ol>
+      </div>
+            </div>
+            
+      <div class="pager">
+        <a href="#page-11">Previous page</a>
+        <span>Page 12 of 15</span>
+        <a href="#page-13">Next page</a>
+      </div>
+          </div>
+        </section>
+        <section class="page" id="page-13">
+          <div class="page-meta">
+            <div class="page-head">
+              <div class="page-label">Page 13</div>
+              <div class="page-title">vm.summary()</div>
+            </div>
+            <div class="page-actions">
+              <div class="page-progress">Page 13 / 15</div>
+              <a class="page-link" href="#top">Back to top</a>
+            </div>
+          </div>
+          <div class="page-body">
+            
+      <div class="code-panel">
+        <div class="code-panel-header">
+          <span class="code-label">Code Example</span>
+          <button class="copy-btn" type="button" data-copy="# v2 is better — promote it" data-default-label="Copy code">Copy code</button>
+        </div>
+        <ol class="code-lines"><li># v2 is better — promote it</li></ol>
+      </div><div class="text-block"><p>vm.promote(&quot;v2&quot;) vm.summary()</p><p>Registered model: v1 (90% traffic) Registered model: v2 (10% traffic)</p><p>Model performance summary:</p></div>
+      <div class="output-block">
+        <div class="block-actions">
+          <button class="copy-btn" type="button" data-copy="  v1: calls=889, error_rate=0.013, mean_lat=5.0ms, traffic=90%
+  v2: calls=111, error_rate=0.027, mean_lat=4.1ms, traffic=10%" data-default-label="Copy output">Copy output</button>
+        </div>
+        <pre>  v1: calls=889, error_rate=0.013, mean_lat=5.0ms, traffic=90%
+  v2: calls=111, error_rate=0.027, mean_lat=4.1ms, traffic=10%</pre>
+      </div><div class="text-block"><p>Promoted v2 to 100% traffic.</p><p>Model performance summary:</p></div>
+      <div class="output-block">
+        <div class="block-actions">
+          <button class="copy-btn" type="button" data-copy="  v1: calls=889, error_rate=0.013, mean_lat=5.0ms, traffic=0%
+  v2: calls=111, error_rate=0.027, mean_lat=4.1ms, traffic=100%" data-default-label="Copy output">Copy output</button>
+        </div>
+        <pre>  v1: calls=889, error_rate=0.013, mean_lat=5.0ms, traffic=0%
+  v2: calls=111, error_rate=0.027, mean_lat=4.1ms, traffic=100%</pre>
+      </div><h3 class="inline-heading">6. Full Deployment Checklist</h3>
+      <div class="code-panel">
+        <div class="code-panel-header">
+          <span class="code-label">Code Example</span>
+          <button class="copy-btn" type="button" data-copy="DEPLOYMENT_CHECKLIST = &quot;&quot;&quot;" data-default-label="Copy code">Copy code</button>
+        </div>
+        <ol class="code-lines"><li>DEPLOYMENT_CHECKLIST = &quot;&quot;&quot;</li></ol>
+      </div><div class="text-block"><pre>Pre-deployment:
+   Model evaluated on held-out test set (last look)
+   TorchScript or ONNX export verified with example inputs
+   Inference output matches training-time predictions
+   Input preprocessing (normalisation, encoding) included in the service
+   Edge cases tested: empty batch, single sample, max batch size
+
+Service:
+   Health endpoint implemented and tested
+   Structured logging (request ID, model version, latency, prediction)
+   Timeout set for all inference calls
+   Batch size cap to prevent OOM
+
+Monitoring:
+   Latency percentiles tracked (p50, p95, p99)</pre></div>
+            <div class="page-learning">
+              <div class="takeaway-box">
+                <strong>Key Takeaway</strong>
+                <p>Model evaluated on held-out test set (last look) TorchScript or ONNX export verified with example inputs Inference output matches training-time predictions</p>
+              </div>
+              
+      <div class="knowledge-check">
+        <strong>Knowledge Check</strong>
+        <ol>
+          <li>What is the first debugging check you would make when applying vm.summary() in a real notebook?</li>
+          <li>Which code example or pattern from vm.summary() is worth reusing directly in your own project?</li>
+        </ol>
+      </div>
+            </div>
+            
+      <div class="pager">
+        <a href="#page-12">Previous page</a>
+        <span>Page 13 of 15</span>
+        <a href="#page-14">Next page</a>
+      </div>
+          </div>
+        </section>
+        <section class="page" id="page-14">
+          <div class="page-meta">
+            <div class="page-head">
+              <div class="page-label">Page 14</div>
+              <div class="page-title">Error rate alert configured</div>
+            </div>
+            <div class="page-actions">
+              <div class="page-progress">Page 14 / 15</div>
+              <a class="page-link" href="#top">Back to top</a>
+            </div>
+          </div>
+          <div class="page-body">
+            <div class="text-block"><pre>Input drift monitor running
+   Prediction distribution tracked (if outputs are drifting, model may be degrading)
+
+Rollback:
+   Previous model version registered and ready to activate
+   Rollback runbook documented and tested
+   Rollback tested in staging environment
+&quot;&quot;&quot;</pre></div>
+      <div class="code-panel">
+        <div class="code-panel-header">
+          <span class="code-label">Code Example</span>
+          <button class="copy-btn" type="button" data-copy="print(DEPLOYMENT_CHECKLIST)" data-default-label="Copy code">Copy code</button>
+        </div>
+        <ol class="code-lines"><li>print(DEPLOYMENT_CHECKLIST)</li></ol>
+      </div><div class="text-block"><pre>Pre-deployment:
+   Model evaluated on held-out test set (last look)
+   TorchScript or ONNX export verified with example inputs
+   Inference output matches training-time predictions
+   Input preprocessing (normalisation, encoding) included in the service
+   Edge cases tested: empty batch, single sample, max batch size
+
+Service:
+   Health endpoint implemented and tested
+   Structured logging (request ID, model version, latency, prediction)
+   Timeout set for all inference calls
+   Batch size cap to prevent OOM
+
+Monitoring:
+   Latency percentiles tracked (p50, p95, p99)
+   Error rate alert configured
+   Input drift monitor running
+   Prediction distribution tracked (if outputs are drifting, model may be degrading)
+
+Rollback:
+   Previous model version registered and ready to activate
+   Rollback runbook documented and tested
+   Rollback tested in staging environment</pre></div><h3 class="inline-heading">Module Summary</h3>
+            <div class="page-learning">
+              <div class="takeaway-box">
+                <strong>Key Takeaway</strong>
+                <p>Prediction distribution tracked (if outputs are drifting, model may be degrading)</p>
+              </div>
+              
+      <div class="knowledge-check">
+        <strong>Knowledge Check</strong>
+        <ol>
+          <li>What is the first debugging check you would make when applying error rate alert configured in a real notebook?</li>
+          <li>Which code example or pattern from error rate alert configured is worth reusing directly in your own project?</li>
+        </ol>
+      </div>
+            </div>
+            
+      <div class="pager">
+        <a href="#page-13">Previous page</a>
+        <span>Page 14 of 15</span>
+        <a href="#page-15">Next page</a>
+      </div>
+          </div>
+        </section>
+        <section class="page" id="page-15">
+          <div class="page-meta">
+            <div class="page-head">
+              <div class="page-label">Page 15</div>
+              <div class="page-title">Concept                               Key Takeaway</div>
+            </div>
+            <div class="page-actions">
+              <div class="page-progress">Page 15 / 15</div>
+              <a class="page-link" href="#top">Back to top</a>
+            </div>
+          </div>
+          <div class="page-body">
+            
+      <div class="code-panel">
+        <div class="code-panel-header">
+          <span class="code-label">Code Example</span>
+          <button class="copy-btn" type="button" data-copy="TorchScript                           Use torch.jit.script for dynamic models; trace
+                                      for static ones." data-default-label="Copy code">Copy code</button>
+        </div>
+        <ol class="code-lines"><li>TorchScript                           Use torch.jit.script for dynamic models; trace</li><li>                                      for static ones.</li></ol>
+      </div><div class="text-block"><pre>ONNX                                  For cross-framework portability or edge deployment.
+FastAPI                               Structure: model loaded at startup; request schema</pre></div>
+      <div class="math-block">
+        <pre>                                      with Pydantic; health + predict endpoints.</pre>
+      </div><div class="text-block"><pre>Latency                               Track p95/p99, not just mean. Alert when p99
+                                      exceeds your SLA.
+Drift                                 Monitor input feature statistics vs training</pre></div>
+      <div class="math-block">
+        <pre>                                      distribution. Z-score &gt; 3 = investigate.</pre>
+      </div><div class="text-block"><pre>A/B testing                           Route a percentage of traffic to the new model;
+                                      compare error rates and latency.
+Rollback                              Always keep the previous version registered and
+                                      tested.</pre></div><h3 class="inline-heading">Course Complete</h3><div class="text-block"><pre>You have now covered:
+Core Modules (1–12): Tensors → Autograd → nn.Module → Training Loop → Data
+Pipelines → Evaluation → CNNs → Sequence Models → Training Tricks → Debugging →
+Distributed → Deployment.
+Every module builds directly on the previous one. You now have the foundation to tackle any
+of the five Specialisation Tracks:
+
+  • Track 1: PyTorch for Data Science &amp; Tabular
+  • Track 2: AIOps with PyTorch (Logs, Metrics, Incidents)</pre></div>
+      <div class="math-block">
+        <pre>  • Track 3: DeepGraphs / GNNs with PyTorch Geometric
+  • Track 4: NLP + LLM-adjacent PyTorch</pre>
+      </div><div class="text-block"><pre>• Track 5: Multimodal PyTorch
+
+Each track follows the same format: concept → analogy → visual → code → project.</pre></div>
+            <div class="page-learning">
+              <div class="takeaway-box">
+                <strong>Key Takeaway</strong>
+                <p>ONNX                                  For cross-framework portability or edge deployment.</p>
+              </div>
+              
+      <div class="knowledge-check">
+        <strong>Knowledge Check</strong>
+        <ol>
+          <li>What is the first debugging check you would make when applying concept                               key takeaway in a real notebook?</li>
+          <li>Which code example or pattern from concept                               key takeaway is worth reusing directly in your own project?</li>
+        </ol>
+      </div>
+            </div>
+            
+      <div class="pager">
+        <a href="#page-14">Previous page</a>
+        <span>Page 15 of 15</span>
+        <a href="#end">Finish module</a>
+      </div>
+          </div>
+        </section>
+        <section class="footer-banner page" id="end">
+          <h2>Ready for the Next Module</h2>
+          <p>Keep moving while the ideas are fresh. The next module builds directly on the concepts, patterns, and examples you just studied here.</p>
+        </section>
+      </main>
+    </section>
+  </div>
+
+  <script>
+    const progressBar = document.getElementById("progressBar");
+    const pages = [...document.querySelectorAll(".page")];
+    const navLinks = [...document.querySelectorAll("#sidebarNav a")];
+    const searchInput = document.getElementById("sectionSearch");
+    const statusChip = document.getElementById("statusChip");
+    const sidebar = document.getElementById("sidebarPanel");
+    const sidebarToggle = document.getElementById("sidebarToggle");
+    const sidebarOverlay = document.getElementById("sidebarOverlay");
+    const completionBadge = document.getElementById("completionBadge");
+    const copyButtons = [...document.querySelectorAll(".copy-btn")];
+    const moduleSlug = document.body.dataset.module;
+    const completionStorageKey = "pytorch-course-completion-v1";
+
+    const readCompletion = () => {
+      try {
+        return JSON.parse(localStorage.getItem(completionStorageKey) || "{}");
+      } catch (error) {
+        return {};
+      }
+    };
+
+    const writeCompletion = (value) => {
+      localStorage.setItem(completionStorageKey, JSON.stringify(value));
+    };
+
+    const setCompleted = () => {
+      const state = readCompletion();
+      if (!state[moduleSlug]) {
+        state[moduleSlug] = true;
+        writeCompletion(state);
+      }
+      completionBadge.textContent = "Completed";
+    };
+
+    const refreshCompletionBadge = () => {
+      const state = readCompletion();
+      completionBadge.textContent = state[moduleSlug] ? "Completed" : "In progress";
+    };
+
+    const updateProgress = () => {
+      const scrollTop = window.scrollY;
+      const docHeight = document.documentElement.scrollHeight - window.innerHeight;
+      const progress = docHeight > 0 ? (scrollTop / docHeight) * 100 : 0;
+      progressBar.style.width = `${progress}%`;
+      if (progress > 94) {
+        setCompleted();
+      }
+    };
+
+    const revealObserver = new IntersectionObserver((entries) => {
+      entries.forEach((entry) => {
+        if (entry.isIntersecting) {
+          entry.target.classList.add("visible");
+        }
+      });
+    }, { threshold: 0.12 });
+
+    pages.forEach((page) => revealObserver.observe(page));
+
+    const navObserver = new IntersectionObserver((entries) => {
+      entries.forEach((entry) => {
+        if (!entry.isIntersecting) return;
+        const id = entry.target.id;
+        navLinks.forEach((link) => {
+          link.classList.toggle("active", link.getAttribute("href") === `#${id}`);
+        });
+        const activeLink = navLinks.find((link) => link.classList.contains("active"));
+        if (activeLink) {
+          const activeIndex = navLinks.indexOf(activeLink) + 1;
+          statusChip.textContent = `Section ${activeIndex} of ${navLinks.length}`;
+        }
+      });
+    }, {
+      rootMargin: "-35% 0px -50% 0px",
+      threshold: 0.01
+    });
+
+    if (searchInput) {
+      searchInput.addEventListener("input", () => {
+        const query = searchInput.value.trim().toLowerCase();
+        navLinks.forEach((link) => {
+          const match = link.textContent.toLowerCase().includes(query);
+          link.style.display = match ? "" : "none";
+        });
+      });
+    }
+
+    if (sidebarToggle) {
+      const closeSidebar = () => {
+        sidebar.classList.remove("is-open");
+        sidebarToggle.setAttribute("aria-expanded", "false");
+        sidebarOverlay.hidden = true;
+      };
+
+      sidebarToggle.addEventListener("click", () => {
+        const open = !sidebar.classList.contains("is-open");
+        sidebar.classList.toggle("is-open", open);
+        sidebarToggle.setAttribute("aria-expanded", open ? "true" : "false");
+        sidebarOverlay.hidden = !open;
+      });
+
+      sidebarOverlay.addEventListener("click", closeSidebar);
+      navLinks.forEach((link) => link.addEventListener("click", closeSidebar));
+    }
+
+    copyButtons.forEach((button) => {
+      button.addEventListener("click", async () => {
+        try {
+          await navigator.clipboard.writeText(button.dataset.copy);
+          const original = button.dataset.defaultLabel || button.textContent;
+          button.textContent = "Copied";
+          setTimeout(() => {
+            button.textContent = original;
+          }, 1200);
+        } catch (error) {
+          button.textContent = "Copy failed";
+        }
+      });
+    });
+
+    pages.forEach((page) => navObserver.observe(page));
+    refreshCompletionBadge();
+    window.addEventListener("scroll", updateProgress, { passive: true });
+    updateProgress();
+  </script>
+</body>
+</html>

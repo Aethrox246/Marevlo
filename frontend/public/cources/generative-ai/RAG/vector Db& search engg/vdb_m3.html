@@ -1,0 +1,683 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Vector Database & Search Engineering · MVDB — Vector Database & Search Engineering</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;700&family=Source+Serif+4:ital,opsz,wght@0,8..60,400;0,8..60,600;1,8..60,400&display=swap" rel="stylesheet">
+<style>:root{--bg:#08080e;--t1:#ececf6;--t2:#b5b5c8;--tm:#6b6b85;
+--a1:#5eead4;--a2:#60a5fa;--a3:#f472b6;--a4:#fbbf24;--a5:#a78bfa;--ac:#5eead4;
+--gl:linear-gradient(90deg,#5eead4 0%,#60a5fa 28%,#a78bfa 55%,#f472b6 82%,#fbbf24 100%);
+--bs:rgba(255,255,255,0.06);--sh:0 24px 80px rgba(0,0,0,0.5);--r:18px;--cw:1160px}
+*{box-sizing:border-box;margin:0;padding:0}html{scroll-behavior:smooth}
+body{background:radial-gradient(ellipse 900px 500px at 15% 10%,rgba(94,234,212,.08),transparent 50%),radial-gradient(ellipse 700px 400px at 85% 20%,rgba(96,165,250,.05),transparent 40%),var(--bg);color:var(--t1);font-family:'Outfit',sans-serif;line-height:1.75;overflow-x:hidden;-webkit-font-smoothing:antialiased}
+/* Progress bar */
+.sp{position:fixed;top:0;left:0;height:3px;width:0%;z-index:1000;background:var(--gl);transition:width .1s linear}
+/* Nav */
+nav{position:fixed;top:3px;left:0;right:0;z-index:999;display:flex;align-items:center;justify-content:space-between;padding:.7rem 2rem;background:rgba(8,8,14,.9);backdrop-filter:blur(16px);border-bottom:1px solid var(--bs)}
+.nbr{font-family:'JetBrains Mono',monospace;font-size:.7rem;color:var(--ac);letter-spacing:.16em;text-transform:uppercase;text-decoration:none;display:flex;align-items:center;gap:8px}
+.nbr-dot{width:6px;height:6px;border-radius:50%;background:var(--ac);animation:pulse 2s ease-in-out infinite}
+.nm{font-size:.8rem;color:var(--tm);max-width:400px;text-overflow:ellipsis;overflow:hidden;white-space:nowrap}
+.na{display:flex;gap:8px}
+.nb{display:inline-flex;align-items:center;gap:6px;padding:.38rem .85rem;border-radius:999px;border:1px solid var(--bs);background:rgba(255,255,255,.02);color:var(--t2);font-size:.78rem;text-decoration:none;transition:all .18s}
+.nb:hover{border-color:var(--ac);color:var(--ac)}
+/* Hero */
+.hero{min-height:100vh;display:flex;align-items:center;justify-content:center;padding:5rem 2rem 3rem;position:relative;overflow:hidden}
+.hg{position:absolute;inset:0;background-image:linear-gradient(rgba(255,255,255,.018) 1px,transparent 1px),linear-gradient(90deg,rgba(255,255,255,.018) 1px,transparent 1px);background-size:52px 52px;mask-image:radial-gradient(circle at center,black 20%,transparent 75%);pointer-events:none}
+.hi{max-width:1000px;text-align:center;position:relative;z-index:1}
+.hl{display:inline-flex;align-items:center;gap:10px;padding:.5rem 1rem;border-radius:999px;border:1px solid rgba(94,234,212,.28);background:rgba(94,234,212,.07);color:var(--ac);letter-spacing:1.8px;text-transform:uppercase;font-size:.74rem;margin-bottom:1.8rem}
+h1{font-size:clamp(2.6rem,5.5vw,5rem);line-height:1.02;letter-spacing:-.05em;font-weight:900;margin-bottom:1.2rem}
+.gt{background:var(--gl);-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent}
+.sub{font-size:.82rem;color:var(--tm);font-family:'JetBrains Mono',monospace;margin-bottom:.6rem;letter-spacing:.04em}
+.hs{font-family:'Source Serif 4',serif;color:var(--t2);font-size:clamp(1rem,1.8vw,1.18rem);max-width:800px;margin:0 auto 2.2rem;line-height:1.85}
+.hm{display:flex;flex-wrap:wrap;justify-content:center;gap:10px;margin-bottom:2.5rem}
+.mp{border:1px solid var(--bs);background:rgba(17,17,28,.8);border-radius:999px;padding:.6rem 1.1rem;color:var(--t2);font-size:.86rem}
+.mp.hl2{border-color:rgba(94,234,212,.3);color:var(--ac);background:rgba(94,234,212,.06)}
+.sc{position:absolute;bottom:2.4rem;left:50%;transform:translateX(-50%);color:var(--tm);display:flex;flex-direction:column;gap:.5rem;align-items:center;text-transform:uppercase;letter-spacing:.22em;font-size:.68rem}
+.arr{width:17px;height:17px;border-right:2px solid var(--tm);border-bottom:2px solid var(--tm);transform:rotate(45deg);animation:ba 2s ease-in-out infinite}
+@keyframes pulse{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.25;transform:scale(.7)}}
+@keyframes ba{0%,100%{transform:rotate(45deg) translateY(0)}50%{transform:rotate(45deg) translateY(8px)}}
+/* Content */
+.cw{max-width:var(--cw);margin:0 auto;padding:0 2rem 7rem}
+.sec{margin-bottom:6rem;opacity:0;transform:translateY(32px);transition:opacity .6s ease,transform .6s ease}
+.sec.vis{opacity:1;transform:translateY(0)}
+.sn{display:flex;align-items:center;gap:14px;color:var(--ac);font-family:'JetBrains Mono',monospace;font-size:.67rem;text-transform:uppercase;letter-spacing:.24em;margin-bottom:1rem}
+.sn::after{content:"";height:1px;flex:1;background:linear-gradient(90deg,rgba(94,234,212,.6),transparent)}
+.sec h2{font-size:clamp(2rem,4vw,3rem);line-height:1.06;margin-bottom:1.1rem;letter-spacing:-.04em}
+.lead{font-family:'Source Serif 4',serif;font-size:1.1rem;color:var(--t2);margin-bottom:2.2rem;line-height:1.88;max-width:860px}
+/* Cards */
+.card{background:linear-gradient(160deg,rgba(20,20,36,.98),rgba(14,14,26,.98));border:1px solid var(--bs);border-radius:var(--r);box-shadow:var(--sh);padding:2rem;margin-bottom:1.6rem}
+.card-accent{border-color:rgba(94,234,212,.25);background:linear-gradient(160deg,rgba(94,234,212,.04),rgba(14,14,26,.98))}
+/* Code blocks */
+.cc{background:linear-gradient(180deg,rgba(10,10,20,.99),rgba(8,8,16,.99));border:1px solid var(--bs);border-radius:var(--r);box-shadow:var(--sh);padding:0;margin-bottom:1.6rem;overflow:hidden}
+.ch{display:flex;align-items:center;justify-content:space-between;padding:1rem 1.6rem;border-bottom:1px solid var(--bs);background:rgba(255,255,255,.015)}
+.ch h3{font-size:.88rem;font-family:'JetBrains Mono',monospace;color:var(--ac);display:flex;align-items:center;gap:8px}
+.ch h3::before{content:"⟩";opacity:.5}
+.cpb{display:inline-flex;align-items:center;gap:5px;padding:.26rem .7rem;border-radius:999px;border:1px solid var(--bs);background:transparent;color:var(--tm);font-size:.7rem;cursor:pointer;transition:all .18s;font-family:'JetBrains Mono',monospace}
+.cpb:hover{border-color:var(--a1);color:var(--a1)}
+.cbody{padding:1.6rem;overflow-x:auto}
+pre{white-space:pre;color:#d8e3ff;font-family:'JetBrains Mono',monospace;font-size:.84rem;line-height:1.78;tab-size:4}
+.kw{color:#c084fc}.fn{color:#60a5fa}.str{color:#5eead4}.cm{color:#3d4060;font-style:italic}.nu{color:#fbbf24}.cl{color:#f472b6}.de{color:#fb923c}.op{color:#94a3b8}
+/* Architecture containers */
+.arch{background:rgba(8,8,18,.96);border:1px solid rgba(94,234,212,.18);border-radius:var(--r);padding:1.8rem;margin-bottom:1.6rem;overflow-x:auto;text-align:center}
+.arch-title{font-family:'JetBrains Mono',monospace;font-size:.68rem;text-transform:uppercase;letter-spacing:.2em;color:var(--ac);margin-bottom:1.4rem;text-align:left;display:flex;align-items:center;gap:8px}
+.arch-title::before{content:"▸";opacity:.7}
+/* Callouts */
+.callout{border-radius:14px;padding:1.2rem 1.4rem;margin-bottom:1.2rem;display:flex;gap:1rem;align-items:flex-start}
+.callout-key{background:rgba(94,234,212,.05);border:1px solid rgba(94,234,212,.22)}
+.callout-warn{background:rgba(251,191,36,.05);border:1px solid rgba(251,191,36,.22)}
+.callout-insight{background:rgba(167,139,250,.05);border:1px solid rgba(167,139,250,.22)}
+.callout-scenario{background:rgba(96,165,250,.05);border:1px solid rgba(96,165,250,.22)}
+.callout-danger{background:rgba(244,114,182,.05);border:1px solid rgba(244,114,182,.22)}
+.callout-icon{font-size:1.35rem;flex-shrink:0;margin-top:.08rem}
+.callout-body h4{font-size:.96rem;margin-bottom:.35rem;color:var(--t1);font-weight:700}
+.callout-body p{font-size:.88rem;color:var(--t2);line-height:1.68}
+.callout-body code{font-family:'JetBrains Mono',monospace;font-size:.82rem;background:rgba(255,255,255,.06);padding:.1rem .3rem;border-radius:4px;color:var(--ac)}
+/* Grids */
+.g2{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:1.4rem;margin-bottom:1.6rem}
+.g3{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:1.2rem;margin-bottom:1.6rem}
+.g4{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:1rem;margin-bottom:1.4rem}
+@media(max-width:768px){.g2,.g3,.g4{grid-template-columns:1fr}}
+.mc2{border:1px solid var(--bs);border-radius:16px;padding:1.4rem;background:rgba(255,255,255,.02);transition:border-color .2s}
+.mc2:hover{border-color:rgba(94,234,212,.3)}
+.mc2 h4{font-size:1rem;margin-bottom:.6rem;color:var(--t1);font-weight:700}
+.mc2 p{font-size:.88rem;color:var(--t2);line-height:1.68}
+.mc2 .tag{display:inline-block;font-family:'JetBrains Mono',monospace;font-size:.68rem;padding:.2rem .55rem;border-radius:999px;margin-bottom:.6rem;text-transform:uppercase;letter-spacing:.1em}
+/* Tables */
+.tbl{width:100%;border-collapse:collapse;font-size:.86rem}
+.tbl th{text-align:left;padding:.8rem 1.1rem;font-family:'JetBrains Mono',monospace;font-size:.64rem;text-transform:uppercase;color:var(--tm);border-bottom:1px solid var(--bs);letter-spacing:.08em}
+.tbl td{padding:.8rem 1.1rem;border-bottom:1px solid rgba(255,255,255,.035);color:var(--t2);vertical-align:top;line-height:1.65}
+.tbl td:first-child{color:var(--t1);font-weight:600}.tbl tr:last-child td{border-bottom:none}
+.tbl tr:hover td{background:rgba(255,255,255,.015)}
+/* Scenario box */
+.scenario{background:linear-gradient(135deg,rgba(96,165,250,.04),rgba(167,139,250,.04));border:1px solid rgba(96,165,250,.2);border-radius:var(--r);padding:1.8rem;margin-bottom:1.6rem;position:relative}
+.scenario::before{content:"SCENARIO";position:absolute;top:-1px;left:1.5rem;background:var(--bg);padding:0 .6rem;font-family:'JetBrains Mono',monospace;font-size:.62rem;color:var(--a2);letter-spacing:.2em}
+.scenario h4{color:var(--a2);margin-bottom:.8rem;font-size:1.05rem}
+.scenario p{font-size:.9rem;color:var(--t2);line-height:1.72;margin-bottom:.6rem}
+.scenario p:last-child{margin-bottom:0}
+.scenario code{font-family:'JetBrains Mono',monospace;font-size:.82rem;background:rgba(96,165,250,.1);padding:.1rem .3rem;border-radius:4px;color:var(--a2)}
+/* Quiz */
+.qc{background:linear-gradient(180deg,rgba(18,18,32,.98),rgba(12,12,24,.98));border:1px solid var(--bs);border-radius:var(--r);box-shadow:var(--sh);padding:2.2rem}
+.qc-title{font-size:1.2rem;font-weight:800;margin-bottom:.25rem;color:var(--t1)}
+.qc-sub{font-size:.82rem;color:var(--tm);margin-bottom:1.8rem;font-family:'JetBrains Mono',monospace}
+.qq{border:1px solid var(--bs);border-radius:18px;padding:1.8rem;background:rgba(255,255,255,.012);margin-bottom:1.4rem;transition:border-color .3s,background .3s}
+.qq.answered{border-color:rgba(94,234,212,.3);background:rgba(94,234,212,.02)}
+.qnum{font-family:'JetBrains Mono',monospace;font-size:.66rem;color:var(--ac);text-transform:uppercase;letter-spacing:.18em;margin-bottom:.6rem;display:flex;align-items:center;gap:8px}
+.qnum::after{content:"";height:1px;flex:1;background:rgba(94,234,212,.2)}
+.qq h4{font-size:.97rem;margin-bottom:1.2rem;color:var(--t1);line-height:1.6;font-weight:600}
+.qo{display:grid;gap:.6rem}
+.qob{border:1px solid var(--bs);border-radius:12px;padding:1rem 1.2rem;background:rgba(255,255,255,.018);color:var(--t2);cursor:pointer;transition:all .22s;text-align:left;font-size:.88rem;font-family:'Outfit',sans-serif;width:100%;line-height:1.6;position:relative;padding-left:3.2rem}
+.qob::before{content:attr(data-opt);position:absolute;left:1rem;top:50%;transform:translateY(-50%);font-family:'JetBrains Mono',monospace;font-size:.76rem;font-weight:700;color:var(--tm);width:1.4rem;text-align:center;transition:color .2s}
+.qob:hover:not([disabled]){border-color:rgba(94,234,212,.5);background:rgba(94,234,212,.05);color:var(--t1)}
+.qob:hover:not([disabled])::before{color:var(--ac)}
+.qob.ok{border-color:rgba(94,234,212,.6);background:rgba(94,234,212,.08);color:var(--t1)}
+.qob.ok::before{color:#5eead4}
+.qob.no{border-color:rgba(244,114,182,.4);background:rgba(244,114,182,.06);color:var(--t2)}
+.qob.no::before{color:#f472b6}
+.qob[disabled]{cursor:default}
+.qfeed{margin-top:1rem;border-radius:14px;padding:1.2rem 1.4rem;display:none}
+.qfeed.correct{background:rgba(94,234,212,.05);border:1px solid rgba(94,234,212,.25)}
+.qfeed.wrong{background:rgba(244,114,182,.04);border:1px solid rgba(244,114,182,.2)}
+.qfeed-head{font-weight:700;margin-bottom:.4rem;font-size:.92rem}
+.qfeed.correct .qfeed-head{color:#5eead4}
+.qfeed.wrong .qfeed-head{color:#f472b6}
+.qfeed-why{color:var(--t2);font-size:.87rem;line-height:1.68}
+.qfeed-why strong{color:var(--t1)}
+.qfeed-why code{font-family:'JetBrains Mono',monospace;font-size:.8rem;background:rgba(255,255,255,.06);padding:.1rem .3rem;border-radius:4px;color:var(--ac)}
+.qprog{display:flex;align-items:center;gap:1.2rem;margin-bottom:1.8rem}
+.qprog-bar{flex:1;height:5px;background:rgba(255,255,255,.05);border-radius:999px;overflow:hidden}
+.qprog-fill{height:100%;background:var(--gl);border-radius:999px;width:0%;transition:width .5s ease}
+.qprog-text{font-family:'JetBrains Mono',monospace;font-size:.7rem;color:var(--tm);white-space:nowrap}
+.qs{text-align:center;padding:2rem;border:1px solid var(--bs);border-radius:18px;margin-top:1.8rem;background:rgba(255,255,255,.01)}
+.qs h3{font-size:1.8rem;margin-bottom:.5rem;font-weight:800}
+.qs p{color:var(--t2);font-size:.92rem}
+/* Nav buttons */
+.pr,.nx{display:inline-flex;align-items:center;gap:7px;padding:.55rem 1.2rem;border-radius:999px;border:1px solid var(--bs);background:rgba(255,255,255,.02);color:var(--t2);font-size:.84rem;text-decoration:none;transition:all .2s}
+.pr:hover,.nx:hover{border-color:var(--ac);color:var(--ac)}
+/* Metric bars */
+.metric-row{display:flex;align-items:center;gap:1rem;margin-bottom:.7rem}
+.metric-label{font-family:'JetBrains Mono',monospace;font-size:.76rem;color:var(--t2);min-width:140px}
+.metric-bar{flex:1;height:8px;background:rgba(255,255,255,.05);border-radius:999px;overflow:hidden}
+.metric-fill{height:100%;border-radius:999px;transition:width 1.2s ease}
+.metric-val{font-family:'JetBrains Mono',monospace;font-size:.76rem;color:var(--t1);min-width:40px;text-align:right}
+/* Footer */
+footer{border-top:1px solid var(--bs);padding:3rem 2rem;text-align:center;color:var(--tm);font-size:.82rem}</style>
+</head>
+<body>
+<div class="sp" id="sp"></div>
+<nav>
+  <a class="nbr" href="#"><div class="nbr-dot"></div>Vector Database & Search Engineering · MVDB</a>
+  <span class="nm">M3 — Scaling, Operations & Production Engineering</span>
+  <div class="na"><a href="vdb_m2.html" class="pr">← Index Design & Hybrid Search</a><a href="research_catalog.html" class="nx">Research Papers →</a></div>
+</nav>
+<section class="hero">
+  <div class="hg"></div>
+  <div class="hi">
+    <div class="hl">Vector Database & Search Engineering · Module VDB</div>
+    <h1>Vector Database & Search Engineering</h1>
+    <p class="sub">M3 — Scaling, Operations & Production Engineering</p>
+    
+  </div>
+  <div class="sc"><span>Scroll</span><div class="arr"></div></div>
+</section>
+<div class="cw">
+
+<section class="sec" id="s1">
+  <div class="sn">01 · Scaling Architecture — From 1M to 10B Vectors</div>
+  <h2>The math behind <span class="gt">every scaling decision</span></h2>
+  <p class="lead">Every scaling decision reduces to arithmetic. This section gives you the exact formulas for every index type and the systematic process for making the right call at every order of magnitude.</p>
+
+  <div class="arch">
+    <div class="arch-title">Capacity planning table — every scale with RAM formulas and hardware</div>
+    <svg viewBox="0 0 940 300" xmlns="http://www.w3.org/2000/svg" style="width:100%;display:block">
+<rect width="940" height="300" fill="#08080e" rx="14"/>
+<text x="470" y="26" font-family="JetBrains Mono,monospace" font-size="10" fill="#fbbf24" text-anchor="middle" letter-spacing="2" font-weight="700">CAPACITY PLANNING — FROM 1M TO 1B VECTORS</text>
+<defs><marker id="a" markerWidth="7" markerHeight="5" refX="7" refY="2.5" orient="auto"><polygon points="0 0,7 2.5,0 5" fill="#6b6b85"/></marker></defs>
+
+<!-- Scale ladder -->
+<text x="20" y="55" font-family="JetBrains Mono,monospace" font-size="8" fill="#6b6b85">Scale</text>
+<text x="130" y="55" font-family="JetBrains Mono,monospace" font-size="8" fill="#6b6b85">Deployment</text>
+<text x="280" y="55" font-family="JetBrains Mono,monospace" font-size="8" fill="#6b6b85">Recommended Index</text>
+<text x="460" y="55" font-family="JetBrains Mono,monospace" font-size="8" fill="#6b6b85">RAM Formula</text>
+<text x="640" y="55" font-family="JetBrains Mono,monospace" font-size="8" fill="#6b6b85">RAM @ d=768</text>
+<text x="780" y="55" font-family="JetBrains Mono,monospace" font-size="8" fill="#6b6b85">Hardware</text>
+<line x1="16" y1="60" x2="924" y2="60" stroke="rgba(255,255,255,.06)" stroke-width="1"/>
+
+<rect x="16" y="65" width="908" height="34" rx="4" fill="rgba(94,234,212,.04)"/>
+<text x="20" y="87" font-family="JetBrains Mono,monospace" font-size="8" fill="#5eead4">≤ 100K</text>
+<text x="130" y="87" font-family="JetBrains Mono,monospace" font-size="8" fill="#b5b5c8">Milvus Lite</text>
+<text x="280" y="87" font-family="JetBrains Mono,monospace" font-size="8" fill="#b5b5c8">FLAT (exact)</text>
+<text x="460" y="87" font-family="JetBrains Mono,monospace" font-size="8" fill="#b5b5c8">N×d×4</text>
+<text x="640" y="87" font-family="JetBrains Mono,monospace" font-size="8" fill="#5eead4">0.3 GB</text>
+<text x="780" y="87" font-family="JetBrains Mono,monospace" font-size="8" fill="#6b6b85">Laptop / 4GB RAM</text>
+
+<rect x="16" y="103" width="908" height="34" rx="4" fill="rgba(96,165,250,.04)"/>
+<text x="20" y="125" font-family="JetBrains Mono,monospace" font-size="8" fill="#60a5fa">1M – 10M</text>
+<text x="130" y="125" font-family="JetBrains Mono,monospace" font-size="8" fill="#b5b5c8">Standalone</text>
+<text x="280" y="125" font-family="JetBrains Mono,monospace" font-size="8" fill="#b5b5c8">HNSW M=16</text>
+<text x="460" y="125" font-family="JetBrains Mono,monospace" font-size="8" fill="#b5b5c8">N×(d×4 + M×2×8)</text>
+<text x="640" y="125" font-family="JetBrains Mono,monospace" font-size="8" fill="#5eead4">3 – 33 GB</text>
+<text x="780" y="125" font-family="JetBrains Mono,monospace" font-size="8" fill="#6b6b85">1 node, 64GB RAM</text>
+
+<rect x="16" y="141" width="908" height="34" rx="4" fill="rgba(167,139,250,.04)"/>
+<text x="20" y="163" font-family="JetBrains Mono,monospace" font-size="8" fill="#a78bfa">10M – 100M</text>
+<text x="130" y="163" font-family="JetBrains Mono,monospace" font-size="8" fill="#b5b5c8">Distributed</text>
+<text x="280" y="163" font-family="JetBrains Mono,monospace" font-size="8" fill="#b5b5c8">HNSW M=16 or IVF_SQ8</text>
+<text x="460" y="163" font-family="JetBrains Mono,monospace" font-size="8" fill="#b5b5c8">HNSW: N×(d×4+M×2×8)</text>
+<text x="640" y="163" font-family="JetBrains Mono,monospace" font-size="8" fill="#fbbf24">33 – 333 GB</text>
+<text x="780" y="163" font-family="JetBrains Mono,monospace" font-size="8" fill="#6b6b85">3-10 nodes, 64-256GB</text>
+
+<rect x="16" y="179" width="908" height="34" rx="4" fill="rgba(251,191,36,.04)"/>
+<text x="20" y="201" font-family="JetBrains Mono,monospace" font-size="8" fill="#fbbf24">100M – 1B</text>
+<text x="130" y="201" font-family="JetBrains Mono,monospace" font-size="8" fill="#b5b5c8">Distributed</text>
+<text x="280" y="201" font-family="JetBrains Mono,monospace" font-size="8" fill="#b5b5c8">DiskANN or IVF_PQ</text>
+<text x="460" y="201" font-family="JetBrains Mono,monospace" font-size="8" fill="#b5b5c8">DiskANN: N×32 bytes (RAM)</text>
+<text x="640" y="201" font-family="JetBrains Mono,monospace" font-size="8" fill="#5eead4">3 – 32 GB RAM</text>
+<text x="780" y="201" font-family="JetBrains Mono,monospace" font-size="8" fill="#6b6b85">+ NVMe SSD: N×d×4</text>
+
+<rect x="16" y="217" width="908" height="34" rx="4" fill="rgba(244,114,182,.04)"/>
+<text x="20" y="239" font-family="JetBrains Mono,monospace" font-size="8" fill="#f472b6">≥ 1B</text>
+<text x="130" y="239" font-family="JetBrains Mono,monospace" font-size="8" fill="#b5b5c8">Distributed + GPU</text>
+<text x="280" y="239" font-family="JetBrains Mono,monospace" font-size="8" fill="#b5b5c8">DiskANN + GPU IVF_PQ</text>
+<text x="460" y="239" font-family="JetBrains Mono,monospace" font-size="8" fill="#b5b5c8">GPU: N×m_pq (VRAM)</text>
+<text x="640" y="239" font-family="JetBrains Mono,monospace" font-size="8" fill="#5eead4">32-80 GB VRAM</text>
+<text x="780" y="239" font-family="JetBrains Mono,monospace" font-size="8" fill="#6b6b85">A100 cluster</text>
+
+<!-- Worked example box -->
+<rect x="16" y="258" width="908" height="32" rx="6" fill="rgba(251,191,36,.08)" stroke="rgba(251,191,36,.3)" stroke-width="1"/>
+<text x="24" y="278" font-family="JetBrains Mono,monospace" font-size="7.5" fill="#fbbf24">WORKED EXAMPLE:</text>
+<text x="170" y="278" font-family="JetBrains Mono,monospace" font-size="7.5" fill="#b5b5c8">N=100M, d=768, HNSW M=16 →</text>
+<text x="440" y="278" font-family="JetBrains Mono,monospace" font-size="7.5" fill="#5eead4">Vectors: 100M×768×4 = 307 GB</text>
+<text x="680" y="278" font-family="JetBrains Mono,monospace" font-size="7.5" fill="#5eead4">+ Graph: 100M×16×2×8 = 25.6 GB</text>
+<text x="870" y="278" font-family="JetBrains Mono,monospace" font-size="7.5" fill="#fbbf24">= 333 GB</text>
+</svg>
+  </div>
+
+  <div class="callout callout-key">
+    <div class="callout-icon">🔢</div>
+    <div class="callout-body">
+      <h4>Complete RAM formulas for every index type</h4>
+      <p><strong>FLAT:</strong> N×d×4 bytes (FP32) or N×d×2 (FLOAT16)</p>
+      <p><strong>HNSW:</strong> N×d×4 + N×M×2×8 bytes. Layer 0 uses M₀=2M. Example: N=10M, d=768, M=16 → 30.7GB + 2.56GB = 33.3GB</p>
+      <p><strong>IVF_FLAT:</strong> nlist×d×4 (centroids) + N×d×4 (vectors). Centroids are tiny vs vectors.</p>
+      <p><strong>IVF_SQ8:</strong> nlist×d×4 + N×d×1 (INT8 quantized). 4× less than IVF_FLAT for vectors.</p>
+      <p><strong>IVF_PQ (m subquantizers):</strong> nlist×d×4 + N×m×1. For m=32: N×32 bytes. At N=100M: 3.2GB.</p>
+      <p><strong>DiskANN:</strong> N×m_pq bytes in RAM (PQ only). Full N×d×4 bytes on SSD. RAM = 3-32GB for any scale.</p>
+    </div>
+  </div>
+
+  <h3 style="font-size:1.4rem;margin:2rem 0 1.2rem;color:var(--t1)">Horizontal scaling patterns</h3>
+  <div class="g3">
+    <div class="card">
+      <h4 style="color:var(--a5);margin-bottom:.8rem">QueryNode scaling (read)</h4>
+      <p style="font-size:.88rem;color:var(--t2);line-height:1.72;margin-bottom:.6rem">Search is embarrassingly parallel. Adding QueryNodes scales QPS linearly. Each QueryNode holds a fraction of the total index. QueryCoord routes each query to the QueryNode(s) holding the relevant segments.</p>
+      <p style="font-size:.88rem;color:var(--t2);line-height:1.72">Multi-replica: load_collection(replica_number=N) puts N copies in RAM. Each query hits only 1 replica. N× QPS capacity at N× RAM cost. Use when QPS &gt; single QueryNode capacity.</p>
+    </div>
+    <div class="card">
+      <h4 style="color:var(--a4);margin-bottom:.8rem">DataNode scaling (write)</h4>
+      <p style="font-size:.88rem;color:var(--t2);line-height:1.72;margin-bottom:.6rem">DataNode throughput: ~50,000 vectors/sec per node. Each DataNode subscribes to separate Pulsar channel partitions. Adding DataNodes increases write throughput linearly.</p>
+      <p style="font-size:.88rem;color:var(--t2);line-height:1.72">The bottleneck shifts to MinIO at high write rates. Size MinIO IOPS accordingly: each segment flush = ~100-500MB burst write. SSD-backed MinIO recommended for &gt;10K vectors/sec.</p>
+    </div>
+    <div class="card">
+      <h4 style="color:var(--a2);margin-bottom:.8rem">IndexNode scaling (build)</h4>
+      <p style="font-size:.88rem;color:var(--t2);line-height:1.72;margin-bottom:.6rem">IndexNode build rate: ~1M vectors/min (HNSW CPU), ~10M vectors/min (HNSW GPU). If ingestion rate exceeds build rate, the index build queue grows and recall degrades.</p>
+      <p style="font-size:.88rem;color:var(--t2);line-height:1.72">Sizing rule: number of IndexNodes ≥ ingestion_rate / build_rate. At 500K vectors/hour with CPU build: 1 IndexNode sufficient. At 10M vectors/hour: 10+ IndexNodes or GPU acceleration.</p>
+    </div>
+  </div>
+
+  <h3 style="font-size:1.4rem;margin:2rem 0 1.2rem;color:var(--t1)">Multi-tenancy patterns — choose the right isolation level</h3>
+  <div class="card">
+    <div style="overflow-x:auto">
+    <table class="tbl">
+      <thead><tr><th>Pattern</th><th>Isolation</th><th>Tenant Limit</th><th>RAM Overhead</th><th>Use Case</th></tr></thead>
+      <tbody>
+        <tr><td>Collection per tenant</td><td style="color:#5eead4">Strict</td><td>~1,000</td><td>High (each loads separately)</td><td>High-value enterprise, strict compliance</td></tr>
+        <tr><td>Partition per tenant</td><td style="color:#60a5fa">Medium</td><td>~10,000</td><td>Medium (partitions share index)</td><td>B2B SaaS with medium tenant count</td></tr>
+        <tr><td>Partition key (hash)</td><td style="color:#fbbf24">Routing only</td><td>Millions</td><td>Low (one collection)</td><td>Consumer SaaS, 10K-1M tenants</td></tr>
+        <tr><td>Scalar filter</td><td style="color:#f472b6">None (logical)</td><td>Unlimited</td><td>Lowest</td><td>Single-tenant or trusted environments</td></tr>
+      </tbody>
+    </table>
+    </div>
+  </div>
+
+  <div class="cc">
+    <div class="ch"><h3>scaling_calculator.py — right-size for any scale</h3><button class="cpb" onclick="cp(this,'scale_code')">⎘ Copy</button></div>
+    <div class="cbody"><pre id="scale_code"><span class="kw">def</span> <span class="fn">plan_cluster</span>(N, d, target_qps, target_latency_ms, recall_target<span class="op">=</span><span class="nu">0.95</span>):
+    <span class="str">"""
+    Generate a complete Milvus deployment plan.
+    Returns: index config, hardware sizing, expected performance.
+    """</span>
+    <span class="cm"># Step 1: Choose index based on RAM requirements</span>
+    hnsw_gb <span class="op">=</span> (N<span class="op">*</span>d<span class="op">*</span><span class="nu">4</span> <span class="op">+</span> N<span class="op">*</span><span class="nu">16</span><span class="op">*</span><span class="nu">2</span><span class="op">*</span><span class="nu">8</span>) <span class="op">/</span> <span class="nu">1e9</span>
+    pq_gb   <span class="op">=</span> (N<span class="op">*</span><span class="nu">32</span>) <span class="op">/</span> <span class="nu">1e9</span>
+    
+    <span class="kw">if</span> hnsw_gb <span class="op">&lt;</span> <span class="nu">200</span>:
+        idx <span class="op">=</span> <span class="str">"HNSW"</span>; idx_ram <span class="op">=</span> hnsw_gb; idx_params <span class="op">=</span> {<span class="str">"M"</span>:<span class="nu">16</span>,<span class="str">"ef"</span>:<span class="nu">64</span>}
+    <span class="kw">elif</span> N <span class="op">&gt;</span> <span class="nu">1e8</span>:
+        idx <span class="op">=</span> <span class="str">"DiskANN"</span>; idx_ram <span class="op">=</span> pq_gb; idx_params <span class="op">=</span> {<span class="str">"R"</span>:<span class="nu">64</span>,<span class="str">"L"</span>:<span class="nu">100</span>}
+    <span class="kw">else</span>:
+        idx <span class="op">=</span> <span class="str">"IVF_SQ8"</span>; nlist <span class="op">=</span> <span class="fn">int</span>(<span class="nu">4</span><span class="op">*</span>N<span class="op">**</span><span class="nu">0.5</span>)
+        idx_ram <span class="op">=</span> (nlist<span class="op">*</span>d<span class="op">*</span><span class="nu">4</span> <span class="op">+</span> N<span class="op">*</span>d<span class="op">*</span><span class="nu">1</span>) <span class="op">/</span> <span class="nu">1e9</span>
+        idx_params <span class="op">=</span> {<span class="str">"nlist"</span>: nlist, <span class="str">"nprobe"</span>: <span class="fn">int</span>(nlist<span class="op">/</span><span class="nu">8</span>)}
+    
+    <span class="cm"># Step 2: QueryNodes (each node handles idx_ram / node_ram fraction)</span>
+    node_ram_gb <span class="op">=</span> <span class="nu">64</span>  <span class="cm"># standard node</span>
+    qnodes <span class="op">=</span> <span class="fn">max</span>(<span class="nu">1</span>, <span class="fn">int</span>(idx_ram <span class="op">/</span> (node_ram_gb <span class="op">*</span> <span class="nu">0.75</span>) <span class="op">+</span> <span class="nu">1</span>))
+    
+    <span class="cm"># Step 3: QPS capacity (single QueryNode: ~2000 QPS at 5ms for HNSW)</span>
+    qps_per_node <span class="op">=</span> <span class="nu">2000</span> <span class="kw">if</span> idx <span class="op">==</span> <span class="str">"HNSW"</span> <span class="kw">else</span> <span class="nu">800</span>
+    qnodes_for_qps <span class="op">=</span> <span class="fn">int</span>(target_qps <span class="op">/</span> qps_per_node <span class="op">+</span> <span class="nu">1</span>)
+    qnodes <span class="op">=</span> <span class="fn">max</span>(qnodes, qnodes_for_qps)
+    
+    <span class="fn">print</span>(<span class="str">f"=== Deployment Plan: N={N/1e6:.0f}M d={d} ==="</span>)
+    <span class="fn">print</span>(<span class="str">f"Index: {idx} {idx_params}"</span>)
+    <span class="fn">print</span>(<span class="str">f"Index RAM: {idx_ram:.1f} GB"</span>)
+    <span class="fn">print</span>(<span class="str">f"QueryNodes: {qnodes} × {node_ram_gb}GB"</span>)
+    <span class="fn">print</span>(<span class="str">f"DataNodes: 2 (HA), IndexNodes: 2"</span>)
+    <span class="fn">print</span>(<span class="str">f"etcd: 3-node cluster"</span>)
+    <span class="fn">print</span>(<span class="str">f"Expected QPS: {qnodes*qps_per_node}"</span>)
+    
+<span class="cm"># Examples:
+# plan_cluster(1e6,  768, 1000, 5)   → HNSW, 1 QueryNode, 3.3GB RAM
+# plan_cluster(50e6, 768, 5000, 5)   → HNSW, 3 QueryNodes, 167GB total
+# plan_cluster(1e9,  768, 2000, 10)  → DiskANN, 1 QueryNode, 32GB RAM + 3TB SSD</span></pre></div>
+  </div>
+</section>
+
+<section class="sec" id="s2">
+  <div class="sn">02 · Streaming Ingestion and Real-Time Search</div>
+  <h2>Kafka → Milvus: <span class="gt">production ingestion pipeline</span></h2>
+  <p class="lead">Batch inserts are easy. Production ingestion is a continuous stream with failures, backpressure, and consistency requirements. This is the complete pattern.</p>
+
+  <div class="g2">
+    <div class="callout callout-warn">
+      <div class="callout-icon">⚡</div>
+      <div class="callout-body">
+        <h4>Write amplification — the batching anti-pattern</h4>
+        <p>Calling insert([v1]) 1000 times/sec creates 1000 segments. Each seals at 1 row — immediate index build job for a 1-row segment. Result: 86,400 tiny segment builds per day. Fix: batch to at least 1,000 vectors per insert call. Use BulkInsert for initial loads (&gt;1M vectors).</p>
+      </div>
+    </div>
+    <div class="callout callout-key">
+      <div class="callout-icon">⏱️</div>
+      <div class="callout-body">
+        <h4>The consistency gap and write-through search</h4>
+        <p>30-120 second gap from insert to searchable. For real-time: write to both Milvus (async, batched) AND Redis sorted set (TTL=24h). Search merges Milvus results + Redis recent items. After 24h all items are indexed and Redis entries expire naturally.</p>
+      </div>
+    </div>
+  </div>
+
+  <div class="cc">
+    <div class="ch"><h3>kafka_milvus_pipeline.py — production ingestion with DLQ</h3><button class="cpb" onclick="cp(this,'kafka_code')">⎘ Copy</button></div>
+    <div class="cbody"><pre id="kafka_code"><span class="kw">from</span> <span class="cl">kafka</span> <span class="kw">import</span> KafkaConsumer, KafkaProducer
+<span class="kw">from</span> <span class="cl">pymilvus</span> <span class="kw">import</span> MilvusClient
+<span class="kw">import</span> json, time
+
+BATCH_SIZE <span class="op">=</span> <span class="nu">1000</span>    <span class="cm"># Minimum batch for efficient Milvus writes</span>
+FLUSH_INTERVAL <span class="op">=</span> <span class="nu">5</span>   <span class="cm"># Flush every 5 seconds even if batch not full</span>
+
+<span class="kw">class</span> <span class="cl">MilvusIngestionPipeline</span>:
+    <span class="kw">def</span> <span class="fn">__init__</span>(self, kafka_topic, milvus_collection):
+        self.consumer <span class="op">=</span> KafkaConsumer(
+            kafka_topic,
+            bootstrap_servers<span class="op">=</span>[<span class="str">'kafka:9092'</span>],
+            value_deserializer<span class="op">=</span><span class="kw">lambda</span> x: json.loads(x),
+            max_poll_records<span class="op">=</span>BATCH_SIZE
+        )
+        self.dlq <span class="op">=</span> KafkaProducer(bootstrap_servers<span class="op">=</span>[<span class="str">'kafka:9092'</span>])
+        self.milvus <span class="op">=</span> MilvusClient(<span class="str">"http://milvus:19530"</span>)
+        self.collection <span class="op">=</span> milvus_collection
+        self.buffer <span class="op">=</span> []
+        self.last_flush <span class="op">=</span> time.time()
+    
+    <span class="kw">def</span> <span class="fn">embed_batch</span>(self, texts):
+        <span class="cm"># Your embedding model here — batched for efficiency</span>
+        <span class="kw">return</span> embedding_model.encode(texts)  <span class="cm"># Returns numpy array</span>
+    
+    <span class="kw">def</span> <span class="fn">flush_to_milvus</span>(self):
+        <span class="kw">if not</span> self.buffer: <span class="kw">return</span>
+        
+        texts <span class="op">=</span> [r[<span class="str">'text'</span>] <span class="kw">for</span> r <span class="kw">in</span> self.buffer]
+        ids   <span class="op">=</span> [r[<span class="str">'id'</span>]   <span class="kw">for</span> r <span class="kw">in</span> self.buffer]
+        
+        <span class="kw">try</span>:
+            embeddings <span class="op">=</span> self.<span class="fn">embed_batch</span>(texts)
+            data <span class="op">=</span> [{<span class="str">"id"</span>: ids[i], <span class="str">"embedding"</span>: embeddings[i].tolist(),
+                      <span class="str">"text"</span>: texts[i]} <span class="kw">for</span> i <span class="kw">in</span> <span class="fn">range</span>(<span class="fn">len</span>(texts))]
+            self.milvus.insert(self.collection, data)
+            self.buffer.clear()
+            self.last_flush <span class="op">=</span> time.time()
+            
+        <span class="kw">except</span> Exception <span class="kw">as</span> e:
+            <span class="cm"># Send to DLQ for retry — don't block main pipeline</span>
+            <span class="kw">for</span> record <span class="kw">in</span> self.buffer:
+                self.dlq.send(<span class="str">'milvus-dlq'</span>, 
+                    value<span class="op">=</span>json.dumps({<span class="op">**</span>record, <span class="str">'error'</span>: <span class="fn">str</span>(e),
+                                      <span class="str">'retry_count'</span>: record.get(<span class="str">'retry_count'</span>,<span class="nu">0</span>)<span class="op">+</span><span class="nu">1</span>}).encode())
+            self.buffer.clear()
+    
+    <span class="kw">def</span> <span class="fn">run</span>(self):
+        <span class="kw">for</span> msg <span class="kw">in</span> self.consumer:
+            self.buffer.append(msg.value)
+            age <span class="op">=</span> time.time() <span class="op">-</span> self.last_flush
+            <span class="kw">if</span> <span class="fn">len</span>(self.buffer) <span class="op">&gt;=</span> BATCH_SIZE <span class="kw">or</span> age <span class="op">&gt;</span> FLUSH_INTERVAL:
+                self.<span class="fn">flush_to_milvus</span>()
+
+<span class="cm"># CDC: Postgres → Debezium → Kafka → Milvus
+# Handle updates: delete(expr='id==old_id') + insert(new_vector)
+# Handle deletes: collection.delete(expr='id==' + str(deleted_id))</span></pre></div>
+  </div>
+</section>
+
+<section class="sec" id="s3">
+  <div class="sn">03 · Operations Playbook — Migration, Monitoring, and Recovery</div>
+  <h2>Production <span class="gt">operations you will need</span></h2>
+  <p class="lead">Zero-downtime migrations, monitoring dashboards, backup/restore, and the production checklist. Everything you need to operate Milvus confidently.</p>
+
+  <div class="arch">
+    <div class="arch-title">Zero-downtime migration — the alias swap pattern</div>
+    <svg viewBox="0 0 940 260" xmlns="http://www.w3.org/2000/svg" style="width:100%;display:block">
+<rect width="940" height="260" fill="#08080e" rx="14"/>
+<text x="470" y="26" font-family="JetBrains Mono,monospace" font-size="10" fill="#5eead4" text-anchor="middle" letter-spacing="2" font-weight="700">ZERO-DOWNTIME MIGRATION — THE ALIAS SWAP PATTERN</text>
+<defs>
+<marker id="ag" markerWidth="7" markerHeight="5" refX="7" refY="2.5" orient="auto"><polygon points="0 0,7 2.5,0 5" fill="#5eead4"/></marker>
+<marker id="ar" markerWidth="7" markerHeight="5" refX="7" refY="2.5" orient="auto"><polygon points="0 0,7 2.5,0 5" fill="#f472b6"/></marker>
+<marker id="ay" markerWidth="7" markerHeight="5" refX="7" refY="2.5" orient="auto"><polygon points="0 0,7 2.5,0 5" fill="#fbbf24"/></marker>
+</defs>
+
+<!-- Step 1: Current state -->
+<text x="20" y="55" font-family="JetBrains Mono,monospace" font-size="8" fill="#fbbf24" font-weight="700">STEP 1: Current state</text>
+<rect x="20" y="62" width="100" height="30" rx="6" fill="rgba(96,165,250,.1)" stroke="rgba(96,165,250,.4)" stroke-width="1.5"/>
+<text x="70" y="81" font-family="JetBrains Mono,monospace" font-size="8" fill="#60a5fa" text-anchor="middle">Application</text>
+<line x1="122" y1="77" x2="148" y2="77" stroke="#5eead4" stroke-width="1.5" marker-end="url(#ag)"/>
+<rect x="150" y="62" width="110" height="30" rx="6" fill="rgba(94,234,212,.1)" stroke="rgba(94,234,212,.3)" stroke-width="1.5"/>
+<text x="205" y="77" font-family="JetBrains Mono,monospace" font-size="8" fill="#5eead4" text-anchor="middle">"products"</text>
+<text x="205" y="88" font-family="JetBrains Mono,monospace" font-size="6.5" fill="#6b6b85" text-anchor="middle">(alias)</text>
+<line x1="262" y1="77" x2="288" y2="77" stroke="#5eead4" stroke-width="1.5" marker-end="url(#ag)"/>
+<rect x="290" y="62" width="150" height="30" rx="6" fill="rgba(255,255,255,.05)" stroke="rgba(255,255,255,.15)" stroke-width="1"/>
+<text x="365" y="81" font-family="JetBrains Mono,monospace" font-size="8" fill="#ececf6" text-anchor="middle">products_v1</text>
+<text x="365" y="92" font-family="JetBrains Mono,monospace" font-size="6.5" fill="#6b6b85" text-anchor="middle">(HNSW M=16, old schema)</text>
+
+<!-- Step 2: Build new -->
+<text x="500" y="55" font-family="JetBrains Mono,monospace" font-size="8" fill="#fbbf24" font-weight="700">STEP 2: Build new collection in background</text>
+<rect x="500" y="62" width="420" height="30" rx="6" fill="rgba(167,139,250,.06)" stroke="rgba(167,139,250,.3)" stroke-width="1" stroke-dasharray="5,3"/>
+<text x="710" y="81" font-family="JetBrains Mono,monospace" font-size="8" fill="#a78bfa" text-anchor="middle">products_v2 (HNSW M=32, new schema) — building...</text>
+
+<!-- Step 3: Verify -->
+<text x="20" y="130" font-family="JetBrains Mono,monospace" font-size="8" fill="#fbbf24" font-weight="700">STEP 3: Verify recall parity</text>
+<rect x="20" y="137" width="910" height="25" rx="5" fill="rgba(94,234,212,.04)" stroke="rgba(94,234,212,.15)" stroke-width="1"/>
+<text x="30" y="153" font-family="JetBrains Mono,monospace" font-size="7.5" fill="#5eead4">v1_recall=0.961 vs v2_recall=0.978 on 1000 test queries. v2 recall ≥ v1. ✓ Proceed.</text>
+
+<!-- Step 4: Atomic swap -->
+<text x="20" y="185" font-family="JetBrains Mono,monospace" font-size="8" fill="#fbbf24" font-weight="700">STEP 4: Atomic alias swap (zero downtime)</text>
+<rect x="20" y="192" width="100" height="30" rx="6" fill="rgba(96,165,250,.1)" stroke="rgba(96,165,250,.4)" stroke-width="1.5"/>
+<text x="70" y="211" font-family="JetBrains Mono,monospace" font-size="8" fill="#60a5fa" text-anchor="middle">Application</text>
+<line x1="122" y1="207" x2="148" y2="207" stroke="#5eead4" stroke-width="1.5" marker-end="url(#ag)"/>
+<rect x="150" y="192" width="110" height="30" rx="6" fill="rgba(94,234,212,.15)" stroke="rgba(94,234,212,.5)" stroke-width="2"/>
+<text x="205" y="207" font-family="JetBrains Mono,monospace" font-size="8" fill="#5eead4" text-anchor="middle">"products"</text>
+<text x="205" y="218" font-family="JetBrains Mono,monospace" font-size="6.5" fill="#5eead4" text-anchor="middle">← SWAPPED</text>
+<line x1="262" y1="207" x2="288" y2="207" stroke="#5eead4" stroke-width="1.5" marker-end="url(#ag)"/>
+<rect x="290" y="192" width="150" height="30" rx="6" fill="rgba(167,139,250,.1)" stroke="rgba(167,139,250,.4)" stroke-width="1.5"/>
+<text x="365" y="211" font-family="JetBrains Mono,monospace" font-size="8" fill="#a78bfa" text-anchor="middle">products_v2</text>
+<text x="500" y="207" font-family="JetBrains Mono,monospace" font-size="7.5" fill="#3d4060">  |  </text>
+<rect x="520" y="192" width="150" height="30" rx="6" fill="rgba(255,255,255,.03)" stroke="rgba(255,255,255,.08)" stroke-width="1"/>
+<text x="595" y="207" font-family="JetBrains Mono,monospace" font-size="8" fill="#3d4060" text-anchor="middle">products_v1</text>
+<text x="595" y="218" font-family="JetBrains Mono,monospace" font-size="6.5" fill="#3d4060" text-anchor="middle">(kept 48h, then drop)</text>
+<text x="700" y="211" font-family="JetBrains Mono,monospace" font-size="8" fill="#5eead4">← Application sees no interruption</text>
+
+<!-- Code note -->
+<rect x="16" y="235" width="908" height="16" rx="4" fill="rgba(251,191,36,.06)"/>
+<text x="24" y="247" font-family="JetBrains Mono,monospace" font-size="7" fill="#fbbf24">client.alter_alias("products", "products_v2")  — atomic, O(1), zero downtime</text>
+</svg>
+  </div>
+
+  <div class="cc">
+    <div class="ch"><h3>migration.py — full zero-downtime migration implementation</h3><button class="cpb" onclick="cp(this,'mig_code')">⎘ Copy</button></div>
+    <div class="cbody"><pre id="mig_code"><span class="kw">from</span> <span class="cl">pymilvus</span> <span class="kw">import</span> MilvusClient, utility
+<span class="kw">import</span> time
+
+<span class="kw">def</span> <span class="fn">migrate_collection</span>(client, old_name, new_schema, new_index_params,
+                         alias, batch_size<span class="op">=</span><span class="nu">10000</span>, verify_queries<span class="op">=</span><span class="nu">100</span>):
+    <span class="str">"""
+    Zero-downtime collection migration using alias swap.
+    - old_name: current physical collection behind alias
+    - new_schema: updated schema (new fields, new vector type, etc.)
+    - alias: the alias pointing to old_name (app uses this)
+    """</span>
+    new_name <span class="op">=</span> <span class="str">f"{old_name}_v{int(time.time())}"</span>
+    
+    <span class="cm"># 1. Create new collection with new schema</span>
+    <span class="fn">print</span>(<span class="str">f"Creating {new_name}..."</span>)
+    client.create_collection(new_name, schema<span class="op">=</span>new_schema)
+    <span class="kw">for</span> idx_param <span class="kw">in</span> new_index_params:
+        client.create_index(new_name, <span class="op">**</span>idx_param)
+    client.load_collection(new_name)
+    
+    <span class="cm"># 2. Bulk copy with transformation</span>
+    <span class="fn">print</span>(<span class="str">"Copying vectors..."</span>)
+    offset, total <span class="op">=</span> <span class="nu">0</span>, <span class="nu">0</span>
+    <span class="kw">while True</span>:
+        rows <span class="op">=</span> client.query(old_name, <span class="str">""</span>, offset<span class="op">=</span>offset, limit<span class="op">=</span>batch_size,
+                            output_fields<span class="op">=</span>[<span class="str">"*"</span>])
+        <span class="kw">if not</span> rows: <span class="kw">break</span>
+        <span class="cm"># Apply any transformations here (field rename, type convert, etc.)</span>
+        client.insert(new_name, rows)
+        offset <span class="op">+=</span> <span class="fn">len</span>(rows); total <span class="op">+=</span> <span class="fn">len</span>(rows)
+        <span class="fn">print</span>(<span class="str">f"  {total:,} vectors copied"</span>, end<span class="op">=</span><span class="str">""</span>)
+    
+    <span class="cm"># 3. Wait for indexing to complete</span>
+    utility.wait_for_index_building_progress(new_name)
+    
+    <span class="cm"># 4. Verify recall parity on test queries</span>
+    <span class="fn">print</span>(<span class="str">"Verifying recall..."</span>)
+    test_queries <span class="op">=</span> <span class="fn">generate_test_queries</span>(verify_queries)
+    old_recall <span class="op">=</span> <span class="fn">measure_recall</span>(client, old_name, test_queries)
+    new_recall <span class="op">=</span> <span class="fn">measure_recall</span>(client, new_name, test_queries)
+    <span class="fn">print</span>(<span class="str">f"  Old recall: {old_recall:.3f}, New recall: {new_recall:.3f}"</span>)
+    <span class="kw">assert</span> new_recall <span class="op">&gt;=</span> old_recall <span class="op">*</span> <span class="nu">0.99</span>, <span class="str">"New recall is more than 1% worse!"</span>
+    
+    <span class="cm"># 5. Atomic alias swap — no downtime</span>
+    <span class="fn">print</span>(<span class="str">f"Swapping alias '{alias}' from {old_name} → {new_name}"</span>)
+    client.alter_alias(alias, new_name)  <span class="cm"># O(1), atomic</span>
+    
+    <span class="cm"># 6. Keep old collection for 48h rollback window</span>
+    <span class="fn">print</span>(<span class="str">f"✅ Migration complete. Old collection {old_name} kept for 48h rollback."</span>)
+    <span class="kw">return</span> new_name
+
+<span class="cm"># ROLLBACK (if needed within 48h):
+# client.alter_alias(alias, old_name)  # Instant rollback</span></pre></div>
+  </div>
+
+  <h3 style="font-size:1.4rem;margin:2rem 0 1.2rem;color:var(--t1)">The production checklist</h3>
+  <div class="g2">
+    <div class="card">
+      <h4 style="color:var(--a1);margin-bottom:.8rem">🚀 Pre-launch checklist</h4>
+      <div style="font-size:.88rem;color:var(--t2);line-height:1.9">
+        <div>☐ Schema validated: all filter fields have scalar indexes</div>
+        <div>☐ Vector index built and all segments LOADED state</div>
+        <div>☐ Recall@10 measured on representative queries (&gt;97% for HNSW M=16)</div>
+        <div>☐ p99 latency benchmarked at 2× expected peak QPS</div>
+        <div>☐ etcd: 3-node cluster with leader election tested</div>
+        <div>☐ MinIO/S3: bucket exists, permissions correct, lifecycle policy set</div>
+        <div>☐ Pulsar: retention policy configured (default too aggressive)</div>
+        <div>☐ RAM: QueryNode usage &lt;75% at expected load</div>
+        <div>☐ Monitoring: all 12 Prometheus metrics alerting</div>
+        <div>☐ Backup: milvus-backup configured and tested restore</div>
+      </div>
+    </div>
+    <div class="card">
+      <h4 style="color:var(--a4);margin-bottom:.8rem">📊 Post-launch operations</h4>
+      <div style="font-size:.88rem;color:var(--t2);line-height:1.9">
+        <div>☐ Weekly: review recall regression on sample queries</div>
+        <div>☐ Weekly: check compaction status after bulk deletes</div>
+        <div>☐ Monthly: capacity trending — forecast RAM exhaustion</div>
+        <div>☐ Monthly: etcd defrag (prevent WAL growth)</div>
+        <div>☐ Quarterly: DR drill — restore from backup and verify</div>
+        <div>☐ Quarterly: benchmark new Milvus version before upgrading</div>
+        <div>☐ On-call: runbook for each of the 8 production failure modes</div>
+        <div>☐ On-call: rollback procedure &lt;5 minutes (alias swap ready)</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="sec" id="s4">
+  <div class="sn">04 · Assessment — 8 Deep Questions</div>
+  <h2>Production <span class="gt">operations mastery</span></h2>
+  <p class="lead">Capacity arithmetic, migration procedures, streaming pipelines, and failure diagnosis under real production constraints.</p>
+  <div class="qc">
+    <div class="qc-title">Scaling & Operations Quiz</div>
+    <div class="qc-sub">capacity formulas · migration · streaming ingestion · monitoring · backup/restore</div>
+    <div class="qprog"><div class="qprog-bar"><div class="qprog-fill"></div></div><div class="qprog-text">0/8 answered</div></div>
+    <div class="qq"><div class="qnum">Question 1 of 8</div><h4>You're scaling from 10M to 100M vectors (d=768). HNSW M=16. Calculate exact RAM and determine if you can stay on a single 256GB node.</h4><div class="qo"><button class="qob" data-opt="A" data-correct="false" onclick="cq(this,0,false)">A: 100M×768×4=307GB exceeds 256GB — you cannot fit on a single node regardless of index type.</button>
+<button class="qob" data-opt="B" data-correct="false" onclick="cq(this,0,false)">B: With FLOAT16 vectors: 100M×768×2 + 100M×16×2×8 = 153.6GB + 25.6GB = 179.2GB. This fits on a single 256GB node with ~76GB headroom for OS + query buffers.</button>
+<button class="qob" data-opt="C" data-correct="false" onclick="cq(this,0,false)">C: Use IVF_PQ with m=32: 100M×32=3.2GB. Single node with 256GB has massive headroom.</button>
+<button class="qob" data-opt="D" data-correct="true" onclick="cq(this,0,true)">D: HNSW M=16 at 100M vectors: 100M×768×4 + 100M×16×2×8 = 307+25.6=332.6GB. Exceeds 256GB. Options: switch to FLOAT16 (179.2GB, fits), use 512GB node, or shard across 2 nodes.</button>
+</div><div class="qfeed"><div class="qfeed-head"></div><div class="qfeed-why"><strong>The correct answer requires showing multiple options.</strong> FP32 HNSW: 332.6GB > 256GB — doesn't fit. FLOAT16 halves vector storage: 153.6 + 25.6 = 179.2GB — fits on 256GB with headroom. IVF_PQ is the most compressed but 3-8% recall drop. The systematic approach: calculate RAM, compare to budget, if exceeds then consider FLOAT16 → IVF_SQ8 → IVF_PQ in that order of recall impact.</div></div></div><div class="qq"><div class="qnum">Question 2 of 8</div><h4>You need to migrate from HNSW M=16 to HNSW M=32 on a production collection with 20M vectors. The collection is serving live traffic. What is the correct procedure?</h4><div class="qo"><button class="qob" data-opt="A" data-correct="false" onclick="cq(this,1,false)">A: Update the index parameters in-place using create_index() with new M value. Milvus will rebuild automatically.</button>
+<button class="qob" data-opt="B" data-correct="true" onclick="cq(this,1,true)">B: Alias swap: (1) create new_collection with M=32, (2) bulk export and reimport vectors, (3) verify recall (new 98% vs old 96%), (4) call client.alter_alias('products','new_collection') — atomic swap, zero downtime, (5) keep old collection 48h, then drop.</button>
+<button class="qob" data-opt="C" data-correct="false" onclick="cq(this,1,false)">C: Drop the collection and recreate it with M=32. Downtime is unavoidable for index changes.</button>
+<button class="qob" data-opt="D" data-correct="false" onclick="cq(this,1,false)">D: Dual-write to both old and new collection, run them in parallel for 24h, then cut over.</button>
+</div><div class="qfeed"><div class="qfeed-head"></div><div class="qfeed-why"><strong>The alias swap is the only correct zero-downtime approach.</strong> Milvus does NOT support in-place index parameter changes — create_index() on an existing field drops and rebuilds the index, causing a searchability gap during rebuild. Dual-write adds complexity and 2× storage cost temporarily. The alias pattern: your application always queries the alias name 'products', never the physical collection name. alter_alias() is O(1) and atomic.</div></div></div><div class="qq"><div class="qnum">Question 3 of 8</div><h4>A Kafka→Milvus ingestion pipeline is inserting 1000 vectors/sec. After 1 hour, you notice 3600 growing segments (one per second of inserts). What is the problem and the fix?</h4><div class="qo"><button class="qob" data-opt="A" data-correct="true" onclick="cq(this,2,true)">A: The DataNode is creating a new segment for each insert() call. Fix: use BulkWriter or batch inserts of 10,000+ vectors per call. Target: 1-5 segments per minute, not 1 per second.</button>
+<button class="qob" data-opt="B" data-correct="false" onclick="cq(this,2,false)">B: Too many Pulsar topics — consolidate to a single topic.</button>
+<button class="qob" data-opt="C" data-correct="false" onclick="cq(this,2,false)">C: The IndexNode cannot build indexes fast enough. Scale up IndexNodes.</button>
+<button class="qob" data-opt="D" data-correct="false" onclick="cq(this,2,false)">D: This is expected behavior — Milvus creates one segment per batch insert call.</button>
+</div><div class="qfeed"><div class="qfeed-head"></div><div class="qfeed-why"><strong>Write amplification from small batches.</strong> Each insert() call creates or extends one growing segment. 1000 calls/sec × 3600sec = 3600 segments with ~3600 rows each. Problems: (1) 3600 index build jobs queued, (2) 3600 segments in QueryNode RAM, (3) extremely high segment count → compaction pressure. Fix: batch inserts. Instead of insert([v1]) 1000 times/sec, insert([v1,...,v1000]) once/sec. Better: use BulkWriter to accumulate 100K+ vectors and do a single BulkInsert. Target: segments should seal at 500K-1M rows.</div></div></div><div class="qq"><div class="qnum">Question 4 of 8</div><h4>Your milvus_querynode_search_latency_p99 suddenly goes from 3ms to 280ms. milvus_indexcoord_index_task_num is 0 (no build backlog). What are the top 3 failure hypotheses and how do you check each?</h4><div class="qo"><button class="qob" data-opt="A" data-correct="false" onclick="cq(this,3,false)">A: Index corruption — rebuild the index.</button>
+<button class="qob" data-opt="B" data-correct="false" onclick="cq(this,3,false)">B: Schema change was applied during peak traffic.</button>
+<button class="qob" data-opt="C" data-correct="true" onclick="cq(this,3,true)">C: (1) MinIO slow: check milvus_datanode_binlog_flush_latency_p99 and MinIO response time — high MinIO latency causes QueryNode segment-load slowdowns during compaction. (2) Compaction I/O spike: check compaction scheduling, correlate with latency spike timing. (3) QueryNode segment rebalance: QueryCoord may have migrated segments between QueryNodes — check milvus_querynode_segment_loaded_count change. Also check: process_resident_memory_bytes near limit (GC pressure).</button>
+<button class="qob" data-opt="D" data-correct="false" onclick="cq(this,3,false)">D: Pulsar consumer lag — DataNode is behind, causing write-read conflicts.</button>
+</div><div class="qfeed"><div class="qfeed-head"></div><div class="qfeed-why"><strong>Latency spike with no build backlog requires checking the I/O and memory path.</strong> With zero index build jobs, the latency spike is NOT from searching unindexed segments. Most likely causes: (1) Compaction I/O: compaction reads many segment files from MinIO simultaneously, creating I/O contention with search. (2) MinIO slowness: if S3 is throttled or degraded, segment loads during rebalancing are slow. (3) QueryNode memory pressure: if RSS is near limit, GC pauses cause p99 spikes. Check each with: Prometheus dashboard + correlated timestamps.</div></div></div><div class="qq"><div class="qnum">Question 5 of 8</div><h4>Describe the Kafka→Milvus production pipeline including error handling. What happens when the embedding model returns an error for one batch?</h4><div class="qo"><button class="qob" data-opt="A" data-correct="false" onclick="cq(this,4,false)">A: The pipeline stops and alerts the team. Manual intervention required to retry.</button>
+<button class="qob" data-opt="B" data-correct="true" onclick="cq(this,4,true)">B: Use a dead letter queue: failed batches go to DLQ topic. A separate retry worker reads DLQ, retries with exponential backoff (1s, 2s, 4s, max 5 attempts). After 5 failures, write to error log and send alert. Successful batches in the main pipeline are not affected.</button>
+<button class="qob" data-opt="C" data-correct="false" onclick="cq(this,4,false)">C: Skip failed batches — data loss for individual vectors is acceptable.</button>
+<button class="qob" data-opt="D" data-correct="false" onclick="cq(this,4,false)">D: Retry the entire pipeline from the beginning when any error occurs.</button>
+</div><div class="qfeed"><div class="qfeed-head"></div><div class="qfeed-why"><strong>The dead letter queue pattern is the production standard.</strong> Pipeline: Kafka consumer reads events → embedding model batch → Milvus BulkWriter. When embedding fails: catch exception, publish to DLQ Kafka topic with original message + error metadata. DLQ consumer: retry with backoff. This prevents: (1) pipeline stall when model is temporarily overloaded, (2) data loss, (3) blocking healthy messages behind a failing one. Monitoring: DLQ depth is a critical alert — growing DLQ means the embedding service is degraded.</div></div></div><div class="qq"><div class="qnum">Question 6 of 8</div><h4>When should you use collection.compact() manually, and what happens inside Milvus during compaction?</h4><div class="qo"><button class="qob" data-opt="A" data-correct="false" onclick="cq(this,5,false)">A: Never use manual compaction — Milvus handles it automatically and manual compaction causes data corruption.</button>
+<button class="qob" data-opt="B" data-correct="true" onclick="cq(this,5,true)">B: Use manual compaction after: (1) bulk deletes (>10% of vectors), (2) after migration to reclaim space from old segments, (3) before a scheduled maintenance window. During compaction: Milvus merges small segments into larger ones, removes tombstoned (deleted) vectors permanently, rebuilds stats logs. Result: fewer segments, less QueryNode memory usage, cleaner delete semantics. Cost: significant I/O during compaction. Schedule during off-peak.</button>
+<button class="qob" data-opt="C" data-correct="false" onclick="cq(this,5,false)">C: Compact after every insert to ensure optimal segment size.</button>
+<button class="qob" data-opt="D" data-correct="false" onclick="cq(this,5,false)">D: Compaction is only needed when etcd runs out of space.</button>
+</div><div class="qfeed"><div class="qfeed-head"></div><div class="qfeed-why"><strong>Manual compaction has specific use cases.</strong> After bulk deletes: deleted vectors occupy space (tombstones) until compaction. A collection with 20% deletes wastes 20% of index RAM. Compaction permanently removes them. After migration: you may have many tiny segments from the migration process. Compaction merges them. Milvus auto-compaction triggers at: (1) segment count > threshold, (2) binlog file count > threshold. For large delete operations, auto-compaction may be too slow — trigger manually.</div></div></div><div class="qq"><div class="qnum">Question 7 of 8</div><h4>Explain the RPO and RTO targets for Milvus and how to achieve RPO=1h, RTO=15min using milvus-backup.</h4><div class="qo"><button class="qob" data-opt="A" data-correct="false" onclick="cq(this,6,false)">A: RPO and RTO only apply to stateful databases, not vector stores.</button>
+<button class="qob" data-opt="B" data-correct="true" onclick="cq(this,6,true)">B: RPO=1h: run milvus-backup every hour to S3. Each backup captures all segments+indexes at that point in time. RTO=15min: on failure, restore latest backup (milvus-backup restore), reload collections. Practice DR drill quarterly. For RPO<1min: would need Milvus HA with active-active replication. etcd HA (3-node) gives metadata RPO=0 — only vector data needs backup.</button>
+<button class="qob" data-opt="C" data-correct="false" onclick="cq(this,6,false)">C: RPO=0 is achievable with Milvus's built-in replication.</button>
+<button class="qob" data-opt="D" data-correct="false" onclick="cq(this,6,false)">D: Use Pulsar's message retention for backup — replay all messages to rebuild the collection.</button>
+</div><div class="qfeed"><div class="qfeed-head"></div><div class="qfeed-why"><strong>RPO/RTO require separate strategies for metadata (etcd) and data (MinIO).</strong> etcd: 3-node Raft cluster gives RPO=0 for metadata. MinIO/S3: object storage is durable by default (11 nines). milvus-backup backs up collection data to S3. Incremental backup: only new segments since last backup. Restore time depends on data size and S3 throughput. For N=100M vectors ≈ 300GB: restore takes 5-15min with 500MB/s S3. RTO=15min is achievable for most production sizes.</div></div></div><div class="qq"><div class="qnum">Question 8 of 8</div><h4>A production Milvus cluster has: 100M vectors, 3 QueryNodes (64GB each), HNSW M=16 at d=768. A fourth QueryNode is added. What happens automatically and what requires manual action?</h4><div class="qo"><button class="qob" data-opt="A" data-correct="false" onclick="cq(this,7,false)">A: Nothing happens automatically — you must manually reload the collection to the new node.</button>
+<button class="qob" data-opt="B" data-correct="true" onclick="cq(this,7,true)">B: QueryCoord automatically detects the new QueryNode via etcd registration. It rebalances segments: some segments are migrated from overloaded QueryNodes to the new one. No manual action needed. RAM usage: 333GB across 4 nodes = 83GB/node (previously 111GB). QPS scales linearly (4/3× throughput). Note: if you added the node to increase replicas, call load_collection(replica_number=2) to explicitly activate multi-replica mode.</button>
+<button class="qob" data-opt="C" data-correct="false" onclick="cq(this,7,false)">C: The new node joins but only handles new insertions, not existing segments.</button>
+<button class="qob" data-opt="D" data-correct="false" onclick="cq(this,7,false)">D: You must call collection.load() again to trigger rebalancing.</button>
+</div><div class="qfeed"><div class="qfeed-head"></div><div class="qfeed-why"><strong>QueryCoord is the automatic rebalancing brain.</strong> When a new QueryNode comes online and registers with etcd, QueryCoord detects it and begins migrating segments to balance memory usage. This is one of Milvus's strongest features — horizontal scaling is truly elastic. The migration is done by: (1) load segment on new node, (2) verify loaded, (3) unload from old node. During migration, the old node still serves the segment — zero downtime. For replica_number changes: explicit API call required.</div></div></div>
+    <div class="qs" id="qs" style="display:none"><h3 id="sc" style="font-size:2.2rem;font-weight:800"></h3><p id="sm"></p></div>
+  </div>
+</section>
+
+</div>
+<footer>
+  <div style="max-width:var(--cw);margin:0 auto;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:1rem">
+    <div style="display:flex;gap:.8rem"><a href="vdb_m2.html" class="pr">← Index Design & Hybrid Search</a><a href="research_catalog.html" class="nx">Research Papers →</a></div>
+    <span>Vector Database & Search Engineering · MVDB · Vector Database & Search Engineering</span>
+  </div>
+</footer>
+<script>
+window.addEventListener("scroll",function(){
+  var h=document.documentElement;
+  var pct=(h.scrollTop/(h.scrollHeight-h.clientHeight))*100;
+  document.getElementById("sp").style.width=pct+"%";
+});
+var obs=new IntersectionObserver(function(e){
+  e.forEach(function(x){if(x.isIntersecting)x.target.classList.add("vis");});
+},{threshold:0.06});
+document.querySelectorAll(".sec").forEach(function(s){obs.observe(s);});
+// Copy buttons
+function cp(btn,id){
+  navigator.clipboard.writeText(document.getElementById(id).innerText).then(function(){
+    var t=btn.textContent;btn.textContent="✓ Copied";
+    setTimeout(function(){btn.textContent=t;},2000);
+  });
+}
+// Metric bar animation
+window.addEventListener("load",function(){
+  document.querySelectorAll(".metric-fill[data-pct]").forEach(function(el){
+    setTimeout(function(){el.style.width=el.getAttribute("data-pct")+"%";},300);
+  });
+});
+// Quiz engine
+var qstate={};
+var qtotal=document.querySelectorAll(".qq").length;
+function updateProgress(){
+  var done=Object.keys(qstate).length;
+  var fill=document.querySelector(".qprog-fill");
+  var txt=document.querySelector(".qprog-text");
+  if(fill)fill.style.width=Math.round(done/qtotal*100)+"%";
+  if(txt)txt.textContent=done+"/"+qtotal+" answered";
+  if(done===qtotal)showScore();
+}
+function showScore(){
+  var c=Object.values(qstate).filter(function(v){return v;}).length;
+  var sc=document.getElementById("sc");
+  var sm=document.getElementById("sm");
+  if(sc)sc.textContent=c+"/"+qtotal+" correct";
+  if(sm){
+    var msgs=['Capacity planning requires systematic RAM arithmetic — practice the formulas.','Good! Alias swap is the core production migration pattern.','Solid! Write amplification from small batches is a common production anti-pattern.','Strong! Multi-hypothesis debugging is expert-level production engineering.','Excellent! DLQ error handling separates production-ready pipelines from fragile ones.','Outstanding! Compaction timing decisions show deep operational knowledge.','Exceptional! RPO/RTO design for vector stores is advanced.','Perfect! Elastic scaling mechanics mastered — you can architect at any scale.'][c];
+    sm.textContent=msgs[Math.min(c,msgs.length-1)];
+    sm.style.color=c>=Math.round(qtotal*0.8)?"#5eead4":"#f472b6";
+  }
+  var qs=document.getElementById("qs");
+  if(qs)qs.style.display="block";
+}
+function cq(btn,qi,isCorrect){
+  if(qstate[qi]!==undefined)return;
+  qstate[qi]=isCorrect;
+  var qq=btn.closest(".qq");
+  qq.classList.add("answered");
+  var allBtns=qq.querySelectorAll(".qob");
+  allBtns.forEach(function(b){
+    b.setAttribute("disabled","");
+    var bc=b.getAttribute("data-correct")==="true";
+    if(bc)b.classList.add("ok");
+    else if(b===btn&&!isCorrect)b.classList.add("no");
+  });
+  var feed=qq.querySelector(".qfeed");
+  if(feed){
+    feed.style.display="block";
+    feed.className="qfeed "+(isCorrect?"correct":"wrong");
+    var head=feed.querySelector(".qfeed-head");
+    if(head)head.textContent=isCorrect?"✓ Correct — "+btn.getAttribute("data-opt")+" is right":"✗ Not quite — see the explanation below";
+  }
+  updateProgress();
+}</script>
+</body></html>

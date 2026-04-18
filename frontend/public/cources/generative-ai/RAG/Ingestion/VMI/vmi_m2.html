@@ -1,0 +1,647 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Video & Multimodal Ingestion Track · M2 — Audio Encoders and Cross-Modal Alignment</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;700&family=Source+Serif+4:ital,opsz,wght@0,8..60,400;0,8..60,600;1,8..60,400&display=swap" rel="stylesheet">
+<style>:root{--bg:#08080e;--t1:#ececf6;--t2:#b5b5c8;--tm:#6b6b85;
+--a1:#5eead4;--a2:#60a5fa;--a3:#f472b6;--a4:#fbbf24;--a5:#a78bfa;--ac:#f472b6;
+--gl:linear-gradient(90deg,#5eead4 0%,#60a5fa 28%,#a78bfa 55%,#f472b6 82%,#fbbf24 100%);
+--bs:rgba(255,255,255,0.06);--sh:0 24px 80px rgba(0,0,0,0.5);--r:18px;--cw:1160px}
+*{box-sizing:border-box;margin:0;padding:0}html{scroll-behavior:smooth}
+body{background:radial-gradient(ellipse 900px 500px at 15% 10%,rgba(244,114,182,.08),transparent 50%),radial-gradient(ellipse 700px 400px at 85% 20%,rgba(96,165,250,.05),transparent 40%),var(--bg);color:var(--t1);font-family:'Outfit',sans-serif;line-height:1.75;overflow-x:hidden;-webkit-font-smoothing:antialiased}
+/* Progress bar */
+.sp{position:fixed;top:0;left:0;height:3px;width:0%;z-index:1000;background:var(--gl);transition:width .1s linear}
+/* Nav */
+nav{position:fixed;top:3px;left:0;right:0;z-index:999;display:flex;align-items:center;justify-content:space-between;padding:.7rem 2rem;background:rgba(8,8,14,.9);backdrop-filter:blur(16px);border-bottom:1px solid var(--bs)}
+.nbr{font-family:'JetBrains Mono',monospace;font-size:.7rem;color:var(--ac);letter-spacing:.16em;text-transform:uppercase;text-decoration:none;display:flex;align-items:center;gap:8px}
+.nbr-dot{width:6px;height:6px;border-radius:50%;background:var(--ac);animation:pulse 2s ease-in-out infinite}
+.nm{font-size:.8rem;color:var(--tm);max-width:400px;text-overflow:ellipsis;overflow:hidden;white-space:nowrap}
+.na{display:flex;gap:8px}
+.nb{display:inline-flex;align-items:center;gap:6px;padding:.38rem .85rem;border-radius:999px;border:1px solid var(--bs);background:rgba(255,255,255,.02);color:var(--t2);font-size:.78rem;text-decoration:none;transition:all .18s}
+.nb:hover{border-color:var(--ac);color:var(--ac)}
+/* Hero */
+.hero{min-height:100vh;display:flex;align-items:center;justify-content:center;padding:5rem 2rem 3rem;position:relative;overflow:hidden}
+.hg{position:absolute;inset:0;background-image:linear-gradient(rgba(255,255,255,.018) 1px,transparent 1px),linear-gradient(90deg,rgba(255,255,255,.018) 1px,transparent 1px);background-size:52px 52px;mask-image:radial-gradient(circle at center,black 20%,transparent 75%);pointer-events:none}
+.hi{max-width:1000px;text-align:center;position:relative;z-index:1}
+.hl{display:inline-flex;align-items:center;gap:10px;padding:.5rem 1rem;border-radius:999px;border:1px solid rgba(244,114,182,.28);background:rgba(244,114,182,.07);color:var(--ac);letter-spacing:1.8px;text-transform:uppercase;font-size:.74rem;margin-bottom:1.8rem}
+h1{font-size:clamp(2.6rem,5.5vw,5rem);line-height:1.02;letter-spacing:-.05em;font-weight:900;margin-bottom:1.2rem}
+.gt{background:var(--gl);-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent}
+.sub{font-size:.82rem;color:var(--tm);font-family:'JetBrains Mono',monospace;margin-bottom:.6rem;letter-spacing:.04em}
+.hs{font-family:'Source Serif 4',serif;color:var(--t2);font-size:clamp(1rem,1.8vw,1.18rem);max-width:800px;margin:0 auto 2.2rem;line-height:1.85}
+.hm{display:flex;flex-wrap:wrap;justify-content:center;gap:10px;margin-bottom:2.5rem}
+.mp{border:1px solid var(--bs);background:rgba(17,17,28,.8);border-radius:999px;padding:.6rem 1.1rem;color:var(--t2);font-size:.86rem}
+.mp.hl2{border-color:rgba(244,114,182,.3);color:var(--ac);background:rgba(244,114,182,.06)}
+.sc{position:absolute;bottom:2.4rem;left:50%;transform:translateX(-50%);color:var(--tm);display:flex;flex-direction:column;gap:.5rem;align-items:center;text-transform:uppercase;letter-spacing:.22em;font-size:.68rem}
+.arr{width:17px;height:17px;border-right:2px solid var(--tm);border-bottom:2px solid var(--tm);transform:rotate(45deg);animation:ba 2s ease-in-out infinite}
+@keyframes pulse{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.25;transform:scale(.7)}}
+@keyframes ba{0%,100%{transform:rotate(45deg) translateY(0)}50%{transform:rotate(45deg) translateY(8px)}}
+/* Content */
+.cw{max-width:var(--cw);margin:0 auto;padding:0 2rem 7rem}
+.sec{margin-bottom:6rem;opacity:0;transform:translateY(32px);transition:opacity .6s ease,transform .6s ease}
+.sec.vis{opacity:1;transform:translateY(0)}
+.sn{display:flex;align-items:center;gap:14px;color:var(--ac);font-family:'JetBrains Mono',monospace;font-size:.67rem;text-transform:uppercase;letter-spacing:.24em;margin-bottom:1rem}
+.sn::after{content:"";height:1px;flex:1;background:linear-gradient(90deg,rgba(244,114,182,.6),transparent)}
+.sec h2{font-size:clamp(2rem,4vw,3rem);line-height:1.06;margin-bottom:1.1rem;letter-spacing:-.04em}
+.lead{font-family:'Source Serif 4',serif;font-size:1.1rem;color:var(--t2);margin-bottom:2.2rem;line-height:1.88;max-width:860px}
+/* Cards */
+.card{background:linear-gradient(160deg,rgba(20,20,36,.98),rgba(14,14,26,.98));border:1px solid var(--bs);border-radius:var(--r);box-shadow:var(--sh);padding:2rem;margin-bottom:1.6rem}
+.card-accent{border-color:rgba(244,114,182,.25);background:linear-gradient(160deg,rgba(244,114,182,.04),rgba(14,14,26,.98))}
+/* Code blocks */
+.cc{background:linear-gradient(180deg,rgba(10,10,20,.99),rgba(8,8,16,.99));border:1px solid var(--bs);border-radius:var(--r);box-shadow:var(--sh);padding:0;margin-bottom:1.6rem;overflow:hidden}
+.ch{display:flex;align-items:center;justify-content:space-between;padding:1rem 1.6rem;border-bottom:1px solid var(--bs);background:rgba(255,255,255,.015)}
+.ch h3{font-size:.88rem;font-family:'JetBrains Mono',monospace;color:var(--ac);display:flex;align-items:center;gap:8px}
+.ch h3::before{content:"⟩";opacity:.5}
+.cpb{display:inline-flex;align-items:center;gap:5px;padding:.26rem .7rem;border-radius:999px;border:1px solid var(--bs);background:transparent;color:var(--tm);font-size:.7rem;cursor:pointer;transition:all .18s;font-family:'JetBrains Mono',monospace}
+.cpb:hover{border-color:var(--a1);color:var(--a1)}
+.cbody{padding:1.6rem;overflow-x:auto}
+pre{white-space:pre;color:#d8e3ff;font-family:'JetBrains Mono',monospace;font-size:.84rem;line-height:1.78;tab-size:4}
+.kw{color:#c084fc}.fn{color:#60a5fa}.str{color:#5eead4}.cm{color:#3d4060;font-style:italic}.nu{color:#fbbf24}.cl{color:#f472b6}.de{color:#fb923c}.op{color:#94a3b8}
+/* Architecture containers */
+.arch{background:rgba(8,8,18,.96);border:1px solid rgba(244,114,182,.18);border-radius:var(--r);padding:1.8rem;margin-bottom:1.6rem;overflow-x:auto;text-align:center}
+.arch-title{font-family:'JetBrains Mono',monospace;font-size:.68rem;text-transform:uppercase;letter-spacing:.2em;color:var(--ac);margin-bottom:1.4rem;text-align:left;display:flex;align-items:center;gap:8px}
+.arch-title::before{content:"▸";opacity:.7}
+/* Callouts */
+.callout{border-radius:14px;padding:1.2rem 1.4rem;margin-bottom:1.2rem;display:flex;gap:1rem;align-items:flex-start}
+.callout-key{background:rgba(94,234,212,.05);border:1px solid rgba(94,234,212,.22)}
+.callout-warn{background:rgba(251,191,36,.05);border:1px solid rgba(251,191,36,.22)}
+.callout-insight{background:rgba(167,139,250,.05);border:1px solid rgba(167,139,250,.22)}
+.callout-scenario{background:rgba(96,165,250,.05);border:1px solid rgba(96,165,250,.22)}
+.callout-danger{background:rgba(244,114,182,.05);border:1px solid rgba(244,114,182,.22)}
+.callout-icon{font-size:1.35rem;flex-shrink:0;margin-top:.08rem}
+.callout-body h4{font-size:.96rem;margin-bottom:.35rem;color:var(--t1);font-weight:700}
+.callout-body p{font-size:.88rem;color:var(--t2);line-height:1.68}
+.callout-body code{font-family:'JetBrains Mono',monospace;font-size:.82rem;background:rgba(255,255,255,.06);padding:.1rem .3rem;border-radius:4px;color:var(--ac)}
+/* Grids */
+.g2{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:1.4rem;margin-bottom:1.6rem}
+.g3{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:1.2rem;margin-bottom:1.6rem}
+.g4{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:1rem;margin-bottom:1.4rem}
+@media(max-width:768px){.g2,.g3,.g4{grid-template-columns:1fr}}
+.mc2{border:1px solid var(--bs);border-radius:16px;padding:1.4rem;background:rgba(255,255,255,.02);transition:border-color .2s}
+.mc2:hover{border-color:rgba(244,114,182,.3)}
+.mc2 h4{font-size:1rem;margin-bottom:.6rem;color:var(--t1);font-weight:700}
+.mc2 p{font-size:.88rem;color:var(--t2);line-height:1.68}
+.mc2 .tag{display:inline-block;font-family:'JetBrains Mono',monospace;font-size:.68rem;padding:.2rem .55rem;border-radius:999px;margin-bottom:.6rem;text-transform:uppercase;letter-spacing:.1em}
+/* Tables */
+.tbl{width:100%;border-collapse:collapse;font-size:.86rem}
+.tbl th{text-align:left;padding:.8rem 1.1rem;font-family:'JetBrains Mono',monospace;font-size:.64rem;text-transform:uppercase;color:var(--tm);border-bottom:1px solid var(--bs);letter-spacing:.08em}
+.tbl td{padding:.8rem 1.1rem;border-bottom:1px solid rgba(255,255,255,.035);color:var(--t2);vertical-align:top;line-height:1.65}
+.tbl td:first-child{color:var(--t1);font-weight:600}.tbl tr:last-child td{border-bottom:none}
+.tbl tr:hover td{background:rgba(255,255,255,.015)}
+/* Scenario box */
+.scenario{background:linear-gradient(135deg,rgba(96,165,250,.04),rgba(167,139,250,.04));border:1px solid rgba(96,165,250,.2);border-radius:var(--r);padding:1.8rem;margin-bottom:1.6rem;position:relative}
+.scenario::before{content:"SCENARIO";position:absolute;top:-1px;left:1.5rem;background:var(--bg);padding:0 .6rem;font-family:'JetBrains Mono',monospace;font-size:.62rem;color:var(--a2);letter-spacing:.2em}
+.scenario h4{color:var(--a2);margin-bottom:.8rem;font-size:1.05rem}
+.scenario p{font-size:.9rem;color:var(--t2);line-height:1.72;margin-bottom:.6rem}
+.scenario p:last-child{margin-bottom:0}
+.scenario code{font-family:'JetBrains Mono',monospace;font-size:.82rem;background:rgba(96,165,250,.1);padding:.1rem .3rem;border-radius:4px;color:var(--a2)}
+/* Quiz */
+.qc{background:linear-gradient(180deg,rgba(18,18,32,.98),rgba(12,12,24,.98));border:1px solid var(--bs);border-radius:var(--r);box-shadow:var(--sh);padding:2.2rem}
+.qc-title{font-size:1.2rem;font-weight:800;margin-bottom:.25rem;color:var(--t1)}
+.qc-sub{font-size:.82rem;color:var(--tm);margin-bottom:1.8rem;font-family:'JetBrains Mono',monospace}
+.qq{border:1px solid var(--bs);border-radius:18px;padding:1.8rem;background:rgba(255,255,255,.012);margin-bottom:1.4rem;transition:border-color .3s,background .3s}
+.qq.answered{border-color:rgba(244,114,182,.3);background:rgba(244,114,182,.02)}
+.qnum{font-family:'JetBrains Mono',monospace;font-size:.66rem;color:var(--ac);text-transform:uppercase;letter-spacing:.18em;margin-bottom:.6rem;display:flex;align-items:center;gap:8px}
+.qnum::after{content:"";height:1px;flex:1;background:rgba(244,114,182,.2)}
+.qq h4{font-size:.97rem;margin-bottom:1.2rem;color:var(--t1);line-height:1.6;font-weight:600}
+.qo{display:grid;gap:.6rem}
+.qob{border:1px solid var(--bs);border-radius:12px;padding:1rem 1.2rem;background:rgba(255,255,255,.018);color:var(--t2);cursor:pointer;transition:all .22s;text-align:left;font-size:.88rem;font-family:'Outfit',sans-serif;width:100%;line-height:1.6;position:relative;padding-left:3.2rem}
+.qob::before{content:attr(data-opt);position:absolute;left:1rem;top:50%;transform:translateY(-50%);font-family:'JetBrains Mono',monospace;font-size:.76rem;font-weight:700;color:var(--tm);width:1.4rem;text-align:center;transition:color .2s}
+.qob:hover:not([disabled]){border-color:rgba(244,114,182,.5);background:rgba(244,114,182,.05);color:var(--t1)}
+.qob:hover:not([disabled])::before{color:var(--ac)}
+.qob.ok{border-color:rgba(94,234,212,.6);background:rgba(94,234,212,.08);color:var(--t1)}
+.qob.ok::before{color:#5eead4}
+.qob.no{border-color:rgba(244,114,182,.4);background:rgba(244,114,182,.06);color:var(--t2)}
+.qob.no::before{color:#f472b6}
+.qob[disabled]{cursor:default}
+.qfeed{margin-top:1rem;border-radius:14px;padding:1.2rem 1.4rem;display:none}
+.qfeed.correct{background:rgba(94,234,212,.05);border:1px solid rgba(94,234,212,.25)}
+.qfeed.wrong{background:rgba(244,114,182,.04);border:1px solid rgba(244,114,182,.2)}
+.qfeed-head{font-weight:700;margin-bottom:.4rem;font-size:.92rem}
+.qfeed.correct .qfeed-head{color:#5eead4}
+.qfeed.wrong .qfeed-head{color:#f472b6}
+.qfeed-why{color:var(--t2);font-size:.87rem;line-height:1.68}
+.qfeed-why strong{color:var(--t1)}
+.qfeed-why code{font-family:'JetBrains Mono',monospace;font-size:.8rem;background:rgba(255,255,255,.06);padding:.1rem .3rem;border-radius:4px;color:var(--ac)}
+.qprog{display:flex;align-items:center;gap:1.2rem;margin-bottom:1.8rem}
+.qprog-bar{flex:1;height:5px;background:rgba(255,255,255,.05);border-radius:999px;overflow:hidden}
+.qprog-fill{height:100%;background:var(--gl);border-radius:999px;width:0%;transition:width .5s ease}
+.qprog-text{font-family:'JetBrains Mono',monospace;font-size:.7rem;color:var(--tm);white-space:nowrap}
+.qs{text-align:center;padding:2rem;border:1px solid var(--bs);border-radius:18px;margin-top:1.8rem;background:rgba(255,255,255,.01)}
+.qs h3{font-size:1.8rem;margin-bottom:.5rem;font-weight:800}
+.qs p{color:var(--t2);font-size:.92rem}
+/* Nav buttons */
+.pr,.nx{display:inline-flex;align-items:center;gap:7px;padding:.55rem 1.2rem;border-radius:999px;border:1px solid var(--bs);background:rgba(255,255,255,.02);color:var(--t2);font-size:.84rem;text-decoration:none;transition:all .2s}
+.pr:hover,.nx:hover{border-color:var(--ac);color:var(--ac)}
+/* Metric bars */
+.metric-row{display:flex;align-items:center;gap:1rem;margin-bottom:.7rem}
+.metric-label{font-family:'JetBrains Mono',monospace;font-size:.76rem;color:var(--t2);min-width:140px}
+.metric-bar{flex:1;height:8px;background:rgba(255,255,255,.05);border-radius:999px;overflow:hidden}
+.metric-fill{height:100%;border-radius:999px;transition:width 1.2s ease}
+.metric-val{font-family:'JetBrains Mono',monospace;font-size:.76rem;color:var(--t1);min-width:40px;text-align:right}
+/* Footer */
+footer{border-top:1px solid var(--bs);padding:3rem 2rem;text-align:center;color:var(--tm);font-size:.82rem}</style>
+</head>
+<body>
+<div class="sp" id="sp"></div>
+<nav>
+  <a class="nbr" href="#"><div class="nbr-dot"></div>Video & Multimodal Ingestion Track · M2</a>
+  <span class="nm">STFT · Mel Spectrogram · Whisper ASR · CLAP · Wav2Vec2 · AV-HuBERT · Word Timestamps · Sample Rate</span>
+  <div class="na"><a href="vmi_m1.html" class="pr">← M1: Video Encoders</a><a href="vmi_m3.html" class="nx">M3: Multimodal Fusion →</a></div>
+</nav>
+<section class="hero">
+  <div class="hg"></div>
+  <div class="hi">
+    <div class="hl">Video & Multimodal Ingestion Track · Module 2</div>
+    <h1>Audio Encoders and Cross-Modal Alignment</h1>
+    <p class="sub">STFT · Mel Spectrogram · Whisper ASR · CLAP · Wav2Vec2 · AV-HuBERT · Word Timestamps · Sample Rate</p>
+    <p class="hs">Audio is the most neglected modality in multimodal ML — and the most information-rich for human communication. A video without audio loses tone, emotion, prosody, background sound, and spoken content. This module covers the complete audio processing pipeline: waveform → mel spectrogram → audio encoder, and the two dominant audio models with completely different objectives: Whisper (what was SAID) and CLAP (what SOUNDS are present). Understanding when each is appropriate, how to align audio timestamps with video frames, and how audio-visual synchronisation models work is the foundation of production-grade multimodal video systems.</p>
+<div class="hm">
+<span class="mp hl2">⏱ 90 min</span>
+<span class="mp">STFT time/frequency resolution</span>
+<span class="mp">Mel filterbank compression</span>
+<span class="mp">Whisper ASR + word timestamps</span>
+<span class="mp">CLAP audio-text contrastive</span>
+<span class="mp">Wav2Vec2 / HuBERT SSL</span>
+<span class="mp">Sample rate mismatch bugs</span>
+<span class="mp">Frame-text alignment via timestamps</span>
+</div>
+  </div>
+  <div class="sc"><span>Scroll</span><div class="arr"></div></div>
+</section>
+<div class="cw">
+
+<section class="sec" id="s1">
+<div class="sn">01 · The Audio Processing Pipeline</div>
+<h2>Waveform → Mel Spectrogram →<br><span class="gt">Audio Encoder Input</span></h2>
+<p class="lead">Every audio encoder starts with the same preprocessing chain: raw PCM waveform → Short-Time Fourier Transform (STFT) → mel filterbank compression → log amplitude. The mel filterbank maps linear frequency bins to the mel scale — a perceptually uniform scale that compresses the high-frequency range where human hearing is less sensitive. The resulting log-mel spectrogram is treated as a 2D image (frequency × time) by the audio encoder. Every parameter in this chain — n_mels, n_fft, hop_length, sample_rate — is fixed by the model's training configuration and must be matched exactly at inference.</p>
+<div class="arch">
+<div class="arch-title">Audio processing pipeline — waveform → STFT → mel spectrogram → three encoder architectures</div>
+<svg viewBox="0 0 900 260" xmlns="http://www.w3.org/2000/svg" style="width:100%;max-width:900px;display:block">
+<rect width="900" height="260" fill="#07070f" rx="14"/>
+<defs>
+  <marker id="w0" markerWidth="7" markerHeight="5" refX="7" refY="2.5" orient="auto"><polygon points="0 0,7 2.5,0 5" fill="#f472b6"/></marker>
+  <marker id="w1" markerWidth="7" markerHeight="5" refX="7" refY="2.5" orient="auto"><polygon points="0 0,7 2.5,0 5" fill="#fbbf24"/></marker>
+  <marker id="w2" markerWidth="7" markerHeight="5" refX="7" refY="2.5" orient="auto"><polygon points="0 0,7 2.5,0 5" fill="#5eead4"/></marker>
+</defs>
+<text x="450" y="26" font-family="JetBrains Mono,monospace" font-size="11" fill="#f472b6" text-anchor="middle" letter-spacing="2" font-weight="bold">WAVEFORM → STFT → MEL SPECTROGRAM → AUDIO ENCODER</text>
+
+<!-- ── STAGE 1: Waveform  x=14 y=44 w=160 h=170 ── -->
+<rect x="14" y="44" width="160" height="170" rx="9" fill="rgba(244,114,182,.07)" stroke="rgba(244,114,182,.35)" stroke-width="1.5"/>
+<text x="94" y="63"  font-family="JetBrains Mono,monospace" font-size="9" fill="#f472b6" text-anchor="middle" font-weight="bold">① Waveform</text>
+<text x="94" y="78"  font-family="JetBrains Mono,monospace" font-size="7" fill="#7c7c95" text-anchor="middle">PCM float32</text>
+<text x="94" y="90"  font-family="JetBrains Mono,monospace" font-size="7" fill="#7c7c95" text-anchor="middle">16kHz mono</text>
+<!-- Waveform shape: sinusoidal lines -->
+<polyline points="24,140 36,120 48,160 60,110 72,155 84,125 96,150 108,118 120,158 132,128 144,148 156,130 168,142" fill="none" stroke="#f472b6" stroke-width="1.5"/>
+<polyline points="24,155 36,135 48,170 60,125 72,168 84,138 96,162 108,132 120,172 132,140 144,160 156,144 168,155" fill="none" stroke="rgba(244,114,182,.4)" stroke-width="1"/>
+<text x="94" y="194" font-family="JetBrains Mono,monospace" font-size="7" fill="#7c7c95" text-anchor="middle">shape: (N_samples,)</text>
+<text x="94" y="206" font-family="JetBrains Mono,monospace" font-size="7" fill="#f472b6" text-anchor="middle">30s = 480,000 samples</text>
+<line x1="176" y1="130" x2="200" y2="130" stroke="#f472b6" stroke-width="1.5" marker-end="url(#w0)"/>
+
+<!-- ── STAGE 2: STFT  x=204 y=44 w=170 h=170 ── -->
+<rect x="204" y="44" width="170" height="170" rx="9" fill="rgba(167,139,250,.07)" stroke="rgba(167,139,250,.3)" stroke-width="1.5"/>
+<text x="289" y="63"  font-family="JetBrains Mono,monospace" font-size="9" fill="#a78bfa" text-anchor="middle" font-weight="bold">② STFT</text>
+<text x="289" y="78"  font-family="JetBrains Mono,monospace" font-size="7" fill="#7c7c95" text-anchor="middle">Short-Time Fourier Transform</text>
+<text x="289" y="92"  font-family="JetBrains Mono,monospace" font-size="7" fill="#7c7c95" text-anchor="middle">n_fft=400  hop=160</text>
+<!-- Spectrogram-like grid: frequency rows × time columns -->
+<rect x="214" y="100" width="150" height="96" rx="4" fill="rgba(167,139,250,.05)" stroke="rgba(167,139,250,.2)"/>
+<!-- Horizontal frequency bands (5 bands) -->
+<rect x="214" y="100" width="150" height="18" rx="0" fill="rgba(167,139,250,.3)"/>
+<rect x="214" y="118" width="150" height="18" rx="0" fill="rgba(167,139,250,.18)"/>
+<rect x="214" y="136" width="150" height="18" rx="0" fill="rgba(167,139,250,.1)"/>
+<rect x="214" y="154" width="150" height="18" rx="0" fill="rgba(167,139,250,.06)"/>
+<rect x="214" y="172" width="150" height="24" rx="0" fill="rgba(167,139,250,.03)"/>
+<text x="370" y="112" font-family="JetBrains Mono,monospace" font-size="6" fill="#a78bfa" text-anchor="end">8kHz</text>
+<text x="370" y="130" font-family="JetBrains Mono,monospace" font-size="6" fill="#a78bfa" text-anchor="end">4kHz</text>
+<text x="370" y="148" font-family="JetBrains Mono,monospace" font-size="6" fill="#a78bfa" text-anchor="end">2kHz</text>
+<text x="370" y="166" font-family="JetBrains Mono,monospace" font-size="6" fill="#7c7c95" text-anchor="end">1kHz</text>
+<text x="370" y="190" font-family="JetBrains Mono,monospace" font-size="6" fill="#7c7c95" text-anchor="end">0Hz</text>
+<text x="289" y="207" font-family="JetBrains Mono,monospace" font-size="7" fill="#7c7c95" text-anchor="middle">(n_fft/2+1, T_frames)</text>
+<text x="289" y="215" font-family="JetBrains Mono,monospace" font-size="7" fill="#a78bfa" text-anchor="middle">time res=10ms  freq res=40Hz</text>
+<line x1="376" y1="130" x2="400" y2="130" stroke="#a78bfa" stroke-width="1.5" marker-end="url(#w0)"/>
+
+<!-- ── STAGE 3: Mel filterbank  x=404 y=44 w=170 h=170 ── -->
+<rect x="404" y="44" width="170" height="170" rx="9" fill="rgba(251,191,36,.07)" stroke="rgba(251,191,36,.3)" stroke-width="1.5"/>
+<text x="489" y="63"  font-family="JetBrains Mono,monospace" font-size="9" fill="#fbbf24" text-anchor="middle" font-weight="bold">③ Mel Filterbank</text>
+<text x="489" y="78"  font-family="JetBrains Mono,monospace" font-size="7" fill="#7c7c95" text-anchor="middle">n_mels=80 (Whisper)</text>
+<!-- Mel spectrogram grid: fewer rows (mel-compressed) -->
+<rect x="414" y="94" width="150" height="102" rx="4" fill="rgba(251,191,36,.04)" stroke="rgba(251,191,36,.2)"/>
+<rect x="414" y="94"  width="150" height="14" rx="0" fill="rgba(251,191,36,.35)"/>
+<rect x="414" y="108" width="150" height="14" rx="0" fill="rgba(251,191,36,.28)"/>
+<rect x="414" y="122" width="150" height="14" rx="0" fill="rgba(251,191,36,.2)"/>
+<rect x="414" y="136" width="150" height="14" rx="0" fill="rgba(251,191,36,.14)"/>
+<rect x="414" y="150" width="150" height="14" rx="0" fill="rgba(251,191,36,.1)"/>
+<rect x="414" y="164" width="150" height="16" rx="0" fill="rgba(251,191,36,.06)"/>
+<rect x="414" y="180" width="150" height="16" rx="0" fill="rgba(251,191,36,.03)"/>
+<text x="489" y="207" font-family="JetBrains Mono,monospace" font-size="7" fill="#7c7c95" text-anchor="middle">log(mel + 1e-8)</text>
+<text x="489" y="215" font-family="JetBrains Mono,monospace" font-size="7" fill="#fbbf24" text-anchor="middle">shape: (80, 3000) per 30s</text>
+<line x1="576" y1="130" x2="600" y2="130" stroke="#fbbf24" stroke-width="1.5" marker-end="url(#w1)"/>
+
+<!-- ── STAGE 4: Audio encoder  x=604 y=44 w=280 h=170 ── -->
+<rect x="604" y="44" width="282" height="170" rx="9" fill="rgba(94,234,212,.06)" stroke="rgba(94,234,212,.3)" stroke-width="1.5"/>
+<text x="745" y="63"  font-family="JetBrains Mono,monospace" font-size="9" fill="#5eead4" text-anchor="middle" font-weight="bold">④ Audio Encoder</text>
+<line x1="614" y1="72" x2="876" y2="72" stroke="rgba(255,255,255,.06)"/>
+<!-- Three encoder rows -->
+<rect x="614" y="80" width="260" height="36" rx="6" fill="rgba(244,114,182,.08)" stroke="rgba(244,114,182,.25)"/>
+<text x="744" y="96"  font-family="JetBrains Mono,monospace" font-size="8" fill="#f472b6" text-anchor="middle" font-weight="bold">Whisper  (ASR)</text>
+<text x="744" y="109" font-family="JetBrains Mono,monospace" font-size="7" fill="#7c7c95" text-anchor="middle">2×Conv1D → Transformer enc → autoregressive dec → transcript + timestamps</text>
+
+<rect x="614" y="124" width="260" height="36" rx="6" fill="rgba(167,139,250,.08)" stroke="rgba(167,139,250,.25)"/>
+<text x="744" y="140" font-family="JetBrains Mono,monospace" font-size="8" fill="#a78bfa" text-anchor="middle" font-weight="bold">CLAP  (audio-text contrastive)</text>
+<text x="744" y="153" font-family="JetBrains Mono,monospace" font-size="7" fill="#7c7c95" text-anchor="middle">HTSAT/CNN14 enc → (D=512) · aligned with RoBERTa text encoder</text>
+
+<rect x="614" y="168" width="260" height="36" rx="6" fill="rgba(251,191,36,.08)" stroke="rgba(251,191,36,.25)"/>
+<text x="744" y="184" font-family="JetBrains Mono,monospace" font-size="8" fill="#fbbf24" text-anchor="middle" font-weight="bold">Wav2Vec2 / HuBERT  (SSL)</text>
+<text x="744" y="197" font-family="JetBrains Mono,monospace" font-size="7" fill="#7c7c95" text-anchor="middle">CNN feature extractor → Transformer → contextual audio repr. (D=768/1024)</text>
+
+<!-- sr note at bottom -->
+<rect x="14" y="228" width="872" height="22" rx="6" fill="rgba(255,255,255,.02)" stroke="rgba(255,255,255,.06)"/>
+<text x="450" y="243" font-family="JetBrains Mono,monospace" font-size="7" fill="#7c7c95" text-anchor="middle">Whisper: n_mels=80, n_fft=400, hop=160, sr=16kHz  ·  CLAP: n_mels=64, sr=48kHz  ·  Wav2Vec2: raw waveform (no mel), sr=16kHz</text>
+</svg>
+</div>
+<div class="cc">
+  <div class="ch"><h3>whisper_asr.py — Whisper ASR pipeline with word-level timestamps</h3><button class="cpb" onclick="cp(this,'c1')">Copy</button></div>
+  <div class="cbody"><pre id="c1"><span class="kw">import</span> torch
+<span class="kw">import</span> whisper
+<span class="kw">from</span> dataclasses <span class="kw">import</span> dataclass
+
+@dataclass
+<span class="kw">class</span> <span class="cl">WordTimestamp</span>:
+    word:  str
+    start: float   <span class="cm"># seconds from video start</span>
+    end:   float
+    prob:  float   <span class="cm"># confidence score</span>
+
+
+<span class="kw">def</span> <span class="fn">transcribe_video_audio</span>(
+    audio_path: str,
+    model_size: str = <span class="str">'large-v3'</span>,
+    language:   str | <span class="kw">None</span> = <span class="kw">None</span>,   <span class="cm"># None = auto-detect</span>
+    task:       str = <span class="str">'transcribe'</span>,   <span class="cm"># or 'translate' → English</span>
+) -> tuple[str, list[<span class="cl">WordTimestamp</span>]]:
+    <span class="str">"""
+    Transcribe audio using OpenAI Whisper with word-level timestamps.
+
+    Whisper architecture:
+    - Audio encoder: 80-mel log-spectrogram → 2 Conv1D layers (stride 2) →
+      Transformer encoder (positional encoding covers 30s window).
+    - Text decoder: autoregressive Transformer decoder, cross-attention
+      to encoder output, generates BPE tokens with timestamps.
+
+    Word-level timestamps: added in Whisper large-v2/v3 via dynamic time
+    warping (DTW) alignment of decoder cross-attention to encoder frames.
+    Each token is aligned to the mel spectrogram frame where its cross-
+    attention weight peaks — providing ms-level timestamp accuracy.
+
+    Chunk processing:
+    Whisper processes 30-second windows. For longer audio, it uses
+    voice activity detection (VAD) to find natural chunk boundaries,
+    overlapping chunks by 1s to prevent boundary artefacts.
+    Each chunk produces: text segment + per-word timestamps offset
+    by the chunk start time.
+
+    Usage:
+    The (text, word_timestamps) output enables:
+    - Synchronising transcript to video frames (which frame shows each word)
+    - Extracting video clips from natural language queries
+    - Building searchable video indices by spoken content
+    """</span>
+    model = whisper.load_model(model_size)
+    result = model.transcribe(
+        audio_path,
+        language=language,
+        task=task,
+        word_timestamps=<span class="kw">True</span>,
+        fp16=torch.cuda.is_available(),
+    )
+    full_text = result[<span class="str">'text'</span>].strip()
+    word_times: list[<span class="cl">WordTimestamp</span>] = []
+    <span class="kw">for</span> segment <span class="kw">in</span> result[<span class="str">'segments'</span>]:
+        <span class="kw">for</span> w <span class="kw">in</span> segment.get(<span class="str">'words'</span>, []):
+            word_times.append(<span class="cl">WordTimestamp</span>(
+                word=w[<span class="str">'word'</span>].strip(),
+                start=w[<span class="str">'start'</span>],
+                end=w[<span class="str">'end'</span>],
+                prob=w[<span class="str">'probability'</span>],
+            ))
+    <span class="kw">return</span> full_text, word_times
+
+
+<span class="kw">def</span> <span class="fn">align_words_to_frames</span>(
+    word_timestamps: list[<span class="cl">WordTimestamp</span>],
+    fps: float = <span class="nu">1.0</span>,               <span class="cm"># frame extraction rate</span>
+    frame_offsets: list[float] = <span class="kw">None</span>,  <span class="cm"># seconds of each extracted frame</span>
+) -> dict[int, list[str]]:
+    <span class="str">"""
+    Map word timestamps to extracted video frame indices.
+    Returns {frame_idx: [words spoken during that frame]}.
+    Used to build frame-level text descriptions for multimodal indexing.
+    """</span>
+    frame_words: dict[int, list[str]] = {}
+    <span class="kw">for</span> w <span class="kw">in</span> word_timestamps:
+        frame_idx = int(w.start * fps)
+        frame_words.setdefault(frame_idx, []).append(w.word)
+    <span class="kw">return</span> frame_words</pre></div>
+</div>
+
+</section>
+
+<section class="sec" id="s2">
+<div class="sn">02 · CLAP — Audio-Text Contrastive at Scale</div>
+<h2>The Audio Equivalent of CLIP:<br><span class="gt">Any Sound, Any Description</span></h2>
+<p class="lead">CLAP (Contrastive Language-Audio Pre-training) trains an audio encoder and a text encoder with a symmetric InfoNCE loss on 630K audio-text pairs. The result: a shared embedding space where audio clips and their natural language descriptions are close together. Zero-shot audio classification — embed audio and class descriptions, find the highest cosine similarity — emerges without any labelled audio training data.</p>
+<div class="arch">
+<div class="arch-title">CLAP symmetric InfoNCE — audio and text embeddings aligned in shared space</div>
+<svg viewBox="0 0 900 250" xmlns="http://www.w3.org/2000/svg" style="width:100%;max-width:900px;display:block">
+<rect width="900" height="250" fill="#07070f" rx="14"/>
+<defs>
+  <marker id="c0" markerWidth="7" markerHeight="5" refX="7" refY="2.5" orient="auto"><polygon points="0 0,7 2.5,0 5" fill="#fbbf24"/></marker>
+  <marker id="c1" markerWidth="7" markerHeight="5" refX="7" refY="2.5" orient="auto"><polygon points="0 0,7 2.5,0 5" fill="#5eead4"/></marker>
+</defs>
+<text x="450" y="26" font-family="JetBrains Mono,monospace" font-size="11" fill="#fbbf24" text-anchor="middle" letter-spacing="2" font-weight="bold">CLAP — AUDIO-TEXT CONTRASTIVE ALIGNMENT (InfoNCE)</text>
+
+<!-- ── LEFT: Audio encoder path  cx=180 ── -->
+<text x="180" y="50" font-family="JetBrains Mono,monospace" font-size="9" fill="#f472b6" text-anchor="middle" font-weight="bold">Audio Branch</text>
+<!-- Audio clips stacked -->
+<rect x="30" y="58"  width="300" height="28" rx="6" fill="rgba(244,114,182,.1)" stroke="#f472b6" stroke-width="1.5"/>
+<text x="180" y="76"  font-family="JetBrains Mono,monospace" font-size="8" fill="#f472b6" text-anchor="middle">🔊 "dog barking in the street"</text>
+<rect x="30" y="92"  width="300" height="28" rx="6" fill="rgba(244,114,182,.08)" stroke="rgba(244,114,182,.4)"/>
+<text x="180" y="110" font-family="JetBrains Mono,monospace" font-size="8" fill="#ececf6" text-anchor="middle">🔊 "piano playing soft melody"</text>
+<rect x="30" y="126" width="300" height="28" rx="6" fill="rgba(244,114,182,.06)" stroke="rgba(244,114,182,.3)"/>
+<text x="180" y="144" font-family="JetBrains Mono,monospace" font-size="8" fill="#ececf6" text-anchor="middle">🔊 "rain on a window"</text>
+
+<!-- Audio encoder box -->
+<rect x="30" y="168" width="300" height="38" rx="8" fill="rgba(255,255,255,.04)" stroke="rgba(255,255,255,.12)"/>
+<text x="180" y="185" font-family="JetBrains Mono,monospace" font-size="8" fill="#ececf6" text-anchor="middle" font-weight="bold">Audio Encoder</text>
+<text x="180" y="199" font-family="JetBrains Mono,monospace" font-size="7" fill="#7c7c95" text-anchor="middle">mel spectrogram → HTSAT → (D=512)</text>
+<line x1="330" y1="186" x2="356" y2="140" stroke="#fbbf24" stroke-width="1.5" marker-end="url(#c0)"/>
+
+<!-- ── SIMILARITY MATRIX  cx=450 y=100–200 ── -->
+<text x="450" y="78" font-family="JetBrains Mono,monospace" font-size="8" fill="#7c7c95" text-anchor="middle">Similarity  cos(audio_i, text_j) × scale</text>
+<rect x="362" y="90" width="176" height="130" rx="8" fill="rgba(255,255,255,.02)" stroke="rgba(255,255,255,.08)"/>
+<!-- Header row -->
+<text x="406" y="108" font-family="JetBrains Mono,monospace" font-size="7" fill="#7c7c95" text-anchor="middle">T₁</text>
+<text x="450" y="108" font-family="JetBrains Mono,monospace" font-size="7" fill="#7c7c95" text-anchor="middle">T₂</text>
+<text x="494" y="108" font-family="JetBrains Mono,monospace" font-size="7" fill="#7c7c95" text-anchor="middle">T₃</text>
+<text x="372" y="132" font-family="JetBrains Mono,monospace" font-size="7" fill="#7c7c95" text-anchor="middle">A₁</text>
+<text x="372" y="168" font-family="JetBrains Mono,monospace" font-size="7" fill="#7c7c95" text-anchor="middle">A₂</text>
+<text x="372" y="204" font-family="JetBrains Mono,monospace" font-size="7" fill="#7c7c95" text-anchor="middle">A₃</text>
+<!-- Row 1: A1 matches T1 -->
+<rect x="384" y="116" width="44" height="28" rx="4" fill="rgba(251,191,36,.45)" stroke="#fbbf24" stroke-width="2"/>
+<text x="406" y="134" font-family="JetBrains Mono,monospace" font-size="8" fill="#ececf6" text-anchor="middle" font-weight="bold">0.91</text>
+<rect x="428" y="116" width="44" height="28" rx="4" fill="rgba(255,255,255,.04)" stroke="rgba(255,255,255,.1)"/>
+<text x="450" y="134" font-family="JetBrains Mono,monospace" font-size="8" fill="#7c7c95" text-anchor="middle">0.08</text>
+<rect x="472" y="116" width="44" height="28" rx="4" fill="rgba(255,255,255,.04)" stroke="rgba(255,255,255,.1)"/>
+<text x="494" y="134" font-family="JetBrains Mono,monospace" font-size="8" fill="#7c7c95" text-anchor="middle">0.05</text>
+<!-- Row 2: A2 matches T2 -->
+<rect x="384" y="152" width="44" height="28" rx="4" fill="rgba(255,255,255,.04)" stroke="rgba(255,255,255,.1)"/>
+<text x="406" y="170" font-family="JetBrains Mono,monospace" font-size="8" fill="#7c7c95" text-anchor="middle">0.09</text>
+<rect x="428" y="152" width="44" height="28" rx="4" fill="rgba(251,191,36,.45)" stroke="#fbbf24" stroke-width="2"/>
+<text x="450" y="170" font-family="JetBrains Mono,monospace" font-size="8" fill="#ececf6" text-anchor="middle" font-weight="bold">0.88</text>
+<rect x="472" y="152" width="44" height="28" rx="4" fill="rgba(255,255,255,.04)" stroke="rgba(255,255,255,.1)"/>
+<text x="494" y="170" font-family="JetBrains Mono,monospace" font-size="8" fill="#7c7c95" text-anchor="middle">0.07</text>
+<!-- Row 3: A3 matches T3 -->
+<rect x="384" y="188" width="44" height="28" rx="4" fill="rgba(255,255,255,.04)" stroke="rgba(255,255,255,.1)"/>
+<text x="406" y="206" font-family="JetBrains Mono,monospace" font-size="8" fill="#7c7c95" text-anchor="middle">0.06</text>
+<rect x="428" y="188" width="44" height="28" rx="4" fill="rgba(255,255,255,.04)" stroke="rgba(255,255,255,.1)"/>
+<text x="450" y="206" font-family="JetBrains Mono,monospace" font-size="8" fill="#7c7c95" text-anchor="middle">0.11</text>
+<rect x="472" y="188" width="44" height="28" rx="4" fill="rgba(251,191,36,.45)" stroke="#fbbf24" stroke-width="2"/>
+<text x="494" y="206" font-family="JetBrains Mono,monospace" font-size="8" fill="#ececf6" text-anchor="middle" font-weight="bold">0.93</text>
+
+<!-- ── RIGHT: Text encoder path  cx=720 ── -->
+<text x="720" y="50" font-family="JetBrains Mono,monospace" font-size="9" fill="#5eead4" text-anchor="middle" font-weight="bold">Text Branch</text>
+<rect x="570" y="58"  width="300" height="28" rx="6" fill="rgba(94,234,212,.1)" stroke="#5eead4" stroke-width="1.5"/>
+<text x="720" y="76"  font-family="JetBrains Mono,monospace" font-size="8" fill="#5eead4" text-anchor="middle">"sound of a dog barking"</text>
+<rect x="570" y="92"  width="300" height="28" rx="6" fill="rgba(94,234,212,.08)" stroke="rgba(94,234,212,.4)"/>
+<text x="720" y="110" font-family="JetBrains Mono,monospace" font-size="8" fill="#ececf6" text-anchor="middle">"piano music slow tempo"</text>
+<rect x="570" y="126" width="300" height="28" rx="6" fill="rgba(94,234,212,.06)" stroke="rgba(94,234,212,.3)"/>
+<text x="720" y="144" font-family="JetBrains Mono,monospace" font-size="8" fill="#ececf6" text-anchor="middle">"rainfall ambient sound"</text>
+<rect x="570" y="168" width="300" height="38" rx="8" fill="rgba(255,255,255,.04)" stroke="rgba(255,255,255,.12)"/>
+<text x="720" y="185" font-family="JetBrains Mono,monospace" font-size="8" fill="#ececf6" text-anchor="middle" font-weight="bold">Text Encoder  (RoBERTa)</text>
+<text x="720" y="199" font-family="JetBrains Mono,monospace" font-size="7" fill="#7c7c95" text-anchor="middle">tokenise → transformer → (D=512)</text>
+<line x1="568" y1="186" x2="542" y2="140" stroke="#fbbf24" stroke-width="1.5" marker-end="url(#c0)"/>
+
+<!-- Loss bar -->
+<rect x="14" y="228" width="872" height="18" rx="6" fill="rgba(251,191,36,.04)" stroke="rgba(251,191,36,.2)"/>
+<text x="450" y="241" font-family="JetBrains Mono,monospace" font-size="7" fill="#fbbf24" text-anchor="middle">Symmetric InfoNCE:  L = (L_audio→text + L_text→audio) / 2  ·  diagonal = positives  ·  off-diagonal = negatives</text>
+</svg>
+</div>
+<div class="cc">
+  <div class="ch"><h3>clap_inference.py — CLAP audio-text contrastive embedding and retrieval</h3><button class="cpb" onclick="cp(this,'c2')">Copy</button></div>
+  <div class="cbody"><pre id="c2"><span class="kw">import</span> torch
+<span class="kw">import</span> torch.nn.functional <span class="kw">as</span> F
+<span class="kw">from</span> transformers <span class="kw">import</span> ClapModel, ClapProcessor
+
+<span class="kw">class</span> <span class="cl">CLAPAudioTextMatcher</span>:
+    <span class="str">"""
+    CLAP (Contrastive Language-Audio Pre-training) — the audio equivalent of CLIP.
+
+    Architecture:
+    - Audio encoder: CNN14 or HTSAT (Hierarchical Token-Semantic Audio Transformer)
+      → processes 64-bin mel spectrogram → audio embedding (D=512)
+    - Text encoder: RoBERTa → text embedding (D=512)
+    - Pre-trained with InfoNCE on 630K audio-text pairs (AudioCaps + AudioSet + FreeSound)
+
+    What CLAP learns:
+    The shared embedding space aligns audio events with their natural language
+    descriptions: 'dog barking', 'rain on window', 'piano music', 'crowd cheering'.
+    Unlike Whisper (which transcribes speech), CLAP understands audio events
+    and environmental sounds — it is NOT primarily a speech model.
+
+    Use cases:
+    1. Zero-shot audio classification: embed audio + category descriptions,
+       find highest cosine similarity → class prediction.
+    2. Audio-text retrieval: query 'sound of thunder' → retrieve matching clips.
+    3. Audio event detection in video: tag video segments by acoustic content.
+    4. Multimodal fusion: CLAP audio features + CLIP visual features + text
+       for comprehensive video-language understanding.
+
+    Key difference from Whisper:
+    Whisper: speech audio → text transcript (what was SAID)
+    CLAP: any audio → semantic embedding (what SOUNDS are present)
+    """</span>
+    <span class="kw">def</span> <span class="fn">__init__</span>(self, model_name: str = <span class="str">'laion/clap-htsat-unfused'</span>,
+                 device: str = <span class="str">'cuda'</span>):
+        self.device    = device
+        self.model     = ClapModel.from_pretrained(model_name).to(device).eval()
+        self.processor = ClapProcessor.from_pretrained(model_name)
+
+    @torch.no_grad()
+    <span class="kw">def</span> <span class="fn">embed_audio</span>(self, waveforms: list,
+                    sample_rate: int = <span class="nu">48000</span>) -> torch.Tensor:
+        <span class="str">"""Embed list of audio waveforms → (N, D) L2-normalised."""</span>
+        inputs = self.processor(
+            audios=waveforms,
+            sampling_rate=sample_rate,
+            return_tensors=<span class="str">'pt'</span>,
+            padding=<span class="kw">True</span>,
+        ).to(self.device)
+        feats = self.model.get_audio_features(**inputs)
+        <span class="kw">return</span> F.normalize(feats, dim=-<span class="nu">1</span>)
+
+    @torch.no_grad()
+    <span class="kw">def</span> <span class="fn">embed_text</span>(self, texts: list[str]) -> torch.Tensor:
+        <span class="str">"""Embed list of text descriptions → (N, D) L2-normalised."""</span>
+        inputs = self.processor(
+            text=texts,
+            return_tensors=<span class="str">'pt'</span>,
+            padding=<span class="kw">True</span>,
+        ).to(self.device)
+        feats = self.model.get_text_features(**inputs)
+        <span class="kw">return</span> F.normalize(feats, dim=-<span class="nu">1</span>)
+
+    <span class="kw">def</span> <span class="fn">zero_shot_classify</span>(self, waveform,
+                             class_descriptions: list[str]) -> dict[str, float]:
+        <span class="str">"""Classify audio clip into one of the class descriptions."""</span>
+        a_emb = self.embed_audio([waveform])           <span class="cm"># (1, D)</span>
+        t_emb = self.embed_text(class_descriptions)   <span class="cm"># (C, D)</span>
+        scores = (a_emb @ t_emb.T).squeeze(<span class="nu">0</span>)         <span class="cm"># (C,)</span>
+        probs  = scores.softmax(dim=-<span class="nu">1</span>).cpu().tolist()
+        <span class="kw">return</span> dict(zip(class_descriptions, probs))</pre></div>
+</div>
+
+</section>
+
+<section class="sec" id="s3">
+<div class="sn">03 · Audio Model Selection and Integration</div>
+<h2>Whisper vs CLAP vs Wav2Vec2:<br><span class="gt">Three Different Audio Questions</span></h2>
+<div class="g2">
+<div class="callout callout-key">
+  <div class="callout-icon">🔑</div>
+  <div class="callout-body">
+    <h4>Which model for which question</h4>
+    <p><strong>What was SAID?</strong> → Whisper (speech-to-text, word timestamps, multilingual). <strong>What SOUNDS are present?</strong> → CLAP (audio event detection, acoustic retrieval, zero-shot classification). <strong>How does the speaker SOUND?</strong> → Wav2Vec2 / HuBERT (prosody, emotion, speaker identity, SSL representations). <strong>Are audio and video in SYNC?</strong> → AV-HuBERT / SyncNet (audio-visual correspondence, lip-sync verification).</p>
+  </div>
+</div>
+<div class="scenario">
+  <h4>Production: comprehensive video audio indexing</h4>
+  <p>YouTube lecture video pipeline: (1) Whisper large-v3 → transcript with word timestamps → full-text search index. (2) CLAP → per-30s audio segment embeddings → semantic audio retrieval ('find videos with crowd applause', 'find videos with background music'). (3) Align word timestamps to extracted frames at 1fps → frame-level spoken content labels → multimodal CLIP+text embeddings per frame. All three in parallel: Whisper on 16kHz stream, CLAP on 48kHz stream, frame extraction independently.</p>
+</div>
+</div>
+<div class="card" style="padding:0;overflow:hidden">
+<table class="tbl">
+<thead><tr><th>Model</th><th>Input</th><th>Output</th><th>Pre-training</th><th>Best use case</th></tr></thead>
+<tbody>
+<tr><td><strong style="color:var(--a3)">Whisper</strong></td><td>16kHz mel (80 bins)</td><td>Text + timestamps</td><td>680K h speech supervision</td><td>ASR, lecture transcription</td></tr>
+<tr><td><strong style="color:var(--a4)">CLAP</strong></td><td>48kHz mel (64 bins)</td><td>(D=512) embedding</td><td>630K audio-text contrastive</td><td>Audio event detection, retrieval</td></tr>
+<tr><td><strong style="color:var(--a2)">Wav2Vec2</strong></td><td>16kHz raw waveform</td><td>(D=768) contextual</td><td>960h Librispeech SSL</td><td>Emotion, speaker ID, prosody</td></tr>
+<tr><td><strong style="color:var(--a1)">AV-HuBERT</strong></td><td>Audio + lip video</td><td>(D=768) AV repr.</td><td>LRS3+VoxCeleb2 SSL</td><td>Lip reading, AV speech recog</td></tr>
+</tbody>
+</table>
+</div>
+</section>
+
+<section class="sec" id="s4">
+<div class="sn">04 · Assessment — 8 Questions</div>
+<h2>Module 2 <span class="gt">Quiz</span></h2>
+<div class="qc"><div class="qc-title">Module 2 Assessment — Audio Encoders and Cross-Modal Alignment</div><div class="qc-sub">8 questions · Whisper · CLAP · STFT · mel spectrogram · word timestamps · sample rate · AV-HuBERT</div><div class="qprog"><div class="qprog-bar"><div class="qprog-fill"></div></div><div class="qprog-text">0/8 answered</div></div><div class="qq"><div class="qnum">Question 1 of 8</div><h4>Whisper transcribes a 45-minute lecture video. After transcription you have word-level timestamps. You extracted frames at 1fps (2700 frames). How do you build a per-frame text context for multimodal indexing?</h4><div class="qo"><button class="qob" data-opt="A" data-correct="true" onclick="cq(this,0,true)">A: Use the Whisper segment timestamps (not word timestamps) — segments align better with video frames.</button>
+<button class="qob" data-opt="B" data-correct="false" onclick="cq(this,0,false)">B: Align word timestamps to frame indices: frame_idx = int(word.start_seconds × fps). Each frame accumulates all words whose start time falls within that second. For 1fps, frame 120 covers t=[120.0, 121.0). Words spoken in that window are assigned to that frame. The resulting {frame_idx: [words]} dict enables building frame-level text descriptions: 'At frame 120: [the, speaker, explains, gradient, descent]'. This frame-text pairing enables CLIP-style multimodal embeddings: embed frame image with CLIP-ViT and embed frame word list with text encoder, then fuse for retrieval. Word-level timestamps are necessary — segment timestamps are too coarse (10-30s per segment vs 1s per frame).</button>
+<button class="qob" data-opt="C" data-correct="false" onclick="cq(this,0,false)">C: Run OCR on each extracted frame and combine with ASR text — OCR is more accurate than Whisper timestamps.</button>
+<button class="qob" data-opt="D" data-correct="false" onclick="cq(this,0,false)">D: Use sentence timestamps only — word-level timestamps introduce noise from ASR errors.</button>
+</div><div class="qfeed"><div class="qfeed-head"></div><div class="qfeed-why">Correct. Word-level timestamp alignment is the key to frame-text pairing. Whisper's word timestamps (enabled with word_timestamps=True) provide start/end times per word with ms accuracy via dynamic time warping of decoder cross-attention. The alignment formula is simple: frame_idx = floor(word.start × fps). For 1fps extraction, this bins words into 1-second windows. This approach enables semantic frame indexing: searching 'gradient descent' retrieves the frame where that concept was explained.</div></div></div><div class="qq"><div class="qnum">Question 2 of 8</div><h4>What is the fundamental difference between what Whisper and CLAP output, and when would you use each for video understanding?</h4><div class="qo"><button class="qob" data-opt="A" data-correct="false" onclick="cq(this,1,false)">A: Whisper outputs audio embeddings; CLAP outputs text transcripts. They are complementary architectures.</button>
+<button class="qob" data-opt="B" data-correct="true" onclick="cq(this,1,true)">B: Whisper is a speech-to-text model: it outputs a text transcript of spoken words, with optional word-level timestamps. It processes speech audio only — music, background noise, and sound events are ignored or treated as silence. CLAP is an audio-text contrastive model: it outputs a dense vector embedding of any audio clip in a shared space with text embeddings. CLAP understands environmental sounds, music genres, and audio events — but does NOT transcribe speech to text. Use Whisper when you need: what was SAID (lecture transcription, subtitle generation, keyword search in speech). Use CLAP when you need: what SOUNDS are present (audio event classification, audio-based retrieval, tagging video with sound events like 'applause', 'gunshot', 'music'). For comprehensive video understanding, run BOTH: Whisper extracts spoken content, CLAP extracts acoustic environment.</button>
+<button class="qob" data-opt="C" data-correct="false" onclick="cq(this,1,false)">C: Whisper and CLAP produce identical outputs — both output text-aligned audio embeddings.</button>
+<button class="qob" data-opt="D" data-correct="false" onclick="cq(this,1,false)">D: CLAP is a superset of Whisper — running CLAP gives you both transcriptions and audio embeddings.</button>
+</div><div class="qfeed"><div class="qfeed-head"></div><div class="qfeed-why">Correct. Whisper and CLAP address different questions about audio. Whisper: 'What words were spoken?' CLAP: 'What sounds are present?' They are complementary, not redundant. A video of a chef explaining a recipe has: Whisper output → transcript of the explanation; CLAP output → embeddings matching 'cooking sounds', 'knife chopping', 'background music'. Both are needed for complete multimodal video understanding. Wav2Vec2/HuBERT (self-supervised speech models) occupy a third niche: rich contextual speech representations for speaker identification, emotion recognition, and linguistic feature extraction.</div></div></div><div class="qq"><div class="qnum">Question 3 of 8</div><h4>A CLAP audio encoder was pre-trained at 48kHz sample rate. You extract audio from a video at 16kHz (for Whisper). Before running CLAP inference, what must you do and why?</h4><div class="qo"><button class="qob" data-opt="A" data-correct="false" onclick="cq(this,2,false)">A: Nothing — modern audio encoders automatically resample input to their expected rate.</button>
+<button class="qob" data-opt="B" data-correct="false" onclick="cq(this,2,false)">B: Nothing — CLAP and Whisper both use the same 16kHz standard.</button>
+<button class="qob" data-opt="C" data-correct="true" onclick="cq(this,2,true)">C: Resample the audio from 16kHz back to 48kHz before passing to CLAP. CLAP's mel spectrogram frontend (n_mels=64, n_fft=1024, hop=320, sr=48kHz) is computed with specific parameters that assume 48kHz input. Passing 16kHz audio means: (1) the mel filterbank's frequency bins are calibrated to 0–24kHz but your audio only contains 0–8kHz content (everything above 8kHz is silent); (2) the temporal resolution is 3× different (hop=320 at 48kHz = 6.7ms vs 6.7ms at 16kHz would be hop=107). Both the frequency and temporal alignment between CLAP's learned filterbank and the input spectrogram are wrong. The ClapProcessor handles resampling automatically when you specify the source sample_rate — always pass the actual sample rate of your audio to the processor.</button>
+<button class="qob" data-opt="D" data-correct="false" onclick="cq(this,2,false)">D: Upsample from 16kHz to 22kHz — CLAP requires 22kHz standard audio.</button>
+</div><div class="qfeed"><div class="qfeed-head"></div><div class="qfeed-why">Correct. Audio encoder sample rate mismatch is one of the most common bugs in multimodal video pipelines. CLAP's mel spectrogram frontend is calibrated to 48kHz. Passing 16kHz audio causes the frequency axis of the spectrogram to be misaligned with the filterbank — the model sees energy in the wrong frequency bins relative to its training distribution. The ClapProcessor's sampling_rate parameter triggers automatic resampling via torchaudio, handling this correctly. Best practice: always extract audio separately for each model at its required sample rate (16kHz for Whisper, 48kHz for CLAP), or extract once at the highest rate and downsample per-model.</div></div></div><div class="qq"><div class="qnum">Question 4 of 8</div><h4>AV-HuBERT is pre-trained to predict masked audio features from visual lip motion (and vice versa). How does this audio-visual self-supervised learning differ from CLAP's audio-text contrastive learning, and what task does each excel at?</h4><div class="qo"><button class="qob" data-opt="A" data-correct="false" onclick="cq(this,3,false)">A: AV-HuBERT and CLAP are architecturally identical — both use contrastive pre-training between two modalities.</button>
+<button class="qob" data-opt="B" data-correct="true" onclick="cq(this,3,true)">B: AV-HuBERT learns audio-visual synchronisation at the frame level: it predicts 'what sound would be produced by this lip motion?' The model learns the tight temporal correspondence between speech production (articulatory movements visible in lip motion) and the acoustic speech signal — trained on self-supervised targets without transcripts. This makes AV-HuBERT exceptional for: (1) lip reading (predicting speech from visual only); (2) audio-visual speech recognition (combining both streams, robust to background noise); (3) audio-visual speaker diarisation. CLAP learns semantic audio-text alignment at the clip level — it matches audio events to their natural language descriptions. CLAP does not require temporal synchronisation and works on any audio content (not just speech). AV-HuBERT: temporal audio-visual sync, speech-specific. CLAP: semantic audio-text alignment, any audio.</button>
+<button class="qob" data-opt="C" data-correct="false" onclick="cq(this,3,false)">C: AV-HuBERT requires labelled transcripts for pre-training while CLAP is fully self-supervised.</button>
+<button class="qob" data-opt="D" data-correct="false" onclick="cq(this,3,false)">D: CLAP and AV-HuBERT both require audio-text pairs — the only difference is training corpus size.</button>
+</div><div class="qfeed"><div class="qfeed-head"></div><div class="qfeed-why">Correct. The key distinction is temporal vs semantic alignment. AV-HuBERT operates at the frame level and learns the precise temporal correspondence between audio and visual modalities — the model must predict masked acoustic features from the visual stream, requiring understanding of the millisecond-level synchrony between lip movements and speech sounds. CLAP operates at the clip level and learns semantic correspondence — 'a 3-second clip of dog barking' should be close to the text 'sound of a dog' regardless of the exact temporal structure within the clip.</div></div></div><div class="qq"><div class="qnum">Question 5 of 8</div><h4>Whisper uses dynamic time warping (DTW) on decoder cross-attention weights to produce word-level timestamps. What is DTW doing in this context and why is cross-attention the right signal for alignment?</h4><div class="qo"><button class="qob" data-opt="A" data-correct="false" onclick="cq(this,4,false)">A: DTW aligns the Whisper output tokens to the audio by comparing waveform peaks to token durations.</button>
+<button class="qob" data-opt="B" data-correct="true" onclick="cq(this,4,true)">B: DTW aligns the output token sequence to the mel spectrogram frame sequence by finding the minimum-cost monotonic path through the (tokens × frames) cross-attention weight matrix. During decoding, each output token attends to specific encoder frames via cross-attention — the token 'barking' attends most strongly to the mel spectrogram frames where the word 'barking' was spoken. DTW finds the monotonic alignment path that maximises total cross-attention weight along a path from (token_0, frame_0) to (token_N, frame_T) subject to the constraint that both token index and frame index must be non-decreasing (monotonic, since speech is causal). The peak of this path for each token gives its timestamp. This works because cross-attention peaks are a natural proxy for the time at which each word was spoken — the decoder attends to the frame where the acoustic evidence for each word is strongest.</button>
+<button class="qob" data-opt="C" data-correct="false" onclick="cq(this,4,false)">C: DTW compares Whisper's output text to a forced alignment model to produce timestamps.</button>
+<button class="qob" data-opt="D" data-correct="false" onclick="cq(this,4,false)">D: DTW minimises the L2 distance between mel spectrogram segments and word embeddings to find alignment.</button>
+</div><div class="qfeed"><div class="qfeed-head"></div><div class="qfeed-why">Correct. Cross-attention as alignment is the key insight. The Whisper decoder generates each token by attending to specific encoder positions — the attention weight matrix (output_tokens × encoder_frames) encodes which audio frame was most informative for each output token. DTW finds the monotonic path through this matrix that gives each token a frame-level start and end time. The monotonicity constraint is essential: words cannot be generated in reverse temporal order. This gives word-level timestamps without any forced alignment model or separate alignment step — the timestamps emerge naturally from the attention mechanism.</div></div></div><div class="qq"><div class="qnum">Question 6 of 8</div><h4>You build a multimodal video search system that indexes cooking videos. Users can query with: (A) text descriptions ('garlic being chopped'), (B) reference audio clips (audio of chopping sounds), or (C) reference video frames (image of a cutting board with garlic). Which combination of models enables all three query types?</h4><div class="qo"><button class="qob" data-opt="A" data-correct="false" onclick="cq(this,5,false)">A: CLIP (visual) + Whisper (audio→text) + CLAP (audio) — three separate models, three separate indices.</button>
+<button class="qob" data-opt="B" data-correct="false" onclick="cq(this,5,false)">B: A single VideoMAE model — it supports all three query types through its unified video representation.</button>
+<button class="qob" data-opt="C" data-correct="false" onclick="cq(this,5,false)">C: CLIP for (A) and (C), CLAP for (B) — Whisper is unnecessary.</button>
+<button class="qob" data-opt="D" data-correct="true" onclick="cq(this,5,true)">D: CLIP for (A) and (C), CLAP for (B), with a shared embedding space via projection heads trained with a joint contrastive loss that aligns CLIP and CLAP embeddings into a common space. Text queries use CLIP text encoder; audio queries use CLAP audio encoder; image queries use CLIP image encoder. With alignment training, all three modalities map to a shared D-dimensional space, enabling cross-modal retrieval: a text query can retrieve videos even if they were indexed only via audio features.</button>
+</div><div class="qfeed"><div class="qfeed-head"></div><div class="qfeed-why">Correct. The joint embedding space approach (option D) is the production-grade solution. ImageBind (Meta 2023) is the canonical example: a single model that maps images, text, audio, video, depth, and IMU signals to a shared embedding space. Any modality can be used as a query to retrieve any other modality. The key is alignment training: CLIP image-text pairs plus CLAP audio-text pairs provide two 'bridges' that, when combined, align all three modalities. Without the shared space (option A — three separate indices), cross-modal retrieval requires an audio-to-text transcription step, which fails for non-speech audio.</div></div></div><div class="qq"><div class="qnum">Question 7 of 8</div><h4>A podcast transcription pipeline uses Whisper large-v3 with 30-second chunks and 1-second overlap. A guest speaker's name 'Krishnamurthy' spans the boundary between chunk 1 (ends at 30s) and chunk 2 (starts at 29s with 1s overlap). What outputs does the pipeline produce for this word and how do you handle the duplication?</h4><div class="qo"><button class="qob" data-opt="A" data-correct="false" onclick="cq(this,6,false)">A: The word is only transcribed once — Whisper's overlap handling automatically deduplicates boundary words.</button>
+<button class="qob" data-opt="B" data-correct="true" onclick="cq(this,6,true)">B: Both chunks transcribe the word but with potentially different timestamps: chunk 1 may have it at t=29.8s (within its 30s window); chunk 2 may have it at t=0.3s relative to chunk start = 29.3s absolute. The word appears twice with slightly different absolute timestamps and potentially different spellings (Whisper may produce 'Krishnamurthy' in one chunk and 'Krishnamurti' in the other due to different acoustic context). Deduplication strategy: after concatenating all chunk transcripts, apply a time-window merge: any two word occurrences with |t1-t2| < 1.5s (the overlap window) that have the same or similar word form (edit distance ≤ 2) are merged, keeping the higher-confidence occurrence. This handles both timestamp duplication and transcription inconsistencies at boundaries.</button>
+<button class="qob" data-opt="C" data-correct="false" onclick="cq(this,6,false)">C: The word appears only in chunk 2 — Whisper discards the last second of chunk 1 to avoid boundary effects.</button>
+<button class="qob" data-opt="D" data-correct="false" onclick="cq(this,6,false)">D: Chunk boundaries never fall within words — Whisper's VAD-based chunking always splits at silence boundaries.</button>
+</div><div class="qfeed"><div class="qfeed-head"></div><div class="qfeed-why">Correct. Boundary word duplication is a real and common issue in long-form Whisper transcription. The overlap window ensures no words are lost at boundaries, but creates duplicates. The deduplication strategy must handle both exact duplicates (same word, similar timestamps) and near-duplicates (same word, different timestamps due to Whisper's variable chunking) and inconsistent transcriptions (same word spelled differently across chunks due to different acoustic context). Production pipelines (WhisperX, faster-whisper) handle this with word-level alignment and explicit deduplication logic.</div></div></div><div class="qq"><div class="qnum">Question 8 of 8</div><h4>You need audio features for a video emotion recognition task (detecting whether speakers sound happy, sad, angry, neutral). You have three options: (A) CLAP embeddings, (B) Wav2Vec2 contextual embeddings, (C) MFCC hand-crafted features. Rank these by expected performance and explain the ranking.</h4><div class="qo"><button class="qob" data-opt="A" data-correct="false" onclick="cq(this,7,false)">A: CLAP > Wav2Vec2 > MFCC — CLAP's semantic alignment with text makes it best for emotion recognition.</button>
+<button class="qob" data-opt="B" data-correct="true" onclick="cq(this,7,true)">B: Wav2Vec2 > CLAP > MFCC — Wav2Vec2's self-supervised speech pre-training captures prosodic and acoustic features relevant to emotion; CLAP was not pre-trained for speech emotion; MFCCs lack contextual information.</button>
+<button class="qob" data-opt="C" data-correct="false" onclick="cq(this,7,false)">C: MFCC > Wav2Vec2 > CLAP — hand-crafted features designed for speech are always superior to learned representations for emotion.</button>
+<button class="qob" data-opt="D" data-correct="false" onclick="cq(this,7,false)">D: All three perform identically — emotion recognition accuracy depends on the classifier, not the features.</button>
+</div><div class="qfeed"><div class="qfeed-head"></div><div class="qfeed-why">Correct. Wav2Vec2 (and HuBERT) are the right choice for speech emotion recognition. These models were pre-trained on massive speech corpora specifically to learn contextual speech representations — their internal representations capture prosody (intonation, rhythm, stress patterns), voice quality, and temporal dynamics that are directly relevant to emotion. CLAP was pre-trained on 630K audio-text pairs describing environmental sounds ('dog barking', 'rain') — it has limited exposure to speech prosodic variation and its text supervision did not include emotion labels. MFCC features are powerful for phoneme-level analysis but lack the contextual modelling that transformers provide — they cannot capture sentence-level prosodic patterns that span seconds. The ranking for emotion: Wav2Vec2 >> CLAP > MFCC.</div></div></div><div class="qs" id="qs" style="display:none"><h3 id="sc">0/8</h3><p id="sm"></p></div></div>
+</section>
+</div>
+<footer>
+  <div style="max-width:var(--cw);margin:0 auto;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:1rem">
+    <div style="display:flex;gap:.8rem"><a href="vmi_m1.html" class="pr">← M1: Video Encoders</a><a href="vmi_m3.html" class="nx">M3: Multimodal Fusion →</a></div>
+    <span>Video & Multimodal Ingestion Track · M2 · Audio Encoders and Cross-Modal Alignment</span>
+  </div>
+</footer>
+<script>
+window.addEventListener("scroll",function(){
+  var h=document.documentElement;
+  var pct=(h.scrollTop/(h.scrollHeight-h.clientHeight))*100;
+  document.getElementById("sp").style.width=pct+"%";
+});
+var obs=new IntersectionObserver(function(e){
+  e.forEach(function(x){if(x.isIntersecting)x.target.classList.add("vis");});
+},{threshold:0.06});
+document.querySelectorAll(".sec").forEach(function(s){obs.observe(s);});
+// Copy buttons
+function cp(btn,id){
+  navigator.clipboard.writeText(document.getElementById(id).innerText).then(function(){
+    var t=btn.textContent;btn.textContent="✓ Copied";
+    setTimeout(function(){btn.textContent=t;},2000);
+  });
+}
+// Metric bar animation
+window.addEventListener("load",function(){
+  document.querySelectorAll(".metric-fill[data-pct]").forEach(function(el){
+    setTimeout(function(){el.style.width=el.getAttribute("data-pct")+"%";},300);
+  });
+});
+// Quiz engine
+var qstate={};
+var qtotal=document.querySelectorAll(".qq").length;
+function updateProgress(){
+  var done=Object.keys(qstate).length;
+  var fill=document.querySelector(".qprog-fill");
+  var txt=document.querySelector(".qprog-text");
+  if(fill)fill.style.width=Math.round(done/qtotal*100)+"%";
+  if(txt)txt.textContent=done+"/"+qtotal+" answered";
+  if(done===qtotal)showScore();
+}
+function showScore(){
+  var c=Object.values(qstate).filter(function(v){return v;}).length;
+  var sc=document.getElementById("sc");
+  var sm=document.getElementById("sm");
+  if(sc)sc.textContent=c+"/"+qtotal+" correct";
+  if(sm){
+    var msgs=["Keep studying — revisit Whisper word timestamp alignment: frame_idx = floor(word.start × fps).","Good start — review Whisper vs CLAP: what was said vs what sounds are present.","Building — re-read sample rate mismatch: CLAP needs 48kHz, not 16kHz.","Solid — review AV-HuBERT temporal synchronisation vs CLAP semantic alignment.","Strong — revisit Whisper DTW alignment: cross-attention weight matrix → monotonic path.","Excellent.","Outstanding.","Perfect — full mastery of audio encoders and cross-modal alignment."][c];
+    sm.textContent=msgs[Math.min(c,msgs.length-1)];
+    sm.style.color=c>=Math.round(qtotal*0.8)?"#5eead4":"#f472b6";
+  }
+  var qs=document.getElementById("qs");
+  if(qs)qs.style.display="block";
+}
+function cq(btn,qi,isCorrect){
+  if(qstate[qi]!==undefined)return;
+  qstate[qi]=isCorrect;
+  var qq=btn.closest(".qq");
+  qq.classList.add("answered");
+  var allBtns=qq.querySelectorAll(".qob");
+  allBtns.forEach(function(b){
+    b.setAttribute("disabled","");
+    var bc=b.getAttribute("data-correct")==="true";
+    if(bc)b.classList.add("ok");
+    else if(b===btn&&!isCorrect)b.classList.add("no");
+  });
+  var feed=qq.querySelector(".qfeed");
+  if(feed){
+    feed.style.display="block";
+    feed.className="qfeed "+(isCorrect?"correct":"wrong");
+    var head=feed.querySelector(".qfeed-head");
+    if(head)head.textContent=isCorrect?"✓ Correct — "+btn.getAttribute("data-opt")+" is right":"✗ Not quite — see the explanation below";
+  }
+  updateProgress();
+}</script>
+</body></html>

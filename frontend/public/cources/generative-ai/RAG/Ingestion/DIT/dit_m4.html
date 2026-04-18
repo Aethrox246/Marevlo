@@ -1,0 +1,406 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>DiT Track 4 - Document Pre-training at Scale</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;700&family=Source+Serif+4:ital,wght@0,400;0,600;1,400&display=swap" rel="stylesheet">
+<style>:root{--bg:#0a0a0f;--t1:#ececf6;--t2:#b5b5c8;--tm:#7c7c95;
+--a1:#5eead4;--a2:#60a5fa;--a3:#f472b6;--a4:#fbbf24;--a5:#a78bfa;--ac:#f472b6;
+--gl:linear-gradient(90deg,#5eead4 0%,#60a5fa 28%,#a78bfa 55%,#f472b6 82%,#fbbf24 100%);
+--bs:rgba(255,255,255,0.07);--sh:0 20px 80px rgba(0,0,0,0.42);--r:20px;--cw:1120px}
+*{box-sizing:border-box;margin:0;padding:0}html{scroll-behavior:smooth}
+body{background:radial-gradient(circle at 18% 14%,rgba(244,114,182,.09),transparent 30%),radial-gradient(circle at 82% 22%,rgba(96,165,250,.05),transparent 28%),var(--bg);color:var(--t1);font-family:'Outfit',sans-serif;line-height:1.75;overflow-x:hidden;-webkit-font-smoothing:antialiased}
+.sp{position:fixed;top:0;left:0;height:3px;width:0%;z-index:1000;background:var(--gl);transition:width .12s linear}
+nav{position:fixed;top:3px;left:0;right:0;z-index:999;display:flex;align-items:center;justify-content:space-between;padding:.75rem 2rem;background:rgba(10,10,15,.88);backdrop-filter:blur(12px);border-bottom:1px solid var(--bs)}
+.nbr{font-family:'JetBrains Mono',monospace;font-size:.72rem;color:var(--ac);letter-spacing:.14em;text-transform:uppercase;text-decoration:none}
+.nm{font-size:.82rem;color:var(--tm)}.na{display:flex;gap:8px}
+.nb{display:inline-flex;align-items:center;gap:6px;padding:.4rem .9rem;border-radius:999px;border:1px solid var(--bs);background:rgba(255,255,255,.03);color:var(--t2);font-size:.8rem;text-decoration:none;transition:all .18s}
+.nb:hover{border-color:var(--ac);color:var(--ac)}
+.hero{min-height:100vh;display:flex;align-items:center;justify-content:center;padding:5rem 2rem 3rem;position:relative;overflow:hidden}
+.hg{position:absolute;inset:0;background-image:linear-gradient(rgba(255,255,255,.025) 1px,transparent 1px),linear-gradient(90deg,rgba(255,255,255,.025) 1px,transparent 1px);background-size:48px 48px;mask-image:radial-gradient(circle at center,black 30%,transparent 80%);pointer-events:none}
+.hero::before{content:"";position:absolute;inset:0;background:radial-gradient(ellipse 700px 350px at 20% 40%,rgba(244,114,182,.10),transparent),radial-gradient(ellipse 640px 360px at 80% 38%,rgba(96,165,250,.06),transparent);pointer-events:none}
+.hi{max-width:1000px;text-align:center;position:relative;z-index:1}
+.hl{display:inline-flex;align-items:center;gap:10px;padding:.55rem 1rem;border-radius:999px;border:1px solid rgba(244,114,182,.25);background:rgba(244,114,182,.08);color:var(--ac);letter-spacing:1.8px;text-transform:uppercase;font-size:.76rem;margin-bottom:1.7rem}
+.dot{width:7px;height:7px;border-radius:50%;background:var(--ac);animation:pulse 2s ease-in-out infinite}
+@keyframes pulse{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.3;transform:scale(.75)}}
+h1{font-size:clamp(2.4rem,5vw,4.4rem);line-height:1.04;letter-spacing:-.04em;font-weight:900;margin-bottom:1.3rem}
+.gt{background:var(--gl);-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent}
+.sub{font-size:.85rem;color:var(--tm);font-family:'JetBrains Mono',monospace;margin-bottom:.5rem}
+.hs{font-family:'Source Serif 4',serif;color:var(--t2);font-size:clamp(1rem,2vw,1.2rem);max-width:820px;margin:0 auto 2rem;line-height:1.8}
+.hm{display:flex;flex-wrap:wrap;justify-content:center;gap:12px;margin-bottom:2.5rem}
+.mp{border:1px solid var(--bs);background:rgba(17,17,26,.75);border-radius:999px;padding:.65rem 1.1rem;color:var(--t2);font-size:.88rem}
+.sc{position:absolute;bottom:2.6rem;left:50%;transform:translateX(-50%);color:var(--tm);display:flex;flex-direction:column;gap:.6rem;align-items:center;text-transform:uppercase;letter-spacing:.22em;font-size:.7rem}
+.sc .arr{width:18px;height:18px;border-right:2px solid var(--tm);border-bottom:2px solid var(--tm);transform:rotate(45deg);animation:ba 2s ease-in-out infinite}
+@keyframes ba{0%,100%{transform:rotate(45deg) translateY(0)}50%{transform:rotate(45deg) translateY(7px)}}
+.cw{max-width:var(--cw);margin:0 auto;padding:0 2rem 6rem}
+.sec{margin-bottom:5.5rem;opacity:0;transform:translateY(28px);transition:opacity .65s ease,transform .65s ease}
+.sec.vis{opacity:1;transform:translateY(0)}
+.sn{display:flex;align-items:center;gap:12px;color:var(--ac);font-family:'JetBrains Mono',monospace;font-size:.68rem;text-transform:uppercase;letter-spacing:.22em;margin-bottom:.9rem}
+.sn::after{content:"";height:1px;flex:1;background:linear-gradient(90deg,rgba(244,114,182,.7),transparent)}
+.sec h2{font-size:clamp(1.9rem,4vw,2.75rem);line-height:1.08;margin-bottom:1rem;letter-spacing:-.04em}
+.lead{font-family:'Source Serif 4',serif;font-size:1.08rem;color:var(--t2);margin-bottom:2rem;line-height:1.85}
+.card{background:linear-gradient(180deg,rgba(24,24,38,.96),rgba(17,17,28,.96));border:1px solid var(--bs);border-radius:var(--r);box-shadow:var(--sh);padding:1.8rem;margin-bottom:1.4rem}
+.cc{background:linear-gradient(180deg,rgba(11,11,22,.99),rgba(9,9,17,.99));border:1px solid var(--bs);border-radius:var(--r);box-shadow:var(--sh);padding:0;margin-bottom:1.4rem;overflow:hidden}
+.ch{display:flex;align-items:center;justify-content:space-between;padding:1rem 1.5rem;border-bottom:1px solid var(--bs)}
+.ch h3{font-size:.9rem;font-family:'JetBrains Mono',monospace;color:var(--ac)}
+.cpb{display:inline-flex;align-items:center;gap:5px;padding:.28rem .7rem;border-radius:999px;border:1px solid var(--bs);background:transparent;color:var(--tm);font-size:.72rem;cursor:pointer;transition:all .18s;font-family:'JetBrains Mono',monospace}
+.cpb:hover{border-color:var(--a1);color:var(--a1)}
+.cbody{padding:1.5rem;overflow-x:auto}
+pre{white-space:pre;color:#d8e3ff;font-family:'JetBrains Mono',monospace;font-size:.86rem;line-height:1.75}
+.kw{color:#a78bfa}.fn{color:#60a5fa}.str{color:#5eead4}.cm{color:#3d3d5a;font-style:italic}.nu{color:#fbbf24}.cl{color:#f472b6}
+.g2{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:1.3rem;margin-bottom:1.4rem}
+.g3{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:1.3rem;margin-bottom:1.4rem}
+.g4{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:1rem;margin-bottom:1.2rem}
+.mc2{border:1px solid var(--bs);border-radius:16px;padding:1.3rem;background:rgba(255,255,255,.02)}
+.mc2 h4{font-size:1rem;margin-bottom:.55rem;color:var(--t1)}.mc2 p{font-size:.9rem;color:var(--t2);line-height:1.65}
+.tbl{width:100%;border-collapse:collapse;font-size:.87rem}
+.tbl th{text-align:left;padding:.75rem 1rem;font-family:'JetBrains Mono',monospace;font-size:.65rem;text-transform:uppercase;color:var(--tm);border-bottom:1px solid var(--bs)}
+.tbl td{padding:.75rem 1rem;border-bottom:1px solid rgba(255,255,255,.04);color:var(--t2);vertical-align:top;line-height:1.65}
+.tbl td:first-child{color:var(--t1);font-weight:600}.tbl tr:last-child td{border-bottom:none}
+/* Architecture diagram container */
+.arch{background:rgba(10,10,18,.95);border:1px solid rgba(244,114,182,.2);border-radius:var(--r);padding:1.5rem;margin-bottom:1.4rem;overflow-x:auto;text-align:center}
+.arch-title{font-family:'JetBrains Mono',monospace;font-size:.7rem;text-transform:uppercase;letter-spacing:.18em;color:var(--ac);margin-bottom:1.2rem;text-align:left}
+/* Callout boxes */
+.callout{border-radius:14px;padding:1.1rem 1.3rem;margin-bottom:1rem;display:flex;gap:.9rem;align-items:flex-start}
+.callout-key{background:rgba(94,234,212,.06);border:1px solid rgba(94,234,212,.2)}
+.callout-warn{background:rgba(251,191,36,.06);border:1px solid rgba(251,191,36,.2)}
+.callout-insight{background:rgba(167,139,250,.06);border:1px solid rgba(167,139,250,.2)}
+.callout-code{background:rgba(96,165,250,.06);border:1px solid rgba(96,165,250,.2)}
+.callout-icon{font-size:1.3rem;flex-shrink:0;margin-top:.05rem}
+.callout-body h4{font-size:.95rem;margin-bottom:.3rem;color:var(--t1)}
+.callout-body p{font-size:.88rem;color:var(--t2);line-height:1.65}
+/* Enhanced quiz */
+.qc{background:linear-gradient(180deg,rgba(24,24,38,.96),rgba(17,17,28,.96));border:1px solid var(--bs);border-radius:var(--r);box-shadow:var(--sh);padding:2rem}
+.qc-title{font-size:1.1rem;font-weight:700;margin-bottom:.3rem;color:var(--t1)}
+.qc-sub{font-size:.85rem;color:var(--tm);margin-bottom:1.5rem;font-family:'JetBrains Mono',monospace}
+.qq{border:1px solid var(--bs);border-radius:16px;padding:1.5rem;background:rgba(255,255,255,.015);margin-bottom:1.2rem;transition:border-color .3s}
+.qq.answered{border-color:rgba(244,114,182,.3)}
+.qnum{font-family:'JetBrains Mono',monospace;font-size:.68rem;color:var(--ac);text-transform:uppercase;letter-spacing:.15em;margin-bottom:.5rem}
+.qq h4{font-size:1rem;margin-bottom:1.1rem;color:var(--t1);line-height:1.55;font-weight:600}
+.qo{display:grid;gap:.55rem}
+.qob{border:1px solid var(--bs);border-radius:11px;padding:.95rem 1.15rem;background:rgba(255,255,255,.02);color:var(--t2);cursor:pointer;transition:all .22s;text-align:left;font-size:.9rem;font-family:'Outfit',sans-serif;width:100%;line-height:1.55;position:relative;padding-left:3rem}
+.qob::before{content:attr(data-opt);position:absolute;left:.9rem;top:50%;transform:translateY(-50%);font-family:'JetBrains Mono',monospace;font-size:.75rem;font-weight:700;color:var(--tm);transition:color .2s}
+.qob:hover:not([disabled]){border-color:rgba(244,114,182,.5);background:rgba(244,114,182,.04);color:var(--t1)}
+.qob:hover:not([disabled])::before{color:var(--ac)}
+.qob.ok{border-color:rgba(94,234,212,.6);background:rgba(94,234,212,.09);color:var(--t1)}
+.qob.ok::before{color:#5eead4}
+.qob.no{border-color:rgba(244,114,182,.4);background:rgba(244,114,182,.07);color:var(--t2)}
+.qob.no::before{color:#f472b6}
+.qob[disabled]{cursor:default}
+.qfeed{margin-top:.9rem;border-radius:12px;padding:1rem 1.2rem;display:none;font-size:.88rem;line-height:1.65}
+.qfeed.correct{background:rgba(94,234,212,.06);border:1px solid rgba(94,234,212,.25)}
+.qfeed.wrong{background:rgba(244,114,182,.05);border:1px solid rgba(244,114,182,.2)}
+.qfeed-head{font-weight:700;margin-bottom:.3rem;font-size:.9rem}
+.qfeed.correct .qfeed-head{color:#5eead4}
+.qfeed.wrong .qfeed-head{color:#f472b6}
+.qfeed-why{color:var(--t2)}
+.qprog{display:flex;align-items:center;gap:1rem;margin-bottom:1.5rem}
+.qprog-bar{flex:1;height:6px;background:rgba(255,255,255,.06);border-radius:999px;overflow:hidden}
+.qprog-fill{height:100%;background:var(--gl);border-radius:999px;width:0%;transition:width .4s ease}
+.qprog-text{font-family:'JetBrains Mono',monospace;font-size:.72rem;color:var(--tm);white-space:nowrap}
+.qs{text-align:center;padding:1.5rem;border:1px solid var(--bs);border-radius:16px;margin-top:1.5rem}
+.qs h3{font-size:1.5rem;margin-bottom:.4rem}
+.qs p{color:var(--t2);font-size:.9rem}
+.pr,.nx{display:inline-flex;align-items:center;gap:7px;padding:.55rem 1.2rem;border-radius:999px;border:1px solid var(--bs);background:rgba(255,255,255,.03);color:var(--t2);font-size:.85rem;text-decoration:none;transition:all .2s}
+.pr:hover,.nx:hover{border-color:var(--ac);color:var(--ac)}
+footer{border-top:1px solid var(--bs);padding:3rem 2rem;text-align:center;color:var(--tm);font-size:.82rem}</style>
+</head>
+<body>
+<div class="sp" id="sp"></div>
+<nav>
+  <a class="nbr" href="#">DiT Track · M4</a>
+  <span class="nm">MIM · BEiT · IIT-CDIP · DocBank · SynthDoG · Weak Supervision · Curriculum Design</span>
+  <div class="na">
+    <a href="dit_m3.html" class="pr">← M3: Donut</a>
+    <a href="dit_m5.html" class="nx">M5: Document NER →</a>
+  </div>
+</nav>
+<section class="hero">
+  <div class="hg"></div>
+  <div class="hi">
+    <div class="hl"><div class="dot"></div>Document Intelligence Transformers · Module 4</div>
+    <h1>Document Pre-training at Scale</h1>
+    <p class="sub">MIM · BEiT · IIT-CDIP · DocBank · SynthDoG · Weak Supervision · Curriculum Design</p>
+    <p class="hs">Every powerful document AI model starts with pretraining — learning document representations from large unlabelled datasets before any task-specific fine-tuning. The quality of pretraining determines the upper bound on downstream performance. This module covers the key pretraining datasets (IIT-CDIP, DocBank, SynthDoG, PubLayNet), the objectives used to learn from them (MIM, MLM, pseudo-OCR), why some objectives work better than others, and how to design pretraining curricula for multi-domain production systems.</p>
+<div class="hm">
+<span class="mp">⏱ 65 min</span>
+<span class="mp">Masked Image Modelling</span>
+<span class="mp">BEiT discrete tokens</span>
+<span class="mp">IIT-CDIP · DocBank · SynthDoG</span>
+<span class="mp">Weak supervision at scale</span>
+<span class="mp">Scale vs objective ablation</span>
+<span class="mp">Multi-domain curriculum</span>
+</div>
+  </div>
+  <div class="sc"><span>Scroll to explore</span><div class="arr"></div></div>
+</section>
+<div class="cw">
+
+<section class="sec" id="s1">
+<div class="sn">01 · Pretraining Objectives for Document Images</div>
+<h2>What the Model Must Learn<br><span class="gt">Before Seeing Any Labels</span></h2>
+<p class="lead">Self-supervised pretraining creates learning signal from unlabelled data by defining a prediction task that can only be solved by developing useful internal representations. For document images, Masked Image Modelling (MIM) masks random patches and requires the encoder to predict them from context — forcing it to learn the visual grammar of documents: what text regions look like, how tables are structured, where figures appear.</p>
+<div class="arch">
+<div class="arch-title">▸ Masked Image Modelling — BEiT-style discrete token prediction</div>
+<svg viewBox="0 0 900 300" xmlns="http://www.w3.org/2000/svg" style="width:100%;max-width:900px">
+  <rect width="900" height="300" fill="#0a0a0f" rx="16"/>
+  <defs><marker id="ma" markerWidth="8" markerHeight="6" refX="8" refY="3" orient="auto"><polygon points="0 0,8 3,0 6" fill="#f472b6"/></marker></defs>
+  <text x="450" y="26" font-family="JetBrains Mono" font-size="11" fill="#f472b6" text-anchor="middle" letter-spacing="1">MASKED IMAGE MODELLING (MIM) — BEiT-style pretraining</text>
+
+  <!-- Original image patches -->
+  <text x="100" y="58" font-family="JetBrains Mono" font-size="9" fill="#7c7c95" text-anchor="middle">Original patches</text>
+  <g>
+    <rect x="30" y="68" width="44" height="44" rx="4" fill="rgba(244,114,182,.2)" stroke="#f472b6" stroke-width="1"/>
+    <text x="52" y="95" font-family="JetBrains Mono" font-size="7" fill="#f472b6" text-anchor="middle">p₁ text</text>
+    <rect x="82" y="68" width="44" height="44" rx="4" fill="rgba(244,114,182,.2)" stroke="#f472b6" stroke-width="1"/>
+    <text x="104" y="95" font-family="JetBrains Mono" font-size="7" fill="#f472b6" text-anchor="middle">p₂ table</text>
+    <rect x="134" y="68" width="44" height="44" rx="4" fill="rgba(244,114,182,.08)" stroke="rgba(244,114,182,.3)" stroke-width="1"/>
+    <text x="156" y="95" font-family="JetBrains Mono" font-size="7" fill="#7c7c95" text-anchor="middle">p₃</text>
+    <rect x="186" y="68" width="44" height="44" rx="4" fill="rgba(244,114,182,.2)" stroke="#f472b6" stroke-width="1"/>
+    <text x="208" y="95" font-family="JetBrains Mono" font-size="7" fill="#f472b6" text-anchor="middle">p₄ logo</text>
+  </g>
+
+  <!-- Arrow + mask -->
+  <text x="270" y="90" font-family="JetBrains Mono" font-size="11" fill="#7c7c95">→  mask 40%</text>
+  <line x1="368" y1="90" x2="408" y2="90" stroke="#f472b6" stroke-width="1.5" marker-end="url(#ma)"/>
+
+  <!-- Masked version -->
+  <text x="510" y="58" font-family="JetBrains Mono" font-size="9" fill="#7c7c95" text-anchor="middle">Masked input to encoder</text>
+  <g>
+    <rect x="416" y="68" width="44" height="44" rx="4" fill="rgba(244,114,182,.2)" stroke="#f472b6" stroke-width="1"/>
+    <text x="438" y="95" font-family="JetBrains Mono" font-size="7" fill="#f472b6" text-anchor="middle">p₁ text</text>
+    <rect x="468" y="68" width="44" height="44" rx="4" fill="rgba(60,60,90,.8)" stroke="rgba(255,255,255,.15)" stroke-width="1"/>
+    <text x="490" y="95" font-family="JetBrains Mono" font-size="8" fill="#7c7c95" text-anchor="middle">[MASK]</text>
+    <rect x="520" y="68" width="44" height="44" rx="4" fill="rgba(60,60,90,.8)" stroke="rgba(255,255,255,.15)" stroke-width="1"/>
+    <text x="542" y="95" font-family="JetBrains Mono" font-size="8" fill="#7c7c95" text-anchor="middle">[MASK]</text>
+    <rect x="572" y="68" width="44" height="44" rx="4" fill="rgba(244,114,182,.2)" stroke="#f472b6" stroke-width="1"/>
+    <text x="594" y="95" font-family="JetBrains Mono" font-size="7" fill="#f472b6" text-anchor="middle">p₄ logo</text>
+  </g>
+
+  <!-- Encoder box -->
+  <rect x="416" y="136" width="200" height="40" rx="8" fill="rgba(244,114,182,.06)" stroke="rgba(244,114,182,.3)" stroke-width="1"/>
+  <text x="516" y="160" font-family="JetBrains Mono" font-size="9" fill="#f472b6" text-anchor="middle">Transformer Encoder (ViT/Swin)</text>
+  <line x1="516" y1="116" x2="516" y2="132" stroke="#f472b6" stroke-width="1.5" marker-end="url(#ma)"/>
+
+  <!-- Predict targets -->
+  <line x1="516" y1="180" x2="516" y2="196" stroke="#f472b6" stroke-width="1.5" marker-end="url(#ma)"/>
+  <rect x="390" y="200" width="252" height="68" rx="8" fill="rgba(255,255,255,.02)" stroke="rgba(255,255,255,.08)" stroke-width="1"/>
+  <text x="516" y="224" font-family="JetBrains Mono" font-size="9" fill="#ececf6" text-anchor="middle">Predict: BEiT visual tokens</text>
+  <text x="516" y="240" font-family="JetBrains Mono" font-size="8" fill="#7c7c95" text-anchor="middle">(discrete codes from dVAE tokeniser)</text>
+  <text x="516" y="256" font-family="JetBrains Mono" font-size="8" fill="#7c7c95" text-anchor="middle">NOT raw pixels — avoids trivial low-freq reconstruction</text>
+
+  <!-- Side annotation -->
+  <text x="860" y="140" font-family="JetBrains Mono" font-size="8" fill="#7c7c95" text-anchor="end">What the model</text>
+  <text x="860" y="154" font-family="JetBrains Mono" font-size="8" fill="#7c7c95" text-anchor="end">must learn:</text>
+  <text x="860" y="172" font-family="JetBrains Mono" font-size="8" fill="#f472b6" text-anchor="end">• text region structure</text>
+  <text x="860" y="186" font-family="JetBrains Mono" font-size="8" fill="#f472b6" text-anchor="end">• table cell patterns</text>
+  <text x="860" y="200" font-family="JetBrains Mono" font-size="8" fill="#f472b6" text-anchor="end">• document layout</text>
+</svg>
+</div>
+<div class="callout callout-key">
+  <div class="callout-icon">🔑</div>
+  <div class="callout-body">
+    <h4>Why discrete tokens, not raw pixels?</h4>
+    <p>Raw pixel prediction is dominated by low-frequency image content — smooth backgrounds, colour gradients — which are easy to predict but semantically uninformative. Discrete visual tokens from a dVAE tokeniser force the model to predict the semantic category of each patch (dense text, table border, figure, white space) rather than exact pixel values. This produces semantic representations aligned with document understanding tasks rather than pixel-accurate reconstruction.</p>
+  </div>
+</div>
+<div class="card" style="padding:0;overflow:hidden">
+<table class="tbl">
+<thead><tr><th>Objective</th><th>Masks</th><th>Predicts</th><th>What it teaches</th></tr></thead>
+<tbody>
+<tr><td><strong style="color:var(--a3)">MIM (BEiT-style)</strong></td><td>Random image patches</td><td>Discrete dVAE visual tokens</td><td>Visual document structure, region semantics</td></tr>
+<tr><td><strong style="color:var(--a5)">MLM</strong></td><td>Random text tokens</td><td>Masked word IDs</td><td>Language semantics + layout context</td></tr>
+<tr><td><strong style="color:var(--a2)">Pseudo-OCR</strong></td><td>—</td><td>Full OCR text sequence</td><td>Character-level visual reading (used in Donut)</td></tr>
+<tr><td><strong style="color:var(--a4)">WPA</strong></td><td>Text-image alignment</td><td>Whether text covers image patch</td><td>Cross-modal alignment (LayoutLMv2)</td></tr>
+</tbody>
+</table>
+</div>
+</section>
+
+<section class="sec" id="s2">
+<div class="sn">02 · Pretraining Datasets at Scale</div>
+<h2>IIT-CDIP, DocBank, SynthDoG —<br><span class="gt">How Document AI Gets Its Training Data</span></h2>
+<p class="lead">Large-scale labelled datasets for document understanding are expensive to create — annotating bounding boxes and field values for millions of documents requires enormous human effort. The field has developed three strategies: (1) use unlabelled scanned document archives with self-supervised objectives; (2) exploit structured document formats (LaTeX, XML, HTML) to auto-generate labels; (3) generate synthetic documents with known ground truth.</p>
+<div class="arch">
+<div class="arch-title">▸ Key pretraining datasets — scale, source, and what labels are available</div>
+<svg viewBox="0 0 900 220" xmlns="http://www.w3.org/2000/svg" style="width:100%;max-width:900px">
+  <rect width="900" height="220" fill="#0a0a0f" rx="16"/>
+  <text x="450" y="26" font-family="JetBrains Mono" font-size="11" fill="#f472b6" text-anchor="middle" letter-spacing="1">PRETRAINING DATASETS — SCALE AND COMPOSITION</text>
+
+  <!-- IIT-CDIP -->
+  <rect x="30" y="44" width="190" height="140" rx="12" fill="rgba(244,114,182,.05)" stroke="rgba(244,114,182,.3)" stroke-width="1.5"/>
+  <text x="125" y="68" font-family="JetBrains Mono" font-size="9" fill="#f472b6" text-anchor="middle" font-weight="bold">IIT-CDIP</text>
+  <text x="125" y="84" font-family="JetBrains Mono" font-size="11" fill="#ececf6" text-anchor="middle" font-weight="bold">42M</text>
+  <text x="125" y="98" font-family="JetBrains Mono" font-size="8" fill="#7c7c95" text-anchor="middle">scanned documents</text>
+  <text x="125" y="116" font-family="JetBrains Mono" font-size="8" fill="#7c7c95" text-anchor="middle">tobacco litigation docs</text>
+  <text x="125" y="130" font-family="JetBrains Mono" font-size="8" fill="#7c7c95" text-anchor="middle">memos, letters, forms</text>
+  <text x="125" y="144" font-family="JetBrains Mono" font-size="8" fill="#7c7c95" text-anchor="middle">no text labels</text>
+  <text x="125" y="160" font-family="JetBrains Mono" font-size="8" fill="#f472b6" text-anchor="middle">used in: DiT, LayoutLM</text>
+  <!-- DocBank -->
+  <rect x="240" y="44" width="190" height="140" rx="12" fill="rgba(167,139,250,.05)" stroke="rgba(167,139,250,.3)" stroke-width="1.5"/>
+  <text x="335" y="68" font-family="JetBrains Mono" font-size="9" fill="#a78bfa" text-anchor="middle" font-weight="bold">DocBank</text>
+  <text x="335" y="84" font-family="JetBrains Mono" font-size="11" fill="#ececf6" text-anchor="middle" font-weight="bold">500K</text>
+  <text x="335" y="98" font-family="JetBrains Mono" font-size="8" fill="#7c7c95" text-anchor="middle">academic papers</text>
+  <text x="335" y="116" font-family="JetBrains Mono" font-size="8" fill="#7c7c95" text-anchor="middle">LaTeX source → labels</text>
+  <text x="335" y="130" font-family="JetBrains Mono" font-size="8" fill="#7c7c95" text-anchor="middle">title, abstract, body</text>
+  <text x="335" y="144" font-family="JetBrains Mono" font-size="8" fill="#7c7c95" text-anchor="middle">figure, table, equation</text>
+  <text x="335" y="160" font-family="JetBrains Mono" font-size="8" fill="#a78bfa" text-anchor="middle">layout labels from source</text>
+  <!-- SynthDoG -->
+  <rect x="450" y="44" width="190" height="140" rx="12" fill="rgba(251,191,36,.05)" stroke="rgba(251,191,36,.3)" stroke-width="1.5"/>
+  <text x="545" y="68" font-family="JetBrains Mono" font-size="9" fill="#fbbf24" text-anchor="middle" font-weight="bold">SynthDoG</text>
+  <text x="545" y="84" font-family="JetBrains Mono" font-size="11" fill="#ececf6" text-anchor="middle" font-weight="bold">1.2M</text>
+  <text x="545" y="98" font-family="JetBrains Mono" font-size="8" fill="#7c7c95" text-anchor="middle">synthetic documents</text>
+  <text x="545" y="116" font-family="JetBrains Mono" font-size="8" fill="#7c7c95" text-anchor="middle">WikiText + templates</text>
+  <text x="545" y="130" font-family="JetBrains Mono" font-size="8" fill="#7c7c95" text-anchor="middle">100+ languages</text>
+  <text x="545" y="144" font-family="JetBrains Mono" font-size="8" fill="#7c7c95" text-anchor="middle">perfect text labels</text>
+  <text x="545" y="160" font-family="JetBrains Mono" font-size="8" fill="#fbbf24" text-anchor="middle">used in: Donut</text>
+  <!-- PubLayNet -->
+  <rect x="660" y="44" width="210" height="140" rx="12" fill="rgba(96,165,250,.05)" stroke="rgba(96,165,250,.3)" stroke-width="1.5"/>
+  <text x="765" y="68" font-family="JetBrains Mono" font-size="9" fill="#60a5fa" text-anchor="middle" font-weight="bold">PubLayNet</text>
+  <text x="765" y="84" font-family="JetBrains Mono" font-size="11" fill="#ececf6" text-anchor="middle" font-weight="bold">360K</text>
+  <text x="765" y="98" font-family="JetBrains Mono" font-size="8" fill="#7c7c95" text-anchor="middle">PubMed articles</text>
+  <text x="765" y="116" font-family="JetBrains Mono" font-size="8" fill="#7c7c95" text-anchor="middle">XML → bbox labels</text>
+  <text x="765" y="130" font-family="JetBrains Mono" font-size="8" fill="#7c7c95" text-anchor="middle">text, title, list</text>
+  <text x="765" y="144" font-family="JetBrains Mono" font-size="8" fill="#7c7c95" text-anchor="middle">figure, table</text>
+  <text x="765" y="160" font-family="JetBrains Mono" font-size="8" fill="#60a5fa" text-anchor="middle">layout detection pretrain</text>
+  <!-- Bottom -->
+  <text x="450" y="200" font-family="JetBrains Mono" font-size="8" fill="#7c7c95" text-anchor="middle">Scale matters: 42M IIT-CDIP images vs 14M ImageNet images — document domain pretraining at comparable scale to general vision pretraining</text>
+</svg>
+</div>
+</section>
+
+<section class="sec" id="s3">
+<div class="sn">03 · Assessment</div>
+<h2>Module 4 <span class="gt">Quiz</span></h2>
+<div class="qc">
+<div class="qc-title">Module 4 Assessment</div>
+<div class="qc-sub">5 questions · pretraining objectives · datasets · scale vs objective</div>
+<div class="qprog"><div class="qprog-bar"><div class="qprog-fill"></div></div><div class="qprog-text">0/5 answered</div></div>
+<div class="qq">
+<div class="qnum">Question 1 of 5</div>
+<h4>BEiT-style MIM predicts discrete visual tokens (from a dVAE tokeniser) rather than raw pixel values for masked patches. Why is predicting raw pixels a poor pretraining objective for document understanding?</h4>
+<div class="qo"><button class="qob" data-opt="A" data-correct="true" onclick="cq(this,0,true)">Raw pixel prediction requires more GPU memory than discrete token prediction, making training impractical at the scale needed for document pretraining.</button>
+<button class="qob" data-opt="B" data-correct="false" onclick="cq(this,0,false)">Raw pixel values are in a continuous space (0-255 per channel). A model that predicts raw pixels is rewarded for getting the exact numeric value correct — low-frequency image content like smooth backgrounds and gradients dominates the loss because these are easiest to predict. The model learns to predict blurry averages. Discrete visual tokens, generated by a dVAE that quantises the image into a fixed vocabulary of visual codes, force the model to learn the discrete structural category of each patch — is this patch part of a text region? A table border? A figure? This categorical objective produces semantic representations rather than pixel-accurate reconstruction, which is what document understanding tasks require.</button>
+<button class="qob" data-opt="C" data-correct="false" onclick="cq(this,0,false)">Raw pixel prediction requires the model to memorise the exact appearance of every document, preventing generalisation to unseen document styles.</button>
+<button class="qob" data-opt="D" data-correct="false" onclick="cq(this,0,false)">Raw pixel prediction is actually the better objective — it provides more information per training example. The move to discrete tokens in BEiT was purely for computational efficiency.</button>
+</div>
+<div class="qfeed">
+  <div class="qfeed-head"></div>
+  <div class="qfeed-why">Correct. The low-frequency dominance problem with raw pixel prediction is fundamental. Documents have large uniform regions (white background, solid text blocks) that are trivially predictable, contributing high loss weight despite providing no useful semantic signal. Discrete token prediction forces the model to classify each patch semantically. This is analogous to why BERT predicts masked words (discrete categories) rather than masked continuous word embeddings — the discrete objective creates a meaningful signal at the level of semantic units.</div>
+</div>
+</div>
+<div class="qq">
+<div class="qnum">Question 2 of 5</div>
+<h4>DocBank is created by rendering academic LaTeX papers to PDF and using the LaTeX source to automatically generate bounding box labels for document regions (title, abstract, paragraph, figure, table, equation). What is the key advantage of this 'weak supervision' approach over manual annotation?</h4>
+<div class="qo"><button class="qob" data-opt="A" data-correct="false" onclick="cq(this,1,false)">LaTeX-derived labels are more accurate than human annotation because humans make mistakes when drawing bounding boxes, while LaTeX source provides exact character positions.</button>
+<button class="qob" data-opt="B" data-correct="true" onclick="cq(this,1,true)">LaTeX rendering produces perfect pixel-level bounding boxes for every element with zero annotation cost — 500K labelled documents at a fraction of the cost of manual annotation. The key insight is exploiting the structural information already present in the LaTeX source: the \\section{}, \\begin{table}, \\begin{figure} commands define element types and boundaries; the PDF rendering engine computes the exact pixel positions of each element. This creates a scalable annotation pipeline: crawl arXiv → download LaTeX + PDF pairs → render and align → generate labels automatically. Manual annotation at this scale would require thousands of annotator-hours. The limitation: the annotation is limited to document types that use LaTeX, biasing DocBank toward academic papers and excluding business documents, forms, and handwritten content.</button>
+<button class="qob" data-opt="C" data-correct="false" onclick="cq(this,1,false)">DocBank's main advantage is multilingual coverage — LaTeX documents span all academic languages, providing automatic multilingual training data for document layout models.</button>
+<button class="qob" data-opt="D" data-correct="false" onclick="cq(this,1,false)">LaTeX-derived labels capture font-level information (font size, weight, family) that manual bounding box annotation cannot — this additional signal improves layout detection beyond what pixel-level annotation provides.</button>
+</div>
+<div class="qfeed">
+  <div class="qfeed-head"></div>
+  <div class="qfeed-why">Correct. The weak supervision pipeline is the key innovation — structured document formats (LaTeX, HTML, XML) contain semantic layout information that can be automatically aligned with rendered pixel positions. PubLayNet uses the same approach with PubMed XML. This pattern — exploit existing structured source to generate labels automatically — is the standard technique for creating large-scale document understanding datasets without prohibitive annotation costs.</div>
+</div>
+</div>
+<div class="qq">
+<div class="qnum">Question 3 of 5</div>
+<h4>IIT-CDIP contains 42 million scanned document images but NO text labels — only images. DiT pretraining uses these unlabelled images with a MIM objective. How can a model learn useful document representations from images alone, without any text labels or layout annotations?</h4>
+<div class="qo"><button class="qob" data-opt="A" data-correct="false" onclick="cq(this,2,false)">A model cannot learn useful representations from images alone — the IIT-CDIP pretraining is only useful because the model architecture already knows what text looks like from ImageNet pretraining.</button>
+<button class="qob" data-opt="B" data-correct="true" onclick="cq(this,2,true)">The MIM objective forces the encoder to develop an internal model of document visual structure. To predict masked patches accurately, the encoder must represent: what text regions look like (dense uniform small-scale patterns), what table structures look like (regular grids with borders), what figure regions look like (high-variance image patches), and how these elements relate spatially on a page. These representations emerge purely from the statistics of the image distribution — no text labels are needed because the visual patterns of documents are self-consistent and predictable. A masked table cell patch can be predicted from surrounding table border patches; a masked text line patch can be predicted from surrounding text line patches. The visual grammar of documents is rich enough to provide strong self-supervised learning signal.</button>
+<button class="qob" data-opt="C" data-correct="false" onclick="cq(this,2,false)">The IIT-CDIP pretraining learns layout representations by using the document bounding box metadata included in the dataset, not from the images alone.</button>
+<button class="qob" data-opt="D" data-correct="false" onclick="cq(this,2,false)">Images contain implicit text labels — OCR can be run on IIT-CDIP images to extract text, which is then used as supervision for the MIM pretraining objective.</button>
+</div>
+<div class="qfeed">
+  <div class="qfeed-head"></div>
+  <div class="qfeed-why">Correct. Self-supervised learning exploits the structure inherent in the data distribution itself. Documents have strong visual regularity: text regions have consistent local texture patterns, tables have regular grid structure, headers have distinct size and position patterns. The MIM objective creates a prediction task that can only be solved by learning these regularities — the prediction signal comes from the data structure itself, not from external labels. This is the same principle as word2vec learning word semantics from word co-occurrence patterns without any explicit semantic labels.</div>
+</div>
+</div>
+<div class="qq">
+<div class="qnum">Question 4 of 5</div>
+<h4>A paper claims their new document pretraining method achieves SOTA on RVL-CDIP (document classification) by training on 100M web-scraped PDFs. A reviewer objects: 'The improvement may be purely due to scale — 100M vs 42M images — not the new pretraining objective.' How should the authors address this?</h4>
+<div class="qo"><button class="qob" data-opt="A" data-correct="false" onclick="cq(this,3,false)">The reviewer's concern is invalid — more data always indicates a better method, and scale is itself a contribution.</button>
+<button class="qob" data-opt="B" data-correct="false" onclick="cq(this,3,false)">The authors should run their method on only 42M documents to match the baseline data scale and report results. If the improvement disappears at matched scale, the new objective adds no value beyond scale. Additionally, they should run the baseline method on 100M documents — if the baseline achieves the same SOTA at 100M, the improvement is purely from scale. Ablation at matched scale is the standard way to isolate objective contribution from data contribution in pretraining papers. The reviewer's concern is valid and common in pretraining research — scale and objective are confounded whenever comparison points use different data volumes.</button>
+<button class="qob" data-opt="C" data-correct="false" onclick="cq(this,3,false)">The authors should report the compute cost of their method vs the baseline. If their method uses less compute for the same performance, the improvement is genuine regardless of data scale.</button>
+<button class="qob" data-opt="D" data-correct="true" onclick="cq(this,3,true)">The authors should use statistical significance testing to show the improvement is not due to random variation in the training data sample.</button>
+</div>
+<div class="qfeed">
+  <div class="qfeed-head"></div>
+  <div class="qfeed-why">Correct. Scale-objective confounding is one of the most common validity threats in pretraining research. The standard ablation protocol: run method A on N samples, run method B on N samples (matched scale), then separately investigate scaling behaviour. If method B outperforms method A at matched scale, the objective is the cause. Many published improvements in pretraining have been partially or fully attributed to scale when controlled ablations were eventually conducted. This is why the NeurIPS Datasets and Benchmarks track specifically asks for scale-controlled ablations.</div>
+</div>
+</div>
+<div class="qq">
+<div class="qnum">Question 5 of 5</div>
+<h4>You are designing a pretraining curriculum for a document model that must handle three domains: financial reports (structured tables, dense numbers), legal contracts (long paragraphs, clause structure), and medical records (handwritten and printed mixed, clinical terminology). Should you pretrain on all three domains simultaneously or sequentially, and why?</h4>
+<div class="qo"><button class="qob" data-opt="A" data-correct="false" onclick="cq(this,4,false)">Sequential pretraining is always better — the model learns each domain completely before moving to the next, preventing interference between domains.</button>
+<button class="qob" data-opt="B" data-correct="false" onclick="cq(this,4,false)">Simultaneous pretraining on all three domains is always better — more diverse training data produces more robust representations.</button>
+<button class="qob" data-opt="C" data-correct="true" onclick="cq(this,4,true)">Simultaneous mixed pretraining is generally preferable, but the mixing ratio matters critically. Train on all three simultaneously with domain-proportional sampling (weighted by the expected production document distribution). Mixing prevents catastrophic forgetting that occurs with sequential pretraining — if you pretrain on financial reports then fine-tune on legal contracts, the model progressively loses financial document representations (catastrophic forgetting). Simultaneous training maintains all domain representations in parallel. The exception: if one domain is dramatically larger (e.g. 40M financial documents vs 200K medical records), you must oversample the smaller domains (up to 10× oversampling for rare domains) to prevent the large domain from dominating the representation. For the medical domain specifically, the handwritten component may benefit from a separate curriculum stage — mixed print/handwriting documents require HTR-specific pretraining (TrOCR-style) that may not emerge from a general MIM objective.</button>
+<button class="qob" data-opt="D" data-correct="false" onclick="cq(this,4,false)">Domain-sequential pretraining with continual learning regularisation (EWC or LoRA adapters per domain) is the only correct approach — general pretraining loses domain-specific features that are required for production accuracy.</button>
+</div>
+<div class="qfeed">
+  <div class="qfeed-head"></div>
+  <div class="qfeed-why">Correct. Catastrophic forgetting is the key risk of sequential pretraining — the reason to mix domains simultaneously. The mixing ratio is the critical implementation decision: naive uniform mixing gives equal weight to all domains regardless of their size or importance, while production-distribution sampling reflects actual usage. The medical domain's handwriting component is a real complication — it may require a separate pretraining stage or a hybrid approach where HTR-pretrained weights are used as initialisation for the mixed pretraining. This kind of multi-domain curriculum design is a core skill in production document AI engineering.</div>
+</div>
+</div>
+<div class="qs" id="qs" style="display:none"><h3 id="sc">0/5</h3><p id="sm"></p></div>
+</div>
+</section>
+</div>
+<footer>
+  <div style="max-width:var(--cw);margin:0 auto;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:1rem">
+    <div style="display:flex;gap:1rem"><a href="dit_m3.html" class="pr">← M3: Donut</a><a href="dit_m5.html" class="nx">M5: Document NER →</a></div>
+    <span>DiT Track · M4 · Document Pre-training at Scale</span>
+  </div>
+</footer>
+<script>
+window.addEventListener("scroll",function(){
+    var h=document.documentElement;
+    document.getElementById("sp").style.width=((h.scrollTop/(h.scrollHeight-h.clientHeight))*100)+"%";
+});
+var obs=new IntersectionObserver(function(e){e.forEach(function(x){if(x.isIntersecting)x.target.classList.add("vis");});},{threshold:0.07});
+document.querySelectorAll(".sec").forEach(function(s){obs.observe(s);});
+function cp(btn,id){navigator.clipboard.writeText(document.getElementById(id).innerText).then(function(){btn.textContent="Copied!";setTimeout(function(){btn.textContent="Copy";},2000);});}
+// Enhanced quiz engine
+var qstate={};
+var qtotal=document.querySelectorAll(".qq").length;
+function updateProgress(){
+    var done=Object.keys(qstate).length;
+    var pct=Math.round(done/qtotal*100);
+    var fill=document.querySelector(".qprog-fill");
+    var txt=document.querySelector(".qprog-text");
+    if(fill)fill.style.width=pct+"%";
+    if(txt)txt.textContent=done+"/"+qtotal+" answered";
+    if(done===qtotal)showFinal();
+}
+function showFinal(){
+    var correct=Object.values(qstate).filter(function(v){return v;}).length;
+    var sc=document.getElementById("sc");
+    var sm=document.getElementById("sm");
+    if(sc)sc.textContent=correct+"/"+qtotal+" correct";
+    if(sm){
+        var msgs=["Score: 1/5 — revisit why raw pixel prediction is dominated by low-frequency content and produces poor semantic representations.","Score: 2/5 — review how LaTeX source enables automatic bounding box label generation for DocBank.","Score: 3/5 — good. Re-read how self-supervised MIM learning signal emerges from image structure without labels.","Score: 4/5 — strong. Review scale-objective ablation methodology for fair pretraining comparison.","Score: 5/5 — excellent. You understand the full pretraining landscape for document AI."][c];
+        sm.textContent=msgs[Math.min(correct,msgs.length-1)];
+    }
+    var qs=document.getElementById("qs");
+    if(qs)qs.style.display="block";
+}
+function cq(btn,qi,isCorrect){
+    if(qstate[qi]!==undefined)return;
+    qstate[qi]=isCorrect;
+    var qq=btn.closest(".qq");
+    qq.classList.add("answered");
+    var allBtns=qq.querySelectorAll(".qob");
+    allBtns.forEach(function(b){
+        b.setAttribute("disabled","");
+        var bCorrect=b.getAttribute("data-correct")==="true";
+        if(bCorrect)b.classList.add("ok");
+        else if(b===btn&&!isCorrect)b.classList.add("no");
+    });
+    var feed=qq.querySelector(".qfeed");
+    if(feed){
+        feed.style.display="block";
+        feed.className="qfeed "+(isCorrect?"correct":"wrong");
+    }
+    updateProgress();
+}</script>
+</body></html>

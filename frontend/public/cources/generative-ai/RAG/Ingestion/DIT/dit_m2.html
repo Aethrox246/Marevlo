@@ -1,0 +1,410 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>DiT Track 2 - LayoutLM — Fusing Text, Layout, and Vision</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;700&family=Source+Serif+4:ital,wght@0,400;0,600;1,400&display=swap" rel="stylesheet">
+<style>:root{--bg:#0a0a0f;--t1:#ececf6;--t2:#b5b5c8;--tm:#7c7c95;
+--a1:#5eead4;--a2:#60a5fa;--a3:#f472b6;--a4:#fbbf24;--a5:#a78bfa;--ac:#5eead4;
+--gl:linear-gradient(90deg,#5eead4 0%,#60a5fa 28%,#a78bfa 55%,#f472b6 82%,#fbbf24 100%);
+--bs:rgba(255,255,255,0.07);--sh:0 20px 80px rgba(0,0,0,0.42);--r:20px;--cw:1120px}
+*{box-sizing:border-box;margin:0;padding:0}html{scroll-behavior:smooth}
+body{background:radial-gradient(circle at 18% 14%,rgba(94,234,212,.09),transparent 30%),radial-gradient(circle at 82% 22%,rgba(96,165,250,.05),transparent 28%),var(--bg);color:var(--t1);font-family:'Outfit',sans-serif;line-height:1.75;overflow-x:hidden;-webkit-font-smoothing:antialiased}
+.sp{position:fixed;top:0;left:0;height:3px;width:0%;z-index:1000;background:var(--gl);transition:width .12s linear}
+nav{position:fixed;top:3px;left:0;right:0;z-index:999;display:flex;align-items:center;justify-content:space-between;padding:.75rem 2rem;background:rgba(10,10,15,.88);backdrop-filter:blur(12px);border-bottom:1px solid var(--bs)}
+.nbr{font-family:'JetBrains Mono',monospace;font-size:.72rem;color:var(--ac);letter-spacing:.14em;text-transform:uppercase;text-decoration:none}
+.nm{font-size:.82rem;color:var(--tm)}.na{display:flex;gap:8px}
+.nb{display:inline-flex;align-items:center;gap:6px;padding:.4rem .9rem;border-radius:999px;border:1px solid var(--bs);background:rgba(255,255,255,.03);color:var(--t2);font-size:.8rem;text-decoration:none;transition:all .18s}
+.nb:hover{border-color:var(--ac);color:var(--ac)}
+.hero{min-height:100vh;display:flex;align-items:center;justify-content:center;padding:5rem 2rem 3rem;position:relative;overflow:hidden}
+.hg{position:absolute;inset:0;background-image:linear-gradient(rgba(255,255,255,.025) 1px,transparent 1px),linear-gradient(90deg,rgba(255,255,255,.025) 1px,transparent 1px);background-size:48px 48px;mask-image:radial-gradient(circle at center,black 30%,transparent 80%);pointer-events:none}
+.hero::before{content:"";position:absolute;inset:0;background:radial-gradient(ellipse 700px 350px at 20% 40%,rgba(94,234,212,.10),transparent),radial-gradient(ellipse 640px 360px at 80% 38%,rgba(96,165,250,.06),transparent);pointer-events:none}
+.hi{max-width:1000px;text-align:center;position:relative;z-index:1}
+.hl{display:inline-flex;align-items:center;gap:10px;padding:.55rem 1rem;border-radius:999px;border:1px solid rgba(94,234,212,.25);background:rgba(94,234,212,.08);color:var(--ac);letter-spacing:1.8px;text-transform:uppercase;font-size:.76rem;margin-bottom:1.7rem}
+.dot{width:7px;height:7px;border-radius:50%;background:var(--ac);animation:pulse 2s ease-in-out infinite}
+@keyframes pulse{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.3;transform:scale(.75)}}
+h1{font-size:clamp(2.4rem,5vw,4.4rem);line-height:1.04;letter-spacing:-.04em;font-weight:900;margin-bottom:1.3rem}
+.gt{background:var(--gl);-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent}
+.sub{font-size:.85rem;color:var(--tm);font-family:'JetBrains Mono',monospace;margin-bottom:.5rem}
+.hs{font-family:'Source Serif 4',serif;color:var(--t2);font-size:clamp(1rem,2vw,1.2rem);max-width:820px;margin:0 auto 2rem;line-height:1.8}
+.hm{display:flex;flex-wrap:wrap;justify-content:center;gap:12px;margin-bottom:2.5rem}
+.mp{border:1px solid var(--bs);background:rgba(17,17,26,.75);border-radius:999px;padding:.65rem 1.1rem;color:var(--t2);font-size:.88rem}
+.sc{position:absolute;bottom:2.6rem;left:50%;transform:translateX(-50%);color:var(--tm);display:flex;flex-direction:column;gap:.6rem;align-items:center;text-transform:uppercase;letter-spacing:.22em;font-size:.7rem}
+.sc .arr{width:18px;height:18px;border-right:2px solid var(--tm);border-bottom:2px solid var(--tm);transform:rotate(45deg);animation:ba 2s ease-in-out infinite}
+@keyframes ba{0%,100%{transform:rotate(45deg) translateY(0)}50%{transform:rotate(45deg) translateY(7px)}}
+.cw{max-width:var(--cw);margin:0 auto;padding:0 2rem 6rem}
+.sec{margin-bottom:5.5rem;opacity:0;transform:translateY(28px);transition:opacity .65s ease,transform .65s ease}
+.sec.vis{opacity:1;transform:translateY(0)}
+.sn{display:flex;align-items:center;gap:12px;color:var(--ac);font-family:'JetBrains Mono',monospace;font-size:.68rem;text-transform:uppercase;letter-spacing:.22em;margin-bottom:.9rem}
+.sn::after{content:"";height:1px;flex:1;background:linear-gradient(90deg,rgba(94,234,212,.7),transparent)}
+.sec h2{font-size:clamp(1.9rem,4vw,2.75rem);line-height:1.08;margin-bottom:1rem;letter-spacing:-.04em}
+.lead{font-family:'Source Serif 4',serif;font-size:1.08rem;color:var(--t2);margin-bottom:2rem;line-height:1.85}
+.card{background:linear-gradient(180deg,rgba(24,24,38,.96),rgba(17,17,28,.96));border:1px solid var(--bs);border-radius:var(--r);box-shadow:var(--sh);padding:1.8rem;margin-bottom:1.4rem}
+.cc{background:linear-gradient(180deg,rgba(11,11,22,.99),rgba(9,9,17,.99));border:1px solid var(--bs);border-radius:var(--r);box-shadow:var(--sh);padding:0;margin-bottom:1.4rem;overflow:hidden}
+.ch{display:flex;align-items:center;justify-content:space-between;padding:1rem 1.5rem;border-bottom:1px solid var(--bs)}
+.ch h3{font-size:.9rem;font-family:'JetBrains Mono',monospace;color:var(--ac)}
+.cpb{display:inline-flex;align-items:center;gap:5px;padding:.28rem .7rem;border-radius:999px;border:1px solid var(--bs);background:transparent;color:var(--tm);font-size:.72rem;cursor:pointer;transition:all .18s;font-family:'JetBrains Mono',monospace}
+.cpb:hover{border-color:var(--a1);color:var(--a1)}
+.cbody{padding:1.5rem;overflow-x:auto}
+pre{white-space:pre;color:#d8e3ff;font-family:'JetBrains Mono',monospace;font-size:.86rem;line-height:1.75}
+.kw{color:#a78bfa}.fn{color:#60a5fa}.str{color:#5eead4}.cm{color:#3d3d5a;font-style:italic}.nu{color:#fbbf24}.cl{color:#f472b6}
+.g2{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:1.3rem;margin-bottom:1.4rem}
+.g3{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:1.3rem;margin-bottom:1.4rem}
+.g4{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:1rem;margin-bottom:1.2rem}
+.mc2{border:1px solid var(--bs);border-radius:16px;padding:1.3rem;background:rgba(255,255,255,.02)}
+.mc2 h4{font-size:1rem;margin-bottom:.55rem;color:var(--t1)}.mc2 p{font-size:.9rem;color:var(--t2);line-height:1.65}
+.tbl{width:100%;border-collapse:collapse;font-size:.87rem}
+.tbl th{text-align:left;padding:.75rem 1rem;font-family:'JetBrains Mono',monospace;font-size:.65rem;text-transform:uppercase;color:var(--tm);border-bottom:1px solid var(--bs)}
+.tbl td{padding:.75rem 1rem;border-bottom:1px solid rgba(255,255,255,.04);color:var(--t2);vertical-align:top;line-height:1.65}
+.tbl td:first-child{color:var(--t1);font-weight:600}.tbl tr:last-child td{border-bottom:none}
+/* Architecture diagram container */
+.arch{background:rgba(10,10,18,.95);border:1px solid rgba(94,234,212,.2);border-radius:var(--r);padding:1.5rem;margin-bottom:1.4rem;overflow-x:auto;text-align:center}
+.arch-title{font-family:'JetBrains Mono',monospace;font-size:.7rem;text-transform:uppercase;letter-spacing:.18em;color:var(--ac);margin-bottom:1.2rem;text-align:left}
+/* Callout boxes */
+.callout{border-radius:14px;padding:1.1rem 1.3rem;margin-bottom:1rem;display:flex;gap:.9rem;align-items:flex-start}
+.callout-key{background:rgba(94,234,212,.06);border:1px solid rgba(94,234,212,.2)}
+.callout-warn{background:rgba(251,191,36,.06);border:1px solid rgba(251,191,36,.2)}
+.callout-insight{background:rgba(167,139,250,.06);border:1px solid rgba(167,139,250,.2)}
+.callout-code{background:rgba(96,165,250,.06);border:1px solid rgba(96,165,250,.2)}
+.callout-icon{font-size:1.3rem;flex-shrink:0;margin-top:.05rem}
+.callout-body h4{font-size:.95rem;margin-bottom:.3rem;color:var(--t1)}
+.callout-body p{font-size:.88rem;color:var(--t2);line-height:1.65}
+/* Enhanced quiz */
+.qc{background:linear-gradient(180deg,rgba(24,24,38,.96),rgba(17,17,28,.96));border:1px solid var(--bs);border-radius:var(--r);box-shadow:var(--sh);padding:2rem}
+.qc-title{font-size:1.1rem;font-weight:700;margin-bottom:.3rem;color:var(--t1)}
+.qc-sub{font-size:.85rem;color:var(--tm);margin-bottom:1.5rem;font-family:'JetBrains Mono',monospace}
+.qq{border:1px solid var(--bs);border-radius:16px;padding:1.5rem;background:rgba(255,255,255,.015);margin-bottom:1.2rem;transition:border-color .3s}
+.qq.answered{border-color:rgba(94,234,212,.3)}
+.qnum{font-family:'JetBrains Mono',monospace;font-size:.68rem;color:var(--ac);text-transform:uppercase;letter-spacing:.15em;margin-bottom:.5rem}
+.qq h4{font-size:1rem;margin-bottom:1.1rem;color:var(--t1);line-height:1.55;font-weight:600}
+.qo{display:grid;gap:.55rem}
+.qob{border:1px solid var(--bs);border-radius:11px;padding:.95rem 1.15rem;background:rgba(255,255,255,.02);color:var(--t2);cursor:pointer;transition:all .22s;text-align:left;font-size:.9rem;font-family:'Outfit',sans-serif;width:100%;line-height:1.55;position:relative;padding-left:3rem}
+.qob::before{content:attr(data-opt);position:absolute;left:.9rem;top:50%;transform:translateY(-50%);font-family:'JetBrains Mono',monospace;font-size:.75rem;font-weight:700;color:var(--tm);transition:color .2s}
+.qob:hover:not([disabled]){border-color:rgba(94,234,212,.5);background:rgba(94,234,212,.04);color:var(--t1)}
+.qob:hover:not([disabled])::before{color:var(--ac)}
+.qob.ok{border-color:rgba(94,234,212,.6);background:rgba(94,234,212,.09);color:var(--t1)}
+.qob.ok::before{color:#5eead4}
+.qob.no{border-color:rgba(244,114,182,.4);background:rgba(244,114,182,.07);color:var(--t2)}
+.qob.no::before{color:#f472b6}
+.qob[disabled]{cursor:default}
+.qfeed{margin-top:.9rem;border-radius:12px;padding:1rem 1.2rem;display:none;font-size:.88rem;line-height:1.65}
+.qfeed.correct{background:rgba(94,234,212,.06);border:1px solid rgba(94,234,212,.25)}
+.qfeed.wrong{background:rgba(244,114,182,.05);border:1px solid rgba(244,114,182,.2)}
+.qfeed-head{font-weight:700;margin-bottom:.3rem;font-size:.9rem}
+.qfeed.correct .qfeed-head{color:#5eead4}
+.qfeed.wrong .qfeed-head{color:#f472b6}
+.qfeed-why{color:var(--t2)}
+.qprog{display:flex;align-items:center;gap:1rem;margin-bottom:1.5rem}
+.qprog-bar{flex:1;height:6px;background:rgba(255,255,255,.06);border-radius:999px;overflow:hidden}
+.qprog-fill{height:100%;background:var(--gl);border-radius:999px;width:0%;transition:width .4s ease}
+.qprog-text{font-family:'JetBrains Mono',monospace;font-size:.72rem;color:var(--tm);white-space:nowrap}
+.qs{text-align:center;padding:1.5rem;border:1px solid var(--bs);border-radius:16px;margin-top:1.5rem}
+.qs h3{font-size:1.5rem;margin-bottom:.4rem}
+.qs p{color:var(--t2);font-size:.9rem}
+.pr,.nx{display:inline-flex;align-items:center;gap:7px;padding:.55rem 1.2rem;border-radius:999px;border:1px solid var(--bs);background:rgba(255,255,255,.03);color:var(--t2);font-size:.85rem;text-decoration:none;transition:all .2s}
+.pr:hover,.nx:hover{border-color:var(--ac);color:var(--ac)}
+footer{border-top:1px solid var(--bs);padding:3rem 2rem;text-align:center;color:var(--tm);font-size:.82rem}</style>
+</head>
+<body>
+<div class="sp" id="sp"></div>
+<nav>
+  <a class="nbr" href="#">DiT Track · M2</a>
+  <span class="nm">2D Position · CNN vs Patch Projection · Cross-Modal Attention · MLM+MIM · FUNSD · DocVQA</span>
+  <div class="na">
+    <a href="dit_m1.html" class="pr">← M1: Vision Transformers</a>
+    <a href="dit_m3.html" class="nx">M3: Donut →</a>
+  </div>
+</nav>
+<section class="hero">
+  <div class="hg"></div>
+  <div class="hi">
+    <div class="hl"><div class="dot"></div>Document Intelligence Transformers · Module 2</div>
+    <h1>LayoutLM<br><span class='gt'>Fusing Text, Layout, and Vision</span></h1>
+    <p class="sub">2D Position · CNN vs Patch Projection · Cross-Modal Attention · MLM+MIM · FUNSD · DocVQA</p>
+    <p class="hs">LayoutLM showed that adding 2D bounding box coordinates to BERT-style pretraining produced dramatically better document understanding — without a single pixel of image data. LayoutLMv2 added visual features from a CNN. LayoutLMv3 unified text and image into a single sequence with cross-modal attention. Each version solved a specific limitation of the previous one. Understanding the progression teaches you why each architectural decision was made and what it enables.</p>
+<div class="hm">
+<span class="mp">⏱ 65 min</span>
+<span class="mp">v1 → v2 → v3 progression</span>
+<span class="mp">2D bounding box encoding</span>
+<span class="mp">CNN vs linear patch projection</span>
+<span class="mp">Cross-modal attention</span>
+<span class="mp">MLM + MIM pretraining</span>
+<span class="mp">FUNSD · CORD · DocVQA</span>
+</div>
+  </div>
+  <div class="sc"><span>Scroll to explore</span><div class="arr"></div></div>
+</section>
+<div class="cw">
+
+<section class="sec" id="s1">
+<div class="sn">01 · The LayoutLM Progression</div>
+<h2>Three Versions, Three Architectural<br><span class="gt">Insights</span></h2>
+<p class="lead">LayoutLM (2020) proved that spatial layout is as important as text content for document understanding. LayoutLMv2 (2021) proved that image features provide additional signal beyond layout. LayoutLMv3 (2022) proved that cross-modal attention between text and image tokens within a unified transformer outperforms modality-specific encoding followed by fusion. Each version is a lesson in what the previous version was missing.</p>
+<div class="arch">
+<div class="arch-title">▸ LayoutLM progression — inputs added at each version</div>
+<svg viewBox="0 0 900 240" xmlns="http://www.w3.org/2000/svg" style="width:100%;max-width:900px">
+  <rect width="900" height="240" fill="#0a0a0f" rx="16"/>
+  <defs><marker id="la" markerWidth="8" markerHeight="6" refX="8" refY="3" orient="auto"><polygon points="0 0,8 3,0 6" fill="#ececf6"/></marker></defs>
+  <!-- v1 -->
+  <rect x="30" y="40" width="220" height="150" rx="12" fill="rgba(94,234,212,.05)" stroke="rgba(94,234,212,.3)" stroke-width="1.5"/>
+  <text x="140" y="66" font-family="JetBrains Mono" font-size="11" fill="#5eead4" text-anchor="middle" font-weight="bold">LayoutLM v1  (2020)</text>
+  <rect x="50" y="80" width="180" height="26" rx="6" fill="rgba(255,255,255,.04)" stroke="rgba(255,255,255,.1)" stroke-width="1"/>
+  <text x="140" y="97" font-family="JetBrains Mono" font-size="9" fill="#ececf6" text-anchor="middle">Text token embeddings</text>
+  <rect x="50" y="112" width="180" height="26" rx="6" fill="rgba(94,234,212,.1)" stroke="rgba(94,234,212,.3)" stroke-width="1"/>
+  <text x="140" y="129" font-family="JetBrains Mono" font-size="9" fill="#5eead4" text-anchor="middle">+ 2D position (x0,y0,x1,y1)</text>
+  <rect x="50" y="144" width="180" height="26" rx="6" fill="rgba(255,255,255,.04)" stroke="rgba(255,255,255,.1)" stroke-width="1"/>
+  <text x="140" y="161" font-family="JetBrains Mono" font-size="9" fill="#7c7c95" text-anchor="middle">❌ No image features</text>
+  <!-- v2 -->
+  <line x1="254" y1="115" x2="292" y2="115" stroke="#ececf6" stroke-width="1.5" marker-end="url(#la)"/>
+  <rect x="296" y="40" width="220" height="150" rx="12" fill="rgba(167,139,250,.05)" stroke="rgba(167,139,250,.3)" stroke-width="1.5"/>
+  <text x="406" y="66" font-family="JetBrains Mono" font-size="11" fill="#a78bfa" text-anchor="middle" font-weight="bold">LayoutLM v2  (2021)</text>
+  <rect x="316" y="80" width="180" height="26" rx="6" fill="rgba(255,255,255,.04)" stroke="rgba(255,255,255,.1)" stroke-width="1"/>
+  <text x="406" y="97" font-family="JetBrains Mono" font-size="9" fill="#ececf6" text-anchor="middle">Text token embeddings</text>
+  <rect x="316" y="112" width="180" height="26" rx="6" fill="rgba(167,139,250,.1)" stroke="rgba(167,139,250,.3)" stroke-width="1"/>
+  <text x="406" y="129" font-family="JetBrains Mono" font-size="9" fill="#a78bfa" text-anchor="middle">+ 2D position (x0,y0,x1,y1)</text>
+  <rect x="316" y="144" width="180" height="26" rx="6" fill="rgba(251,191,36,.08)" stroke="rgba(251,191,36,.3)" stroke-width="1"/>
+  <text x="406" y="161" font-family="JetBrains Mono" font-size="9" fill="#fbbf24" text-anchor="middle">+ CNN image features (ResNeXt)</text>
+  <!-- v3 -->
+  <line x1="520" y1="115" x2="558" y2="115" stroke="#ececf6" stroke-width="1.5" marker-end="url(#la)"/>
+  <rect x="562" y="40" width="306" height="150" rx="12" fill="rgba(96,165,250,.05)" stroke="rgba(96,165,250,.3)" stroke-width="1.5"/>
+  <text x="715" y="66" font-family="JetBrains Mono" font-size="11" fill="#60a5fa" text-anchor="middle" font-weight="bold">LayoutLMv3  (2022)</text>
+  <rect x="582" y="80" width="266" height="26" rx="6" fill="rgba(255,255,255,.04)" stroke="rgba(255,255,255,.1)" stroke-width="1"/>
+  <text x="715" y="97" font-family="JetBrains Mono" font-size="9" fill="#ececf6" text-anchor="middle">Text token embeddings</text>
+  <rect x="582" y="112" width="266" height="26" rx="6" fill="rgba(96,165,250,.1)" stroke="rgba(96,165,250,.3)" stroke-width="1"/>
+  <text x="715" y="129" font-family="JetBrains Mono" font-size="9" fill="#60a5fa" text-anchor="middle">+ 2D position (x0,y0,x1,y1,w,h) shared</text>
+  <rect x="582" y="144" width="266" height="26" rx="6" fill="rgba(244,114,182,.08)" stroke="rgba(244,114,182,.3)" stroke-width="1"/>
+  <text x="715" y="161" font-family="JetBrains Mono" font-size="9" fill="#f472b6" text-anchor="middle">+ Linear patch projection (ViT-style)</text>
+  <!-- Milestone labels bottom -->
+  <text x="140" y="205" font-family="JetBrains Mono" font-size="8" fill="#7c7c95" text-anchor="middle">Text + Layout only</text>
+  <text x="406" y="205" font-family="JetBrains Mono" font-size="8" fill="#7c7c95" text-anchor="middle">Text + Layout + CNN vision</text>
+  <text x="715" y="205" font-family="JetBrains Mono" font-size="8" fill="#7c7c95" text-anchor="middle">Unified text + layout + vision (no CNN)</text>
+</svg>
+</div>
+<div class="callout callout-key">
+  <div class="callout-icon">🔑</div>
+  <div class="callout-body">
+    <h4>Why layout alone beat expectations</h4>
+    <p>LayoutLMv1 achieved state-of-the-art on FUNSD with no image features. This revealed a key insight about structured documents: positional regularity is a strong prior. In an invoice, the total appears at the bottom-right. In a form, field labels appear left of their values. The 2D position embedding encodes these spatial regularities, allowing the model to learn position-conditional semantics — "what a token means depends on where it appears."</p>
+  </div>
+</div>
+</section>
+
+<section class="sec" id="s2">
+<div class="sn">02 · LayoutLMv3 — Unified Cross-Modal Architecture</div>
+<h2>Text Tokens and Image Patches in<br><span class="gt">a Single Sequence with Shared Position</span></h2>
+<p class="lead">LayoutLMv3's key innovation: text tokens and image patch tokens are concatenated into one sequence and processed by a single transformer. Both share the same 2D position embedding space — text tokens get the bbox of the OCR word, image patches get the bbox of their position on the page. This shared coordinate system enables the attention mechanism to learn spatial correspondences between text and visual content.</p>
+<div class="arch">
+<div class="arch-title">▸ LayoutLMv3 input construction — how three modalities fuse into one sequence</div>
+<svg viewBox="0 0 900 340" xmlns="http://www.w3.org/2000/svg" style="width:100%;max-width:900px">
+  <rect width="900" height="340" fill="#0a0a0f" rx="16"/>
+  <defs><marker id="ia" markerWidth="8" markerHeight="6" refX="8" refY="3" orient="auto"><polygon points="0 0,8 3,0 6" fill="#60a5fa"/></marker></defs>
+  <text x="450" y="26" font-family="JetBrains Mono" font-size="11" fill="#60a5fa" text-anchor="middle" letter-spacing="1">LayoutLMv3 INPUT CONSTRUCTION</text>
+  <!-- TEXT TOKENS -->
+  <text x="100" y="58" font-family="JetBrains Mono" font-size="9" fill="#5eead4" text-anchor="middle" letter-spacing="1">TEXT TOKENS</text>
+  <rect x="30" y="66" width="140" height="80" rx="10" fill="rgba(94,234,212,.06)" stroke="rgba(94,234,212,.3)" stroke-width="1.5"/>
+  <text x="100" y="88" font-family="JetBrains Mono" font-size="8" fill="#7c7c95" text-anchor="middle">OCR word tokens</text>
+  <text x="100" y="104" font-family="JetBrains Mono" font-size="8" fill="#5eead4" text-anchor="middle">"Invoice" "Date" "15"</text>
+  <text x="100" y="120" font-family="JetBrains Mono" font-size="8" fill="#7c7c95" text-anchor="middle">tokenised → IDs</text>
+  <text x="100" y="136" font-family="JetBrains Mono" font-size="8" fill="#7c7c95" text-anchor="middle">max 512 tokens</text>
+  <!-- IMAGE PATCHES -->
+  <text x="450" y="58" font-family="JetBrains Mono" font-size="9" fill="#f472b6" text-anchor="middle" letter-spacing="1">IMAGE PATCHES</text>
+  <rect x="376" y="66" width="148" height="80" rx="10" fill="rgba(244,114,182,.06)" stroke="rgba(244,114,182,.3)" stroke-width="1.5"/>
+  <text x="450" y="88" font-family="JetBrains Mono" font-size="8" fill="#7c7c95" text-anchor="middle">224×224 document image</text>
+  <text x="450" y="104" font-family="JetBrains Mono" font-size="8" fill="#f472b6" text-anchor="middle">→ 16×16 patches</text>
+  <text x="450" y="120" font-family="JetBrains Mono" font-size="8" fill="#7c7c95" text-anchor="middle">→ 196 patch tokens</text>
+  <text x="450" y="136" font-family="JetBrains Mono" font-size="8" fill="#7c7c95" text-anchor="middle">linear proj → 768</text>
+  <!-- 2D LAYOUT -->
+  <text x="780" y="58" font-family="JetBrains Mono" font-size="9" fill="#a78bfa" text-anchor="middle" letter-spacing="1">2D POSITION</text>
+  <rect x="706" y="66" width="148" height="80" rx="10" fill="rgba(167,139,250,.06)" stroke="rgba(167,139,250,.3)" stroke-width="1.5"/>
+  <text x="780" y="88" font-family="JetBrains Mono" font-size="8" fill="#7c7c95" text-anchor="middle">Bounding box per token</text>
+  <text x="780" y="104" font-family="JetBrains Mono" font-size="8" fill="#a78bfa" text-anchor="middle">(x0,y0,x1,y1,w,h)</text>
+  <text x="780" y="120" font-family="JetBrains Mono" font-size="8" fill="#7c7c95" text-anchor="middle">shared text+image</text>
+  <text x="780" y="136" font-family="JetBrains Mono" font-size="8" fill="#7c7c95" text-anchor="middle">normalised 0-1000</text>
+  <!-- Arrows down to concat -->
+  <line x1="100" y1="150" x2="100" y2="186" stroke="#5eead4" stroke-width="1.5" marker-end="url(#ia)"/>
+  <line x1="450" y1="150" x2="450" y2="186" stroke="#f472b6" stroke-width="1.5" marker-end="url(#ia)"/>
+  <line x1="780" y1="150" x2="780" y2="186" stroke="#a78bfa" stroke-width="1.5" marker-end="url(#ia)"/>
+  <!-- Concat / fuse -->
+  <rect x="50" y="190" width="800" height="50" rx="10" fill="rgba(96,165,250,.08)" stroke="rgba(96,165,250,.4)" stroke-width="1.5"/>
+  <text x="450" y="212" font-family="JetBrains Mono" font-size="10" fill="#60a5fa" text-anchor="middle" font-weight="bold">CONCATENATED INPUT SEQUENCE</text>
+  <text x="450" y="228" font-family="JetBrains Mono" font-size="9" fill="#7c7c95" text-anchor="middle">[CLS] text_tokens... [SEP] patch_tokens... [SEP]  —  both modalities share 2D position embeddings</text>
+  <!-- Transformer -->
+  <line x1="450" y1="244" x2="450" y2="268" stroke="#ececf6" stroke-width="1.5" marker-end="url(#ia)"/>
+  <rect x="200" y="272" width="500" height="50" rx="10" fill="rgba(167,139,250,.08)" stroke="rgba(167,139,250,.4)" stroke-width="1.5"/>
+  <text x="450" y="294" font-family="JetBrains Mono" font-size="10" fill="#a78bfa" text-anchor="middle" font-weight="bold">LayoutLMv3 Transformer Encoder</text>
+  <text x="450" y="310" font-family="JetBrains Mono" font-size="9" fill="#7c7c95" text-anchor="middle">cross-modal attention · text tokens attend to image patches · shared positional grounding</text>
+</svg>
+</div>
+<div class="g2">
+<div class="mc2">
+  <h4 style="color:var(--a3)">Why replace CNN with linear projection?</h4>
+  <p>ResNeXt-101 in LayoutLMv2 produces a feature map that is fused with text features through concatenation. The two modalities interact only through the final fusion step — they are encoded separately. With ViT-style patch tokens, text and image tokens exist in the same sequence and attend to each other in every layer. A text token for "Invoice" can query image patches in the same row to see what the printed header looks like. This deep cross-modal interaction is not possible with CNN fusion.</p>
+</div>
+<div class="mc2">
+  <h4 style="color:var(--a2)">Shared 2D position embeddings</h4>
+  <p>Both text tokens and image patch tokens receive 2D bounding box embeddings. A text token for "15 March" gets the bbox of that text on the page. The image patch covering the same area gets a matching bbox. When these two tokens attend to each other, the shared position embedding creates a spatial "anchor" — the attention between them is boosted by their spatial alignment, helping the model learn that the text and the visual rendering of "15 March" are the same entity.</p>
+</div>
+</div>
+</section>
+
+<section class="sec" id="s3">
+<div class="sn">03 · Pretraining Objectives and Benchmarks</div>
+<h2>MLM + MIM — Training Both<br><span class="gt">Modalities to Learn</span></h2>
+<div class="card" style="padding:0;overflow:hidden">
+<table class="tbl">
+<thead><tr><th>Benchmark</th><th>Task</th><th>LayoutLMv1</th><th>LayoutLMv2</th><th>LayoutLMv3</th></tr></thead>
+<tbody>
+<tr><td><strong style="color:var(--a1)">FUNSD</strong></td><td>Form NER (F1)</td><td>79.3</td><td>82.8</td><td>92.1</td></tr>
+<tr><td><strong style="color:var(--a2)">CORD</strong></td><td>Receipt extraction (F1)</td><td>94.9</td><td>95.0</td><td>96.6</td></tr>
+<tr><td><strong style="color:var(--a5)">DocVQA</strong></td><td>Document VQA (ANLS)</td><td>—</td><td>86.7</td><td>83.4*</td></tr>
+<tr><td><strong style="color:var(--a4)">RVL-CDIP</strong></td><td>Doc classification (Acc)</td><td>94.4</td><td>95.3</td><td>95.5</td></tr>
+</tbody>
+</table>
+</div>
+<div class="callout callout-warn">
+  <div class="callout-icon">⚠️</div>
+  <div class="callout-body">
+    <h4>ANLS — why F1 is wrong for DocVQA</h4>
+    <p>DocVQA answers are strings that may differ slightly from ground truth due to OCR errors or normalisation. F1 would penalise "£1,234.56" vs "£1234.56" as wrong despite being equivalent. ANLS (Average Normalised Levenshtein Similarity) measures edit distance — it rewards near-correct answers proportionally rather than treating them as binary correct/wrong. For document extraction evaluation where OCR introduces character-level noise, ANLS is always preferred over exact match or F1.</p>
+  </div>
+</div>
+</section>
+
+<section class="sec" id="s4">
+<div class="sn">04 · Assessment</div>
+<h2>Module 2 <span class="gt">Quiz</span></h2>
+<div class="qc">
+<div class="qc-title">Module 2 Assessment</div>
+<div class="qc-sub">5 questions · LayoutLM architecture · cross-modal attention · pretraining objectives</div>
+<div class="qprog"><div class="qprog-bar"><div class="qprog-fill"></div></div><div class="qprog-text">0/5 answered</div></div>
+<div class="qq">
+<div class="qnum">Question 1 of 5</div>
+<h4>LayoutLMv1 achieved strong results on FUNSD form understanding despite having no image features — only text tokens and 2D bounding box positions. What does this reveal about the relative importance of layout vs visual appearance for structured document understanding?</h4>
+<div class="qo"><button class="qob" data-opt="A" data-correct="true" onclick="cq(this,0,true)">Spatial layout encodes most of the discriminative information for structured documents. In forms and invoices, what matters most is where tokens appear on the page — a token in the top-right corner is likely a date, a token in the right-aligned final row is likely a total. Text + 2D position provides enough signal to classify and extract fields accurately without any visual rendering information.</button>
+<button class="qob" data-opt="B" data-correct="false" onclick="cq(this,0,false)">LayoutLMv1's strong performance was a benchmark artifact — FUNSD is too easy, and more realistic benchmarks require image features.</button>
+<button class="qob" data-opt="C" data-correct="false" onclick="cq(this,0,false)">Text features alone are sufficient — the 2D bounding boxes in LayoutLMv1 provided only marginal improvement over a BERT baseline without positional information.</button>
+<button class="qob" data-opt="D" data-correct="false" onclick="cq(this,0,false)">LayoutLMv1 secretly used image features through its tokeniser — the visual appearance of characters is implicitly encoded in token IDs.</button>
+</div>
+<div class="qfeed">
+  <div class="qfeed-head"></div>
+  <div class="qfeed-why">Correct. LayoutLMv1 demonstrated that spatial layout is the dominant signal for structured document understanding. A token's position on the page carries strong semantic information: headers appear in the top third, dates appear in specific form fields, totals appear in right-aligned bottom rows. This spatial regularity is the structural prior that layout-aware models exploit. Image features (added in v2 and v3) provide additional signal for visually complex documents (stamps, signatures, logos) but are less critical than layout for clean structured forms.</div>
+</div>
+</div>
+<div class="qq">
+<div class="qnum">Question 2 of 5</div>
+<h4>LayoutLMv2 uses a ResNeXt-101 CNN to extract visual features from document images. LayoutLMv3 replaces the CNN with a linear projection of image patches (ViT-style). Why did this architectural change improve performance?</h4>
+<div class="qo"><button class="qob" data-opt="A" data-correct="false" onclick="cq(this,1,false)">The ViT-style linear projection is computationally cheaper than ResNeXt-101, freeing GPU memory for larger batch sizes which improves generalisation.</button>
+<button class="qob" data-opt="B" data-correct="false" onclick="cq(this,1,false)">ResNeXt-101 was designed for natural image classification and applies fixed convolutional filters that are not optimal for document textures. The linear projection makes no assumptions about local structure.</button>
+<button class="qob" data-opt="C" data-correct="true" onclick="cq(this,1,true)">The linear patch projection enables cross-modal attention between text tokens and image patch tokens within the same transformer, using shared 2D position embeddings. A CNN produces a fixed feature map that is fused with text features only through addition or concatenation — the two modalities cannot directly attend to each other. With ViT-style patch tokens, a text token for 'Invoice Date' can attend directly to the image patch covering the date field, learning the visual appearance of date values in context. This unified architecture enables deeper text-image grounding than the CNN approach.</button>
+<button class="qob" data-opt="D" data-correct="false" onclick="cq(this,1,false)">ViT-style patch projection produces higher-resolution visual features than ResNeXt-101 at the same parameter count, preserving fine-grained visual details needed for reading small text in document images.</button>
+</div>
+<div class="qfeed">
+  <div class="qfeed-head"></div>
+  <div class="qfeed-why">Correct. The architectural reason is cross-modal attention. With CNN features, text and image are separate streams that are combined through feature-level fusion (addition or concatenation) after encoding — the two modalities never directly interact within the attention mechanism. With ViT-style patch tokens, text tokens and image patch tokens are concatenated into a single sequence and attend to each other within the transformer. Shared 2D position embeddings mean both modalities share a common spatial coordinate system. This allows text token representations to be directly shaped by the visual appearance of the corresponding image region.</div>
+</div>
+</div>
+<div class="qq">
+<div class="qnum">Question 3 of 5</div>
+<h4>You are using LayoutLMv3 for named entity recognition on FUNSD forms. The model is fine-tuned with IOB2 token labelling. A word token 'Amount' with bbox (0.45, 0.82, 0.56, 0.87) should be labelled B-KEY. What information does the model use to make this prediction, and which modality is most important?</h4>
+<div class="qo"><button class="qob" data-opt="A" data-correct="false" onclick="cq(this,2,false)">The model uses only the text token embedding for 'Amount' — the word itself is semantically associated with key fields in form understanding.</button>
+<button class="qob" data-opt="B" data-correct="true" onclick="cq(this,2,true)">The model uses text semantics, 2D position, and the image patch covering bbox (0.45-0.56, 0.82-0.87). For the word 'Amount', all three are important but in different ways: text semantics identifies it as a financial label word; 2D position (x=0.45-0.56, y=0.82-0.87) places it in the middle-bottom of the form — a position consistent with summary fields; the image patch shows whether it appears bold, underlined, or in a special cell. The most important modality for this specific prediction is 2D position — 'Amount' appearing at y=0.82 (near the bottom) is much more likely to be a key field label than 'Amount' appearing at y=0.1 (near the top, where it would more likely be a column header).</button>
+<button class="qob" data-opt="C" data-correct="false" onclick="cq(this,2,false)">The model primarily uses the image patch because neural networks learn visual features more reliably than text semantics for fine-grained token classification.</button>
+<button class="qob" data-opt="D" data-correct="false" onclick="cq(this,2,false)">The model uses only the 2D position — NER in structured forms is a spatial classification problem and text content is irrelevant to field type prediction.</button>
+</div>
+<div class="qfeed">
+  <div class="qfeed-head"></div>
+  <div class="qfeed-why">Correct. All three modalities contribute but with different weights depending on context. For 'Amount' as a key field label, 2D position is typically the dominant signal — its vertical position distinguishes it from a column header and horizontal position distinguishes it from a value field. Text semantics provides strong prior evidence. Image features confirm visual formatting (bold label text vs. regular body text). The power of LayoutLMv3 is that cross-modal attention learns these relative modality weights from labelled examples rather than requiring manual feature engineering.</div>
+</div>
+</div>
+<div class="qq">
+<div class="qnum">Question 4 of 5</div>
+<h4>Fine-tuning LayoutLMv3 on DocVQA (document visual question answering) requires the model to answer questions like 'What is the total amount on this invoice?' given the document image and OCR text. The answer must be extracted as a text span from the document. Why is this task harder than standard NER and what architectural property of LayoutLMv3 makes it suitable?</h4>
+<div class="qo"><button class="qob" data-opt="A" data-correct="false" onclick="cq(this,3,false)">DocVQA is harder than NER because answers can be multiple words long. LayoutLMv3 handles this with a sliding window approach that processes multi-word spans.</button>
+<button class="qob" data-opt="B" data-correct="false" onclick="cq(this,3,false)">DocVQA is harder because the question is an additional input that must be fused with the document representation. LayoutLMv3 handles this by prepending the question tokens before the document tokens in the input sequence, allowing the question to attend to all document tokens and guide the model toward the relevant answer span. The task is harder than NER because: (1) the relevant span location varies per question — there is no fixed positional prior; (2) the model must understand the question semantics to select the correct span among many plausible answer candidates; (3) distractor spans that look like answers (e.g. multiple monetary amounts) require cross-document reasoning to disambiguate. LayoutLMv3's cross-modal attention allows question tokens to attend to both text content and image patches — for 'total amount', attending to right-aligned, bottom-row image patches with large font provides visual confirmation of the answer span.</button>
+<button class="qob" data-opt="C" data-correct="false" onclick="cq(this,3,false)">DocVQA is harder because answers span multiple pages. LayoutLMv3 uses hierarchical encoding to handle multi-page documents.</button>
+<button class="qob" data-opt="D" data-correct="true" onclick="cq(this,3,true)">DocVQA is no harder than NER — both are span extraction tasks. The difference is only that NER uses fixed label categories while DocVQA uses natural language questions.</button>
+</div>
+<div class="qfeed">
+  <div class="qfeed-head"></div>
+  <div class="qfeed-why">Correct. The critical mechanism is question-document cross-attention. By concatenating the question before the document, question tokens can attend to every document token and patch, and document tokens can attend back to the question. This bidirectional attention allows the question semantics to guide which document regions are relevant. LayoutLMv3's multi-modal cross-attention adds image patch attention on top of text cross-attention — for questions about visual attributes ('What colour is the header?') or visual layout ('What is in the bottom-right corner?'), image patch attention is essential.</div>
+</div>
+</div>
+<div class="qq">
+<div class="qnum">Question 5 of 5</div>
+<h4>LayoutLMv3 is pretrained with two objectives: Masked Language Modelling (MLM) on text tokens and Masked Image Modelling (MIM) on image patches. Why are both objectives necessary — why isn't MLM alone sufficient?</h4>
+<div class="qo"><button class="qob" data-opt="A" data-correct="false" onclick="cq(this,4,false)">MIM prevents overfitting during pretraining — without image masking, the model memorises document images rather than learning transferable representations.</button>
+<button class="qob" data-opt="B" data-correct="true" onclick="cq(this,4,true)">Both objectives are necessary because LayoutLMv3 must develop representations for two distinct modalities that are fused at inference time. MLM trains the text encoder to predict masked words from context — it develops semantic understanding of token co-occurrence and layout relationships. MIM trains the visual encoder to reconstruct masked image patches from surrounding patches — it develops understanding of visual document patterns (what a table cell looks like, what a signature region looks like). Without MIM, the image patch encoder would receive no gradient signal from the pretraining objective and would not develop useful visual representations. The two objectives together ensure that both modalities are meaningfully pretrained before fine-tuning, so the cross-modal attention between text and image tokens operates on rich representations from both sides.</button>
+<button class="qob" data-opt="C" data-correct="false" onclick="cq(this,4,false)">MLM alone is sufficient for text-dominant documents like forms. MIM is only needed for image-dominant documents like scanned photographs.</button>
+<button class="qob" data-opt="D" data-correct="false" onclick="cq(this,4,false)">MIM is necessary because MLM cannot handle the CLS token, which is used for document-level classification tasks. MIM provides the gradient signal needed to train CLS representations.</button>
+</div>
+<div class="qfeed">
+  <div class="qfeed-head"></div>
+  <div class="qfeed-why">Correct. Both pretraining objectives are necessary to ensure both modalities develop useful representations. MLM creates gradient signal for the text pathway; MIM creates gradient signal for the image pathway. Without MIM, the visual encoder receives no training signal from pretraining and would contribute only noise to the cross-modal attention. The complementary objectives also align the two representation spaces: masked tokens in one modality can be predicted from unmasked tokens in both modalities, forcing the model to learn meaningful cross-modal associations during pretraining rather than relying entirely on fine-tuning to build text-image alignment.</div>
+</div>
+</div>
+<div class="qs" id="qs" style="display:none">
+  <h3 id="sc">0/5</h3>
+  <p id="sm"></p>
+</div>
+</div>
+</section>
+</div>
+<footer>
+  <div style="max-width:var(--cw);margin:0 auto;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:1rem">
+    <div style="display:flex;gap:1rem"><a href="dit_m1.html" class="pr">← M1: Vision Transformers</a><a href="dit_m3.html" class="nx">M3: Donut →</a></div>
+    <span>DiT Track · M2 · LayoutLM — Fusing Text, Layout, and Vision</span>
+  </div>
+</footer>
+<script>
+window.addEventListener("scroll",function(){
+    var h=document.documentElement;
+    document.getElementById("sp").style.width=((h.scrollTop/(h.scrollHeight-h.clientHeight))*100)+"%";
+});
+var obs=new IntersectionObserver(function(e){e.forEach(function(x){if(x.isIntersecting)x.target.classList.add("vis");});},{threshold:0.07});
+document.querySelectorAll(".sec").forEach(function(s){obs.observe(s);});
+function cp(btn,id){navigator.clipboard.writeText(document.getElementById(id).innerText).then(function(){btn.textContent="Copied!";setTimeout(function(){btn.textContent="Copy";},2000);});}
+// Enhanced quiz engine
+var qstate={};
+var qtotal=document.querySelectorAll(".qq").length;
+function updateProgress(){
+    var done=Object.keys(qstate).length;
+    var pct=Math.round(done/qtotal*100);
+    var fill=document.querySelector(".qprog-fill");
+    var txt=document.querySelector(".qprog-text");
+    if(fill)fill.style.width=pct+"%";
+    if(txt)txt.textContent=done+"/"+qtotal+" answered";
+    if(done===qtotal)showFinal();
+}
+function showFinal(){
+    var correct=Object.values(qstate).filter(function(v){return v;}).length;
+    var sc=document.getElementById("sc");
+    var sm=document.getElementById("sm");
+    if(sc)sc.textContent=correct+"/"+qtotal+" correct";
+    if(sm){
+        var msgs=["Score: 1/5 — revisit why spatial layout alone provides strong signals for structured document understanding.","Score: 2/5 — review why linear patch projection enables cross-modal attention while CNN fusion does not.","Score: 3/5 — good grasp of the architecture. Re-read how all three modalities contribute to NER predictions.","Score: 4/5 — strong. Review why both MLM and MIM pretraining objectives are necessary.","Score: 5/5 — excellent understanding of the LayoutLM progression and cross-modal architecture."][c];
+        sm.textContent=msgs[Math.min(correct,msgs.length-1)];
+    }
+    var qs=document.getElementById("qs");
+    if(qs)qs.style.display="block";
+}
+function cq(btn,qi,isCorrect){
+    if(qstate[qi]!==undefined)return;
+    qstate[qi]=isCorrect;
+    var qq=btn.closest(".qq");
+    qq.classList.add("answered");
+    var allBtns=qq.querySelectorAll(".qob");
+    allBtns.forEach(function(b){
+        b.setAttribute("disabled","");
+        var bCorrect=b.getAttribute("data-correct")==="true";
+        if(bCorrect)b.classList.add("ok");
+        else if(b===btn&&!isCorrect)b.classList.add("no");
+    });
+    var feed=qq.querySelector(".qfeed");
+    if(feed){
+        feed.style.display="block";
+        feed.className="qfeed "+(isCorrect?"correct":"wrong");
+    }
+    updateProgress();
+}</script>
+</body></html>

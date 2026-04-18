@@ -1,0 +1,680 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>MFP Algorithms Track · M3 — Ranking, Deduplication, and Output Assembly</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;700&family=Source+Serif+4:ital,opsz,wght@0,8..60,400;0,8..60,600;1,8..60,400&display=swap" rel="stylesheet">
+<style>:root{--bg:#08080e;--t1:#ececf6;--t2:#b5b5c8;--tm:#6b6b85;
+--a1:#5eead4;--a2:#60a5fa;--a3:#f472b6;--a4:#fbbf24;--a5:#a78bfa;--ac:#f472b6;
+--gl:linear-gradient(90deg,#5eead4 0%,#60a5fa 28%,#a78bfa 55%,#f472b6 82%,#fbbf24 100%);
+--bs:rgba(255,255,255,0.06);--sh:0 24px 80px rgba(0,0,0,0.5);--r:18px;--cw:1160px}
+*{box-sizing:border-box;margin:0;padding:0}html{scroll-behavior:smooth}
+body{background:radial-gradient(ellipse 900px 500px at 15% 10%,rgba(244,114,182,.08),transparent 50%),radial-gradient(ellipse 700px 400px at 85% 20%,rgba(96,165,250,.05),transparent 40%),var(--bg);color:var(--t1);font-family:'Outfit',sans-serif;line-height:1.75;overflow-x:hidden;-webkit-font-smoothing:antialiased}
+/* Progress bar */
+.sp{position:fixed;top:0;left:0;height:3px;width:0%;z-index:1000;background:var(--gl);transition:width .1s linear}
+/* Nav */
+nav{position:fixed;top:3px;left:0;right:0;z-index:999;display:flex;align-items:center;justify-content:space-between;padding:.7rem 2rem;background:rgba(8,8,14,.9);backdrop-filter:blur(16px);border-bottom:1px solid var(--bs)}
+.nbr{font-family:'JetBrains Mono',monospace;font-size:.7rem;color:var(--ac);letter-spacing:.16em;text-transform:uppercase;text-decoration:none;display:flex;align-items:center;gap:8px}
+.nbr-dot{width:6px;height:6px;border-radius:50%;background:var(--ac);animation:pulse 2s ease-in-out infinite}
+.nm{font-size:.8rem;color:var(--tm);max-width:400px;text-overflow:ellipsis;overflow:hidden;white-space:nowrap}
+.na{display:flex;gap:8px}
+.nb{display:inline-flex;align-items:center;gap:6px;padding:.38rem .85rem;border-radius:999px;border:1px solid var(--bs);background:rgba(255,255,255,.02);color:var(--t2);font-size:.78rem;text-decoration:none;transition:all .18s}
+.nb:hover{border-color:var(--ac);color:var(--ac)}
+/* Hero */
+.hero{min-height:100vh;display:flex;align-items:center;justify-content:center;padding:5rem 2rem 3rem;position:relative;overflow:hidden}
+.hg{position:absolute;inset:0;background-image:linear-gradient(rgba(255,255,255,.018) 1px,transparent 1px),linear-gradient(90deg,rgba(255,255,255,.018) 1px,transparent 1px);background-size:52px 52px;mask-image:radial-gradient(circle at center,black 20%,transparent 75%);pointer-events:none}
+.hi{max-width:1000px;text-align:center;position:relative;z-index:1}
+.hl{display:inline-flex;align-items:center;gap:10px;padding:.5rem 1rem;border-radius:999px;border:1px solid rgba(244,114,182,.28);background:rgba(244,114,182,.07);color:var(--ac);letter-spacing:1.8px;text-transform:uppercase;font-size:.74rem;margin-bottom:1.8rem}
+h1{font-size:clamp(2.6rem,5.5vw,5rem);line-height:1.02;letter-spacing:-.05em;font-weight:900;margin-bottom:1.2rem}
+.gt{background:var(--gl);-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent}
+.sub{font-size:.82rem;color:var(--tm);font-family:'JetBrains Mono',monospace;margin-bottom:.6rem;letter-spacing:.04em}
+.hs{font-family:'Source Serif 4',serif;color:var(--t2);font-size:clamp(1rem,1.8vw,1.18rem);max-width:800px;margin:0 auto 2.2rem;line-height:1.85}
+.hm{display:flex;flex-wrap:wrap;justify-content:center;gap:10px;margin-bottom:2.5rem}
+.mp{border:1px solid var(--bs);background:rgba(17,17,28,.8);border-radius:999px;padding:.6rem 1.1rem;color:var(--t2);font-size:.86rem}
+.mp.hl2{border-color:rgba(244,114,182,.3);color:var(--ac);background:rgba(244,114,182,.06)}
+.sc{position:absolute;bottom:2.4rem;left:50%;transform:translateX(-50%);color:var(--tm);display:flex;flex-direction:column;gap:.5rem;align-items:center;text-transform:uppercase;letter-spacing:.22em;font-size:.68rem}
+.arr{width:17px;height:17px;border-right:2px solid var(--tm);border-bottom:2px solid var(--tm);transform:rotate(45deg);animation:ba 2s ease-in-out infinite}
+@keyframes pulse{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.25;transform:scale(.7)}}
+@keyframes ba{0%,100%{transform:rotate(45deg) translateY(0)}50%{transform:rotate(45deg) translateY(8px)}}
+/* Content */
+.cw{max-width:var(--cw);margin:0 auto;padding:0 2rem 7rem}
+.sec{margin-bottom:6rem;opacity:0;transform:translateY(32px);transition:opacity .6s ease,transform .6s ease}
+.sec.vis{opacity:1;transform:translateY(0)}
+.sn{display:flex;align-items:center;gap:14px;color:var(--ac);font-family:'JetBrains Mono',monospace;font-size:.67rem;text-transform:uppercase;letter-spacing:.24em;margin-bottom:1rem}
+.sn::after{content:"";height:1px;flex:1;background:linear-gradient(90deg,rgba(244,114,182,.6),transparent)}
+.sec h2{font-size:clamp(2rem,4vw,3rem);line-height:1.06;margin-bottom:1.1rem;letter-spacing:-.04em}
+.lead{font-family:'Source Serif 4',serif;font-size:1.1rem;color:var(--t2);margin-bottom:2.2rem;line-height:1.88;max-width:860px}
+/* Cards */
+.card{background:linear-gradient(160deg,rgba(20,20,36,.98),rgba(14,14,26,.98));border:1px solid var(--bs);border-radius:var(--r);box-shadow:var(--sh);padding:2rem;margin-bottom:1.6rem}
+.card-accent{border-color:rgba(244,114,182,.25);background:linear-gradient(160deg,rgba(244,114,182,.04),rgba(14,14,26,.98))}
+/* Code blocks */
+.cc{background:linear-gradient(180deg,rgba(10,10,20,.99),rgba(8,8,16,.99));border:1px solid var(--bs);border-radius:var(--r);box-shadow:var(--sh);padding:0;margin-bottom:1.6rem;overflow:hidden}
+.ch{display:flex;align-items:center;justify-content:space-between;padding:1rem 1.6rem;border-bottom:1px solid var(--bs);background:rgba(255,255,255,.015)}
+.ch h3{font-size:.88rem;font-family:'JetBrains Mono',monospace;color:var(--ac);display:flex;align-items:center;gap:8px}
+.ch h3::before{content:"⟩";opacity:.5}
+.cpb{display:inline-flex;align-items:center;gap:5px;padding:.26rem .7rem;border-radius:999px;border:1px solid var(--bs);background:transparent;color:var(--tm);font-size:.7rem;cursor:pointer;transition:all .18s;font-family:'JetBrains Mono',monospace}
+.cpb:hover{border-color:var(--a1);color:var(--a1)}
+.cbody{padding:1.6rem;overflow-x:auto}
+pre{white-space:pre;color:#d8e3ff;font-family:'JetBrains Mono',monospace;font-size:.84rem;line-height:1.78;tab-size:4}
+.kw{color:#c084fc}.fn{color:#60a5fa}.str{color:#5eead4}.cm{color:#3d4060;font-style:italic}.nu{color:#fbbf24}.cl{color:#f472b6}.de{color:#fb923c}.op{color:#94a3b8}
+/* Architecture containers */
+.arch{background:rgba(8,8,18,.96);border:1px solid rgba(244,114,182,.18);border-radius:var(--r);padding:1.8rem;margin-bottom:1.6rem;overflow-x:auto;text-align:center}
+.arch-title{font-family:'JetBrains Mono',monospace;font-size:.68rem;text-transform:uppercase;letter-spacing:.2em;color:var(--ac);margin-bottom:1.4rem;text-align:left;display:flex;align-items:center;gap:8px}
+.arch-title::before{content:"▸";opacity:.7}
+/* Callouts */
+.callout{border-radius:14px;padding:1.2rem 1.4rem;margin-bottom:1.2rem;display:flex;gap:1rem;align-items:flex-start}
+.callout-key{background:rgba(94,234,212,.05);border:1px solid rgba(94,234,212,.22)}
+.callout-warn{background:rgba(251,191,36,.05);border:1px solid rgba(251,191,36,.22)}
+.callout-insight{background:rgba(167,139,250,.05);border:1px solid rgba(167,139,250,.22)}
+.callout-scenario{background:rgba(96,165,250,.05);border:1px solid rgba(96,165,250,.22)}
+.callout-danger{background:rgba(244,114,182,.05);border:1px solid rgba(244,114,182,.22)}
+.callout-icon{font-size:1.35rem;flex-shrink:0;margin-top:.08rem}
+.callout-body h4{font-size:.96rem;margin-bottom:.35rem;color:var(--t1);font-weight:700}
+.callout-body p{font-size:.88rem;color:var(--t2);line-height:1.68}
+.callout-body code{font-family:'JetBrains Mono',monospace;font-size:.82rem;background:rgba(255,255,255,.06);padding:.1rem .3rem;border-radius:4px;color:var(--ac)}
+/* Grids */
+.g2{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:1.4rem;margin-bottom:1.6rem}
+.g3{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:1.2rem;margin-bottom:1.6rem}
+.g4{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:1rem;margin-bottom:1.4rem}
+@media(max-width:768px){.g2,.g3,.g4{grid-template-columns:1fr}}
+.mc2{border:1px solid var(--bs);border-radius:16px;padding:1.4rem;background:rgba(255,255,255,.02);transition:border-color .2s}
+.mc2:hover{border-color:rgba(244,114,182,.3)}
+.mc2 h4{font-size:1rem;margin-bottom:.6rem;color:var(--t1);font-weight:700}
+.mc2 p{font-size:.88rem;color:var(--t2);line-height:1.68}
+.mc2 .tag{display:inline-block;font-family:'JetBrains Mono',monospace;font-size:.68rem;padding:.2rem .55rem;border-radius:999px;margin-bottom:.6rem;text-transform:uppercase;letter-spacing:.1em}
+/* Tables */
+.tbl{width:100%;border-collapse:collapse;font-size:.86rem}
+.tbl th{text-align:left;padding:.8rem 1.1rem;font-family:'JetBrains Mono',monospace;font-size:.64rem;text-transform:uppercase;color:var(--tm);border-bottom:1px solid var(--bs);letter-spacing:.08em}
+.tbl td{padding:.8rem 1.1rem;border-bottom:1px solid rgba(255,255,255,.035);color:var(--t2);vertical-align:top;line-height:1.65}
+.tbl td:first-child{color:var(--t1);font-weight:600}.tbl tr:last-child td{border-bottom:none}
+.tbl tr:hover td{background:rgba(255,255,255,.015)}
+/* Scenario box */
+.scenario{background:linear-gradient(135deg,rgba(96,165,250,.04),rgba(167,139,250,.04));border:1px solid rgba(96,165,250,.2);border-radius:var(--r);padding:1.8rem;margin-bottom:1.6rem;position:relative}
+.scenario::before{content:"SCENARIO";position:absolute;top:-1px;left:1.5rem;background:var(--bg);padding:0 .6rem;font-family:'JetBrains Mono',monospace;font-size:.62rem;color:var(--a2);letter-spacing:.2em}
+.scenario h4{color:var(--a2);margin-bottom:.8rem;font-size:1.05rem}
+.scenario p{font-size:.9rem;color:var(--t2);line-height:1.72;margin-bottom:.6rem}
+.scenario p:last-child{margin-bottom:0}
+.scenario code{font-family:'JetBrains Mono',monospace;font-size:.82rem;background:rgba(96,165,250,.1);padding:.1rem .3rem;border-radius:4px;color:var(--a2)}
+/* Quiz */
+.qc{background:linear-gradient(180deg,rgba(18,18,32,.98),rgba(12,12,24,.98));border:1px solid var(--bs);border-radius:var(--r);box-shadow:var(--sh);padding:2.2rem}
+.qc-title{font-size:1.2rem;font-weight:800;margin-bottom:.25rem;color:var(--t1)}
+.qc-sub{font-size:.82rem;color:var(--tm);margin-bottom:1.8rem;font-family:'JetBrains Mono',monospace}
+.qq{border:1px solid var(--bs);border-radius:18px;padding:1.8rem;background:rgba(255,255,255,.012);margin-bottom:1.4rem;transition:border-color .3s,background .3s}
+.qq.answered{border-color:rgba(244,114,182,.3);background:rgba(244,114,182,.02)}
+.qnum{font-family:'JetBrains Mono',monospace;font-size:.66rem;color:var(--ac);text-transform:uppercase;letter-spacing:.18em;margin-bottom:.6rem;display:flex;align-items:center;gap:8px}
+.qnum::after{content:"";height:1px;flex:1;background:rgba(244,114,182,.2)}
+.qq h4{font-size:.97rem;margin-bottom:1.2rem;color:var(--t1);line-height:1.6;font-weight:600}
+.qo{display:grid;gap:.6rem}
+.qob{border:1px solid var(--bs);border-radius:12px;padding:1rem 1.2rem;background:rgba(255,255,255,.018);color:var(--t2);cursor:pointer;transition:all .22s;text-align:left;font-size:.88rem;font-family:'Outfit',sans-serif;width:100%;line-height:1.6;position:relative;padding-left:3.2rem}
+.qob::before{content:attr(data-opt);position:absolute;left:1rem;top:50%;transform:translateY(-50%);font-family:'JetBrains Mono',monospace;font-size:.76rem;font-weight:700;color:var(--tm);width:1.4rem;text-align:center;transition:color .2s}
+.qob:hover:not([disabled]){border-color:rgba(244,114,182,.5);background:rgba(244,114,182,.05);color:var(--t1)}
+.qob:hover:not([disabled])::before{color:var(--ac)}
+.qob.ok{border-color:rgba(94,234,212,.6);background:rgba(94,234,212,.08);color:var(--t1)}
+.qob.ok::before{color:#5eead4}
+.qob.no{border-color:rgba(244,114,182,.4);background:rgba(244,114,182,.06);color:var(--t2)}
+.qob.no::before{color:#f472b6}
+.qob[disabled]{cursor:default}
+.qfeed{margin-top:1rem;border-radius:14px;padding:1.2rem 1.4rem;display:none}
+.qfeed.correct{background:rgba(94,234,212,.05);border:1px solid rgba(94,234,212,.25)}
+.qfeed.wrong{background:rgba(244,114,182,.04);border:1px solid rgba(244,114,182,.2)}
+.qfeed-head{font-weight:700;margin-bottom:.4rem;font-size:.92rem}
+.qfeed.correct .qfeed-head{color:#5eead4}
+.qfeed.wrong .qfeed-head{color:#f472b6}
+.qfeed-why{color:var(--t2);font-size:.87rem;line-height:1.68}
+.qfeed-why strong{color:var(--t1)}
+.qfeed-why code{font-family:'JetBrains Mono',monospace;font-size:.8rem;background:rgba(255,255,255,.06);padding:.1rem .3rem;border-radius:4px;color:var(--ac)}
+.qprog{display:flex;align-items:center;gap:1.2rem;margin-bottom:1.8rem}
+.qprog-bar{flex:1;height:5px;background:rgba(255,255,255,.05);border-radius:999px;overflow:hidden}
+.qprog-fill{height:100%;background:var(--gl);border-radius:999px;width:0%;transition:width .5s ease}
+.qprog-text{font-family:'JetBrains Mono',monospace;font-size:.7rem;color:var(--tm);white-space:nowrap}
+.qs{text-align:center;padding:2rem;border:1px solid var(--bs);border-radius:18px;margin-top:1.8rem;background:rgba(255,255,255,.01)}
+.qs h3{font-size:1.8rem;margin-bottom:.5rem;font-weight:800}
+.qs p{color:var(--t2);font-size:.92rem}
+/* Nav buttons */
+.pr,.nx{display:inline-flex;align-items:center;gap:7px;padding:.55rem 1.2rem;border-radius:999px;border:1px solid var(--bs);background:rgba(255,255,255,.02);color:var(--t2);font-size:.84rem;text-decoration:none;transition:all .2s}
+.pr:hover,.nx:hover{border-color:var(--ac);color:var(--ac)}
+/* Metric bars */
+.metric-row{display:flex;align-items:center;gap:1rem;margin-bottom:.7rem}
+.metric-label{font-family:'JetBrains Mono',monospace;font-size:.76rem;color:var(--t2);min-width:140px}
+.metric-bar{flex:1;height:8px;background:rgba(255,255,255,.05);border-radius:999px;overflow:hidden}
+.metric-fill{height:100%;border-radius:999px;transition:width 1.2s ease}
+.metric-val{font-family:'JetBrains Mono',monospace;font-size:.76rem;color:var(--t1);min-width:40px;text-align:right}
+/* Footer */
+footer{border-top:1px solid var(--bs);padding:3rem 2rem;text-align:center;color:var(--tm);font-size:.82rem}</style>
+</head>
+<body>
+<div class="sp" id="sp"></div>
+<nav>
+  <a class="nbr" href="#"><div class="nbr-dot"></div>MFP Algorithms Track · M3</a>
+  <span class="nm">Composite Scoring · NMS Dedup · Hard Removal · Soft Weighting · Threshold Calibration · Boilerplate Drift</span>
+  <div class="na"><a href="mfp_m2.html" class="pr">← M2: Greedy Expansion & Bitmask</a><a href="mfp_m4.html" class="nx">M4: Evaluation & Production →</a></div>
+</nav>
+<section class="hero">
+  <div class="hg"></div>
+  <div class="hi">
+    <div class="hl">MFP Algorithms Track · Module 3</div>
+    <h1>Ranking, Deduplication, and Output Assembly</h1>
+    <p class="sub">Composite Scoring · NMS Dedup · Hard Removal · Soft Weighting · Threshold Calibration · Boilerplate Drift</p>
+    <p class="hs">The greedy expander produces a raw set of MFP candidates — but raw candidates are not a retrieval-ready output. Some candidates overlap heavily (near-duplicates that waste suppression budget); some are correctly scored but in the wrong order; some need different treatment depending on whether they feed a BM25 index or a dense encoder. This module covers the full output assembly pipeline: composite scoring, NMS-style deduplication, the hard-removal vs soft-downweighting integration choice, and the calibration methodology that determines whether the suppression list actually improves retrieval.</p>
+<div class="hm">
+<span class="mp hl2">⏱ 90 min</span>
+<span class="mp">Composite MFP scoring (α, β)</span>
+<span class="mp">NMS phrase deduplication</span>
+<span class="mp">Top-K output selection</span>
+<span class="mp">Hard removal vs soft weighting</span>
+<span class="mp">Position-aware suppression</span>
+<span class="mp">Multilingual threshold calibration</span>
+<span class="mp">Boilerplate drift and re-computation</span>
+</div>
+  </div>
+  <div class="sc"><span>Scroll</span><div class="arr"></div></div>
+</section>
+<div class="cw">
+
+<section class="sec" id="s1">
+<div class="sn">01 · Scoring and Ranking — From Candidates to Ordered Output</div>
+<h2>Composite Score:<br><span class="gt">Frequency × Length<sup>β</sup></span></h2>
+<p class="lead">The greedy expander produces every valid MFP — but not in retrieval-useful order. Ranking requires a composite score that balances two desiderata: how ubiquitous is the pattern (high df → boilerplate), and how much content does suppressing it remove (long phrase → larger suppression gain). The score function Score(P) = df(P)^α × length(P)^β is the standard parameterisation, with α and β calibrated per corpus on a held-out annotation set.</p>
+<div class="arch">
+<div class="arch-title">MFP output pipeline — score, NMS deduplication, top-K selection, retrieval integration</div>
+<svg viewBox="0 0 900 300" xmlns="http://www.w3.org/2000/svg" style="width:100%;max-width:900px;display:block">
+<rect width="900" height="300" fill="#07070f" rx="14"/>
+<defs>
+  <marker id="ra" markerWidth="7" markerHeight="5" refX="7" refY="2.5" orient="auto"><polygon points="0 0,7 2.5,0 5" fill="#5eead4"/></marker>
+  <marker id="rb" markerWidth="7" markerHeight="5" refX="7" refY="2.5" orient="auto"><polygon points="0 0,7 2.5,0 5" fill="#f472b6"/></marker>
+  <marker id="ry" markerWidth="7" markerHeight="5" refX="7" refY="2.5" orient="auto"><polygon points="0 0,7 2.5,0 5" fill="#fbbf24"/></marker>
+</defs>
+<text x="450" y="26" font-family="JetBrains Mono,monospace" font-size="11" fill="#f472b6" text-anchor="middle" letter-spacing="2" font-weight="bold">MFP OUTPUT PIPELINE — SCORE · DEDUPLICATE · RANK · FILTER</text>
+
+<!-- ── STAGE 1: Raw expanded MFPs  x=20–190 ── -->
+<rect x="20" y="46" width="170" height="200" rx="10" fill="rgba(255,255,255,.02)" stroke="rgba(255,255,255,.1)" stroke-width="1.5"/>
+<text x="105" y="66" font-family="JetBrains Mono,monospace" font-size="9" fill="#ececf6" text-anchor="middle" font-weight="bold">Raw MFPs (expanded)</text>
+<rect x="32" y="76"  width="146" height="28" rx="5" fill="rgba(94,234,212,.08)" stroke="rgba(94,234,212,.3)"/>
+<text x="105" y="88"  font-family="JetBrains Mono,monospace" font-size="7" fill="#5eead4" text-anchor="middle">"all rights reserved copyright"</text>
+<text x="105" y="100" font-family="JetBrains Mono,monospace" font-size="7" fill="#7c7c95" text-anchor="middle">df=92400  len=4</text>
+<rect x="32" y="112" width="146" height="28" rx="5" fill="rgba(94,234,212,.06)" stroke="rgba(94,234,212,.2)"/>
+<text x="105" y="124" font-family="JetBrains Mono,monospace" font-size="7" fill="#5eead4" text-anchor="middle">"all rights reserved"</text>
+<text x="105" y="136" font-family="JetBrains Mono,monospace" font-size="7" fill="#7c7c95" text-anchor="middle">df=87200  len=3</text>
+<rect x="32" y="148" width="146" height="28" rx="5" fill="rgba(94,234,212,.04)" stroke="rgba(94,234,212,.15)"/>
+<text x="105" y="160" font-family="JetBrains Mono,monospace" font-size="7" fill="#ececf6" text-anchor="middle">"privacy policy cookie"</text>
+<text x="105" y="172" font-family="JetBrains Mono,monospace" font-size="7" fill="#7c7c95" text-anchor="middle">df=71000  len=3</text>
+<rect x="32" y="184" width="146" height="28" rx="5" fill="rgba(255,255,255,.03)" stroke="rgba(255,255,255,.08)"/>
+<text x="105" y="196" font-family="JetBrains Mono,monospace" font-size="7" fill="#7c7c95" text-anchor="middle">"rights reserved"</text>
+<text x="105" y="208" font-family="JetBrains Mono,monospace" font-size="7" fill="#7c7c95" text-anchor="middle">df=84000  len=2</text>
+<text x="105" y="234" font-family="JetBrains Mono,monospace" font-size="7" fill="#7c7c95" text-anchor="middle">… N_candidates</text>
+
+<!-- Arrow 1: raw → score -->
+<line x1="192" y1="146" x2="222" y2="146" stroke="#5eead4" stroke-width="1.5" marker-end="url(#ra)"/>
+
+<!-- ── STAGE 2: Score  x=226–366 ── -->
+<rect x="226" y="80" width="140" height="132" rx="10" fill="rgba(94,234,212,.05)" stroke="rgba(94,234,212,.3)" stroke-width="1.5"/>
+<text x="296" y="98" font-family="JetBrains Mono,monospace" font-size="9" fill="#5eead4" text-anchor="middle" font-weight="bold">Score</text>
+<text x="296" y="114" font-family="JetBrains Mono,monospace" font-size="8" fill="#ececf6" text-anchor="middle">df^α × len^β</text>
+<text x="296" y="132" font-family="JetBrains Mono,monospace" font-size="7" fill="#7c7c95" text-anchor="middle">α=1.0  β=0.5</text>
+<line x1="236" y1="148" x2="356" y2="148" stroke="rgba(255,255,255,.08)"/>
+<text x="296" y="162" font-family="JetBrains Mono,monospace" font-size="7" fill="#5eead4" text-anchor="middle">92400 × √4 = 184800</text>
+<text x="296" y="176" font-family="JetBrains Mono,monospace" font-size="7" fill="#7c7c95" text-anchor="middle">87200 × √3 = 151000</text>
+<text x="296" y="190" font-family="JetBrains Mono,monospace" font-size="7" fill="#7c7c95" text-anchor="middle">71000 × √3 = 123000</text>
+<text x="296" y="204" font-family="JetBrains Mono,monospace" font-size="7" fill="#7c7c95" text-anchor="middle">84000 × √2 = 118800</text>
+
+<!-- Arrow 2: score → dedup -->
+<line x1="368" y1="146" x2="398" y2="146" stroke="#fbbf24" stroke-width="1.5" marker-end="url(#ry)"/>
+
+<!-- ── STAGE 3: NMS Dedup  x=402–552 ── -->
+<rect x="402" y="80" width="150" height="132" rx="10" fill="rgba(251,191,36,.05)" stroke="rgba(251,191,36,.35)" stroke-width="1.5"/>
+<text x="477" y="98" font-family="JetBrains Mono,monospace" font-size="9" fill="#fbbf24" text-anchor="middle" font-weight="bold">NMS Dedup</text>
+<text x="477" y="114" font-family="JetBrains Mono,monospace" font-size="7" fill="#7c7c95" text-anchor="middle">Jaccard > 0.8 → suppress</text>
+<line x1="412" y1="122" x2="542" y2="122" stroke="rgba(255,255,255,.06)"/>
+<text x="477" y="138" font-family="JetBrains Mono,monospace" font-size="7" fill="#5eead4" text-anchor="middle">✅ "all rights reserved copyright"</text>
+<text x="477" y="152" font-family="JetBrains Mono,monospace" font-size="7" fill="#5eead4" text-anchor="middle">   score=184800  KEEP</text>
+<text x="477" y="168" font-family="JetBrains Mono,monospace" font-size="7" fill="#f472b6" text-anchor="middle">❌ "all rights reserved"</text>
+<text x="477" y="182" font-family="JetBrains Mono,monospace" font-size="7" fill="#f472b6" text-anchor="middle">   Jaccard=0.75 → DROPPED</text>
+<text x="477" y="198" font-family="JetBrains Mono,monospace" font-size="7" fill="#5eead4" text-anchor="middle">✅ "privacy policy cookie"  KEEP</text>
+<text x="477" y="212" font-family="JetBrains Mono,monospace" font-size="7" fill="#f472b6" text-anchor="middle">❌ "rights reserved"  DROPPED</text>
+
+<!-- Arrow 3: dedup → top-k -->
+<line x1="554" y1="146" x2="584" y2="146" stroke="#f472b6" stroke-width="1.5" marker-end="url(#rb)"/>
+
+<!-- ── STAGE 4: Top-K output  x=588–740 ── -->
+<rect x="588" y="80" width="152" height="132" rx="10" fill="rgba(244,114,182,.05)" stroke="rgba(244,114,182,.35)" stroke-width="1.5"/>
+<text x="664" y="98" font-family="JetBrains Mono,monospace" font-size="9" fill="#f472b6" text-anchor="middle" font-weight="bold">Top-K Output</text>
+<text x="664" y="114" font-family="JetBrains Mono,monospace" font-size="7" fill="#7c7c95" text-anchor="middle">default K=500</text>
+<line x1="598" y1="122" x2="730" y2="122" stroke="rgba(255,255,255,.06)"/>
+<text x="664" y="136" font-family="JetBrains Mono,monospace" font-size="7" fill="#5eead4" text-anchor="middle">#1  "all rights reserved copyright"</text>
+<text x="664" y="150" font-family="JetBrains Mono,monospace" font-size="7" fill="#5eead4" text-anchor="middle">#2  "privacy policy cookie settings"</text>
+<text x="664" y="164" font-family="JetBrains Mono,monospace" font-size="7" fill="#5eead4" text-anchor="middle">#3  "subscribe to our newsletter"</text>
+<text x="664" y="178" font-family="JetBrains Mono,monospace" font-size="7" fill="#7c7c95" text-anchor="middle">#4  "terms of service privacy"</text>
+<text x="664" y="192" font-family="JetBrains Mono,monospace" font-size="7" fill="#7c7c95" text-anchor="middle">#5  "home about contact us"</text>
+<text x="664" y="206" font-family="JetBrains Mono,monospace" font-size="7" fill="#7c7c95" text-anchor="middle">…  K-500  …</text>
+
+<!-- Arrow 4: top-K → retrieval -->
+<line x1="742" y1="146" x2="772" y2="146" stroke="#a78bfa" stroke-width="1.5" marker-end="url(#ra)"/>
+
+<!-- ── STAGE 5: Retrieval index  x=776–880 ── -->
+<rect x="776" y="96" width="104" height="100" rx="10" fill="rgba(167,139,250,.07)" stroke="rgba(167,139,250,.35)" stroke-width="1.5"/>
+<text x="828" y="116" font-family="JetBrains Mono,monospace" font-size="9" fill="#a78bfa" text-anchor="middle" font-weight="bold">Retrieval</text>
+<text x="828" y="132" font-family="JetBrains Mono,monospace" font-size="9" fill="#a78bfa" text-anchor="middle">Index</text>
+<text x="828" y="152" font-family="JetBrains Mono,monospace" font-size="7" fill="#7c7c95" text-anchor="middle">BM25 / dense</text>
+<text x="828" y="168" font-family="JetBrains Mono,monospace" font-size="7" fill="#7c7c95" text-anchor="middle">boilerplate</text>
+<text x="828" y="180" font-family="JetBrains Mono,monospace" font-size="7" fill="#5eead4" text-anchor="middle">stripped</text>
+
+<!-- ── Bottom bar: key parameters ── -->
+<rect x="20" y="258" width="860" height="32" rx="8" fill="rgba(255,255,255,.02)" stroke="rgba(255,255,255,.07)"/>
+<text x="450" y="270" font-family="JetBrains Mono,monospace" font-size="8" fill="#ececf6" text-anchor="middle">Score(P) = df(P)^α × length(P)^β   ·   NMS threshold τ_overlap   ·   output K</text>
+<text x="450" y="284" font-family="JetBrains Mono,monospace" font-size="7" fill="#7c7c95" text-anchor="middle">All three are calibration knobs — set via precision/recall on held-out boilerplate-annotated corpus</text>
+</svg>
+</div>
+<div class="cc">
+  <div class="ch"><h3>mfp_ranker.py — MFP scoring, deduplication, and output ranking</h3><button class="cpb" onclick="cp(this,'c1')">Copy</button></div>
+  <div class="cbody"><pre id="c1"><span class="kw">from</span> dataclasses <span class="kw">import</span> dataclass, field
+<span class="kw">from</span> collections <span class="kw">import</span> defaultdict
+<span class="kw">import</span> heapq
+
+@dataclass(order=<span class="kw">True</span>)
+<span class="kw">class</span> <span class="cl">MFPCandidate</span>:
+    <span class="str">"""
+    One candidate MFP after greedy expansion.
+    sort_key is used by heapq for the priority queue (max-heap via negation).
+    """</span>
+    sort_key:  float = field(compare=<span class="kw">True</span>)
+    tokens:    tuple = field(compare=<span class="kw">False</span>)
+    df:        int   = field(compare=<span class="kw">False</span>)   <span class="cm"># document frequency</span>
+    positions: list  = field(compare=<span class="kw">False</span>)   <span class="cm"># [(doc_id, start, end), ...]</span>
+    length:    int   = field(compare=<span class="kw">False</span>)   <span class="cm"># token count</span>
+
+
+<span class="kw">def</span> <span class="fn">score_mfp</span>(candidate: <span class="cl">MFPCandidate</span>,
+               N: int,
+               alpha: float = <span class="nu">1.0</span>,
+               beta:  float = <span class="nu">0.5</span>) -> float:
+    <span class="str">"""
+    Composite MFP score that balances frequency and length.
+
+    Score(P) = df(P)^alpha × length(P)^beta
+
+    Rationale:
+    - df(P): high document frequency → ubiquitous boilerplate.
+      Navigation menus appear in 90%+ of pages → very high df.
+      Product descriptions appear in 1-2% of pages → low df.
+    - length(P): longer phrases carry more information — suppressing
+      "copyright 2024 All Rights Reserved" (6 tokens) is more
+      informative than suppressing "copyright" alone (1 token).
+    - alpha=1.0: linear frequency weight (default).
+    - beta=0.5: sub-linear length weight — prevents very long but
+      rare phrases from dominating short ubiquitous ones.
+
+    Alternative: IDF-weighted score
+      Score(P) = df(P) × length(P) × (-log(df(P)/N))
+    This explicitly penalises near-universal phrases (idf→0)
+    in favour of domain-boilerplate (common but not universal).
+    """</span>
+    <span class="kw">return</span> (candidate.df ** alpha) * (candidate.length ** beta)
+
+
+<span class="kw">def</span> <span class="fn">deduplicate_mfps</span>(
+    candidates: list[<span class="cl">MFPCandidate</span>],
+    overlap_threshold: float = <span class="nu">0.8</span>,
+) -> list[<span class="cl">MFPCandidate</span>]:
+    <span class="str">"""
+    Remove MFP candidates that are largely subsumed by higher-ranked ones.
+
+    Two MFPs P and Q overlap if their token sets share > overlap_threshold
+    fraction of tokens (Jaccard similarity on token positions).
+
+    Problem: greedy expander may produce near-duplicate phrases:
+      "all rights reserved"       df=92400   length=3
+      "all rights reserved 2024"  df=87200   length=4
+    Both are valid MFPs, but keeping both wastes suppression budget.
+
+    Strategy: sort by score descending; for each candidate, check if it
+    overlaps with any already-accepted MFP. If overlap > threshold, skip.
+    This is NMS (Non-Maximum Suppression) applied to phrase space.
+
+    Note: position-level deduplication is already handled by the global
+    bitmask during expansion. This deduplication is at the phrase-type
+    level — removing semantically redundant phrases from the output list.
+    """</span>
+    candidates = sorted(candidates, key=<span class="kw">lambda</span> c: c.sort_key, reverse=<span class="kw">True</span>)
+    accepted = []
+    accepted_token_sets = []
+    <span class="kw">for</span> cand <span class="kw">in</span> candidates:
+        cand_set = set(cand.tokens)
+        dominated = <span class="kw">False</span>
+        <span class="kw">for</span> acc_set <span class="kw">in</span> accepted_token_sets:
+            intersection = len(cand_set & acc_set)
+            union        = len(cand_set | acc_set)
+            jaccard      = intersection / union <span class="kw">if</span> union > <span class="nu">0</span> <span class="kw">else</span> <span class="nu">0</span>
+            <span class="kw">if</span> jaccard > overlap_threshold:
+                dominated = <span class="kw">True</span>
+                <span class="kw">break</span>
+        <span class="kw">if not</span> dominated:
+            accepted.append(cand)
+            accepted_token_sets.append(cand_set)
+    <span class="kw">return</span> accepted
+
+
+<span class="kw">def</span> <span class="fn">assemble_mfp_output</span>(
+    expanded_candidates: list[<span class="cl">MFPCandidate</span>],
+    N: int,
+    top_k: int = <span class="nu">500</span>,
+    overlap_threshold: float = <span class="nu">0.8</span>,
+) -> list[<span class="cl">MFPCandidate</span>]:
+    <span class="str">"""Full output pipeline: score → dedup → top-k selection."""</span>
+    <span class="kw">for</span> c <span class="kw">in</span> expanded_candidates:
+        c.sort_key = score_mfp(c, N)
+    deduped = deduplicate_mfps(expanded_candidates, overlap_threshold)
+    <span class="kw">return</span> sorted(deduped, key=<span class="kw">lambda</span> c: c.sort_key, reverse=<span class="kw">True</span>)[:top_k]</pre></div>
+</div>
+
+</section>
+
+<section class="sec" id="s2">
+<div class="sn">02 · Hard Removal vs Soft Downweighting</div>
+<h2>Integration Mode Determines<br><span class="gt">What the Index Sees</span></h2>
+<p class="lead">The MFP list is only as useful as how it is integrated into the downstream retrieval system. Hard removal deletes MFP-covered token positions from the document before indexing — appropriate for BM25 where term frequency is the signal. Soft downweighting multiplies each covered token's embedding weight by (1 − df(P)/N) — appropriate for dense retrieval where the encoder still benefits from positional context. The integration mode must match the retrieval architecture.</p>
+<div class="arch">
+<div class="arch-title">Hard removal (BM25) vs soft downweighting (dense) — same MFP, different integration effects</div>
+<svg viewBox="0 0 900 240" xmlns="http://www.w3.org/2000/svg" style="width:100%;max-width:900px;display:block">
+<rect width="900" height="240" fill="#07070f" rx="14"/>
+<defs>
+  <marker id="sa" markerWidth="7" markerHeight="5" refX="7" refY="2.5" orient="auto"><polygon points="0 0,7 2.5,0 5" fill="#5eead4"/></marker>
+  <marker id="sb" markerWidth="7" markerHeight="5" refX="7" refY="2.5" orient="auto"><polygon points="0 0,7 2.5,0 5" fill="#f472b6"/></marker>
+</defs>
+<text x="450" y="26" font-family="JetBrains Mono,monospace" font-size="11" fill="#fbbf24" text-anchor="middle" letter-spacing="2" font-weight="bold">HARD REMOVAL vs SOFT DOWNWEIGHTING — INTEGRATION MODES</text>
+
+<!-- ── Document token stream (shared input) ── -->
+<text x="450" y="52" font-family="JetBrains Mono,monospace" font-size="9" fill="#7c7c95" text-anchor="middle">Input token stream</text>
+<!-- Token boxes -->
+<rect x="20"  y="58" width="62" height="28" rx="5" fill="rgba(255,255,255,.04)" stroke="rgba(255,255,255,.1)"/>
+<text x="51"  y="75"  font-family="JetBrains Mono,monospace" font-size="8" fill="#ececf6" text-anchor="middle">The</text>
+<rect x="88"  y="58" width="62" height="28" rx="5" fill="rgba(255,255,255,.04)" stroke="rgba(255,255,255,.1)"/>
+<text x="119" y="75"  font-family="JetBrains Mono,monospace" font-size="8" fill="#ececf6" text-anchor="middle">product</text>
+<rect x="156" y="58" width="62" height="28" rx="5" fill="rgba(244,114,182,.12)" stroke="#f472b6" stroke-width="2"/>
+<text x="187" y="75"  font-family="JetBrains Mono,monospace" font-size="8" fill="#f472b6" text-anchor="middle">all</text>
+<rect x="224" y="58" width="62" height="28" rx="5" fill="rgba(244,114,182,.12)" stroke="#f472b6" stroke-width="2"/>
+<text x="255" y="75"  font-family="JetBrains Mono,monospace" font-size="8" fill="#f472b6" text-anchor="middle">rights</text>
+<rect x="292" y="58" width="62" height="28" rx="5" fill="rgba(244,114,182,.12)" stroke="#f472b6" stroke-width="2"/>
+<text x="323" y="75"  font-family="JetBrains Mono,monospace" font-size="8" fill="#f472b6" text-anchor="middle">reserved</text>
+<rect x="360" y="58" width="62" height="28" rx="5" fill="rgba(255,255,255,.04)" stroke="rgba(255,255,255,.1)"/>
+<text x="391" y="75"  font-family="JetBrains Mono,monospace" font-size="8" fill="#ececf6" text-anchor="middle">is</text>
+<rect x="428" y="58" width="62" height="28" rx="5" fill="rgba(255,255,255,.04)" stroke="rgba(255,255,255,.1)"/>
+<text x="459" y="75"  font-family="JetBrains Mono,monospace" font-size="8" fill="#ececf6" text-anchor="middle">great</text>
+<!-- MFP label -->
+<text x="255" y="98" font-family="JetBrains Mono,monospace" font-size="7" fill="#f472b6" text-anchor="middle">MFP: "all rights reserved"  df/N=0.87</text>
+
+<!-- divider -->
+<line x1="20" y1="108" x2="880" y2="108" stroke="rgba(255,255,255,.06)"/>
+
+<!-- ── LEFT: Hard Removal ── -->
+<text x="240" y="126" font-family="JetBrains Mono,monospace" font-size="9" fill="#5eead4" text-anchor="middle" font-weight="bold">HARD REMOVAL  (BM25)</text>
+<rect x="20"  y="136" width="62" height="28" rx="5" fill="rgba(255,255,255,.04)" stroke="rgba(255,255,255,.1)"/>
+<text x="51"  y="153" font-family="JetBrains Mono,monospace" font-size="8" fill="#ececf6" text-anchor="middle">The</text>
+<rect x="88"  y="136" width="62" height="28" rx="5" fill="rgba(255,255,255,.04)" stroke="rgba(255,255,255,.1)"/>
+<text x="119" y="153" font-family="JetBrains Mono,monospace" font-size="8" fill="#ececf6" text-anchor="middle">product</text>
+<!-- MFP tokens deleted - shown as empty struck boxes -->
+<rect x="156" y="136" width="62" height="28" rx="5" fill="rgba(244,114,182,.04)" stroke="rgba(244,114,182,.2)" stroke-dasharray="3,2"/>
+<line x1="158" y1="138" x2="216" y2="162" stroke="rgba(244,114,182,.4)" stroke-width="1.5"/>
+<rect x="224" y="136" width="62" height="28" rx="5" fill="rgba(244,114,182,.04)" stroke="rgba(244,114,182,.2)" stroke-dasharray="3,2"/>
+<line x1="226" y1="138" x2="284" y2="162" stroke="rgba(244,114,182,.4)" stroke-width="1.5"/>
+<rect x="292" y="136" width="62" height="28" rx="5" fill="rgba(244,114,182,.04)" stroke="rgba(244,114,182,.2)" stroke-dasharray="3,2"/>
+<line x1="294" y1="138" x2="352" y2="162" stroke="rgba(244,114,182,.4)" stroke-width="1.5"/>
+<rect x="360" y="136" width="62" height="28" rx="5" fill="rgba(255,255,255,.04)" stroke="rgba(255,255,255,.1)"/>
+<text x="391" y="153" font-family="JetBrains Mono,monospace" font-size="8" fill="#ececf6" text-anchor="middle">is</text>
+<rect x="428" y="136" width="62" height="28" rx="5" fill="rgba(255,255,255,.04)" stroke="rgba(255,255,255,.1)"/>
+<text x="459" y="153" font-family="JetBrains Mono,monospace" font-size="8" fill="#ececf6" text-anchor="middle">great</text>
+<text x="240" y="182" font-family="JetBrains Mono,monospace" font-size="7" fill="#5eead4" text-anchor="middle">Output: ["The","product","is","great"]</text>
+<text x="240" y="196" font-family="JetBrains Mono,monospace" font-size="7" fill="#7c7c95" text-anchor="middle">MFP tokens deleted from term-frequency map</text>
+<text x="240" y="210" font-family="JetBrains Mono,monospace" font-size="7" fill="#7c7c95" text-anchor="middle">Best for BM25 · risky for ambiguous short phrases</text>
+
+<!-- ── RIGHT: Soft Downweighting ── -->
+<text x="710" y="126" font-family="JetBrains Mono,monospace" font-size="9" fill="#a78bfa" text-anchor="middle" font-weight="bold">SOFT WEIGHT  (dense)</text>
+<!-- Tokens with weight labels -->
+<rect x="500" y="136" width="46" height="28" rx="5" fill="rgba(255,255,255,.04)" stroke="rgba(255,255,255,.1)"/>
+<text x="523" y="150" font-family="JetBrains Mono,monospace" font-size="7" fill="#ececf6" text-anchor="middle">The</text>
+<text x="523" y="164" font-family="JetBrains Mono,monospace" font-size="6" fill="#5eead4" text-anchor="middle">w=1.0</text>
+<rect x="552" y="136" width="62" height="28" rx="5" fill="rgba(255,255,255,.04)" stroke="rgba(255,255,255,.1)"/>
+<text x="583" y="150" font-family="JetBrains Mono,monospace" font-size="7" fill="#ececf6" text-anchor="middle">product</text>
+<text x="583" y="164" font-family="JetBrains Mono,monospace" font-size="6" fill="#5eead4" text-anchor="middle">w=1.0</text>
+<rect x="620" y="136" width="46" height="28" rx="5" fill="rgba(244,114,182,.08)" stroke="rgba(244,114,182,.3)"/>
+<text x="643" y="150" font-family="JetBrains Mono,monospace" font-size="7" fill="#f472b6" text-anchor="middle">all</text>
+<text x="643" y="164" font-family="JetBrains Mono,monospace" font-size="6" fill="#f472b6" text-anchor="middle">w=0.13</text>
+<rect x="672" y="136" width="52" height="28" rx="5" fill="rgba(244,114,182,.08)" stroke="rgba(244,114,182,.3)"/>
+<text x="698" y="150" font-family="JetBrains Mono,monospace" font-size="7" fill="#f472b6" text-anchor="middle">rights</text>
+<text x="698" y="164" font-family="JetBrains Mono,monospace" font-size="6" fill="#f472b6" text-anchor="middle">w=0.13</text>
+<rect x="730" y="136" width="64" height="28" rx="5" fill="rgba(244,114,182,.08)" stroke="rgba(244,114,182,.3)"/>
+<text x="762" y="150" font-family="JetBrains Mono,monospace" font-size="7" fill="#f472b6" text-anchor="middle">reserved</text>
+<text x="762" y="164" font-family="JetBrains Mono,monospace" font-size="6" fill="#f472b6" text-anchor="middle">w=0.13</text>
+<rect x="800" y="136" width="36" height="28" rx="5" fill="rgba(255,255,255,.04)" stroke="rgba(255,255,255,.1)"/>
+<text x="818" y="150" font-family="JetBrains Mono,monospace" font-size="7" fill="#ececf6" text-anchor="middle">is</text>
+<text x="818" y="164" font-family="JetBrains Mono,monospace" font-size="6" fill="#5eead4" text-anchor="middle">w=1.0</text>
+<text x="710" y="182" font-family="JetBrains Mono,monospace" font-size="7" fill="#a78bfa" text-anchor="middle">weight = 1 − df(MFP)/N = 1 − 0.87 = 0.13</text>
+<text x="710" y="196" font-family="JetBrains Mono,monospace" font-size="7" fill="#7c7c95" text-anchor="middle">Encoder sees token · training signal downweighted</text>
+<text x="710" y="210" font-family="JetBrains Mono,monospace" font-size="7" fill="#7c7c95" text-anchor="middle">Best for dense retrieval · preserves token context</text>
+
+<!-- Vertical divider -->
+<line x1="490" y1="108" x2="490" y2="230" stroke="rgba(255,255,255,.1)" stroke-width="1" stroke-dasharray="4,3"/>
+</svg>
+</div>
+<div class="cc">
+  <div class="ch"><h3>mfp_retrieval_filter.py — integrate MFP suppression into a retrieval pipeline</h3><button class="cpb" onclick="cp(this,'c2')">Copy</button></div>
+  <div class="cbody"><pre id="c2"><span class="kw">import</span> re
+<span class="kw">from</span> typing <span class="kw">import</span> Iterator
+
+<span class="kw">class</span> <span class="cl">MFPBoilerplateFilter</span>:
+    <span class="str">"""
+    Post-expansion integration: use ranked MFP list to strip boilerplate
+    from documents before indexing into a retrieval system (BM25 / dense).
+
+    Two suppression modes:
+    1. HARD REMOVAL: delete all tokens covered by any MFP occurrence.
+       Best for BM25 — removes boilerplate from the term-frequency map.
+       Risk: may remove too-short MFPs that are also content words.
+
+    2. SOFT DOWNWEIGHTING: multiply term weights by (1 - coverage_score).
+       Best for dense retrieval — the encoder still sees the tokens but
+       the training signal is downweighted.
+
+    Coverage score for token t in document d:
+       coverage(t, d) = max over all MFP occurrences covering t:
+                        df(P) / N   (fraction of corpus containing this MFP)
+    High coverage → likely boilerplate → downweight.
+    Low coverage  → likely content    → keep full weight.
+    """</span>
+
+    <span class="kw">def</span> <span class="fn">__init__</span>(self, mfp_list: list, N: int,
+                 df_threshold: float = <span class="nu">0.02</span>):
+        <span class="cm"># Only suppress MFPs that appear in > df_threshold fraction of corpus</span>
+        self.suppressed = {
+            m.tokens
+            <span class="kw">for</span> m <span class="kw">in</span> mfp_list
+            <span class="kw">if</span> m.df / N >= df_threshold
+        }
+        self.N = N
+
+    <span class="kw">def</span> <span class="fn">_find_mfp_spans</span>(self, tokens: list) -> list[tuple[int,int]]:
+        <span class="str">"""Return list of (start, end) spans covered by any suppressed MFP."""</span>
+        spans = []
+        <span class="kw">for</span> mfp_tokens <span class="kw">in</span> self.suppressed:
+            L = len(mfp_tokens)
+            <span class="kw">for</span> i <span class="kw">in</span> range(len(tokens) - L + <span class="nu">1</span>):
+                <span class="kw">if</span> tuple(tokens[i:i+L]) == mfp_tokens:
+                    spans.append((i, i + L))
+        <span class="kw">return</span> sorted(set(spans))
+
+    <span class="kw">def</span> <span class="fn">hard_remove</span>(self, tokens: list[str]) -> list[str]:
+        <span class="str">"""Remove all token positions covered by a suppressed MFP."""</span>
+        covered = set()
+        <span class="kw">for</span> start, end <span class="kw">in</span> self._find_mfp_spans(tokens):
+            covered.update(range(start, end))
+        <span class="kw">return</span> [t <span class="kw">for</span> i, t <span class="kw">in</span> enumerate(tokens) <span class="kw">if</span> i <span class="kw">not in</span> covered]
+
+    <span class="kw">def</span> <span class="fn">coverage_weights</span>(self, tokens: list[str],
+                           mfp_df_map: dict) -> list[float]:
+        <span class="str">"""
+        Soft downweighting: return per-token weight in [0, 1].
+        weight = 1.0 - coverage_score
+        coverage_score = max df(P)/N over all MFPs covering this token.
+        """</span>
+        weights = [<span class="nu">1.0</span>] * len(tokens)
+        <span class="kw">for</span> mfp_tokens <span class="kw">in</span> self.suppressed:
+            L = len(mfp_tokens)
+            df_frac = mfp_df_map.get(mfp_tokens, <span class="nu">0</span>) / self.N
+            <span class="kw">for</span> i <span class="kw">in</span> range(len(tokens) - L + <span class="nu">1</span>):
+                <span class="kw">if</span> tuple(tokens[i:i+L]) == mfp_tokens:
+                    <span class="kw">for</span> j <span class="kw">in</span> range(i, i+L):
+                        weights[j] = min(weights[j], <span class="nu">1.0</span> - df_frac)
+        <span class="kw">return</span> weights</pre></div>
+</div>
+
+<div class="callout callout-warn">
+  <div class="callout-icon">⚠️</div>
+  <div class="callout-body">
+    <h4>Train-inference asymmetry in soft downweighting</h4>
+    <p>If you apply MFP weights to document tokens during training but NOT to query tokens at inference, the encoder learns an asymmetric space: document representations minimise boilerplate tokens while query representations treat them at full weight. Always apply the same preprocessing to both documents and queries — or use hard removal, which is naturally symmetric (same tokens deleted from both sides).</p>
+  </div>
+</div>
+</section>
+
+<section class="sec" id="s3">
+<div class="sn">03 · Calibration and Production Maintenance</div>
+<h2>Threshold Calibration and<br><span class="gt">Boilerplate Drift</span></h2>
+<div class="g2">
+<div class="callout callout-key">
+  <div class="callout-icon">🔑</div>
+  <div class="callout-body">
+    <h4>The three calibration knobs</h4>
+    <p><strong>σ (seed threshold)</strong>: minimum df for a seed n-gram to be queued for expansion. Set as σ = max(floor, N × fraction). Typical: max(50, N × 0.01). <strong>τ_overlap (NMS threshold)</strong>: Jaccard similarity above which a lower-ranked MFP is dropped. Typical: 0.8 for web corpora, 0.6 for tightly-structured domain corpora. <strong>K (output size)</strong>: number of MFPs in the final suppression list. Typical: 200–1000. All three are calibrated via downstream MAP/nDCG change on a held-out retrieval benchmark.</p>
+  </div>
+</div>
+<div class="scenario">
+  <h4>Production scenario: e-commerce boilerplate drift over 6 months</h4>
+  <p>A fashion e-commerce platform runs MFP offline monthly. After GDPR update in month 3, every page gains 'Manage cookie preferences personalised ads' (new MFP, not in original list). MAP drops 2.1 points. Detection method: monitor the fraction of new documents with token spans not covered by any existing MFP. When uncovered fraction rises above 15% of document length, trigger re-computation. Result: MFP re-computation restores MAP within the same indexing cycle.</p>
+</div>
+</div>
+<div class="card" style="padding:0;overflow:hidden">
+<table class="tbl">
+<thead><tr><th>Parameter</th><th>Too low</th><th>Optimal range</th><th>Too high</th></tr></thead>
+<tbody>
+<tr><td><strong style="color:var(--a1)">σ (seed threshold)</strong></td><td>Millions of seeds — CMS/expansion OOM</td><td>max(50, N×0.01)</td><td>Miss rare boilerplate; low recall</td></tr>
+<tr><td><strong style="color:var(--a2)">β (length weight)</strong></td><td>Short phrases dominate; miss long boilerplate</td><td>0.4–0.7</td><td>Long rare phrases outrank common short boilerplate</td></tr>
+<tr><td><strong style="color:var(--a3)">τ_overlap (NMS)</strong></td><td>Aggressive dedup; lose phrase variants</td><td>0.7–0.85</td><td>Redundant near-duplicate MFPs waste suppression budget</td></tr>
+<tr><td><strong style="color:var(--a4)">K (output size)</strong></td><td>Insufficient coverage; low recall</td><td>200–1000</td><td>Low-df phrases included; false positives harm content</td></tr>
+</tbody>
+</table>
+</div>
+</section>
+
+<section class="sec" id="s4">
+<div class="sn">04 · Assessment — 8 Questions</div>
+<h2>Module 3 <span class="gt">Quiz</span></h2>
+<div class="qc"><div class="qc-title">Module 3 Assessment — Ranking, Deduplication, and Integration</div><div class="qc-sub">8 questions · scoring · NMS dedup · hard removal · soft weighting · multilingual · threshold calibration</div><div class="qprog"><div class="qprog-bar"><div class="qprog-fill"></div></div><div class="qprog-text">0/8 answered</div></div><div class="qq"><div class="qnum">Question 1 of 8</div><h4>The MFP scoring function Score(P) = df(P)^α × length(P)^β uses α=1.0 and β=0.5 by default. A news aggregator finds that long-tail boilerplate phrases (length 8–12 tokens, df=5000) are being ranked below very short phrases (length 2, df=80000). Which parameter adjustment corrects this ranking?</h4><div class="qo"><button class="qob" data-opt="A" data-correct="true" onclick="cq(this,0,true)">Increase α above 1.0 to weight document frequency more strongly, boosting the short high-df phrases further.</button>
+<button class="qob" data-opt="B" data-correct="false" onclick="cq(this,0,false)">Increase β above 0.5 to weight length more strongly. At β=0.5, a phrase of length 8 contributes √8=2.83× compared to length 2's √2=1.41× — a ratio of 2× length advantage. If this 2× advantage is insufficient to overcome the 16× df advantage (80000/5000), increasing β to 1.0 makes length linear: length 8 contributes 8× vs 2× for length 2 — a 4× length advantage. The correct fix is to increase β, not α. Decreasing α below 1.0 would reduce frequency sensitivity and could help, but that flattens the entire ranking. Increasing β precisely adjusts the weight of the length term without affecting frequency-only comparisons.</button>
+<button class="qob" data-opt="C" data-correct="false" onclick="cq(this,0,false)">Decrease α below 1.0 to reduce the dominance of document frequency in the score.</button>
+<button class="qob" data-opt="D" data-correct="false" onclick="cq(this,0,false)">Add a minimum length threshold: only score phrases with length ≥ 4, ignoring the scoring function entirely.</button>
+</div><div class="qfeed"><div class="qfeed-head"></div><div class="qfeed-why">Correct. β controls how aggressively length is rewarded relative to frequency. β=0.5 (square root) gives sub-linear length reward; β=1.0 gives linear; β>1.0 gives super-linear. The calibration question is always: given your specific boilerplate distribution (what fraction is long vs short?), what β makes the ranking match human annotation? This is always determined empirically on a held-out annotated corpus, not set theoretically.</div></div></div><div class="qq"><div class="qnum">Question 2 of 8</div><h4>NMS deduplication computes Jaccard similarity between MFP token sets. MFP P = ('all','rights','reserved','copyright','2024') scores 184800. MFP Q = ('all','rights','reserved') scores 151000. Jaccard(P,Q) = |P∩Q|/|P∪Q| = 3/5 = 0.6. With threshold τ=0.8, does Q get dropped?</h4><div class="qo"><button class="qob" data-opt="A" data-correct="false" onclick="cq(this,1,false)">Yes — Q is always dropped because P contains Q as a subsequence, making Q a strict submatch.</button>
+<button class="qob" data-opt="B" data-correct="true" onclick="cq(this,1,true)">No — Q is not dropped because Jaccard(P,Q)=0.6 < τ=0.8. The NMS threshold of 0.8 is not exceeded, so Q passes the deduplication step and both P and Q appear in the output. This is a design choice: with τ=0.8, only very similar phrases (sharing 80%+ of their tokens) are collapsed. The pair P and Q share 60% of their token union, which is below the threshold. To collapse Q into P (suppress Q in favour of P), you would need to lower τ below 0.6. The right τ depends on domain: a legal corpus might want τ=0.6 (aggressive dedup) because legal boilerplate phrases form tight families; a web corpus might want τ=0.9 (conservative dedup) because superficially similar phrases may carry different content signals.</button>
+<button class="qob" data-opt="C" data-correct="false" onclick="cq(this,1,false)">Yes — Q is dropped because Q's score (151000) is lower than P's (184800), and any lower-scoring phrase is suppressed.</button>
+<button class="qob" data-opt="D" data-correct="false" onclick="cq(this,1,false)">The Jaccard calculation is wrong — you must compute Jaccard on positions, not token types.</button>
+</div><div class="qfeed"><div class="qfeed-head"></div><div class="qfeed-why">Correct. The Jaccard threshold is the key calibration knob for NMS deduplication. At τ=0.8 and Jaccard=0.6, Q survives. Whether this is correct behaviour depends on your retrieval objective: if you want both 'all rights reserved' and 'all rights reserved copyright 2024' in the suppression list (to catch both variants across documents), τ=0.8 is appropriate. If you want to keep only the longest match, lower τ to 0.5.</div></div></div><div class="qq"><div class="qnum">Question 3 of 8</div><h4>A corpus of 500,000 English web documents is processed by MFP. The output list contains 'cookie policy' (df=180000, length=2) ranked #3. Your BM25 retrieval system then hard-removes this phrase from all documents. A user queries 'chocolate cookie recipe'. What retrieval failure occurs and how do you prevent it?</h4><div class="qo"><button class="qob" data-opt="A" data-correct="false" onclick="cq(this,2,false)">No failure — 'cookie policy' and 'chocolate cookie recipe' share no tokens, so hard removal has no effect on the query.</button>
+<button class="qob" data-opt="B" data-correct="false" onclick="cq(this,2,false)">Hard removal of 'cookie policy' deletes the term 'cookie' from every document where it appears as part of this MFP. The BM25 index no longer has 'cookie' in those positions. A recipe document containing '...chocolate cookie recipe... [footer: cookie policy | privacy policy]...' loses the 'cookie' term from its footer but keeps it in its recipe body — ONLY if the MFP removal is position-specific. But if you implement naive hard removal (remove all occurrences of the token 'cookie' that appear in MFP spans), the recipe body is unaffected. The real risk: if your tokeniser normalises and the MFP match is approximate, it might inadvertently suppress 'cookie' in recipe contexts. The fix: always implement position-aware hard removal — mark specific token positions (start, end) from the MFP occurrence, not all occurrences of constituent tokens.</button>
+<button class="qob" data-opt="C" data-correct="true" onclick="cq(this,2,true)">Hard removal causes 'cookie' to disappear from the entire index vocabulary, breaking all cookie-related queries.</button>
+<button class="qob" data-opt="D" data-correct="false" onclick="cq(this,2,false)">The failure is a false negative at retrieval time — 'cookie policy' documents rank too low because their boilerplate has been removed.</button>
+</div><div class="qfeed"><div class="qfeed-head"></div><div class="qfeed-why">Correct. Position-aware removal is the critical implementation requirement. MFP provides (doc_id, start, end) position tuples for each occurrence — these positions are what should be suppressed, not all occurrences of constituent tokens. A naive token-type-level removal ('remove the word cookie everywhere it appears in MFP spans') is safe only if the MFP tokens are purely boilerplate words with no content dual use. Always implement position-level suppression.</div></div></div><div class="qq"><div class="qnum">Question 4 of 8</div><h4>The soft downweighting mode assigns weight = 1 - df(P)/N to each token covered by MFP P. For a corpus of N=500,000 documents and MFP 'all rights reserved' with df=435,000, the weight is 1 - 0.87 = 0.13. A dense retrieval model is fine-tuned on documents preprocessed with these weights. What risk does this introduce for query-time retrieval?</h4><div class="qo"><button class="qob" data-opt="A" data-correct="false" onclick="cq(this,3,false)">The weight of 0.13 is too low — the encoder will ignore the boilerplate tokens entirely, which is the desired behaviour.</button>
+<button class="qob" data-opt="B" data-correct="true" onclick="cq(this,3,true)">Query-time mismatch: queries at inference time are not preprocessed with MFP weights. A user querying 'all rights reserved music licensing' sends unweighted query tokens through the encoder, but the document representations were trained with 'all', 'rights', 'reserved' downweighted to 0.13. The encoder learned to ignore these tokens in documents — but the same encoder receives them at full weight in the query. The query representation places significant weight on 'all rights reserved' while document representations minimise it, creating an asymmetric embedding space that degrades retrieval of music licensing documents. Fix: either (1) apply the same MFP weights during query encoding at inference (consistent downweighting); or (2) use hard removal for both documents and queries; or (3) use MFP preprocessing only during pre-training, not fine-tuning, so the model learns general boilerplate invariance.</button>
+<button class="qob" data-opt="C" data-correct="false" onclick="cq(this,3,false)">The downweighting is a training-time operation only — it has no effect on inference because the model learns to ignore those weights.</button>
+<button class="qob" data-opt="D" data-correct="false" onclick="cq(this,3,false)">The risk is vanishing gradients: tokens with weight=0.13 receive very small gradients during fine-tuning, making training unstable.</button>
+</div><div class="qfeed"><div class="qfeed-head"></div><div class="qfeed-why">Correct. Train-inference asymmetry is the key failure mode for soft downweighting in dual-encoder retrieval. Document and query representations must be processed consistently. This is why most production systems use hard removal (identical for documents and queries) rather than soft weighting — soft weighting requires consistent application at both training and inference time, which adds infrastructure complexity. The exception: if boilerplate never appears in queries (users don't query 'all rights reserved'), soft weighting is safe because the query-side asymmetry never triggers.</div></div></div><div class="qq"><div class="qnum">Question 5 of 8</div><h4>You set the df threshold at 2% (df/N ≥ 0.02) for suppression. Your corpus is 200,000 documents from an Indian e-commerce site. MFP 'अधिकार सुरक्षित' (Hindi: 'rights reserved') appears in 3,800 documents (df/N=0.019) — just below the 2% threshold. Should you suppress it?</h4><div class="qo"><button class="qob" data-opt="A" data-correct="false" onclick="cq(this,4,false)">No — the threshold is 2% and 1.9% is below it. Thresholds must be respected rigorously.</button>
+<button class="qob" data-opt="B" data-correct="false" onclick="cq(this,4,false)">The threshold should be treated as a calibration guideline, not a hard cutoff. 1.9% is within measurement error of the Count-Min Sketch estimate (CMS overestimates, and the true df might be 3900+, above 2%). More importantly, multilingual MFP requires language-specific calibration: Hindi documents are a subset of the corpus (perhaps 40,000 of 200,000), so the effective df within the Hindi subcorpus is 3800/40000 = 9.5% — well above any reasonable threshold for boilerplate suppression within that language. The fix: calibrate df thresholds per language or per domain segment rather than corpus-globally. A phrase appearing in 9.5% of Hindi documents is clearly boilerplate even if it appears in only 1.9% of the full multilingual corpus.</button>
+<button class="qob" data-opt="C" data-correct="false" onclick="cq(this,4,false)">Yes — always suppress at the phrase level regardless of threshold when the phrase is a known boilerplate construction.</button>
+<button class="qob" data-opt="D" data-correct="true" onclick="cq(this,4,true)">Use machine translation to convert Hindi phrases to English and re-apply the threshold on the translated form.</button>
+</div><div class="qfeed"><div class="qfeed-head"></div><div class="qfeed-why">Correct. Per-language threshold calibration is a critical production consideration for multilingual corpora. Global df thresholds systematically under-detect boilerplate in minority languages because their phrases have lower corpus-wide df. The correct approach: segment the corpus by detected language, compute df within each language segment, and apply language-specific (or at least normalised) thresholds. This is one of the most commonly missed issues when deploying MFP on multilingual enterprise corpora.</div></div></div><div class="qq"><div class="qnum">Question 6 of 8</div><h4>After running the full MFP pipeline on a 1.7M document corpus, you produce 500 ranked MFP phrases. A retrieval engineer asks: 'How do we know these 500 phrases are actually boilerplate and not content?' Describe the evaluation methodology.</h4><div class="qo"><button class="qob" data-opt="A" data-correct="false" onclick="cq(this,5,false)">Spot-check 20 randomly sampled MFPs manually and report precision.</button>
+<button class="qob" data-opt="B" data-correct="true" onclick="cq(this,5,true)">Construct a ground-truth evaluation set: manually annotate 200-500 randomly sampled document pairs as (document, boilerplate_spans). For each document, a human annotator marks which token spans are boilerplate (navigation, copyright, footers) vs content. Then: precision@K = fraction of top-K MFPs where every occurrence in the evaluation docs is in annotator-marked boilerplate spans; recall@K = fraction of annotator-marked boilerplate spans covered by at least one top-K MFP. Additionally, measure downstream retrieval quality: index 10,000 test documents with and without MFP suppression, run 500 known queries with ground-truth relevant documents, and compare MAP/nDCG. A good MFP list should improve MAP — if it doesn't, the 'boilerplate' is actually content-bearing. This dual evaluation (direct annotation + downstream IR metrics) is the production-grade validation methodology.</button>
+<button class="qob" data-opt="C" data-correct="false" onclick="cq(this,5,false)">Run the MFP algorithm twice with different random seeds and measure consistency of the top-500 output list.</button>
+<button class="qob" data-opt="D" data-correct="false" onclick="cq(this,5,false)">Use a pre-trained language model to classify each MFP phrase as boilerplate vs content via zero-shot prompting.</button>
+</div><div class="qfeed"><div class="qfeed-head"></div><div class="qfeed-why">Correct. The dual evaluation methodology — direct annotation precision/recall + downstream IR metric improvement — is the gold standard for validating boilerplate detection systems. Direct annotation measures whether the MFPs are correct at the phrase level; downstream IR measurement validates whether suppressing them actually helps retrieval. Both are necessary: a system with high phrase-level precision but no IR improvement is suppressing real boilerplate that happened to not harm retrieval; conversely, a system that improves MAP without high phrase precision may be removing content that accidentally helps disambiguation.</div></div></div><div class="qq"><div class="qnum">Question 7 of 8</div><h4>The MFP pipeline is integrated into a streaming document ingestion system where new documents arrive at 1000/second. The existing MFP list (computed offline on a historical corpus) is used to strip boilerplate. After 3 months, retrieval quality degrades. What is the most likely cause and the fix?</h4><div class="qo"><button class="qob" data-opt="A" data-correct="true" onclick="cq(this,6,true)">The MFP list is too large (K=500) — reduce to K=100 to improve precision.</button>
+<button class="qob" data-opt="B" data-correct="false" onclick="cq(this,6,false)">Boilerplate drift: the MFP list captures boilerplate patterns from the historical corpus, but web content evolves. After 3 months, new boilerplate has emerged ('Accept cookies to continue', new copyright year formats, new navigation patterns) while some historical MFPs may now be content-bearing (a company's former boilerplate 'contact us for pricing' is now a product feature page). The fix: implement periodic MFP re-computation on a sliding window of recent documents (e.g. last 30 days) with incremental updates to the suppression list. Use a change detection metric: if the Jaccard similarity between the current top-500 MFP list and the previous list drops below 0.7, trigger a full re-computation. This is the streaming MFP maintenance problem — the same issue affects BM25 IDF statistics and dense retrieval index updates.</button>
+<button class="qob" data-opt="C" data-correct="false" onclick="cq(this,6,false)">The retrieval model has drifted due to concept shift in user queries — retrain the retrieval model.</button>
+<button class="qob" data-opt="D" data-correct="false" onclick="cq(this,6,false)">The global occupancy bitmask has filled up — flush and recompute from scratch.</button>
+</div><div class="qfeed"><div class="qfeed-head"></div><div class="qfeed-why">Correct. Boilerplate drift is the primary maintenance challenge for production MFP systems. Web corpus boilerplate is not static: cookie consent banners change with regulations, copyright years update, navigation structures evolve. A static MFP list computed once becomes progressively stale. The sliding-window re-computation strategy balances freshness against computational cost. In practice, weekly or monthly re-computation is sufficient for most web corpora; real-time streaming updates are only needed for rapidly evolving sources like news aggregators.</div></div></div><div class="qq"><div class="qnum">Question 8 of 8</div><h4>Two retrieval engineers debate the suppression threshold σ. Engineer A says: 'Lower σ means more patterns found — always use σ=10 for maximum recall.' Engineer B says: 'σ must be set relative to corpus size, not as an absolute count.' Who is correct and why?</h4><div class="qo"><button class="qob" data-opt="A" data-correct="false" onclick="cq(this,7,false)">Engineer A — absolute thresholds are simpler to implement and interpret across different corpus sizes.</button>
+<button class="qob" data-opt="B" data-correct="true" onclick="cq(this,7,true)">Engineer B is correct. σ is a document frequency threshold — setting it as an absolute count ignores corpus size. For a corpus of N=100 documents, σ=10 means df/N=10% — a very common phrase, appropriate for boilerplate. For N=1,700,000 documents, σ=10 means df/N=0.0006% — an extremely rare phrase that almost certainly isn't boilerplate. A phrase appearing in only 10 of 1.7M documents is likely a content phrase specific to a few documents. Using σ=10 at this scale would produce millions of false-positive MFPs including content phrases, overwhelming the suppression system with noise. The correct parameterisation is a relative threshold: σ = max(absolute_min, N × relative_fraction), e.g. σ = max(50, N × 0.01) — ensuring both a minimum absolute count (statistical significance) and a minimum relative frequency (domain relevance). The MFP paper uses σ calibrated to corpus size; absolute σ is a common misuse of the algorithm.</button>
+<button class="qob" data-opt="C" data-correct="false" onclick="cq(this,7,false)">Both are wrong — σ should be set by cross-validation on a labelled boilerplate dataset, not by either method.</button>
+<button class="qob" data-opt="D" data-correct="false" onclick="cq(this,7,false)">Engineer A is partially correct — σ=10 is the empirically optimal value across all corpus sizes based on the original MFP paper experiments.</button>
+</div><div class="qfeed"><div class="qfeed-head"></div><div class="qfeed-why">Correct. Relative threshold calibration is the principled approach. The MFP algorithm's σ is fundamentally a document frequency concept — phrases occurring in at least σ documents. The meaning of σ=10 is completely different at N=100 vs N=1,700,000. Production MFP deployments always parameterise σ as a fraction of N (with a floor for statistical reliability) and calibrate that fraction using retrieval quality on a held-out evaluation set. The formula σ = max(floor, N × fraction) is standard practice.</div></div></div><div class="qs" id="qs" style="display:none"><h3 id="sc">0/8</h3><p id="sm"></p></div></div>
+</section>
+</div>
+<footer>
+  <div style="max-width:var(--cw);margin:0 auto;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:1rem">
+    <div style="display:flex;gap:.8rem"><a href="mfp_m2.html" class="pr">← M2: Greedy Expansion & Bitmask</a><a href="mfp_m4.html" class="nx">M4: Evaluation & Production →</a></div>
+    <span>MFP Algorithms Track · M3 · Ranking, Deduplication, and Output Assembly</span>
+  </div>
+</footer>
+<script>
+window.addEventListener("scroll",function(){
+  var h=document.documentElement;
+  var pct=(h.scrollTop/(h.scrollHeight-h.clientHeight))*100;
+  document.getElementById("sp").style.width=pct+"%";
+});
+var obs=new IntersectionObserver(function(e){
+  e.forEach(function(x){if(x.isIntersecting)x.target.classList.add("vis");});
+},{threshold:0.06});
+document.querySelectorAll(".sec").forEach(function(s){obs.observe(s);});
+// Copy buttons
+function cp(btn,id){
+  navigator.clipboard.writeText(document.getElementById(id).innerText).then(function(){
+    var t=btn.textContent;btn.textContent="✓ Copied";
+    setTimeout(function(){btn.textContent=t;},2000);
+  });
+}
+// Metric bar animation
+window.addEventListener("load",function(){
+  document.querySelectorAll(".metric-fill[data-pct]").forEach(function(el){
+    setTimeout(function(){el.style.width=el.getAttribute("data-pct")+"%";},300);
+  });
+});
+// Quiz engine
+var qstate={};
+var qtotal=document.querySelectorAll(".qq").length;
+function updateProgress(){
+  var done=Object.keys(qstate).length;
+  var fill=document.querySelector(".qprog-fill");
+  var txt=document.querySelector(".qprog-text");
+  if(fill)fill.style.width=Math.round(done/qtotal*100)+"%";
+  if(txt)txt.textContent=done+"/"+qtotal+" answered";
+  if(done===qtotal)showScore();
+}
+function showScore(){
+  var c=Object.values(qstate).filter(function(v){return v;}).length;
+  var sc=document.getElementById("sc");
+  var sm=document.getElementById("sm");
+  if(sc)sc.textContent=c+"/"+qtotal+" correct";
+  if(sm){
+    var msgs=["Keep studying — revisit the scoring function and why β controls length sensitivity independently of frequency.","Good start — review NMS Jaccard deduplication and why the threshold determines phrase family collapse.","Building — re-read position-aware hard removal and why token-type removal fails for dual-use tokens.","Solid — review train-inference asymmetry in soft downweighting and how to prevent it.","Strong — revisit per-language df threshold calibration for multilingual corpora.","Excellent.","Outstanding.","Perfect — full command of MFP output assembly, integration, and production calibration."][c];
+    sm.textContent=msgs[Math.min(c,msgs.length-1)];
+    sm.style.color=c>=Math.round(qtotal*0.8)?"#5eead4":"#f472b6";
+  }
+  var qs=document.getElementById("qs");
+  if(qs)qs.style.display="block";
+}
+function cq(btn,qi,isCorrect){
+  if(qstate[qi]!==undefined)return;
+  qstate[qi]=isCorrect;
+  var qq=btn.closest(".qq");
+  qq.classList.add("answered");
+  var allBtns=qq.querySelectorAll(".qob");
+  allBtns.forEach(function(b){
+    b.setAttribute("disabled","");
+    var bc=b.getAttribute("data-correct")==="true";
+    if(bc)b.classList.add("ok");
+    else if(b===btn&&!isCorrect)b.classList.add("no");
+  });
+  var feed=qq.querySelector(".qfeed");
+  if(feed){
+    feed.style.display="block";
+    feed.className="qfeed "+(isCorrect?"correct":"wrong");
+    var head=feed.querySelector(".qfeed-head");
+    if(head)head.textContent=isCorrect?"✓ Correct — "+btn.getAttribute("data-opt")+" is right":"✗ Not quite — see the explanation below";
+  }
+  updateProgress();
+}</script>
+</body></html>

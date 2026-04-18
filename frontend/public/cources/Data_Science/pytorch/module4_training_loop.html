@@ -1,305 +1,2866 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Module 4 — The Training Loop | PyTorch for Data Science</title>
-<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&family=Outfit:wght@300;400;500;600;700;800;900&family=Source+Serif+4:ital,wght@0,300;0,400;0,600;1,300;1,400&display=swap" rel="stylesheet">
-<style>
-:root{--bg-primary:#0a0a0f;--bg-card:#161622;--bg-code:#0d0d18;--text-primary:#e8e8f0;--text-secondary:#9898b0;--accent-1:#6c5ce7;--accent-2:#00cec9;--accent-3:#fd79a8;--accent-4:#fdcb6e;--accent-5:#55efc4;--gradient-line:linear-gradient(90deg,#6c5ce7,#00cec9,#fd79a8,#fdcb6e);--border-subtle:rgba(255,255,255,0.06);--border-glow:rgba(108,92,231,0.3);--radius:12px;--radius-sm:8px;}
-*{margin:0;padding:0;box-sizing:border-box;}html{scroll-behavior:smooth;}
-body{background:var(--bg-primary);color:var(--text-primary);font-family:'Outfit',sans-serif;line-height:1.7;overflow-x:hidden;-webkit-font-smoothing:antialiased;}
-.scroll-progress{position:fixed;top:0;left:0;height:3px;z-index:1000;background:var(--gradient-line);width:0%;transition:width 0.1s linear;}
-.hero{min-height:100vh;display:flex;flex-direction:column;justify-content:center;align-items:center;text-align:center;padding:2rem;position:relative;overflow:hidden;}
-.hero::before{content:'';position:absolute;inset:0;background:radial-gradient(ellipse 600px 400px at 30% 40%,rgba(108,92,231,0.12),transparent),radial-gradient(ellipse 500px 350px at 70% 60%,rgba(0,206,201,0.08),transparent);pointer-events:none;}
-.hero-particles{position:absolute;inset:0;pointer-events:none;}
-.hero-particles .dot{position:absolute;width:3px;height:3px;border-radius:50%;background:var(--accent-2);opacity:0;animation:floatDot 6s ease-in-out infinite;}
-@keyframes floatDot{0%,100%{opacity:0;transform:translateY(0);}50%{opacity:0.6;transform:translateY(-40px);}}
-.hero-label{display:inline-flex;align-items:center;gap:8px;background:rgba(108,92,231,0.1);border:1px solid rgba(108,92,231,0.25);border-radius:100px;padding:6px 18px;font-size:0.8rem;font-weight:500;color:var(--accent-1);letter-spacing:1.5px;text-transform:uppercase;margin-bottom:2rem;animation:fadeInDown 0.8s ease-out;}
-.dot-indicator{width:6px;height:6px;border-radius:50%;background:var(--accent-2);animation:pulse 2s ease-in-out infinite;}
-@keyframes pulse{0%,100%{opacity:1;}50%{opacity:0.3;}}
-.hero h1{font-size:clamp(2.8rem,6vw,5rem);font-weight:900;line-height:1.1;letter-spacing:-2px;margin-bottom:1.5rem;animation:fadeInDown 0.8s ease-out 0.1s both;}
-.gradient-text{background:var(--gradient-line);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;}
-.hero-subtitle{font-family:'Source Serif 4',serif;font-size:clamp(1.05rem,2vw,1.25rem);color:var(--text-secondary);max-width:640px;line-height:1.8;font-weight:300;animation:fadeInDown 0.8s ease-out 0.2s both;}
-.hero-scroll-cue{position:absolute;bottom:3rem;display:flex;flex-direction:column;align-items:center;gap:8px;color:var(--text-secondary);font-size:0.75rem;letter-spacing:2px;text-transform:uppercase;}
-.arrow{width:20px;height:20px;border-right:2px solid var(--text-secondary);border-bottom:2px solid var(--text-secondary);transform:rotate(45deg);animation:bounceArrow 2s ease-in-out infinite;}
-@keyframes bounceArrow{0%,100%{transform:rotate(45deg) translateY(0);}50%{transform:rotate(45deg) translateY(6px);}}
-@keyframes fadeInDown{from{opacity:0;transform:translateY(-20px);}to{opacity:1;transform:translateY(0);}}
-.content-wrapper{max-width:860px;margin:0 auto;padding:0 2rem 6rem;}
-.section{margin-bottom:5rem;opacity:0;transform:translateY(30px);transition:all 0.7s cubic-bezier(0.16,1,0.3,1);}
-.section.visible{opacity:1;transform:translateY(0);}
-.section-number{font-family:'JetBrains Mono',monospace;font-size:0.7rem;color:var(--accent-2);letter-spacing:3px;text-transform:uppercase;margin-bottom:0.75rem;display:flex;align-items:center;gap:10px;}
-.section-number::after{content:'';flex:1;height:1px;background:linear-gradient(90deg,var(--accent-2),transparent);opacity:0.3;}
-h2{font-size:clamp(1.8rem,3.5vw,2.4rem);font-weight:700;letter-spacing:-0.5px;margin-bottom:1.5rem;line-height:1.2;}
-h3{font-size:1.3rem;font-weight:600;margin:2.5rem 0 1rem;}
-p{color:var(--text-secondary);margin-bottom:1.25rem;font-size:1.02rem;}
-p strong{color:var(--text-primary);font-weight:600;}
-.gradient-divider{height:2px;background:var(--gradient-line);border-radius:2px;margin:4rem 0;opacity:0.5;}
-.code-block{background:var(--bg-code);border:1px solid var(--border-subtle);border-radius:var(--radius);overflow:hidden;margin:1.5rem 0;}
-.code-block-header{display:flex;align-items:center;padding:10px 16px;background:rgba(255,255,255,0.02);border-bottom:1px solid var(--border-subtle);}
-.code-lang{font-family:'JetBrains Mono',monospace;font-size:0.7rem;color:var(--accent-2);display:flex;align-items:center;gap:6px;}
-.code-lang::before{content:'●';font-size:8px;}
-.code-block pre{padding:16px 20px;overflow-x:auto;font-family:'JetBrains Mono',monospace;font-size:0.82rem;line-height:1.65;color:#c8c8d8;}
-.kw{color:#c792ea;}.fn{color:#82aaff;}.str{color:#c3e88d;}.num{color:#f78c6c;}.cm{color:#546e7a;font-style:italic;}.op{color:#89ddff;}
-.code-output{border-top:1px solid var(--border-subtle);background:rgba(0,0,0,0.25);}
-.code-output-label{display:flex;align-items:center;gap:6px;padding:8px 16px 0;font-family:'JetBrains Mono',monospace;font-size:0.65rem;color:var(--accent-5);letter-spacing:1px;text-transform:uppercase;}
-.code-output-label::before{content:'▸';font-size:0.7rem;}
-.code-output pre{padding:8px 20px 14px;font-family:'JetBrains Mono',monospace;font-size:0.8rem;line-height:1.6;color:var(--accent-5);opacity:0.85;}
-.formula-card{background:var(--bg-card);border:1px solid var(--border-subtle);border-radius:var(--radius);padding:24px 28px;margin:1.5rem 0;position:relative;overflow:hidden;}
-.formula-card::before{content:'';position:absolute;left:0;top:0;bottom:0;width:3px;background:var(--gradient-line);}
-.formula-label{font-family:'JetBrains Mono',monospace;font-size:0.7rem;color:var(--accent-1);letter-spacing:1.5px;text-transform:uppercase;margin-bottom:12px;}
-.formula-math{font-size:1.3rem;color:var(--text-primary);font-weight:300;letter-spacing:1px;margin-bottom:12px;font-family:'Source Serif 4',serif;}
-.formula-explain{font-size:0.88rem;color:var(--text-secondary);line-height:1.6;}
-.formula-explain .var{font-family:'Source Serif 4',serif;font-style:italic;color:var(--accent-4);}
-.insight{background:linear-gradient(135deg,rgba(108,92,231,0.08),rgba(0,206,201,0.05));border:1px solid rgba(108,92,231,0.2);border-radius:var(--radius);padding:20px 24px;margin:2rem 0;position:relative;}
-.insight::before{content:'💡';position:absolute;top:-12px;left:20px;background:var(--bg-primary);padding:0 8px;font-size:1.1rem;}
-.insight p{color:var(--text-primary);font-size:0.95rem;margin:0;}
-.warning{background:linear-gradient(135deg,rgba(253,121,168,0.08),rgba(253,203,110,0.05));border:1px solid rgba(253,121,168,0.2);border-radius:var(--radius);padding:20px 24px;margin:2rem 0;position:relative;}
-.warning::before{content:'⚠️';position:absolute;top:-12px;left:20px;background:var(--bg-primary);padding:0 8px;font-size:1.1rem;}
-.warning p{color:var(--text-primary);font-size:0.95rem;margin:0;}
-.step-list{counter-reset:step;display:flex;flex-direction:column;gap:16px;margin:1.5rem 0;}
-.step-item{counter-increment:step;display:flex;gap:16px;align-items:flex-start;}
-.step-item::before{content:counter(step);min-width:32px;height:32px;border-radius:50%;background:rgba(108,92,231,0.15);border:1px solid rgba(108,92,231,0.3);display:flex;align-items:center;justify-content:center;font-family:'JetBrains Mono',monospace;font-size:0.8rem;font-weight:600;color:var(--accent-1);flex-shrink:0;}
-.step-item-content strong{display:block;color:var(--text-primary);margin-bottom:4px;}
-.step-item-content p{color:var(--text-secondary);font-size:0.9rem;margin:0;}
-.quiz-card{background:var(--bg-card);border:1px solid var(--border-subtle);border-radius:var(--radius);margin:1.5rem 0;overflow:hidden;}
-.quiz-card-header{padding:14px 20px;background:rgba(253,203,110,0.05);border-bottom:1px solid var(--border-subtle);font-weight:600;font-size:0.9rem;display:flex;align-items:center;gap:8px;}
-.quiz-card-body{padding:20px 24px;}
-.quiz-question{font-size:0.95rem;color:var(--text-primary);margin-bottom:16px;line-height:1.6;}
-.quiz-options{display:flex;flex-direction:column;gap:8px;}
-.quiz-option{padding:12px 16px;border:1px solid var(--border-subtle);border-radius:var(--radius-sm);cursor:pointer;font-size:0.9rem;color:var(--text-secondary);transition:all 0.25s;display:flex;align-items:center;gap:10px;}
-.quiz-option:hover{border-color:var(--accent-1);background:rgba(108,92,231,0.06);color:var(--text-primary);}
-.quiz-option.correct{border-color:var(--accent-5);background:rgba(85,239,196,0.1);color:var(--accent-5);}
-.quiz-option.incorrect{border-color:var(--accent-3);background:rgba(253,121,168,0.1);color:var(--accent-3);}
-.option-letter{font-family:'JetBrains Mono',monospace;font-size:0.7rem;font-weight:600;width:22px;height:22px;display:flex;align-items:center;justify-content:center;border-radius:50%;border:1px solid currentColor;flex-shrink:0;}
-.quiz-feedback{margin-top:12px;padding:12px 16px;border-radius:var(--radius-sm);font-size:0.88rem;line-height:1.6;display:none;}
-.quiz-feedback.show{display:block;}
-.correct-fb{background:rgba(85,239,196,0.08);border:1px solid rgba(85,239,196,0.2);color:var(--accent-5);}
-.incorrect-fb{background:rgba(253,121,168,0.08);border:1px solid rgba(253,121,168,0.2);color:var(--accent-3);}
-</style>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Module 4 — The Training Loop: The Most Important Module</title>
+  <meta name="description" content="Module 4 — The Training Loop: The Most Important Module rendered into premium HTML with exact page text preserved.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;700;800&family=Space+Grotesk:wght@500;700&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg: #040a13;
+      --bg-2: #081321;
+      --panel: rgba(9, 18, 32, 0.9);
+      --panel-soft: rgba(14, 27, 47, 0.72);
+      --line: rgba(146, 201, 255, 0.15);
+      --text: #eef4ff;
+      --muted: #aec4df;
+      --soft: #7f99bb;
+      --accent: #92d2ff;
+      --accent-2: #7cffd7;
+      --accent-3: #ffc98c;
+      --accent-4: #a08fff;
+      --shadow: 0 24px 80px rgba(0, 0, 0, 0.42);
+      --radius: 28px;
+      --content: min(1240px, calc(100vw - 28px));
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    html {
+      scroll-behavior: smooth;
+    }
+
+    body {
+      margin: 0;
+      color: var(--text);
+      font-family: "Manrope", sans-serif;
+      background:
+        radial-gradient(circle at 10% 8%, rgba(124, 255, 215, 0.1), transparent 22%),
+        radial-gradient(circle at 84% 6%, rgba(146, 201, 255, 0.14), transparent 22%),
+        radial-gradient(circle at 50% 100%, rgba(255, 201, 140, 0.08), transparent 25%),
+        linear-gradient(180deg, #02060d 0%, #06101b 38%, #030711 100%);
+      overflow-x: hidden;
+    }
+
+    body::before {
+      content: "";
+      position: fixed;
+      inset: 0;
+      pointer-events: none;
+      background-image:
+        linear-gradient(rgba(255,255,255,0.03) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(255,255,255,0.03) 1px, transparent 1px);
+      background-size: 48px 48px;
+      mask-image: radial-gradient(circle at center, black 24%, transparent 74%);
+      opacity: 0.45;
+    }
+
+    .progress {
+      position: fixed;
+      top: 0;
+      left: 0;
+      height: 4px;
+      width: 0;
+      z-index: 1000;
+      background: linear-gradient(90deg, var(--accent), var(--accent-2), var(--accent-3), var(--accent-4));
+      box-shadow: 0 0 24px rgba(124, 255, 215, 0.35);
+    }
+
+    .status-chip {
+      position: fixed;
+      right: 16px;
+      bottom: 16px;
+      z-index: 1001;
+      padding: 12px 16px;
+      border-radius: 999px;
+      background: rgba(7, 15, 27, 0.92);
+      border: 1px solid rgba(146, 201, 255, 0.18);
+      box-shadow: var(--shadow);
+      color: var(--text);
+      font-size: 0.9rem;
+      backdrop-filter: blur(18px);
+    }
+
+    .sidebar-toggle {
+      display: none;
+      position: fixed;
+      right: 16px;
+      bottom: 72px;
+      z-index: 1002;
+      padding: 12px 16px;
+      border: 0;
+      border-radius: 999px;
+      background: linear-gradient(90deg, rgba(146, 201, 255, 0.18), rgba(124, 255, 215, 0.18));
+      color: var(--text);
+      font: inherit;
+      box-shadow: var(--shadow);
+      backdrop-filter: blur(18px);
+      cursor: pointer;
+    }
+
+    .sidebar-overlay {
+      position: fixed;
+      inset: 0;
+      z-index: 999;
+      background: rgba(1, 6, 11, 0.56);
+      backdrop-filter: blur(4px);
+    }
+
+    .orb {
+      position: fixed;
+      border-radius: 50%;
+      filter: blur(30px);
+      opacity: 0.35;
+      pointer-events: none;
+      animation: drift 16s ease-in-out infinite;
+      z-index: 0;
+    }
+
+    .orb.one {
+      width: 240px;
+      height: 240px;
+      left: -60px;
+      top: 16vh;
+      background: rgba(146, 201, 255, 0.22);
+    }
+
+    .orb.two {
+      width: 220px;
+      height: 220px;
+      right: -40px;
+      top: 50vh;
+      background: rgba(124, 255, 215, 0.18);
+      animation-delay: -6s;
+    }
+
+    .orb.three {
+      width: 190px;
+      height: 190px;
+      left: 44vw;
+      bottom: -40px;
+      background: rgba(255, 201, 140, 0.13);
+      animation-delay: -9s;
+    }
+
+    .shell {
+      position: relative;
+      z-index: 1;
+      width: var(--content);
+      margin: 0 auto;
+      padding: 20px 0 72px;
+    }
+
+    .glass {
+      background: linear-gradient(180deg, rgba(10, 19, 33, 0.94), rgba(6, 12, 22, 0.98));
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      backdrop-filter: blur(22px);
+    }
+
+    .hero {
+      min-height: 100vh;
+      display: grid;
+      grid-template-columns: 1.08fr 0.92fr;
+      gap: 24px;
+      align-items: center;
+      padding: 20px 0 24px;
+    }
+
+    .hero-copy {
+      padding: 36px;
+    }
+
+    .eyebrow {
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
+      padding: 10px 14px;
+      border-radius: 999px;
+      background: rgba(124, 255, 215, 0.08);
+      border: 1px solid rgba(124, 255, 215, 0.18);
+      color: var(--accent-2);
+      font-size: 0.78rem;
+      letter-spacing: 0.16em;
+      text-transform: uppercase;
+    }
+
+    .eyebrow::before {
+      content: "";
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: var(--accent-2);
+      box-shadow: 0 0 16px rgba(124, 255, 215, 0.78);
+      animation: pulse 2.8s infinite;
+    }
+
+    h1 {
+      margin: 18px 0 12px;
+      font-family: "Space Grotesk", sans-serif;
+      font-size: clamp(2.8rem, 7vw, 5.2rem);
+      line-height: 0.94;
+      letter-spacing: -0.05em;
+    }
+
+    .subtitle {
+      margin: 0 0 14px;
+      color: var(--muted);
+      font-size: 1.04rem;
+      line-height: 1.85;
+      max-width: 68ch;
+    }
+
+    .hero-grid {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 14px;
+      margin-top: 26px;
+    }
+
+    .metric {
+      padding: 16px;
+      border-radius: 22px;
+      background: rgba(255,255,255,0.03);
+      border: 1px solid rgba(255,255,255,0.06);
+    }
+
+    .metric strong {
+      display: block;
+      font-size: 1.32rem;
+      margin-bottom: 4px;
+    }
+
+    .metric span {
+      color: var(--muted);
+      font-size: 0.9rem;
+    }
+
+    .hero-stage {
+      padding: 26px;
+      display: grid;
+      gap: 16px;
+      min-height: 520px;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .hero-stage::after {
+      content: "";
+      position: absolute;
+      width: 240px;
+      height: 240px;
+      right: -60px;
+      bottom: -80px;
+      border-radius: 50%;
+      background: radial-gradient(circle, rgba(160, 143, 255, 0.22), transparent 70%);
+    }
+
+    .code-shell {
+      display: grid;
+      gap: 10px;
+    }
+
+    .hero-card {
+      padding: 20px;
+      border-radius: 24px;
+      border: 1px solid rgba(255,255,255,0.07);
+      background: linear-gradient(135deg, rgba(146, 201, 255, 0.1), rgba(124, 255, 215, 0.06));
+    }
+
+    .hero-card span {
+      display: block;
+      margin-bottom: 10px;
+      color: var(--muted);
+      font-size: 0.78rem;
+      text-transform: uppercase;
+      letter-spacing: 0.14em;
+    }
+
+    .hero-card strong {
+      display: block;
+      white-space: pre-line;
+      font-family: "JetBrains Mono", monospace;
+      font-size: clamp(0.96rem, 1.7vw, 1.22rem);
+      line-height: 1.85;
+    }
+
+    .hero-pre {
+      margin: 0;
+      padding: 18px;
+      border-radius: 24px;
+      border: 1px solid rgba(255,255,255,0.07);
+      background: #06101c;
+      color: #d7eaff;
+      font-family: "JetBrains Mono", monospace;
+      line-height: 1.8;
+      white-space: pre-wrap;
+      overflow: auto;
+      position: relative;
+    }
+
+    .hero-pre::before {
+      content: "";
+      position: absolute;
+      top: 0;
+      left: -40%;
+      width: 35%;
+      height: 100%;
+      transform: skewX(-18deg);
+      background: linear-gradient(90deg, transparent, rgba(255,255,255,0.08), transparent);
+      animation: scan 8s linear infinite;
+    }
+
+    .block-actions {
+      display: flex;
+      justify-content: flex-end;
+    }
+
+    .copy-btn {
+      border: 0;
+      border-radius: 999px;
+      padding: 10px 14px;
+      background: linear-gradient(90deg, rgba(146, 201, 255, 0.16), rgba(124, 255, 215, 0.16));
+      color: var(--text);
+      font: inherit;
+      cursor: pointer;
+      transition: 180ms ease;
+    }
+
+    .copy-btn:hover {
+      transform: translateY(-1px);
+    }
+
+    .layout {
+      display: grid;
+      grid-template-columns: 290px minmax(0, 1fr);
+      gap: 24px;
+      align-items: start;
+    }
+
+    .sidebar {
+      position: sticky;
+      top: 18px;
+      padding: 18px;
+    }
+
+    .sidebar h2 {
+      margin: 0 0 12px;
+      font-size: 0.92rem;
+      letter-spacing: 0.16em;
+      text-transform: uppercase;
+      color: var(--accent);
+    }
+
+    .nav {
+      display: grid;
+      gap: 10px;
+      margin-bottom: 18px;
+    }
+
+    .nav a {
+      display: grid;
+      gap: 4px;
+      text-decoration: none;
+      color: var(--text);
+      padding: 12px 14px;
+      border-radius: 18px;
+      background: rgba(255,255,255,0.03);
+      border: 1px solid transparent;
+      transition: 180ms ease;
+    }
+
+    .nav a span {
+      color: var(--soft);
+      font-size: 0.76rem;
+      text-transform: uppercase;
+      letter-spacing: 0.14em;
+    }
+
+    .nav a:hover,
+    .nav a.active {
+      border-color: rgba(146, 201, 255, 0.18);
+      background: rgba(146, 201, 255, 0.08);
+      transform: translateX(4px);
+    }
+
+    .sidebar-note {
+      padding: 14px;
+      border-radius: 20px;
+      background: rgba(255,255,255,0.03);
+      border: 1px solid rgba(255,255,255,0.05);
+      color: var(--muted);
+      line-height: 1.7;
+      font-size: 0.92rem;
+    }
+
+    .sidebar-search {
+      margin-bottom: 12px;
+    }
+
+    .sidebar-search input {
+      width: 100%;
+      border: 1px solid rgba(255,255,255,0.07);
+      border-radius: 16px;
+      background: rgba(255,255,255,0.04);
+      color: var(--text);
+      padding: 12px 14px;
+      font: inherit;
+    }
+
+    .sidebar-search input::placeholder {
+      color: var(--soft);
+    }
+
+    .sidebar-meta {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 10px;
+      margin-bottom: 14px;
+    }
+
+    .sidebar-stat {
+      padding: 12px 14px;
+      border-radius: 16px;
+      background: rgba(255,255,255,0.03);
+      border: 1px solid rgba(255,255,255,0.05);
+    }
+
+    .sidebar-stat span {
+      display: block;
+      font-size: 0.72rem;
+      color: var(--soft);
+      text-transform: uppercase;
+      letter-spacing: 0.12em;
+      margin-bottom: 4px;
+    }
+
+    .sidebar-stat strong {
+      font-size: 1rem;
+      color: var(--text);
+    }
+
+    .content {
+      display: grid;
+      gap: 22px;
+    }
+
+    .page {
+      padding: 28px;
+      border-radius: 30px;
+      background: linear-gradient(180deg, rgba(8, 16, 28, 0.94), rgba(4, 9, 17, 0.98));
+      border: 1px solid var(--line);
+      box-shadow: var(--shadow);
+      transform: translateY(0);
+      opacity: 1;
+    }
+
+    body.has-motion .page {
+      transform: translateY(34px);
+      opacity: 0;
+      transition: transform 700ms cubic-bezier(.22,.9,.25,1), opacity 700ms ease;
+    }
+
+    body.has-motion .page.visible {
+      transform: translateY(0);
+      opacity: 1;
+    }
+
+    .page-meta {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      gap: 14px;
+      margin-bottom: 16px;
+    }
+
+    .page-head {
+      display: grid;
+      gap: 6px;
+    }
+
+    .page-label {
+      color: var(--accent-2);
+      font-size: 0.78rem;
+      letter-spacing: 0.18em;
+      text-transform: uppercase;
+    }
+
+    .page-title {
+      color: var(--text);
+      font-size: 1rem;
+      font-weight: 700;
+      line-height: 1.5;
+    }
+
+    .page-link {
+      color: var(--soft);
+      text-decoration: none;
+      font-size: 0.92rem;
+    }
+
+    .page-link:hover {
+      color: var(--text);
+    }
+
+    .page-actions {
+      display: flex;
+      gap: 10px;
+      align-items: center;
+      flex-wrap: wrap;
+    }
+
+    .page-body {
+      display: grid;
+      gap: 16px;
+    }
+
+    .page-progress {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 8px 12px;
+      border-radius: 999px;
+      background: rgba(124, 255, 215, 0.08);
+      border: 1px solid rgba(124, 255, 215, 0.12);
+      color: var(--accent-2);
+      font-size: 0.78rem;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+    }
+
+    .text-block,
+    .math-block,
+    .output-block,
+    .callout-block {
+      margin: 0;
+      padding: 18px;
+      border-radius: 24px;
+      background: rgba(255,255,255,0.03);
+      border: 1px solid rgba(255,255,255,0.06);
+      overflow: auto;
+    }
+
+    .text-block p,
+    .callout-block p {
+      margin: 0;
+      color: #e6f1ff;
+      line-height: 1.85;
+      font-size: 0.98rem;
+    }
+
+    .text-block {
+      display: grid;
+      gap: 12px;
+    }
+
+    .text-block pre {
+      margin: 0;
+      color: #e6f1ff;
+      white-space: pre-wrap;
+      word-break: break-word;
+      font-family: "JetBrains Mono", monospace;
+      line-height: 1.82;
+      font-size: 0.92rem;
+    }
+
+    .inline-heading {
+      margin: 0;
+      font-family: "Space Grotesk", sans-serif;
+      font-size: clamp(1.1rem, 2vw, 1.45rem);
+      color: var(--text);
+      letter-spacing: -0.03em;
+    }
+
+    .math-block {
+      background: linear-gradient(135deg, rgba(160, 143, 255, 0.12), rgba(146, 201, 255, 0.08));
+      border-color: rgba(160, 143, 255, 0.18);
+    }
+
+    .math-block pre,
+    .output-block pre {
+      margin: 0;
+      color: #e6f1ff;
+      white-space: pre-wrap;
+      word-break: break-word;
+      overflow: auto;
+      font-family: "JetBrains Mono", monospace;
+      line-height: 1.82;
+      font-size: 0.92rem;
+    }
+
+    .output-block {
+      background: rgba(8, 15, 27, 0.92);
+      border-color: rgba(124, 255, 215, 0.12);
+    }
+
+    .callout-block {
+      background: linear-gradient(135deg, rgba(146, 201, 255, 0.1), rgba(124, 255, 215, 0.06));
+      border-color: rgba(146, 201, 255, 0.16);
+    }
+
+    .callout-block.warning {
+      background: linear-gradient(135deg, rgba(255, 201, 140, 0.14), rgba(146, 201, 255, 0.06));
+      border-color: rgba(255, 201, 140, 0.18);
+    }
+
+    .callout-block strong {
+      display: block;
+      margin-bottom: 6px;
+      color: var(--text);
+    }
+
+    .code-panel {
+      border-radius: 24px;
+      background: #06101c;
+      border: 1px solid rgba(255,255,255,0.06);
+      overflow: hidden;
+    }
+
+    .code-panel-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 10px;
+      padding: 12px 16px;
+      border-bottom: 1px solid rgba(255,255,255,0.06);
+      background: rgba(255,255,255,0.03);
+    }
+
+    .code-label {
+      color: var(--soft);
+      font-size: 0.78rem;
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+    }
+
+    .code-lines {
+      margin: 0;
+      padding: 16px 16px 16px 54px;
+      color: #d7eaff;
+      font-family: "JetBrains Mono", monospace;
+      font-size: 0.92rem;
+      line-height: 1.8;
+      overflow: auto;
+    }
+
+    .code-lines li {
+      white-space: pre;
+      padding-left: 10px;
+    }
+
+    .takeaway-box,
+    .knowledge-check,
+    .pager {
+      padding: 18px;
+      border-radius: 24px;
+      border: 1px solid rgba(255,255,255,0.06);
+      background: rgba(255,255,255,0.03);
+    }
+
+    .takeaway-box strong,
+    .knowledge-check strong {
+      display: block;
+      margin-bottom: 8px;
+      color: var(--text);
+      font-size: 0.92rem;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+    }
+
+    .takeaway-box p,
+    .knowledge-check li {
+      margin: 0;
+      color: var(--muted);
+      line-height: 1.8;
+    }
+
+    .knowledge-check ol {
+      margin: 0;
+      padding-left: 18px;
+      display: grid;
+      gap: 10px;
+    }
+
+    .page-learning {
+      display: grid;
+      gap: 16px;
+      grid-template-columns: 1.05fr 0.95fr;
+    }
+
+    .pager {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+
+    .pager a {
+      text-decoration: none;
+      color: var(--text);
+      padding: 10px 14px;
+      border-radius: 999px;
+      background: linear-gradient(90deg, rgba(146, 201, 255, 0.16), rgba(124, 255, 215, 0.16));
+      border: 1px solid rgba(146, 201, 255, 0.12);
+    }
+
+    .pager span {
+      color: var(--soft);
+      font-size: 0.88rem;
+    }
+
+    .hero-wow,
+    .story-thread,
+    .mental-model,
+    .pause-think,
+    .mistake-box,
+    .outcome-box,
+    .integration-box {
+      margin: 18px 0;
+      padding: 18px 20px;
+      border-radius: 22px;
+      border: 1px solid rgba(255,255,255,0.06);
+      background: rgba(255,255,255,0.03);
+    }
+
+    .hero-wow {
+      background: linear-gradient(135deg, rgba(124, 255, 215, 0.12), rgba(146, 201, 255, 0.08));
+      border-color: rgba(124, 255, 215, 0.16);
+    }
+
+    .hero-wow strong,
+    .story-thread strong,
+    .mental-model strong,
+    .pause-think strong,
+    .mistake-box strong,
+    .outcome-box strong,
+    .integration-box strong,
+    .advanced-note summary {
+      display: block;
+      margin-bottom: 10px;
+      color: var(--text);
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      font-size: 0.84rem;
+    }
+
+    .hero-wow p,
+    .story-thread p,
+    .mental-model p,
+    .pause-think p,
+    .mistake-box p,
+    .outcome-box p,
+    .integration-box p,
+    .integration-box li,
+    .pause-think li,
+    .mistake-box li,
+    .advanced-note p {
+      margin: 0;
+      color: var(--muted);
+      line-height: 1.8;
+    }
+
+    .wow-pre {
+      margin: 12px 0 10px;
+      padding: 16px;
+      border-radius: 20px;
+      background: rgba(5, 11, 20, 0.8);
+      border: 1px solid rgba(255,255,255,0.06);
+      color: #d7eaff;
+      font-family: "JetBrains Mono", monospace;
+      white-space: pre-wrap;
+      overflow: auto;
+    }
+
+    .story-thread {
+      background: linear-gradient(135deg, rgba(147, 209, 255, 0.1), rgba(124, 255, 215, 0.05));
+      border-color: rgba(147, 209, 255, 0.14);
+    }
+
+    .mental-model {
+      background: linear-gradient(135deg, rgba(163, 144, 255, 0.12), rgba(147, 209, 255, 0.06));
+      border-color: rgba(163, 144, 255, 0.14);
+    }
+
+    .mental-equation {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 12px;
+      margin-top: 14px;
+    }
+
+    .mental-equation div {
+      padding: 14px;
+      border-radius: 18px;
+      background: rgba(5, 11, 20, 0.56);
+      border: 1px solid rgba(255,255,255,0.06);
+      color: var(--text);
+      text-align: center;
+      font-weight: 700;
+    }
+
+    .pause-think {
+      background: linear-gradient(135deg, rgba(124, 255, 215, 0.11), rgba(147, 209, 255, 0.06));
+      border-color: rgba(124, 255, 215, 0.16);
+    }
+
+    .mistake-box {
+      background: linear-gradient(135deg, rgba(255, 201, 141, 0.12), rgba(163, 144, 255, 0.06));
+      border-color: rgba(255, 201, 141, 0.16);
+    }
+
+    .pause-think ul,
+    .mistake-box ul,
+    .outcome-box ul,
+    .integration-box ul {
+      margin: 10px 0 0;
+      padding-left: 20px;
+      display: grid;
+      gap: 8px;
+    }
+
+    .advanced-note {
+      margin: 18px 0;
+      border-radius: 22px;
+      border: 1px solid rgba(255,255,255,0.06);
+      background: rgba(255,255,255,0.03);
+      overflow: hidden;
+    }
+
+    .advanced-note summary {
+      cursor: pointer;
+      list-style: none;
+      padding: 18px 20px;
+      margin: 0;
+    }
+
+    .advanced-note summary::-webkit-details-marker {
+      display: none;
+    }
+
+    .advanced-note .advanced-body {
+      padding: 0 20px 18px;
+      display: grid;
+      gap: 10px;
+    }
+
+    .outcome-box,
+    .integration-box {
+      background: linear-gradient(135deg, rgba(147, 209, 255, 0.1), rgba(255, 201, 141, 0.06));
+      border-color: rgba(147, 209, 255, 0.16);
+    }
+
+    .crafted-bridge {
+      margin: 16px 0;
+      padding: 18px 20px;
+      border-radius: 22px;
+      border: 1px solid rgba(146, 201, 255, 0.14);
+      background: linear-gradient(135deg, rgba(9, 22, 38, 0.94), rgba(12, 28, 48, 0.78));
+    }
+
+    .crafted-bridge strong {
+      display: block;
+      margin-bottom: 10px;
+      color: var(--text);
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      font-size: 0.84rem;
+    }
+
+    .crafted-bridge p {
+      margin: 0;
+      color: var(--muted);
+      line-height: 1.82;
+    }
+
+    .loop-visual {
+      display: grid;
+      gap: 14px;
+      margin: 20px 0 8px;
+      padding: 22px;
+      border-radius: 24px;
+      border: 1px solid rgba(124, 255, 215, 0.16);
+      background:
+        radial-gradient(circle at 20% 15%, rgba(124, 255, 215, 0.08), transparent 30%),
+        radial-gradient(circle at 80% 85%, rgba(146, 201, 255, 0.08), transparent 30%),
+        rgba(5, 11, 20, 0.74);
+    }
+
+    .loop-grid {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 12px;
+      align-items: center;
+    }
+
+    .loop-node {
+      position: relative;
+      padding: 16px 14px;
+      border-radius: 18px;
+      text-align: center;
+      background: rgba(255,255,255,0.04);
+      border: 1px solid rgba(255,255,255,0.08);
+      color: var(--text);
+      font-weight: 700;
+      min-height: 86px;
+      display: grid;
+      place-items: center;
+      animation: glowPulse 3.8s ease-in-out infinite;
+    }
+
+    .loop-node small {
+      display: block;
+      margin-top: 6px;
+      color: var(--soft);
+      font-weight: 500;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      font-size: 0.68rem;
+    }
+
+    .loop-arrow {
+      color: var(--accent-2);
+      text-align: center;
+      font-size: 1.4rem;
+      opacity: 0.9;
+      animation: pulse 2.6s infinite;
+    }
+
+    .loop-repeat {
+      justify-self: center;
+      padding: 10px 16px;
+      border-radius: 999px;
+      border: 1px solid rgba(255,255,255,0.08);
+      background: rgba(255,255,255,0.04);
+      color: var(--muted);
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      font-size: 0.76rem;
+    }
+
+    .decision-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 14px;
+      margin: 18px 0;
+    }
+
+    .decision-card {
+      padding: 18px;
+      border-radius: 22px;
+      border: 1px solid rgba(255,255,255,0.06);
+      background: rgba(255,255,255,0.03);
+    }
+
+    .decision-card strong {
+      display: block;
+      margin-bottom: 8px;
+      color: var(--text);
+      font-size: 0.96rem;
+    }
+
+    .decision-card p {
+      margin: 0;
+      color: var(--muted);
+      line-height: 1.8;
+    }
+
+    .decision-card span {
+      display: inline-block;
+      margin-top: 10px;
+      padding: 6px 10px;
+      border-radius: 999px;
+      background: rgba(124, 255, 215, 0.08);
+      border: 1px solid rgba(124, 255, 215, 0.14);
+      color: var(--accent-2);
+      font-size: 0.74rem;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+    }
+
+    .footer-banner {
+      padding: 24px;
+      border-radius: 30px;
+      background: linear-gradient(135deg, rgba(146, 201, 255, 0.12), rgba(124, 255, 215, 0.08), rgba(255, 201, 140, 0.08));
+      border: 1px solid rgba(146, 201, 255, 0.16);
+      box-shadow: var(--shadow);
+    }
+
+    .footer-banner h2 {
+      margin: 0 0 10px;
+      font-family: "Space Grotesk", sans-serif;
+      font-size: clamp(1.5rem, 3vw, 2.2rem);
+    }
+
+    .footer-banner p {
+      margin: 0;
+      color: var(--muted);
+      line-height: 1.85;
+    }
+
+    @keyframes pulse {
+      0%, 100% { transform: scale(1); opacity: 1; }
+      50% { transform: scale(0.72); opacity: 0.5; }
+    }
+
+    @keyframes drift {
+      0%, 100% { transform: translate3d(0, 0, 0); }
+      50% { transform: translate3d(0, -24px, 0); }
+    }
+
+    @keyframes scan {
+      from { left: -40%; }
+      to { left: 140%; }
+    }
+
+    @media (max-width: 1080px) {
+      .hero,
+      .layout {
+        grid-template-columns: 1fr;
+      }
+
+      .sidebar {
+        position: relative;
+        top: 0;
+      }
+    }
+
+    @media (max-width: 720px) {
+      .shell {
+        width: min(100vw - 16px, 100%);
+      }
+
+      .hero-copy,
+      .hero-stage,
+      .sidebar,
+      .page,
+      .footer-banner {
+        padding: 20px;
+      }
+
+      .hero-grid {
+        grid-template-columns: 1fr;
+      }
+
+      .page-meta {
+        flex-direction: column;
+        align-items: flex-start;
+      }
+
+      .page-learning {
+        grid-template-columns: 1fr;
+      }
+
+      .loop-grid,
+      .decision-grid {
+        grid-template-columns: 1fr;
+      }
+
+      .loop-arrow {
+        transform: rotate(90deg);
+      }
+
+      .sidebar-toggle {
+        display: inline-flex;
+        align-items: center;
+      }
+
+      .sidebar {
+        position: fixed;
+        top: 0;
+        right: 0;
+        width: min(88vw, 360px);
+        height: 100vh;
+        z-index: 1000;
+        overflow-y: auto;
+        transform: translateX(110%);
+        transition: transform 220ms ease;
+      }
+
+      .sidebar.is-open {
+        transform: translateX(0);
+      }
+
+      .status-chip {
+        left: 16px;
+        right: 16px;
+        bottom: 16px;
+        text-align: center;
+      }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      html {
+        scroll-behavior: auto;
+      }
+
+      * {
+        animation: none !important;
+        transition: none !important;
+      }
+
+      .page {
+        opacity: 1;
+        transform: none;
+      }
+    }
+  </style>
 </head>
-<body>
-<div class="scroll-progress" id="scrollProgress"></div>
-<section class="hero">
-  <div class="hero-particles" id="heroParticles"></div>
-  <div class="hero-label"><span class="dot-indicator"></span> PyTorch · Module 4 of 12</div>
-  <h1>The <span class="gradient-text">Training Loop</span></h1>
-  <p class="hero-subtitle">Master the complete PyTorch training lifecycle — from loss functions and optimisers to learning rate schedulers and early stopping. Build a production-ready training loop from scratch.</p>
-  <div class="hero-scroll-cue"><span>Begin</span><div class="arrow"></div></div>
-</section>
+<body id="top" data-module="module4_training_loop" data-sections="9">
+  <div class="progress" id="progressBar"></div>
+  <div class="status-chip" id="statusChip">Exploring module</div>
+  <button class="sidebar-toggle" id="sidebarToggle" type="button" aria-expanded="false" aria-controls="sidebarPanel">Navigate</button>
+  <div class="sidebar-overlay" id="sidebarOverlay" hidden></div>
+  <div class="orb one"></div>
+  <div class="orb two"></div>
+  <div class="orb three"></div>
 
-<div class="content-wrapper">
+  <div class="shell">
+    <section class="hero">
+      <article class="glass hero-copy">
+        <div class="eyebrow">PyTorch for Data Science</div>
+        <h1>Module 4 — The Training Loop: The Most<br>Important Module</h1>
+        <p class="subtitle">Forward → Loss → Backward → Step, Done Right</p>
+        <p class="subtitle">PyTorch for Data Science Module Goal: Write a training loop you’d actually use in production. Understand loss functions, optimisers, learning rate schedules, gradient clipping, mixed precision, and how to diagnose when training goes wrong. End with a full tabular DS model trained end-to-end.</p>
+        <div class="hero-grid">
+          <div class="metric"><strong>17</strong><span>source pages</span></div>
+          <div class="metric"><strong>9</strong><span>named sections</span></div>
+          <div class="metric"><strong>13 min</strong><span>estimated reading time</span></div>
+          <div class="metric"><strong>4</strong><span>deep learning module</span></div>
+          <div class="metric"><strong id="completionBadge">In progress</strong><span>completion status</span></div>
+        </div>
+      </article>
 
-<div class="section" id="sec1">
-  <div class="section-number">01 — Loss Functions</div>
-  <h2>Measuring How Wrong the Model Is</h2>
-  <p>A <strong>loss function</strong> quantifies the gap between predictions and ground truth. Choosing the right loss is one of the most important architectural decisions you'll make. The choice depends entirely on your task type.</p>
+      <aside class="glass hero-stage">
+        <div class="hero-wow">
+          <strong>First 3 Minutes</strong>
+          <p>Start with the heartbeat of deep learning: the same five-step loop runs every serious model, from small tabular classifiers to giant language models.</p>
+          <pre class="wow-pre">optimizer.zero_grad()
+logits = model(X_batch)
+loss = criterion(logits, y_batch)
+loss.backward()
+optimizer.step()</pre>
+          <p>This module is about understanding why that order matters, what breaks when it is wrong, and how to make the loop production-ready.</p>
+        </div>
+        <div class="hero-card">
+          <span>Loop Mental Map</span>
+          <strong>Predict
+Measure error
+Backpropagate
+Update
+Repeat with discipline</strong>
+        </div>
+        <div class="code-shell">
+          <div class="block-actions">
+            <button class="copy-btn" type="button" data-copy="Training loop = state management + math + debugging discipline" data-default-label="Copy example">Copy example</button>
+          </div>
+          <pre class="hero-pre">Training loop = state management + math + debugging discipline</pre>
+        </div>
+      </aside>
+    </section>
 
-  <div class="formula-card">
-    <div class="formula-label">Task → Loss Function Mapping</div>
-    <div class="formula-math">Task type determines the loss, not the data.</div>
-    <div class="formula-explain">
-      <span class="var">Regression</span> → <code>nn.MSELoss</code> (L2) or <code>nn.L1Loss</code> &nbsp;·&nbsp;
-      <span class="var">Binary classification</span> → <code>nn.BCEWithLogitsLoss</code> &nbsp;·&nbsp;
-      <span class="var">Multi-class</span> → <code>nn.CrossEntropyLoss</code> &nbsp;·&nbsp;
-      <span class="var">Multi-label</span> → <code>nn.BCEWithLogitsLoss</code> with multi-hot targets
-    </div>
-  </div>
+    <section class="layout">
+      <aside class="glass sidebar" id="sidebarPanel">
+        <h2>Navigate Module</h2>
+        <div class="sidebar-search">
+          <input id="sectionSearch" type="search" placeholder="Search sections" aria-label="Search sections">
+        </div>
+        <div class="sidebar-meta">
+          <div class="sidebar-stat"><span>Sections</span><strong>9</strong></div>
+          <div class="sidebar-stat"><span>Reading Time</span><strong>13 min</strong></div>
+        </div>
+        <nav class="nav" id="sidebarNav">
+          <a href="#page-01"><span>Section</span>1. Canonical Training Loop</a><a href="#page-03"><span>Section</span>2. Loss Functions</a><a href="#page-05"><span>Section</span>3. Optimizers</a><a href="#page-07"><span>Section</span>4. Learning Rate Scheduling</a><a href="#page-09"><span>Section</span>5. Scaling Tricks</a><a href="#page-11"><span>Section</span>6. Metrics and Early Stopping</a><a href="#page-12"><span>Section</span>7. Debugging Training</a><a href="#page-14"><span>Section</span>8. End-to-End Tabular Project</a><a href="#page-17"><span>Section</span>Module Summary</a>
+        </nav>
+        <div class="sidebar-note">
+          Use this module like a systems checklist: loop order, correct loss, correct optimizer, safe scheduling, and clear debugging when training goes sideways.
+        </div>
+      </aside>
 
-  <div class="code-block">
-    <div class="code-block-header"><span class="code-lang">Python</span></div>
-    <pre><span class="kw">import</span> torch
-<span class="kw">import</span> torch.nn <span class="kw">as</span> nn
-
-<span class="cm"># --- Regression: MSE ---</span>
-mse = nn.<span class="fn">MSELoss</span>()
-y_pred = torch.<span class="fn">tensor</span>([<span class="num">2.5</span>, <span class="num">0.0</span>, <span class="num">2.0</span>])
-y_true = torch.<span class="fn">tensor</span>([<span class="num">3.0</span>, -<span class="num">0.5</span>, <span class="num">2.0</span>])
-<span class="fn">print</span>(<span class="str">"MSE loss:"</span>, mse(y_pred, y_true).<span class="fn">item</span>())  <span class="cm"># mean((pred-true)²)</span>
-
-<span class="cm"># --- Binary Classification: BCEWithLogitsLoss ---</span>
-<span class="cm"># Pass RAW LOGITS (not sigmoid output) — numerically more stable</span>
-bce = nn.<span class="fn">BCEWithLogitsLoss</span>()
-logits = torch.<span class="fn">tensor</span>([<span class="num">1.2</span>, -<span class="num">0.4</span>, <span class="num">2.1</span>])
-labels = torch.<span class="fn">tensor</span>([<span class="num">1.0</span>, <span class="num">0.0</span>, <span class="num">1.0</span>])
-<span class="fn">print</span>(<span class="str">"BCE loss:"</span>, bce(logits, labels).<span class="fn">item</span>())
-
-<span class="cm"># --- Multi-class: CrossEntropyLoss ---</span>
-<span class="cm"># Input: (batch, n_classes) logits; Target: (batch,) class indices (int64)</span>
-ce = nn.<span class="fn">CrossEntropyLoss</span>()
-logits_mc = torch.<span class="fn">randn</span>(<span class="num">4</span>, <span class="num">10</span>)    <span class="cm"># batch=4, classes=10</span>
-targets   = torch.<span class="fn">tensor</span>([<span class="num">3</span>, <span class="num">7</span>, <span class="num">1</span>, <span class="num">9</span>], dtype=torch.long)
-<span class="fn">print</span>(<span class="str">"CE loss:"</span>, ce(logits_mc, targets).<span class="fn">item</span>())</pre>
-    <div class="code-output">
-      <div class="code-output-label">Output</div>
-      <pre>MSE loss: 0.1250
-BCE loss: 0.2936
-CE loss:  2.3714</pre>
-    </div>
-  </div>
-
-  <div class="warning"><p><strong>Raw Logits vs Probabilities:</strong> <code>nn.CrossEntropyLoss</code> and <code>nn.BCEWithLogitsLoss</code> expect <em>raw logits</em> — not outputs after <code>softmax</code> or <code>sigmoid</code>. Applying those activations before the loss leads to numerical instability and worse gradients. Only apply softmax/sigmoid at inference time.</p></div>
-</div>
-
-<div class="gradient-divider"></div>
-
-<div class="section" id="sec2">
-  <div class="section-number">02 — Optimisers</div>
-  <h2>Updating Parameters with Gradient Information</h2>
-
-  <div class="code-block">
-    <div class="code-block-header"><span class="code-lang">Python</span></div>
-    <pre><span class="kw">import</span> torch.optim <span class="kw">as</span> optim
-
-model = nn.<span class="fn">Linear</span>(<span class="num">10</span>, <span class="num">1</span>)
-
-<span class="cm"># SGD — classic, with optional momentum</span>
-opt_sgd = optim.<span class="fn">SGD</span>(model.<span class="fn">parameters</span>(), lr=<span class="num">0.01</span>, momentum=<span class="num">0.9</span>, weight_decay=<span class="num">1e-4</span>)
-
-<span class="cm"># Adam — adaptive learning rates per parameter (most common)</span>
-opt_adam = optim.<span class="fn">Adam</span>(model.<span class="fn">parameters</span>(), lr=<span class="num">1e-3</span>, weight_decay=<span class="num">1e-5</span>)
-
-<span class="cm"># AdamW — Adam with decoupled weight decay (preferred for modern models)</span>
-opt_adamw = optim.<span class="fn">AdamW</span>(model.<span class="fn">parameters</span>(), lr=<span class="num">1e-3</span>, weight_decay=<span class="num">0.01</span>)
-
-<span class="cm"># Per-layer learning rates (useful for fine-tuning)</span>
-opt_custom = optim.<span class="fn">Adam</span>([
-    {<span class="str">'params'</span>: model.weight, <span class="str">'lr'</span>: <span class="num">1e-4</span>},  <span class="cm"># slower for weights</span>
-    {<span class="str">'params'</span>: model.bias,   <span class="str">'lr'</span>: <span class="num">1e-3</span>},  <span class="cm"># faster for bias</span>
-])</pre>
-  </div>
-</div>
-
-<div class="gradient-divider"></div>
-
-<div class="section" id="sec3">
-  <div class="section-number">03 — The Complete Training Loop</div>
-  <h2>The Production Pattern</h2>
-
-  <div class="step-list">
-    <div class="step-item"><div class="step-item-content"><strong>Forward pass</strong><p>Call <code>model(X)</code> to get predictions. The computation graph is built.</p></div></div>
-    <div class="step-item"><div class="step-item-content"><strong>Compute loss</strong><p>Pass predictions and targets to the loss function.</p></div></div>
-    <div class="step-item"><div class="step-item-content"><strong>Zero gradients</strong><p>Call <code>optimizer.zero_grad()</code> to clear accumulated gradients.</p></div></div>
-    <div class="step-item"><div class="step-item-content"><strong>Backward pass</strong><p>Call <code>loss.backward()</code> to compute gradients via autograd.</p></div></div>
-    <div class="step-item"><div class="step-item-content"><strong>Clip gradients (optional)</strong><p>Call <code>nn.utils.clip_grad_norm_()</code> to prevent exploding gradients.</p></div></div>
-    <div class="step-item"><div class="step-item-content"><strong>Optimiser step</strong><p>Call <code>optimizer.step()</code> to update parameters.</p></div></div>
-  </div>
-
-  <div class="code-block">
-    <div class="code-block-header"><span class="code-lang">Python</span></div>
-    <pre><span class="kw">import</span> torch, torch.nn <span class="kw">as</span> nn, torch.optim <span class="kw">as</span> optim
-
-<span class="cm"># Setup</span>
-model     = nn.<span class="fn">Sequential</span>(nn.<span class="fn">Linear</span>(<span class="num">10</span>, <span class="num">64</span>), nn.<span class="fn">ReLU</span>(), nn.<span class="fn">Linear</span>(<span class="num">64</span>, <span class="num">1</span>))
-criterion = nn.<span class="fn">MSELoss</span>()
-optimizer = optim.<span class="fn">AdamW</span>(model.<span class="fn">parameters</span>(), lr=<span class="num">1e-3</span>)
-scheduler = optim.lr_scheduler.<span class="fn">CosineAnnealingLR</span>(optimizer, T_max=<span class="num">50</span>)
-
-<span class="cm"># Synthetic data</span>
-X_train = torch.<span class="fn">randn</span>(<span class="num">200</span>, <span class="num">10</span>)
-y_train = torch.<span class="fn">randn</span>(<span class="num">200</span>, <span class="num">1</span>)
-X_val   = torch.<span class="fn">randn</span>(<span class="num">50</span>, <span class="num">10</span>)
-y_val   = torch.<span class="fn">randn</span>(<span class="num">50</span>, <span class="num">1</span>)
-
-best_val_loss = <span class="fn">float</span>(<span class="str">'inf'</span>)
-patience, patience_counter = <span class="num">10</span>, <span class="num">0</span>
-
-<span class="kw">for</span> epoch <span class="kw">in</span> <span class="fn">range</span>(<span class="num">100</span>):
-    <span class="cm"># ── Training ─────────────────────────────────────────────────</span>
-    model.<span class="fn">train</span>()
-    optimizer.<span class="fn">zero_grad</span>()             <span class="cm"># 3. Zero grads</span>
-    y_pred  = <span class="fn">model</span>(X_train)          <span class="cm"># 1. Forward</span>
-    loss    = <span class="fn">criterion</span>(y_pred, y_train)  <span class="cm"># 2. Loss</span>
-    loss.<span class="fn">backward</span>()                   <span class="cm"># 4. Backward</span>
-    nn.utils.<span class="fn">clip_grad_norm_</span>(model.<span class="fn">parameters</span>(), max_norm=<span class="num">1.0</span>)  <span class="cm"># 5. Clip</span>
-    optimizer.<span class="fn">step</span>()                  <span class="cm"># 6. Update</span>
-    scheduler.<span class="fn">step</span>()
-
-    <span class="cm"># ── Validation ───────────────────────────────────────────────</span>
-    model.<span class="fn">eval</span>()
-    <span class="kw">with</span> torch.<span class="fn">no_grad</span>():
-        val_pred = <span class="fn">model</span>(X_val)
-        val_loss = <span class="fn">criterion</span>(val_pred, y_val).<span class="fn">item</span>()
-
-    <span class="cm"># ── Early stopping ───────────────────────────────────────────</span>
-    <span class="kw">if</span> val_loss < best_val_loss:
-        best_val_loss = val_loss
-        patience_counter = <span class="num">0</span>
-        torch.<span class="fn">save</span>(model.<span class="fn">state_dict</span>(), <span class="str">"best_model.pt"</span>)  <span class="cm"># Save best checkpoint</span>
-    <span class="kw">else</span>:
-        patience_counter += <span class="num">1</span>
-        <span class="kw">if</span> patience_counter >= patience:
-            <span class="fn">print</span>(<span class="fn">f</span><span class="str">"Early stopping at epoch {epoch+1}"</span>)
-            <span class="kw">break</span>
-
-    <span class="kw">if</span> (epoch + <span class="num">1</span>) % <span class="num">20</span> == <span class="num">0</span>:
-        <span class="fn">print</span>(<span class="fn">f</span><span class="str">"Epoch {epoch+1:3d} | Train: {loss.item():.4f} | Val: {val_loss:.4f} | LR: {scheduler.get_last_lr()[0]:.2e}"</span>)</pre>
-    <div class="code-output">
-      <div class="code-output-label">Output</div>
-      <pre>Epoch  20 | Train: 1.0214 | Val: 1.0389 | LR: 9.76e-04
-Epoch  40 | Train: 0.9987 | Val: 1.0102 | LR: 7.50e-04
-Epoch  60 | Train: 0.9951 | Val: 1.0076 | LR: 5.00e-04
-Epoch  80 | Train: 0.9946 | Val: 1.0072 | LR: 2.50e-04</pre>
-    </div>
-  </div>
-
-  <div class="insight"><p><strong>Learning Rate Schedulers:</strong> A fixed learning rate is rarely optimal. <code>CosineAnnealingLR</code> smoothly decreases LR following a cosine curve. <code>ReduceLROnPlateau</code> cuts LR when validation loss stops improving. <code>OneCycleLR</code> is popular for fast training with a warm-up phase.</p></div>
-</div>
-
-<div class="gradient-divider"></div>
-
-<div class="section" id="sec4">
-  <div class="section-number">04 — Knowledge Check</div>
-  <h2>Test Your Understanding</h2>
-
-  <div class="quiz-card">
-    <div class="quiz-card-header">🧩 Question 1</div>
-    <div class="quiz-card-body">
-      <div class="quiz-question">In the 6-step training loop, you swapped steps 3 and 4: you call <code>loss.backward()</code> first, then <code>optimizer.zero_grad()</code>. What happens?</div>
-      <div class="quiz-options">
-        <div class="quiz-option" onclick="answerQuiz(this,'wrong','q1')"><span class="option-letter">A</span>Nothing — the order of these two calls doesn't matter.</div>
-        <div class="quiz-option" onclick="answerQuiz(this,'correct','q1')"><span class="option-letter">B</span>Gradients are computed then immediately zeroed, so <code>optimizer.step()</code> updates with zero gradients — meaning the model never learns.</div>
-        <div class="quiz-option" onclick="answerQuiz(this,'wrong','q1')"><span class="option-letter">C</span>PyTorch raises a RuntimeError because zero_grad must precede backward.</div>
-        <div class="quiz-option" onclick="answerQuiz(this,'wrong','q1')"><span class="option-letter">D</span>The model trains but learns at half the rate.</div>
+      <main class="content">
+        
+        <section class="page visible" id="page-01">
+          <div class="page-meta">
+            <div class="page-head">
+              <div class="page-label">Page 01</div>
+              <div class="page-title">The Canonical Training Loop and Why Order Matters</div>
+            </div>
+            <div class="page-actions">
+              <div class="page-progress">Page 01 / 17</div>
+              <a class="page-link" href="#top">Back to top</a>
+            </div>
+          </div>
+          <div class="page-body">
+            <div class="story-thread">
+              <strong>Running Story</strong>
+              <p>Imagine we are training a churn-and-salary model for a real analytics product. Everything now depends on whether the loop is correct: gradients, metrics, validation, checkpoints, and debugging all hang on this structure.</p>
+            </div>
+            <div class="mental-model">
+              <strong>Mental Model</strong>
+              <p>A training loop is not just code repetition. It is a cycle of state reset, prediction, error measurement, credit assignment, and parameter update.</p>
+              <div class="mental-equation">
+                <div>Reset State</div>
+                <div>Measure Error</div>
+                <div>Change Weights</div>
+              </div>
+            </div>
+            <div class="loop-visual">
+              <div class="loop-grid">
+                <div class="loop-node">Forward<small>predict</small></div>
+                <div class="loop-arrow">→</div>
+                <div class="loop-node">Loss<small>measure</small></div>
+                <div class="loop-arrow">→</div>
+              </div>
+              <div class="loop-grid">
+                <div class="loop-node">Backward<small>assign credit</small></div>
+                <div class="loop-arrow">→</div>
+                <div class="loop-node">Update<small>step weights</small></div>
+                <div class="loop-arrow">↺</div>
+              </div>
+              <div class="loop-repeat">Repeat until validation says stop</div>
+            </div>
+            <div class="crafted-bridge">
+              <strong>How To Read This Page</strong>
+              <p>Treat the rest of this section like the contract every training job must obey. The surrounding examples can vary, but the loop order should feel non-negotiable in your head by the end of the page.</p>
+            </div>
+            
+      <div class="callout-block note">
+        <strong>Learning Note</strong>
+        <p>Important Module</p>
+      </div><div class="text-block"><pre>Forward → Loss → Backward → Step, Done Right</pre></div><h3 class="inline-heading">PyTorch for Data Science</h3><div class="text-block"><pre>Module Goal: Write a training loop you’d actually use in production. Understand
+     loss functions, optimisers, learning rate schedules, gradient clipping, mixed precision,
+     and how to diagnose when training goes wrong. End with a full tabular DS model
+     trained end-to-end.</pre></div><h3 class="inline-heading">1. The Canonical Training Loop</h3><h3 class="inline-heading">The Four Steps — Every Time, In Order</h3>
+      <div class="code-panel">
+        <div class="code-panel-header">
+          <span class="code-label">Code Example</span>
+          <button class="copy-btn" type="button" data-copy="for each batch:" data-default-label="Copy code">Copy code</button>
+        </div>
+        <ol class="code-lines"><li>for each batch:</li></ol>
+      </div><h3 class="inline-heading">1. optimizer.zero_grad()                   ← clear old gradients</h3><h3 class="inline-heading">2. output = model(X)                       ← forward pass</h3><h3 class="inline-heading">3. loss = criterion(output, y)             ← compute loss</h3><h3 class="inline-heading">4. loss.backward()                         ← backward pass (compute grads)</h3><h3 class="inline-heading">5. optimizer.step()                        ← update parameters</h3><div class="text-block"><p>This never changes. Every training loop you write, ever, follows this structure.</p></div><h3 class="inline-heading">Real-World Analogy: A Student Sitting Exams</h3><h3 class="inline-heading">1. Zero grad — forget last week’s exam feedback.</h3><h3 class="inline-heading">2. Forward pass — sit the exam (make predictions).</h3>
+            <div class="page-learning">
+              <div class="takeaway-box">
+                <strong>Key Takeaway</strong>
+                <p>The training loop is a fixed contract: clear stale gradients, run the forward pass, compute loss, backpropagate, and only then update parameters.</p>
+              </div>
+              
+      <div class="knowledge-check">
+        <strong>Knowledge Check</strong>
+        <ol>
+          <li>Why must <code>optimizer.zero_grad()</code> happen before the next backward pass instead of after it?</li>
+          <li>Which step in the loop actually changes the model weights?</li>
+        </ol>
       </div>
-      <div class="quiz-feedback" id="q1-feedback"></div>
-    </div>
-  </div>
-
-  <div class="quiz-card">
-    <div class="quiz-card-header">🧩 Question 2</div>
-    <div class="quiz-card-body">
-      <div class="quiz-question">For a 10-class image classification task, which loss function is correct?</div>
-      <div class="quiz-options">
-        <div class="quiz-option" onclick="answerQuiz(this,'wrong','q2')"><span class="option-letter">A</span><code>nn.MSELoss</code> with one-hot encoded targets</div>
-        <div class="quiz-option" onclick="answerQuiz(this,'wrong','q2')"><span class="option-letter">B</span><code>nn.BCEWithLogitsLoss</code> with float targets in [0,1]</div>
-        <div class="quiz-option" onclick="answerQuiz(this,'correct','q2')"><span class="option-letter">C</span><code>nn.CrossEntropyLoss</code> with integer class indices (torch.long)</div>
-        <div class="quiz-option" onclick="answerQuiz(this,'wrong','q2')"><span class="option-letter">D</span><code>nn.CrossEntropyLoss</code> after applying softmax to the model output</div>
+            </div>
+            
+      <div class="pager">
+        <a href="#top">Course top</a>
+        <span>Page 01 of 17</span>
+        <a href="#page-02">Next page</a>
       </div>
-      <div class="quiz-feedback" id="q2-feedback"></div>
-    </div>
+          </div>
+        </section>
+        <section class="page" id="page-02">
+          <div class="page-meta">
+            <div class="page-head">
+              <div class="page-label">Page 02</div>
+              <div class="page-title">A Production-Ready Training and Evaluation Template</div>
+            </div>
+            <div class="page-actions">
+              <div class="page-progress">Page 02 / 17</div>
+              <a class="page-link" href="#top">Back to top</a>
+            </div>
+          </div>
+          <div class="page-body">
+            <div class="pause-think">
+              <strong>Pause & Think</strong>
+              <p>Before reading the template, try to name which parts belong only to training and which parts belong only to evaluation. That difference matters everywhere in PyTorch.</p>
+            </div>
+            <div class="crafted-bridge">
+              <strong>Crafted Flow</strong>
+              <p>The converted code below is easier to parse if you split it into two mental passes: first the training function, then the evaluation function. One changes weights, the other only measures the current model.</p>
+            </div>
+            <h3 class="inline-heading">4. Backward pass — analyse which answers were wrong and why.</h3><h3 class="inline-heading">5. Optimizer step — adjust your study approach based on feedback.</h3><div class="text-block"><pre>Repeat until the exam score is good.</pre></div>
+      <div class="code-panel">
+        <div class="code-panel-header">
+          <span class="code-label">Code Example</span>
+          <button class="copy-btn" type="button" data-copy="import torch
+import torch.nn as nn
+import torch.nn.functional as F
+
+torch.manual_seed(42)
+
+# --- Minimal working training loop template ---
+def train_one_epoch(model, loader, optimizer, criterion, device):" data-default-label="Copy code">Copy code</button>
+        </div>
+        <ol class="code-lines"><li>import torch</li><li>import torch.nn as nn</li><li>import torch.nn.functional as F</li><li>&nbsp;</li><li>torch.manual_seed(42)</li><li>&nbsp;</li><li># --- Minimal working training loop template ---</li><li>def train_one_epoch(model, loader, optimizer, criterion, device):</li></ol>
+      </div><div class="text-block"><pre>model.train()</pre></div>
+      <div class="code-panel">
+        <div class="code-panel-header">
+          <span class="code-label">Code Example</span>
+          <button class="copy-btn" type="button" data-copy="    total_loss = 0.0
+
+   for X_batch, y_batch in loader:
+       X_batch = X_batch.to(device)
+       y_batch = y_batch.to(device)" data-default-label="Copy code">Copy code</button>
+        </div>
+        <ol class="code-lines"><li>    total_loss = 0.0</li><li>&nbsp;</li><li>   for X_batch, y_batch in loader:</li><li>       X_batch = X_batch.to(device)</li><li>       y_batch = y_batch.to(device)</li></ol>
+      </div><div class="text-block"><pre>optimizer.zero_grad()                        # Step 1: clear gradients</pre></div>
+      <div class="code-panel">
+        <div class="code-panel-header">
+          <span class="code-label">Code Example</span>
+          <button class="copy-btn" type="button" data-copy="        output = model(X_batch)                      # Step 2: forward pass
+        loss   = criterion(output, y_batch)          # Step 3: compute loss" data-default-label="Copy code">Copy code</button>
+        </div>
+        <ol class="code-lines"><li>        output = model(X_batch)                      # Step 2: forward pass</li><li>        loss   = criterion(output, y_batch)          # Step 3: compute loss</li></ol>
+      </div><div class="text-block"><pre>loss.backward()                              # Step 4: backward pass
+        optimizer.step()                             # Step 5: update weights</pre></div>
+      <div class="code-panel">
+        <div class="code-panel-header">
+          <span class="code-label">Code Example</span>
+          <button class="copy-btn" type="button" data-copy="        total_loss += loss.item() * len(X_batch)
+
+   return total_loss / len(loader.dataset)
+
+
+def evaluate(model, loader, criterion, device):" data-default-label="Copy code">Copy code</button>
+        </div>
+        <ol class="code-lines"><li>        total_loss += loss.item() * len(X_batch)</li><li>&nbsp;</li><li>   return total_loss / len(loader.dataset)</li><li>&nbsp;</li><li>&nbsp;</li><li>def evaluate(model, loader, criterion, device):</li></ol>
+      </div><div class="text-block"><pre>model.eval()</pre></div>
+      <div class="code-panel">
+        <div class="code-panel-header">
+          <span class="code-label">Code Example</span>
+          <button class="copy-btn" type="button" data-copy="    total_loss, correct = 0.0, 0
+
+   with torch.no_grad():
+       for X_batch, y_batch in loader:
+           X_batch = X_batch.to(device)
+           y_batch = y_batch.to(device)
+           output = model(X_batch)
+           loss    = criterion(output, y_batch)" data-default-label="Copy code">Copy code</button>
+        </div>
+        <ol class="code-lines"><li>    total_loss, correct = 0.0, 0</li><li>&nbsp;</li><li>   with torch.no_grad():</li><li>       for X_batch, y_batch in loader:</li><li>           X_batch = X_batch.to(device)</li><li>           y_batch = y_batch.to(device)</li><li>           output = model(X_batch)</li><li>           loss    = criterion(output, y_batch)</li></ol>
+      </div>
+            <div class="page-learning">
+              <div class="takeaway-box">
+                <strong>Key Takeaway</strong>
+                <p>A clean template separates training from evaluation: training uses gradients and updates, while evaluation uses <code>eval()</code> and <code>torch.no_grad()</code> to measure performance safely.</p>
+              </div>
+              
+      <div class="knowledge-check">
+        <strong>Knowledge Check</strong>
+        <ol>
+          <li>Why is <code>model.train()</code> the first line of a training epoch template?</li>
+          <li>Why does evaluation wrap the loop in <code>torch.no_grad()</code>?</li>
+        </ol>
+      </div>
+            <div class="mistake-box">
+              <strong>Common Mistakes</strong>
+              <ul>
+                <li>Running validation without <code>eval()</code> and getting misleading metrics.</li>
+                <li>Accumulating gradients across batches because <code>zero_grad()</code> was forgotten.</li>
+                <li>Using training code as inference code without removing graph tracking.</li>
+              </ul>
+            </div>
+            </div>
+            
+      <div class="pager">
+        <a href="#page-01">Previous page</a>
+        <span>Page 02 of 17</span>
+        <a href="#page-03">Next page</a>
+      </div>
+          </div>
+        </section>
+        <section class="page" id="page-03">
+          <div class="page-meta">
+            <div class="page-head">
+              <div class="page-label">Page 03</div>
+              <div class="page-title">Loss Functions for Classification and Regression</div>
+            </div>
+            <div class="page-actions">
+              <div class="page-progress">Page 03 / 17</div>
+              <a class="page-link" href="#top">Back to top</a>
+            </div>
+          </div>
+          <div class="page-body">
+            <div class="crafted-bridge">
+              <strong>Decision Lens</strong>
+              <p>The quickest way to reduce confusion here is to ask one question first: “What kind of prediction am I making?” Once the task type is clear, the correct loss family usually becomes obvious.</p>
+            </div>
+            
+      <div class="code-panel">
+        <div class="code-panel-header">
+          <span class="code-label">Code Example</span>
+          <button class="copy-btn" type="button" data-copy="            correct    += (output.argmax(1) == y_batch).sum().item()
+
+    n = len(loader.dataset)
+    return total_loss / n, correct / n
+
+print(&quot;Training loop template defined.&quot;)" data-default-label="Copy code">Copy code</button>
+        </div>
+        <ol class="code-lines"><li>            correct    += (output.argmax(1) == y_batch).sum().item()</li><li>&nbsp;</li><li>    n = len(loader.dataset)</li><li>    return total_loss / n, correct / n</li><li>&nbsp;</li><li>print(&quot;Training loop template defined.&quot;)</li></ol>
+      </div><div class="text-block"><p>Training loop template defined.</p></div><h3 class="inline-heading">2. Loss Functions</h3><h3 class="inline-heading">CrossEntropyLoss — Multi-Class Classification</h3>
+      <div class="code-panel">
+        <div class="code-panel-header">
+          <span class="code-label">Code Example</span>
+          <button class="copy-btn" type="button" data-copy="# CrossEntropyLoss = LogSoftmax + NLLLoss in one step
+# Input: logits of shape (N, C) — raw scores, NOT probabilities
+# Target: class indices of shape (N,) — integers in [0, C-1]
+
+criterion = nn.CrossEntropyLoss()
+
+logits = torch.tensor([[2.0, 1.0, 0.5],      # Sample 0 → likely class 0" data-default-label="Copy code">Copy code</button>
+        </div>
+        <ol class="code-lines"><li># CrossEntropyLoss = LogSoftmax + NLLLoss in one step</li><li># Input: logits of shape (N, C) — raw scores, NOT probabilities</li><li># Target: class indices of shape (N,) — integers in [0, C-1]</li><li>&nbsp;</li><li>criterion = nn.CrossEntropyLoss()</li><li>&nbsp;</li><li>logits = torch.tensor([[2.0, 1.0, 0.5],      # Sample 0 → likely class 0</li></ol>
+      </div>
+      <div class="output-block">
+        <div class="block-actions">
+          <button class="copy-btn" type="button" data-copy="                        [0.1, 3.0, 0.2],      # Sample 1 → likely class 1
+                        [0.2, 0.1, 4.0]])     # Sample 2 → likely class 2" data-default-label="Copy output">Copy output</button>
+        </div>
+        <pre>                        [0.1, 3.0, 0.2],      # Sample 1 → likely class 1
+                        [0.2, 0.1, 4.0]])     # Sample 2 → likely class 2</pre>
+      </div>
+      <div class="code-panel">
+        <div class="code-panel-header">
+          <span class="code-label">Code Example</span>
+          <button class="copy-btn" type="button" data-copy="targets = torch.tensor([0, 1, 2])
+
+loss = criterion(logits, targets)
+print(&quot;CrossEntropy loss:&quot;, loss.item())     # Should be low — correct predictions
+
+# Wrong predictions → high loss
+targets_wrong = torch.tensor([2, 0, 1])
+loss_wrong = criterion(logits, targets_wrong)
+print(&quot;Wrong prediction loss:&quot;, loss_wrong.item())" data-default-label="Copy code">Copy code</button>
+        </div>
+        <ol class="code-lines"><li>targets = torch.tensor([0, 1, 2])</li><li>&nbsp;</li><li>loss = criterion(logits, targets)</li><li>print(&quot;CrossEntropy loss:&quot;, loss.item())     # Should be low — correct predictions</li><li>&nbsp;</li><li># Wrong predictions → high loss</li><li>targets_wrong = torch.tensor([2, 0, 1])</li><li>loss_wrong = criterion(logits, targets_wrong)</li><li>print(&quot;Wrong prediction loss:&quot;, loss_wrong.item())</li></ol>
+      </div><div class="text-block"><p>CrossEntropy loss: 0.20523333549499512 Wrong prediction loss: 2.97189998626709</p></div>
+            <div class="page-learning">
+              <div class="takeaway-box">
+                <strong>Key Takeaway</strong>
+                <p>The loss function defines what “wrong” means, so choosing the right one is a modeling decision, not just a code detail.</p>
+              </div>
+              
+      <div class="knowledge-check">
+        <strong>Knowledge Check</strong>
+        <ol>
+          <li>Why does <code>CrossEntropyLoss</code> expect raw logits instead of already-softmaxed probabilities?</li>
+          <li>What is the quickest sanity check when a loss value looks suspiciously high or low?</li>
+        </ol>
+      </div>
+            </div>
+            <div class="decision-grid">
+              <div class="decision-card">
+                <strong>Multi-class classification</strong>
+                <p>Use <code>CrossEntropyLoss</code> when the model predicts one class out of many and your targets are integer class ids.</p>
+                <span>Input: raw logits</span>
+              </div>
+              <div class="decision-card">
+                <strong>Binary classification</strong>
+                <p>Use <code>BCEWithLogitsLoss</code> when each example is yes/no and the target is 0.0 or 1.0.</p>
+                <span>Input: binary logits</span>
+              </div>
+              <div class="decision-card">
+                <strong>Clean regression</strong>
+                <p>Use <code>MSELoss</code> when you care about squared error and the targets are fairly well-behaved.</p>
+                <span>Penalizes big misses hard</span>
+              </div>
+              <div class="decision-card">
+                <strong>Noisy or outlier-heavy regression</strong>
+                <p>Use <code>HuberLoss</code> when extreme targets can dominate training and you want more robustness.</p>
+                <span>Safer with messy data</span>
+              </div>
+            </div>
+            
+      <div class="pager">
+        <a href="#page-02">Previous page</a>
+        <span>Page 03 of 17</span>
+        <a href="#page-04">Next page</a>
+      </div>
+          </div>
+        </section>
+        <section class="page" id="page-04">
+          <div class="page-meta">
+            <div class="page-head">
+              <div class="page-label">Page 04</div>
+              <div class="page-title">BCEWithLogits, MSE, and Huber in Practice</div>
+            </div>
+            <div class="page-actions">
+              <div class="page-progress">Page 04 / 17</div>
+              <a class="page-link" href="#top">Back to top</a>
+            </div>
+          </div>
+          <div class="page-body">
+            <div class="crafted-bridge">
+              <strong>Fast Rule</strong>
+              <p>If you catch yourself wondering between MSE and Huber, ask how much you trust the targets. If the labels are noisy or real-world messy, Huber is often the calmer starting point.</p>
+            </div>
+            
+      <div class="code-panel">
+        <div class="code-panel-header">
+          <span class="code-label">Code Example</span>
+          <button class="copy-btn" type="button" data-copy="# BCEWithLogitsLoss = Sigmoid + BCELoss in one step
+# Numerically more stable than applying sigmoid manually then BCELoss
+# Input: raw logits of shape (N,) or (N, 1)
+# Target: float labels of shape (N,) — 0.0 or 1.0
+
+criterion_bce = nn.BCEWithLogitsLoss()
+
+logits_bin = torch.tensor([2.5, -1.0, 0.3, -2.0])   # Raw scores
+targets_bin = torch.tensor([1.0, 0.0, 1.0, 0.0])    # True binary labels
+
+loss_bce = criterion_bce(logits_bin, targets_bin)
+print(&quot;BCEWithLogits loss:&quot;, loss_bce.item())" data-default-label="Copy code">Copy code</button>
+        </div>
+        <ol class="code-lines"><li># BCEWithLogitsLoss = Sigmoid + BCELoss in one step</li><li># Numerically more stable than applying sigmoid manually then BCELoss</li><li># Input: raw logits of shape (N,) or (N, 1)</li><li># Target: float labels of shape (N,) — 0.0 or 1.0</li><li>&nbsp;</li><li>criterion_bce = nn.BCEWithLogitsLoss()</li><li>&nbsp;</li><li>logits_bin = torch.tensor([2.5, -1.0, 0.3, -2.0])   # Raw scores</li><li>targets_bin = torch.tensor([1.0, 0.0, 1.0, 0.0])    # True binary labels</li><li>&nbsp;</li><li>loss_bce = criterion_bce(logits_bin, targets_bin)</li><li>print(&quot;BCEWithLogits loss:&quot;, loss_bce.item())</li></ol>
+      </div><div class="text-block"><p>BCEWithLogits loss: 0.2683587074279785</p><p>MSELoss and HuberLoss — Regression</p></div>
+      <div class="code-panel">
+        <div class="code-panel-header">
+          <span class="code-label">Code Example</span>
+          <button class="copy-btn" type="button" data-copy="mse   = nn.MSELoss()
+huber = nn.HuberLoss(delta=1.0)      # Less sensitive to outliers than MSE
+
+predictions = torch.tensor([2.5, 0.0, 2.1, 7.8])
+targets_reg = torch.tensor([3.0, -0.5, 2.0, 7.0])
+
+print(&quot;MSE loss:   &quot;, mse(predictions, targets_reg).item())
+print(&quot;Huber loss: &quot;, huber(predictions, targets_reg).item())
+
+# Why Huber &gt; MSE for data science?
+# Add an outlier
+predictions_with_outlier = torch.cat([predictions, torch.tensor([100.0])])
+targets_with_outlier     = torch.cat([targets_reg, torch.tensor([1.0])])
+
+print(&quot;\nWith outlier:&quot;)
+print(&quot;MSE:   &quot;, mse(predictions_with_outlier, targets_with_outlier).item())
+print(&quot;Huber: &quot;, huber(predictions_with_outlier, targets_with_outlier).item())
+# MSE blows up; Huber stays reasonable" data-default-label="Copy code">Copy code</button>
+        </div>
+        <ol class="code-lines"><li>mse   = nn.MSELoss()</li><li>huber = nn.HuberLoss(delta=1.0)      # Less sensitive to outliers than MSE</li><li>&nbsp;</li><li>predictions = torch.tensor([2.5, 0.0, 2.1, 7.8])</li><li>targets_reg = torch.tensor([3.0, -0.5, 2.0, 7.0])</li><li>&nbsp;</li><li>print(&quot;MSE loss:   &quot;, mse(predictions, targets_reg).item())</li><li>print(&quot;Huber loss: &quot;, huber(predictions, targets_reg).item())</li><li>&nbsp;</li><li># Why Huber &gt; MSE for data science?</li><li># Add an outlier</li><li>predictions_with_outlier = torch.cat([predictions, torch.tensor([100.0])])</li><li>targets_with_outlier     = torch.cat([targets_reg, torch.tensor([1.0])])</li><li>&nbsp;</li><li>print(&quot;\nWith outlier:&quot;)</li><li>print(&quot;MSE:   &quot;, mse(predictions_with_outlier, targets_with_outlier).item())</li><li>print(&quot;Huber: &quot;, huber(predictions_with_outlier, targets_with_outlier).item())</li><li># MSE blows up; Huber stays reasonable</li></ol>
+      </div><div class="text-block"><pre>MSE loss:    0.2875000834465027</pre></div>
+            <div class="page-learning">
+              <div class="takeaway-box">
+                <strong>Key Takeaway</strong>
+                <p>Different prediction tasks need different error surfaces: binary classification prefers <code>BCEWithLogitsLoss</code>, while noisy regression often benefits from Huber.</p>
+              </div>
+              
+      <div class="knowledge-check">
+        <strong>Knowledge Check</strong>
+        <ol>
+          <li>Why is <code>BCEWithLogitsLoss</code> safer than applying sigmoid manually and then BCE?</li>
+          <li>What real-world data problem makes Huber attractive compared with plain MSE?</li>
+        </ol>
+      </div>
+            </div>
+            
+      <div class="pager">
+        <a href="#page-03">Previous page</a>
+        <span>Page 04 of 17</span>
+        <a href="#page-05">Next page</a>
+      </div>
+          </div>
+        </section>
+        <section class="page" id="page-05">
+          <div class="page-meta">
+            <div class="page-head">
+              <div class="page-label">Page 05</div>
+              <div class="page-title">Optimizer Choices: SGD, Adam, and AdamW</div>
+            </div>
+            <div class="page-actions">
+              <div class="page-progress">Page 05 / 17</div>
+              <a class="page-link" href="#top">Back to top</a>
+            </div>
+          </div>
+          <div class="page-body">
+            <div class="text-block"><pre>With outlier:
+MSE:    1960.429931640625
+Huber: 19.814998626708984</pre></div><h3 class="inline-heading">Loss                   Use Case                      Notes</h3>
+      <div class="math-block">
+        <pre>CrossEntropyLoss       Multi-class classification    Input = raw logits, not</pre>
+      </div><div class="text-block"><pre>softmax
+BCEWithLogitsLoss      Binary classification         Preferred over BCE +</pre></div><h3 class="inline-heading">Sigmoid</h3><div class="text-block"><pre>MSELoss                Regression                    Sensitive to outliers
+HuberLoss              Robust regression             Best for real-world noisy
+                                                     targets
+NLLLoss                Sequence models               Pair with log_softmax</pre></div><h3 class="inline-heading">3. Optimisers: SGD, Adam, AdamW</h3><h3 class="inline-heading">SGD — The Classic</h3>
+      <div class="code-panel">
+        <div class="code-panel-header">
+          <span class="code-label">Code Example</span>
+          <button class="copy-btn" type="button" data-copy="model_sgd = nn.Linear(10, 1)
+# SGD with momentum — more stable than vanilla SGD
+opt_sgd = torch.optim.SGD(" data-default-label="Copy code">Copy code</button>
+        </div>
+        <ol class="code-lines"><li>model_sgd = nn.Linear(10, 1)</li><li># SGD with momentum — more stable than vanilla SGD</li><li>opt_sgd = torch.optim.SGD(</li></ol>
+      </div><div class="text-block"><pre>model_sgd.parameters(),</pre></div>
+      <div class="code-panel">
+        <div class="code-panel-header">
+          <span class="code-label">Code Example</span>
+          <button class="copy-btn" type="button" data-copy="    lr=0.01,
+    momentum=0.9,
+    weight_decay=1e-4" data-default-label="Copy code">Copy code</button>
+        </div>
+        <ol class="code-lines"><li>    lr=0.01,</li><li>    momentum=0.9,</li><li>    weight_decay=1e-4</li></ol>
+      </div><div class="text-block"><p>)</p></div>
+      <div class="code-panel">
+        <div class="code-panel-header">
+          <span class="code-label">Code Example</span>
+          <button class="copy-btn" type="button" data-copy="print(&quot;SGD:&quot;, opt_sgd)" data-default-label="Copy code">Copy code</button>
+        </div>
+        <ol class="code-lines"><li>print(&quot;SGD:&quot;, opt_sgd)</li></ol>
+      </div><div class="text-block"><p>SGD: SGD (</p></div><h3 class="inline-heading">Parameter Group 0</h3><div class="text-block"><pre>dampening: 0</pre></div><h3 class="inline-heading">differentiable: False</h3><h3 class="inline-heading">foreach: None</h3><h3 class="inline-heading">fused: None</h3>
+            <div class="page-learning">
+              <div class="takeaway-box">
+                <strong>Key Takeaway</strong>
+                <p>Optimizers decide how gradients become updates, and <code>AdamW</code> is the modern default because it handles weight decay correctly.</p>
+              </div>
+              
+      <div class="knowledge-check">
+        <strong>Knowledge Check</strong>
+        <ol>
+          <li>Why is <code>AdamW</code> usually preferred over plain <code>Adam</code> in serious deep learning work?</li>
+          <li>When might <code>SGD + momentum</code> still be the better choice?</li>
+        </ol>
+      </div>
+            </div>
+            
+      <div class="pager">
+        <a href="#page-04">Previous page</a>
+        <span>Page 05 of 17</span>
+        <a href="#page-06">Next page</a>
+      </div>
+          </div>
+        </section>
+        <section class="page" id="page-06">
+          <div class="page-meta">
+            <div class="page-head">
+              <div class="page-label">Page 06</div>
+              <div class="page-title">Optimizer Defaults and AdamW Intuition</div>
+            </div>
+            <div class="page-actions">
+              <div class="page-progress">Page 06 / 17</div>
+              <a class="page-link" href="#top">Back to top</a>
+            </div>
+          </div>
+          <div class="page-body">
+            <h3 class="inline-heading">maximize: False</h3><div class="text-block"><pre>momentum: 0.9</pre></div><h3 class="inline-heading">nesterov: False</h3><div class="text-block"><pre>weight_decay: 0.0001
+)</pre></div><h3 class="inline-heading">Adam — Adaptive Learning Rates</h3>
+      <div class="code-panel">
+        <div class="code-panel-header">
+          <span class="code-label">Code Example</span>
+          <button class="copy-btn" type="button" data-copy="model_adam = nn.Linear(10, 1)
+# Adam adapts the learning rate per parameter
+opt_adam = torch.optim.Adam(" data-default-label="Copy code">Copy code</button>
+        </div>
+        <ol class="code-lines"><li>model_adam = nn.Linear(10, 1)</li><li># Adam adapts the learning rate per parameter</li><li>opt_adam = torch.optim.Adam(</li></ol>
+      </div><div class="text-block"><pre>model_adam.parameters(),</pre></div>
+      <div class="code-panel">
+        <div class="code-panel-header">
+          <span class="code-label">Code Example</span>
+          <button class="copy-btn" type="button" data-copy="    lr=1e-3,
+    betas=(0.9, 0.999),      # Momentum for gradient and squared gradient
+    eps=1e-8,
+    weight_decay=0           # ← Adam&#x27;s weight decay is WRONG (see AdamW)" data-default-label="Copy code">Copy code</button>
+        </div>
+        <ol class="code-lines"><li>    lr=1e-3,</li><li>    betas=(0.9, 0.999),      # Momentum for gradient and squared gradient</li><li>    eps=1e-8,</li><li>    weight_decay=0           # ← Adam&#x27;s weight decay is WRONG (see AdamW)</li></ol>
+      </div><div class="text-block"><p>)</p><p>AdamW — The Default for Deep Learning</p></div>
+      <div class="code-panel">
+        <div class="code-panel-header">
+          <span class="code-label">Code Example</span>
+          <button class="copy-btn" type="button" data-copy="model_adamw = nn.Linear(10, 1)
+# AdamW fixes Adam&#x27;s weight decay bug
+# In Adam, weight decay is entangled with adaptive LR → doesn&#x27;t regularise properly
+# In AdamW, weight decay is applied directly to weights → correct L2 regularisation
+opt_adamw = torch.optim.AdamW(" data-default-label="Copy code">Copy code</button>
+        </div>
+        <ol class="code-lines"><li>model_adamw = nn.Linear(10, 1)</li><li># AdamW fixes Adam&#x27;s weight decay bug</li><li># In Adam, weight decay is entangled with adaptive LR → doesn&#x27;t regularise properly</li><li># In AdamW, weight decay is applied directly to weights → correct L2 regularisation</li><li>opt_adamw = torch.optim.AdamW(</li></ol>
+      </div><div class="text-block"><pre>model_adamw.parameters(),</pre></div>
+      <div class="code-panel">
+        <div class="code-panel-header">
+          <span class="code-label">Code Example</span>
+          <button class="copy-btn" type="button" data-copy="    lr=1e-3,
+    weight_decay=1e-2        # Decoupled weight decay — typically 0.01" data-default-label="Copy code">Copy code</button>
+        </div>
+        <ol class="code-lines"><li>    lr=1e-3,</li><li>    weight_decay=1e-2        # Decoupled weight decay — typically 0.01</li></ol>
+      </div><div class="text-block"><p>)</p></div>
+      <div class="code-panel">
+        <div class="code-panel-header">
+          <span class="code-label">Code Example</span>
+          <button class="copy-btn" type="button" data-copy="print(&quot;AdamW is the default choice for almost all deep learning tasks.&quot;)" data-default-label="Copy code">Copy code</button>
+        </div>
+        <ol class="code-lines"><li>print(&quot;AdamW is the default choice for almost all deep learning tasks.&quot;)</li></ol>
+      </div><div class="text-block"><p>AdamW is the default choice for almost all deep learning tasks.</p></div>
+            <div class="page-learning">
+              <div class="takeaway-box">
+                <strong>Key Takeaway</strong>
+                <p><code>AdamW</code> is a strong default, but knowing why it differs from Adam helps you debug regularization and convergence instead of tuning blindly.</p>
+              </div>
+              
+      <div class="knowledge-check">
+        <strong>Knowledge Check</strong>
+        <ol>
+          <li>What does weight decay do differently in AdamW compared with Adam?</li>
+          <li>Why is optimizer choice tied to the architecture and data regime, not just personal preference?</li>
+        </ol>
+      </div>
+            </div>
+            
+      <div class="pager">
+        <a href="#page-05">Previous page</a>
+        <span>Page 06 of 17</span>
+        <a href="#page-07">Next page</a>
+      </div>
+          </div>
+        </section>
+        <section class="page" id="page-07">
+          <div class="page-meta">
+            <div class="page-head">
+              <div class="page-label">Page 07</div>
+              <div class="page-title">Learning Rate Scheduling Strategy</div>
+            </div>
+            <div class="page-actions">
+              <div class="page-progress">Page 07 / 17</div>
+              <a class="page-link" href="#top">Back to top</a>
+            </div>
+          </div>
+          <div class="page-body">
+            <div class="text-block"><pre>Which optimiser to use: - AdamW — default for everything: MLPs, Transformers,</pre></div>
+      <div class="math-block">
+        <pre>  CNNs. - SGD + momentum — CNNs, when you want to fine-tune a pretrained model.</pre>
+      </div><div class="text-block"><pre>- Adam — quick experiments; switch to AdamW for production.</pre></div><h3 class="inline-heading">4. Learning Rate Scheduling</h3><h3 class="inline-heading">Why Schedule the LR?</h3><div class="text-block"><p>A high LR early on helps explore the loss landscape quickly. A low LR later helps converge to a good minimum without overshooting. LR scheduling automates this.</p></div>
+      <div class="code-panel">
+        <div class="code-panel-header">
+          <span class="code-label">Code Example</span>
+          <button class="copy-btn" type="button" data-copy="import matplotlib" data-default-label="Copy code">Copy code</button>
+        </div>
+        <ol class="code-lines"><li>import matplotlib</li></ol>
+      </div><div class="text-block"><p>matplotlib.use(&#x27;Agg&#x27;)</p></div>
+      <div class="code-panel">
+        <div class="code-panel-header">
+          <span class="code-label">Code Example</span>
+          <button class="copy-btn" type="button" data-copy="import matplotlib.pyplot as plt
+
+model = nn.Linear(10, 1)
+opt   = torch.optim.AdamW(model.parameters(), lr=1e-3)
+
+#  Cosine Annealing: smoothly decays to min_lr
+scheduler_cos = torch.optim.lr_scheduler.CosineAnnealingLR(
+     opt, T_max=100, eta_min=1e-5" data-default-label="Copy code">Copy code</button>
+        </div>
+        <ol class="code-lines"><li>import matplotlib.pyplot as plt</li><li>&nbsp;</li><li>model = nn.Linear(10, 1)</li><li>opt   = torch.optim.AdamW(model.parameters(), lr=1e-3)</li><li>&nbsp;</li><li>#  Cosine Annealing: smoothly decays to min_lr</li><li>scheduler_cos = torch.optim.lr_scheduler.CosineAnnealingLR(</li><li>     opt, T_max=100, eta_min=1e-5</li></ol>
+      </div><div class="text-block"><p>)</p></div>
+      <div class="code-panel">
+        <div class="code-panel-header">
+          <span class="code-label">Code Example</span>
+          <button class="copy-btn" type="button" data-copy="#  StepLR: multiply by gamma every step_size epochs
+scheduler_step = torch.optim.lr_scheduler.StepLR(opt, step_size=30, gamma=0.1)
+
+#  OneCycleLR: warmup → peak → decay (great for fast training)
+opt2 = torch.optim.AdamW(model.parameters(), lr=1e-3)
+scheduler_one = torch.optim.lr_scheduler.OneCycleLR(" data-default-label="Copy code">Copy code</button>
+        </div>
+        <ol class="code-lines"><li>#  StepLR: multiply by gamma every step_size epochs</li><li>scheduler_step = torch.optim.lr_scheduler.StepLR(opt, step_size=30, gamma=0.1)</li><li>&nbsp;</li><li>#  OneCycleLR: warmup → peak → decay (great for fast training)</li><li>opt2 = torch.optim.AdamW(model.parameters(), lr=1e-3)</li><li>scheduler_one = torch.optim.lr_scheduler.OneCycleLR(</li></ol>
+      </div><div class="text-block"><pre>opt2,</pre></div>
+      <div class="code-panel">
+        <div class="code-panel-header">
+          <span class="code-label">Code Example</span>
+          <button class="copy-btn" type="button" data-copy="     max_lr=1e-2,
+     steps_per_epoch=10,    # batches per epoch
+     epochs=20,
+     pct_start=0.3          # 30% of steps for warmup" data-default-label="Copy code">Copy code</button>
+        </div>
+        <ol class="code-lines"><li>     max_lr=1e-2,</li><li>     steps_per_epoch=10,    # batches per epoch</li><li>     epochs=20,</li><li>     pct_start=0.3          # 30% of steps for warmup</li></ol>
+      </div><div class="text-block"><p>)</p></div>
+            <div class="page-learning">
+              <div class="takeaway-box">
+                <strong>Key Takeaway</strong>
+                <p>Learning rate schedules control how aggressively the model explores early and how carefully it settles later, which often matters as much as optimizer choice.</p>
+              </div>
+              
+      <div class="knowledge-check">
+        <strong>Knowledge Check</strong>
+        <ol>
+          <li>Why is a fixed learning rate often weaker than a schedule over long training runs?</li>
+          <li>What kind of training pattern makes <code>OneCycleLR</code> especially attractive?</li>
+        </ol>
+      </div>
+            <div class="mistake-box">
+              <strong>Common Mistakes</strong>
+              <ul>
+                <li>Calling the scheduler at the wrong time and shifting the whole LR pattern.</li>
+                <li>Using a fancy schedule to hide a fundamentally bad base learning rate.</li>
+                <li>Confusing per-step schedulers with per-epoch schedulers.</li>
+              </ul>
+            </div>
+            </div>
+            
+      <div class="pager">
+        <a href="#page-06">Previous page</a>
+        <span>Page 07 of 17</span>
+        <a href="#page-08">Next page</a>
+      </div>
+          </div>
+        </section>
+        <section class="page" id="page-08">
+          <div class="page-meta">
+            <div class="page-head">
+              <div class="page-label">Page 08</div>
+              <div class="page-title">Visualizing Schedules and Step Timing</div>
+            </div>
+            <div class="page-actions">
+              <div class="page-progress">Page 08 / 17</div>
+              <a class="page-link" href="#top">Back to top</a>
+            </div>
+          </div>
+          <div class="page-body">
+            
+      <div class="code-panel">
+        <div class="code-panel-header">
+          <span class="code-label">Code Example</span>
+          <button class="copy-btn" type="button" data-copy="# Visualise cosine schedule
+lrs = []
+opt_vis = torch.optim.AdamW(model.parameters(), lr=1e-3)
+sched    = torch.optim.lr_scheduler.CosineAnnealingLR(opt_vis, T_max=100, eta_min=1e-5)
+for _ in range(100):" data-default-label="Copy code">Copy code</button>
+        </div>
+        <ol class="code-lines"><li># Visualise cosine schedule</li><li>lrs = []</li><li>opt_vis = torch.optim.AdamW(model.parameters(), lr=1e-3)</li><li>sched    = torch.optim.lr_scheduler.CosineAnnealingLR(opt_vis, T_max=100, eta_min=1e-5)</li><li>for _ in range(100):</li></ol>
+      </div><div class="text-block"><pre>lrs.append(opt_vis.param_groups[0][&#x27;lr&#x27;])
+    opt_vis.step()
+    sched.step()</pre></div>
+      <div class="math-block">
+        <pre>plt.figure(figsize=(8, 3))</pre>
+      </div><div class="text-block"><p>plt.plot(lrs, color=&#x27;steelblue&#x27;, linewidth=2) plt.title(&quot;Cosine Annealing LR Schedule&quot;) plt.xlabel(&quot;Epoch&quot;); plt.ylabel(&quot;Learning Rate&quot;) plt.tight_layout(); plt.savefig(&quot;lr_schedule.png&quot;, dpi=80); plt.close()</p></div>
+      <div class="code-panel">
+        <div class="code-panel-header">
+          <span class="code-label">Code Example</span>
+          <button class="copy-btn" type="button" data-copy="print(&quot;LR goes from:&quot;, round(lrs[0], 6), &quot;→&quot;, round(lrs[-1], 8))" data-default-label="Copy code">Copy code</button>
+        </div>
+        <ol class="code-lines"><li>print(&quot;LR goes from:&quot;, round(lrs[0], 6), &quot;→&quot;, round(lrs[-1], 8))</li></ol>
+      </div><div class="text-block"><p>LR goes from: 0.001 → 1.024e-05</p></div><h3 class="inline-heading">The Correct Scheduling Pattern</h3>
+      <div class="code-panel">
+        <div class="code-panel-header">
+          <span class="code-label">Code Example</span>
+          <button class="copy-btn" type="button" data-copy="# CRITICAL: scheduler.step() goes AFTER optimizer.step()
+
+model     = nn.Linear(10, 1)
+opt       = torch.optim.AdamW(model.parameters(), lr=1e-3)
+scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(opt, T_max=50)
+
+for epoch in range(5):
+    # ... training ..." data-default-label="Copy code">Copy code</button>
+        </div>
+        <ol class="code-lines"><li># CRITICAL: scheduler.step() goes AFTER optimizer.step()</li><li>&nbsp;</li><li>model     = nn.Linear(10, 1)</li><li>opt       = torch.optim.AdamW(model.parameters(), lr=1e-3)</li><li>scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(opt, T_max=50)</li><li>&nbsp;</li><li>for epoch in range(5):</li><li>    # ... training ...</li></ol>
+      </div><div class="text-block"><pre>opt.step()             # ← optimizer first
+    scheduler.step()       # ← scheduler second</pre></div>
+      <div class="code-panel">
+        <div class="code-panel-header">
+          <span class="code-label">Code Example</span>
+          <button class="copy-btn" type="button" data-copy="    print(f&quot;Epoch {epoch}: LR = {opt.param_groups[0][&#x27;lr&#x27;]:.6f}&quot;)" data-default-label="Copy code">Copy code</button>
+        </div>
+        <ol class="code-lines"><li>    print(f&quot;Epoch {epoch}: LR = {opt.param_groups[0][&#x27;lr&#x27;]:.6f}&quot;)</li></ol>
+      </div>
+      <div class="math-block">
+        <pre>Epoch 0: LR = 0.000999
+Epoch 1: LR = 0.000996
+Epoch 2: LR = 0.000991
+Epoch 3: LR = 0.000984
+Epoch 4: LR = 0.000976</pre>
+      </div>
+            <div class="page-learning">
+              <div class="takeaway-box">
+                <strong>Key Takeaway</strong>
+                <p>Visualizing the learning rate is a practical debugging tool: if the schedule is wrong, the model may look unstable even when the rest of the loop is correct.</p>
+              </div>
+              
+      <div class="knowledge-check">
+        <strong>Knowledge Check</strong>
+        <ol>
+          <li>What would you inspect first if the learning rate falls too quickly or never decays?</li>
+          <li>Why is it useful to log or plot LR values during experiments?</li>
+        </ol>
+      </div>
+            </div>
+            
+      <div class="pager">
+        <a href="#page-07">Previous page</a>
+        <span>Page 08 of 17</span>
+        <a href="#page-09">Next page</a>
+      </div>
+          </div>
+        </section>
+        <section class="page" id="page-09">
+          <div class="page-meta">
+            <div class="page-head">
+              <div class="page-label">Page 09</div>
+              <div class="page-title">Gradient Clipping, Mixed Precision, and Accumulation</div>
+            </div>
+            <div class="page-actions">
+              <div class="page-progress">Page 09 / 17</div>
+              <a class="page-link" href="#top">Back to top</a>
+            </div>
+          </div>
+          <div class="page-body">
+            <h3 class="inline-heading">Gradient Clipping — Prevent Exploding Gradients</h3>
+      <div class="code-panel">
+        <div class="code-panel-header">
+          <span class="code-label">Code Example</span>
+          <button class="copy-btn" type="button" data-copy="model = nn.Sequential(nn.Linear(10, 64), nn.ReLU(), nn.Linear(64, 1))
+opt   = torch.optim.AdamW(model.parameters())
+X     = torch.randn(32, 10)
+y     = torch.randn(32, 1)
+
+# Pass 1: measure norm before clipping" data-default-label="Copy code">Copy code</button>
+        </div>
+        <ol class="code-lines"><li>model = nn.Sequential(nn.Linear(10, 64), nn.ReLU(), nn.Linear(64, 1))</li><li>opt   = torch.optim.AdamW(model.parameters())</li><li>X     = torch.randn(32, 10)</li><li>y     = torch.randn(32, 1)</li><li>&nbsp;</li><li># Pass 1: measure norm before clipping</li></ol>
+      </div><div class="text-block"><p>opt.zero_grad()</p></div>
+      <div class="code-panel">
+        <div class="code-panel-header">
+          <span class="code-label">Code Example</span>
+          <button class="copy-btn" type="button" data-copy="loss = nn.MSELoss()(model(X), y)" data-default-label="Copy code">Copy code</button>
+        </div>
+        <ol class="code-lines"><li>loss = nn.MSELoss()(model(X), y)</li></ol>
+      </div><div class="text-block"><p>loss.backward()</p></div>
+      <div class="code-panel">
+        <div class="code-panel-header">
+          <span class="code-label">Code Example</span>
+          <button class="copy-btn" type="button" data-copy="total_norm_before = torch.nn.utils.clip_grad_norm_(model.parameters(), max_norm=float(&#x27;inf&#x27;))
+print(f&quot;Gradient norm before clipping: {total_norm_before:.4f}&quot;)
+
+# Pass 2: fresh forward+backward, then clip to max_norm=1.0" data-default-label="Copy code">Copy code</button>
+        </div>
+        <ol class="code-lines"><li>total_norm_before = torch.nn.utils.clip_grad_norm_(model.parameters(), max_norm=float(&#x27;inf&#x27;))</li><li>print(f&quot;Gradient norm before clipping: {total_norm_before:.4f}&quot;)</li><li>&nbsp;</li><li># Pass 2: fresh forward+backward, then clip to max_norm=1.0</li></ol>
+      </div><div class="text-block"><p>opt.zero_grad()</p></div>
+      <div class="code-panel">
+        <div class="code-panel-header">
+          <span class="code-label">Code Example</span>
+          <button class="copy-btn" type="button" data-copy="loss = nn.MSELoss()(model(X), y)   # Recompute — can&#x27;t backward through freed graph" data-default-label="Copy code">Copy code</button>
+        </div>
+        <ol class="code-lines"><li>loss = nn.MSELoss()(model(X), y)   # Recompute — can&#x27;t backward through freed graph</li></ol>
+      </div><div class="text-block"><p>loss.backward()</p></div>
+      <div class="code-panel">
+        <div class="code-panel-header">
+          <span class="code-label">Code Example</span>
+          <button class="copy-btn" type="button" data-copy="total_norm_after = torch.nn.utils.clip_grad_norm_(model.parameters(), max_norm=1.0)
+print(f&quot;Gradient norm after clipping: {min(total_norm_after.item(), 1.0):.4f}&quot;)" data-default-label="Copy code">Copy code</button>
+        </div>
+        <ol class="code-lines"><li>total_norm_after = torch.nn.utils.clip_grad_norm_(model.parameters(), max_norm=1.0)</li><li>print(f&quot;Gradient norm after clipping: {min(total_norm_after.item(), 1.0):.4f}&quot;)</li></ol>
+      </div><div class="text-block"><p>opt.step()</p><p>Gradient norm before clipping: 0.9284 Gradient norm after clipping: 0.9284</p></div><h3 class="inline-heading">Gradient Accumulation — Simulate Larger Batches</h3>
+      <div class="code-panel">
+        <div class="code-panel-header">
+          <span class="code-label">Code Example</span>
+          <button class="copy-btn" type="button" data-copy="# When GPU memory is limited, accumulate gradients over N mini-batches
+# before stepping — this simulates a batch size of N × mini_batch_size
+
+model       = nn.Sequential(nn.Linear(10, 32), nn.ReLU(), nn.Linear(32, 1))
+opt         = torch.optim.AdamW(model.parameters())
+criterion   = nn.MSELoss()
+
+accumulate_steps = 4   # Effective batch = 4 × 8 = 32
+
+for step, (X_b, y_b) in enumerate([(torch.randn(8,10), torch.randn(8,1))]*8):" data-default-label="Copy code">Copy code</button>
+        </div>
+        <ol class="code-lines"><li># When GPU memory is limited, accumulate gradients over N mini-batches</li><li># before stepping — this simulates a batch size of N × mini_batch_size</li><li>&nbsp;</li><li>model       = nn.Sequential(nn.Linear(10, 32), nn.ReLU(), nn.Linear(32, 1))</li><li>opt         = torch.optim.AdamW(model.parameters())</li><li>criterion   = nn.MSELoss()</li><li>&nbsp;</li><li>accumulate_steps = 4   # Effective batch = 4 × 8 = 32</li><li>&nbsp;</li><li>for step, (X_b, y_b) in enumerate([(torch.randn(8,10), torch.randn(8,1))]*8):</li></ol>
+      </div>
+            <div class="page-learning">
+              <div class="takeaway-box">
+                <strong>Key Takeaway</strong>
+                <p>These tools solve different scaling problems: clipping stabilizes exploding gradients, mixed precision speeds up compatible hardware, and accumulation simulates larger batches.</p>
+              </div>
+              
+      <div class="knowledge-check">
+        <strong>Knowledge Check</strong>
+        <ol>
+          <li>What failure pattern suggests you might need gradient clipping?</li>
+          <li>Why does gradient accumulation help when memory is the limiting factor?</li>
+        </ol>
+      </div>
+            </div>
+            
+      <div class="pager">
+        <a href="#page-08">Previous page</a>
+        <span>Page 09 of 17</span>
+        <a href="#page-10">Next page</a>
+      </div>
+          </div>
+        </section>
+        <section class="page" id="page-10">
+          <div class="page-meta">
+            <div class="page-head">
+              <div class="page-label">Page 10</div>
+              <div class="page-title">Gradient Accumulation and Memory-Aware Training</div>
+            </div>
+            <div class="page-actions">
+              <div class="page-progress">Page 10 / 17</div>
+              <a class="page-link" href="#top">Back to top</a>
+            </div>
+          </div>
+          <div class="page-body">
+            
+      <div class="code-panel">
+        <div class="code-panel-header">
+          <span class="code-label">Code Example</span>
+          <button class="copy-btn" type="button" data-copy="    loss = loss / accumulate_steps           # Scale loss so gradients are averaged" data-default-label="Copy code">Copy code</button>
+        </div>
+        <ol class="code-lines"><li>    loss = loss / accumulate_steps           # Scale loss so gradients are averaged</li></ol>
+      </div><div class="text-block"><pre>loss.backward()</pre></div>
+      <div class="code-panel">
+        <div class="code-panel-header">
+          <span class="code-label">Code Example</span>
+          <button class="copy-btn" type="button" data-copy="    if (step + 1) % accumulate_steps == 0:" data-default-label="Copy code">Copy code</button>
+        </div>
+        <ol class="code-lines"><li>    if (step + 1) % accumulate_steps == 0:</li></ol>
+      </div><div class="text-block"><pre>opt.step()
+        opt.zero_grad()</pre></div>
+      <div class="code-panel">
+        <div class="code-panel-header">
+          <span class="code-label">Code Example</span>
+          <button class="copy-btn" type="button" data-copy="        print(f&quot;Optimizer step at step {step+1}&quot;)" data-default-label="Copy code">Copy code</button>
+        </div>
+        <ol class="code-lines"><li>        print(f&quot;Optimizer step at step {step+1}&quot;)</li></ol>
+      </div><div class="text-block"><p>Optimizer step at step 4 Optimizer step at step 8</p></div><h3 class="inline-heading">Mixed Precision Training</h3>
+      <div class="code-panel">
+        <div class="code-panel-header">
+          <span class="code-label">Code Example</span>
+          <button class="copy-btn" type="button" data-copy="# Mixed precision: compute forward/backward in float16, store weights in float32
+# Result: ~2x speedup, ~50% memory reduction on compatible GPUs
+
+from torch.amp import autocast, GradScaler
+
+device = &quot;cuda&quot; if torch.cuda.is_available() else &quot;cpu&quot;
+model = nn.Sequential(nn.Linear(10, 64), nn.ReLU(), nn.Linear(64, 1)).to(device)
+opt    = torch.optim.AdamW(model.parameters())
+
+X = torch.randn(32, 10, device=device)
+y = torch.randn(32, 1, device=device)" data-default-label="Copy code">Copy code</button>
+        </div>
+        <ol class="code-lines"><li># Mixed precision: compute forward/backward in float16, store weights in float32</li><li># Result: ~2x speedup, ~50% memory reduction on compatible GPUs</li><li>&nbsp;</li><li>from torch.amp import autocast, GradScaler</li><li>&nbsp;</li><li>device = &quot;cuda&quot; if torch.cuda.is_available() else &quot;cpu&quot;</li><li>model = nn.Sequential(nn.Linear(10, 64), nn.ReLU(), nn.Linear(64, 1)).to(device)</li><li>opt    = torch.optim.AdamW(model.parameters())</li><li>&nbsp;</li><li>X = torch.randn(32, 10, device=device)</li><li>y = torch.randn(32, 1, device=device)</li></ol>
+      </div><div class="text-block"><p>opt.zero_grad()</p></div>
+      <div class="code-panel">
+        <div class="code-panel-header">
+          <span class="code-label">Code Example</span>
+          <button class="copy-btn" type="button" data-copy="if device == &quot;cuda&quot;:
+    scaler = GradScaler(&quot;cuda&quot;)" data-default-label="Copy code">Copy code</button>
+        </div>
+        <ol class="code-lines"><li>if device == &quot;cuda&quot;:</li><li>    scaler = GradScaler(&quot;cuda&quot;)</li></ol>
+      </div><div class="text-block"><pre>with autocast(device_type=&quot;cuda&quot;):</pre></div>
+      <div class="code-panel">
+        <div class="code-panel-header">
+          <span class="code-label">Code Example</span>
+          <button class="copy-btn" type="button" data-copy="        output = model(X)
+        loss   = nn.MSELoss()(output, y)" data-default-label="Copy code">Copy code</button>
+        </div>
+        <ol class="code-lines"><li>        output = model(X)</li><li>        loss   = nn.MSELoss()(output, y)</li></ol>
+      </div><div class="text-block"><pre>scaler.scale(loss).backward()
+    scaler.step(opt)
+    scaler.update()</pre></div>
+      <div class="code-panel">
+        <div class="code-panel-header">
+          <span class="code-label">Code Example</span>
+          <button class="copy-btn" type="button" data-copy="else:
+    # CPU: autocast and scaling are no-ops; just run normally
+    output = model(X)
+    loss   = nn.MSELoss()(output, y)" data-default-label="Copy code">Copy code</button>
+        </div>
+        <ol class="code-lines"><li>else:</li><li>    # CPU: autocast and scaling are no-ops; just run normally</li><li>    output = model(X)</li><li>    loss   = nn.MSELoss()(output, y)</li></ol>
+      </div>
+            <div class="page-learning">
+              <div class="takeaway-box">
+                <strong>Key Takeaway</strong>
+                <p>Memory-aware training is about respecting hardware limits without changing the effective optimization target more than necessary.</p>
+              </div>
+              
+      <div class="knowledge-check">
+        <strong>Knowledge Check</strong>
+        <ol>
+          <li>Why must accumulated loss often be scaled before backward when simulating a larger batch?</li>
+          <li>What bug appears if you forget when to call <code>optimizer.step()</code> during accumulation?</li>
+        </ol>
+      </div>
+            </div>
+            
+      <div class="pager">
+        <a href="#page-09">Previous page</a>
+        <span>Page 10 of 17</span>
+        <a href="#page-11">Next page</a>
+      </div>
+          </div>
+        </section>
+        <section class="page" id="page-11">
+          <div class="page-meta">
+            <div class="page-head">
+              <div class="page-label">Page 11</div>
+              <div class="page-title">Metrics Tracking and Early Stopping</div>
+            </div>
+            <div class="page-actions">
+              <div class="page-progress">Page 11 / 17</div>
+              <a class="page-link" href="#top">Back to top</a>
+            </div>
+          </div>
+          <div class="page-body">
+            <div class="text-block"><pre>opt.step()</pre></div>
+      <div class="code-panel">
+        <div class="code-panel-header">
+          <span class="code-label">Code Example</span>
+          <button class="copy-btn" type="button" data-copy="print(f&quot;Mixed precision step complete. Loss: {loss.item():.4f}&quot;)" data-default-label="Copy code">Copy code</button>
+        </div>
+        <ol class="code-lines"><li>print(f&quot;Mixed precision step complete. Loss: {loss.item():.4f}&quot;)</li></ol>
+      </div><div class="text-block"><p>Mixed precision step complete. Loss: 1.4753</p></div><h3 class="inline-heading">6. Metrics Tracking and Early Stopping</h3>
+      <div class="code-panel">
+        <div class="code-panel-header">
+          <span class="code-label">Code Example</span>
+          <button class="copy-btn" type="button" data-copy="class EarlyStopping:" data-default-label="Copy code">Copy code</button>
+        </div>
+        <ol class="code-lines"><li>class EarlyStopping:</li></ol>
+      </div><div class="text-block"><pre>&quot;&quot;&quot;Stop training when validation loss hasn&#x27;t improved for `patience` epochs.&quot;&quot;&quot;</pre></div>
+      <div class="code-panel">
+        <div class="code-panel-header">
+          <span class="code-label">Code Example</span>
+          <button class="copy-btn" type="button" data-copy="   def __init__(self, patience: int = 10, min_delta: float = 1e-4):
+       self.patience   = patience
+       self.min_delta = min_delta
+       self.best_loss = float(&#x27;inf&#x27;)
+       self.counter    = 0
+       self.best_state = None
+
+   def step(self, val_loss: float, model: nn.Module) -&gt; bool:" data-default-label="Copy code">Copy code</button>
+        </div>
+        <ol class="code-lines"><li>   def __init__(self, patience: int = 10, min_delta: float = 1e-4):</li><li>       self.patience   = patience</li><li>       self.min_delta = min_delta</li><li>       self.best_loss = float(&#x27;inf&#x27;)</li><li>       self.counter    = 0</li><li>       self.best_state = None</li><li>&nbsp;</li><li>   def step(self, val_loss: float, model: nn.Module) -&gt; bool:</li></ol>
+      </div><div class="text-block"><pre>&quot;&quot;&quot;Returns True if training should stop.&quot;&quot;&quot;</pre></div>
+      <div class="code-panel">
+        <div class="code-panel-header">
+          <span class="code-label">Code Example</span>
+          <button class="copy-btn" type="button" data-copy="       if val_loss &lt; self.best_loss - self.min_delta:
+           self.best_loss = val_loss
+           self.counter    = 0
+           self.best_state = {k: v.clone() for k, v in model.state_dict().items()}
+       else:" data-default-label="Copy code">Copy code</button>
+        </div>
+        <ol class="code-lines"><li>       if val_loss &lt; self.best_loss - self.min_delta:</li><li>           self.best_loss = val_loss</li><li>           self.counter    = 0</li><li>           self.best_state = {k: v.clone() for k, v in model.state_dict().items()}</li><li>       else:</li></ol>
+      </div><div class="text-block"><pre>self.counter += 1</pre></div>
+      <div class="code-panel">
+        <div class="code-panel-header">
+          <span class="code-label">Code Example</span>
+          <button class="copy-btn" type="button" data-copy="       return self.counter &gt;= self.patience
+
+   def restore_best(self, model: nn.Module):" data-default-label="Copy code">Copy code</button>
+        </div>
+        <ol class="code-lines"><li>       return self.counter &gt;= self.patience</li><li>&nbsp;</li><li>   def restore_best(self, model: nn.Module):</li></ol>
+      </div><div class="text-block"><pre>model.load_state_dict(self.best_state)</pre></div>
+      <div class="code-panel">
+        <div class="code-panel-header">
+          <span class="code-label">Code Example</span>
+          <button class="copy-btn" type="button" data-copy="# Usage in training loop
+es = EarlyStopping(patience=10)
+for epoch in range(200):" data-default-label="Copy code">Copy code</button>
+        </div>
+        <ol class="code-lines"><li># Usage in training loop</li><li>es = EarlyStopping(patience=10)</li><li>for epoch in range(200):</li></ol>
+      </div>
+            <div class="page-learning">
+              <div class="takeaway-box">
+                <strong>Key Takeaway</strong>
+                <p>Training loss alone is not enough; validation metrics tell you whether the model is actually becoming useful instead of merely memorizing.</p>
+              </div>
+              
+      <div class="knowledge-check">
+        <strong>Knowledge Check</strong>
+        <ol>
+          <li>Why can a decreasing training loss still hide a failing model?</li>
+          <li>What is early stopping protecting you from in practice?</li>
+        </ol>
+      </div>
+            </div>
+            
+      <div class="pager">
+        <a href="#page-10">Previous page</a>
+        <span>Page 11 of 17</span>
+        <a href="#page-12">Next page</a>
+      </div>
+          </div>
+        </section>
+        <section class="page" id="page-12">
+          <div class="page-meta">
+            <div class="page-head">
+              <div class="page-label">Page 12</div>
+              <div class="page-title">Debugging the Training Loop Systematically</div>
+            </div>
+            <div class="page-actions">
+              <div class="page-progress">Page 12 / 17</div>
+              <a class="page-link" href="#top">Back to top</a>
+            </div>
+          </div>
+          <div class="page-body">
+            
+      <div class="code-panel">
+        <div class="code-panel-header">
+          <span class="code-label">Code Example</span>
+          <button class="copy-btn" type="button" data-copy="    if es.step(val_loss, nn.Linear(1,1)):
+        print(f&quot;Early stopping at epoch {epoch}. Best loss: {es.best_loss:.4f}&quot;)" data-default-label="Copy code">Copy code</button>
+        </div>
+        <ol class="code-lines"><li>    if es.step(val_loss, nn.Linear(1,1)):</li><li>        print(f&quot;Early stopping at epoch {epoch}. Best loss: {es.best_loss:.4f}&quot;)</li></ol>
+      </div><div class="text-block"><pre>break</pre></div><h3 class="inline-heading">7. Debugging Training</h3><h3 class="inline-heading">Loss Not Decreasing</h3>
+      <div class="code-panel">
+        <div class="code-panel-header">
+          <span class="code-label">Code Example</span>
+          <button class="copy-btn" type="button" data-copy="# Sanity check 1: Can the model overfit a tiny batch?
+# If not — something is fundamentally wrong with the model or loss
+
+model   = nn.Sequential(nn.Linear(4, 32), nn.ReLU(), nn.Linear(32, 2))
+opt     = torch.optim.AdamW(model.parameters(), lr=1e-2)
+crit    = nn.CrossEntropyLoss()
+
+# Use only 4 samples — should overfit to near-zero loss
+X_tiny = torch.randn(4, 4)
+y_tiny = torch.tensor([0, 1, 0, 1])
+
+print(&quot;Overfit test (loss should go to  0):&quot;)
+for epoch in range(50):" data-default-label="Copy code">Copy code</button>
+        </div>
+        <ol class="code-lines"><li># Sanity check 1: Can the model overfit a tiny batch?</li><li># If not — something is fundamentally wrong with the model or loss</li><li>&nbsp;</li><li>model   = nn.Sequential(nn.Linear(4, 32), nn.ReLU(), nn.Linear(32, 2))</li><li>opt     = torch.optim.AdamW(model.parameters(), lr=1e-2)</li><li>crit    = nn.CrossEntropyLoss()</li><li>&nbsp;</li><li># Use only 4 samples — should overfit to near-zero loss</li><li>X_tiny = torch.randn(4, 4)</li><li>y_tiny = torch.tensor([0, 1, 0, 1])</li><li>&nbsp;</li><li>print(&quot;Overfit test (loss should go to  0):&quot;)</li><li>for epoch in range(50):</li></ol>
+      </div><div class="text-block"><pre>opt.zero_grad()</pre></div>
+      <div class="code-panel">
+        <div class="code-panel-header">
+          <span class="code-label">Code Example</span>
+          <button class="copy-btn" type="button" data-copy="    loss = crit(model(X_tiny), y_tiny)" data-default-label="Copy code">Copy code</button>
+        </div>
+        <ol class="code-lines"><li>    loss = crit(model(X_tiny), y_tiny)</li></ol>
+      </div><div class="text-block"><pre>loss.backward()
+    opt.step()</pre></div>
+      <div class="code-panel">
+        <div class="code-panel-header">
+          <span class="code-label">Code Example</span>
+          <button class="copy-btn" type="button" data-copy="    if epoch % 10 == 0:
+        print(f&quot; Epoch {epoch}: loss = {loss.item():.5f}&quot;)" data-default-label="Copy code">Copy code</button>
+        </div>
+        <ol class="code-lines"><li>    if epoch % 10 == 0:</li><li>        print(f&quot; Epoch {epoch}: loss = {loss.item():.5f}&quot;)</li></ol>
+      </div><div class="text-block"><pre>Overfit test (loss should go to  0):</pre></div>
+      <div class="math-block">
+        <pre>  Epoch 0: loss = 0.82704
+  Epoch 10: loss = 0.26682
+  Epoch 20: loss = 0.04490
+  Epoch 30: loss = 0.00795
+  Epoch 40: loss = 0.00277</pre>
+      </div>
+            <div class="page-learning">
+              <div class="takeaway-box">
+                <strong>Key Takeaway</strong>
+                <p>When training fails, start with small high-signal checks: tensor shapes, NaNs, output ranges, and whether the model can overfit a tiny batch.</p>
+              </div>
+              
+      <div class="knowledge-check">
+        <strong>Knowledge Check</strong>
+        <ol>
+          <li>If the loss never decreases, what is the very first tiny experiment you should run?</li>
+          <li>Why are shape checks and NaN checks usually better first moves than hyperparameter panic?</li>
+        </ol>
+      </div>
+            </div>
+            
+      <div class="pager">
+        <a href="#page-11">Previous page</a>
+        <span>Page 12 of 17</span>
+        <a href="#page-13">Next page</a>
+      </div>
+          </div>
+        </section>
+        <section class="page" id="page-13">
+          <div class="page-meta">
+            <div class="page-head">
+              <div class="page-label">Page 13</div>
+              <div class="page-title">A Practical Model Debugging Checklist</div>
+            </div>
+            <div class="page-actions">
+              <div class="page-progress">Page 13 / 17</div>
+              <a class="page-link" href="#top">Back to top</a>
+            </div>
+          </div>
+          <div class="page-body">
+            
+      <div class="code-panel">
+        <div class="code-panel-header">
+          <span class="code-label">Code Example</span>
+          <button class="copy-btn" type="button" data-copy="# Debugging checklist (print these before training)
+
+def debug_model(model, X, y, criterion):
+    print(&quot;=== MODEL DEBUG ===&quot;)
+    print(f&quot;Input shape: {X.shape}&quot;)
+    print(f&quot;Target shape: {y.shape}&quot;)
+
+   output = model(X[:4])
+   print(f&quot;Output shape: {output.shape}&quot;)
+   print(f&quot;Output sample (raw logits):\n {output[0].detach()}&quot;)
+
+   loss = criterion(output, y[:4])
+   print(f&quot;Initial loss: {loss.item():.4f}&quot;)
+
+   # Check if loss is at the expected value for random initialisation
+   # For N classes, expected CE loss  log(N)
+   import math
+   if hasattr(criterion, &#x27;weight&#x27;) or isinstance(criterion, nn.CrossEntropyLoss):
+       n_classes = output.shape[1]
+       print(f&quot;Expected random CE loss: {math.log(n_classes):.4f}&quot;)
+
+   # Check for NaN
+   print(f&quot;Any NaN in output? {output.isnan().any().item()}&quot;)
+   print(f&quot;Any NaN in input? {X.isnan().any().item()}&quot;)
+
+
+X = torch.randn(32, 4)
+y = torch.randint(0, 2, (32,))" data-default-label="Copy code">Copy code</button>
+        </div>
+        <ol class="code-lines"><li># Debugging checklist (print these before training)</li><li>&nbsp;</li><li>def debug_model(model, X, y, criterion):</li><li>    print(&quot;=== MODEL DEBUG ===&quot;)</li><li>    print(f&quot;Input shape: {X.shape}&quot;)</li><li>    print(f&quot;Target shape: {y.shape}&quot;)</li><li>&nbsp;</li><li>   output = model(X[:4])</li><li>   print(f&quot;Output shape: {output.shape}&quot;)</li><li>   print(f&quot;Output sample (raw logits):\n {output[0].detach()}&quot;)</li><li>&nbsp;</li><li>   loss = criterion(output, y[:4])</li><li>   print(f&quot;Initial loss: {loss.item():.4f}&quot;)</li><li>&nbsp;</li><li>   # Check if loss is at the expected value for random initialisation</li><li>   # For N classes, expected CE loss  log(N)</li><li>   import math</li><li>   if hasattr(criterion, &#x27;weight&#x27;) or isinstance(criterion, nn.CrossEntropyLoss):</li><li>       n_classes = output.shape[1]</li><li>       print(f&quot;Expected random CE loss: {math.log(n_classes):.4f}&quot;)</li><li>&nbsp;</li><li>   # Check for NaN</li><li>   print(f&quot;Any NaN in output? {output.isnan().any().item()}&quot;)</li><li>   print(f&quot;Any NaN in input? {X.isnan().any().item()}&quot;)</li><li>&nbsp;</li><li>&nbsp;</li><li>X = torch.randn(32, 4)</li><li>y = torch.randint(0, 2, (32,))</li></ol>
+      </div><div class="text-block"><p>debug_model(model, X, y, nn.CrossEntropyLoss())</p><p>=== MODEL DEBUG ===</p></div>
+      <div class="code-panel">
+        <div class="code-panel-header">
+          <span class="code-label">Code Example</span>
+          <button class="copy-btn" type="button" data-copy="Input shape: torch.Size([32, 4])
+Target shape: torch.Size([32])
+Output shape: torch.Size([4, 2])" data-default-label="Copy code">Copy code</button>
+        </div>
+        <ol class="code-lines"><li>Input shape: torch.Size([32, 4])</li><li>Target shape: torch.Size([32])</li><li>Output shape: torch.Size([4, 2])</li></ol>
+      </div><div class="text-block"><p>Output sample (raw logits):</p></div>
+      <div class="output-block">
+        <div class="block-actions">
+          <button class="copy-btn" type="button" data-copy="  tensor([ 2.8189, -3.4459])" data-default-label="Copy output">Copy output</button>
+        </div>
+        <pre>  tensor([ 2.8189, -3.4459])</pre>
+      </div><div class="text-block"><p>Initial loss: 4.9560 Expected random CE loss: 0.6931 Any NaN in output? False Any NaN in input? False</p></div>
+            <div class="page-learning">
+              <div class="takeaway-box">
+                <strong>Key Takeaway</strong>
+                <p>A debugging helper earns its keep when it shows the model’s shapes, outputs, loss scale, and NaN status in one place before you waste hours tuning the wrong thing.</p>
+              </div>
+              
+      <div class="knowledge-check">
+        <strong>Knowledge Check</strong>
+        <ol>
+          <li>Why is seeing a sample of raw logits useful before you ever compute an accuracy metric?</li>
+          <li>What can a mismatch between input, output, and target shapes reveal instantly?</li>
+        </ol>
+      </div>
+            <div class="mistake-box">
+              <strong>Common Mistakes</strong>
+              <ul>
+                <li>Changing ten hyperparameters before checking the first batch end to end.</li>
+                <li>Looking only at metrics and never inspecting raw logits.</li>
+                <li>Assuming the model is wrong when the target encoding is actually broken.</li>
+              </ul>
+            </div>
+            </div>
+            
+      <div class="pager">
+        <a href="#page-12">Previous page</a>
+        <span>Page 13 of 17</span>
+        <a href="#page-14">Next page</a>
+      </div>
+          </div>
+        </section>
+        <section class="page" id="page-14">
+          <div class="page-meta">
+            <div class="page-head">
+              <div class="page-label">Page 14</div>
+              <div class="page-title">End-to-End Tabular Project Setup</div>
+            </div>
+            <div class="page-actions">
+              <div class="page-progress">Page 14 / 17</div>
+              <a class="page-link" href="#top">Back to top</a>
+            </div>
+          </div>
+          <div class="page-body">
+            <div class="text-block"><p>Task: Predict employee churn (classification) and salary (regression)</p></div>
+      <div class="code-panel">
+        <div class="code-panel-header">
+          <span class="code-label">Code Example</span>
+          <button class="copy-btn" type="button" data-copy="torch.manual_seed(0)
+
+#  Synthetic HR dataset
+N = 2000
+age           = torch.randint(22, 65, (N,)).float()
+experience    = (age - 22 + torch.randn(N) * 2).clamp(0)
+satisfaction = torch.rand(N) * 10
+hours_week    = 30 + torch.rand(N) * 30
+performance = torch.rand(N) * 5 + 1
+
+# Target 1: Salary (regression)
+salary = (experience * 2500 + age * 300 + performance * 8000
+          + torch.randn(N) * 5000 + 30000)
+
+# Target 2: Churn (binary classification)
+churn_score = (-satisfaction * 0.3 + hours_week * 0.02
+                - performance * 0.1 + torch.randn(N) * 0.5)
+churn_label = (churn_score &gt; churn_score.median()).long()
+
+# Feature matrix
+features = torch.stack([age, experience, satisfaction, hours_week, performance], dim=1)
+
+# Normalise features
+feat_mean = features.mean(0); feat_std = features.std(0)
+features = (features - feat_mean) / feat_std
+
+# Normalise salary target
+sal_mean = salary.mean(); sal_std = salary.std()
+salary_n = (salary - sal_mean) / sal_std
+
+# Train / val split
+split = int(0.8 * N)
+X_tr, X_vl     = features[:split], features[split:]
+y_sal_tr, y_sal_vl   = salary_n[:split], salary_n[split:]
+y_churn_tr, y_churn_vl = churn_label[:split], churn_label[split:]" data-default-label="Copy code">Copy code</button>
+        </div>
+        <ol class="code-lines"><li>torch.manual_seed(0)</li><li>&nbsp;</li><li>#  Synthetic HR dataset</li><li>N = 2000</li><li>age           = torch.randint(22, 65, (N,)).float()</li><li>experience    = (age - 22 + torch.randn(N) * 2).clamp(0)</li><li>satisfaction = torch.rand(N) * 10</li><li>hours_week    = 30 + torch.rand(N) * 30</li><li>performance = torch.rand(N) * 5 + 1</li><li>&nbsp;</li><li># Target 1: Salary (regression)</li><li>salary = (experience * 2500 + age * 300 + performance * 8000</li><li>          + torch.randn(N) * 5000 + 30000)</li><li>&nbsp;</li><li># Target 2: Churn (binary classification)</li><li>churn_score = (-satisfaction * 0.3 + hours_week * 0.02</li><li>                - performance * 0.1 + torch.randn(N) * 0.5)</li><li>churn_label = (churn_score &gt; churn_score.median()).long()</li><li>&nbsp;</li><li># Feature matrix</li><li>features = torch.stack([age, experience, satisfaction, hours_week, performance], dim=1)</li><li>&nbsp;</li><li># Normalise features</li><li>feat_mean = features.mean(0); feat_std = features.std(0)</li><li>features = (features - feat_mean) / feat_std</li><li>&nbsp;</li><li># Normalise salary target</li><li>sal_mean = salary.mean(); sal_std = salary.std()</li><li>salary_n = (salary - sal_mean) / sal_std</li><li>&nbsp;</li><li># Train / val split</li><li>split = int(0.8 * N)</li><li>X_tr, X_vl     = features[:split], features[split:]</li><li>y_sal_tr, y_sal_vl   = salary_n[:split], salary_n[split:]</li><li>y_churn_tr, y_churn_vl = churn_label[:split], churn_label[split:]</li></ol>
+      </div>
+            <div class="page-learning">
+              <div class="takeaway-box">
+                <strong>Key Takeaway</strong>
+                <p>The project turns the whole module into one realistic workflow: feature prep, multiple targets, loaders, a shared model trunk, and a training loop that manages everything.</p>
+              </div>
+              
+      <div class="knowledge-check">
+        <strong>Knowledge Check</strong>
+        <ol>
+          <li>Why is this project a better test of training-loop understanding than a tiny toy batch?</li>
+          <li>What preprocessing decisions here directly affect optimization quality later?</li>
+        </ol>
+      </div>
+            <div class="story-thread">
+              <strong>Running Story</strong>
+              <p>This is the same analytics product from the beginning of the module, now assembled end to end: inputs, targets, loaders, model, optimizer, scheduler, and stopping logic all working together.</p>
+            </div>
+            </div>
+            
+      <div class="pager">
+        <a href="#page-13">Previous page</a>
+        <span>Page 14 of 17</span>
+        <a href="#page-15">Next page</a>
+      </div>
+          </div>
+        </section>
+        <section class="page" id="page-15">
+          <div class="page-meta">
+            <div class="page-head">
+              <div class="page-label">Page 15</div>
+              <div class="page-title">DataLoaders and the Multi-Task Model</div>
+            </div>
+            <div class="page-actions">
+              <div class="page-progress">Page 15 / 17</div>
+              <a class="page-link" href="#top">Back to top</a>
+            </div>
+          </div>
+          <div class="page-body">
+            
+      <div class="code-panel">
+        <div class="code-panel-header">
+          <span class="code-label">Code Example</span>
+          <button class="copy-btn" type="button" data-copy="print(f&quot;Train: {X_tr.shape}, Val: {X_vl.shape}&quot;)
+print(f&quot;Churn rate: {churn_label.float().mean():.2f}&quot;)
+
+
+Train: torch.Size([1600, 5]), Val: torch.Size([400, 5])" data-default-label="Copy code">Copy code</button>
+        </div>
+        <ol class="code-lines"><li>print(f&quot;Train: {X_tr.shape}, Val: {X_vl.shape}&quot;)</li><li>print(f&quot;Churn rate: {churn_label.float().mean():.2f}&quot;)</li><li>&nbsp;</li><li>&nbsp;</li><li>Train: torch.Size([1600, 5]), Val: torch.Size([400, 5])</li></ol>
+      </div><div class="text-block"><p>Churn rate: 0.50</p></div>
+      <div class="code-panel">
+        <div class="code-panel-header">
+          <span class="code-label">Code Example</span>
+          <button class="copy-btn" type="button" data-copy="from torch.utils.data import TensorDataset, DataLoader" data-default-label="Copy code">Copy code</button>
+        </div>
+        <ol class="code-lines"><li>from torch.utils.data import TensorDataset, DataLoader</li></ol>
+      </div><h3 class="inline-heading"># DataLoaders</h3>
+      <div class="code-panel">
+        <div class="code-panel-header">
+          <span class="code-label">Code Example</span>
+          <button class="copy-btn" type="button" data-copy="train_ds = TensorDataset(X_tr, y_sal_tr, y_churn_tr)
+val_ds   = TensorDataset(X_vl, y_sal_vl, y_churn_vl)
+train_dl = DataLoader(train_ds, batch_size=64, shuffle=True)
+val_dl   = DataLoader(val_ds,   batch_size=256)
+
+# Multi-task model: shared trunk → two heads
+class HRModel(nn.Module):
+
+   def __init__(self):" data-default-label="Copy code">Copy code</button>
+        </div>
+        <ol class="code-lines"><li>train_ds = TensorDataset(X_tr, y_sal_tr, y_churn_tr)</li><li>val_ds   = TensorDataset(X_vl, y_sal_vl, y_churn_vl)</li><li>train_dl = DataLoader(train_ds, batch_size=64, shuffle=True)</li><li>val_dl   = DataLoader(val_ds,   batch_size=256)</li><li>&nbsp;</li><li># Multi-task model: shared trunk → two heads</li><li>class HRModel(nn.Module):</li><li>&nbsp;</li><li>   def __init__(self):</li></ol>
+      </div><div class="text-block"><pre>super().__init__()</pre></div>
+      <div class="code-panel">
+        <div class="code-panel-header">
+          <span class="code-label">Code Example</span>
+          <button class="copy-btn" type="button" data-copy="       self.trunk = nn.Sequential(" data-default-label="Copy code">Copy code</button>
+        </div>
+        <ol class="code-lines"><li>       self.trunk = nn.Sequential(</li></ol>
+      </div>
+      <div class="math-block">
+        <pre>           nn.Linear(5, 64), nn.LayerNorm(64), nn.ReLU(), nn.Dropout(0.2),
+           nn.Linear(64, 32), nn.LayerNorm(32), nn.ReLU(), nn.Dropout(0.1),</pre>
+      </div><div class="text-block"><pre>)</pre></div>
+      <div class="code-panel">
+        <div class="code-panel-header">
+          <span class="code-label">Code Example</span>
+          <button class="copy-btn" type="button" data-copy="       self.salary_head = nn.Linear(32, 1)      # Regression
+       self.churn_head = nn.Linear(32, 2)       # Classification
+
+   def forward(self, x):
+       h = self.trunk(x)
+       return self.salary_head(h).squeeze(1), self.churn_head(h)
+
+
+model    = HRModel()
+opt      = torch.optim.AdamW(model.parameters(), lr=1e-3, weight_decay=1e-3)
+sched    = torch.optim.lr_scheduler.CosineAnnealingLR(opt, T_max=50)
+mse_loss = nn.MSELoss()
+ce_loss = nn.CrossEntropyLoss()
+es       = EarlyStopping(patience=8)
+
+print(f&quot;Model params: {sum(p.numel() for p in model.parameters()):,}&quot;)" data-default-label="Copy code">Copy code</button>
+        </div>
+        <ol class="code-lines"><li>       self.salary_head = nn.Linear(32, 1)      # Regression</li><li>       self.churn_head = nn.Linear(32, 2)       # Classification</li><li>&nbsp;</li><li>   def forward(self, x):</li><li>       h = self.trunk(x)</li><li>       return self.salary_head(h).squeeze(1), self.churn_head(h)</li><li>&nbsp;</li><li>&nbsp;</li><li>model    = HRModel()</li><li>opt      = torch.optim.AdamW(model.parameters(), lr=1e-3, weight_decay=1e-3)</li><li>sched    = torch.optim.lr_scheduler.CosineAnnealingLR(opt, T_max=50)</li><li>mse_loss = nn.MSELoss()</li><li>ce_loss = nn.CrossEntropyLoss()</li><li>es       = EarlyStopping(patience=8)</li><li>&nbsp;</li><li>print(f&quot;Model params: {sum(p.numel() for p in model.parameters()):,}&quot;)</li></ol>
+      </div><div class="text-block"><p>Model params: 2,755</p></div>
+            <div class="page-learning">
+              <div class="takeaway-box">
+                <strong>Key Takeaway</strong>
+                <p>A strong project loop depends on good infrastructure: clean datasets, sensible batches, a model with shared representation, and losses that match each head’s task.</p>
+              </div>
+              
+      <div class="knowledge-check">
+        <strong>Knowledge Check</strong>
+        <ol>
+          <li>Why is a shared trunk with separate heads a sensible design for this multi-task problem?</li>
+          <li>What shape or loader bug would you check first before launching full training?</li>
+        </ol>
+      </div>
+            </div>
+            
+      <div class="pager">
+        <a href="#page-14">Previous page</a>
+        <span>Page 15 of 17</span>
+        <a href="#page-16">Next page</a>
+      </div>
+          </div>
+        </section>
+        <section class="page" id="page-16">
+          <div class="page-meta">
+            <div class="page-head">
+              <div class="page-label">Page 16</div>
+              <div class="page-title">Full Multi-Task Training Loop in Action</div>
+            </div>
+            <div class="page-actions">
+              <div class="page-progress">Page 16 / 17</div>
+              <a class="page-link" href="#top">Back to top</a>
+            </div>
+          </div>
+          <div class="page-body">
+            <h3 class="inline-heading"># Training</h3>
+      <div class="code-panel">
+        <div class="code-panel-header">
+          <span class="code-label">Code Example</span>
+          <button class="copy-btn" type="button" data-copy="for epoch in range(60):" data-default-label="Copy code">Copy code</button>
+        </div>
+        <ol class="code-lines"><li>for epoch in range(60):</li></ol>
+      </div><div class="text-block"><pre>model.train()</pre></div>
+      <div class="code-panel">
+        <div class="code-panel-header">
+          <span class="code-label">Code Example</span>
+          <button class="copy-btn" type="button" data-copy="    epoch_loss = 0.0
+    for X_b, y_sal_b, y_churn_b in train_dl:" data-default-label="Copy code">Copy code</button>
+        </div>
+        <ol class="code-lines"><li>    epoch_loss = 0.0</li><li>    for X_b, y_sal_b, y_churn_b in train_dl:</li></ol>
+      </div><div class="text-block"><pre>opt.zero_grad()</pre></div>
+      <div class="code-panel">
+        <div class="code-panel-header">
+          <span class="code-label">Code Example</span>
+          <button class="copy-btn" type="button" data-copy="        sal_pred, churn_pred = model(X_b)
+        loss_sal   = mse_loss(sal_pred, y_sal_b)
+        loss_churn = ce_loss(churn_pred, y_churn_b)
+        loss       = loss_sal + 0.5 * loss_churn    # Combined loss" data-default-label="Copy code">Copy code</button>
+        </div>
+        <ol class="code-lines"><li>        sal_pred, churn_pred = model(X_b)</li><li>        loss_sal   = mse_loss(sal_pred, y_sal_b)</li><li>        loss_churn = ce_loss(churn_pred, y_churn_b)</li><li>        loss       = loss_sal + 0.5 * loss_churn    # Combined loss</li></ol>
+      </div><div class="text-block"><pre>loss.backward()</pre></div>
+      <div class="code-panel">
+        <div class="code-panel-header">
+          <span class="code-label">Code Example</span>
+          <button class="copy-btn" type="button" data-copy="        torch.nn.utils.clip_grad_norm_(model.parameters(), max_norm=1.0)" data-default-label="Copy code">Copy code</button>
+        </div>
+        <ol class="code-lines"><li>        torch.nn.utils.clip_grad_norm_(model.parameters(), max_norm=1.0)</li></ol>
+      </div><div class="text-block"><pre>opt.step()</pre></div>
+      <div class="code-panel">
+        <div class="code-panel-header">
+          <span class="code-label">Code Example</span>
+          <button class="copy-btn" type="button" data-copy="        epoch_loss += loss.item()" data-default-label="Copy code">Copy code</button>
+        </div>
+        <ol class="code-lines"><li>        epoch_loss += loss.item()</li></ol>
+      </div><div class="text-block"><pre>sched.step()</pre></div><h3 class="inline-heading"># Validation</h3><div class="text-block"><pre>model.eval()</pre></div>
+      <div class="code-panel">
+        <div class="code-panel-header">
+          <span class="code-label">Code Example</span>
+          <button class="copy-btn" type="button" data-copy="   with torch.no_grad():
+       sal_p, churn_p = model(X_vl)
+       val_mse        = mse_loss(sal_p, y_sal_vl).item()
+       val_acc        = (churn_p.argmax(1) == y_churn_vl).float().mean().item()
+
+   if epoch % 10 == 0:
+       print(f&quot;Epoch {epoch:3d}: train_loss={epoch_loss/len(train_dl):.4f} &quot;" data-default-label="Copy code">Copy code</button>
+        </div>
+        <ol class="code-lines"><li>   with torch.no_grad():</li><li>       sal_p, churn_p = model(X_vl)</li><li>       val_mse        = mse_loss(sal_p, y_sal_vl).item()</li><li>       val_acc        = (churn_p.argmax(1) == y_churn_vl).float().mean().item()</li><li>&nbsp;</li><li>   if epoch % 10 == 0:</li><li>       print(f&quot;Epoch {epoch:3d}: train_loss={epoch_loss/len(train_dl):.4f} &quot;</li></ol>
+      </div><div class="text-block"><pre>f&quot;val_mse={val_mse:.4f} val_churn_acc={val_acc:.3f}&quot;)</pre></div>
+      <div class="code-panel">
+        <div class="code-panel-header">
+          <span class="code-label">Code Example</span>
+          <button class="copy-btn" type="button" data-copy="   if es.step(val_mse, model):
+       print(f&quot;\nEarly stop at epoch {epoch}&quot;); break" data-default-label="Copy code">Copy code</button>
+        </div>
+        <ol class="code-lines"><li>   if es.step(val_mse, model):</li><li>       print(f&quot;\nEarly stop at epoch {epoch}&quot;); break</li></ol>
+      </div><div class="text-block"><p>es.restore_best(model)</p></div>
+      <div class="code-panel">
+        <div class="code-panel-header">
+          <span class="code-label">Code Example</span>
+          <button class="copy-btn" type="button" data-copy="print(&quot;\nTraining complete. Best weights restored.&quot;)" data-default-label="Copy code">Copy code</button>
+        </div>
+        <ol class="code-lines"><li>print(&quot;\nTraining complete. Best weights restored.&quot;)</li></ol>
+      </div><div class="text-block"><pre>Epoch    0: train_loss=0.7204 val_mse=0.1002   val_churn_acc=0.705
+Epoch   10: train_loss=0.2445 val_mse=0.0359   val_churn_acc=0.873
+Epoch   20: train_loss=0.2307 val_mse=0.0308   val_churn_acc=0.868
+Epoch   30: train_loss=0.2177 val_mse=0.0295   val_churn_acc=0.868
+
+Early stop at epoch 37
+
+Training complete. Best weights restored.</pre></div>
+            <div class="page-learning">
+              <div class="takeaway-box">
+                <strong>Key Takeaway</strong>
+                <p>A real training loop blends multiple ideas at once: combined losses, clipping, scheduling, validation metrics, and early stopping to recover the best weights.</p>
+              </div>
+              
+      <div class="knowledge-check">
+        <strong>Knowledge Check</strong>
+        <ol>
+          <li>Why is the combined loss weighted instead of simply treating both tasks as equally important by default?</li>
+          <li>What parts of this loop would you inspect if one task improves and the other collapses?</li>
+        </ol>
+      </div>
+            <details class="advanced-note">
+              <summary>Advanced Insight</summary>
+              <div class="advanced-body">
+                <p>Production loops are really control systems. The model, optimizer, scheduler, clipping rule, validation metrics, and stopping policy all interact. Strong engineers can reason about the whole system, not just isolated lines.</p>
+              </div>
+            </details>
+            </div>
+            
+      <div class="pager">
+        <a href="#page-15">Previous page</a>
+        <span>Page 16 of 17</span>
+        <a href="#page-17">Next page</a>
+      </div>
+          </div>
+        </section>
+        <section class="page" id="page-17">
+          <div class="page-meta">
+            <div class="page-head">
+              <div class="page-label">Page 17</div>
+              <div class="page-title">Module 4 Wrap-Up and Training-Loop Mastery</div>
+            </div>
+            <div class="page-actions">
+              <div class="page-progress">Page 17 / 17</div>
+              <a class="page-link" href="#top">Back to top</a>
+            </div>
+          </div>
+          <div class="page-body">
+            <h3 class="inline-heading">Concept                                   Key Takeaway</h3><div class="text-block"><pre>Training loop                             zero_grad → forward → loss → backward → step.
+                                          Never vary this order.
+Loss functions                            CE for classification; BCEWithLogits for binary;
+                                          Huber for robust regression.
+AdamW                                     The default optimiser. Decoupled weight decay makes
+                                          regularisation work correctly.
+LR scheduling                             CosineAnnealingLR for most tasks; OneCycleLR for
+                                          fast convergence.
+Gradient clipping                         clip_grad_norm_(params, max_norm=1.0) before
+                                          optimizer.step().</pre></div>
+      <div class="math-block">
+        <pre>Mixed precision                           autocast + GradScaler for 2× speed on GPU.</pre>
+      </div><div class="text-block"><pre>Overfit tiny batch                        First sanity check when loss won’t decrease.
+Early stopping                            Monitor val loss; restore best weights when patience
+                                          expires.</pre></div><h3 class="inline-heading">What’s Next</h3><div class="text-block"><p>Module 5 — Data Pipelines tackles the often-overlooked infrastructure that feeds your training loop. A fast model is useless if the data loader is the bottleneck. You’ll build efficient Dataset and DataLoader objects, handle variable-length sequences, and stream large log datasets without loading them into memory.</p></div>
+            <div class="outcome-box">
+              <strong>After Module 4, You Can Now</strong>
+              <ul>
+                <li>Write a disciplined training loop that keeps mode, gradients, and updates in the correct order.</li>
+                <li>Choose losses, optimizers, and schedules that match the task instead of guessing blindly.</li>
+                <li>Stabilize training with clipping, validation logic, and early stopping.</li>
+                <li>Debug a broken training loop using shape checks, NaN checks, and tiny-batch overfitting.</li>
+              </ul>
+            </div>
+            <div class="integration-box">
+              <strong>Final Integration Problem</strong>
+              <p>You inherit a model whose loss is unstable, validation accuracy is flat, and inference is inconsistent. Explain the order in which you would inspect:</p>
+              <ul>
+                <li>The loop steps and whether gradients are cleared correctly.</li>
+                <li>The task-loss pairing and target shapes.</li>
+                <li>The train/eval mode boundary and validation code path.</li>
+                <li>The learning rate, scheduler timing, and whether clipping or early stopping are misconfigured.</li>
+              </ul>
+            </div>
+            <div class="page-learning">
+              <div class="takeaway-box">
+                <strong>Key Takeaway</strong>
+                <p>The training loop is where every earlier PyTorch concept becomes operational: model structure, gradients, losses, optimizers, schedules, and debugging discipline all meet here.</p>
+              </div>
+              
+      <div class="knowledge-check">
+        <strong>Knowledge Check</strong>
+        <ol>
+          <li>If a model trains but never generalizes, which Module 4 ideas would you inspect first?</li>
+          <li>What part of this module will make Module 5’s data-pipeline work feel more meaningful?</li>
+        </ol>
+      </div>
+            </div>
+            
+      <div class="pager">
+        <a href="#page-16">Previous page</a>
+        <span>Page 17 of 17</span>
+        <a href="#end">Finish module</a>
+      </div>
+          </div>
+        </section>
+        <section class="footer-banner page" id="end">
+          <h2>Ready for the Next Module</h2>
+          <p>Keep moving while the ideas are fresh. The next module builds directly on the concepts, patterns, and examples you just studied here.</p>
+        </section>
+      </main>
+    </section>
   </div>
-</div>
 
-</div>
+  <script>
+    document.body.classList.add("has-motion");
+    const progressBar = document.getElementById("progressBar");
+    const pages = [...document.querySelectorAll(".page")];
+    const navLinks = [...document.querySelectorAll("#sidebarNav a")];
+    const searchInput = document.getElementById("sectionSearch");
+    const statusChip = document.getElementById("statusChip");
+    const sidebar = document.getElementById("sidebarPanel");
+    const sidebarToggle = document.getElementById("sidebarToggle");
+    const sidebarOverlay = document.getElementById("sidebarOverlay");
+    const completionBadge = document.getElementById("completionBadge");
+    const copyButtons = [...document.querySelectorAll(".copy-btn")];
+    const moduleSlug = document.body.dataset.module;
+    const completionStorageKey = "pytorch-course-completion-v1";
 
-<script>
-const sp = document.getElementById('scrollProgress');
-window.addEventListener('scroll', () => { sp.style.width = (window.scrollY / (document.body.scrollHeight - window.innerHeight) * 100) + '%'; });
-document.querySelectorAll('.section').forEach(s => new IntersectionObserver(([e]) => { if (e.isIntersecting) e.target.classList.add('visible'); }, { threshold: 0.08 }).observe(s));
-const c = document.getElementById('heroParticles');
-for (let i = 0; i < 18; i++) { const d = document.createElement('div'); d.className = 'dot'; d.style.cssText = `left:${Math.random()*100}%;top:${Math.random()*100}%;animation-delay:${Math.random()*6}s;animation-duration:${4+Math.random()*4}s`; c.appendChild(d); }
-const fb = {
-  q1: { correct: '✓ Correct! zero_grad() clears the .grad attribute. Calling it after backward() but before step() means step() sees zero gradients and makes no meaningful update.', incorrect: '✗ Not quite. Think about the order: backward computes gradients INTO .grad. If you then zero .grad before step(), step() has nothing to work with.' },
-  q2: { correct: '✓ Correct! CrossEntropyLoss expects raw logits (shape: batch×classes) and integer targets (torch.long). It internally applies log-softmax for numerical stability.', incorrect: '✗ Not quite. CrossEntropyLoss needs raw logits — never apply softmax first. And it needs int64 targets, not one-hot or floats.' }
-};
-function answerQuiz(el, r, qid) {
-  el.closest('.quiz-card-body').querySelectorAll('.quiz-option').forEach(o => o.style.pointerEvents = 'none');
-  el.classList.add(r === 'correct' ? 'correct' : 'incorrect');
-  const f = document.getElementById(qid + '-feedback');
-  f.textContent = fb[qid][r === 'correct' ? 'correct' : 'incorrect'];
-  f.className = 'quiz-feedback show ' + (r === 'correct' ? 'correct-fb' : 'incorrect-fb');
-}
-</script>
+    const readCompletion = () => {
+      try {
+        return JSON.parse(localStorage.getItem(completionStorageKey) || "{}");
+      } catch (error) {
+        return {};
+      }
+    };
+
+    const writeCompletion = (value) => {
+      localStorage.setItem(completionStorageKey, JSON.stringify(value));
+    };
+
+    const setCompleted = () => {
+      const state = readCompletion();
+      if (!state[moduleSlug]) {
+        state[moduleSlug] = true;
+        writeCompletion(state);
+      }
+      completionBadge.textContent = "Completed";
+    };
+
+    const refreshCompletionBadge = () => {
+      const state = readCompletion();
+      completionBadge.textContent = state[moduleSlug] ? "Completed" : "In progress";
+    };
+
+    const updateProgress = () => {
+      const scrollTop = window.scrollY;
+      const docHeight = document.documentElement.scrollHeight - window.innerHeight;
+      const progress = docHeight > 0 ? (scrollTop / docHeight) * 100 : 0;
+      progressBar.style.width = `${progress}%`;
+      if (progress > 94) {
+        setCompleted();
+      }
+    };
+
+    const revealObserver = new IntersectionObserver((entries) => {
+      entries.forEach((entry) => {
+        if (entry.isIntersecting) {
+          entry.target.classList.add("visible");
+        }
+      });
+    }, { threshold: 0.12 });
+
+    if (pages[0]) {
+      pages[0].classList.add("visible");
+    }
+
+    pages.forEach((page) => revealObserver.observe(page));
+
+    const navObserver = new IntersectionObserver((entries) => {
+      entries.forEach((entry) => {
+        if (!entry.isIntersecting) return;
+        const id = entry.target.id;
+        navLinks.forEach((link) => {
+          link.classList.toggle("active", link.getAttribute("href") === `#${id}`);
+        });
+        const activeLink = navLinks.find((link) => link.classList.contains("active"));
+        if (activeLink) {
+          const activeIndex = navLinks.indexOf(activeLink) + 1;
+          statusChip.textContent = `Section ${activeIndex} of ${navLinks.length}`;
+        }
+      });
+    }, {
+      rootMargin: "-35% 0px -50% 0px",
+      threshold: 0.01
+    });
+
+    if (searchInput) {
+      searchInput.addEventListener("input", () => {
+        const query = searchInput.value.trim().toLowerCase();
+        navLinks.forEach((link) => {
+          const match = link.textContent.toLowerCase().includes(query);
+          link.style.display = match ? "" : "none";
+        });
+      });
+    }
+
+    if (sidebarToggle) {
+      const closeSidebar = () => {
+        sidebar.classList.remove("is-open");
+        sidebarToggle.setAttribute("aria-expanded", "false");
+        sidebarOverlay.hidden = true;
+      };
+
+      sidebarToggle.addEventListener("click", () => {
+        const open = !sidebar.classList.contains("is-open");
+        sidebar.classList.toggle("is-open", open);
+        sidebarToggle.setAttribute("aria-expanded", open ? "true" : "false");
+        sidebarOverlay.hidden = !open;
+      });
+
+      sidebarOverlay.addEventListener("click", closeSidebar);
+      navLinks.forEach((link) => link.addEventListener("click", closeSidebar));
+    }
+
+    copyButtons.forEach((button) => {
+      button.addEventListener("click", async () => {
+        try {
+          await navigator.clipboard.writeText(button.dataset.copy);
+          const original = button.dataset.defaultLabel || button.textContent;
+          button.textContent = "Copied";
+          setTimeout(() => {
+            button.textContent = original;
+          }, 1200);
+        } catch (error) {
+          button.textContent = "Copy failed";
+        }
+      });
+    });
+
+    pages.forEach((page) => navObserver.observe(page));
+    refreshCompletionBadge();
+    window.addEventListener("scroll", updateProgress, { passive: true });
+    updateProgress();
+  </script>
 </body>
 </html>
