@@ -8,6 +8,9 @@ import {
 } from 'lucide-react';
 import { useTheme } from '../context/ThemeContext';
 
+// ─── Notebook URL (driven by env var, no hardcoding) ────────────────────────
+const NOTEBOOK_URL = import.meta.env.VITE_NOTEBOOK_URL || '/notebook';
+
 // ─── Project Data ───────────────────────────────────────────────────────────
 const PROJECTS_DATA = [
     {
@@ -23,7 +26,7 @@ const PROJECTS_DATA = [
         lastUpdated: 'Active',
         techStack: ['Python', 'RoBERTa', 'MentalBERT', 'SHAP', 'SMOTE', 'HuggingFace'],
         githubUrl: '#',
-        colabUrl: '#',
+        colabUrl: NOTEBOOK_URL,
         featured: true,
         question: 'Can a fine-tuned BERT-based transformer model, trained on multi-source Reddit mental health data (depression, SuicideWatch, anxiety subreddits) with temporal posting behaviour features, detect multi-class mental health states — ranging from healthy, to mild distress, to active crisis — with macro-F1 ≥ 0.85 and a false negative rate on active crisis posts ≤ 10%, while providing SHAP-based word-level explanations that a clinician can understand and trust?',
         methodology: [
@@ -73,7 +76,7 @@ const PROJECTS_DATA = [
         lastUpdated: 'Active',
         techStack: ['Python', 'PyTorch Geometric', 'HyperGNN', 'NetworkX', 'Scikit-learn'],
         githubUrl: '#',
-        colabUrl: '#',
+        colabUrl: NOTEBOOK_URL,
         featured: true,
         question: 'Can a hypergraph neural network trained on a food–microbiome–disease association database predict whether a given 7-day dietary pattern will shift a person\'s microbiome toward a disease-risk profile (e.g., low Firmicutes/Bacteroidetes ratio associated with obesity), with an AUC-ROC ≥ 0.82 and AUPR ≥ 0.78 on held-out test subjects?',
         methodology: [
@@ -120,7 +123,7 @@ const PROJECTS_DATA = [
         lastUpdated: 'Active',
         techStack: ['Python', 'PyTorch', 'LSTM', 'pyKT', 'Graph Attention', 'Scikit-learn'],
         githubUrl: '#',
-        colabUrl: '#',
+        colabUrl: NOTEBOOK_URL,
         featured: false,
         question: 'Can a Deep Knowledge Tracing model enhanced with a forgetting mechanism (Ebbinghaus\' forgetting curve), a prerequisite concept graph, and a student-level learning rate estimator, predict whether a student will answer the next question correctly with AUC ≥ 0.87 and outperform baseline DKT by ≥ 5% AUC, while providing skill-level mastery estimates that match expert teacher judgements?',
         methodology: [
@@ -168,7 +171,7 @@ const PROJECTS_DATA = [
         lastUpdated: 'Active',
         techStack: ['Python', 'LayoutLMv3', 'Tesseract OCR', 'HuggingFace', 'DocTR', 'SEC EDGAR'],
         githubUrl: '#',
-        colabUrl: '#',
+        colabUrl: NOTEBOOK_URL,
         featured: true,
         question: 'Can a fine-tuned LayoutLMv3 model, trained on public financial form datasets and SEC EDGAR annual reports, extract key financial entities (revenue, EBITDA, debt-to-equity ratio, risk factors) from unseen company filings — including multi-page, multi-table documents — with entity-level F1 ≥ 0.88 and table cell extraction accuracy ≥ 85%, generalising across at least 3 different unseen document layouts?',
         methodology: [
@@ -215,7 +218,7 @@ const PROJECTS_DATA = [
         lastUpdated: 'Active',
         techStack: ['Python', 'ResNet-18', 'LSTM', 'Sentinel-2', 'Google Earth Engine', 'NASA POWER API'],
         githubUrl: '#',
-        colabUrl: '#',
+        colabUrl: NOTEBOOK_URL,
         featured: false,
         question: 'Can a multi-branch deep learning model that fuses: (a) multi-temporal Sentinel-2 satellite image patches through a CNN, with (b) meteorological time series through an LSTM — predict district-level crop yield for wheat and soybean in Indian states with R² ≥ 0.80 and RMSE ≤ 8% of mean yield, at least 30 days before harvest, and remain stable across years with abnormal rainfall?',
         methodology: [
@@ -863,7 +866,7 @@ function ProjectModal({ project, isDark, onClose }) {
                         }}>
                             <Github size={15} /> View on GitHub
                         </a>
-                        <a href={project.colabUrl} onClick={e => e.stopPropagation()} style={{
+                        <a href={project.colabUrl} onClick={e => e.stopPropagation()} target="_blank" rel="noopener noreferrer" style={{
                             display: 'flex', alignItems: 'center', gap: 7,
                             padding: '10px 20px', borderRadius: 12,
                             background: 'linear-gradient(135deg,#f59e0b,#ef4444)',
@@ -871,7 +874,7 @@ function ProjectModal({ project, isDark, onClose }) {
                             textDecoration: 'none', border: 'none',
                             boxShadow: '0 4px 16px rgba(245,158,11,0.3)',
                         }}>
-                            <ExternalLink size={15} /> Open in Colab
+                            <ExternalLink size={15} /> Open Notebook
                         </a>
                         <a href="#" onClick={e => e.stopPropagation()} style={{
                             display: 'flex', alignItems: 'center', gap: 7,
