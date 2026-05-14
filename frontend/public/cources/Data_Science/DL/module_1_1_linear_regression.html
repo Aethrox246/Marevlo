@@ -1,0 +1,1101 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Module 1.1 — Linear Regression from First Principles · Marevlo DL Track</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@200;300;400;500;600;700;800&family=Source+Serif+4:ital,opsz,wght@0,8..60,300;0,8..60,400;0,8..60,500;0,8..60,600;1,8..60,400&family=JetBrains+Mono:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0a0a0c; --bg-elev: #121217; --bg-card: #16161d; --bg-code: #0e0e13;
+    --border: #25252e; --border-bright: #3a3a46;
+    --text: #e8e8ec; --text-dim: #9a9aa6; --text-faint: #6a6a76;
+    --accent: #ff5b3a; --accent-2: #f0c674; --accent-cool: #6ec5e9;
+    --accent-soft: #2a1a16;
+    --green: #7fc28a; --red: #e26a6a; --purple: #b794d4;
+    --display: 'Outfit', sans-serif;
+    --serif: 'Source Serif 4', Georgia, serif;
+    --mono: 'JetBrains Mono', monospace;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html { scroll-behavior: smooth; }
+  body { background: var(--bg); color: var(--text); font-family: var(--serif); font-size: 18px; line-height: 1.7; overflow-x: hidden; }
+  body::before {
+    content: ''; position: fixed; inset: 0; pointer-events: none; z-index: 1000; opacity: 0.025;
+    background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='200' height='200'><filter id='n'><feTurbulence baseFrequency='0.9' numOctaves='2'/></filter><rect width='100%25' height='100%25' filter='url(%23n)'/></svg>");
+  }
+
+  .topnav {
+    position: sticky; top: 0; z-index: 50;
+    background: rgba(10,10,12,0.85); backdrop-filter: blur(14px);
+    border-bottom: 1px solid var(--border);
+    padding: 14px 32px; display: flex; justify-content: space-between; align-items: center;
+    font-family: var(--display);
+  }
+  .brand { font-weight: 700; letter-spacing: -0.02em; font-size: 18px; display: flex; align-items: center; gap: 10px; }
+  .brand .dot { width: 8px; height: 8px; background: var(--accent); border-radius: 50%; box-shadow: 0 0 12px var(--accent); }
+  .crumb { font-size: 13px; color: var(--text-dim); letter-spacing: 0.05em; text-transform: uppercase; }
+  .crumb b { color: var(--text); }
+  .phase-tag {
+    display: inline-block; padding: 4px 12px;
+    background: rgba(255,91,58,0.15);
+    border: 1px solid rgba(255,91,58,0.4);
+    border-radius: 2px; font-size: 10px; letter-spacing: 0.2em;
+    color: var(--accent); font-weight: 600;
+    margin-left: 12px;
+  }
+
+  .hero { padding: 120px 32px 80px; max-width: 1100px; margin: 0 auto; position: relative; }
+  .hero::after {
+    content: ''; position: absolute; top: 40px; right: -150px;
+    width: 500px; height: 500px;
+    background: radial-gradient(circle, rgba(240,198,116,0.10) 0%, transparent 60%);
+    pointer-events: none; z-index: -1;
+  }
+  .eyebrow {
+    font-family: var(--display); font-size: 12px; font-weight: 500;
+    letter-spacing: 0.25em; text-transform: uppercase; color: var(--accent);
+    margin-bottom: 28px; display: flex; align-items: center; gap: 14px;
+  }
+  .eyebrow::before { content: ''; width: 36px; height: 1px; background: var(--accent); }
+  h1.title {
+    font-family: var(--display); font-size: clamp(44px, 7vw, 84px);
+    font-weight: 300; line-height: 1.02;
+    letter-spacing: -0.035em; margin-bottom: 32px;
+  }
+  h1.title .em { font-style: italic; font-weight: 400; font-family: var(--serif); color: var(--accent-2); }
+  .lede { font-size: 22px; line-height: 1.55; color: var(--text-dim); max-width: 720px; font-weight: 300; }
+  .lede em { color: var(--text); font-style: italic; }
+  .meta-row {
+    display: flex; gap: 32px; flex-wrap: wrap;
+    margin-top: 60px; padding-top: 40px;
+    border-top: 1px solid var(--border); font-family: var(--display);
+  }
+  .meta-item { display: flex; flex-direction: column; gap: 6px; }
+  .meta-label { font-size: 11px; letter-spacing: 0.2em; text-transform: uppercase; color: var(--text-faint); font-weight: 500; }
+  .meta-val { font-size: 16px; color: var(--text); font-weight: 500; }
+
+  main { max-width: 800px; margin: 0 auto; padding: 80px 32px 120px; }
+  section { margin-bottom: 96px; }
+  h2 {
+    font-family: var(--display); font-size: 42px; font-weight: 400;
+    letter-spacing: -0.02em; line-height: 1.1;
+    margin-bottom: 32px; padding-top: 20px; position: relative;
+  }
+  h2::before {
+    content: attr(data-num); position: absolute; top: -8px; left: 0;
+    font-family: var(--mono); font-size: 12px; color: var(--accent); letter-spacing: 0.1em;
+  }
+  h3 { font-family: var(--display); font-size: 24px; font-weight: 500; letter-spacing: -0.01em; margin: 48px 0 20px; color: var(--text); }
+  h4 { font-family: var(--display); font-size: 18px; font-weight: 500; margin: 32px 0 14px; color: var(--text); }
+  p { margin-bottom: 22px; color: var(--text); }
+  p.dim { color: var(--text-dim); }
+  strong { color: var(--accent-2); font-weight: 600; }
+  em { font-style: italic; }
+
+  pre {
+    background: var(--bg-code); border: 1px solid var(--border);
+    border-left: 2px solid var(--accent-cool);
+    padding: 24px 28px; margin: 28px 0; border-radius: 2px;
+    overflow-x: auto; font-family: var(--mono); font-size: 14px; line-height: 1.65;
+    position: relative;
+  }
+  pre::before {
+    content: 'PYTHON'; position: absolute; top: 8px; right: 14px;
+    font-family: var(--display); font-size: 9px; letter-spacing: 0.2em;
+    color: var(--text-faint); font-weight: 600;
+  }
+  pre code { color: #d8d8e0; }
+  .k { color: #ff8a6b; font-weight: 500; }
+  .s { color: #b9d8a8; }
+  .n { color: #f0c674; }
+  .c { color: #6a6a76; font-style: italic; }
+  .f { color: #6ec5e9; }
+  .v { color: #b794d4; }
+  code.inline {
+    font-family: var(--mono); font-size: 15px;
+    background: var(--bg-elev); padding: 2px 8px;
+    border-radius: 3px; color: var(--accent-2); border: 1px solid var(--border);
+  }
+
+  .insight {
+    background: var(--bg-elev); border: 1px solid var(--border);
+    padding: 28px 32px; margin: 32px 0; border-radius: 2px;
+    font-family: var(--display);
+  }
+  .insight .key {
+    font-size: 10px; letter-spacing: 0.3em; text-transform: uppercase;
+    font-weight: 600; margin-bottom: 10px; color: var(--accent-cool);
+  }
+  .insight p { font-size: 17px; line-height: 1.55; color: var(--text); font-weight: 300; margin: 0; }
+
+  .pitfall {
+    background: linear-gradient(135deg, rgba(226,106,106,0.05), transparent);
+    border: 1px solid rgba(226,106,106,0.25); border-left: 3px solid var(--red);
+    padding: 24px 28px; margin: 28px 0; border-radius: 2px;
+  }
+  .pitfall .lbl { font-family: var(--display); font-size: 10px; letter-spacing: 0.25em; text-transform: uppercase; font-weight: 600; color: var(--red); margin-bottom: 8px; }
+  .pitfall h4 { margin: 0 0 8px; font-size: 17px; }
+  .pitfall p { font-size: 15px; color: var(--text-dim); margin: 0; }
+
+  .cinematch {
+    background: linear-gradient(135deg, var(--accent-soft) 0%, transparent 100%);
+    border: 1px solid var(--border-bright); border-left: 3px solid var(--accent);
+    padding: 32px 36px; margin: 40px 0; border-radius: 2px; position: relative;
+  }
+  .cinematch .tag {
+    position: absolute; top: -10px; left: 24px;
+    background: var(--bg); color: var(--accent);
+    font-family: var(--display); font-size: 10px; font-weight: 600;
+    letter-spacing: 0.25em; padding: 0 12px; text-transform: uppercase;
+  }
+  .cinematch h4 { font-family: var(--display); font-size: 20px; font-weight: 500; margin-bottom: 12px; color: var(--text); }
+  .cinematch p { color: var(--text-dim); margin-bottom: 12px; }
+  .cinematch p:last-child { margin-bottom: 0; }
+
+  .eq {
+    margin: 28px 0; padding: 24px 32px;
+    background: var(--bg-elev); border: 1px solid var(--border); border-radius: 2px;
+    font-family: var(--serif); font-size: 19px; font-style: italic;
+    text-align: center; color: var(--text); line-height: 1.6;
+    position: relative;
+  }
+  .eq .num {
+    position: absolute; right: 18px; top: 50%; transform: translateY(-50%);
+    font-family: var(--mono); font-size: 11px;
+    color: var(--text-faint); font-style: normal;
+  }
+  .eq .frac { display: inline-block; vertical-align: middle; text-align: center; margin: 0 4px; }
+  .eq .frac .top { display: block; border-bottom: 1px solid var(--text-dim); padding-bottom: 2px; }
+  .eq .frac .bot { display: block; padding-top: 2px; }
+  .eq .v { color: var(--purple); font-style: italic; }
+  .eq .o { color: var(--accent-cool); font-style: normal; }
+
+  /* Diagram */
+  .diagram-wrap { margin: 48px 0; }
+  .diagram-wrap svg {
+    width: 100%; height: auto; display: block;
+    background: var(--bg-elev); border: 1px solid var(--border);
+    padding: 24px; border-radius: 2px;
+  }
+  .caption {
+    font-family: var(--display); font-size: 13px;
+    color: var(--text-faint); margin-top: 14px; text-align: center;
+  }
+  .caption b { color: var(--text-dim); font-weight: 500; }
+
+  /* Table */
+  table {
+    width: 100%; border-collapse: collapse;
+    margin: 28px 0; font-family: var(--mono); font-size: 14px;
+    background: var(--bg-card); border: 1px solid var(--border);
+  }
+  th, td {
+    padding: 12px 18px; text-align: left;
+    border-bottom: 1px solid var(--border);
+  }
+  th {
+    font-family: var(--display); font-weight: 600; font-size: 11px;
+    letter-spacing: 0.15em; text-transform: uppercase;
+    color: var(--accent-2); background: var(--bg-elev);
+  }
+  td { color: var(--text); }
+  tr:last-child td { border-bottom: none; }
+
+  /* Playground */
+  .playground {
+    background: var(--bg-elev); border: 1px solid var(--border-bright);
+    border-radius: 4px; padding: 28px; margin: 40px 0;
+  }
+  .playground .ph { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
+  .playground .pt { font-family: var(--display); font-size: 16px; font-weight: 600; color: var(--text); letter-spacing: 0.02em; }
+  .playground .ps { font-family: var(--display); font-size: 10px; letter-spacing: 0.25em; text-transform: uppercase; color: var(--accent); font-weight: 600; }
+  .playground .desc { font-family: var(--serif); font-size: 15px; color: var(--text-dim); margin-bottom: 24px; line-height: 1.6; }
+  .controls {
+    display: flex; gap: 20px; flex-wrap: wrap; margin-bottom: 24px;
+    padding: 18px; background: var(--bg-code);
+    border-radius: 3px; border: 1px solid var(--border);
+  }
+  .ctrl { display: flex; flex-direction: column; gap: 6px; flex: 1; min-width: 110px; }
+  .ctrl label { font-family: var(--display); font-size: 10px; letter-spacing: 0.15em; text-transform: uppercase; color: var(--text-faint); font-weight: 600; }
+  .ctrl input[type="range"] {
+    -webkit-appearance: none; appearance: none;
+    width: 100%; height: 4px; background: var(--border-bright);
+    border-radius: 2px; outline: none;
+  }
+  .ctrl input[type="range"]::-webkit-slider-thumb {
+    -webkit-appearance: none; appearance: none;
+    width: 16px; height: 16px; background: var(--accent);
+    border-radius: 50%; cursor: pointer; border: 2px solid var(--bg);
+  }
+  .ctrl input[type="range"]::-moz-range-thumb {
+    width: 16px; height: 16px; background: var(--accent);
+    border-radius: 50%; cursor: pointer; border: none;
+  }
+  .ctrl .val { font-family: var(--mono); font-size: 14px; color: var(--accent); font-weight: 500; }
+  .pg-canvas { background: var(--bg-code); border: 1px solid var(--border); border-radius: 3px; }
+  .pg-output {
+    background: var(--bg-code); border: 1px solid var(--border);
+    border-radius: 3px; padding: 16px 20px; margin-top: 12px;
+    font-family: var(--mono); font-size: 13px; color: var(--text);
+    line-height: 1.7;
+  }
+  .pg-output .lbl { color: var(--text-faint); font-size: 11px; letter-spacing: 0.1em; text-transform: uppercase; margin-bottom: 4px; font-family: var(--display); }
+  .pg-output .vl { color: var(--accent-cool); }
+
+  /* MCQ */
+  .mcq { background: var(--bg-elev); border: 1px solid var(--border-bright); border-left: 3px solid var(--accent-2); padding: 28px 32px; margin: 36px 0; border-radius: 2px; }
+  .mcq .mh { font-family: var(--display); font-size: 10px; letter-spacing: 0.25em; text-transform: uppercase; font-weight: 600; color: var(--accent-2); margin-bottom: 16px; display: flex; justify-content: space-between; align-items: center; }
+  .mcq .mh .qnum { font-family: var(--mono); color: var(--text-faint); font-size: 11px; letter-spacing: 0.1em; font-weight: 400; }
+  .mcq .mq { font-family: var(--display); font-size: 19px; font-weight: 500; color: var(--text); line-height: 1.5; margin-bottom: 20px; }
+  .mcq .mq code { font-family: var(--mono); font-size: 16px; background: var(--bg-code); padding: 1px 8px; border-radius: 3px; color: var(--accent-2); border: 1px solid var(--border); font-weight: 400; }
+  .mcq .opts { display: flex; flex-direction: column; gap: 10px; }
+  .mcq .opt { background: var(--bg-card); border: 1px solid var(--border); padding: 14px 18px; border-radius: 2px; cursor: pointer; font-family: var(--serif); font-size: 16px; color: var(--text); transition: all 0.15s; display: flex; align-items: flex-start; gap: 14px; line-height: 1.5; }
+  .mcq .opt:hover { border-color: var(--accent-2); background: var(--bg-elev); }
+  .mcq .opt .key { font-family: var(--mono); font-size: 13px; color: var(--text-faint); font-weight: 500; min-width: 18px; margin-top: 2px; }
+  .mcq .opt .text { flex: 1; }
+  .mcq .opt code { font-family: var(--mono); font-size: 14px; background: var(--bg-code); padding: 1px 6px; border-radius: 3px; color: var(--accent-2); border: 1px solid var(--border); }
+  .mcq .opt.correct { border-color: var(--green); background: linear-gradient(90deg, rgba(127,194,138,0.10), transparent); }
+  .mcq .opt.correct .key { color: var(--green); }
+  .mcq .opt.wrong { border-color: var(--red); background: linear-gradient(90deg, rgba(226,106,106,0.10), transparent); }
+  .mcq .opt.wrong .key { color: var(--red); }
+  .mcq .opt.disabled { cursor: default; }
+  .mcq .opt.disabled:hover { border-color: var(--border); background: var(--bg-card); }
+  .mcq .opt.correct.disabled:hover { border-color: var(--green); background: linear-gradient(90deg, rgba(127,194,138,0.10), transparent); }
+  .mcq .opt.wrong.disabled:hover { border-color: var(--red); background: linear-gradient(90deg, rgba(226,106,106,0.10), transparent); }
+  .mcq .feedback { margin-top: 18px; padding: 18px 22px; background: var(--bg-code); border-left: 2px solid var(--accent-cool); border-radius: 2px; font-family: var(--serif); font-size: 15px; line-height: 1.65; color: var(--text-dim); display: none; }
+  .mcq .feedback.show { display: block; }
+  .mcq .feedback .verdict { font-family: var(--display); font-size: 11px; letter-spacing: 0.25em; text-transform: uppercase; font-weight: 600; margin-bottom: 8px; display: block; }
+  .mcq .feedback.right .verdict { color: var(--green); }
+  .mcq .feedback.wrong .verdict { color: var(--red); }
+  .mcq .feedback strong { color: var(--text); font-weight: 600; }
+  .mcq .feedback code { font-family: var(--mono); font-size: 13px; background: var(--bg-elev); padding: 1px 6px; border-radius: 3px; color: var(--accent-2); border: 1px solid var(--border); }
+
+  .checkpoint {
+    background: var(--bg-elev); border: 1px solid var(--border-bright);
+    padding: 36px 36px; margin: 56px 0; border-radius: 2px;
+  }
+  .checkpoint h4 { font-family: var(--display); font-size: 13px; letter-spacing: 0.25em; text-transform: uppercase; color: var(--accent-cool); font-weight: 600; margin-bottom: 24px; }
+  .checkpoint ol { list-style: none; counter-reset: item; }
+  .checkpoint li {
+    counter-increment: item; padding: 14px 0 14px 48px;
+    border-bottom: 1px solid var(--border); position: relative;
+    font-family: var(--display); font-size: 16px; color: var(--text); line-height: 1.5;
+  }
+  .checkpoint li:last-child { border-bottom: none; }
+  .checkpoint li::before {
+    content: counter(item, decimal-leading-zero);
+    position: absolute; left: 0; top: 14px;
+    font-family: var(--mono); font-size: 12px; color: var(--accent-cool); font-weight: 400;
+  }
+
+  .footnav {
+    border-top: 1px solid var(--border); padding: 48px 32px;
+    max-width: 1100px; margin: 0 auto;
+    display: flex; justify-content: space-between; align-items: center;
+    font-family: var(--display);
+  }
+  .footnav .next { text-align: right; }
+  .footnav .lbl { font-size: 11px; letter-spacing: 0.25em; text-transform: uppercase; color: var(--text-faint); margin-bottom: 8px; }
+  .footnav .ttl { font-size: 20px; color: var(--text); font-weight: 500; }
+  .footnav .prev .ttl::before { content: '← '; }
+  .footnav .next .ttl { color: var(--accent); }
+  .footnav .next .ttl::after { content: ' →'; }
+  .footnav a { text-decoration: none; }
+
+  .reveal { opacity: 0; transform: translateY(20px); animation: rev 0.9s cubic-bezier(.2,.7,.2,1) forwards; }
+  .reveal.d1 { animation-delay: 0.1s; }
+  .reveal.d2 { animation-delay: 0.25s; }
+  .reveal.d3 { animation-delay: 0.4s; }
+  @keyframes rev { to { opacity: 1; transform: translateY(0); } }
+
+  @media (max-width: 720px) {
+    .hero { padding: 80px 24px 60px; }
+    main { padding: 48px 24px 80px; }
+    h1.title { font-size: 42px; }
+    .lede { font-size: 18px; }
+    h2 { font-size: 30px; }
+    .topnav { padding: 12px 20px; }
+    .crumb { display: none; }
+    pre { padding: 18px 20px; font-size: 12.5px; }
+    table { font-size: 12px; }
+    th, td { padding: 8px 10px; }
+  }
+</style>
+</head>
+<body>
+
+<nav class="topnav">
+  <div class="brand"><span class="dot"></span>MAREVLO · Deep Learning</div>
+  <div class="crumb">Phase 1 · <b>Module 1.1</b><span class="phase-tag">PHASE 1 BEGINS</span></div>
+</nav>
+
+<header class="hero">
+  <div class="eyebrow reveal">Phase 1 — Single Neuron · Module 1.1</div>
+  <h1 class="title reveal d1">Linear regression<br>from <span class="em">first principles</span>.<br>The simplest learner.</h1>
+  <p class="lede reveal d2">
+    Linear regression is the simplest neural network — a single neuron with no activation function. Master it from scratch and you understand the skeleton of every deep model that follows. We'll predict CineMatch watch-times, derive the math by hand, then build the same model three ways: pure NumPy, PyTorch with autograd, and PyTorch with a proper <em>nn.Module</em>.
+  </p>
+  <div class="meta-row reveal d3">
+    <div class="meta-item"><span class="meta-label">Phase</span><span class="meta-val">1 — Single Neuron</span></div>
+    <div class="meta-item"><span class="meta-label">Module</span><span class="meta-val">1.1</span></div>
+    <div class="meta-item"><span class="meta-label">Read time</span><span class="meta-val">≈ 42 minutes</span></div>
+    <div class="meta-item"><span class="meta-label">You will write</span><span class="meta-val">~80 lines of Python</span></div>
+  </div>
+</header>
+
+<main>
+
+<!-- ============ SECTION 1: THE PREDICTION PROBLEM ============ -->
+<section>
+  <h2 data-num="01 / 06">The prediction problem.</h2>
+
+  <p>Every supervised learning problem has the same shape. You have inputs <em>x</em>. You want to predict an output <em>y</em>. You have a dataset of past examples where you know both. You want a function that, given a new <em>x</em>, produces a sensible <em>y</em>.</p>
+
+  <div class="cinematch">
+    <div class="tag">CineMatch's first ML problem</div>
+    <h4>Predict watch-time from observable features.</h4>
+    <p>Given a user (with age and attention span) and a movie (with runtime and critic score), predict what fraction of the movie the user will watch. The features are four numbers; the target is one number between 0 and 1. We have 200,000 such examples from the synthetic dataset we generated in Module 0.4. The function we want to learn — call it <em>f</em> — takes a 4-dimensional input and produces a scalar output.</p>
+  </div>
+
+  <p>We never observe <em>f</em> directly. What we observe are noisy samples:</p>
+
+  <div class="eq">
+    <em>y</em> = <em>f</em>(<em>x</em>) + ε
+    <span class="num">(1.1)</span>
+  </div>
+
+  <p>where ε is some small random noise (mood, network conditions, who knows what). The art of regression is to choose a family of candidate functions — a <strong>hypothesis class</strong> — and pick the member of that family that best fits the data we've seen.</p>
+
+  <p>Among all possible families, the simplest and most studied is the family of <strong>linear functions</strong>:</p>
+
+  <div class="eq">
+    ŷ = <em>w</em><sub>1</sub><em>x</em><sub>1</sub> + <em>w</em><sub>2</sub><em>x</em><sub>2</sub> + ... + <em>w</em><sub>d</sub><em>x</em><sub>d</sub> + <em>b</em>
+    <span class="num">(1.2)</span>
+  </div>
+
+  <p>Read <em>ŷ</em> as "y-hat" — our prediction, distinct from the true <em>y</em>. The numbers <em>w</em><sub>1</sub>, ..., <em>w</em><sub>d</sub> are <strong>weights</strong> (one per feature), and <em>b</em> is the <strong>bias</strong>. Together, those <em>d</em>+1 numbers are the parameters of our model. Training is the act of finding values for them that make our predictions match the data well.</p>
+
+  <h3>Why linear, even when we know the world isn't?</h3>
+
+  <p>Three reasons that justify linear regression as our starting point:</p>
+
+  <ol style="margin: 16px 0 28px 24px; font-family: var(--display);">
+    <li style="margin-bottom: 12px;"><strong>Tractability.</strong> The loss surface is convex — there is exactly one optimum, and any reasonable optimizer will find it.</li>
+    <li style="margin-bottom: 12px;"><strong>Interpretability.</strong> Each weight has a direct meaning: "if this feature increases by 1, the prediction changes by <em>w</em>".</li>
+    <li style="margin-bottom: 12px;"><strong>Pedagogical foundation.</strong> A linear regressor <em>is</em> a single neuron. Once you can train this, you can train any feedforward network — the loop is the same.</li>
+  </ol>
+
+  <div class="insight">
+    <div class="key">The single-neuron view</div>
+    <p>The equation <em>ŷ = w<sup>T</sup>x + b</em> is, drawn as a diagram, exactly one neuron. It takes weighted inputs, sums them, adds a bias, and outputs a number. Stack many of these in a row and call it a layer. Stack layers and call it a network. Add non-linear activations between layers and call it deep learning. Everything that follows in this course is a richer version of this single line.</p>
+  </div>
+
+  <div class="diagram-wrap">
+    <svg viewBox="0 0 700 220" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Diagram showing a single neuron computing weighted sum plus bias.">
+      <!-- Inputs -->
+      <g font-family="JetBrains Mono" font-size="13" fill="#e8e8ec">
+        <circle cx="80" cy="40" r="20" fill="#16161d" stroke="#6ec5e9" stroke-width="1.5"/>
+        <text x="80" y="44" text-anchor="middle">x₁</text>
+        <circle cx="80" cy="90" r="20" fill="#16161d" stroke="#6ec5e9" stroke-width="1.5"/>
+        <text x="80" y="94" text-anchor="middle">x₂</text>
+        <circle cx="80" cy="140" r="20" fill="#16161d" stroke="#6ec5e9" stroke-width="1.5"/>
+        <text x="80" y="144" text-anchor="middle">x₃</text>
+        <circle cx="80" cy="190" r="20" fill="#16161d" stroke="#6ec5e9" stroke-width="1.5"/>
+        <text x="80" y="194" text-anchor="middle">x₄</text>
+      </g>
+      
+      <!-- Weight labels on edges -->
+      <g font-family="JetBrains Mono" font-size="11" fill="#f0c674" font-style="italic">
+        <text x="200" y="38">w₁</text>
+        <text x="200" y="80">w₂</text>
+        <text x="200" y="125">w₃</text>
+        <text x="200" y="172">w₄</text>
+      </g>
+      
+      <!-- Edges -->
+      <g stroke="#3a3a46" stroke-width="1" fill="none">
+        <line x1="100" y1="40" x2="320" y2="115"/>
+        <line x1="100" y1="90" x2="320" y2="115"/>
+        <line x1="100" y1="140" x2="320" y2="115"/>
+        <line x1="100" y1="190" x2="320" y2="115"/>
+      </g>
+      
+      <!-- Sum node -->
+      <circle cx="350" cy="115" r="34" fill="#16161d" stroke="#ff5b3a" stroke-width="2"/>
+      <text x="350" y="108" text-anchor="middle" font-family="Outfit" font-size="20" fill="#ff5b3a" font-weight="500">Σ</text>
+      <text x="350" y="128" text-anchor="middle" font-family="JetBrains Mono" font-size="9" fill="#f0c674">+ b</text>
+      
+      <!-- Output -->
+      <line x1="384" y1="115" x2="500" y2="115" stroke="#3a3a46" stroke-width="1"/>
+      <circle cx="525" cy="115" r="22" fill="#16161d" stroke="#7fc28a" stroke-width="2"/>
+      <text x="525" y="119" text-anchor="middle" font-family="JetBrains Mono" font-size="14" fill="#e8e8ec">ŷ</text>
+      
+      <!-- Labels -->
+      <text x="80" y="218" text-anchor="middle" font-family="Outfit" font-size="10" fill="#9a9aa6" letter-spacing="2" font-weight="500">INPUTS</text>
+      <text x="350" y="170" text-anchor="middle" font-family="Outfit" font-size="10" fill="#9a9aa6" letter-spacing="2" font-weight="500">WEIGHTED SUM + BIAS</text>
+      <text x="525" y="155" text-anchor="middle" font-family="Outfit" font-size="10" fill="#9a9aa6" letter-spacing="2" font-weight="500">PREDICTION</text>
+
+      <!-- Equation -->
+      <text x="600" y="105" text-anchor="middle" font-family="Source Serif 4" font-size="13" font-style="italic" fill="#9a9aa6">ŷ =</text>
+      <text x="650" y="105" text-anchor="middle" font-family="Source Serif 4" font-size="13" font-style="italic" fill="#f0c674">Σwᵢxᵢ</text>
+      <text x="650" y="125" text-anchor="middle" font-family="Source Serif 4" font-size="13" font-style="italic" fill="#f0c674">+ b</text>
+    </svg>
+    <div class="caption"><b>Figure 1.</b> A single neuron with no activation function — this is exactly linear regression.</div>
+  </div>
+
+  <div class="mcq" data-correct="b">
+    <div class="mh"><span>Check your understanding</span><span class="qnum">Q1 / 08</span></div>
+    <div class="mq">In the equation <em>ŷ = w<sub>1</sub>x<sub>1</sub> + w<sub>2</sub>x<sub>2</sub> + b</em>, the bias <em>b</em> seems redundant — why can't we just absorb it by using a slightly different <em>w</em>?</div>
+    <div class="opts">
+      <div class="opt" data-key="a"><span class="key">A</span><span class="text">It can be absorbed; bias is a historical artifact and is rarely used in modern models.</span></div>
+      <div class="opt" data-key="b"><span class="key">B</span><span class="text">Without bias, the model is forced to predict 0 whenever all inputs are 0 — but real targets often have a non-zero average even when inputs are at their reference values.</span></div>
+      <div class="opt" data-key="c"><span class="key">C</span><span class="text">Bias is required for gradient descent to converge.</span></div>
+      <div class="opt" data-key="d"><span class="key">D</span><span class="text">PyTorch refuses to train models without a bias term.</span></div>
+    </div>
+    <div class="feedback" data-right="A linear function (no bias) must pass through the origin: when all inputs are 0, it must predict 0. But real targets rarely behave that way. In CineMatch, even a 'baseline' user-movie pair has some non-zero expected watch time. The bias is the model's degree of freedom to shift the entire output up or down — without it, the regressor has to twist its slope to compensate, producing systematically biased predictions. This is why every linear layer in deep learning has a bias unless you have a specific reason to disable it." data-wrong="The bias gives the model freedom to shift its output independently of the inputs. Without it, the model is forced through the origin — predicting 0 when all inputs are 0 — even when the data clearly has a non-zero baseline. The model then has to twist its slopes to compensate, producing systematically biased predictions. Bias is a single extra parameter that costs nothing and prevents a real failure mode."></div>
+  </div>
+</section>
+
+<!-- ============ SECTION 2: VECTORIZED FORM ============ -->
+<section>
+  <h2 data-num="02 / 06">From scalar to vectorized — speaking PyTorch's language.</h2>
+
+  <p>The scalar equation we wrote — ŷ = w<sub>1</sub>x<sub>1</sub> + ... + w<sub>d</sub>x<sub>d</sub> + b — is mathematically clear but computationally slow. To run on a GPU, we need to express the same idea in matrix form. Let's introduce notation that scales.</p>
+
+  <p>Stack the features of one example into a column vector: <strong>x</strong> ∈ ℝ<sup>d</sup>. Stack the weights into another column vector: <strong>w</strong> ∈ ℝ<sup>d</sup>. Then the prediction for that single example is the dot product:</p>
+
+  <div class="eq">
+    ŷ = <strong>w</strong><sup>T</sup><strong>x</strong> + <em>b</em>
+    <span class="num">(2.1)</span>
+  </div>
+
+  <p>For an entire dataset of <em>n</em> examples, stack the inputs into a matrix <strong>X</strong> ∈ ℝ<sup>n×d</sup> (one example per row), and stack the targets into <strong>y</strong> ∈ ℝ<sup>n</sup>. All <em>n</em> predictions at once become:</p>
+
+  <div class="eq">
+    <strong>ŷ</strong> = <strong>X</strong><strong>w</strong> + <em>b</em><strong>1</strong><sub>n</sub>
+    <span class="num">(2.2)</span>
+  </div>
+
+  <p>where <strong>1</strong><sub>n</sub> is a vector of ones — though in PyTorch you'll just write <code class="inline">X @ w + b</code> and broadcasting handles the bias automatically.</p>
+
+  <h3>Why this matters for speed.</h3>
+
+  <p>Equation (2.2) is one matrix multiplication followed by one broadcasted addition. On a GPU, that takes microseconds for a CineMatch batch of 64 examples, regardless of how many features each example has. Equivalent code as a Python loop over examples and features would take seconds — a thousand-times slowdown that makes deep learning infeasible.</p>
+
+  <pre><code><span class="k">import</span> torch
+
+<span class="c"># A CineMatch batch: 64 examples, 4 features each</span>
+X = torch.<span class="f">randn</span>(<span class="n">64</span>, <span class="n">4</span>)
+w = torch.<span class="f">randn</span>(<span class="n">4</span>)
+b = torch.<span class="f">tensor</span>(<span class="n">0.5</span>)
+
+<span class="c"># Slow way (don't do this)</span>
+predictions_slow = torch.<span class="f">zeros</span>(<span class="n">64</span>)
+<span class="k">for</span> i <span class="k">in</span> <span class="f">range</span>(<span class="n">64</span>):
+    <span class="k">for</span> j <span class="k">in</span> <span class="f">range</span>(<span class="n">4</span>):
+        predictions_slow[i] += w[j] * X[i, j]
+    predictions_slow[i] += b
+
+<span class="c"># Fast way (the only acceptable way in DL)</span>
+predictions_fast = X @ w + b           <span class="c"># shape [64]</span>
+
+<span class="c"># Same answer; the second is ~1000× faster on a GPU.</span></code></pre>
+
+  <p class="dim">This is why every operation in deep learning is expressed as matrix multiplications. Convolutions are matmuls. Attention is matmuls. The forward pass of a 100-layer Transformer is, in the end, a few hundred matmuls strung together. Get comfortable with matrix shapes — you will be reading and writing them every day for the rest of this course.</p>
+
+  <div class="mcq" data-correct="d">
+    <div class="mh"><span>Check your understanding</span><span class="qnum">Q2 / 08</span></div>
+    <div class="mq">For a CineMatch batch with 64 examples and 4 features each (<code>X.shape == [64, 4]</code>) and a weight vector <code>w.shape == [4]</code>, what is the shape of <code>X @ w</code>?</div>
+    <div class="opts">
+      <div class="opt" data-key="a"><span class="key">A</span><span class="text"><code>[4]</code> — one prediction per feature.</span></div>
+      <div class="opt" data-key="b"><span class="key">B</span><span class="text"><code>[64, 4]</code> — same shape as the input.</span></div>
+      <div class="opt" data-key="c"><span class="key">C</span><span class="text"><code>[1]</code> — a single combined prediction.</span></div>
+      <div class="opt" data-key="d"><span class="key">D</span><span class="text"><code>[64]</code> — one prediction per example in the batch.</span></div>
+    </div>
+    <div class="feedback" data-right="Matrix multiplication contracts the inner dimension. <code>[64, 4] @ [4]</code> matches the 4 in both, leaving the outer 64 — so the result is <code>[64]</code>, one scalar prediction per example. This shape pattern <code>[batch] = [batch, features] @ [features]</code> is the heart of every layer in deep learning." data-wrong="Matrix multiplication contracts the inner dimension. The 4-dim weight vector dots with each row of X — the row representing one example's features. The result has one scalar per row, hence shape <code>[64]</code>. The general rule: <code>[m, k] @ [k]</code> → <code>[m]</code>, and <code>[m, k] @ [k, n]</code> → <code>[m, n]</code>."></div>
+  </div>
+</section>
+
+<!-- ============ SECTION 3: THE LOSS ============ -->
+<section>
+  <h2 data-num="03 / 06">Choosing a loss — what does "best fit" mean?</h2>
+
+  <p>We have a model with parameters <em>w</em> and <em>b</em>. We need a way to measure how wrong its predictions are, so we can search for parameters that make it less wrong. That measurement is the <strong>loss function</strong>.</p>
+
+  <p>For regression — predicting a continuous number — the most natural loss is <strong>mean squared error</strong> (MSE):</p>
+
+  <div class="eq">
+    <em>L</em>(<em>w</em>, <em>b</em>) = 
+    <span class="frac">
+      <span class="top">1</span>
+      <span class="bot"><em>n</em></span>
+    </span>
+    Σ<sub>i=1</sub><sup>n</sup> (ŷ<sub>i</sub> − <em>y</em><sub>i</sub>)<sup>2</sup>
+    <span class="num">(3.1)</span>
+  </div>
+
+  <p>Read it as: average, across all <em>n</em> examples, the squared difference between prediction and truth. Squaring serves two purposes — it makes errors positive (so they don't cancel out), and it punishes large errors much more harshly than small ones. A single very wrong prediction contributes much more than 100 slightly-wrong ones.</p>
+
+  <h3>Why squared, specifically?</h3>
+
+  <p>You could also average absolute errors (the L1 loss). Why squared? Three reasons:</p>
+
+  <ol style="margin: 16px 0 28px 24px; font-family: var(--display);">
+    <li style="margin-bottom: 12px;"><strong>Differentiability.</strong> The square function has a derivative everywhere. The absolute value has a kink at zero where the derivative is undefined.</li>
+    <li style="margin-bottom: 12px;"><strong>Convexity in linear models.</strong> MSE on a linear model produces a parabolic loss surface — one global minimum, no local traps.</li>
+    <li style="margin-bottom: 12px;"><strong>Probabilistic justification.</strong> If you assume Gaussian noise on your targets, minimizing MSE is exactly equivalent to maximum likelihood estimation. So MSE is not arbitrary — it has a principled probabilistic origin.</li>
+  </ol>
+
+  <div class="insight">
+    <div class="key">The deep connection — losses are likelihoods in disguise</div>
+    <p>Almost every loss function in deep learning corresponds to a probabilistic assumption about the data. MSE assumes Gaussian noise. Cross-entropy (which we'll meet in Module 1.3) assumes categorical outcomes. KL divergence measures distance between distributions. Choosing a loss is choosing a model of how your data is generated — and once you see this, loss functions stop being arbitrary recipes and become principled choices.</p>
+  </div>
+
+  <h3>Computing MSE in PyTorch.</h3>
+
+  <pre><code><span class="k">import</span> torch
+
+<span class="c"># Predictions and true values for a CineMatch batch</span>
+y_pred = torch.<span class="f">tensor</span>([<span class="n">0.6</span>, <span class="n">0.8</span>, <span class="n">0.3</span>, <span class="n">0.9</span>])
+y_true = torch.<span class="f">tensor</span>([<span class="n">0.7</span>, <span class="n">0.5</span>, <span class="n">0.4</span>, <span class="n">0.85</span>])
+
+<span class="c"># Manual computation</span>
+loss = ((y_pred - y_true) ** <span class="n">2</span>).<span class="f">mean</span>()
+<span class="f">print</span>(loss.<span class="f">item</span>())   <span class="c"># 0.0269</span>
+
+<span class="c"># Equivalent built-in</span>
+<span class="k">import</span> torch.nn.functional <span class="k">as</span> F
+loss = F.<span class="f">mse_loss</span>(y_pred, y_true)
+<span class="f">print</span>(loss.<span class="f">item</span>())   <span class="c"># 0.0269</span></code></pre>
+
+  <div class="mcq" data-correct="b">
+    <div class="mh"><span>Check your understanding</span><span class="qnum">Q3 / 08</span></div>
+    <div class="mq">CineMatch's regression model is making predictions that are mostly accurate, but a few outlier examples have very large errors. You want to prevent those outliers from dominating training. Switching from MSE to mean absolute error (MAE) would:</div>
+    <div class="opts">
+      <div class="opt" data-key="a"><span class="key">A</span><span class="text">Increase the influence of outliers since absolute values can grow large.</span></div>
+      <div class="opt" data-key="b"><span class="key">B</span><span class="text">Reduce the influence of outliers, because MAE grows linearly with error while MSE grows quadratically.</span></div>
+      <div class="opt" data-key="c"><span class="key">C</span><span class="text">Have no effect — both losses give the same gradient direction.</span></div>
+      <div class="opt" data-key="d"><span class="key">D</span><span class="text">Make training impossible because MAE is not differentiable.</span></div>
+    </div>
+    <div class="feedback" data-right="An error of 10 contributes 100 to MSE but only 10 to MAE. So MSE penalizes large errors quadratically, making outliers dominate the gradient. MAE treats all errors linearly — outliers contribute proportionally to their size, not their square — so the model is less swayed by a few extreme cases. The tradeoff: MAE is non-differentiable at exactly zero (a kink), but in practice this rarely causes problems and PyTorch handles it. Choose MAE when robustness to outliers matters more than fitting them perfectly." data-wrong="MSE squares errors, so an error of 10 contributes 100 — outliers utterly dominate the loss. MAE keeps errors linear, so outliers contribute only proportionally to their size. This makes MAE much more robust when your data has outliers. The non-differentiability at exactly zero is a minor technical issue (PyTorch handles it via subgradients) and almost never affects training in practice."></div>
+  </div>
+</section>
+
+<!-- ============ SECTION 4: GRADIENT DESCENT ============ -->
+<section>
+  <h2 data-num="04 / 06">Gradient descent — making the loss smaller, one step at a time.</h2>
+
+  <p>We have a model. We have a loss function. We have parameters <em>w</em> and <em>b</em> that determine the loss. The optimization problem is: <em>find values of w and b that make the loss as small as possible</em>.</p>
+
+  <p>For linear regression, this problem has a closed-form solution — the famous <strong>normal equations</strong> — but we will not use them, because that approach does not generalize to deep networks. Instead, we will use the algorithm that scales to billions of parameters: <strong>gradient descent</strong>.</p>
+
+  <h3>The algorithm in three lines.</h3>
+
+  <ol style="margin: 16px 0 28px 24px; font-family: var(--display);">
+    <li style="margin-bottom: 10px;">Start with random initial values for <em>w</em> and <em>b</em>.</li>
+    <li style="margin-bottom: 10px;">Compute the gradient of the loss with respect to each parameter.</li>
+    <li style="margin-bottom: 10px;">Take a small step in the opposite direction. Repeat.</li>
+  </ol>
+
+  <p>In math:</p>
+
+  <div class="eq">
+    <em>w</em> ← <em>w</em> − η · ∇<sub>w</sub><em>L</em>
+    <span class="num">(4.1)</span>
+  </div>
+  <div class="eq">
+    <em>b</em> ← <em>b</em> − η · ∂<em>L</em>/∂<em>b</em>
+    <span class="num">(4.2)</span>
+  </div>
+
+  <p>The Greek letter η ("eta") is the <strong>learning rate</strong> — a small positive number, typically 0.001 to 0.1, that controls how big each step is. Too small and training crawls; too large and it overshoots and diverges. We saw both behaviors in the gradient descent visualizer in Module 0.3.</p>
+
+  <h3>Computing the gradients by hand — once.</h3>
+
+  <p>Just so we know what autograd is doing for us, let's derive the gradients of MSE for linear regression on a single example. Let <em>e<sub>i</sub> = ŷ<sub>i</sub> − y<sub>i</sub></em> be the error on example <em>i</em>. Then per-example loss is <em>e<sub>i</sub><sup>2</sup></em>, and:</p>
+
+  <div class="eq">
+    <span class="frac"><span class="top">∂<em>L</em></span><span class="bot">∂<em>w</em><sub>j</sub></span></span>
+    = 
+    <span class="frac"><span class="top">2</span><span class="bot"><em>n</em></span></span>
+    Σ<sub>i</sub> <em>e</em><sub>i</sub> · <em>x</em><sub>i,j</sub>
+    <span class="num">(4.3)</span>
+  </div>
+
+  <div class="eq">
+    <span class="frac"><span class="top">∂<em>L</em></span><span class="bot">∂<em>b</em></span></span>
+    = 
+    <span class="frac"><span class="top">2</span><span class="bot"><em>n</em></span></span>
+    Σ<sub>i</sub> <em>e</em><sub>i</sub>
+    <span class="num">(4.4)</span>
+  </div>
+
+  <p>Read these in plain English. The gradient with respect to weight <em>j</em> is two-over-n times the average of (error × that feature). The gradient with respect to bias is two-over-n times the average error. Both are simple averages. Both have a clear interpretation: <em>if a feature was large on examples where you over-predicted, decrease that weight</em>.</p>
+
+  <div class="calcbox">
+    <div class="ch">Worked example — one SGD step on CineMatch linear regression</div>
+    <div class="step" data-s="1.">Current weights: w = [0.003, 0.5, −0.2, 0.1], b = 0.4. Learning rate η = 0.01<span class="val">4 features: runtime, genre_match, recency, popularity</span></div>
+    <div class="step" data-s="2.">Mini-batch of 2 examples: x₁ = [120, 0.8, 0.3, 0.6], y₁ = 0.75. x₂ = [90, 0.2, 0.9, 0.4], y₂ = 0.30</div>
+    <div class="step" data-s="3.">Predictions: ŷ₁ = 0.003·120 + 0.5·0.8 + (−0.2)·0.3 + 0.1·0.6 + 0.4 = 0.36+0.40−0.06+0.06+0.4 = <strong>1.16</strong><br>ŷ₂ = 0.003·90 + 0.5·0.2 + (−0.2)·0.9 + 0.1·0.4 + 0.4 = 0.27+0.10−0.18+0.04+0.4 = <strong>0.63</strong></div>
+    <div class="step" data-s="4.">Errors: e₁ = 1.16 − 0.75 = 0.41 (over-predicted). e₂ = 0.63 − 0.30 = 0.33 (over-predicted)<span class="val">MSE = (0.41² + 0.33²)/2 = (0.168 + 0.109)/2 = 0.139</span></div>
+    <div class="step" data-s="5.">Gradient ∂L/∂w₀ = (2/2) × (0.41·120 + 0.33·90) / 2 = (49.2 + 29.7) = 39.45<span class="val">Feature 0 (runtime) is large → gets a big gradient. This will shrink w₀.</span></div>
+    <div class="step" data-s="6.">Update: w₀_new = 0.003 − 0.01 × 39.45 = 0.003 − 0.395 = <strong>−0.392</strong><span class="val">Massive update! The learning rate is too high for unnormalized features. This is why feature scaling matters — Module 0.4's StandardScaler prevents this.</span></div>
+  </div>
+
+  <p>And here is the punchline: <strong>autograd computes exactly these formulas</strong>, automatically, for any loss and any model. We derived them by hand once so you'd see what's underneath, but you will never need to derive them again.</p>
+
+  <h3>Stochastic gradient descent (SGD) — and why we use it.</h3>
+
+  <p>The formulas above sum over <em>all n</em> examples to compute one gradient step. For our 200,000-example CineMatch dataset, that's slow. The breakthrough idea, decades old, is: don't use all <em>n</em> examples for each step. Use a small random subset — a <strong>mini-batch</strong>, typically 32 to 256 examples — and take many more, smaller, noisier steps.</p>
+
+  <p>This is <strong>stochastic gradient descent</strong>, and it has two huge benefits: each step is fast (you only touch a handful of examples), and the noise actually <em>helps</em> escape bad regions of the loss surface. Every modern deep learning training loop is built on SGD or one of its descendants (Adam, AdamW — we'll meet those in Phase 2).</p>
+
+  <div class="pitfall">
+    <div class="lbl">A subtle thing</div>
+    <h4>The learning rate must shrink as the model gets close to a minimum.</h4>
+    <p>SGD's noise means you'll always be jittering around the optimum, never reaching it exactly. Production training schedules usually start with a moderate learning rate (0.01 or so) and decrease it as training proceeds. We'll meet schedulers in Phase 2; for now, be aware that constant learning rates are a starting point, not a final answer.</p>
+  </div>
+
+  <div class="mcq" data-correct="c">
+    <div class="mh"><span>Check your understanding</span><span class="qnum">Q4 / 08</span></div>
+    <div class="mq">In gradient descent, why do we subtract η·∇L from the parameters rather than add it?</div>
+    <div class="opts">
+      <div class="opt" data-key="a"><span class="key">A</span><span class="text">Convention — addition would also work but is less common.</span></div>
+      <div class="opt" data-key="b"><span class="key">B</span><span class="text">Because PyTorch's autograd computes gradients with the wrong sign by default.</span></div>
+      <div class="opt" data-key="c"><span class="key">C</span><span class="text">The gradient points in the direction of steepest increase in the loss; we want to decrease the loss, so we move in the opposite direction.</span></div>
+      <div class="opt" data-key="d"><span class="key">D</span><span class="text">Subtraction is more numerically stable than addition for floating-point math.</span></div>
+    </div>
+    <div class="feedback" data-right="The gradient is, by definition, the direction of <em>steepest ascent</em> of the function. To minimize, we walk in the opposite direction — hence the minus sign. This is the only purpose of the negative sign in the update rule. If we wanted to <em>maximize</em> a function (gradient ascent — used in some RL algorithms and in GANs from a certain perspective), we would add instead." data-wrong="The gradient is the direction of steepest <em>increase</em> of the function. We want to decrease the loss, so we step in the opposite direction. This is the entire reason for the minus sign — it's a fact about what a gradient is, not a quirk of PyTorch or numerics. Algorithms that want to maximize a function (like some RL methods) literally use 'gradient ascent' — add instead of subtract."></div>
+  </div>
+
+  <!-- INTERACTIVE: SGD on linear regression -->
+  <div class="playground">
+    <div class="ph">
+      <div class="pt">Linear regression, live</div>
+      <div class="ps">interactive</div>
+    </div>
+    <div class="desc">A scatter of synthetic CineMatch (runtime, watch-fraction) pairs. Move the slope and intercept sliders to fit a line by hand, or hit <em>Auto-fit</em> to run gradient descent and watch it converge. Notice how the loss shrinks at each step.</div>
+    <div class="controls">
+      <div class="ctrl">
+        <label>Slope (w)</label>
+        <input type="range" id="slope" min="-0.01" max="0.01" value="0.001" step="0.0001">
+        <span class="val" id="slopeV">0.001</span>
+      </div>
+      <div class="ctrl">
+        <label>Intercept (b)</label>
+        <input type="range" id="intercept" min="-0.5" max="1.0" value="0.5" step="0.01">
+        <span class="val" id="interceptV">0.50</span>
+      </div>
+      <div class="ctrl">
+        <label>Action</label>
+        <button id="autofit" style="padding:6px 12px;background:var(--accent);color:#fff;border:none;border-radius:2px;font-family:var(--display);font-size:11px;font-weight:600;letter-spacing:0.1em;text-transform:uppercase;cursor:pointer">Auto-fit (50 SGD steps)</button>
+      </div>
+    </div>
+    <svg id="lr-svg" class="pg-canvas" viewBox="0 0 600 320" style="width: 100%; height: auto;"></svg>
+    <div class="pg-output" id="lrOut"></div>
+  </div>
+</section>
+
+<!-- ============ SECTION 5: THREE IMPLEMENTATIONS ============ -->
+<section>
+  <h2 data-num="05 / 06">Linear regression, three ways.</h2>
+
+  <p>Time to build it. We'll implement the same model three times, each one more idiomatic than the last. By the end, you'll have written every line and you'll see exactly what PyTorch is hiding in each abstraction.</p>
+
+  <h3>Way 1 — Pure NumPy, gradients by hand.</h3>
+
+  <p>This version uses the formulas we derived in Section 4. No frameworks, no autograd. This is what every linear regression has been since the 1800s.</p>
+
+  <pre><code><span class="k">import</span> numpy <span class="k">as</span> np
+
+<span class="c"># Synthetic data: 200 examples, 1 feature</span>
+np.random.<span class="f">seed</span>(<span class="n">42</span>)
+N = <span class="n">200</span>
+X = np.random.<span class="f">uniform</span>(<span class="n">70</span>, <span class="n">200</span>, size=(N, <span class="n">1</span>))    <span class="c"># runtime in minutes</span>
+y_true_w, y_true_b = <span class="n">0.003</span>, <span class="n">0.2</span>
+y = y_true_w * X.<span class="f">flatten</span>() + y_true_b + np.random.<span class="f">normal</span>(<span class="n">0</span>, <span class="n">0.05</span>, N)
+
+<span class="c"># Initialize parameters randomly</span>
+w = np.random.<span class="f">randn</span>(<span class="n">1</span>) * <span class="n">0.01</span>
+b = <span class="n">0.0</span>
+
+<span class="c"># Hyperparameters</span>
+lr = <span class="n">0.0001</span>
+n_epochs = <span class="n">100</span>
+
+<span class="k">for</span> epoch <span class="k">in</span> <span class="f">range</span>(n_epochs):
+    <span class="c"># Forward pass — compute predictions and loss</span>
+    y_pred = X @ w + b               <span class="c"># shape [N]</span>
+    error = y_pred - y               <span class="c"># shape [N]</span>
+    loss = (error ** <span class="n">2</span>).<span class="f">mean</span>()
+
+    <span class="c"># Backward pass — compute gradients by hand</span>
+    grad_w = (<span class="n">2</span> / N) * (X.T @ error)   <span class="c"># shape [1]</span>
+    grad_b = (<span class="n">2</span> / N) * error.<span class="f">sum</span>()
+
+    <span class="c"># Update parameters</span>
+    w -= lr * grad_w
+    b -= lr * grad_b
+
+    <span class="k">if</span> epoch % <span class="n">20</span> == <span class="n">0</span>:
+        <span class="f">print</span>(<span class="s">f"epoch {epoch:3d}  loss={loss:.5f}  w={w[0]:.5f}  b={b:.4f}"</span>)
+
+<span class="f">print</span>(<span class="s">f"True w={y_true_w}, learned w={w[0]:.5f}"</span>)
+<span class="f">print</span>(<span class="s">f"True b={y_true_b}, learned b={b:.4f}"</span>)</code></pre>
+
+  <h3>Way 2 — PyTorch with autograd, manual training loop.</h3>
+
+  <p>Same algorithm, same data, same answer. The difference: PyTorch's autograd computes the gradients for us. The model definition is one line, and we don't write any derivative formulas.</p>
+
+  <pre><code><span class="k">import</span> torch
+
+torch.<span class="f">manual_seed</span>(<span class="n">42</span>)
+N = <span class="n">200</span>
+X = torch.<span class="f">empty</span>(N, <span class="n">1</span>).<span class="f">uniform_</span>(<span class="n">70</span>, <span class="n">200</span>)
+y = <span class="n">0.003</span> * X.<span class="f">squeeze</span>() + <span class="n">0.2</span> + torch.<span class="f">randn</span>(N) * <span class="n">0.05</span>
+
+<span class="c"># Parameters — requires_grad=True so autograd tracks them</span>
+w = torch.<span class="f">randn</span>(<span class="n">1</span>, requires_grad=<span class="k">True</span>)
+b = torch.<span class="f">zeros</span>(<span class="n">1</span>, requires_grad=<span class="k">True</span>)
+
+lr = <span class="n">0.0001</span>
+<span class="k">for</span> epoch <span class="k">in</span> <span class="f">range</span>(<span class="n">100</span>):
+    y_pred = X @ w + b                          <span class="c"># forward</span>
+    loss = ((y_pred - y) ** <span class="n">2</span>).<span class="f">mean</span>()       <span class="c"># MSE</span>
+
+    loss.<span class="f">backward</span>()                            <span class="c"># autograd computes gradients</span>
+
+    <span class="k">with</span> torch.<span class="f">no_grad</span>():                     <span class="c"># manually update — no gradient tracking</span>
+        w -= lr * w.grad
+        b -= lr * b.grad
+        w.grad.<span class="f">zero_</span>()                         <span class="c"># reset for next iteration</span>
+        b.grad.<span class="f">zero_</span>()
+
+    <span class="k">if</span> epoch % <span class="n">20</span> == <span class="n">0</span>:
+        <span class="f">print</span>(<span class="s">f"epoch {epoch:3d}  loss={loss.item():.5f}"</span>)</code></pre>
+
+  <p>Notice the <code class="inline">torch.no_grad()</code> block — when we update parameters by subtracting their gradients, we don't want PyTorch to track <em>those operations</em> as part of the graph. The <code class="inline">w.grad.zero_()</code> call is the manual version of <code class="inline">optimizer.zero_grad()</code> that we discussed in Module 0.3.</p>
+
+  <h3>Way 3 — PyTorch with nn.Module and an optimizer.</h3>
+
+  <p>This is the version you'll use in production. Same model, same algorithm, but expressed in PyTorch's idioms — clean, composable, and ready to scale up to deep networks.</p>
+
+  <pre><code><span class="k">import</span> torch
+<span class="k">import</span> torch.nn <span class="k">as</span> nn
+
+torch.<span class="f">manual_seed</span>(<span class="n">42</span>)
+N = <span class="n">200</span>
+X = torch.<span class="f">empty</span>(N, <span class="n">1</span>).<span class="f">uniform_</span>(<span class="n">70</span>, <span class="n">200</span>)
+y = (<span class="n">0.003</span> * X.<span class="f">squeeze</span>() + <span class="n">0.2</span> + torch.<span class="f">randn</span>(N) * <span class="n">0.05</span>).<span class="f">unsqueeze</span>(<span class="n">1</span>)
+
+<span class="c"># Define the model — one line for linear regression</span>
+model = nn.<span class="f">Linear</span>(in_features=<span class="n">1</span>, out_features=<span class="n">1</span>)
+
+<span class="c"># Loss and optimizer</span>
+criterion = nn.<span class="f">MSELoss</span>()
+optimizer = torch.optim.<span class="f">SGD</span>(model.<span class="f">parameters</span>(), lr=<span class="n">0.0001</span>)
+
+<span class="c"># Training loop — the canonical four lines</span>
+<span class="k">for</span> epoch <span class="k">in</span> <span class="f">range</span>(<span class="n">100</span>):
+    optimizer.<span class="f">zero_grad</span>()                <span class="c"># 1. clear old gradients</span>
+    y_pred = <span class="f">model</span>(X)                     <span class="c"># 2. forward pass</span>
+    loss = <span class="f">criterion</span>(y_pred, y)         <span class="c"># 3. compute loss</span>
+    loss.<span class="f">backward</span>()                       <span class="c"># 4. backward pass + step</span>
+    optimizer.<span class="f">step</span>()
+
+    <span class="k">if</span> epoch % <span class="n">20</span> == <span class="n">0</span>:
+        <span class="f">print</span>(<span class="s">f"epoch {epoch:3d}  loss={loss.item():.5f}"</span>)
+
+<span class="f">print</span>(<span class="s">f"learned w={model.weight.item():.5f}  b={model.bias.item():.4f}"</span>)</code></pre>
+
+  <div class="insight">
+    <div class="key">The four lines you'll write a million times</div>
+    <p><code>optimizer.zero_grad()</code>, <code>y_pred = model(x)</code>, <code>loss = criterion(y_pred, y)</code>, <code>loss.backward()</code>, <code>optimizer.step()</code>. This is the canonical PyTorch training loop. Every model in this course — convolutional, recurrent, transformer, generative — has exactly this loop at its core. The only thing that changes is the definition of <code>model</code> and <code>criterion</code>.</p>
+  </div>
+
+  <div class="mcq" data-correct="c">
+    <div class="mh"><span>Check your understanding</span><span class="qnum">Q5 / 08</span></div>
+    <div class="mq">Why do we wrap the parameter updates in Way 2 inside a <code>with torch.no_grad():</code> block?</div>
+    <div class="opts">
+      <div class="opt" data-key="a"><span class="key">A</span><span class="text">It speeds up training by skipping unnecessary computations.</span></div>
+      <div class="opt" data-key="b"><span class="key">B</span><span class="text">It's required because gradients can only be applied once per epoch.</span></div>
+      <div class="opt" data-key="c"><span class="key">C</span><span class="text">Without it, PyTorch would track the parameter-update operation itself in the computational graph, leading to incorrect gradients on the next iteration and potentially out-of-memory errors.</span></div>
+      <div class="opt" data-key="d"><span class="key">D</span><span class="text">It allows the parameters to be modified in-place safely.</span></div>
+    </div>
+    <div class="feedback" data-right="When parameters have <code>requires_grad=True</code>, every operation on them is tracked in the computational graph. The line <code>w -= lr * w.grad</code> is itself an operation involving <code>w</code> — and without the <code>no_grad</code> guard, PyTorch would record it as part of the graph. The graph would grow unboundedly across epochs, and the next backward pass would compute nonsensical gradients that include derivatives of the optimizer's update steps. <code>with torch.no_grad():</code> tells autograd to record nothing — exactly what we want here." data-wrong="The issue is graph pollution. With <code>requires_grad=True</code>, every operation involving the parameters gets added to the autograd graph. The update step <code>w -= lr * w.grad</code> is itself an operation involving <code>w</code> — without <code>no_grad</code>, PyTorch records it, the graph grows across epochs, memory leaks, and subsequent gradient computations become nonsense (they'd include derivatives of the optimizer steps). The <code>with torch.no_grad():</code> block is the standard way to perform updates without polluting the graph."></div>
+  </div>
+
+  <div class="mcq" data-correct="b">
+    <div class="mh"><span>Check your understanding</span><span class="qnum">Q6 / 08</span></div>
+    <div class="mq">In Way 3, the line <code>optimizer = torch.optim.SGD(model.parameters(), lr=0.0001)</code> connects the optimizer to the model. What does <code>model.parameters()</code> return?</div>
+    <div class="opts">
+      <div class="opt" data-key="a"><span class="key">A</span><span class="text">A copy of the model's weights and biases — the optimizer trains on the copy.</span></div>
+      <div class="opt" data-key="b"><span class="key">B</span><span class="text">An iterator over the model's tensors that have <code>requires_grad=True</code> — passed to the optimizer so it knows which tensors to update during <code>step()</code>.</span></div>
+      <div class="opt" data-key="c"><span class="key">C</span><span class="text">The number of parameters in the model.</span></div>
+      <div class="opt" data-key="d"><span class="key">D</span><span class="text">The model's hyperparameters — learning rate, momentum, etc.</span></div>
+    </div>
+    <div class="feedback" data-right="<code>model.parameters()</code> is a generator that walks through every <code>nn.Parameter</code> registered on the model — every weight, every bias, in every submodule. Passing this to the optimizer tells it 'here are the tensors I want you to update.' When you call <code>optimizer.step()</code>, it iterates through these and applies the update rule (<em>w</em> ← <em>w</em> − η·∇L for SGD; more complex for Adam). Crucially, no copying happens — the optimizer holds <em>references</em> to the actual model tensors and modifies them in place." data-wrong="<code>model.parameters()</code> returns an iterator over the actual parameter tensors of the model — the same tensors that participate in the forward pass. The optimizer holds <em>references</em>, not copies, and during <code>optimizer.step()</code> it mutates these tensors in place using each parameter's <code>.grad</code> attribute. This is why <code>zero_grad()</code> and <code>backward()</code> and <code>step()</code> coordinate seamlessly — they're all working on the same set of tensors."></div>
+  </div>
+</section>
+
+<!-- ============ SECTION 6: PRACTICE & CHECKPOINT ============ -->
+<section>
+  <h2 data-num="06 / 06">Putting it on CineMatch — and the checkpoint.</h2>
+
+  <p>Now we apply Way 3 to the actual CineMatch dataset we generated in Module 0.4. The only difference: we have 4 features instead of 1, and we use a proper <code class="inline">DataLoader</code> for batching.</p>
+
+  <pre><code><span class="k">import</span> torch
+<span class="k">import</span> torch.nn <span class="k">as</span> nn
+<span class="k">from</span> torch.utils.data <span class="k">import</span> DataLoader, random_split
+<span class="k">from</span> cinematch.data.dataset <span class="k">import</span> CineMatchDataset
+<span class="k">from</span> cinematch.utils.seed <span class="k">import</span> set_seed
+<span class="k">from</span> cinematch.utils.device <span class="k">import</span> get_device
+
+<span class="f">set_seed</span>(<span class="n">42</span>)
+device = <span class="f">get_device</span>()
+
+<span class="c"># Load the CineMatch dataset and split into train / val</span>
+ds = <span class="f">CineMatchDataset</span>()
+train_ds, val_ds = <span class="f">random_split</span>(ds, [<span class="n">0.8</span>, <span class="n">0.2</span>])
+train_loader = <span class="f">DataLoader</span>(train_ds, batch_size=<span class="n">256</span>, shuffle=<span class="k">True</span>)
+val_loader = <span class="f">DataLoader</span>(val_ds, batch_size=<span class="n">256</span>)
+
+<span class="c"># Linear regression on 4 features → 1 output</span>
+model = nn.<span class="f">Linear</span>(<span class="n">4</span>, <span class="n">1</span>).<span class="f">to</span>(device)
+criterion = nn.<span class="f">MSELoss</span>()
+optimizer = torch.optim.<span class="f">SGD</span>(model.<span class="f">parameters</span>(), lr=<span class="n">1e-5</span>)
+
+<span class="k">for</span> epoch <span class="k">in</span> <span class="f">range</span>(<span class="n">10</span>):
+    <span class="c"># Train</span>
+    model.<span class="f">train</span>()
+    train_loss = <span class="n">0.0</span>
+    <span class="k">for</span> xb, yb <span class="k">in</span> train_loader:
+        xb, yb = xb.<span class="f">to</span>(device), yb.<span class="f">to</span>(device).<span class="f">unsqueeze</span>(<span class="n">1</span>)
+        optimizer.<span class="f">zero_grad</span>()
+        loss = <span class="f">criterion</span>(<span class="f">model</span>(xb), yb)
+        loss.<span class="f">backward</span>()
+        optimizer.<span class="f">step</span>()
+        train_loss += loss.<span class="f">item</span>() * xb.<span class="f">size</span>(<span class="n">0</span>)
+    train_loss /= <span class="f">len</span>(train_ds)
+
+    <span class="c"># Validate</span>
+    model.<span class="f">eval</span>()
+    val_loss = <span class="n">0.0</span>
+    <span class="k">with</span> torch.<span class="f">no_grad</span>():
+        <span class="k">for</span> xb, yb <span class="k">in</span> val_loader:
+            xb, yb = xb.<span class="f">to</span>(device), yb.<span class="f">to</span>(device).<span class="f">unsqueeze</span>(<span class="n">1</span>)
+            val_loss += <span class="f">criterion</span>(<span class="f">model</span>(xb), yb).<span class="f">item</span>() * xb.<span class="f">size</span>(<span class="n">0</span>)
+    val_loss /= <span class="f">len</span>(val_ds)
+
+    <span class="f">print</span>(<span class="s">f"epoch {epoch+1:2d}  train_mse={train_loss:.5f}  val_mse={val_loss:.5f}"</span>)
+
+<span class="c"># Inspect what the model learned</span>
+<span class="k">for</span> name, p <span class="k">in</span> model.<span class="f">named_parameters</span>():
+    <span class="f">print</span>(name, p.data)</code></pre>
+
+  <p class="dim">When you run this, you'll see the loss drop quickly in the first few epochs and then plateau. The plateau is meaningful — it's where a linear model has done as well as it can on data that has non-linear structure (remember from Module 0.4 that our generator used <code class="inline">abs(runtime - attention_span)</code>, which is non-linear). The gap between this baseline and what an MLP achieves in Module 2.1 will be your first concrete demonstration of what depth buys you.</p>
+
+  <div class="mcq" data-correct="b">
+    <div class="mh"><span>Synthesis question</span><span class="qnum">Q7 / 08</span></div>
+    <div class="mq">After training the linear CineMatch model for 10 epochs, the validation MSE plateaus at ~0.018 and won't go lower no matter how many more epochs you run. Which of the following is the most likely explanation?</div>
+    <div class="opts">
+      <div class="opt" data-key="a"><span class="key">A</span><span class="text">The learning rate is too high — try doubling it.</span></div>
+      <div class="opt" data-key="b"><span class="key">B</span><span class="text">The data has non-linear structure that a linear model fundamentally cannot capture, so 0.018 is approximately the irreducible error of this model class on this problem.</span></div>
+      <div class="opt" data-key="c"><span class="key">C</span><span class="text">PyTorch is silently capping the loss at this value.</span></div>
+      <div class="opt" data-key="d"><span class="key">D</span><span class="text">The synthetic dataset must be corrupted.</span></div>
+    </div>
+    <div class="feedback" data-right="A linear model can only fit linear relationships. Our generator includes <code>abs(runtime - attention_span)</code>, which is non-linear — so no matter how many epochs we run, a linear model cannot fully capture it. The plateau represents the <strong>bias</strong> of the model class: the systematic error built in by choosing too simple a hypothesis space. The cure isn't more training — it's a more expressive model. In Module 2.1, when we add a hidden layer with non-linear activations, this floor will drop substantially. That gap is the empirical proof that depth helps." data-wrong="When training plateaus despite low training loss, the issue is usually <strong>model capacity</strong>, not training. A linear model can only express linear relationships, but our generator includes non-linear terms (<code>abs(runtime - attention_span)</code>). The model has done as well as a linear model can — and that floor is its <em>bias</em>. The cure is a more expressive model class. In Module 2.1 we add a hidden layer with non-linear activations and this floor will drop, providing concrete evidence that depth helps."></div>
+  </div>
+
+  <div class="mcq" data-correct="d">
+    <div class="mh"><span>Check your understanding</span><span class="qnum">Q8 / 08</span></div>
+    <div class="mq">In the CineMatch training loop above, why do we call <code>model.train()</code> at the start of each epoch and <code>model.eval()</code> before the validation loop?</div>
+    <div class="opts">
+      <div class="opt" data-key="a"><span class="key">A</span><span class="text">It controls whether parameters are updated — without <code>train()</code>, the optimizer does nothing.</span></div>
+      <div class="opt" data-key="b"><span class="key">B</span><span class="text">It's required by PyTorch for the model to compile correctly.</span></div>
+      <div class="opt" data-key="c"><span class="key">C</span><span class="text">It's purely for documentation — the modes have no functional effect.</span></div>
+      <div class="opt" data-key="d"><span class="key">D</span><span class="text">It toggles training-time behaviors of certain layers — dropout active in train mode, inactive in eval; batch normalization tracking statistics in train, using running stats in eval. Linear layers don't care, but it's a habit worth forming early.</span></div>
+    </div>
+    <div class="feedback" data-right="For a plain <code>nn.Linear</code> model, train/eval modes are no-ops — they have no effect. But the moment you add dropout, batch normalization, or other layers with mode-dependent behavior, forgetting to switch modes silently corrupts your validation metrics (dropout still firing during eval, batch norm using batch stats instead of running stats). The cost of always calling <code>train()</code> and <code>eval()</code> is zero; the cost of forgetting later is a debugging nightmare. Make it muscle memory now." data-wrong="For pure linear layers, the modes have no effect — but for any model with dropout, batch normalization, layer normalization, or various other layers, forgetting to switch modes silently corrupts results. Dropout still fires during evaluation; batch norm uses the wrong statistics. These are subtle bugs that produce numerically wrong but plausible-looking results. Train yourself to call <code>model.train()</code> and <code>model.eval()</code> at the right boundaries from day one — it's a habit that pays off the moment you introduce dropout in Phase 2."></div>
+  </div>
+
+  <div class="checkpoint">
+    <h4>Module 1.1 — Mastery checkpoint</h4>
+    <ol>
+      <li>Write the linear regression equation in both scalar and vectorized form, and explain when you'd use each.</li>
+      <li>Derive ∂L/∂w by hand for MSE on a single example, and explain in plain English what the formula is doing.</li>
+      <li>Implement linear regression three ways (NumPy, PyTorch with autograd, PyTorch with nn.Module) — without looking at the code in this module.</li>
+      <li>Explain the role of each of the four canonical lines in a PyTorch training loop.</li>
+      <li>Apply your model to the CineMatch dataset and report your final train and validation MSE.</li>
+      <li>Explain why your validation MSE plateaus at a non-zero value — what is that floor measuring?</li>
+    </ol>
+  </div>
+
+  <h3>Where this leads.</h3>
+
+  <p>You've trained your first model. The next module — <em>1.2, Loss Landscapes and Gradient Descent</em> — zooms into the geometry of what just happened: what does the loss surface actually look like, why does gradient descent work, and what determines whether it converges. After that we move to classification (Module 1.3) and the perceptron (Module 1.4), capping Phase 1 with a capstone where you'll build both a regression and classification model end-to-end.</p>
+
+</section>
+
+</main>
+
+<nav class="footnav">
+  <a href="module_0_4_cinematch_setup.html" class="prev">
+    <div class="lbl">Previous module</div>
+    <div class="ttl">0.4 — CineMatch Setup</div>
+  </a>
+  <a href="#" class="next">
+    <div class="lbl">Next module</div>
+    <div class="ttl">1.2 — Loss Landscapes</div>
+  </a>
+</nav>
+
+<script>
+  // ===== LIVE LINEAR REGRESSION PLAYGROUND =====
+  const slope = document.getElementById('slope');
+  const intercept = document.getElementById('intercept');
+  const slopeV = document.getElementById('slopeV');
+  const interceptV = document.getElementById('interceptV');
+  const lrSvg = document.getElementById('lr-svg');
+  const lrOut = document.getElementById('lrOut');
+  const autofitBtn = document.getElementById('autofit');
+
+  // Generate synthetic data once
+  let rng = (() => {
+    let s = 42;
+    return () => { s = (s * 9301 + 49297) % 233280; return s / 233280; };
+  })();
+  const N = 80;
+  const trueW = 0.003, trueB = 0.2;
+  const data = [];
+  for (let i = 0; i < N; i++) {
+    const x = 70 + rng() * 130;
+    const noise = (rng() - 0.5) * 0.15;
+    const y = trueW * x + trueB + noise;
+    data.push({ x, y: Math.max(0, Math.min(1, y)) });
+  }
+
+  function draw() {
+    const w = +slope.value;
+    const b = +intercept.value;
+    slopeV.textContent = w.toFixed(4);
+    interceptV.textContent = b.toFixed(2);
+
+    const W = 600, H = 320, pad = 40;
+    const xMin = 60, xMax = 210, yMin = 0, yMax = 1;
+    const sx = (W - 2 * pad) / (xMax - xMin);
+    const sy = (H - 2 * pad) / (yMax - yMin);
+    const toX = x => pad + (x - xMin) * sx;
+    const toY = y => H - pad - (y - yMin) * sy;
+
+    let svg = '';
+    // Grid
+    for (let gx = 70; gx <= 200; gx += 30) {
+      svg += `<line x1="${toX(gx)}" y1="${pad}" x2="${toX(gx)}" y2="${H - pad}" stroke="#25252e" stroke-width="0.5"/>`;
+      svg += `<text x="${toX(gx)}" y="${H - pad + 14}" text-anchor="middle" font-family="JetBrains Mono" font-size="9" fill="#6a6a76">${gx}</text>`;
+    }
+    for (let gy = 0; gy <= 1; gy += 0.25) {
+      svg += `<line x1="${pad}" y1="${toY(gy)}" x2="${W - pad}" y2="${toY(gy)}" stroke="#25252e" stroke-width="0.5"/>`;
+      svg += `<text x="${pad - 6}" y="${toY(gy) + 3}" text-anchor="end" font-family="JetBrains Mono" font-size="9" fill="#6a6a76">${gy.toFixed(2)}</text>`;
+    }
+
+    // Axis labels
+    svg += `<text x="${W / 2}" y="${H - 6}" text-anchor="middle" font-family="Outfit" font-size="11" fill="#9a9aa6" letter-spacing="2" font-weight="500">RUNTIME (min)</text>`;
+    svg += `<text x="12" y="${H / 2}" text-anchor="middle" font-family="Outfit" font-size="11" fill="#9a9aa6" letter-spacing="2" font-weight="500" transform="rotate(-90, 12, ${H / 2})">WATCH FRACTION</text>`;
+
+    // Compute predictions and residuals (errors as vertical lines)
+    let totalLoss = 0;
+    data.forEach(p => {
+      const yPred = w * p.x + b;
+      const err = yPred - p.y;
+      totalLoss += err * err;
+      // Residual line
+      svg += `<line x1="${toX(p.x)}" y1="${toY(p.y)}" x2="${toX(p.x)}" y2="${toY(yPred)}" stroke="#e26a6a" stroke-width="0.7" opacity="0.5"/>`;
+    });
+    const mse = totalLoss / N;
+
+    // Data points
+    data.forEach(p => {
+      svg += `<circle cx="${toX(p.x)}" cy="${toY(p.y)}" r="3" fill="#6ec5e9" opacity="0.85"/>`;
+    });
+
+    // Regression line
+    const x1 = 70, x2 = 200;
+    const y1 = w * x1 + b, y2 = w * x2 + b;
+    svg += `<line x1="${toX(x1)}" y1="${toY(Math.max(0, Math.min(1, y1)))}" x2="${toX(x2)}" y2="${toY(Math.max(0, Math.min(1, y2)))}" stroke="#ff5b3a" stroke-width="2.5"/>`;
+
+    lrSvg.innerHTML = svg;
+
+    lrOut.innerHTML = `
+      <div class="lbl">Current fit</div>
+      <div>ŷ = <span class="vl">${w.toFixed(5)}</span> × runtime + <span class="vl">${b.toFixed(3)}</span></div>
+      <div style="margin-top:6px">MSE = <span class="vl">${mse.toFixed(5)}</span> &nbsp; (true generator: w=0.003, b=0.20)</div>
+    `;
+  }
+  [slope, intercept].forEach(el => el.addEventListener('input', draw));
+  draw();
+
+  // Auto-fit: run 50 SGD steps
+  autofitBtn.addEventListener('click', () => {
+    let w = +slope.value, b = +intercept.value;
+    const lr = 0.000003;
+    let stepCount = 0;
+    function stepOnce() {
+      // Compute gradients on full batch
+      let gradW = 0, gradB = 0;
+      data.forEach(p => {
+        const yPred = w * p.x + b;
+        const err = yPred - p.y;
+        gradW += 2 * err * p.x / N;
+        gradB += 2 * err / N;
+      });
+      w -= lr * gradW;
+      b -= lr * gradB;
+      // Clamp slope to slider range
+      if (w < +slope.min) w = +slope.min;
+      if (w > +slope.max) w = +slope.max;
+      if (b < +intercept.min) b = +intercept.min;
+      if (b > +intercept.max) b = +intercept.max;
+      slope.value = w;
+      intercept.value = b;
+      draw();
+      stepCount++;
+      if (stepCount < 50) {
+        requestAnimationFrame(stepOnce);
+      }
+    }
+    stepOnce();
+  });
+
+  // ===== MCQ HANDLER =====
+  document.querySelectorAll('.mcq').forEach(mcq => {
+    const correct = mcq.dataset.correct;
+    const opts = mcq.querySelectorAll('.opt');
+    const fb = mcq.querySelector('.feedback');
+    opts.forEach(opt => {
+      opt.addEventListener('click', () => {
+        if (opt.classList.contains('disabled')) return;
+        const chosen = opt.dataset.key;
+        const isRight = chosen === correct;
+        opts.forEach(o => {
+          o.classList.add('disabled');
+          if (o.dataset.key === correct) o.classList.add('correct');
+          else if (o === opt && !isRight) o.classList.add('wrong');
+        });
+        if (isRight) {
+          fb.classList.add('show', 'right');
+          fb.innerHTML = '<span class="verdict">Correct</span>' + fb.dataset.right;
+        } else {
+          fb.classList.add('show', 'wrong');
+          fb.innerHTML = '<span class="verdict">Not quite</span>' + fb.dataset.wrong;
+        }
+      });
+    });
+  });
+</script>
+
+</body>
+</html>

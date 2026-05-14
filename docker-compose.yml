@@ -1,0 +1,212 @@
+# ─────────────────────────────────────────────────────────────────────
+# Marevlo backend orchestrator.
+#
+# `docker compose up` brings up everything except the frontend
+# (the frontend runs locally with `npm run dev` from frontend/).
+#
+# Services:
+#   postgres            5432  primary store
+#   redis               6379  refresh tokens, rate limit, ws pubsub, idempotency
+#   api                 8000  FastAPI backend (Backend/)
+#   runner              4002  code execution — INTERNAL ONLY (no host port)
+#   jupyterhub          8001  per-user notebook spawner
+#   notebook-user-image       build-only sidecar; produces marevlo-notebook-user:latest
+#
+# Copy .env.example -> .env and edit before `docker compose up`.
+# ─────────────────────────────────────────────────────────────────────
+
+services:
+
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    ports:
+      - "${POSTGRES_PORT:-5432}:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+    networks: [marevlo]
+
+  qdrant:
+    image: qdrant/qdrant:v1.12.0
+    ports:
+      - "${QDRANT_PORT:-6333}:6333"
+    volumes:
+      - qdrant_data:/qdrant/storage
+    healthcheck:
+      test: ["CMD-SHELL", "bash -c ':> /dev/tcp/127.0.0.1/6333' || exit 1"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+    networks: [marevlo]
+
+  redis:
+    image: redis:7-alpine
+    command: ["redis-server", "--save", "60", "1", "--maxmemory", "96mb", "--maxmemory-policy", "allkeys-lru"]
+    ports:
+      - "${REDIS_PORT:-6379}:6379"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          memory: 128M
+    networks: [marevlo]
+
+  api:
+    build:
+      context: ./Backend
+      dockerfile: Dockerfile
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      qdrant:
+        condition: service_healthy
+    environment:
+      ENV: ${ENV:-prod}
+      DEBUG: ${DEBUG:-false}
+      DATABASE_URL: postgresql+psycopg2://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}
+      REDIS_URL: redis://redis:6379/0
+      JWT_SECRET: ${JWT_SECRET}
+      JWT_ALGORITHM: ${JWT_ALGORITHM:-HS256}
+      CORS_ORIGINS: ${CORS_ORIGINS}
+      LOG_FORMAT: ${LOG_FORMAT:-json}
+      RATE_LIMIT_ENABLED: ${RATE_LIMIT_ENABLED:-true}
+      # Inter-service URL (compose DNS) — runner is NOT exposed to the host
+      IDE_RUNNER_URL: http://runner:4002
+      # Public-facing JupyterHub URL the backend embeds in /notebook/launch responses
+      NOTEBOOK_BASE_URL: ${NOTEBOOK_BASE_URL}
+      # Firebase admin credentials (mounted file)
+      FIREBASE_CREDENTIALS_PATH: /run/secrets/firebase-credentials.json
+      # SMTP
+      SMTP_HOST: ${SMTP_HOST:-}
+      SMTP_PORT: ${SMTP_PORT:-587}
+      SMTP_USER: ${SMTP_USER:-}
+      SMTP_PASS: ${SMTP_PASS:-}
+      SMTP_FROM: ${SMTP_FROM:-}
+      SMTP_USE_TLS: ${SMTP_USE_TLS:-true}
+      # Trust local proxy (Caddy/Vercel)
+      TRUSTED_PROXIES: ${TRUSTED_PROXIES:-127.0.0.1/32}
+      # ── MIRA ──────────────────────────────────────────────────────
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
+      OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+      QDRANT_URL: http://qdrant:6333
+      MIRA_ADMIN_TOKEN: ${MIRA_ADMIN_TOKEN:-}
+      MIRA_ENABLED_FOR_ALL: ${MIRA_ENABLED_FOR_ALL:-false}
+      MIRA_ENABLED_USER_IDS: ${MIRA_ENABLED_USER_IDS:-}
+      MIRA_ADMIN_USER_IDS: ${MIRA_ADMIN_USER_IDS:-}
+      MIRA_GLOBAL_KILL: ${MIRA_GLOBAL_KILL:-false}
+      MIRA_DEV_MODE_ALLOW_HEADER_UID: ${MIRA_DEV_MODE_ALLOW_HEADER_UID:-false}
+    volumes:
+      - ./secrets:/run/secrets:ro
+    ports:
+      - "${BACKEND_PORT:-8000}:8000"
+    # Single-string command in array form so YAML never folds it.
+    # `exec` replaces the shell with gunicorn so signals (Ctrl-C / SIGTERM)
+    # reach gunicorn directly and shutdown is graceful.
+    command:
+      - sh
+      - -c
+      - "alembic upgrade head && exec gunicorn app.main:app -k uvicorn.workers.UvicornWorker -w 2 --bind 0.0.0.0:8000 --access-logfile - --error-logfile -"
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          memory: 768M
+    networks: [marevlo]
+
+  runner:
+    build:
+      context: ./runner
+      dockerfile: Dockerfile
+    environment:
+      PORT: 4002
+      PYTHON_POOL_SIZE: 4
+      MAX_CONCURRENT: 20
+      COMPILE_CACHE_DIR: /cache/compile
+    volumes:
+      - compile_cache:/cache
+    # No `ports:` — runner is reachable only on the marevlo network.
+    # The frontend hits POST /api/submissions/run -> backend -> runner.
+    expose:
+      - "4002"
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          memory: 1G
+    networks: [marevlo]
+
+  # JupyterHub: in-container hub binds 8000, mapped to host 8001 to avoid
+  # colliding with the FastAPI api service.
+  jupyterhub:
+    build:
+      context: ./jupyterhub
+      dockerfile: Dockerfile
+    environment:
+      JWT_SECRET: ${JWT_SECRET}
+      JWT_ALGORITHM: ${JWT_ALGORITHM:-HS256}
+      HUB_CONNECT_IP: jupyterhub
+      DOCKER_NETWORK_NAME: marevlo_net
+      NOTEBOOK_USER_IMAGE: marevlo-notebook-user:latest
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - jupyterhub_data:/srv/jupyterhub/data
+    ports:
+      - "${JUPYTERHUB_PORT:-8001}:8000"
+    depends_on:
+      - notebook-user-image
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+    networks: [marevlo]
+
+  # Build-only sidecar: produces the image DockerSpawner launches per user.
+  # The container exits immediately; the image (`marevlo-notebook-user:latest`)
+  # is what JupyterHub references.
+  notebook-user-image:
+    build:
+      context: ./notebook_project/Frontend
+      dockerfile: Dockerfile
+    image: marevlo-notebook-user:latest
+    command: ["true"]
+    restart: "no"
+
+volumes:
+  postgres_data:
+  redis_data:
+  qdrant_data:
+  compile_cache:
+  jupyterhub_data:
+
+networks:
+  marevlo:
+    name: marevlo_net
+    driver: bridge

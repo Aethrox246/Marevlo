@@ -1,0 +1,868 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Quantization for Modern AI · M1 — Vector Quantization — PQ, RQ, OPQ and Production Search</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;700&family=Source+Serif+4:ital,opsz,wght@0,8..60,400;0,8..60,600;1,8..60,400&display=swap" rel="stylesheet">
+<style>:root{--bg:#08080e;--t1:#ececf6;--t2:#b5b5c8;--tm:#6b6b85;
+--a1:#5eead4;--a2:#60a5fa;--a3:#f472b6;--a4:#fbbf24;--a5:#a78bfa;--ac:#60a5fa;
+--gl:linear-gradient(90deg,#5eead4 0%,#60a5fa 28%,#a78bfa 55%,#f472b6 82%,#fbbf24 100%);
+--bs:rgba(255,255,255,0.06);--sh:0 24px 80px rgba(0,0,0,0.5);--r:18px;--cw:1160px}
+*{box-sizing:border-box;margin:0;padding:0}html{scroll-behavior:smooth}
+body{background:radial-gradient(ellipse 900px 500px at 15% 10%,rgba(96,165,250,.08),transparent 50%),radial-gradient(ellipse 700px 400px at 85% 20%,rgba(96,165,250,.05),transparent 40%),var(--bg);color:var(--t1);font-family:'Outfit',sans-serif;line-height:1.75;overflow-x:hidden;-webkit-font-smoothing:antialiased}
+/* Progress bar */
+.sp{position:fixed;top:0;left:0;height:3px;width:0%;z-index:1000;background:var(--gl);transition:width .1s linear}
+/* Nav */
+nav{position:fixed;top:3px;left:0;right:0;z-index:999;display:flex;align-items:center;justify-content:space-between;padding:.7rem 2rem;background:rgba(8,8,14,.9);backdrop-filter:blur(16px);border-bottom:1px solid var(--bs)}
+.nbr{font-family:'JetBrains Mono',monospace;font-size:.7rem;color:var(--ac);letter-spacing:.16em;text-transform:uppercase;text-decoration:none;display:flex;align-items:center;gap:8px}
+.nbr-dot{width:6px;height:6px;border-radius:50%;background:var(--ac);animation:pulse 2s ease-in-out infinite}
+.nm{font-size:.8rem;color:var(--tm);max-width:400px;text-overflow:ellipsis;overflow:hidden;white-space:nowrap}
+.na{display:flex;gap:8px}
+.nb{display:inline-flex;align-items:center;gap:6px;padding:.38rem .85rem;border-radius:999px;border:1px solid var(--bs);background:rgba(255,255,255,.02);color:var(--t2);font-size:.78rem;text-decoration:none;transition:all .18s}
+.nb:hover{border-color:var(--ac);color:var(--ac)}
+/* Hero */
+.hero{min-height:100vh;display:flex;align-items:center;justify-content:center;padding:5rem 2rem 3rem;position:relative;overflow:hidden}
+.hg{position:absolute;inset:0;background-image:linear-gradient(rgba(255,255,255,.018) 1px,transparent 1px),linear-gradient(90deg,rgba(255,255,255,.018) 1px,transparent 1px);background-size:52px 52px;mask-image:radial-gradient(circle at center,black 20%,transparent 75%);pointer-events:none}
+.hi{max-width:1000px;text-align:center;position:relative;z-index:1}
+.hl{display:inline-flex;align-items:center;gap:10px;padding:.5rem 1rem;border-radius:999px;border:1px solid rgba(96,165,250,.28);background:rgba(96,165,250,.07);color:var(--ac);letter-spacing:1.8px;text-transform:uppercase;font-size:.74rem;margin-bottom:1.8rem}
+h1{font-size:clamp(2.6rem,5.5vw,5rem);line-height:1.02;letter-spacing:-.05em;font-weight:900;margin-bottom:1.2rem}
+.gt{background:var(--gl);-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent}
+.sub{font-size:.82rem;color:var(--tm);font-family:'JetBrains Mono',monospace;margin-bottom:.6rem;letter-spacing:.04em}
+.hs{font-family:'Source Serif 4',serif;color:var(--t2);font-size:clamp(1rem,1.8vw,1.18rem);max-width:800px;margin:0 auto 2.2rem;line-height:1.85}
+.hm{display:flex;flex-wrap:wrap;justify-content:center;gap:10px;margin-bottom:2.5rem}
+.mp{border:1px solid var(--bs);background:rgba(17,17,28,.8);border-radius:999px;padding:.6rem 1.1rem;color:var(--t2);font-size:.86rem}
+.mp.hl2{border-color:rgba(96,165,250,.3);color:var(--ac);background:rgba(96,165,250,.06)}
+.sc{position:absolute;bottom:2.4rem;left:50%;transform:translateX(-50%);color:var(--tm);display:flex;flex-direction:column;gap:.5rem;align-items:center;text-transform:uppercase;letter-spacing:.22em;font-size:.68rem}
+.arr{width:17px;height:17px;border-right:2px solid var(--tm);border-bottom:2px solid var(--tm);transform:rotate(45deg);animation:ba 2s ease-in-out infinite}
+@keyframes pulse{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.25;transform:scale(.7)}}
+@keyframes ba{0%,100%{transform:rotate(45deg) translateY(0)}50%{transform:rotate(45deg) translateY(8px)}}
+/* Content */
+.cw{max-width:var(--cw);margin:0 auto;padding:0 2rem 7rem}
+.sec{margin-bottom:6rem;opacity:0;transform:translateY(32px);transition:opacity .6s ease,transform .6s ease}
+.sec.vis{opacity:1;transform:translateY(0)}
+.sn{display:flex;align-items:center;gap:14px;color:var(--ac);font-family:'JetBrains Mono',monospace;font-size:.67rem;text-transform:uppercase;letter-spacing:.24em;margin-bottom:1rem}
+.sn::after{content:"";height:1px;flex:1;background:linear-gradient(90deg,rgba(96,165,250,.6),transparent)}
+.sec h2{font-size:clamp(2rem,4vw,3rem);line-height:1.06;margin-bottom:1.1rem;letter-spacing:-.04em}
+.lead{font-family:'Source Serif 4',serif;font-size:1.1rem;color:var(--t2);margin-bottom:2.2rem;line-height:1.88;max-width:860px}
+/* Cards */
+.card{background:linear-gradient(160deg,rgba(20,20,36,.98),rgba(14,14,26,.98));border:1px solid var(--bs);border-radius:var(--r);box-shadow:var(--sh);padding:2rem;margin-bottom:1.6rem}
+.card-accent{border-color:rgba(96,165,250,.25);background:linear-gradient(160deg,rgba(96,165,250,.04),rgba(14,14,26,.98))}
+/* Code blocks */
+.cc{background:linear-gradient(180deg,rgba(10,10,20,.99),rgba(8,8,16,.99));border:1px solid var(--bs);border-radius:var(--r);box-shadow:var(--sh);padding:0;margin-bottom:1.6rem;overflow:hidden}
+.ch{display:flex;align-items:center;justify-content:space-between;padding:1rem 1.6rem;border-bottom:1px solid var(--bs);background:rgba(255,255,255,.015)}
+.ch h3{font-size:.88rem;font-family:'JetBrains Mono',monospace;color:var(--ac);display:flex;align-items:center;gap:8px}
+.ch h3::before{content:"⟩";opacity:.5}
+.cpb{display:inline-flex;align-items:center;gap:5px;padding:.26rem .7rem;border-radius:999px;border:1px solid var(--bs);background:transparent;color:var(--tm);font-size:.7rem;cursor:pointer;transition:all .18s;font-family:'JetBrains Mono',monospace}
+.cpb:hover{border-color:var(--a1);color:var(--a1)}
+.cbody{padding:1.6rem;overflow-x:auto}
+pre{white-space:pre;color:#d8e3ff;font-family:'JetBrains Mono',monospace;font-size:.84rem;line-height:1.78;tab-size:4}
+.kw{color:#c084fc}.fn{color:#60a5fa}.str{color:#5eead4}.cm{color:#3d4060;font-style:italic}.nu{color:#fbbf24}.cl{color:#f472b6}.de{color:#fb923c}.op{color:#94a3b8}
+/* Architecture containers */
+.arch{background:rgba(8,8,18,.96);border:1px solid rgba(96,165,250,.18);border-radius:var(--r);padding:1.8rem;margin-bottom:1.6rem;overflow-x:auto;text-align:center}
+.arch-title{font-family:'JetBrains Mono',monospace;font-size:.68rem;text-transform:uppercase;letter-spacing:.2em;color:var(--ac);margin-bottom:1.4rem;text-align:left;display:flex;align-items:center;gap:8px}
+.arch-title::before{content:"▸";opacity:.7}
+/* Callouts */
+.callout{border-radius:14px;padding:1.2rem 1.4rem;margin-bottom:1.2rem;display:flex;gap:1rem;align-items:flex-start}
+.callout-key{background:rgba(94,234,212,.05);border:1px solid rgba(94,234,212,.22)}
+.callout-warn{background:rgba(251,191,36,.05);border:1px solid rgba(251,191,36,.22)}
+.callout-insight{background:rgba(167,139,250,.05);border:1px solid rgba(167,139,250,.22)}
+.callout-scenario{background:rgba(96,165,250,.05);border:1px solid rgba(96,165,250,.22)}
+.callout-danger{background:rgba(244,114,182,.05);border:1px solid rgba(244,114,182,.22)}
+.callout-icon{font-size:1.35rem;flex-shrink:0;margin-top:.08rem}
+.callout-body h4{font-size:.96rem;margin-bottom:.35rem;color:var(--t1);font-weight:700}
+.callout-body p{font-size:.88rem;color:var(--t2);line-height:1.68}
+.callout-body code{font-family:'JetBrains Mono',monospace;font-size:.82rem;background:rgba(255,255,255,.06);padding:.1rem .3rem;border-radius:4px;color:var(--ac)}
+/* Grids */
+.g2{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:1.4rem;margin-bottom:1.6rem}
+.g3{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:1.2rem;margin-bottom:1.6rem}
+.g4{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:1rem;margin-bottom:1.4rem}
+@media(max-width:768px){.g2,.g3,.g4{grid-template-columns:1fr}}
+.mc2{border:1px solid var(--bs);border-radius:16px;padding:1.4rem;background:rgba(255,255,255,.02);transition:border-color .2s}
+.mc2:hover{border-color:rgba(96,165,250,.3)}
+.mc2 h4{font-size:1rem;margin-bottom:.6rem;color:var(--t1);font-weight:700}
+.mc2 p{font-size:.88rem;color:var(--t2);line-height:1.68}
+.mc2 .tag{display:inline-block;font-family:'JetBrains Mono',monospace;font-size:.68rem;padding:.2rem .55rem;border-radius:999px;margin-bottom:.6rem;text-transform:uppercase;letter-spacing:.1em}
+/* Tables */
+.tbl{width:100%;border-collapse:collapse;font-size:.86rem}
+.tbl th{text-align:left;padding:.8rem 1.1rem;font-family:'JetBrains Mono',monospace;font-size:.64rem;text-transform:uppercase;color:var(--tm);border-bottom:1px solid var(--bs);letter-spacing:.08em}
+.tbl td{padding:.8rem 1.1rem;border-bottom:1px solid rgba(255,255,255,.035);color:var(--t2);vertical-align:top;line-height:1.65}
+.tbl td:first-child{color:var(--t1);font-weight:600}.tbl tr:last-child td{border-bottom:none}
+.tbl tr:hover td{background:rgba(255,255,255,.015)}
+/* Scenario box */
+.scenario{background:linear-gradient(135deg,rgba(96,165,250,.04),rgba(167,139,250,.04));border:1px solid rgba(96,165,250,.2);border-radius:var(--r);padding:1.8rem;margin-bottom:1.6rem;position:relative}
+.scenario::before{content:"SCENARIO";position:absolute;top:-1px;left:1.5rem;background:var(--bg);padding:0 .6rem;font-family:'JetBrains Mono',monospace;font-size:.62rem;color:var(--a2);letter-spacing:.2em}
+.scenario h4{color:var(--a2);margin-bottom:.8rem;font-size:1.05rem}
+.scenario p{font-size:.9rem;color:var(--t2);line-height:1.72;margin-bottom:.6rem}
+.scenario p:last-child{margin-bottom:0}
+.scenario code{font-family:'JetBrains Mono',monospace;font-size:.82rem;background:rgba(96,165,250,.1);padding:.1rem .3rem;border-radius:4px;color:var(--a2)}
+/* Quiz */
+.qc{background:linear-gradient(180deg,rgba(18,18,32,.98),rgba(12,12,24,.98));border:1px solid var(--bs);border-radius:var(--r);box-shadow:var(--sh);padding:2.2rem}
+.qc-title{font-size:1.2rem;font-weight:800;margin-bottom:.25rem;color:var(--t1)}
+.qc-sub{font-size:.82rem;color:var(--tm);margin-bottom:1.8rem;font-family:'JetBrains Mono',monospace}
+.qq{border:1px solid var(--bs);border-radius:18px;padding:1.8rem;background:rgba(255,255,255,.012);margin-bottom:1.4rem;transition:border-color .3s,background .3s}
+.qq.answered{border-color:rgba(96,165,250,.3);background:rgba(96,165,250,.02)}
+.qnum{font-family:'JetBrains Mono',monospace;font-size:.66rem;color:var(--ac);text-transform:uppercase;letter-spacing:.18em;margin-bottom:.6rem;display:flex;align-items:center;gap:8px}
+.qnum::after{content:"";height:1px;flex:1;background:rgba(96,165,250,.2)}
+.qq h4{font-size:.97rem;margin-bottom:1.2rem;color:var(--t1);line-height:1.6;font-weight:600}
+.qo{display:grid;gap:.6rem}
+.qob{border:1px solid var(--bs);border-radius:12px;padding:1rem 1.2rem;background:rgba(255,255,255,.018);color:var(--t2);cursor:pointer;transition:all .22s;text-align:left;font-size:.88rem;font-family:'Outfit',sans-serif;width:100%;line-height:1.6;position:relative;padding-left:3.2rem}
+.qob::before{content:attr(data-opt);position:absolute;left:1rem;top:50%;transform:translateY(-50%);font-family:'JetBrains Mono',monospace;font-size:.76rem;font-weight:700;color:var(--tm);width:1.4rem;text-align:center;transition:color .2s}
+.qob:hover:not([disabled]){border-color:rgba(96,165,250,.5);background:rgba(96,165,250,.05);color:var(--t1)}
+.qob:hover:not([disabled])::before{color:var(--ac)}
+.qob.ok{border-color:rgba(94,234,212,.6);background:rgba(94,234,212,.08);color:var(--t1)}
+.qob.ok::before{color:#5eead4}
+.qob.no{border-color:rgba(244,114,182,.4);background:rgba(244,114,182,.06);color:var(--t2)}
+.qob.no::before{color:#f472b6}
+.qob[disabled]{cursor:default}
+.qfeed{margin-top:1rem;border-radius:14px;padding:1.2rem 1.4rem;display:none}
+.qfeed.correct{background:rgba(94,234,212,.05);border:1px solid rgba(94,234,212,.25)}
+.qfeed.wrong{background:rgba(244,114,182,.04);border:1px solid rgba(244,114,182,.2)}
+.qfeed-head{font-weight:700;margin-bottom:.4rem;font-size:.92rem}
+.qfeed.correct .qfeed-head{color:#5eead4}
+.qfeed.wrong .qfeed-head{color:#f472b6}
+.qfeed-why{color:var(--t2);font-size:.87rem;line-height:1.68}
+.qfeed-why strong{color:var(--t1)}
+.qfeed-why code{font-family:'JetBrains Mono',monospace;font-size:.8rem;background:rgba(255,255,255,.06);padding:.1rem .3rem;border-radius:4px;color:var(--ac)}
+.qprog{display:flex;align-items:center;gap:1.2rem;margin-bottom:1.8rem}
+.qprog-bar{flex:1;height:5px;background:rgba(255,255,255,.05);border-radius:999px;overflow:hidden}
+.qprog-fill{height:100%;background:var(--gl);border-radius:999px;width:0%;transition:width .5s ease}
+.qprog-text{font-family:'JetBrains Mono',monospace;font-size:.7rem;color:var(--tm);white-space:nowrap}
+.qs{text-align:center;padding:2rem;border:1px solid var(--bs);border-radius:18px;margin-top:1.8rem;background:rgba(255,255,255,.01)}
+.qs h3{font-size:1.8rem;margin-bottom:.5rem;font-weight:800}
+.qs p{color:var(--t2);font-size:.92rem}
+/* Nav buttons */
+.pr,.nx{display:inline-flex;align-items:center;gap:7px;padding:.55rem 1.2rem;border-radius:999px;border:1px solid var(--bs);background:rgba(255,255,255,.02);color:var(--t2);font-size:.84rem;text-decoration:none;transition:all .2s}
+.pr:hover,.nx:hover{border-color:var(--ac);color:var(--ac)}
+/* Metric bars */
+.metric-row{display:flex;align-items:center;gap:1rem;margin-bottom:.7rem}
+.metric-label{font-family:'JetBrains Mono',monospace;font-size:.76rem;color:var(--t2);min-width:140px}
+.metric-bar{flex:1;height:8px;background:rgba(255,255,255,.05);border-radius:999px;overflow:hidden}
+.metric-fill{height:100%;border-radius:999px;transition:width 1.2s ease}
+.metric-val{font-family:'JetBrains Mono',monospace;font-size:.76rem;color:var(--t1);min-width:40px;text-align:right}
+/* Footer */
+footer{border-top:1px solid var(--bs);padding:3rem 2rem;text-align:center;color:var(--tm);font-size:.82rem}</style>
+</head>
+<body>
+<div class="sp" id="sp"></div>
+<nav>
+  <a class="nbr" href="#"><div class="nbr-dot"></div>Quantization for Modern AI · M1</a>
+  <span class="nm">Product Quantization · ADC · Codebook Training · Residual Quantization · OPQ · IVFPQ · ScaNN · AQLM · 100M-Vector Search</span>
+  <div class="na"><a href="quant_m0.html" class="pr">← M0: Quantization Fundamentals</a><a href="quant_m2.html" class="nx">M2: QAT and FP8 Training →</a></div>
+</nav>
+<section class="hero">
+  <div class="hg"></div>
+  <div class="hi">
+    <div class="hl">Quantization for Modern AI · Module 1</div>
+    <h1>Vector Quantization — PQ, RQ, OPQ and Production Search</h1>
+    <p class="sub">Product Quantization · ADC · Codebook Training · Residual Quantization · OPQ · IVFPQ · ScaNN · AQLM · 100M-Vector Search</p>
+    <p class="hs">Scalar quantization treats every dimension of a vector independently — a fundamental limitation when dimensions are correlated. Product Quantization splits the vector into subvectors and builds a separate codebook for each, enabling compression ratios of 100×+ while preserving approximate distances via a precomputed lookup table. Residual Quantization takes a different axis: iteratively encode the error, building hierarchical codes that enable progressive quality levels. This module builds both methods from mathematical foundations through production-grade FAISS and ScaNN systems — with complete implementations, interactive exploration, and deep scenario-based assessment designed for engineers who will actually deploy these systems.</p>
+<div class="hm">
+<span class="mp hl2">⏱ 120 min</span>
+<span class="mp">PQ: split · codebook · ADC</span>
+<span class="mp">Lloyd's algorithm convergence</span>
+<span class="mp">Asymmetric Distance Computation</span>
+<span class="mp">RQ: iterative residual encoding</span>
+<span class="mp">OPQ: Procrustes rotation</span>
+<span class="mp">IVFPQ: 100M+ scale search</span>
+<span class="mp">ScaNN anisotropic quantization</span>
+<span class="mp">AQLM: RQ for LLM weights</span>
+</div>
+  </div>
+  <div class="sc"><span>Scroll</span><div class="arr"></div></div>
+</section>
+<div class="cw">
+
+<section class="sec" id="s1">
+<div class="sn">01 · Product Quantization — The ADC Breakthrough</div>
+<h2>1024 Multiplications Reduced<br><span class="gt">to 4 Table Lookups</span></h2>
+<p class="lead">Product Quantization (Jégou et al. 2011) is the workhorse of production vector search. Given a d-dimensional vector, PQ splits it into m non-overlapping subvectors and quantizes each to one of k centroids in a separate sub-codebook. The storage cost drops from d × 4 bytes to m × ⌈log₂(k)⌉ bits. More importantly, approximate distances can be computed by precomputing a query-specific m × k distance table once, then each database vector lookup costs only m additions — reducing per-vector distance computation from O(d) to O(m) regardless of dimension.</p>
+<div class="arch">
+<div class="arch-title">PQ pipeline: split into m=4 subvectors → 4 sub-codebooks → ADC table → O(m) distance</div>
+<svg viewBox="0 0 900 306" xmlns="http://www.w3.org/2000/svg" style="width:100%;max-width:900px;display:block">
+<rect width="900" height="306" fill="#07070f" rx="14"/>
+<text x="450" y="24" font-family="JetBrains Mono,monospace" font-size="11" fill="#60a5fa" text-anchor="middle" letter-spacing="2" font-weight="bold">PRODUCT QUANTIZATION — SPLIT · ENCODE · ADC SEARCH</text>
+<rect x="14" y="36" width="110" height="52" rx="8" fill="rgba(96,165,250,.08)" stroke="rgba(96,165,250,.35)" stroke-width="1.5"/>
+<text x="69" y="54" font-family="JetBrains Mono,monospace" font-size="8" fill="#60a5fa" text-anchor="middle" font-weight="bold">Query q ∈ ℝᵈ</text>
+<text x="69" y="68" font-family="JetBrains Mono,monospace" font-size="7" fill="#7c7c95" text-anchor="middle">d=1024 dims</text>
+<text x="69" y="80" font-family="JetBrains Mono,monospace" font-size="7" fill="#7c7c95" text-anchor="middle">e.g. embedding</text>
+<line x1="126" y1="62" x2="144" y2="62" stroke="#60a5fa" stroke-width="1.5"/>
+<polygon points="140,58 148,62 140,66" fill="#60a5fa"/>
+<rect x="148" y="36" width="200" height="52" rx="8" fill="rgba(167,139,250,.06)" stroke="rgba(167,139,250,.3)"/>
+<text x="248" y="52" font-family="JetBrains Mono,monospace" font-size="8" fill="#a78bfa" text-anchor="middle" font-weight="bold">Split: m=4 subvectors</text>
+<rect x="158" y="60" width="40" height="20" rx="3" fill="rgba(96,165,250,.3)"  stroke="rgba(96,165,250,.6)"/><text x="178" y="74" font-family="JetBrains Mono,monospace" font-size="6" fill="#60a5fa" text-anchor="middle">q₁</text>
+<rect x="202" y="60" width="40" height="20" rx="3" fill="rgba(94,234,212,.3)"  stroke="rgba(94,234,212,.6)"/><text x="222" y="74" font-family="JetBrains Mono,monospace" font-size="6" fill="#5eead4" text-anchor="middle">q₂</text>
+<rect x="246" y="60" width="40" height="20" rx="3" fill="rgba(244,114,182,.3)" stroke="rgba(244,114,182,.6)"/><text x="266" y="74" font-family="JetBrains Mono,monospace" font-size="6" fill="#f472b6" text-anchor="middle">q₃</text>
+<rect x="290" y="60" width="40" height="20" rx="3" fill="rgba(251,191,36,.3)"  stroke="rgba(251,191,36,.6)"/><text x="310" y="74" font-family="JetBrains Mono,monospace" font-size="6" fill="#fbbf24" text-anchor="middle">q₄</text>
+<line x1="350" y1="62" x2="368" y2="62" stroke="#a78bfa" stroke-width="1.5"/>
+<polygon points="364,58 372,62 364,66" fill="#a78bfa"/>
+<text x="477" y="14" font-family="JetBrains Mono,monospace" font-size="7" fill="#7c7c95" text-anchor="middle">4 sub-codebooks (each k=256 entries)</text>
+<rect x="372" y="20" width="210" height="30" rx="5" fill="rgba(96,165,250,.08)"  stroke="rgba(96,165,250,.35)"  stroke-dasharray="3,2"/>
+<text x="477" y="39" font-family="JetBrains Mono,monospace" font-size="7" fill="#60a5fa" text-anchor="middle">C⁽¹⁾ ∈ ℝ²⁵⁶ˣ²⁵⁶ — 256 centroids</text>
+<rect x="372" y="54" width="210" height="30" rx="5" fill="rgba(94,234,212,.08)"  stroke="rgba(94,234,212,.35)"  stroke-dasharray="3,2"/>
+<text x="477" y="73" font-family="JetBrains Mono,monospace" font-size="7" fill="#5eead4" text-anchor="middle">C⁽²⁾ ∈ ℝ²⁵⁶ˣ²⁵⁶</text>
+<rect x="372" y="88" width="210" height="30" rx="5" fill="rgba(244,114,182,.08)" stroke="rgba(244,114,182,.35)" stroke-dasharray="3,2"/>
+<text x="477" y="107" font-family="JetBrains Mono,monospace" font-size="7" fill="#f472b6" text-anchor="middle">C⁽³⁾ ∈ ℝ²⁵⁶ˣ²⁵⁶</text>
+<rect x="372" y="122" width="210" height="30" rx="5" fill="rgba(251,191,36,.08)"  stroke="rgba(251,191,36,.35)"  stroke-dasharray="3,2"/>
+<text x="477" y="141" font-family="JetBrains Mono,monospace" font-size="7" fill="#fbbf24" text-anchor="middle">C⁽⁴⁾ ∈ ℝ²⁵⁶ˣ²⁵⁶</text>
+<text x="741" y="14" font-family="JetBrains Mono,monospace" font-size="8" fill="#5eead4" text-anchor="middle" font-weight="bold">ADC Distance Table (precomputed once per query)</text>
+<rect x="596" y="20" width="290" height="142" rx="8" fill="rgba(94,234,212,.04)" stroke="rgba(94,234,212,.25)" stroke-width="1.5"/>
+<text x="626" y="38" font-family="JetBrains Mono,monospace" font-size="7" fill="#7c7c95" text-anchor="middle">sub</text>
+<text x="666" y="38" font-family="JetBrains Mono,monospace" font-size="7" fill="#7c7c95" text-anchor="middle">k=0</text>
+<text x="700" y="38" font-family="JetBrains Mono,monospace" font-size="7" fill="#7c7c95" text-anchor="middle">k=1</text>
+<text x="734" y="38" font-family="JetBrains Mono,monospace" font-size="7" fill="#7c7c95" text-anchor="middle">k=2</text>
+<text x="768" y="38" font-family="JetBrains Mono,monospace" font-size="7" fill="#7c7c95" text-anchor="middle">...</text>
+<text x="840" y="38" font-family="JetBrains Mono,monospace" font-size="7" fill="#7c7c95" text-anchor="middle">k=255</text>
+<line x1="604" y1="44" x2="878" y2="44" stroke="rgba(255,255,255,.06)"/>
+<text x="626" y="58" font-family="JetBrains Mono,monospace" font-size="7" fill="#60a5fa" text-anchor="middle">j=1</text>
+<text x="666" y="58" font-family="JetBrains Mono,monospace" font-size="7" fill="#ececf6" text-anchor="middle">0.12</text>
+<text x="700" y="58" font-family="JetBrains Mono,monospace" font-size="7" fill="#ececf6" text-anchor="middle">0.34</text>
+<text x="734" y="58" font-family="JetBrains Mono,monospace" font-size="7" fill="#fbbf24" font-weight="bold" text-anchor="middle">0.09</text>
+<text x="840" y="58" font-family="JetBrains Mono,monospace" font-size="7" fill="#ececf6" text-anchor="middle">0.87</text>
+<text x="626" y="76" font-family="JetBrains Mono,monospace" font-size="7" fill="#5eead4" text-anchor="middle">j=2</text>
+<text x="666" y="76" font-family="JetBrains Mono,monospace" font-size="7" fill="#ececf6" text-anchor="middle">0.55</text>
+<text x="700" y="76" font-family="JetBrains Mono,monospace" font-size="7" fill="#ececf6" text-anchor="middle">0.21</text>
+<text x="734" y="76" font-family="JetBrains Mono,monospace" font-size="7" fill="#ececf6" text-anchor="middle">0.44</text>
+<text x="840" y="76" font-family="JetBrains Mono,monospace" font-size="7" fill="#fbbf24" font-weight="bold" text-anchor="middle">0.13</text>
+<text x="626" y="94" font-family="JetBrains Mono,monospace" font-size="7" fill="#f472b6" text-anchor="middle">j=3</text>
+<text x="666" y="94" font-family="JetBrains Mono,monospace" font-size="7" fill="#ececf6" text-anchor="middle">0.77</text>
+<text x="700" y="94" font-family="JetBrains Mono,monospace" font-size="7" fill="#fbbf24" font-weight="bold" text-anchor="middle">0.62</text>
+<text x="734" y="94" font-family="JetBrains Mono,monospace" font-size="7" fill="#ececf6" text-anchor="middle">0.08</text>
+<text x="840" y="94" font-family="JetBrains Mono,monospace" font-size="7" fill="#ececf6" text-anchor="middle">0.31</text>
+<text x="626" y="112" font-family="JetBrains Mono,monospace" font-size="7" fill="#fbbf24" text-anchor="middle">j=4</text>
+<text x="666" y="112" font-family="JetBrains Mono,monospace" font-size="7" fill="#fbbf24" font-weight="bold" text-anchor="middle">0.03</text>
+<text x="700" y="112" font-family="JetBrains Mono,monospace" font-size="7" fill="#ececf6" text-anchor="middle">0.91</text>
+<text x="734" y="112" font-family="JetBrains Mono,monospace" font-size="7" fill="#ececf6" text-anchor="middle">0.25</text>
+<text x="840" y="112" font-family="JetBrains Mono,monospace" font-size="7" fill="#ececf6" text-anchor="middle">0.48</text>
+<line x1="604" y1="120" x2="878" y2="120" stroke="rgba(255,255,255,.04)"/>
+<text x="741" y="137" font-family="JetBrains Mono,monospace" font-size="7" fill="#5eead4" text-anchor="middle">Build cost: m×k = 4×256 = 1024 L2 distances</text>
+<text x="741" y="152" font-family="JetBrains Mono,monospace" font-size="7" fill="#7c7c95" text-anchor="middle">Per DB vector lookup: m = 4 table reads</text>
+<text x="450" y="178" font-family="JetBrains Mono,monospace" font-size="8" fill="#7c7c95" text-anchor="middle">── Distance to DB vector with code [i₁=2, i₂=255, i₃=1, i₄=0] ──</text>
+<text x="40" y="196" font-family="JetBrains Mono,monospace" font-size="8" fill="#7c7c95">DB vec code:</text>
+<rect x="128" y="184" width="32" height="22" rx="4" fill="rgba(96,165,250,.2)"  stroke="rgba(96,165,250,.5)"/><text x="144" y="199" font-family="JetBrains Mono,monospace" font-size="8" fill="#60a5fa"  text-anchor="middle">i₁=2</text>
+<rect x="164" y="184" width="36" height="22" rx="4" fill="rgba(94,234,212,.2)"  stroke="rgba(94,234,212,.5)"/><text x="182" y="199" font-family="JetBrains Mono,monospace" font-size="8" fill="#5eead4"  text-anchor="middle">i₂=255</text>
+<rect x="204" y="184" width="32" height="22" rx="4" fill="rgba(244,114,182,.2)" stroke="rgba(244,114,182,.5)"/><text x="220" y="199" font-family="JetBrains Mono,monospace" font-size="8" fill="#f472b6"  text-anchor="middle">i₃=1</text>
+<rect x="240" y="184" width="32" height="22" rx="4" fill="rgba(251,191,36,.2)"  stroke="rgba(251,191,36,.5)"/><text x="256" y="199" font-family="JetBrains Mono,monospace" font-size="8" fill="#fbbf24"  text-anchor="middle">i₄=0</text>
+<text x="300" y="194" font-family="JetBrains Mono,monospace" font-size="9" fill="#ececf6">d(q,x) ≈ T[1,2] + T[2,255] + T[3,1] + T[4,0]</text>
+<text x="300" y="211" font-family="JetBrains Mono,monospace" font-size="9" fill="#5eead4">= 0.09 + 0.13 + 0.62 + 0.03 = <tspan font-weight="bold">0.87</tspan></text>
+<text x="700" y="203" font-family="JetBrains Mono,monospace" font-size="8" fill="#fbbf24" font-weight="bold">Only m=4 adds!</text>
+<text x="700" y="216" font-family="JetBrains Mono,monospace" font-size="7" fill="#7c7c95">vs d=1024 for exact L2</text>
+<rect x="14" y="228" width="872" height="62" rx="9" fill="rgba(255,255,255,.02)" stroke="rgba(255,255,255,.07)"/>
+<text x="450" y="246" font-family="JetBrains Mono,monospace" font-size="9" fill="#ececf6" text-anchor="middle" font-weight="bold">Compression vs Speed vs Accuracy Trade-off</text>
+<text x="80"  y="263" font-family="JetBrains Mono,monospace" font-size="7" fill="#60a5fa"  text-anchor="middle" font-weight="bold">Storage</text>
+<text x="80"  y="277" font-family="JetBrains Mono,monospace" font-size="7" fill="#ececf6" text-anchor="middle">4KB → 4 bytes</text>
+<text x="80"  y="288" font-family="JetBrains Mono,monospace" font-size="7" fill="#5eead4" text-anchor="middle">1024× comp.</text>
+<text x="270" y="263" font-family="JetBrains Mono,monospace" font-size="7" fill="#5eead4"  text-anchor="middle" font-weight="bold">Search speed</text>
+<text x="270" y="277" font-family="JetBrains Mono,monospace" font-size="7" fill="#ececf6" text-anchor="middle">1B vecs: m adds each</text>
+<text x="270" y="288" font-family="JetBrains Mono,monospace" font-size="7" fill="#5eead4" text-anchor="middle">256× faster than L2</text>
+<text x="490" y="263" font-family="JetBrains Mono,monospace" font-size="7" fill="#fbbf24"  text-anchor="middle" font-weight="bold">Recall@10</text>
+<text x="490" y="277" font-family="JetBrains Mono,monospace" font-size="7" fill="#ececf6" text-anchor="middle">m=4: ~70–80%</text>
+<text x="490" y="288" font-family="JetBrains Mono,monospace" font-size="7" fill="#fbbf24" text-anchor="middle">m=64: ~90–95%</text>
+<text x="720" y="263" font-family="JetBrains Mono,monospace" font-size="7" fill="#a78bfa"  text-anchor="middle" font-weight="bold">Codebook memory</text>
+<text x="720" y="277" font-family="JetBrains Mono,monospace" font-size="7" fill="#ececf6" text-anchor="middle">m×k×(d/m)×4B</text>
+<text x="720" y="288" font-family="JetBrains Mono,monospace" font-size="7" fill="#a78bfa" text-anchor="middle">64×256×16×4B = 1MB</text>
+</svg>
+</div>
+<div class="card card-accent" style="padding:0;overflow:hidden">
+<div style="padding:1.2rem 1.6rem;border-bottom:1px solid rgba(255,255,255,.06);display:flex;align-items:center;justify-content:space-between">
+  <div style="font-family:'JetBrains Mono',monospace;font-size:.75rem;color:var(--ac);text-transform:uppercase;letter-spacing:.18em">⟩ PQ Recall vs m — Interactive Explorer</div>
+  <div style="font-size:.75rem;color:var(--tm)">Tune m (subvectors) and k (codebook size)</div>
+</div>
+<div style="padding:1.6rem;display:grid;grid-template-columns:1fr 1fr;gap:2rem">
+  <div>
+    <div style="font-family:'JetBrains Mono',monospace;font-size:.75rem;color:var(--ac);margin-bottom:.5rem">Number of subvectors m</div>
+    <input type="range" id="pq-m" min="1" max="64" value="4" style="width:100%;accent-color:var(--ac);margin-bottom:.4rem">
+    <div style="display:flex;justify-content:space-between;font-family:'JetBrains Mono',monospace;font-size:.7rem;color:var(--tm)"><span>m=1 (full VQ)</span><span>m=64 (fine)</span></div>
+    <div style="margin-top:1rem;font-family:'JetBrains Mono',monospace;font-size:.75rem;color:var(--ac);margin-bottom:.5rem">Codebook size k</div>
+    <input type="range" id="pq-k" min="8" max="512" value="256" step="8" style="width:100%;accent-color:var(--a3);margin-bottom:.4rem">
+    <div style="display:flex;justify-content:space-between;font-family:'JetBrains Mono',monospace;font-size:.7rem;color:var(--tm)"><span>k=8 (3 bits)</span><span>k=512 (9 bits)</span></div>
+    <div style="margin-top:1.4rem;display:grid;grid-template-columns:1fr 1fr;gap:.8rem" id="pq-metrics">
+    </div>
+  </div>
+  <div>
+    <div style="font-family:'JetBrains Mono',monospace;font-size:.75rem;color:var(--ac);margin-bottom:.6rem">RECALL@10 vs m (estimated)</div>
+    <canvas id="pqcanvas" width="320" height="180" style="width:100%;border-radius:10px;background:#0a0a18;border:1px solid rgba(255,255,255,.06)"></canvas>
+    <div style="margin-top:.5rem;font-size:.72rem;font-family:JetBrains Mono,monospace;color:var(--tm)" id="pq-insight"></div>
+  </div>
+</div>
+</div>
+<script>
+(function(){
+  function recall(m,k,d){
+    d=d||1024;
+    var bpd=(m*Math.log2(k))/d;
+    var base=1-Math.exp(-2.5*bpd);
+    var mBonus=1-Math.exp(-m/10);
+    return Math.min(0.99,base*0.6+mBonus*0.4);
+  }
+  function storage(m,k,d){d=d||1024;return (m*Math.log2(k)/8).toFixed(1);}
+  function codebookMB(m,k,d){d=d||1024;return (m*k*(d/m)*4/1e6).toFixed(2);}
+  function searchOps(m){return m;}
+  function render(){
+    var m=parseInt(document.getElementById('pq-m').value);
+    var k=parseInt(document.getElementById('pq-k').value);
+    var rc=recall(m,k);
+    var bpv=m*Math.log2(k)/8;
+    var compratio=(1024*4/bpv).toFixed(0);
+    var mets=document.getElementById('pq-metrics');
+    mets.innerHTML=[
+      ['Recall@10',Math.round(rc*100)+'%',rc>0.9?'#5eead4':rc>0.75?'#fbbf24':'#f472b6'],
+      ['Bits/vec',m+'×'+Math.round(Math.log2(k))+'='+(m*Math.round(Math.log2(k)))+'b','#a78bfa'],
+      ['Compression',compratio+'×','#60a5fa'],
+      ['ADC ops/vec',m+' additions','#5eead4'],
+      ['Codebook',codebookMB(m,k)+'MB','#fbbf24'],
+      ['Stored size',storage(m,k)+' bytes','#ececf6']
+    ].map(function(r){
+      return '<div style="background:rgba(255,255,255,.02);border:1px solid rgba(255,255,255,.06);border-radius:10px;padding:.7rem"><div style="font-family:JetBrains Mono,monospace;font-size:.62rem;color:var(--tm);text-transform:uppercase;margin-bottom:.25rem">'+r[0]+'</div><div style="font-size:1.1rem;font-weight:800;color:'+r[2]+'">'+r[1]+'</div></div>';
+    }).join('');
+    document.getElementById('pq-insight').textContent=
+      rc>0.9?'Excellent recall — suitable for production RAG systems.':
+      rc>0.75?'Good recall — fast search, minor accuracy trade-off.':
+      'Low recall — faster search but many relevant results missed.';
+    drawChart(m,k);
+  }
+  function drawChart(curM,k){
+    var c=document.getElementById('pqcanvas');
+    var ctx=c.getContext('2d');
+    ctx.clearRect(0,0,c.width,c.height);
+    var pad={l:36,r:16,t:12,b:30},W=c.width-pad.l-pad.r,H=c.height-pad.t-pad.b;
+    ctx.strokeStyle='rgba(255,255,255,.05)';ctx.lineWidth=1;
+    for(var i=0;i<=4;i++){
+      var y=pad.t+H*(1-i/4);
+      ctx.beginPath();ctx.moveTo(pad.l,y);ctx.lineTo(pad.l+W,y);ctx.stroke();
+      ctx.fillStyle='rgba(255,255,255,.3)';ctx.font='9px JetBrains Mono';
+      ctx.fillText((i*25)+'%',2,y+4);
+    }
+    var ms=[1,2,4,8,16,24,32,48,64];
+    ctx.strokeStyle='#60a5fa';ctx.lineWidth=2;ctx.beginPath();
+    ms.forEach(function(m,i){
+      var x=pad.l+i*W/(ms.length-1);
+      var y=pad.t+H*(1-recall(m,k));
+      if(i===0)ctx.moveTo(x,y);else ctx.lineTo(x,y);
+    });
+    ctx.stroke();
+    ms.forEach(function(m,i){
+      var x=pad.l+i*W/(ms.length-1);
+      var y=pad.t+H*(1-recall(m,k));
+      var isCur=m===curM;
+      ctx.beginPath();ctx.arc(x,y,isCur?6:3,0,2*Math.PI);
+      ctx.fillStyle=isCur?'#fbbf24':'#60a5fa';ctx.fill();
+      if(isCur){
+        ctx.fillStyle='#fbbf24';ctx.font='bold 9px JetBrains Mono';
+        ctx.fillText('m='+m,x-12,y-10);
+      }
+      ctx.fillStyle='rgba(255,255,255,.25)';ctx.font='8px JetBrains Mono';
+      ctx.fillText(m,x-4,pad.t+H+16);
+    });
+    ctx.fillStyle='rgba(255,255,255,.3)';ctx.font='9px JetBrains Mono';
+    ctx.fillText('m →',pad.l+W-20,pad.t+H+24);
+  }
+  document.getElementById('pq-m').addEventListener('input',render);
+  document.getElementById('pq-k').addEventListener('input',render);
+  render();
+})();
+</script>
+<div class="cc">
+  <div class="ch"><h3>product_quantization.py — PQ codebook training, encoding, ADC distance computation</h3><button class="cpb" onclick="cp(this,'c1')">Copy</button></div>
+  <div class="cbody"><pre id="c1"><span class="kw">import</span> numpy <span class="kw">as</span> np
+<span class="kw">from</span> sklearn.cluster <span class="kw">import</span> MiniBatchKMeans
+<span class="kw">from</span> dataclasses <span class="kw">import</span> dataclass, field
+
+@dataclass
+<span class="kw">class</span> <span class="cl">PQCodebook</span>:
+    <span class="str">"""Trained Product Quantization codebook — everything needed for encode/decode."""</span>
+    centroids: np.ndarray      <span class="cm"># shape (m, k, d_sub) — m books, k centroids, d/m dims</span>
+    m:         int             <span class="cm"># number of subvectors</span>
+    k:         int             <span class="cm"># codebook size per subspace (usually 256)</span>
+    d:         int             <span class="cm"># original vector dimension</span>
+
+    @property
+    <span class="kw">def</span> <span class="fn">d_sub</span>(self) -> int: <span class="kw">return</span> self.d // self.m
+    @property
+    <span class="kw">def</span> <span class="fn">bits_per_dim</span>(self) -> float: <span class="kw">return</span> self.m * np.log2(self.k) / self.d
+    @property
+    <span class="kw">def</span> <span class="fn">compression_ratio</span>(self) -> float: <span class="kw">return</span> (self.d * <span class="nu">32</span>) / (self.m * np.log2(self.k))
+
+
+<span class="kw">def</span> <span class="fn">train_pq</span>(X: np.ndarray, m: int = <span class="nu">32</span>, k: int = <span class="nu">256</span>,
+             max_iter: int = <span class="nu">300</span>) -> <span class="cl">PQCodebook</span>:
+    <span class="str">"""
+    Train Product Quantization codebook on dataset X.
+
+    Algorithm (Lloyd's / k-means per subspace):
+    1. Split each vector into m non-overlapping subvectors of size d/m.
+    2. For each subspace j: run k-means on the j-th subvectors of all training
+       vectors to produce k centroids (the j-th sub-codebook C⁽ʲ⁾).
+    3. Training is INDEPENDENT per subspace — the m k-means problems are
+       solved in parallel. This is what makes PQ training O(m × N × k × d/m)
+       = O(N × k × d) — the same as single-codebook VQ but with m-times
+       better accuracy due to the product structure.
+
+    Why k=256? Each subvector index fits in 1 byte (uint8), and 256 centroids
+    give a good accuracy/storage trade-off. The ADC table is k × m = 256 × m
+    float32 values — at m=64 this is 64KB, fitting comfortably in L1 cache.
+
+    Args:
+        X: (N, d) training vectors — needs N >> k for good codebook (N > 40k recommended)
+        m: number of subvectors (must divide d evenly)
+        k: codebook size per subspace
+    """</span>
+    N, d = X.shape
+    assert d % m == <span class="nu">0</span>, f<span class="str">"d={d} must be divisible by m={m}"</span>
+    d_sub = d // m
+    centroids = np.zeros((m, k, d_sub), dtype=np.float32)
+    <span class="kw">for</span> j <span class="kw">in</span> range(m):
+        sub = X[:, j*d_sub:(j+<span class="nu">1</span>)*d_sub]  <span class="cm"># (N, d_sub)</span>
+        kmeans = MiniBatchKMeans(n_clusters=k, max_iter=max_iter,
+                                 batch_size=min(<span class="nu">10000</span>, N), random_state=j)
+        kmeans.fit(sub)
+        centroids[j] = kmeans.cluster_centers_.astype(np.float32)
+    <span class="kw">return</span> <span class="cl">PQCodebook</span>(centroids=centroids, m=m, k=k, d=d)
+
+
+<span class="kw">def</span> <span class="fn">pq_encode</span>(X: np.ndarray, cb: <span class="cl">PQCodebook</span>) -> np.ndarray:
+    <span class="str">"""
+    Encode vectors to PQ codes.
+    Returns: (N, m) uint8 array of codebook indices.
+    """</span>
+    N, d = X.shape
+    codes = np.zeros((N, cb.m), dtype=np.uint8)
+    <span class="kw">for</span> j <span class="kw">in</span> range(cb.m):
+        sub = X[:, j*cb.d_sub:(j+<span class="nu">1</span>)*cb.d_sub]  <span class="cm"># (N, d_sub)</span>
+        C   = cb.centroids[j]                      <span class="cm"># (k, d_sub)</span>
+        <span class="cm"># Batch L2 via broadcasting: ||sub - C||²</span>
+        dists = (np.sum(sub**<span class="nu">2</span>, axis=<span class="nu">1</span>, keepdims=<span class="kw">True</span>)  <span class="cm"># (N,1)</span>
+                 - <span class="nu">2</span> * sub @ C.T                          <span class="cm"># (N,k)</span>
+                 + np.sum(C**<span class="nu">2</span>, axis=<span class="nu">1</span>))                 <span class="cm"># (k,)</span>
+        codes[:, j] = np.argmin(dists, axis=<span class="nu">1</span>)
+    <span class="kw">return</span> codes
+
+
+<span class="kw">def</span> <span class="fn">adc_build_table</span>(q: np.ndarray, cb: <span class="cl">PQCodebook</span>) -> np.ndarray:
+    <span class="str">"""
+    Asymmetric Distance Computation (ADC) — precompute distance table for query q.
+    Returns: (m, k) float32 table. table[j, i] = ||q_j - C⁽ʲ⁾[i]||²
+
+    This is the key to PQ search speed. Given query q:
+    1. Build table: m × k = 32 × 256 = 8192 distances (done ONCE per query).
+    2. For each database vector with code [i₁,...,iₘ]:
+       approx_dist = Σⱼ table[j, iⱼ]   — only m additions, no multiplications!
+
+    For 1B vectors with m=32: 1B × 32 table lookups vs 1B × 1024 multiplies.
+    Speedup: 1024/32 = 32× for the distance computation step.
+    Plus memory: codes are uint8 → 4× smaller than FP32 → better cache hit rate.
+    """</span>
+    table = np.zeros((cb.m, cb.k), dtype=np.float32)
+    <span class="kw">for</span> j <span class="kw">in</span> range(cb.m):
+        q_sub = q[j*cb.d_sub:(j+<span class="nu">1</span>)*cb.d_sub]  <span class="cm"># (d_sub,)</span>
+        C     = cb.centroids[j]                   <span class="cm"># (k, d_sub)</span>
+        table[j] = np.sum((C - q_sub)**<span class="nu">2</span>, axis=<span class="nu">1</span>)
+    <span class="kw">return</span> table
+
+
+<span class="kw">def</span> <span class="fn">adc_search</span>(q: np.ndarray, codes: np.ndarray, cb: <span class="cl">PQCodebook</span>,
+               top_k: int = <span class="nu">10</span>) -> tuple:
+    <span class="str">"""
+    Approximate nearest-neighbour search using ADC.
+    Returns (indices, distances) of top_k nearest neighbours.
+    """</span>
+    table  = adc_build_table(q, cb)              <span class="cm"># (m, k)</span>
+    <span class="cm"># Lookup: for each vector n, sum distances across m subvectors</span>
+    scores = np.sum(table[np.arange(cb.m), codes], axis=<span class="nu">1</span>)  <span class="cm"># (N,)</span>
+    idx    = np.argpartition(scores, top_k)[:top_k]
+    idx    = idx[np.argsort(scores[idx])]
+    <span class="kw">return</span> idx, scores[idx]</pre></div>
+</div>
+
+<div class="callout callout-key">
+  <div class="callout-icon">🔑</div>
+  <div class="callout-body">
+    <h4>Why ADC is faster than SDC (Symmetric Distance Computation)</h4>
+    <p>Two options for PQ distance: <strong>SDC</strong> (both query and DB are PQ-coded) precomputes a k²×m distance table between all centroid pairs — query lookup costs m reads but the table costs k²×m floats ≈ 250KB at k=256,m=4. <strong>ADC</strong> (asymmetric — only DB is coded) computes exact query subvectors vs PQ centroids per query: m×k = 4×256 = 1024 distances to build a 4KB table. Query lookup: m reads. ADC always outperforms SDC because the DB coding error is avoided on the query side. FAISS defaults to ADC. The critical insight: the 4KB ADC table fits in L1 cache (32-64KB typical), making the 50M × 4 lookups purely cache-bound — extremely fast.</p>
+  </div>
+</div>
+</section>
+
+<section class="sec" id="s2">
+<div class="sn">02 · Residual Quantization and OPQ</div>
+<h2>Iterative Error Correction<br><span class="gt">vs Spatial Decomposition</span></h2>
+<p class="lead">Where PQ decomposes a vector spatially (each subvector is a different slice of dimensions), Residual Quantization decomposes it temporally — each level encodes the remaining error from all previous levels. The result is a hierarchical code where truncating at any level gives a valid approximation. This progressive property makes RQ ideal for audio neural codecs (EnCodec, SoundStream) and extreme-compression LLM weights (AQLM). OPQ bridges the gap: it applies a learned orthogonal rotation before PQ encoding to equalise variance across subspaces, recovering 3–5% additional recall at no storage cost.</p>
+<div class="arch">
+<div class="arch-title">RQ vs PQ vs OPQ+IVFPQ — three strategies, different accuracy-speed trade-offs</div>
+<svg viewBox="0 0 900 280" xmlns="http://www.w3.org/2000/svg" style="width:100%;max-width:900px;display:block">
+<rect width="900" height="280" fill="#07070f" rx="14"/>
+<text x="450" y="24" font-family="JetBrains Mono,monospace" font-size="11" fill="#5eead4" text-anchor="middle" letter-spacing="2" font-weight="bold">RQ vs PQ vs OPQ — COMPRESSION STRATEGY COMPARISON</text>
+<rect x="14"  y="36" width="270" height="196" rx="10" fill="rgba(96,165,250,.04)"  stroke="rgba(96,165,250,.25)"  stroke-width="1.5"/>
+<text x="149" y="56" font-family="JetBrains Mono,monospace" font-size="9" fill="#60a5fa" text-anchor="middle" font-weight="bold">Product Quantization (PQ)</text>
+<text x="149" y="70" font-family="JetBrains Mono,monospace" font-size="7" fill="#7c7c95" text-anchor="middle">Spatial decomposition — split once</text>
+<rect x="24"  y="80" width="56" height="18" rx="3" fill="rgba(96,165,250,.2)"  stroke="rgba(96,165,250,.5)"/><text x="52"  y="93" font-family="JetBrains Mono,monospace" font-size="7" fill="#60a5fa" text-anchor="middle">sub₁→C⁽¹⁾</text>
+<rect x="84"  y="80" width="56" height="18" rx="3" fill="rgba(94,234,212,.2)"  stroke="rgba(94,234,212,.5)"/><text x="112" y="93" font-family="JetBrains Mono,monospace" font-size="7" fill="#5eead4" text-anchor="middle">sub₂→C⁽²⁾</text>
+<rect x="144" y="80" width="56" height="18" rx="3" fill="rgba(244,114,182,.2)" stroke="rgba(244,114,182,.5)"/><text x="172" y="93" font-family="JetBrains Mono,monospace" font-size="7" fill="#f472b6" text-anchor="middle">sub₃→C⁽³⁾</text>
+<rect x="204" y="80" width="56" height="18" rx="3" fill="rgba(251,191,36,.2)"  stroke="rgba(251,191,36,.5)"/><text x="232" y="93" font-family="JetBrains Mono,monospace" font-size="7" fill="#fbbf24" text-anchor="middle">sub₄→C⁽⁴⁾</text>
+<text x="149" y="116" font-family="JetBrains Mono,monospace" font-size="8" fill="#ececf6" text-anchor="middle" font-weight="bold">Code: [i₁, i₂, i₃, i₄]</text>
+<text x="149" y="130" font-family="JetBrains Mono,monospace" font-size="7" fill="#7c7c95" text-anchor="middle">m × log₂(k) = 4 × 8 = 32 bits</text>
+<line x1="24" y1="138" x2="274" y2="138" stroke="rgba(255,255,255,.05)"/>
+<text x="149" y="152" font-family="JetBrains Mono,monospace" font-size="7" fill="#5eead4" text-anchor="middle">✓ O(m) ADC lookup</text>
+<text x="149" y="165" font-family="JetBrains Mono,monospace" font-size="7" fill="#5eead4" text-anchor="middle">✓ Parallel subspace encoding</text>
+<text x="149" y="178" font-family="JetBrains Mono,monospace" font-size="7" fill="#7c7c95" text-anchor="middle">✗ Ignores cross-dim correlations</text>
+<text x="149" y="191" font-family="JetBrains Mono,monospace" font-size="7" fill="#7c7c95" text-anchor="middle">✗ Accuracy plateaus at large m</text>
+<text x="149" y="218" font-family="JetBrains Mono,monospace" font-size="7" fill="#fbbf24" text-anchor="middle">Best for: FAISS, fast ANN search</text>
+<rect x="298" y="36" width="270" height="196" rx="10" fill="rgba(94,234,212,.04)"  stroke="rgba(94,234,212,.25)"  stroke-width="1.5"/>
+<text x="433" y="56" font-family="JetBrains Mono,monospace" font-size="9" fill="#5eead4" text-anchor="middle" font-weight="bold">Residual Quantization (RQ)</text>
+<text x="433" y="70" font-family="JetBrains Mono,monospace" font-size="7" fill="#7c7c95" text-anchor="middle">Temporal decomposition — refine iteratively</text>
+<rect x="308" y="80" width="250" height="16" rx="3" fill="rgba(94,234,212,.15)" stroke="rgba(94,234,212,.5)"/>
+<text x="433" y="92" font-family="JetBrains Mono,monospace" font-size="7" fill="#5eead4" text-anchor="middle">Step 1: x → c₁ in C⁽¹⁾ · r₁ = x − c₁</text>
+<rect x="308" y="100" width="210" height="16" rx="3" fill="rgba(94,234,212,.10)" stroke="rgba(94,234,212,.35)"/>
+<text x="413" y="112" font-family="JetBrains Mono,monospace" font-size="7" fill="#5eead4" text-anchor="middle">Step 2: r₁ → c₂ in C⁽²⁾ · r₂ = r₁ − c₂</text>
+<rect x="308" y="120" width="170" height="16" rx="3" fill="rgba(94,234,212,.07)" stroke="rgba(94,234,212,.25)"/>
+<text x="393" y="132" font-family="JetBrains Mono,monospace" font-size="7" fill="#7c7c95" text-anchor="middle">Step 3: r₂ → c₃ · r₃ = r₂ − c₃ …</text>
+<text x="433" y="152" font-family="JetBrains Mono,monospace" font-size="7" fill="#7c7c95" text-anchor="middle">residual shrinks each step</text>
+<text x="433" y="163" font-family="JetBrains Mono,monospace" font-size="8" fill="#ececf6" text-anchor="middle" font-weight="bold">x̂ = c₁ + c₂ + c₃ + … + cᴿ</text>
+<line x1="308" y1="172" x2="558" y2="172" stroke="rgba(255,255,255,.05)"/>
+<text x="433" y="185" font-family="JetBrains Mono,monospace" font-size="7" fill="#5eead4" text-anchor="middle">✓ Higher reconstruction accuracy</text>
+<text x="433" y="198" font-family="JetBrains Mono,monospace" font-size="7" fill="#5eead4" text-anchor="middle">✓ Truncate R for speed/quality tradeoff</text>
+<text x="433" y="211" font-family="JetBrains Mono,monospace" font-size="7" fill="#7c7c95" text-anchor="middle">✗ Slower search (no ADC precompute)</text>
+<text x="433" y="222" font-family="JetBrains Mono,monospace" font-size="7" fill="#fbbf24" text-anchor="middle">Best for: audio CODEC, EnCodec, AQLM</text>
+<rect x="582" y="36" width="304" height="196" rx="10" fill="rgba(167,139,250,.05)" stroke="rgba(167,139,250,.3)"  stroke-width="1.5"/>
+<text x="734" y="56" font-family="JetBrains Mono,monospace" font-size="9" fill="#a78bfa" text-anchor="middle" font-weight="bold">OPQ + IVFPQ (Production Scale)</text>
+<text x="734" y="70" font-family="JetBrains Mono,monospace" font-size="7" fill="#7c7c95" text-anchor="middle">Rotation + inverted index = 100M+ search</text>
+<text x="620" y="90" font-family="JetBrains Mono,monospace" font-size="7" fill="#7c7c95">Problem: PQ subspaces unequal variance</text>
+<text x="620" y="103" font-family="JetBrains Mono,monospace" font-size="7" fill="#a78bfa">OPQ: learn rotation A, encode Ax</text>
+<text x="620" y="116" font-family="JetBrains Mono,monospace" font-size="7" fill="#7c7c95">EM: fix A → PQ, fix PQ → update A via SVD</text>
+<text x="620" y="129" font-family="JetBrains Mono,monospace" font-size="7" fill="#5eead4">+3–5% recall@10 vs vanilla PQ</text>
+<line x1="620" y1="138" x2="876" y2="138" stroke="rgba(255,255,255,.06)"/>
+<text x="734" y="152" font-family="JetBrains Mono,monospace" font-size="8" fill="#a78bfa" text-anchor="middle" font-weight="bold">IVFPQ = Inverted File + PQ</text>
+<text x="620" y="167" font-family="JetBrains Mono,monospace" font-size="7" fill="#7c7c95">Coarse k-means: nlist cells</text>
+<text x="620" y="180" font-family="JetBrains Mono,monospace" font-size="7" fill="#7c7c95">Query: find nprobe nearest cells</text>
+<text x="620" y="193" font-family="JetBrains Mono,monospace" font-size="7" fill="#7c7c95">ADC on PQ residuals in those cells</text>
+<text x="620" y="206" font-family="JetBrains Mono,monospace" font-size="7" fill="#5eead4">Speed: nprobe/nlist fraction scanned</text>
+<text x="734" y="220" font-family="JetBrains Mono,monospace" font-size="7" fill="#fbbf24" text-anchor="middle">Best for: 100M–1B vector search at scale</text>
+<rect x="14" y="242" width="872" height="28" rx="8" fill="rgba(255,255,255,.02)" stroke="rgba(255,255,255,.06)"/>
+<text x="450" y="260" font-family="JetBrains Mono,monospace" font-size="8" fill="#ececf6" text-anchor="middle">Accuracy: OPQ &gt; RQ ≈ PQ(large m)  ·  Speed: PQ/OPQ (ADC) ≫ RQ  ·  Production: IVFPQ for 100M+  ·  HNSW for &lt;10M exact recall</text>
+</svg>
+</div>
+<div class="cc">
+  <div class="ch"><h3>residual_quantization.py — RQ + OPQ rotation + IVFPQ full production pipeline</h3><button class="cpb" onclick="cp(this,'c2')">Copy</button></div>
+  <div class="cbody"><pre id="c2"><span class="kw">import</span> numpy <span class="kw">as</span> np
+<span class="kw">from</span> sklearn.cluster <span class="kw">import</span> MiniBatchKMeans
+
+<span class="cm"># ── RESIDUAL QUANTIZATION ───────────────────────────────────────────────────</span>
+<span class="kw">def</span> <span class="fn">train_rq</span>(X: np.ndarray, R: int = <span class="nu">4</span>, k: int = <span class="nu">256</span>) -> list[np.ndarray]:
+    <span class="str">"""
+    Train Residual Quantization with R levels, k centroids per level.
+
+    Algorithm: each level quantizes the residual from all previous levels.
+    Level 1: standard VQ. Level 2: VQ of (X - reconstruction from level 1). Etc.
+
+    Key difference from PQ:
+    - PQ splits the vector SPATIALLY (each subvector is a different slice of dims)
+    - RQ refines the vector TEMPORALLY (each level corrects the previous error)
+    - PQ approximation: x̂ = concat(c₁⁽¹⁾, c₂⁽²⁾, ..., cₘ⁽ᵐ⁾)
+    - RQ approximation: x̂ = c₁ + c₂ + ... + cᴿ  (full-dimension sum)
+
+    RQ advantage: cross-dimension correlations are captured at every level,
+    since each codebook operates on the full d-dimensional residual.
+    PQ codes each subspace independently — cross-subspace structure is lost.
+    """</span>
+    codebooks = []
+    residuals = X.copy().astype(np.float32)
+    <span class="kw">for</span> r <span class="kw">in</span> range(R):
+        km = MiniBatchKMeans(n_clusters=k, random_state=r, batch_size=<span class="nu">10000</span>)
+        km.fit(residuals)
+        C     = km.cluster_centers_.astype(np.float32)  <span class="cm"># (k, d)</span>
+        idx   = km.predict(residuals)
+        residuals -= C[idx]                               <span class="cm"># subtract nearest centroid</span>
+        codebooks.append(C)
+        print(f<span class="str">"  RQ level {r+1}: residual norm = {np.linalg.norm(residuals, axis=1).mean():.4f}"</span>)
+    <span class="kw">return</span> codebooks
+
+
+<span class="kw">def</span> <span class="fn">rq_encode</span>(x: np.ndarray, codebooks: list) -> np.ndarray:
+    <span class="str">"""Encode single vector x using RQ codebooks. Returns (R,) index array."""</span>
+    residual = x.copy().astype(np.float32)
+    codes    = np.zeros(len(codebooks), dtype=np.uint16)
+    <span class="kw">for</span> r, C <span class="kw">in</span> enumerate(codebooks):
+        dists    = np.sum((C - residual)**<span class="nu">2</span>, axis=<span class="nu">1</span>)
+        codes[r] = np.argmin(dists)
+        residual -= C[codes[r]]
+    <span class="kw">return</span> codes
+
+
+<span class="kw">def</span> <span class="fn">rq_decode</span>(codes: np.ndarray, codebooks: list) -> np.ndarray:
+    <span class="str">"""Reconstruct vector from RQ codes. x̂ = Σᵣ C⁽ʳ⁾[iᵣ]."""</span>
+    <span class="kw">return</span> sum(C[codes[r]] <span class="kw">for</span> r, C <span class="kw">in</span> enumerate(codebooks))
+
+
+<span class="cm"># ── OPTIMIZED PQ (OPQ) ───────────────────────────────────────────────────────</span>
+<span class="kw">def</span> <span class="fn">train_opq</span>(X: np.ndarray, m: int = <span class="nu">32</span>, k: int = <span class="nu">256</span>,
+              n_iter: int = <span class="nu">10</span>) -> tuple:
+    <span class="str">"""
+    OPQ: Optimized Product Quantization (Ge et al. 2013).
+
+    Problem with PQ: if variance is unevenly distributed across dimensions,
+    subvectors have different amounts of information — some subspaces have
+    huge variance (lots to quantize) while others are nearly constant.
+    PQ allocates the same number of bits (log₂k) to each subspace regardless.
+
+    OPQ Fix: Learn an orthogonal rotation matrix A such that after rotating
+    y = Ax, the variance is distributed as evenly as possible across subvectors.
+    This balances the quantization load across subspaces.
+
+    Algorithm (alternating optimisation):
+    E-step: fix A, train PQ codebook on AX
+    M-step: fix PQ, update A via SVD of (XCᵀ) where C is reconstructed matrix
+
+    Converges in 5-10 iterations. Typical improvement: +3-5% recall@10 vs PQ.
+    """</span>
+    N, d = X.shape
+    <span class="cm"># Initialise rotation as identity</span>
+    A = np.eye(d, dtype=np.float32)
+    <span class="kw">from</span> product_quantization <span class="kw">import</span> train_pq, pq_encode, PQCodebook
+    <span class="kw">for</span> it <span class="kw">in</span> range(n_iter):
+        Xr = X @ A.T                              <span class="cm"># apply current rotation</span>
+        cb = train_pq(Xr, m=m, k=k)              <span class="cm"># E-step: train PQ on rotated X</span>
+        codes = pq_encode(Xr, cb)
+        <span class="cm"># Reconstruct from PQ codes</span>
+        X_hat = np.zeros_like(X)
+        <span class="kw">for</span> j <span class="kw">in</span> range(m):
+            X_hat[:, j*cb.d_sub:(j+<span class="nu">1</span>)*cb.d_sub] = cb.centroids[j][codes[:,j]]
+        <span class="cm"># M-step: update A via SVD of correlation matrix</span>
+        U, _, Vt = np.linalg.svd(X_hat.T @ X)   <span class="cm"># SVD of (d×d) matrix</span>
+        A = (U @ Vt).T                            <span class="cm"># new orthogonal rotation</span>
+        err = np.mean(np.sum((Xr - X_hat)**<span class="nu">2</span>, axis=<span class="nu">1</span>))
+        print(f<span class="str">"  OPQ iter {it+1}: recon error = {err:.4f}"</span>)
+    <span class="kw">return</span> A, cb
+
+
+<span class="cm"># ── IVFPQ INDEX (production-scale search) ───────────────────────────────────</span>
+<span class="kw">class</span> <span class="cl">IVFPQIndex</span>:
+    <span class="str">"""
+    Inverted File + PQ index — the workhorse of production vector search.
+
+    Structure:
+      Coarse quantizer: k-means with nlist centroids partitions space into cells.
+      Each database vector is assigned to its nearest coarse centroid.
+      PQ encodes the residual (vector minus coarse centroid) in that cell.
+
+    Search:
+      1. Find nprobe nearest coarse centroids to query q.
+      2. Only scan vectors in those nprobe cells (vs all N in flat PQ).
+      3. ADC distance on PQ residuals within each cell.
+
+    Speed example: N=100M, nlist=4096, nprobe=64
+      Scan fraction: 64/4096 = 1.6% of database = 1.6M vectors
+      vs 100M for flat PQ.
+      Speedup: ~60× over flat PQ at ~5% recall degradation.
+    """</span>
+    <span class="kw">def</span> <span class="fn">__init__</span>(self, nlist: int = <span class="nu">4096</span>, m: int = <span class="nu">32</span>, k: int = <span class="nu">256</span>):
+        self.nlist = nlist; self.m = m; self.k = k
+        self.coarse_centroids = <span class="kw">None</span>
+        self.cells: dict = {}            <span class="cm"># cell_id → list of (global_id, pq_code)</span>
+        self.pq_cb = <span class="kw">None</span>
+
+    <span class="kw">def</span> <span class="fn">build</span>(self, X: np.ndarray, ids: np.ndarray | <span class="kw">None</span> = <span class="kw">None</span>):
+        <span class="str">"""Build the IVFPQ index from a database of vectors."""</span>
+        <span class="kw">from</span> product_quantization <span class="kw">import</span> train_pq, pq_encode
+        N, d = X.shape
+        <span class="kw">if</span> ids <span class="kw">is None</span>: ids = np.arange(N)
+        <span class="cm"># Step 1: Coarse quantizer (IVF)</span>
+        coarse = MiniBatchKMeans(n_clusters=self.nlist, batch_size=<span class="nu">50000</span>)
+        coarse.fit(X)
+        self.coarse_centroids = coarse.cluster_centers_.astype(np.float32)
+        cell_assign = coarse.predict(X)            <span class="cm"># (N,) cell assignment</span>
+        <span class="cm"># Step 2: PQ on residuals</span>
+        residuals = X - self.coarse_centroids[cell_assign]
+        self.pq_cb = train_pq(residuals, m=self.m, k=self.k)
+        pq_codes = pq_encode(residuals, self.pq_cb)
+        <span class="cm"># Step 3: Build inverted lists</span>
+        <span class="kw">for</span> n <span class="kw">in</span> range(N):
+            cell = cell_assign[n]
+            self.cells.setdefault(cell, []).append((ids[n], pq_codes[n]))
+        print(f<span class="str">"IVFPQ built: {N:,} vectors → {self.nlist} cells"</span>)
+        print(f<span class="str">"  Avg cell size: {N/self.nlist:.0f} · Codebook: {self.m}×{self.k}"</span>)
+
+    <span class="kw">def</span> <span class="fn">search</span>(self, q: np.ndarray, top_k: int = <span class="nu">10</span>, nprobe: int = <span class="nu">64</span>) -> tuple:
+        <span class="str">"""Search for top_k nearest neighbours using nprobe cells."""</span>
+        <span class="kw">from</span> product_quantization <span class="kw">import</span> adc_build_table
+        <span class="cm"># Coarse assignment: find nprobe nearest centroids</span>
+        coarse_dists = np.sum((self.coarse_centroids - q)**<span class="nu">2</span>, axis=<span class="nu">1</span>)
+        probe_cells  = np.argpartition(coarse_dists, nprobe)[:nprobe]
+        candidates   = []
+        <span class="kw">for</span> cell <span class="kw">in</span> probe_cells:
+            q_residual = q - self.coarse_centroids[cell]
+            table = adc_build_table(q_residual, self.pq_cb)
+            <span class="kw">for</span> gid, code <span class="kw">in</span> self.cells.get(cell, []):
+                d = np.sum(table[np.arange(self.m), code])
+                candidates.append((d, gid))
+        candidates.sort(key=<span class="kw">lambda</span> x: x[<span class="nu">0</span>])
+        <span class="kw">return</span> [gid <span class="kw">for</span> _, gid <span class="kw">in</span> candidates[:top_k]]</pre></div>
+</div>
+
+<div class="g2">
+<div class="callout callout-insight">
+  <div class="callout-icon">💡</div>
+  <div class="callout-body">
+    <h4>AQLM — RQ applied to LLM weights (2024)</h4>
+    <p>AQLM (Additive Quantization for Language Models) groups 8 adjacent weights into a 512-dim vector and encodes each group with R=2 RQ levels (k=256 per level). Result: 2 bytes per 8 weights = 2 bits/weight. Why better than scalar INT2: scalar 2-bit assigns each weight independently to (-3, -1, 1, 3) — 4 levels. Vector RQ-2bit with group 8 and R=2 represents 256² = 65536 possible group patterns, capturing inter-weight correlations scalar methods miss. LLaMA-2-7B: 256MB FP16 → 33MB AQLM. Perplexity: AQLM 2-bit beats GPTQ 3-bit on WikiText-2.</p>
+  </div>
+</div>
+<div class="callout callout-insight">
+  <div class="callout-icon">💡</div>
+  <div class="callout-body">
+    <h4>ScaNN — Anisotropic Quantization (Google 2020)</h4>
+    <p>Standard PQ minimises ‖x − x̂‖² uniformly in all directions. ScaNN observes: for retrieval via inner product, only the error component parallel to likely query directions matters. ScaNN minimises E_q[⟨q, x−x̂⟩²] = (x−x̂)ᵀΣ_q(x−x̂) where Σ_q is the query covariance matrix. The resulting codebook concentrates precision in high-traffic query directions, accepting larger errors orthogonal to queries. Result: +3–8% Recall@10 vs IVFPQ at identical latency on ANN benchmarks. ScaNN also uses asymmetric hashing (AH) for a fast scoring pre-filter before exact ADC reranking.</p>
+  </div>
+</div>
+</div>
+<div class="card" style="padding:0;overflow:hidden">
+<table class="tbl">
+<thead><tr><th>Algorithm</th><th>Search complexity</th><th>Recall@10</th><th>Storage (d=1024)</th><th>Best deployment</th></tr></thead>
+<tbody>
+<tr><td><strong style="color:var(--a2)">Flat L2</strong></td><td>O(N·d)</td><td>100% (exact)</td><td>N × 4KB</td><td>N &lt; 100K, offline</td></tr>
+<tr><td><strong style="color:var(--a1)">HNSW (M=32)</strong></td><td>O(log N · M · d)</td><td>99%+</td><td>N × 6.4KB</td><td>N &lt; 10M, RAM rich</td></tr>
+<tr><td><strong style="color:var(--a4)">PQ flat (m=64)</strong></td><td>O(N·m)</td><td>88–93%</td><td>N × 64B</td><td>N &lt; 100M, CPU</td></tr>
+<tr><td><strong style="color:var(--a3)">IVFPQ (nlist=4096)</strong></td><td>O(nprobe/nlist · N · m)</td><td>85–93%</td><td>N × 64B + 1MB</td><td>N = 100M–1B</td></tr>
+<tr><td><strong style="color:var(--a5)">ScaNN</strong></td><td>O(nprobe/nlist · N · m)</td><td>90–97%</td><td>N × 64B + overhead</td><td>N = 10M–1B, MIPS</td></tr>
+</tbody>
+</table>
+</div>
+</section>
+
+<section class="sec" id="s3">
+<div class="sn">03 · Production Vector Search Architecture</div>
+<h2>100M Vectors, 10ms P99:<br><span class="gt">The Full System Design</span></h2>
+<div class="g2">
+<div class="scenario">
+  <h4>Production RAG pipeline: 200M document chunks, d=1536</h4>
+  <p><strong>Indexing:</strong> IVFPQ with nlist=16384 (avg 12K vectors/cell), m=96 (each 16-dim subspace), k=256 → 96 bytes/vector. Total index: 200M × 96B = 18.7GB + codebook ≈ 20GB. Fits on 1× A100-80GB. <strong>Training:</strong> Sample 10M vectors, train coarse k-means (nlist centroids) then PQ on residuals. Total: ~2 GPU-hours. <strong>Query:</strong> Embed query (OpenAI/Cohere API, ~20ms) → IVFPQ search nprobe=256 cells (~12ms on GPU) → rerank top-100 with exact L2 on stored FP16 vectors (~3ms) → return top-10. Total: ~35ms p99. <strong>Recall@10:</strong> 91% vs exact L2 (FAISS benchmark). <strong>Scale:</strong> 2× A100 for redundancy, handles 800 QPS at &lt;50ms p99.</p>
+</div>
+<div class="callout callout-warn">
+  <div class="callout-icon">⚠️</div>
+  <div class="callout-body">
+    <h4>The reranking pattern — critical for production</h4>
+    <p>Never serve PQ-approximate distances directly to users. Always: (1) ANN search returns top-K candidates (K=100-500), (2) rerank with exact distances using stored full-precision vectors, (3) return final top-k. This two-stage pattern recovers 3-5% recall at minimal latency cost. Store FP16 vectors separately from PQ codes — 200M × 1536 × 2B = 576GB for full-precision reranking. In practice: store top-10 candidates' full vectors in a fast secondary cache (Redis, DynamoDB) and rerank inline.</p>
+  </div>
+</div>
+</div>
+<div class="callout callout-key">
+  <div class="callout-icon">🔑</div>
+  <div class="callout-body">
+    <h4>Choosing m and k — the two key hyperparameters</h4>
+    <p><strong>m (subvectors):</strong> Controls recall and storage. Rule of thumb: m = d/16 gives good balance (d=1536 → m=96). Each subvector covers 16 dims. Increasing m: +recall, +storage, +ADC table size. <strong>k (centroids):</strong> Almost always k=256 (uint8 codes, 8KB ADC table fits in L1). Going to k=65536 (uint16) doubles ADC table to 16MB — L2 miss penalty hurts latency. <strong>Training data:</strong> Need N_train ≥ 40k per subcodebook (N_train ≥ 40k × m). For m=96: need 3.84M training vectors minimum. <strong>nlist:</strong> Target nlist ≈ sqrt(N) for balanced cells. N=200M → nlist=14142, round to 16384. <strong>nprobe:</strong> Start at nprobe = nlist / 64, tune for recall target.</p>
+  </div>
+</div>
+</section>
+
+<section class="sec" id="s4">
+<div class="sn">04 · Assessment — 8 Deep Questions</div>
+<h2>Vector Quantization <span class="gt">Mastery Quiz</span></h2>
+<div class="qc"><div class="qc-title">Assessment — Vector Quantization: PQ, RQ, OPQ, IVFPQ, ScaNN</div><div class="qc-sub">8 questions · PQ arithmetic · Lloyd convergence · IVFPQ tuning · RQ audio · OPQ SVD · ScaNN anisotropic · AQLM · production VQ</div><div class="qprog"><div class="qprog-bar"><div class="qprog-fill"></div></div><div class="qprog-text">0/8 answered</div></div><div class="qq"><div class="qnum">Question 1 of 8</div><h4>You are building a PQ index for 50M sentence embeddings of dimension d=768 with m=48 subvectors and k=256 centroids. Calculate: (A) compressed storage per vector, (B) ADC table size per query, and (C) recall trade-off if you reduce m to 12.</h4><div class="qo"><button class="qob" data-opt="A" data-correct="true" onclick="cq(this,0,true)">A: (A) 48 bytes, (B) 48×256×4B = 49KB, (C) recall drops from ~92% to ~70%.</button>
+<button class="qob" data-opt="B" data-correct="false" onclick="cq(this,0,false)">B: (A) m×log₂(k)/8 = 48×8/8 = 48 bytes/vector. Total: 50M×48 = 2.4GB vs 50M×768×4=153GB (63× smaller). (B) ADC table: m×k×4B = 48×256×4 = 49,152 bytes ≈ 48KB per query — fits in L2 cache (typically 256KB-4MB). Critical: this table is rebuilt once per query then reused for all 50M lookups. (C) Reducing m: 12 subvectors means each covers 64 dimensions instead of 16. Coarser spatial decomposition → each centroid must represent a 64-dim region instead of 16-dim → worse approximation. Recall@10 drops from ~92% (m=48) to ~72% (m=12). However, ADC table shrinks 4× to 12KB and per-vector lookup cost drops 4× — justified when latency matters more than recall.</button>
+<button class="qob" data-opt="C" data-correct="false" onclick="cq(this,0,false)">C: (A) 6 bytes (48 bits), (B) 12KB, (C) recall drops from ~92% to ~72%.</button>
+<button class="qob" data-opt="D" data-correct="false" onclick="cq(this,0,false)">D: (A) 48 bytes, (B) 12KB (m×k = 48×256 distances), (C) negligible — recall is determined by k not m.</button>
+</div><div class="qfeed"><div class="qfeed-head"></div><div class="qfeed-why"><strong>PQ storage arithmetic:</strong> Bytes/vector = m × ⌈log₂(k)⌉ / 8 = 48 × 8 / 8 = 48. The ADC table is rebuilt each query: m × k floats = 48 × 256 × 4B = 49KB. The m-vs-recall trade-off exists because smaller m means each subspace covers more dimensions with the same k centroids — the quantization error per subspace increases. The key insight: m and k are independent levers. Increasing k (256→512) adds 1 bit/subvector but costs 2× more codebook training and memory. Increasing m improves recall but increases stored codes linearly.</div></div></div><div class="qq"><div class="qnum">Question 2 of 8</div><h4>In k-means codebook training for PQ, why does Lloyd's algorithm converge and what is the computational bottleneck when training on N=10M vectors with d=768, m=32, k=256?</h4><div class="qo"><button class="qob" data-opt="A" data-correct="false" onclick="cq(this,1,false)">A: Lloyd's converges because the objective (quantization error) is bounded below by 0 and each iteration strictly reduces it. Bottleneck: centroid update.</button>
+<button class="qob" data-opt="B" data-correct="true" onclick="cq(this,1,true)">B: Lloyd's algorithm converges because: (1) each assignment step minimises total distortion given current centroids (nearest centroid is optimal), and (2) each update step minimises distortion given current assignments (centroid = mean of assigned vectors, which minimises within-cluster sum of squares). Since distortion is bounded below by 0 and each step reduces it, convergence is guaranteed — to a local minimum, not global. Computational bottleneck: the assignment step. For each of N=10M vectors and each subspace j (32 total), compute distances to all k=256 centroids: 10M × 32 × 256 × (d/m = 24) = 10M × 32 × 256 × 24 ≈ 2T multiplications per iteration. In practice: MiniBatch k-means (mini-batches of 10K) reduces this to ~20B ops per iteration, converges in 100-300 iterations. GPU-accelerated training is standard for d>256.</button>
+<button class="qob" data-opt="C" data-correct="false" onclick="cq(this,1,false)">C: Lloyd's converges because centroids form a Voronoi diagram — assignment and update alternate optimising the same partition. Bottleneck: nearest-centroid lookup.</button>
+<button class="qob" data-opt="D" data-correct="false" onclick="cq(this,1,false)">D: Lloyd's doesn't guarantee convergence — use k-means++ initialisation to ensure convergence. Bottleneck: memory for storing all N×k distance matrices.</button>
+</div><div class="qfeed"><div class="qfeed-head"></div><div class="qfeed-why"><strong>Lloyd's convergence proof:</strong> Let D_t = Σᵢ min_j ‖xᵢ − cⱼ‖² be distortion at iteration t. Assignment step: for each x, choose nearest c → D_t+₁(assignment) ≤ D_t. Update step: replace c with mean of cluster → D_t+₁(update) ≤ D_t+₁(assignment). Therefore D decreases monotonically → converges. Not to global optimum (NP-hard problem), but k-means++ initialisation (choose initial centroids proportional to squared distance from existing ones) dramatically reduces final distortion.</div></div></div><div class="qq"><div class="qnum">Question 3 of 8</div><h4>You run IVFPQ with nlist=8192 cells and nprobe=128 on a 500M vector dataset. Recall@10 is 82%. Your latency target is 10ms but current p99 is 35ms. Propose two independent changes and predict their effect on recall.</h4><div class="qo"><button class="qob" data-opt="A" data-correct="false" onclick="cq(this,2,false)">A: Increase k (codebook size) from 256 to 512 and switch to GPU. Recall improves; latency improves.</button>
+<button class="qob" data-opt="B" data-correct="false" onclick="cq(this,2,false)">B: IVFPQ latency is dominated by two factors: (1) nprobe cells scanned and (2) ADC computation within each cell. To hit 10ms: Option 1 — Reduce nprobe from 128 to 32: scan 32/8192 = 0.4% of DB instead of 1.6%. Expected latency: 35ms × (32/128) ≈ 9ms ✓. Expected recall: drops ~10-15pp to ~68-72% — significant degradation. Option 2 — Use FAISS GPU index (IVFPQGpu): GPU ADC parallelises across all probed cells simultaneously. H100 GPU achieves ~5ms for 500M vectors with nprobe=128. Recall unchanged (exact same computation). Combined: reduce nprobe to 64 on GPU: ~2.5ms, recall ~76-78%. Trade-off summary: latency reduction via nprobe is a recall sacrifice; GPU is pure latency improvement preserving recall. GPU is the right choice when both latency and recall matter.</button>
+<button class="qob" data-opt="C" data-correct="true" onclick="cq(this,2,true)">C: Reduce nprobe to 32 (latency ~9ms, recall ~70%) or use GPU (latency ~5ms, recall unchanged at 82%).</button>
+<button class="qob" data-opt="D" data-correct="false" onclick="cq(this,2,false)">D: Increase nlist to 32768 (fewer vectors per cell, faster scan) and keep nprobe=128 (now probing more cells proportionally). Latency and recall both improve.</button>
+</div><div class="qfeed"><div class="qfeed-head"></div><div class="qfeed-why"><strong>IVFPQ latency decomposition:</strong> total_time = coarse_lookup(O(nlist×d)) + ADC_per_cell × nprobe × avg_cell_size. With nlist=8192 and nprobe=128: scanning 128/8192 ≈ 1.6% × 500M = 8M vectors per query. Each takes m=32 lookups → 256M table reads. This is the bottleneck. Reducing nprobe halves it but reduces recall. GPU parallelises the ADC across all 8M candidates simultaneously. Option D is wrong: increasing nlist with fixed nprobe means probing proportionally more of the database, not less — worse recall/latency.</div></div></div><div class="qq"><div class="qnum">Question 4 of 8</div><h4>Residual Quantization (RQ) is used in audio neural codecs (EnCodec, SoundStream). Why is RQ preferred over PQ for continuous audio waveform reconstruction, and what is the progressive compression property?</h4><div class="qo"><button class="qob" data-opt="A" data-correct="false" onclick="cq(this,3,false)">A: RQ is faster than PQ for audio — audio waveforms have lower dimensionality than text embeddings.</button>
+<button class="qob" data-opt="B" data-correct="false" onclick="cq(this,3,false)">B: RQ produces a hierarchical code [i₁, i₂, ..., iᴿ] where each additional level refines the previous approximation: x̂ᴿ = Σᵣ cᵣ[iᵣ]. For audio reconstruction quality is measured perceptually — adding codebook levels progressively improves audio quality. The progressive compression property: truncate at R=4 → acceptable voice quality (1.5kbps); R=8 → high quality (3kbps); R=12 → transparent (6kbps). Same codebook, different quality points. PQ cannot do this: removing any subvector destroys the spatial coverage — codes are not hierarchically ordered. Audio also needs reconstruction, not search: RQ reconstructs via sum (very fast) while PQ decodes by concatenating subvector centroids. Most critically, audio frames are temporally correlated — the residual at step R captures fine temporal structure that PQ's spatial split would lose across subvector boundaries.</button>
+<button class="qob" data-opt="C" data-correct="false" onclick="cq(this,3,false)">C: RQ maintains temporal order of audio samples; PQ shuffles subvectors which corrupts time-domain signals.</button>
+<button class="qob" data-opt="D" data-correct="true" onclick="cq(this,3,true)">D: RQ uses the same codebook for all levels — this reduces storage. PQ needs m separate codebooks which is too expensive for audio.</button>
+</div><div class="qfeed"><div class="qfeed-head"></div><div class="qfeed-why"><strong>Progressive compression in RQ:</strong> This is why EnCodec (Meta) and SoundStream (Google) both use RQ. The key property: sending only code i₁ gives a rough approximation; each additional code iᵣ halves the residual error. This maps directly to variable-bitrate audio codecs where bandwidth determines how many RQ levels can be transmitted. AQLM (2024) applies this to LLM weights: residual quantize weight matrices to ~2 bits/param with R=2-4 levels, achieving better accuracy than GPTQ at the same bit rate by capturing cross-dimension structure PQ misses.</div></div></div><div class="qq"><div class="qnum">Question 5 of 8</div><h4>OPQ learns rotation A via SVD of the matrix XCᵀ (data × reconstructed data). What does this SVD compute and why does it give the optimal rotation?</h4><div class="qo"><button class="qob" data-opt="A" data-correct="false" onclick="cq(this,4,false)">A: SVD finds the principal components of the data that explain maximum variance — these become the rotation axes.</button>
+<button class="qob" data-opt="B" data-correct="true" onclick="cq(this,4,true)">B: In the M-step of OPQ alternating optimisation: given fixed PQ codebook that produces reconstructed matrix Ĉ (the current best approximation to X), we want to find orthogonal rotation A that minimises ‖AX − Ĉ‖²_F. Expanding: ‖AX‖² − 2tr(AX Ĉᵀ) + ‖Ĉ‖² = const − 2tr(A(XĈᵀ)). Maximising tr(A(XĈᵀ)) over orthogonal A is the Orthogonal Procrustes Problem — solved exactly by SVD: let XĈᵀ = UΣVᵀ, then optimal A = VUᵀ. Intuition: the rotation must align the data's variance structure with the PQ subspace boundaries so each subspace covers equal variance. After rotation, all 32 subspaces have approximately equal amounts of variation to quantize — the codebook bits are used efficiently.</button>
+<button class="qob" data-opt="C" data-correct="false" onclick="cq(this,4,false)">C: SVD of XCᵀ gives the rotation that decorrelates the data's feature dimensions, equivalent to PCA whitening.</button>
+<button class="qob" data-opt="D" data-correct="false" onclick="cq(this,4,false)">D: The SVD rotation minimises reconstruction error by finding directions of maximum covariance between data and centroids.</button>
+</div><div class="qfeed"><div class="qfeed-head"></div><div class="qfeed-why"><strong>Orthogonal Procrustes:</strong> The problem 'find orthogonal A to maximise tr(AXĈᵀ)' has a clean closed-form solution via SVD. This is not PCA (which finds the rotation that aligns with maximum variance directions) but the Procrustes alignment (which finds the rotation that best aligns X with the target Ĉ). The key difference: PCA minimises reconstruction error for a given rank-k approximation; OPQ minimises quantization error for given m and k, which means making the variance distribution across subspaces as uniform as possible.</div></div></div><div class="qq"><div class="qnum">Question 6 of 8</div><h4>ScaNN (Google, 2020) achieves better recall@10 than FAISS-IVFPQ at the same latency on the GloVe-100 benchmark. What algorithmic innovation enables this, and how does it relate to anisotropic quantization?</h4><div class="qo"><button class="qob" data-opt="A" data-correct="false" onclick="cq(this,5,false)">A: ScaNN uses GPU acceleration and larger codebooks (k=1024 vs k=256 in FAISS), giving more precise centroids.</button>
+<button class="qob" data-opt="B" data-correct="true" onclick="cq(this,5,true)">B: ScaNN introduces anisotropic vector quantization: instead of minimising the L2 reconstruction error ‖x − x̂‖², ScaNN minimises the distance estimation error ‖⟨q,x⟩ − ⟨q,x̂⟩‖² for inner product search. The key insight: for maximum inner product search (MIPS), the error that matters is the inner product error, not the reconstruction error. A codebook that perfectly reconstructs x might produce large inner product errors if the residual has high overlap with likely query directions. ScaNN learns codebooks that minimise the directional component of quantization error (the part parallel to the query) while accepting larger errors in orthogonal directions. Additionally, ScaNN uses a tree-based scoring phase (AH = asymmetric hashing) that prunes candidate lists before the expensive reranking step, reducing the effective scan fraction. Combined: +3-8% recall@10 vs IVFPQ at identical latency on standard ANN benchmarks.</button>
+<button class="qob" data-opt="C" data-correct="false" onclick="cq(this,5,false)">C: ScaNN replaces IVFPQ with an HNSW graph index, achieving much better recall but higher memory usage.</button>
+<button class="qob" data-opt="D" data-correct="false" onclick="cq(this,5,false)">D: ScaNN trains the quantization codebook on query-document pairs (supervised) rather than documents alone, aligning the codebook with actual search patterns.</button>
+</div><div class="qfeed"><div class="qfeed-head"></div><div class="qfeed-why"><strong>Anisotropic VQ:</strong> The standard PQ objective is ‖x − x̂‖² (isotropic — equal penalty in all directions). For MIPS retrieval, what matters is ⟨q,x⟩ for likely queries q. ScaNN's insight: the quantization error component in the query direction affects retrieval accuracy; the component orthogonal to all queries is harmless. So the objective becomes: minimise E_q[⟨q, x−x̂⟩²] = minimise (x−x̂)ᵀ Σ_q (x−x̂) where Σ_q is the query covariance. This gives directionally biased codebooks that concentrate precision in high-traffic query directions.</div></div></div><div class="qq"><div class="qnum">Question 7 of 8</div><h4>AQLM (2024) applies Residual Quantization to LLM weight matrices at 2 bits/parameter. A LLaMA-2-7B layer has weight matrix W ∈ ℝ³²⁰⁰⁰ˣ⁴⁰⁹⁶. Calculate the storage for the 2-bit RQ codes (R=2, k=256) vs FP16, and explain why RQ outperforms GPTQ at 2 bits.</h4><div class="qo"><button class="qob" data-opt="A" data-correct="false" onclick="cq(this,6,false)">A: FP16: 32000×4096×2B = 256MB. AQLM RQ: each column is a 4096-dim vector encoded with R=2 codebooks. Each code = 2 indices × 8 bits = 2 bytes/vector × 32000 columns = 64MB + codebooks (2×256×4096×4B = 8MB) ≈ 72MB (3.5× compression, ≈3.6 bits/param). AQLM targets 2 bits by using k=65536 entries — wait, that's too large. Instead AQLM groups columns and uses R=2 with k=256 giving 16 bits per 8 weights = 2 bits/weight.</button>
+<button class="qob" data-opt="B" data-correct="true" onclick="cq(this,6,true)">B: FP16 W: 32000 × 4096 × 2 = 256MB. AQLM groups 8 adjacent weights into one 4096/8=512-dim vector, encoding each with R=2, k=256 RQ. Codes: 32000 × (4096/8) = 32000 × 512 vectors × 2 codes × 1 byte = 32MB. Codebooks: 2 × 256 × 512-dim × 4B = 1MB. Total ≈ 33MB vs 256MB → 7.8× compression ≈ 2 bits/param. Why RQ beats GPTQ at 2 bits: GPTQ assigns each scalar independently to one of 4 levels (2-bit scalar) — massive quantization error for outlier weights. RQ quantizes a group of 8 weights jointly as a vector, exploiting inter-weight correlations. The first RQ level captures the main direction of the weight group; the second captures the residual. Joint encoding provides much better approximation of weight structure than scalar methods, especially at extreme compression. AQLM achieves 5-10% better perplexity than GPTQ at 2 bits on LLaMA benchmarks.</button>
+<button class="qob" data-opt="C" data-correct="false" onclick="cq(this,6,false)">C: AQLM stores integer codes directly — no codebook overhead. FP16=256MB, RQ-2bit=32MB (8× compression, 2 bits/param). RQ wins because it performs second-order optimisation similar to GPTQ's Hessian update.</button>
+<button class="qob" data-opt="D" data-correct="false" onclick="cq(this,6,false)">D: AQLM cannot compress to 2 bits — minimum viable is 3 bits to maintain codebook structure. GPTQ is always superior at very low bit rates.</button>
+</div><div class="qfeed"><div class="qfeed-head"></div><div class="qfeed-why"><strong>AQLM vector grouping:</strong> The key trick is treating groups of weights as vectors and encoding jointly. Scalar 2-bit (like GPTQ at extreme compression) gives 4 levels: [-3,-1,+1,+3] for each weight independently. Vector RQ-2bit with group size 8 and R=2, k=256 gives 256² = 65536 possible group representations — vastly more expressive than 4⁸ = 65536 scalar combinations, but with better geometric coverage. The improvement over GPTQ is not algorithmic complexity but representational power: RQ can represent inter-weight correlations that scalar codes cannot.</div></div></div><div class="qq"><div class="qnum">Question 8 of 8</div><h4>Your production RAG system has 200M document chunks (d=1536, FP32). Compare the total infrastructure cost (storage + query latency) for three indexing strategies: (A) HNSW M=32, (B) IVFPQ nlist=16384 nprobe=256 m=96 k=256, (C) ScaNN with anisotropic quantization m=96. Assume 1000 QPS target, p99 latency 50ms.</h4><div class="qo"><button class="qob" data-opt="A" data-correct="false" onclick="cq(this,7,false)">A: HNSW: 200M×1536×4B=1.2TB + graph edges 200M×32×8B=51GB ≈ 1.25TB RAM. Recall@10~99%. Latency~2ms. Cost: needs 16× A100-80GB just for RAM — prohibitive.</button>
+<button class="qob" data-opt="B" data-correct="true" onclick="cq(this,7,true)">B: HNSW (A): 200M × (1536×4B + 32×8B neighbors) ≈ 200M × 6.4KB ≈ 1.28TB RAM — requires ~17 A100-80GB nodes. Recall@10 ~99%. Latency ~2ms single-threaded but RAM cost prohibitive at this scale. IVFPQ (B): Codes: 200M × 96B = 19.2GB. Codebooks: 96×256×16×4B = 1.6MB ≈ 20GB total. Fits on 1×A100-80GB. Recall@10 ~90% with nprobe=256. Latency: scan fraction = 256/16384 = 1.6% × 200M = 3.2M vectors × 96 ADC ops = 307M ops. GPU: ~15ms. ScaNN (C): Same storage as IVFPQ ≈ 20GB. Recall@10 ~93-95% (anisotropic wins 3-5pp). Latency ~12ms (tree-based pruning). Winner at 1000 QPS / 50ms: IVFPQ-GPU or ScaNN on A100. Use 2 A100s for redundancy. HNSW at 200M is operationally impractical unless you have massive RAM budget. ScaNN preferred for highest recall within budget.</button>
+<button class="qob" data-opt="C" data-correct="false" onclick="cq(this,7,false)">C: Use HNSW on SSD with memory mapping — all three have similar cost on modern NVMe SSDs.</button>
+<button class="qob" data-opt="D" data-correct="false" onclick="cq(this,7,false)">D: IVFPQ is always the best choice for >10M vectors — just tune nprobe and m.</button>
+</div><div class="qfeed"><div class="qfeed-head"></div><div class="qfeed-why"><strong>Vector search at 200M scale:</strong> The fundamental constraint is memory. HNSW stores the full vectors (1.2TB) plus graph edges — you need RAM, not disk, because random-access SSD (even NVMe) is 100-1000× slower than RAM for the per-hop graph traversal. IVFPQ's 20GB fits on one A100, making it the practical choice. ScaNN's 3-5% recall improvement over IVFPQ can meaningfully improve RAG answer quality — each extra relevant chunk retrieved directly improves generation. At 1000 QPS, you need ~1000×15ms/1000ms ≈ 15 A100-GPU-equivalents of compute. Two A100s each handling 500 QPS at 15ms is the right architecture.</div></div></div><div class="qs" id="qs" style="display:none"><h3 id="sc">0/8</h3><p id="sm"></p></div></div>
+</section>
+</div>
+<footer>
+  <div style="max-width:var(--cw);margin:0 auto;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:1rem">
+    <div style="display:flex;gap:.8rem"><a href="quant_m0.html" class="pr">← M0: Quantization Fundamentals</a><a href="quant_m2.html" class="nx">M2: QAT and FP8 Training →</a></div>
+    <span>Quantization for Modern AI · M1 · Vector Quantization — PQ, RQ, OPQ and Production Search</span>
+  </div>
+</footer>
+<script>
+window.addEventListener("scroll",function(){
+  var h=document.documentElement;
+  var pct=(h.scrollTop/(h.scrollHeight-h.clientHeight))*100;
+  document.getElementById("sp").style.width=pct+"%";
+});
+var obs=new IntersectionObserver(function(e){
+  e.forEach(function(x){if(x.isIntersecting)x.target.classList.add("vis");});
+},{threshold:0.06});
+document.querySelectorAll(".sec").forEach(function(s){obs.observe(s);});
+// Copy buttons
+function cp(btn,id){
+  navigator.clipboard.writeText(document.getElementById(id).innerText).then(function(){
+    var t=btn.textContent;btn.textContent="✓ Copied";
+    setTimeout(function(){btn.textContent=t;},2000);
+  });
+}
+// Metric bar animation
+window.addEventListener("load",function(){
+  document.querySelectorAll(".metric-fill[data-pct]").forEach(function(el){
+    setTimeout(function(){el.style.width=el.getAttribute("data-pct")+"%";},300);
+  });
+});
+// Quiz engine
+var qstate={};
+var qtotal=document.querySelectorAll(".qq").length;
+function updateProgress(){
+  var done=Object.keys(qstate).length;
+  var fill=document.querySelector(".qprog-fill");
+  var txt=document.querySelector(".qprog-text");
+  if(fill)fill.style.width=Math.round(done/qtotal*100)+"%";
+  if(txt)txt.textContent=done+"/"+qtotal+" answered";
+  if(done===qtotal)showScore();
+}
+function showScore(){
+  var c=Object.values(qstate).filter(function(v){return v;}).length;
+  var sc=document.getElementById("sc");
+  var sm=document.getElementById("sm");
+  if(sc)sc.textContent=c+"/"+qtotal+" correct";
+  if(sm){
+    var msgs=["Keep studying — revisit PQ arithmetic: bytes/vec = m×log₂(k)/8. ADC table = m×k×4B per query. Reducing m cuts recall significantly.","Good effort — review Lloyd's convergence: each step minimises distortion monotonically (bounded below by 0). MiniBatch k-means is the practical solution.","Building — re-read IVFPQ latency: nprobe/nlist fraction of database scanned. GPU parallelises ADC across all candidates. Reducing nprobe trades recall for speed.","Solid — review RQ progressive compression: truncating codes at level R gives quality proportional to R. This is why audio codecs (EnCodec) use RQ not PQ.","Strong — revisit OPQ SVD: Orthogonal Procrustes finds A = VUᵀ from SVD of XĈᵀ, maximising alignment between rotated data and PQ reconstruction.","Excellent — ScaNN anisotropic mastered. One more for perfection.","Outstanding — almost there.","Perfect score — you understand vector quantization from Lloyd's algorithm to 200M-vector IVFPQ deployment. Production-ready."][c];
+    sm.textContent=msgs[Math.min(c,msgs.length-1)];
+    sm.style.color=c>=Math.round(qtotal*0.8)?"#5eead4":"#f472b6";
+  }
+  var qs=document.getElementById("qs");
+  if(qs)qs.style.display="block";
+}
+function cq(btn,qi,isCorrect){
+  if(qstate[qi]!==undefined)return;
+  qstate[qi]=isCorrect;
+  var qq=btn.closest(".qq");
+  qq.classList.add("answered");
+  var allBtns=qq.querySelectorAll(".qob");
+  allBtns.forEach(function(b){
+    b.setAttribute("disabled","");
+    var bc=b.getAttribute("data-correct")==="true";
+    if(bc)b.classList.add("ok");
+    else if(b===btn&&!isCorrect)b.classList.add("no");
+  });
+  var feed=qq.querySelector(".qfeed");
+  if(feed){
+    feed.style.display="block";
+    feed.className="qfeed "+(isCorrect?"correct":"wrong");
+    var head=feed.querySelector(".qfeed-head");
+    if(head)head.textContent=isCorrect?"✓ Correct — "+btn.getAttribute("data-opt")+" is right":"✗ Not quite — see the explanation below";
+  }
+  updateProgress();
+}</script>
+</body></html>

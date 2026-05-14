@@ -1,0 +1,508 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>OCR Track 2 - Classical OCR: Tesseract Deep Dive</title>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&family=Outfit:wght@300;400;500;600;700;800;900&family=Source+Serif+4:ital,opsz,wght@0,8..144,300;0,8..144,400;0,8..144,600;1,8..144,300;1,8..144,400&display=swap" rel="stylesheet">
+<style>:root{--bg:#0a0a0f;--t1:#ececf6;--t2:#b5b5c8;--tm:#7c7c95;
+--a1:#5eead4;--a2:#60a5fa;--a3:#f472b6;--a4:#fbbf24;--a5:#a78bfa;--ac:#f472b6;
+--gl:linear-gradient(90deg,#5eead4 0%,#60a5fa 28%,#a78bfa 55%,#f472b6 82%,#fbbf24 100%);
+--bs:rgba(255,255,255,0.07);--sh:0 20px 80px rgba(0,0,0,0.42);--r:20px;--cw:1120px}
+*{box-sizing:border-box;margin:0;padding:0}html{scroll-behavior:smooth}
+body{background:radial-gradient(circle at 18% 14%,rgba(244,114,182,.09),transparent 30%),radial-gradient(circle at 82% 22%,rgba(96,165,250,.05),transparent 28%),var(--bg);color:var(--t1);font-family:'Outfit',sans-serif;line-height:1.75;overflow-x:hidden;-webkit-font-smoothing:antialiased}
+.sp{position:fixed;top:0;left:0;height:3px;width:0%;z-index:1000;background:var(--gl);transition:width .12s linear}
+nav{position:fixed;top:3px;left:0;right:0;z-index:999;display:flex;align-items:center;justify-content:space-between;padding:.75rem 2rem;background:rgba(10,10,15,.88);backdrop-filter:blur(12px);border-bottom:1px solid var(--bs)}
+.nbr{font-family:'JetBrains Mono',monospace;font-size:.72rem;color:var(--ac);letter-spacing:.14em;text-transform:uppercase;text-decoration:none}
+.nm{font-size:.82rem;color:var(--tm)}.na{display:flex;gap:8px}
+.nb{display:inline-flex;align-items:center;gap:6px;padding:.4rem .9rem;border-radius:999px;border:1px solid var(--bs);background:rgba(255,255,255,.03);color:var(--t2);font-size:.8rem;text-decoration:none;transition:all .18s}
+.nb:hover{border-color:var(--ac);color:var(--ac)}
+.hero{min-height:100vh;display:flex;align-items:center;justify-content:center;padding:5rem 2rem 3rem;position:relative;overflow:hidden}
+.hg{position:absolute;inset:0;background-image:linear-gradient(rgba(255,255,255,.025) 1px,transparent 1px),linear-gradient(90deg,rgba(255,255,255,.025) 1px,transparent 1px);background-size:48px 48px;mask-image:radial-gradient(circle at center,black 30%,transparent 80%);pointer-events:none}
+.hero::before{content:"";position:absolute;inset:0;background:radial-gradient(ellipse 700px 350px at 20% 40%,rgba(244,114,182,.10),transparent),radial-gradient(ellipse 640px 360px at 80% 38%,rgba(96,165,250,.06),transparent);pointer-events:none}
+.hi{max-width:1000px;text-align:center;position:relative;z-index:1}
+.hl{display:inline-flex;align-items:center;gap:10px;padding:.55rem 1rem;border-radius:999px;border:1px solid rgba(244,114,182,.25);background:rgba(244,114,182,.08);color:var(--ac);letter-spacing:1.8px;text-transform:uppercase;font-size:.76rem;margin-bottom:1.7rem}
+.dot{width:7px;height:7px;border-radius:50%;background:var(--ac);animation:pulse 2s ease-in-out infinite}
+@keyframes pulse{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.3;transform:scale(.75)}}
+h1{font-size:clamp(2.4rem,5vw,4.4rem);line-height:1.04;letter-spacing:-.04em;font-weight:900;margin-bottom:1.3rem}
+.gt{background:var(--gl);-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent}
+.hs{font-family:'Source Serif 4',serif;color:var(--t2);font-size:clamp(1rem,2vw,1.2rem);max-width:820px;margin:0 auto 2rem;line-height:1.8}
+.hm{display:flex;flex-wrap:wrap;justify-content:center;gap:12px;margin-bottom:2.5rem}
+.mp{border:1px solid var(--bs);background:rgba(17,17,26,.75);border-radius:999px;padding:.65rem 1.1rem;color:var(--t2);font-size:.88rem}
+.sc{position:absolute;bottom:2.6rem;left:50%;transform:translateX(-50%);color:var(--tm);display:flex;flex-direction:column;gap:.6rem;align-items:center;text-transform:uppercase;letter-spacing:.22em;font-size:.7rem}
+.sc .arr{width:18px;height:18px;border-right:2px solid var(--tm);border-bottom:2px solid var(--tm);transform:rotate(45deg);animation:ba 2s ease-in-out infinite}
+@keyframes ba{0%,100%{transform:rotate(45deg) translateY(0)}50%{transform:rotate(45deg) translateY(7px)}}
+.cw{max-width:var(--cw);margin:0 auto;padding:0 2rem 6rem}
+.sec{margin-bottom:5.5rem;opacity:0;transform:translateY(28px);transition:opacity .65s ease,transform .65s ease}
+.sec.vis{opacity:1;transform:translateY(0)}
+.sn{display:flex;align-items:center;gap:12px;color:var(--ac);font-family:'JetBrains Mono',monospace;font-size:.68rem;text-transform:uppercase;letter-spacing:.22em;margin-bottom:.9rem}
+.sn::after{content:"";height:1px;flex:1;background:linear-gradient(90deg,rgba(244,114,182,.7),transparent)}
+.sec h2{font-size:clamp(1.9rem,4vw,2.75rem);line-height:1.08;margin-bottom:1rem;letter-spacing:-.04em}
+.lead{font-family:'Source Serif 4',serif;font-size:1.08rem;color:var(--t2);margin-bottom:2rem;line-height:1.85}
+.card{background:linear-gradient(180deg,rgba(24,24,38,.96),rgba(17,17,28,.96));border:1px solid var(--bs);border-radius:var(--r);box-shadow:var(--sh);padding:1.8rem;margin-bottom:1.4rem}
+.cc{background:linear-gradient(180deg,rgba(11,11,22,.99),rgba(9,9,17,.99));border:1px solid var(--bs);border-radius:var(--r);box-shadow:var(--sh);padding:0;margin-bottom:1.4rem;overflow:hidden}
+.ch{display:flex;align-items:center;justify-content:space-between;padding:1rem 1.5rem;border-bottom:1px solid var(--bs)}
+.ch h3{font-size:.9rem;font-family:'JetBrains Mono',monospace;color:var(--ac)}
+.cpb{display:inline-flex;align-items:center;gap:5px;padding:.28rem .7rem;border-radius:999px;border:1px solid var(--bs);background:transparent;color:var(--tm);font-size:.72rem;cursor:pointer;transition:all .18s;font-family:'JetBrains Mono',monospace}
+.cpb:hover{border-color:var(--a1);color:var(--a1)}
+.cbody{padding:1.5rem;overflow-x:auto}
+pre{white-space:pre;color:#d8e3ff;font-family:'JetBrains Mono',monospace;font-size:.86rem;line-height:1.75}
+.kw{color:#a78bfa}.fn{color:#60a5fa}.str{color:#5eead4}.cm{color:#3d3d5a;font-style:italic}.nu{color:#fbbf24}.cl{color:#f472b6}
+.g2{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:1.3rem;margin-bottom:1.4rem}
+.g3{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:1.3rem;margin-bottom:1.4rem}
+.g4{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:1rem;margin-bottom:1.2rem}
+.mc2{border:1px solid var(--bs);border-radius:16px;padding:1.3rem;background:rgba(255,255,255,.02)}
+.mc2 h4{font-size:1rem;margin-bottom:.55rem;color:var(--t1)}.mc2 p{font-size:.9rem;color:var(--t2);line-height:1.65}
+.cl2{border-radius:16px;padding:1.2rem 1.5rem;margin:1.5rem 0;display:flex;gap:1rem;align-items:flex-start}
+.cs{background:rgba(94,234,212,.06);border:1px solid rgba(94,234,212,.18)}
+.ci{background:rgba(96,165,250,.07);border:1px solid rgba(96,165,250,.18)}
+.cr{background:rgba(244,114,182,.06);border:1px solid rgba(244,114,182,.18)}
+.cw2{background:rgba(251,191,36,.06);border:1px solid rgba(251,191,36,.18)}
+.cp{background:rgba(167,139,250,.06);border:1px solid rgba(167,139,250,.18)}
+.cico{font-size:1.2rem;flex-shrink:0;margin-top:.1rem}
+.cbd h4{font-size:.95rem;margin-bottom:.35rem;color:var(--t1)}.cbd p{font-size:.9rem;color:var(--t2);line-height:1.65}
+.tbl{width:100%;border-collapse:collapse;font-size:.87rem}
+.tbl th{text-align:left;padding:.75rem 1rem;font-family:'JetBrains Mono',monospace;font-size:.65rem;text-transform:uppercase;color:var(--tm);border-bottom:1px solid var(--bs)}
+.tbl td{padding:.75rem 1rem;border-bottom:1px solid rgba(255,255,255,.04);color:var(--t2);vertical-align:top;line-height:1.65}
+.tbl td:first-child{color:var(--t1);font-weight:600}.tbl tr:last-child td{border-bottom:none}
+.ex-box{border-radius:12px;padding:1rem 1.2rem;margin-bottom:.8rem}
+.ex-good{background:rgba(94,234,212,.05);border:1px solid rgba(94,234,212,.2)}
+.ex-bad{background:rgba(244,114,182,.05);border:1px solid rgba(244,114,182,.2)}
+.ex-label{font-family:'JetBrains Mono',monospace;font-size:.7rem;text-transform:uppercase;letter-spacing:.12em;margin-bottom:.4rem}
+.ex-text{font-size:.88rem;color:var(--t2);line-height:1.65}
+.num-card{border:1px solid var(--bs);border-radius:14px;padding:1.2rem;background:rgba(255,255,255,.02);text-align:center}
+.num-big{font-family:'JetBrains Mono',monospace;font-size:2.2rem;font-weight:700;margin-bottom:.3rem}
+.num-label{font-size:.82rem;color:var(--tm)}
+.qc{background:linear-gradient(180deg,rgba(24,24,38,.96),rgba(17,17,28,.96));border:1px solid var(--bs);border-radius:var(--r);box-shadow:var(--sh);padding:1.8rem}
+.qq{border:1px solid var(--bs);border-radius:16px;padding:1.3rem;background:rgba(255,255,255,.015);margin-bottom:1rem}
+.qq h4{font-size:1rem;margin-bottom:1rem;color:var(--t1);line-height:1.5}
+.qo{display:grid;gap:.6rem}
+.qob{border:1px solid var(--bs);border-radius:11px;padding:.9rem 1.1rem;background:rgba(255,255,255,.02);color:var(--t2);cursor:pointer;transition:all .2s;text-align:left;font-size:.9rem;font-family:'Outfit',sans-serif;width:100%;line-height:1.5}
+.qob:hover{border-color:rgba(244,114,182,.4);background:rgba(244,114,182,.04)}
+.qob.ok{border-color:rgba(94,234,212,.5);background:rgba(94,234,212,.09);color:var(--t1)}
+.qob.no{border-color:rgba(244,114,182,.4);background:rgba(244,114,182,.07)}
+.qf{font-size:.88rem;margin-top:.7rem;line-height:1.6;padding:.7rem .9rem;border-radius:10px;background:rgba(255,255,255,.02);display:none}
+.qf.show{display:block}
+.qs{padding:1.4rem;border-radius:16px;background:rgba(94,234,212,.06);border:1px solid rgba(94,234,212,.2);text-align:center;margin-top:1.2rem;display:none}
+.qs h3{font-size:2rem;color:var(--a1);margin-bottom:.4rem}.qs p{color:var(--t2);font-size:.92rem}
+.fn2{display:flex;align-items:center;justify-content:space-between;padding:2.2rem 0;border-top:1px solid var(--bs);margin-top:2rem}
+.fn2 a{display:inline-flex;align-items:center;gap:8px;padding:.75rem 1.5rem;border-radius:999px;border:1px solid var(--bs);color:var(--t2);text-decoration:none;font-size:.9rem;transition:all .2s}
+.fn2 a:hover{border-color:var(--ac);color:var(--ac)}
+.fn2 a.pr{background:rgba(167,139,250,.04);border-color:rgba(167,139,250,.2);color:var(--a5)}
+.fn2 a.nx{background:rgba(244,114,182,.04);border-color:rgba(244,114,182,.25);color:var(--ac)}
+.fcc{text-align:center;font-size:.82rem;color:var(--tm)}
+.pipe-step{border:1px solid var(--bs);border-radius:12px;padding:.9rem 1.2rem;background:rgba(255,255,255,.02)}
+.pipe-step h4{font-size:.88rem;font-family:'JetBrains Mono',monospace;color:var(--ac);margin-bottom:.35rem}
+.pipe-step p{font-size:.83rem;color:var(--t2);line-height:1.6}
+.pipe-arrow{text-align:center;color:var(--tm);font-size:1.4rem;padding:.15rem 0}
+@media(max-width:720px){.g2,.g3,.g4{grid-template-columns:repeat(2,1fr)}}</style>
+</head>
+<body>
+<div class="sp" id="sp"></div>
+<nav>
+  <a href="ocr_m0.html" class="nbr">Marevlo · OCR Track · Module 2</a>
+  <span class="nm">Classical OCR: Tesseract Deep Dive</span>
+  <div class="na"><a href="ocr_m1.html" class="pr">← M1: Image Pre-processing</a><a href="ocr_m3.html" class="nx">M3: Layout Analysis →</a></div>
+</nav>
+<section class="hero"><div class="hg"></div><div class="hi">
+  <div class="hl"><span class="dot"></span>OCR Track · Module 2 · OCR &amp; Text Recognition Engineering</div>
+  <h1>Classical OCR: Tesseract Deep Dive<br><span class="gt">LSTM Engine · PSM Modes · OEM · Whitelists · Confidence · Custom Word Lists</span></h1>
+  <p class="hs">Tesseract is the most widely used open-source OCR engine — and one of the most misconfigured. This module covers everything you actually need to know: how the LSTM engine processes a line image, all 14 Page Segmentation Modes with when to use each, the three OCR Engine Modes, configuration file tuning, character whitelists that eliminate entire error classes, confidence score extraction, and custom word lists for domain vocabulary.</p>
+<div class="hm"><span class="mp">65 min</span><span class="mp">LSTM engine internals</span><span class="mp">PSM 0-13 deep dive</span><span class="mp">OEM modes</span><span class="mp">Config tuning</span><span class="mp">Whitelist/blacklist</span><span class="mp">Confidence scores</span><span class="mp">Custom word lists</span><span class="mp">Full pytesseract API</span></div>
+</div><div class="sc"><span>Scroll</span><div class="arr"></div></div></section>
+<div class="cw">
+
+<section class="sec" id="s1">
+<div class="sn">01 · How Tesseract's LSTM Engine Works</div>
+<h2>From a Line Image to Text:<br><span class="gt">Inside the Tesseract 4/5 Architecture</span></h2>
+<p class="lead">Tesseract 4 (2016) replaced the legacy HMM-based engine with a bidirectional LSTM that processes text line images from left-to-right and right-to-left simultaneously, producing character probabilities at each position. This context-awareness is what allows it to resolve ambiguous glyphs — "rn" vs "m" is disambiguated by the characters before and after. Understanding this architecture explains why certain inputs succeed and others fail.</p>
+<div class="card"><h3 style="color:var(--a3);font-size:.95rem;margin-bottom:1rem">The Tesseract 5 pipeline: step by step</h3>
+<div style="display:flex;flex-direction:column;gap:.4rem">
+<div class="pipe-step" style="border-color:rgba(244,114,182,.25)"><h4 style="color:var(--a3)">① Page Layout Analysis</h4><p>Tesseract first analyses the entire page to detect text blocks, columns, and reading order (controlled by PSM — see Section 2). It identifies individual text line bounding boxes using pixel projection profiles — horizontal scans that find the white gaps between text lines.</p></div>
+<div class="pipe-arrow">↓</div>
+<div class="pipe-step" style="border-color:rgba(244,114,182,.25)"><h4 style="color:var(--a3)">② Line Normalisation</h4><p>Each text line is scaled to a fixed height (typically 48 pixels in Tesseract 5), making the LSTM input resolution-independent. This is why Tesseract performance is relatively stable across DPI values above 150 — the normalisation step compensates for varying scale.</p></div>
+<div class="pipe-arrow">↓</div>
+<div class="pipe-step" style="border-color:rgba(244,114,182,.25)"><h4 style="color:var(--a3)">③ Bidirectional LSTM Recognition</h4><p>The normalised line image is passed through a bidirectional LSTM: one LSTM processes left-to-right, another right-to-left. Their outputs are concatenated and passed to a dense layer, producing a probability distribution over the character set at each x-position in the image.</p></div>
+<div class="pipe-arrow">↓</div>
+<div class="pipe-step" style="border-color:rgba(244,114,182,.25)"><h4 style="color:var(--a3)">④ CTC Decoding</h4><p>Connectionist Temporal Classification (CTC) collapses the per-position character probability sequence into a text string, handling the alignment between image positions and character positions (characters are wider than a single pixel position).</p></div>
+<div class="pipe-arrow">↓</div>
+<div class="pipe-step" style="border-color:rgba(244,114,182,.25)"><h4 style="color:var(--a3)">⑤ Word Dictionary Lookup (optional)</h4><p>In legacy mode (OEM 0) and partially in LSTM mode, Tesseract applies a dictionary lookup to prefer valid English words over equally-probable character sequences. This can be disabled with the parameter dict_basenames.</p></div>
+</div></div>
+<div class="cl2 cs"><div class="cico">💡</div><div class="cbd"><h4>Why context matters: the "rn" vs "m" problem</h4>
+<p>The letter "m" and the two-character sequence "rn" are visually nearly identical at low resolution or with serif fonts. In the legacy HMM engine, these were frequently confused based on character-level probability alone. The LSTM engine sees the full line and can use context: "modern" would produce a high probability for "rn" (because the surrounding characters "mode" and "" form a common word), while "farm" would correctly prefer "m". This contextual disambiguation is the primary quality improvement of Tesseract 4/5 over Tesseract 3.</p></div></div>
+</section>
+
+<section class="sec" id="s2">
+<div class="sn">02 · Page Segmentation Modes (PSM): All 14 Explained</div>
+<h2>The Most Misconfigured Tesseract Setting:<br><span class="gt">Choosing the Right PSM</span></h2>
+<p class="lead">PSM controls what Tesseract assumes about the layout of the input image before it begins recognition. Using the wrong PSM is the most common cause of Tesseract producing garbage on well-prepared images. PSM 3 (the default "auto") works on most full-page documents but fails silently on cropped regions, single words, and rotated text.</p>
+<div class="card" style="padding:0;overflow:hidden"><table class="tbl">
+<thead><tr><th>PSM</th><th>Name</th><th>What Tesseract assumes</th><th>Use when</th><th>Fails on</th></tr></thead>
+<tbody>
+<tr><td style="font-family:'JetBrains Mono',monospace;color:var(--a5)">0</td><td>OSD only</td><td>No recognition — detects orientation and script only</td><td>Pre-screening documents to determine rotation/language</td><td>Does not return text</td></tr>
+<tr><td style="font-family:'JetBrains Mono',monospace;color:var(--a5)">1</td><td>OSD + auto segmentation</td><td>Auto page segmentation with OSD</td><td>Multi-script documents where language detection is needed first</td><td>Slow; rarely needed</td></tr>
+<tr><td style="font-family:'JetBrains Mono',monospace;color:var(--a4)">2</td><td>Auto, no OSD</td><td>Full page layout detection, skip OSD</td><td>When you know the orientation and script already</td><td>—</td></tr>
+<tr><td style="font-family:'JetBrains Mono',monospace;color:var(--a1)">3</td><td>Auto (default)</td><td>Full page auto-segmentation with OSD</td><td>Default for full-page documents. Multi-column, mixed layout.</td><td>Single lines, single words, non-rectangular text</td></tr>
+<tr><td style="font-family:'JetBrains Mono',monospace;color:var(--a4)">4</td><td>Single column</td><td>One column of text, varying sizes</td><td>Newspaper columns fed individually, single-column reports</td><td>Multi-column pages passed whole</td></tr>
+<tr><td style="font-family:'JetBrains Mono',monospace;color:var(--a4)">5</td><td>Single block (vertical)</td><td>Uniform vertical text block</td><td>Vertical Japanese/Chinese text; column-feed with PSM 4 first</td><td>Horizontal text — produces random output</td></tr>
+<tr><td style="font-family:'JetBrains Mono',monospace;color:var(--a2)">6</td><td>Single uniform block</td><td>Single uniform font block, one reading order</td><td>Cropped text regions from a document (after layout analysis). Most reliable for small regions.</td><td>Multi-column or mixed-font regions</td></tr>
+<tr><td style="font-family:'JetBrains Mono',monospace;color:var(--a2)">7</td><td>Single text line</td><td>Exactly one text line, no layout analysis</td><td>Pre-cropped single line images. Field extraction from forms. Much faster than PSM 3/6.</td><td>Multi-line input — merges all lines into one</td></tr>
+<tr><td style="font-family:'JetBrains Mono',monospace;color:var(--a2)">8</td><td>Single word</td><td>Exactly one word</td><td>Word-level crop from field extraction. Licence plates. Single-word labels.</td><td>Multi-word input</td></tr>
+<tr><td style="font-family:'JetBrains Mono',monospace;color:var(--a2)">9</td><td>Single word in circle</td><td>Word arranged in a circle</td><td>Circular stamps, round seals</td><td>Linear text</td></tr>
+<tr><td style="font-family:'JetBrains Mono',monospace;color:var(--a2)">10</td><td>Single character</td><td>Exactly one character</td><td>Individual digit recognition. CAPTCHA-style single char.</td><td>Any word or multi-character input</td></tr>
+<tr><td style="font-family:'JetBrains Mono',monospace;color:var(--a3)">11</td><td>Sparse text</td><td>Scattered text with no particular structure or order</td><td>Natural scene images with isolated text. Signs, labels on products.</td><td>Structured documents — PSM 3 performs better</td></tr>
+<tr><td style="font-family:'JetBrains Mono',monospace;color:var(--a3)">12</td><td>Sparse text + OSD</td><td>Sparse text with orientation detection</td><td>Sparse text on unknown-orientation images</td><td>—</td></tr>
+<tr><td style="font-family:'JetBrains Mono',monospace;color:var(--a4)">13</td><td>Raw line (no layout)</td><td>Treat image as a single text line (no normalisation)</td><td>Testing/debugging. When all other PSMs produce wrong segmentation.</td><td>Everything except raw diagnostic use</td></tr>
+</tbody></table></div>
+<div class="g2">
+<div class="ex-box ex-bad">
+<div class="ex-label" style="color:var(--a3)">❌ Wrong PSM: cropped field with PSM 3 (default)</div>
+<div class="ex-text">Input: a 300×40 pixel crop containing only "John Smith" from a name field.<br>PSM 3 tries to detect columns, paragraphs, and multiple text blocks on this tiny region. It finds insufficient layout structure and either returns empty string "" or misidentifies the text block boundaries, splitting "John" and "Smith" into separate "columns."<br><br>Fix: use <strong>PSM 7 (single line)</strong> or PSM 8 (single word) for pre-cropped field regions.</div></div>
+<div class="ex-box ex-good">
+<div class="ex-label" style="color:var(--a1)">✓ Correct PSM: cropped field with PSM 7</div>
+<div class="ex-text">Same 300×40 pixel crop, PSM 7.<br>Tesseract skips layout analysis entirely, treats the full image as a single text line, runs LSTM directly on the normalised strip.<br>Result: "John Smith" — correct, fast, and consistent.<br><br>Rule of thumb: pre-crop fields to single-line regions, then use PSM 7. Never pass a cropped region to PSM 3.</div></div>
+</div>
+</section>
+
+<section class="sec" id="s3">
+<div class="sn">03 · OCR Engine Modes (OEM)</div>
+<h2>Which Tesseract Engine to Use<br><span class="gt">and When</span></h2>
+<p class="lead">Tesseract has maintained two parallel recognition engines since version 4: the legacy character-classifier engine (inherited from Tesseract 3) and the new LSTM engine. OEM controls which engine is used and whether both can be combined.</p>
+<div class="g2">
+<div class="card" style="margin-bottom:0">
+<h4 style="color:var(--a4);margin-bottom:.7rem">OEM 0 — Legacy engine only</h4>
+<p style="font-size:.86rem;color:var(--t2);line-height:1.65;margin-bottom:.6rem">Uses the pre-Tesseract-4 character classifier. Generally lower accuracy on most documents. However, for specific font types (very large fonts, monospace code) and certain domain configurations, legacy mode can be faster and more predictable.</p>
+<div style="padding:.5rem .8rem;background:rgba(251,191,36,.04);border:1px solid rgba(251,191,36,.18);border-radius:8px;font-size:.83rem;color:var(--t2)"><strong style="color:var(--a4)">Use when:</strong> processing monospace code blocks; when LSTM mode produces worse results after trying both; for character-level bounding box output (LSTM bounding boxes are less precise).</div></div>
+<div class="card" style="margin-bottom:0">
+<h4 style="color:var(--a1);margin-bottom:.7rem">OEM 1 — LSTM engine only (recommended)</h4>
+<p style="font-size:.86rem;color:var(--t2);line-height:1.65;margin-bottom:.6rem">The bidirectional LSTM engine. Best accuracy on standard printed text, mixed fonts, and degraded documents. The default for Tesseract 5. Run with OEM 1 + PSM 3/6/7 for production document processing.</p>
+<div style="padding:.5rem .8rem;background:rgba(94,234,212,.04);border:1px solid rgba(94,234,212,.18);border-radius:8px;font-size:.83rem;color:var(--t2)"><strong style="color:var(--a1)">Use when:</strong> everything, unless you have a specific reason to use OEM 0. Start here for any new project.</div></div>
+</div>
+<div class="g2" style="margin-top:1rem">
+<div class="card" style="margin-bottom:0">
+<h4 style="color:var(--a5);margin-bottom:.7rem">OEM 2 — Legacy + LSTM combined</h4>
+<p style="font-size:.86rem;color:var(--t2);line-height:1.65">Both engines vote; combined result used. Occasionally slightly higher accuracy than OEM 1 alone on certain document types, but roughly 2× slower. Rarely worth the overhead.</p></div>
+<div class="card" style="margin-bottom:0">
+<h4 style="color:var(--a2);margin-bottom:.7rem">OEM 3 — Default (Tesseract decides)</h4>
+<p style="font-size:.86rem;color:var(--t2);line-height:1.65">Tesseract automatically selects the best available engine for the installed data files. In practice equivalent to OEM 1 in Tesseract 5 if LSTM data is installed. Use this if you are not sure.</p></div>
+</div>
+</section>
+
+<section class="sec" id="s4">
+<div class="sn">04 · Character Whitelists and Blacklists</div>
+<h2>Eliminating Entire Error Classes<br><span class="gt">by Restricting the Character Set</span></h2>
+<p class="lead">One of the most powerful and underused Tesseract features is character set restriction. By specifying a whitelist of valid output characters, you tell Tesseract to only ever output characters from that set — eliminating all substitution errors that fall outside it. For structured fields (dates, amounts, phone numbers, IDs), this alone can improve field-level accuracy from 85% to 99%.</p>
+<div class="card"><h3 style="color:var(--a2);font-size:.95rem;margin-bottom:1rem">Whitelist worked example: invoice amount extraction</h3>
+<div style="background:rgba(11,11,22,.88);border:1px solid rgba(96,165,250,.2);border-radius:11px;padding:1rem 1.2rem;margin-bottom:1rem;font-size:.85rem;color:var(--t2);line-height:1.95">
+<strong style="color:var(--a2)">Field being extracted:</strong> Invoice total amount, e.g. "£12,345.67"<br><br>
+<strong style="color:var(--a3)">Without whitelist — Tesseract output examples:</strong><br>
+"£l2,345.67" → lowercase 'l' instead of '1'<br>
+"£12,34S.67" → 'S' instead of '5' (common serif confusion)<br>
+"£I2,345.67" → uppercase 'I' instead of '1'<br>
+"£12,345,67" → comma instead of period (common OCR error)<br><br>
+<strong style="color:var(--a1)">With whitelist = "0123456789.,£$€":</strong><br>
+Only digits, comma, period, and currency symbols can appear in output.<br>
+"£l2,345.67" → "£12,345.67" (l→1 forced by whitelist constraint)<br>
+"£12,34S.67" → "£12,345.67" (S→5 forced)<br>
+"£I2,345.67" → "£12,345.67" (I→1 forced)<br>
+<strong style="color:var(--a1)">Field-level accuracy improvement: 85% → 98%+</strong>
+</div></div>
+<div class="cc"><div class="ch"><h3>tesseract_config.py — whitelists, PSM, OEM</h3><button class="cpb" onclick="cp(this,'c1')">⌘ Copy</button></div>
+<div class="cbody"><pre id="c1"><span class="kw">import</span> pytesseract
+<span class="kw">from</span> PIL <span class="kw">import</span> Image
+<span class="kw">import</span> numpy <span class="kw">as</span> np, cv2
+
+<span class="cm"># ── Common config strings ─────────────────────────────────────</span>
+CONFIGS = {
+    <span class="cm"># Full document, best accuracy</span>
+    <span class="str">"full_page"</span>:    <span class="str">"--oem 1 --psm 3"</span>,
+    
+    <span class="cm"># Pre-cropped single line field</span>
+    <span class="str">"single_line"</span>:  <span class="str">"--oem 1 --psm 7"</span>,
+    
+    <span class="cm"># Numeric field: amounts, quantities</span>
+    <span class="str">"numeric"</span>:      <span class="str">'--oem 1 --psm 7 -c tessedit_char_whitelist=0123456789.,£$€-'</span>,
+    
+    <span class="cm"># Date field: DD/MM/YYYY or MM-DD-YYYY</span>
+    <span class="str">"date"</span>:         <span class="str">'--oem 1 --psm 7 -c tessedit_char_whitelist=0123456789/-'</span>,
+    
+    <span class="cm"># Uppercase letters only (ID codes, invoice numbers)</span>
+    <span class="str">"uppercase_id"</span>: <span class="str">'--oem 1 --psm 7 -c tessedit_char_whitelist=ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789-'</span>,
+    
+    <span class="cm"># Mixed alphanumeric (VIN, serial numbers)</span>
+    <span class="str">"alphanumeric"</span>: <span class="str">'--oem 1 --psm 8 -c tessedit_char_whitelist=ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789'</span>,
+    
+    <span class="cm"># Blacklist: remove characters that are never valid</span>
+    <span class="str">"no_specials"</span>:  <span class="str">'--oem 1 --psm 3 -c tessedit_char_blacklist=@#^&*~`|<>{}[]'</span>,
+}
+
+<span class="kw">def</span> <span class="fn">ocr_field</span>(crop: np.ndarray, field_type: str = <span class="str">"single_line"</span>) -> str:
+    <span class="str">"""OCR a pre-cropped field region with appropriate config."""</span>
+    config = CONFIGS.get(field_type, CONFIGS[<span class="str">"single_line"</span>])
+    pil_img = Image.<span class="fn">fromarray</span>(crop)
+    result = pytesseract.<span class="fn">image_to_string</span>(pil_img, config=config)
+    <span class="kw">return</span> result.<span class="fn">strip</span>()
+
+<span class="kw">def</span> <span class="fn">ocr_full_page</span>(image: np.ndarray, lang: str = <span class="str">"eng"</span>) -> str:
+    <span class="str">"""OCR a full page document."""</span>
+    pil_img = Image.<span class="fn">fromarray</span>(image)
+    <span class="kw">return</span> pytesseract.<span class="fn">image_to_string</span>(
+        pil_img,
+        lang=lang,
+        config=CONFIGS[<span class="str">"full_page"</span>]
+    )
+
+<span class="cm"># Usage examples:</span>
+<span class="cm"># amount_text = ocr_field(amount_crop, "numeric")    → "£12,345.67"</span>
+<span class="cm"># date_text   = ocr_field(date_crop,   "date")       → "15/03/2024"</span>
+<span class="cm"># inv_num     = ocr_field(id_crop,     "uppercase_id") → "INV-2024-0042"</span></pre></div></div>
+</section>
+
+<section class="sec" id="s5">
+<div class="sn">05 · Extracting Confidence Scores</div>
+<h2>Word and Character Level Confidence:<br><span class="gt">Knowing When to Trust the Output</span></h2>
+<p class="lead">Tesseract produces a confidence score (0–100) for each recognised word. These scores are not perfectly calibrated (a word with confidence 40 is not necessarily correct 40% of the time), but they are highly effective for identifying which words need human review or LLM correction. Words below ~60 confidence are disproportionately likely to contain errors.</p>
+<div class="cc"><div class="ch"><h3>confidence_extraction.py</h3><button class="cpb" onclick="cp(this,'c2')">⌢ Copy</button></div>
+<div class="cbody"><pre id="c2"><span class="kw">import</span> pytesseract
+<span class="kw">from</span> PIL <span class="kw">import</span> Image
+<span class="kw">import</span> pandas <span class="kw">as</span> pd
+<span class="kw">import</span> numpy <span class="kw">as</span> np
+
+<span class="kw">def</span> <span class="fn">ocr_with_confidence</span>(image: np.ndarray,
+                         config: str = <span class="str">"--oem 1 --psm 3"</span>,
+                         low_conf_threshold: int = <span class="nu">60</span>) -> dict:
+    <span class="str">"""
+    Run Tesseract and return text with per-word confidence scores.
+    Flags words below threshold for human review.
+    """</span>
+    pil_img = Image.<span class="fn">fromarray</span>(image)
+    
+    <span class="cm"># image_to_data returns bounding boxes + confidence for each word</span>
+    data = pytesseract.<span class="fn">image_to_data</span>(
+        pil_img,
+        config=config,
+        output_type=pytesseract.Output.DATAFRAME
+    )
+    
+    <span class="cm"># Filter to actual word rows (confidence != -1)</span>
+    words_df = data[(data[<span class="str">"conf"</span>] != -<span class="nu">1</span>) & (data[<span class="str">"text"</span>].<span class="fn">str</span>.<span class="fn">strip</span>() != <span class="str">""</span>)].<span class="fn">copy</span>()
+    
+    words_df[<span class="str">"low_confidence"</span>] = words_df[<span class="str">"conf"</span>] < low_conf_threshold
+    
+    <span class="cm"># Build structured output</span>
+    full_text = <span class="str">" "</span>.<span class="fn">join</span>(words_df[<span class="str">"text"</span>].<span class="fn">tolist</span>())
+    mean_conf = words_df[<span class="str">"conf"</span>].<span class="fn">mean</span>()
+    flagged   = words_df[words_df[<span class="str">"low_confidence"</span>]]
+    
+    <span class="kw">return</span> {
+        <span class="str">"text"</span>:            full_text,
+        <span class="str">"mean_confidence"</span>: <span class="fn">round</span>(mean_conf, <span class="nu">1</span>),
+        <span class="str">"word_count"</span>:      <span class="fn">len</span>(words_df),
+        <span class="str">"low_conf_words"</span>:  flagged[[<span class="str">"text"</span>, <span class="str">"conf"</span>, <span class="str">"left"</span>, <span class="str">"top"</span>]].<span class="fn">to_dict</span>(<span class="str">"records"</span>),
+        <span class="str">"low_conf_count"</span>:  <span class="fn">len</span>(flagged),
+        <span class="str">"review_needed"</span>:   mean_conf < <span class="nu">75</span> <span class="kw">or</span> <span class="fn">len</span>(flagged) > <span class="fn">len</span>(words_df) * <span class="nu">0.15</span>
+    }
+
+<span class="cm"># Example output:</span>
+<span class="cm"># {</span>
+<span class="cm">#   "text": "Invoice Total: £12,345.67 Due: 15/03/2024",</span>
+<span class="cm">#   "mean_confidence": 82.4,</span>
+<span class="cm">#   "low_conf_words": [{"text": "£l2,345.67", "conf": 43, "left": 340, "top": 220}],</span>
+<span class="cm">#   "review_needed": False  ← only 1 low-conf word out of 8</span>
+<span class="cm"># }</span>
+
+<span class="kw">def</span> <span class="fn">get_word_bboxes</span>(image: np.ndarray) -> list[dict]:
+    <span class="str">"""Get each word with its bounding box — useful for field localisation."""</span>
+    pil_img = Image.<span class="fn">fromarray</span>(image)
+    data = pytesseract.<span class="fn">image_to_data</span>(pil_img, output_type=pytesseract.Output.DICT)
+    words = []
+    <span class="kw">for</span> i, text <span class="kw">in</span> <span class="fn">enumerate</span>(data[<span class="str">"text"</span>]):
+        <span class="kw">if</span> text.<span class="fn">strip</span>() <span class="kw">and</span> data[<span class="str">"conf"</span>][i] > <span class="nu">0</span>:
+            words.append({
+                <span class="str">"text"</span>: text,
+                <span class="str">"conf"</span>: data[<span class="str">"conf"</span>][i],
+                <span class="str">"bbox"</span>: (data[<span class="str">"left"</span>][i], data[<span class="str">"top"</span>][i],
+                          data[<span class="str">"width"</span>][i], data[<span class="str">"height"</span>][i])
+            })
+    <span class="kw">return</span> words</pre></div></div>
+</section>
+
+<section class="sec" id="s6">
+<div class="sn">06 · Custom Word Lists and Language Packs</div>
+<h2>Teaching Tesseract Your Domain:<br><span class="gt">Word Lists, Dictionaries, and Tessdata</span></h2>
+<p class="lead">Tesseract uses a word frequency dictionary during recognition to prefer common words over rare ones. When processing domain-specific documents (medical, legal, technical), the standard English dictionary penalises valid domain terms — "metformin", "polyethylene", "GAAP" — causing them to be corrected to more common but wrong words. Custom word lists and user-defined dictionaries solve this.</p>
+<div class="g2">
+<div class="card" style="margin-bottom:0">
+<h4 style="color:var(--a5);margin-bottom:.7rem">Adding domain words to Tesseract</h4>
+<div class="code-mini"><span class="cm"># 1. Create custom word list file (one word per line)</span>
+<span class="cm"># user_words.txt:</span>
+<span class="cm"># metformin</span>
+<span class="cm"># polyethylene</span>
+<span class="cm"># GAAP</span>
+<span class="cm"># INV-2024</span>
+
+<span class="cm"># 2. Reference in Tesseract config</span>
+config = <span class="str">"""--oem 1 --psm 3
+-c user_words_suffix=user_words.txt
+-c user_patterns_suffix=user_patterns.txt"""</span>
+
+<span class="cm"># 3. Or pass as environment variable</span>
+<span class="kw">import</span> os
+os.environ[<span class="str">"TESSDATA_PREFIX"</span>] = <span class="str">"/usr/share/tesseract-ocr/5/tessdata"</span>
+
+<span class="cm"># 4. Use in pytesseract</span>
+text = pytesseract.<span class="fn">image_to_string</span>(img, config=config)</div></div>
+<div class="card" style="margin-bottom:0">
+<h4 style="color:var(--a4);margin-bottom:.7rem">Language packs: installing and combining</h4>
+<div class="code-mini"><span class="cm"># Install additional language data</span>
+<span class="cm"># Ubuntu/Debian:</span>
+<span class="cm"># sudo apt install tesseract-ocr-deu  (German)</span>
+<span class="cm"># sudo apt install tesseract-ocr-fra  (French)</span>
+<span class="cm"># sudo apt install tesseract-ocr-chi-sim  (Simplified Chinese)</span>
+
+<span class="cm"># Combine languages (for multilingual documents)</span>
+<span class="cm"># Tesseract tries each language; best-scoring wins per word</span>
+text = pytesseract.<span class="fn">image_to_string</span>(
+    img,
+    lang=<span class="str">"eng+deu"</span>,   <span class="cm"># English + German</span>
+    config=<span class="str">"--oem 1 --psm 3"</span>
+)
+
+<span class="cm"># Available language codes (selection):</span>
+<span class="cm"># eng (English), deu (German), fra (French), spa (Spanish)</span>
+<span class="cm"># ita (Italian), por (Portuguese), rus (Russian)</span>
+<span class="cm"># chi_sim (Chinese simplified), chi_tra (traditional)</span>
+<span class="cm"># jpn (Japanese), ara (Arabic), hin (Hindi)</span>
+<span class="cm"># List installed: pytesseract.get_languages()</span></div></div></div>
+</section>
+
+<section class="sec" id="s7">
+<div class="sn">07 · Tesseract Configuration Reference</div>
+<h2>The Parameters That Actually Matter<br><span class="gt">for Production Tuning</span></h2>
+<div class="card" style="padding:0;overflow:hidden"><table class="tbl">
+<thead><tr><th>Parameter</th><th>Default</th><th>Effect</th><th>When to change</th></tr></thead>
+<tbody>
+<tr><td style="font-family:'JetBrains Mono',monospace;color:var(--a2)">tessedit_char_whitelist</td><td>(empty)</td><td>Restricts output to specified characters only</td><td>Any structured field extraction (dates, amounts, IDs)</td></tr>
+<tr><td style="font-family:'JetBrains Mono',monospace;color:var(--a2)">tessedit_char_blacklist</td><td>(empty)</td><td>Prevents specified characters from appearing in output</td><td>Remove characters that never appear in your document type</td></tr>
+<tr><td style="font-family:'JetBrains Mono',monospace;color:var(--a5)">preserve_interword_spaces</td><td>0</td><td>1 = preserve multiple spaces; 0 = normalise</td><td>Fixed-width / tabular text where spacing is meaningful</td></tr>
+<tr><td style="font-family:'JetBrains Mono',monospace;color:var(--a4)">textord_min_linesize</td><td>2.5</td><td>Minimum text line height in character heights</td><td>Very small fonts; set lower for 6-8pt text</td></tr>
+<tr><td style="font-family:'JetBrains Mono',monospace;color:var(--a4)">load_system_dawg</td><td>1</td><td>0 = disable English dictionary constraints</td><td>Non-dictionary text: product codes, part numbers, DNA sequences</td></tr>
+<tr><td style="font-family:'JetBrains Mono',monospace;color:var(--a4)">load_freq_dawg</td><td>1</td><td>0 = disable word frequency weighting</td><td>When rare technical terms are being corrected to common words</td></tr>
+<tr><td style="font-family:'JetBrains Mono',monospace;color:var(--a3)">tessedit_pageseg_mode</td><td>3</td><td>PSM (see Section 2)</td><td>Any time default PSM 3 produces wrong results on your input type</td></tr>
+</tbody></table></div>
+<div class="cc"><div class="ch"><h3>advanced_config.py — disabling dictionaries for codes</h3><button class="cpb" onclick="cp(this,'c3')">⌢ Copy</button></div>
+<div class="cbody"><pre id="c3"><span class="kw">import</span> pytesseract
+<span class="kw">from</span> PIL <span class="kw">import</span> Image
+
+<span class="cm"># Config for product codes, part numbers, technical identifiers</span>
+<span class="cm"># These look like noise to Tesseract's dictionary — disable it</span>
+CODE_CONFIG = <span class="str">"""--oem 1 --psm 7
+-c load_system_dawg=0
+-c load_freq_dawg=0
+-c tessedit_char_whitelist=ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789-/."""</span>
+
+<span class="cm"># Without disabling dawg: "PROD-X7K2-AB" might become "PROD-X7KZ-AB"</span>
+<span class="cm"># (Z closer to Z in dictionary vs 2 which is rare in English words)</span>
+
+<span class="cm"># With disabled dawg + whitelist: all 10-90 digit characters valid,</span>
+<span class="cm"># no dictionary pressure toward "word-like" sequences</span>
+
+<span class="cm"># Config for scientific notation / numbers</span>
+SCIENTIFIC_CONFIG = <span class="str">"""--oem 1 --psm 7
+-c load_system_dawg=0
+-c load_freq_dawg=0
+-c tessedit_char_whitelist=0123456789.eE+-×x"""</span>
+<span class="cm"># Correctly reads: "3.14×10⁻⁶" without dictionary interference</span>
+
+text = pytesseract.<span class="fn">image_to_string</span>(Image.<span class="fn">fromarray</span>(crop), config=CODE_CONFIG)
+<span class="fn">print</span>(text.<span class="fn">strip</span>())  <span class="cm"># → "PROD-X7K2-AB"</span></pre></div></div>
+</section>
+
+<section class="sec" id="s8">
+<div class="sn">08 · When Tesseract Is Not the Right Tool</div>
+<h2>The Limits of Tesseract and<br><span class="gt">What to Use Instead</span></h2>
+<div class="card" style="padding:0;overflow:hidden"><table class="tbl">
+<thead><tr><th>Scenario</th><th>Tesseract result</th><th>Better approach</th><th>Module</th></tr></thead>
+<tbody>
+<tr><td>Handwritten text (cursive)</td><td style="color:var(--a3)">Very poor — LSTM not trained on cursive styles; CER often 40-80%</td><td>TrOCR fine-tuned on handwriting (HuggingFace)</td><td>M5</td></tr>
+<tr><td>Complex multi-column layout</td><td style="color:var(--a4)">Moderate — PSM 3 attempts auto-segmentation but may merge columns</td><td>LayoutParser / Detectron2 for layout, then Tesseract per region</td><td>M3</td></tr>
+<tr><td>Table content</td><td style="color:var(--a3)">Poor — no understanding of row/column structure; cell text correct but structure lost</td><td>Table Transformer (TATR) + Tesseract per cell</td><td>M6</td></tr>
+<tr><td>Natural scene text (signs, labels)</td><td style="color:var(--a3)">Poor — assumes rectangular text blocks; fails on curved/perspective-distorted text</td><td>CRAFT detector + TrOCR / PaddleOCR recognition</td><td>M4</td></tr>
+<tr><td>Very low resolution (&lt;150 DPI)</td><td style="color:var(--a3)">Poor — character normalisation cannot recover missing pixels</td><td>Super-resolution upscaling (Real-ESRGAN) then Tesseract; or LLM vision API</td><td>M10</td></tr>
+<tr><td>Large-scale (50K+ pages/day)</td><td style="color:var(--a4)">Workable but slow — single-threaded by default</td><td>PaddleOCR (GPU-optimised, parallelised pipeline)</td><td>M4, M13</td></tr>
+</tbody></table></div>
+</section>
+
+<section class="sec" id="s9">
+<div class="sn">09 · Assessment</div>
+<h2>Module 2 <span class="gt">Quiz</span></h2>
+<div class="qc">
+
+<div class="qq"><h4>1. A pre-cropped date field (format DD/MM/YYYY) returns "08/l3/l994" — lowercase l instead of digit 1. Which Tesseract configuration change is most targeted at eliminating this specific error class?</h4>
+<div class="qo">
+<button class="qob" onclick="cq(this,0,false)">A) Switch from OEM 1 (LSTM) to OEM 0 (legacy engine). The legacy character classifier handles digit/letter disambiguation better on uniform fields because it uses template matching rather than contextual LSTM processing.</button>
+<button class="qob" onclick="cq(this,0,true)">B) Add a character whitelist: -c tessedit_char_whitelist=0123456789/. The l/1 confusion occurs because the LSTM assigns nearly equal probability to both characters in serif fonts at OCR resolution. With whitelist=0123456789/, the character 'l' cannot appear in output — Tesseract must select the next-highest-probability allowed character, which is '1'. Combine with PSM 7 for the pre-cropped line. This eliminates the entire letter-for-digit substitution error class for numeric fields.</button>
+<button class="qob" onclick="cq(this,0,false)">C) Increase the scan DPI to 600. At higher resolution, the visual differences between '1' and 'l' become larger in pixel space, allowing the LSTM to correctly distinguish them without any configuration changes.</button>
+<button class="qob" onclick="cq(this,0,false)">D) Add "08/13/1994" and similar date strings to a custom user word list. Tesseract's dictionary lookup will then prefer the correct digit forms when similar sequences appear.</button>
+</div><div class="qf" id="f0">Correct. The character whitelist is the most targeted fix because it attacks the root cause at the output level: l/1 ambiguity arises when the LSTM assigns nearly equal posterior probability to both characters. Without a whitelist, Tesseract selects whichever has the marginally higher probability (sometimes 'l' due to English dictionary frequency). With whitelist=0123456789/, 'l' is excluded from the output vocabulary entirely — the probability mass is redistributed to '1' by elimination. This requires no retraining and takes effect immediately. The word list approach (D) would not work because dates are not dictionary words and Tesseract's word frequency model does not apply to numeric strings.</div></div>
+
+<div class="qq"><h4>2. You pass a 400×50 pixel crop containing "Total: £12,345.67" to Tesseract with PSM 3 (default). The output is an empty string. What is the cause?</h4>
+<div class="qo">
+<button class="qob" onclick="cq(this,1,false)">A) The image dimensions are below Tesseract's minimum input size. Tesseract requires at least 600×200 pixels to run its layout analysis algorithm reliably — smaller images trigger an internal size guard that returns empty output.</button>
+<button class="qob" onclick="cq(this,1,false)">B) The currency symbol £ is outside Tesseract's default character set. The unrecognised character causes the line parser to abort and return empty, a known Tesseract 5 regression with Unicode symbols.</button>
+<button class="qob" onclick="cq(this,1,false)">C) The text contains both alphabetic and numeric characters. PSM 3 uses a word-boundary detector tuned for either pure text or pure numbers — mixed content on a single line triggers a fallback mode that discards ambiguous regions.</button>
+<button class="qob" onclick="cq(this,1,true)">D) PSM 3 runs full-page layout analysis — it looks for text blocks, paragraph structures, and column separators. On a 400×50 crop with a single text line, no page-level structure is found and the segmenter returns no regions, producing empty output. Fix: use PSM 7 (single text line) which bypasses layout analysis and directly normalises the full image as a single LSTM input. PSM 7 is always the correct mode for pre-cropped single-line field regions.</button>
+</div><div class="qf" id="f1">Correct. PSM 3's layout analysis was designed for full-page documents. When given a 400×50 crop, it attempts to identify paragraph structure, column boundaries, and text block hierarchies — none of which exist at that scale. The segmenter finds insufficient layout evidence and returns nothing rather than recognising the obviously-present text. PSM 7 skips layout analysis entirely and treats the whole image as one text line, which is exactly what a pre-cropped field region is. This is the single most impactful PSM selection decision in form field extraction pipelines.</div></div>
+
+<div class="qq"><h4>3. You OCR a chemistry paper containing "Fe₂O₃" and "CH₃COOH". Tesseract returns "FezO3" and "CHsCOOH". Disabling dictionaries (-c load_system_dawg=0 -c load_freq_dawg=0) partially helps. What additional change most improves subscript digit recognition?</h4>
+<div class="qo">
+<button class="qob" onclick="cq(this,2,false)">A) Switch to PSM 11 (sparse text). Subscripts are spatially separated from the main baseline — PSM 11's sparse detection correctly identifies them as separate text elements and processes them independently.</button>
+<button class="qob" onclick="cq(this,2,false)">B) Install the scientific notation language pack for Tesseract (lang=sci). This pack includes extended training on subscript and superscript characters from chemistry and physics publications.</button>
+<button class="qob" onclick="cq(this,2,true)">C) Pre-process: detect subscript character regions (those below the text baseline by more than half the x-height) and scale them up 3× before OCR. Subscript digits are rendered at 60–70% of normal character size — at 300 DPI a subscript '2' may be only 8–12 pixels tall, in the ambiguity range where '2' and 'z' are nearly identical. Upscaling subscript regions to match the main text height dramatically improves recognition. Combine with load_system_dawg=0 to remove dictionary pressure toward letter sequences.</button>
+<button class="qob" onclick="cq(this,2,false)">D) Add each chemical formula to a Tesseract user word list. Tesseract's word frequency model will then prefer "Fe₂O₃" over "FezO3" whenever the character context matches a known formula.</button>
+</div><div class="qf" id="f2">Correct. Subscript digit errors arise from two compounding causes: small pixel size (making digits visually ambiguous with letters) and dictionary pressure (making 'z' more probable than '2' in English word context). Disabling dictionaries addresses the second cause. Upscaling subscript regions addresses the first — at 8–12 pixels, '2' and 'z' share very similar pixel topology; at 24–36 pixels after 3× scaling, the distinctive shape difference becomes reliably classifiable. For production chemistry OCR, the most robust approach combines upscaling + disabled dictionaries + a custom whitelist including digits and element symbols. TrOCR or GPT-4 vision handles subscripts more robustly than any Tesseract configuration.</div></div>
+
+<div class="qq"><h4>4. image_to_data() returns mean confidence 71, with 3 of 50 words below 60. Should you flag this invoice for human review?</h4>
+<div class="qo">
+<button class="qob" onclick="cq(this,3,true)">A) It depends entirely on which 3 words are low-confidence. Inspect their content and field position: if the low-confidence words are boilerplate text (company address, standard terms), they are safe to pass through with spell-check. If any low-confidence word falls on an amount, date, or account number field — flag for review regardless of mean confidence. The routing decision must be field-position-aware, not threshold-only. Mean confidence is a useful summary but masks the critical distinction between errors in structural fields vs. narrative text.</button>
+<button class="qob" onclick="cq(this,3,false)">B) Yes, always — mean confidence below 75 triggers mandatory human review per standard OCR quality guidelines for financial documents in regulated industries.</button>
+<button class="qob" onclick="cq(this,3,false)">C) No — 6% low-confidence word rate is within acceptable variance for scanned thermal receipts. Confidence scores below 70 are common for currency symbols and punctuation which do not affect field extraction accuracy.</button>
+<button class="qob" onclick="cq(this,3,false)">D) Run OCR a second time and average the confidence scores across both runs. If the averaged mean exceeds 75, accept the document — the second pass confirms that the first-pass low-confidence words were transient errors rather than genuine ambiguity.</button>
+</div><div class="qf" id="f3">Correct. Flat confidence thresholds without field-position awareness produce two failure modes: false positives (routing clean documents for review because boilerplate text has low confidence) and false negatives (auto-approving documents where critical financial fields have low confidence but mean is acceptable). The correct design routes on field-level confidence: identify which words correspond to amount/date/ID fields using their bounding box coordinates relative to known field positions, then apply strict thresholds only to those critical fields. Re-running OCR (D) does not help — if the character is visually ambiguous, the LSTM will assign the same probability distribution both times.</div></div>
+
+<div class="qq"><h4>5. You process 200,000 invoice PDFs per month. Each has a text layer plus a vendor logo image. You want to extract the vendor name from the logo. What is the most efficient architecture?</h4>
+<div class="qo">
+<button class="qob" onclick="cq(this,4,false)">A) Rasterise each full PDF page to 300 DPI and run PaddleOCR on the entire page. PaddleOCR's detection model will locate and extract both the text-layer content and the logo text simultaneously in one pass.</button>
+<button class="qob" onclick="cq(this,4,false)">B) Run Tesseract with PSM 11 (sparse text) on full-page renders — sparse mode correctly handles the mix of dense invoice text and isolated logo text without requiring separate processing paths.</button>
+<button class="qob" onclick="cq(this,4,true)">C) Hybrid: use PyMuPDF to extract text-layer content (fast, 100% accurate, no OCR needed). Separately, identify the logo region (fixed coordinates or template matching per vendor), render only that crop to 300 DPI, and run Tesseract PSM 8 or PSM 7 on the crop only. This reduces OCR surface to a small image per invoice rather than a full page — roughly 85–95% less compute while maintaining near-perfect accuracy on both components.</button>
+<button class="qob" onclick="cq(this,4,false)">D) Extract text-layer content with PyMuPDF and use an LLM vision API for the vendor logo. At 200,000 invoices/month, the accuracy improvement from LLM vision on logo text justifies the API cost over Tesseract.</button>
+</div><div class="qf" id="f4">Correct. The hybrid architecture applies the minimum necessary processing to each component. Text-layer content needs no OCR — PyMuPDF extracts it exactly. The logo image needs OCR, but only the logo region needs to be rendered and processed, not the entire page. At 200,000 invoices/month: full-page render + PaddleOCR at ~1.5s/page = 83 CPU-hours/month. Hybrid: PyMuPDF (near-instant) + logo-only OCR at ~0.2s/invoice = ~11 CPU-hours/month. The 7× compute reduction comes from OCRing a 200×100 pixel logo crop instead of a 2480×3507 page. LLM vision (D) at $0.01/call × 200,000 = $2,000/month is not justified for logo text that Tesseract handles well.</div></div>
+
+<div class="qs" id="qs"><h3 id="sc">0/5</h3><p id="sm">Complete all 5 questions to see your score.</p></div>
+</div>
+</section>
+
+<div class="fn2">
+  <a href="ocr_m1.html" class="pr">← M1: Image Pre-processing</a>
+  <div class="fcc"><div>Module 2 · Classical OCR: Tesseract Deep Dive</div><div style="font-size:.75rem;margin-top:4px">OCR &amp; Text Recognition Engineering · Marevlo</div></div>
+  <a href="ocr_m3.html" class="nx">M3: Layout Analysis →</a>
+</div>
+</div>
+<script>
+window.addEventListener("scroll",function(){var h=document.documentElement;document.getElementById("sp").style.width=((h.scrollTop/(h.scrollHeight-h.clientHeight))*100)+"%";});
+var obs=new IntersectionObserver(function(e){e.forEach(function(x){if(x.isIntersecting)x.target.classList.add("vis");});},{threshold:0.07});
+document.querySelectorAll(".sec").forEach(function(s){obs.observe(s);});
+function cp(btn,id){navigator.clipboard.writeText(document.getElementById(id).innerText).then(function(){btn.textContent="Copied!";setTimeout(function(){btn.textContent="Copy";},2000);});}
+var ans=[null,null,null,null,null];
+function cq(btn,qi,ok){
+  var opts=btn.parentElement.querySelectorAll(".qob");opts.forEach(function(o){o.disabled=true;});
+  if(ans[qi]!==null)return;ans[qi]=ok;
+  var f=document.getElementById("f"+qi);
+  if(ok){btn.classList.add("ok");f.classList.add("show");f.style.color="var(--a1)";}
+  else{btn.classList.add("no");opts.forEach(function(o){if(o!==btn&&o.getAttribute("onclick").indexOf(",true)")>-1)o.classList.add("ok");});f.classList.add("show");f.style.color="var(--a3)";}
+  var filled=ans.filter(function(a){return a!==null;}).length;
+  if(filled===5){var c=ans.filter(function(a){return a===true;}).length;
+    document.getElementById("qs").style.display="block";
+    document.getElementById("sc").textContent=c+"/5";
+    document.getElementById("sm").textContent=["Review whitelist configuration for structured fields.","Re-read PSM selection for cropped regions.","Good — check dictionary disabling for codes.","Almost perfect!","Perfect. Move to M3: Layout Analysis."][c];}
+}
+</script></body></html>

@@ -1,0 +1,871 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Module 2.1 — From Perceptron to MLP · Marevlo DL Track</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@200;300;400;500;600;700;800&family=Source+Serif+4:ital,opsz,wght@0,8..60,300;0,8..60,400;0,8..60,500;0,8..60,600;1,8..60,400&family=JetBrains+Mono:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0a0a0c; --bg-elev: #121217; --bg-card: #16161d; --bg-code: #0e0e13;
+    --border: #25252e; --border-bright: #3a3a46;
+    --text: #e8e8ec; --text-dim: #9a9aa6; --text-faint: #6a6a76;
+    --accent: #ff5b3a; --accent-2: #f0c674; --accent-cool: #6ec5e9;
+    --accent-soft: #2a1a16;
+    --green: #7fc28a; --red: #e26a6a; --purple: #b794d4;
+    --display: 'Outfit', sans-serif;
+    --serif: 'Source Serif 4', Georgia, serif;
+    --mono: 'JetBrains Mono', monospace;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html { scroll-behavior: smooth; }
+  body { background: var(--bg); color: var(--text); font-family: var(--serif); font-size: 18px; line-height: 1.7; overflow-x: hidden; }
+  body::before { content: ''; position: fixed; inset: 0; pointer-events: none; z-index: 1000; opacity: 0.025;
+    background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='200' height='200'><filter id='n'><feTurbulence baseFrequency='0.9' numOctaves='2'/></filter><rect width='100%25' height='100%25' filter='url(%23n)'/></svg>"); }
+
+  .topnav { position: sticky; top: 0; z-index: 50; background: rgba(10,10,12,0.85); backdrop-filter: blur(14px); border-bottom: 1px solid var(--border); padding: 14px 32px; display: flex; justify-content: space-between; align-items: center; font-family: var(--display); }
+  .brand { font-weight: 700; letter-spacing: -0.02em; font-size: 18px; display: flex; align-items: center; gap: 10px; }
+  .brand .dot { width: 8px; height: 8px; background: var(--accent); border-radius: 50%; box-shadow: 0 0 12px var(--accent); }
+  .crumb { font-size: 13px; color: var(--text-dim); letter-spacing: 0.05em; text-transform: uppercase; }
+  .crumb b { color: var(--text); }
+  .phase-tag { display: inline-block; padding: 4px 12px; background: rgba(183,148,212,0.15); border: 1px solid rgba(183,148,212,0.4); border-radius: 2px; font-size: 10px; letter-spacing: 0.2em; color: var(--purple); font-weight: 600; margin-left: 12px; }
+
+  .hero { padding: 120px 32px 80px; max-width: 1100px; margin: 0 auto; position: relative; }
+  .hero::after { content: ''; position: absolute; top: 40px; right: -150px; width: 500px; height: 500px; background: radial-gradient(circle, rgba(183,148,212,0.12) 0%, transparent 60%); pointer-events: none; z-index: -1; }
+  .eyebrow { font-family: var(--display); font-size: 12px; font-weight: 500; letter-spacing: 0.25em; text-transform: uppercase; color: var(--accent); margin-bottom: 28px; display: flex; align-items: center; gap: 14px; }
+  .eyebrow::before { content: ''; width: 36px; height: 1px; background: var(--accent); }
+  h1.title { font-family: var(--display); font-size: clamp(44px, 7vw, 84px); font-weight: 300; line-height: 1.02; letter-spacing: -0.035em; margin-bottom: 32px; }
+  h1.title .em { font-style: italic; font-weight: 400; font-family: var(--serif); color: var(--purple); }
+  .lede { font-size: 22px; line-height: 1.55; color: var(--text-dim); max-width: 720px; font-weight: 300; }
+  .lede em { color: var(--text); font-style: italic; }
+  .meta-row { display: flex; gap: 32px; flex-wrap: wrap; margin-top: 60px; padding-top: 40px; border-top: 1px solid var(--border); font-family: var(--display); }
+  .meta-item { display: flex; flex-direction: column; gap: 6px; }
+  .meta-label { font-size: 11px; letter-spacing: 0.2em; text-transform: uppercase; color: var(--text-faint); font-weight: 500; }
+  .meta-val { font-size: 16px; color: var(--text); font-weight: 500; }
+
+  main { max-width: 800px; margin: 0 auto; padding: 80px 32px 120px; }
+  section { margin-bottom: 96px; }
+  h2 { font-family: var(--display); font-size: 42px; font-weight: 400; letter-spacing: -0.02em; line-height: 1.1; margin-bottom: 32px; padding-top: 20px; position: relative; }
+  h2::before { content: attr(data-num); position: absolute; top: -8px; left: 0; font-family: var(--mono); font-size: 12px; color: var(--accent); letter-spacing: 0.1em; }
+  h3 { font-family: var(--display); font-size: 24px; font-weight: 500; letter-spacing: -0.01em; margin: 48px 0 20px; color: var(--text); }
+  h4 { font-family: var(--display); font-size: 18px; font-weight: 500; margin: 32px 0 14px; color: var(--text); }
+  p { margin-bottom: 22px; color: var(--text); }
+  p.dim { color: var(--text-dim); }
+  strong { color: var(--accent-2); font-weight: 600; }
+  em { font-style: italic; }
+
+  pre { background: var(--bg-code); border: 1px solid var(--border); border-left: 2px solid var(--accent-cool); padding: 24px 28px; margin: 28px 0; border-radius: 2px; overflow-x: auto; font-family: var(--mono); font-size: 14px; line-height: 1.65; position: relative; }
+  pre::before { content: 'PYTHON'; position: absolute; top: 8px; right: 14px; font-family: var(--display); font-size: 9px; letter-spacing: 0.2em; color: var(--text-faint); font-weight: 600; }
+  pre code { color: #d8d8e0; }
+  .k { color: #ff8a6b; font-weight: 500; } .s { color: #b9d8a8; } .n { color: #f0c674; } .c { color: #6a6a76; font-style: italic; } .f { color: #6ec5e9; } .v { color: #b794d4; }
+  code.inline { font-family: var(--mono); font-size: 15px; background: var(--bg-elev); padding: 2px 8px; border-radius: 3px; color: var(--accent-2); border: 1px solid var(--border); }
+
+  .insight { background: var(--bg-elev); border: 1px solid var(--border); padding: 28px 32px; margin: 32px 0; border-radius: 2px; font-family: var(--display); }
+  .insight .key { font-size: 10px; letter-spacing: 0.3em; text-transform: uppercase; font-weight: 600; margin-bottom: 10px; color: var(--accent-cool); }
+  .insight p { font-size: 17px; line-height: 1.55; color: var(--text); font-weight: 300; margin: 0; }
+
+  .pitfall { background: linear-gradient(135deg, rgba(226,106,106,0.05), transparent); border: 1px solid rgba(226,106,106,0.25); border-left: 3px solid var(--red); padding: 24px 28px; margin: 28px 0; border-radius: 2px; }
+  .pitfall .lbl { font-family: var(--display); font-size: 10px; letter-spacing: 0.25em; text-transform: uppercase; font-weight: 600; color: var(--red); margin-bottom: 8px; }
+  .pitfall h4 { margin: 0 0 8px; font-size: 17px; }
+  .pitfall p { font-size: 15px; color: var(--text-dim); margin: 0; }
+
+  .cinematch { background: linear-gradient(135deg, var(--accent-soft) 0%, transparent 100%); border: 1px solid var(--border-bright); border-left: 3px solid var(--accent); padding: 32px 36px; margin: 40px 0; border-radius: 2px; position: relative; }
+  .cinematch .tag { position: absolute; top: -10px; left: 24px; background: var(--bg); color: var(--accent); font-family: var(--display); font-size: 10px; font-weight: 600; letter-spacing: 0.25em; padding: 0 12px; text-transform: uppercase; }
+  .cinematch h4 { font-family: var(--display); font-size: 20px; font-weight: 500; margin-bottom: 12px; color: var(--text); }
+  .cinematch p { color: var(--text-dim); margin-bottom: 12px; }
+  .cinematch p:last-child { margin-bottom: 0; }
+
+  .eq { margin: 28px 0; padding: 24px 32px; background: var(--bg-elev); border: 1px solid var(--border); border-radius: 2px; font-family: var(--serif); font-size: 19px; font-style: italic; text-align: center; color: var(--text); line-height: 1.6; position: relative; }
+  .eq .num { position: absolute; right: 18px; top: 50%; transform: translateY(-50%); font-family: var(--mono); font-size: 11px; color: var(--text-faint); font-style: normal; }
+
+  .diagram-wrap { margin: 48px 0; }
+  .diagram-wrap svg { width: 100%; height: auto; display: block; background: var(--bg-elev); border: 1px solid var(--border); padding: 24px; border-radius: 2px; }
+  .caption { font-family: var(--display); font-size: 13px; color: var(--text-faint); margin-top: 14px; text-align: center; }
+  .caption b { color: var(--text-dim); font-weight: 500; }
+
+  table { width: 100%; border-collapse: collapse; margin: 28px 0; font-family: var(--mono); font-size: 14px; background: var(--bg-card); border: 1px solid var(--border); }
+  th, td { padding: 12px 18px; text-align: left; border-bottom: 1px solid var(--border); }
+  th { font-family: var(--display); font-weight: 600; font-size: 11px; letter-spacing: 0.15em; text-transform: uppercase; color: var(--accent-2); background: var(--bg-elev); }
+  td { color: var(--text); }
+  tr:last-child td { border-bottom: none; }
+
+  .playground { background: var(--bg-elev); border: 1px solid var(--border-bright); border-radius: 4px; padding: 28px; margin: 40px 0; }
+  .playground .ph { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
+  .playground .pt { font-family: var(--display); font-size: 16px; font-weight: 600; color: var(--text); letter-spacing: 0.02em; }
+  .playground .ps { font-family: var(--display); font-size: 10px; letter-spacing: 0.25em; text-transform: uppercase; color: var(--accent); font-weight: 600; }
+  .playground .desc { font-family: var(--serif); font-size: 15px; color: var(--text-dim); margin-bottom: 24px; line-height: 1.6; }
+  .controls { display: flex; gap: 20px; flex-wrap: wrap; margin-bottom: 24px; padding: 18px; background: var(--bg-code); border-radius: 3px; border: 1px solid var(--border); }
+  .ctrl { display: flex; flex-direction: column; gap: 6px; flex: 1; min-width: 110px; }
+  .ctrl label { font-family: var(--display); font-size: 10px; letter-spacing: 0.15em; text-transform: uppercase; color: var(--text-faint); font-weight: 600; }
+  .ctrl input[type="range"] { -webkit-appearance: none; appearance: none; width: 100%; height: 4px; background: var(--border-bright); border-radius: 2px; outline: none; }
+  .ctrl input[type="range"]::-webkit-slider-thumb { -webkit-appearance: none; appearance: none; width: 16px; height: 16px; background: var(--accent); border-radius: 50%; cursor: pointer; border: 2px solid var(--bg); }
+  .ctrl input[type="range"]::-moz-range-thumb { width: 16px; height: 16px; background: var(--accent); border-radius: 50%; cursor: pointer; border: none; }
+  .ctrl .val { font-family: var(--mono); font-size: 14px; color: var(--accent); font-weight: 500; }
+  .ctrl select { background: var(--bg); color: var(--text); border: 1px solid var(--border-bright); padding: 6px 10px; font-family: var(--mono); font-size: 13px; border-radius: 2px; }
+  .pg-canvas { background: var(--bg-code); border: 1px solid var(--border); border-radius: 3px; }
+  .pg-output { background: var(--bg-code); border: 1px solid var(--border); border-radius: 3px; padding: 16px 20px; margin-top: 12px; font-family: var(--mono); font-size: 13px; color: var(--text); line-height: 1.7; }
+  .pg-output .lbl { color: var(--text-faint); font-size: 11px; letter-spacing: 0.1em; text-transform: uppercase; margin-bottom: 4px; font-family: var(--display); }
+  .pg-output .vl { color: var(--accent-cool); }
+
+  .mcq { background: var(--bg-elev); border: 1px solid var(--border-bright); border-left: 3px solid var(--accent-2); padding: 28px 32px; margin: 36px 0; border-radius: 2px; }
+  .mcq .mh { font-family: var(--display); font-size: 10px; letter-spacing: 0.25em; text-transform: uppercase; font-weight: 600; color: var(--accent-2); margin-bottom: 16px; display: flex; justify-content: space-between; align-items: center; }
+  .mcq .mh .qnum { font-family: var(--mono); color: var(--text-faint); font-size: 11px; letter-spacing: 0.1em; font-weight: 400; }
+  .mcq .mq { font-family: var(--display); font-size: 19px; font-weight: 500; color: var(--text); line-height: 1.5; margin-bottom: 20px; }
+  .mcq .mq code { font-family: var(--mono); font-size: 16px; background: var(--bg-code); padding: 1px 8px; border-radius: 3px; color: var(--accent-2); border: 1px solid var(--border); font-weight: 400; }
+  .mcq .opts { display: flex; flex-direction: column; gap: 10px; }
+  .mcq .opt { background: var(--bg-card); border: 1px solid var(--border); padding: 14px 18px; border-radius: 2px; cursor: pointer; font-family: var(--serif); font-size: 16px; color: var(--text); transition: all 0.15s; display: flex; align-items: flex-start; gap: 14px; line-height: 1.5; }
+  .mcq .opt:hover { border-color: var(--accent-2); background: var(--bg-elev); }
+  .mcq .opt .key { font-family: var(--mono); font-size: 13px; color: var(--text-faint); font-weight: 500; min-width: 18px; margin-top: 2px; }
+  .mcq .opt .text { flex: 1; }
+  .mcq .opt code { font-family: var(--mono); font-size: 14px; background: var(--bg-code); padding: 1px 6px; border-radius: 3px; color: var(--accent-2); border: 1px solid var(--border); }
+  .mcq .opt.correct { border-color: var(--green); background: linear-gradient(90deg, rgba(127,194,138,0.10), transparent); }
+  .mcq .opt.correct .key { color: var(--green); }
+  .mcq .opt.wrong { border-color: var(--red); background: linear-gradient(90deg, rgba(226,106,106,0.10), transparent); }
+  .mcq .opt.wrong .key { color: var(--red); }
+  .mcq .opt.disabled { cursor: default; }
+  .mcq .opt.disabled:hover { border-color: var(--border); background: var(--bg-card); }
+  .mcq .opt.correct.disabled:hover { border-color: var(--green); background: linear-gradient(90deg, rgba(127,194,138,0.10), transparent); }
+  .mcq .opt.wrong.disabled:hover { border-color: var(--red); background: linear-gradient(90deg, rgba(226,106,106,0.10), transparent); }
+  .mcq .feedback { margin-top: 18px; padding: 18px 22px; background: var(--bg-code); border-left: 2px solid var(--accent-cool); border-radius: 2px; font-family: var(--serif); font-size: 15px; line-height: 1.65; color: var(--text-dim); display: none; }
+  .mcq .feedback.show { display: block; }
+  .mcq .feedback .verdict { font-family: var(--display); font-size: 11px; letter-spacing: 0.25em; text-transform: uppercase; font-weight: 600; margin-bottom: 8px; display: block; }
+  .mcq .feedback.right .verdict { color: var(--green); }
+  .mcq .feedback.wrong .verdict { color: var(--red); }
+  .mcq .feedback strong { color: var(--text); font-weight: 600; }
+  .mcq .feedback code { font-family: var(--mono); font-size: 13px; background: var(--bg-elev); padding: 1px 6px; border-radius: 3px; color: var(--accent-2); border: 1px solid var(--border); }
+
+  .checkpoint { background: var(--bg-elev); border: 1px solid var(--border-bright); padding: 36px 36px; margin: 56px 0; border-radius: 2px; }
+  .checkpoint h4 { font-family: var(--display); font-size: 13px; letter-spacing: 0.25em; text-transform: uppercase; color: var(--accent-cool); font-weight: 600; margin-bottom: 24px; }
+  .checkpoint ol { list-style: none; counter-reset: item; }
+  .checkpoint li { counter-increment: item; padding: 14px 0 14px 48px; border-bottom: 1px solid var(--border); position: relative; font-family: var(--display); font-size: 16px; color: var(--text); line-height: 1.5; }
+  .checkpoint li:last-child { border-bottom: none; }
+  .checkpoint li::before { content: counter(item, decimal-leading-zero); position: absolute; left: 0; top: 14px; font-family: var(--mono); font-size: 12px; color: var(--accent-cool); font-weight: 400; }
+
+  .footnav { border-top: 1px solid var(--border); padding: 48px 32px; max-width: 1100px; margin: 0 auto; display: flex; justify-content: space-between; align-items: center; font-family: var(--display); }
+  .footnav .next { text-align: right; }
+  .footnav .lbl { font-size: 11px; letter-spacing: 0.25em; text-transform: uppercase; color: var(--text-faint); margin-bottom: 8px; }
+  .footnav .ttl { font-size: 20px; color: var(--text); font-weight: 500; }
+  .footnav .prev .ttl::before { content: '← '; }
+  .footnav .next .ttl { color: var(--accent); }
+  .footnav .next .ttl::after { content: ' →'; }
+  .footnav a { text-decoration: none; }
+
+  .reveal { opacity: 0; transform: translateY(20px); animation: rev 0.9s cubic-bezier(.2,.7,.2,1) forwards; }
+  .reveal.d1 { animation-delay: 0.1s; }
+  .reveal.d2 { animation-delay: 0.25s; }
+  .reveal.d3 { animation-delay: 0.4s; }
+  @keyframes rev { to { opacity: 1; transform: translateY(0); } }
+
+  @media (max-width: 720px) {
+    .hero { padding: 80px 24px 60px; }
+    main { padding: 48px 24px 80px; }
+    h1.title { font-size: 42px; }
+    .lede { font-size: 18px; }
+    h2 { font-size: 30px; }
+    .topnav { padding: 12px 20px; }
+    .crumb { display: none; }
+    pre { padding: 18px 20px; font-size: 12.5px; }
+    table { font-size: 12px; } th, td { padding: 8px 10px; }
+  }
+</style>
+</head>
+<body>
+
+<nav class="topnav">
+  <div class="brand"><span class="dot"></span>MAREVLO · Deep Learning</div>
+  <div class="crumb">Phase 2 · <b>Module 2.1</b><span class="phase-tag">PHASE 2 BEGINS</span></div>
+</nav>
+
+<header class="hero">
+  <div class="eyebrow reveal">Phase 2 — Deep Networks · Module 2.1</div>
+  <h1 class="title reveal d1">From perceptron<br>to <span class="em">MLP</span>.<br>Depth, finally.</h1>
+  <p class="lede reveal d2">
+    Phase 1 ended with an impossibility proof — no single neuron can represent XOR. This module shows the escape route: stack neurons into <em>layers</em>, insert a non-linear activation between them, and the model's representational power explodes. By the end you'll build a multi-layer perceptron on CineMatch and watch it break through the linear baseline's ceiling.
+  </p>
+  <div class="meta-row reveal d3">
+    <div class="meta-item"><span class="meta-label">Phase</span><span class="meta-val">2 — Deep Networks</span></div>
+    <div class="meta-item"><span class="meta-label">Module</span><span class="meta-val">2.1</span></div>
+    <div class="meta-item"><span class="meta-label">Read time</span><span class="meta-val">≈ 40 minutes</span></div>
+    <div class="meta-item"><span class="meta-label">You will build</span><span class="meta-val">Your first MLP</span></div>
+  </div>
+</header>
+
+<main>
+
+<!-- ============ SECTION 1: AFFINE COLLAPSE ============ -->
+<section>
+  <h2 data-num="01 / 06">Why stacking linear layers isn't enough.</h2>
+
+  <p>Before we add anything new, let's understand precisely why the obvious idea — "just stack more <code class="inline">nn.Linear</code> layers together" — does not work. This proof takes one line of algebra and saves you from a class of architectural mistakes that new practitioners make constantly.</p>
+
+  <p>Consider a two-layer stack with no activation between them:</p>
+
+  <div class="eq">
+    <em>h</em> = <em>W</em><sub>1</sub> <em>x</em> + <em>b</em><sub>1</sub>, &nbsp; <em>y</em> = <em>W</em><sub>2</sub> <em>h</em> + <em>b</em><sub>2</sub>
+    <span class="num">(1.1)</span>
+  </div>
+
+  <p>Substitute:</p>
+
+  <div class="eq">
+    <em>y</em> = <em>W</em><sub>2</sub> (<em>W</em><sub>1</sub> <em>x</em> + <em>b</em><sub>1</sub>) + <em>b</em><sub>2</sub> = (<em>W</em><sub>2</sub> <em>W</em><sub>1</sub>) <em>x</em> + (<em>W</em><sub>2</sub> <em>b</em><sub>1</sub> + <em>b</em><sub>2</sub>)
+    <span class="num">(1.2)</span>
+  </div>
+
+  <p>Let <em>W'</em> = <em>W</em><sub>2</sub> <em>W</em><sub>1</sub> and <em>b'</em> = <em>W</em><sub>2</sub> <em>b</em><sub>1</sub> + <em>b</em><sub>2</sub>. Then <em>y</em> = <em>W' x</em> + <em>b'</em>. A single linear layer. The composition of two linear functions is itself a linear function, and we've burned a bunch of parameters on a detour that provably cannot represent anything richer than what a single layer already could.</p>
+
+  <div class="insight">
+    <div class="key">The central architectural rule</div>
+    <p>Two layers of the same kind of function, stacked, give no more expressive power than one — as long as the function class is closed under composition. Linear functions are closed under composition. So are affine maps. So are polynomials up to fixed degree. The <em>only</em> way to escape this trap is to insert a function between layers that <em>isn't</em> in the closed class — in our case, a non-linear activation. That's the entire content of Phase 2's architecture: Linear → non-linearity → Linear → non-linearity → ... where the non-linearity is what makes depth meaningful.</p>
+  </div>
+
+  <h3>The minimum functional pattern.</h3>
+
+  <p>The smallest meaningful "deep" network is two linear layers with a single non-linearity between them:</p>
+
+  <div class="eq">
+    <em>y</em> = <em>W</em><sub>2</sub> · σ(<em>W</em><sub>1</sub> <em>x</em> + <em>b</em><sub>1</sub>) + <em>b</em><sub>2</sub>
+    <span class="num">(1.3)</span>
+  </div>
+
+  <p>where σ is some non-linear function applied element-wise. This is a <strong>multi-layer perceptron (MLP)</strong> with one hidden layer. Despite its simplicity, (1.3) can approximate any continuous function if you make the hidden layer wide enough — a theorem we'll state precisely in Section 4.</p>
+
+  <div class="mcq" data-correct="b">
+    <div class="mh"><span>Check your understanding</span><span class="qnum">Q1 / 07</span></div>
+    <div class="mq">A practitioner builds a network as <code>Linear(10, 50) → Linear(50, 50) → Linear(50, 10)</code> with no activations between layers. How expressive is this network compared to a single <code>Linear(10, 10)</code>?</div>
+    <div class="opts">
+      <div class="opt" data-key="a"><span class="key">A</span><span class="text">Much more expressive — it has 2,500+ parameters vs. 100.</span></div>
+      <div class="opt" data-key="b"><span class="key">B</span><span class="text">Exactly as expressive — three linear layers without activations compose into a single linear layer (10 → 10), and the extra parameters are wasted.</span></div>
+      <div class="opt" data-key="c"><span class="key">C</span><span class="text">Slightly more expressive because of the bias terms.</span></div>
+      <div class="opt" data-key="d"><span class="key">D</span><span class="text">More expressive only if the hidden dimension (50) is larger than input and output.</span></div>
+    </div>
+    <div class="feedback" data-right="Multiplying the three weight matrices together gives a single 10×10 matrix. Adding the three biases gives a single bias vector. The composition is mathematically identical to one <code>Linear(10, 10)</code> — the function class is unchanged. The 2,500+ parameters can still move around, but they parameterize exactly the same 10×10 matrix; there is no combination of their values that represents a function outside that space. Always put a non-linearity between Linear layers if you want depth to matter." data-wrong="The parameter count is 2,500+, but all those parameters multiply into a single 10×10 matrix. The function class is exactly that of <code>Linear(10, 10)</code> — 110 effective parameters. You've spent compute to parameterize the same space in a more complicated way. Always put a non-linearity (ReLU, sigmoid, tanh, GELU, ...) between Linear layers — that's what gives depth its expressive power."></div>
+  </div>
+</section>
+
+<!-- ============ SECTION 2: THE HIDDEN LAYER ============ -->
+<section>
+  <h2 data-num="02 / 06">The hidden layer — and what it learns.</h2>
+
+  <p>A <strong>hidden layer</strong> is any layer between the input and the output. It is "hidden" only in the sense that its values are not directly observed — we supervise the output, not the intermediate computations. What happens in the hidden layer is up to the network to figure out from the loss signal.</p>
+
+  <p>Geometrically, the hidden layer performs a <strong>representation change</strong>. It takes the input and projects it into a new feature space — one where the problem becomes linearly separable (in classification) or linearly fittable (in regression). The output layer is then just a linear model applied to those new features.</p>
+
+  <div class="cinematch">
+    <div class="tag">CineMatch's Phase 2 problem</div>
+    <h4>"Will the user rate this 4+ stars?"</h4>
+    <p>Throughout Phase 1, we asked two questions about CineMatch data — watch fraction (regression) and finished-or-not (classification). Both capped out because the underlying relationship between features and target is non-linear. Phase 2 asks a third, richer question: given the user's profile and the movie's attributes, <em>will they rate it 4 stars or higher?</em> This is a binary classification problem, but the decision surface involves genuine interaction terms — taste compatibility, attention-runtime fit, genre preferences. A linear model plateaus early; an MLP with one hidden layer closes most of the gap.</p>
+  </div>
+
+  <h3>The MLP architecture, spelled out.</h3>
+
+  <p>An MLP with one hidden layer of <em>h</em> neurons, taking <em>d</em> features and producing <em>K</em> outputs:</p>
+
+  <div class="eq">
+    hidden: <strong>h</strong> = σ(<em>W</em><sup>(1)</sup> <strong>x</strong> + <strong>b</strong><sup>(1)</sup>) &nbsp;&nbsp;&nbsp; <strong>h</strong> ∈ ℝ<sup>h</sup>
+    <span class="num">(2.1)</span>
+  </div>
+  <div class="eq">
+    output: <strong>y</strong> = <em>W</em><sup>(2)</sup> <strong>h</strong> + <strong>b</strong><sup>(2)</sup> &nbsp;&nbsp;&nbsp; <strong>y</strong> ∈ ℝ<sup>K</sup>
+    <span class="num">(2.2)</span>
+  </div>
+
+  <p>where <em>W</em><sup>(1)</sup> ∈ ℝ<sup>h×d</sup>, <em>W</em><sup>(2)</sup> ∈ ℝ<sup>K×h</sup>, and σ is applied element-wise. Every parameter — all of <em>W</em><sup>(1)</sup>, <strong>b</strong><sup>(1)</sup>, <em>W</em><sup>(2)</sup>, <strong>b</strong><sup>(2)</sup> — is learned by gradient descent. The <em>architecture</em> — the dimensions, the count of layers, the choice of activation — is picked by you before training. These architectural choices are <strong>hyperparameters</strong>.</p>
+
+  <div class="calcbox">
+    <div class="ch">Forward pass through CineMatch MLP: 4 → 64 → 32 → 1</div>
+    <div class="step" data-s="1.">Input: x = [0.6, 0.9, 0.2, 0.7] — one user-movie pair, 4 features<span class="val">Shape: (4,) — or (B, 4) for a batch</span></div>
+    <div class="step" data-s="2.">Layer 1: z₁ = W₁·x + b₁. W₁ ∈ ℝ^{64×4}, b₁ ∈ ℝ^{64}. z₁ ∈ ℝ^{64}<span class="val">Params: 64×4 + 64 = 320. Each of 64 neurons computes a dot product with the 4 features.</span></div>
+    <div class="step" data-s="3.">Activation: h₁ = ReLU(z₁). 64 values → keep positives, zero out negatives.<span class="val">If z₁ = [1.2, −0.3, 0.8, ...], then h₁ = [1.2, 0.0, 0.8, ...]. About 50% are zero (typical).</span></div>
+    <div class="step" data-s="4.">Layer 2: z₂ = W₂·h₁ + b₂. W₂ ∈ ℝ^{32×64}, b₂ ∈ ℝ^{32}. z₂ ∈ ℝ^{32}<span class="val">Params: 32×64 + 32 = 2,080. This layer mixes the 64 features into 32 higher-level representations.</span></div>
+    <div class="step" data-s="5.">Activation: h₂ = ReLU(z₂). 32 values.</div>
+    <div class="step" data-s="6.">Output: ŷ = W₃·h₂ + b₃. W₃ ∈ ℝ^{1×32}, b₃ ∈ ℝ^{1}. ŷ ∈ ℝ^{1} — a single number (logit).<span class="val">Params: 32×1 + 1 = 33. Total model: 320 + 2,080 + 33 = <strong>2,433 parameters</strong>.</span></div>
+    <div class="step" data-s="7.">Loss: σ(ŷ) = probability, then BCE. If ŷ = 1.47 → p = 0.813 → BCE(0.813, y=1) = 0.207.<span class="val">This is identical to Module 1.3's calculation — the MLP just computes a more complex z before the same sigmoid + BCE.</span></div>
+  </div>
+
+  <div class="diagram-wrap">
+    <svg viewBox="0 0 700 300" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="MLP architecture diagram">
+      <!-- Input layer -->
+      <g font-family="JetBrains Mono" font-size="12" fill="#e8e8ec">
+        <circle cx="80" cy="60" r="18" fill="#16161d" stroke="#6ec5e9" stroke-width="1.5"/>
+        <text x="80" y="64" text-anchor="middle">x₁</text>
+        <circle cx="80" cy="110" r="18" fill="#16161d" stroke="#6ec5e9" stroke-width="1.5"/>
+        <text x="80" y="114" text-anchor="middle">x₂</text>
+        <circle cx="80" cy="160" r="18" fill="#16161d" stroke="#6ec5e9" stroke-width="1.5"/>
+        <text x="80" y="164" text-anchor="middle">x₃</text>
+        <circle cx="80" cy="210" r="18" fill="#16161d" stroke="#6ec5e9" stroke-width="1.5"/>
+        <text x="80" y="214" text-anchor="middle">x₄</text>
+      </g>
+
+      <!-- Hidden layer (6 neurons with sigma) -->
+      <g font-family="JetBrains Mono" font-size="11" fill="#e8e8ec">
+        <circle cx="310" cy="35" r="20" fill="#16161d" stroke="#b794d4" stroke-width="2"/>
+        <text x="310" y="32" text-anchor="middle" font-size="9" fill="#b794d4">σ</text>
+        <text x="310" y="44" text-anchor="middle" font-size="9">h₁</text>
+        <circle cx="310" cy="85" r="20" fill="#16161d" stroke="#b794d4" stroke-width="2"/>
+        <text x="310" y="82" text-anchor="middle" font-size="9" fill="#b794d4">σ</text>
+        <text x="310" y="94" text-anchor="middle" font-size="9">h₂</text>
+        <circle cx="310" cy="135" r="20" fill="#16161d" stroke="#b794d4" stroke-width="2"/>
+        <text x="310" y="132" text-anchor="middle" font-size="9" fill="#b794d4">σ</text>
+        <text x="310" y="144" text-anchor="middle" font-size="9">h₃</text>
+        <circle cx="310" cy="185" r="20" fill="#16161d" stroke="#b794d4" stroke-width="2"/>
+        <text x="310" y="182" text-anchor="middle" font-size="9" fill="#b794d4">σ</text>
+        <text x="310" y="194" text-anchor="middle" font-size="9">h₄</text>
+        <circle cx="310" cy="235" r="20" fill="#16161d" stroke="#b794d4" stroke-width="2"/>
+        <text x="310" y="232" text-anchor="middle" font-size="9" fill="#b794d4">σ</text>
+        <text x="310" y="244" text-anchor="middle" font-size="9">h₅</text>
+      </g>
+
+      <!-- Output -->
+      <circle cx="570" cy="135" r="22" fill="#16161d" stroke="#7fc28a" stroke-width="2"/>
+      <text x="570" y="139" text-anchor="middle" font-family="JetBrains Mono" font-size="12" fill="#e8e8ec">ŷ</text>
+
+      <!-- Edges input → hidden (sparse for clarity) -->
+      <g stroke="#3a3a46" stroke-width="0.5" fill="none" opacity="0.5">
+        <line x1="98" y1="60" x2="290" y2="35"/>
+        <line x1="98" y1="60" x2="290" y2="85"/>
+        <line x1="98" y1="60" x2="290" y2="135"/>
+        <line x1="98" y1="60" x2="290" y2="185"/>
+        <line x1="98" y1="60" x2="290" y2="235"/>
+        <line x1="98" y1="110" x2="290" y2="35"/>
+        <line x1="98" y1="110" x2="290" y2="85"/>
+        <line x1="98" y1="110" x2="290" y2="135"/>
+        <line x1="98" y1="110" x2="290" y2="185"/>
+        <line x1="98" y1="110" x2="290" y2="235"/>
+        <line x1="98" y1="160" x2="290" y2="35"/>
+        <line x1="98" y1="160" x2="290" y2="85"/>
+        <line x1="98" y1="160" x2="290" y2="135"/>
+        <line x1="98" y1="160" x2="290" y2="185"/>
+        <line x1="98" y1="160" x2="290" y2="235"/>
+        <line x1="98" y1="210" x2="290" y2="35"/>
+        <line x1="98" y1="210" x2="290" y2="85"/>
+        <line x1="98" y1="210" x2="290" y2="135"/>
+        <line x1="98" y1="210" x2="290" y2="185"/>
+        <line x1="98" y1="210" x2="290" y2="235"/>
+      </g>
+
+      <!-- Edges hidden → output -->
+      <g stroke="#3a3a46" stroke-width="0.8" fill="none" opacity="0.7">
+        <line x1="330" y1="35" x2="548" y2="135"/>
+        <line x1="330" y1="85" x2="548" y2="135"/>
+        <line x1="330" y1="135" x2="548" y2="135"/>
+        <line x1="330" y1="185" x2="548" y2="135"/>
+        <line x1="330" y1="235" x2="548" y2="135"/>
+      </g>
+
+      <!-- Weight matrix labels -->
+      <text x="195" y="275" text-anchor="middle" font-family="JetBrains Mono" font-size="11" fill="#f0c674" font-style="italic">W⁽¹⁾ (5 × 4)</text>
+      <text x="445" y="275" text-anchor="middle" font-family="JetBrains Mono" font-size="11" fill="#f0c674" font-style="italic">W⁽²⁾ (1 × 5)</text>
+
+      <!-- Layer labels -->
+      <text x="80" y="250" text-anchor="middle" font-family="Outfit" font-size="10" fill="#6a6a76" letter-spacing="2" font-weight="500">INPUT (d=4)</text>
+      <text x="310" y="275" text-anchor="middle" font-family="Outfit" font-size="10" fill="#b794d4" letter-spacing="2" font-weight="500">HIDDEN (h=5)</text>
+      <text x="570" y="175" text-anchor="middle" font-family="Outfit" font-size="10" fill="#6a6a76" letter-spacing="2" font-weight="500">OUTPUT (K=1)</text>
+    </svg>
+    <div class="caption"><b>Figure 1.</b> An MLP with 4 input features, 5 hidden units, and 1 output. Every input connects to every hidden unit; every hidden unit connects to the output. The hidden layer applies σ (the non-linearity) element-wise. Parameters: 4·5 + 5 + 5·1 + 1 = 31 numbers.</div>
+  </div>
+
+  <h3>What do the hidden units represent?</h3>
+
+  <p>This is a question people ask a lot, and the answer is honest: <em>whatever the gradient signal incentivizes</em>. There is no prescription — the network learns whatever feature combinations reduce the loss fastest given the architecture and data. On CineMatch, one hidden unit might end up responding to "long attention span + long runtime" (a match detector), another to "high critic score + young user" (a popularity detector), and others to combinations we wouldn't have named. We don't get to choose; we get to shape the architecture so that <em>some</em> combination of useful features is learnable.</p>
+
+  <p class="dim">This non-interpretability is a cost of the power. Linear regression is fully interpretable — each weight tells you exactly how much one feature affects the output. An MLP's weights are not individually meaningful; only the network's behavior as a whole matters. Tools for interpreting trained networks (attribution, probing, mechanistic interpretability) are active research areas, and none of them recover the clean per-feature meaning of a linear model.</p>
+
+  <div class="mcq" data-correct="c">
+    <div class="mh"><span>Check your understanding</span><span class="qnum">Q2 / 07</span></div>
+    <div class="mq">A CineMatch MLP has <code>Linear(4, 16) → ReLU → Linear(16, 1)</code>. How many learnable parameters does it have in total?</div>
+    <div class="opts">
+      <div class="opt" data-key="a"><span class="key">A</span><span class="text">20 — just the output weights.</span></div>
+      <div class="opt" data-key="b"><span class="key">B</span><span class="text">64 — just the input-to-hidden weights.</span></div>
+      <div class="opt" data-key="c"><span class="key">C</span><span class="text">97 — (4·16 + 16) + (16·1 + 1) = 80 + 17.</span></div>
+      <div class="opt" data-key="d"><span class="key">D</span><span class="text">320 — 4 × 16 × 5 layers.</span></div>
+    </div>
+    <div class="feedback" data-right="The first Linear layer has a 16×4 weight matrix (64 params) and a bias vector of length 16 → 80. The second Linear layer has a 1×16 weight matrix and a bias of length 1 → 17. Total: 97. ReLU has no parameters — it's a fixed function. The general formula for a Linear layer with <em>d_in</em> inputs and <em>d_out</em> outputs is <em>d_in × d_out + d_out</em> parameters. You'll do this calculation constantly, so it's worth internalizing." data-wrong="The Linear(4, 16) has 4·16 + 16 = 80 parameters (weight matrix + bias). The Linear(16, 1) has 16·1 + 1 = 17. Total = 97. ReLU has no learnable parameters (it's a fixed function). The formula to memorize: a Linear(d_in, d_out) has <em>d_in × d_out + d_out</em> parameters. You'll be computing this by hand all the time — architecture choices are often budget decisions about parameter count."></div>
+  </div>
+</section>
+
+<!-- ============ SECTION 3: ACTIVATION FUNCTIONS ============ -->
+<section>
+  <h2 data-num="03 / 06">Activation functions — three choices and why ReLU won.</h2>
+
+  <p>The non-linearity between layers can be almost any differentiable function, but three choices dominate. Each has its shape, its derivative, and its historical moment.</p>
+
+  <h3>Sigmoid.</h3>
+
+  <div class="eq">σ(z) = 1 / (1 + e<sup>−z</sup>) &nbsp; σ′(z) = σ(z)(1 − σ(z)) <span class="num">(3.1)</span></div>
+
+  <p>Smooth, output in (0, 1), the natural choice in the 1980s. But it has a brutal flaw: when |z| is large, σ′(z) is near zero. Stacked across many layers, the gradient vanishes. Training deep sigmoid networks was famously difficult throughout the 1990s — this vanishing-gradient problem was one of the reasons the field stalled.</p>
+
+  <h3>Tanh.</h3>
+
+  <div class="eq">tanh(z) = (e<sup>z</sup> − e<sup>−z</sup>) / (e<sup>z</sup> + e<sup>−z</sup>) &nbsp; tanh′(z) = 1 − tanh²(z) <span class="num">(3.2)</span></div>
+
+  <p>A shifted, scaled sigmoid: output in (−1, 1), zero-centered. Zero-centered outputs often help gradient flow (successive layers don't need to cancel a mean), so tanh was preferred over sigmoid for hidden layers through the 1990s and early 2000s. But it has the same vanishing-gradient problem in saturation.</p>
+
+  <h3>ReLU — rectified linear unit.</h3>
+
+  <div class="eq">ReLU(z) = max(0, z) &nbsp; ReLU′(z) = { 1 if z &gt; 0, 0 if z &lt; 0 } <span class="num">(3.3)</span></div>
+
+  <p>The 2010 innovation that changed everything. ReLU is piecewise linear — no exponentials to compute, no saturation in the positive regime. For z > 0, its gradient is exactly 1, so the signal flows through unchanged. For z < 0 it is 0, so some neurons become inactive — which turns out to be useful sparsity. ReLU networks trained dramatically faster than sigmoid/tanh networks, enabling the deep architectures that eventually won ImageNet 2012.</p>
+
+  <div class="diagram-wrap">
+    <svg viewBox="0 0 700 260" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Comparison of sigmoid, tanh, and ReLU">
+      <!-- Sigmoid panel -->
+      <g transform="translate(40,30)">
+        <text x="90" y="-10" text-anchor="middle" font-family="Outfit" font-size="11" fill="#e26a6a" letter-spacing="2" font-weight="600">SIGMOID</text>
+        <line x1="10" y1="85" x2="170" y2="85" stroke="#3a3a46" stroke-width="0.6"/>
+        <line x1="90" y1="15" x2="90" y2="155" stroke="#3a3a46" stroke-width="0.6"/>
+        <line x1="10" y1="20" x2="170" y2="20" stroke="#25252e" stroke-width="0.4" stroke-dasharray="2,3"/>
+        <path d="M 10,82 Q 50,82 82,60 Q 98,40 130,22 Q 150,20 170,20" fill="none" stroke="#e26a6a" stroke-width="2"/>
+        <text x="90" y="175" text-anchor="middle" font-family="JetBrains Mono" font-size="10" fill="#6a6a76">max grad ≈ 0.25</text>
+      </g>
+      <!-- Tanh panel -->
+      <g transform="translate(265,30)">
+        <text x="90" y="-10" text-anchor="middle" font-family="Outfit" font-size="11" fill="#f0c674" letter-spacing="2" font-weight="600">TANH</text>
+        <line x1="10" y1="85" x2="170" y2="85" stroke="#3a3a46" stroke-width="0.6"/>
+        <line x1="90" y1="15" x2="90" y2="155" stroke="#3a3a46" stroke-width="0.6"/>
+        <line x1="10" y1="20" x2="170" y2="20" stroke="#25252e" stroke-width="0.4" stroke-dasharray="2,3"/>
+        <line x1="10" y1="150" x2="170" y2="150" stroke="#25252e" stroke-width="0.4" stroke-dasharray="2,3"/>
+        <path d="M 10,148 Q 50,148 75,120 Q 90,85 105,50 Q 130,22 170,22" fill="none" stroke="#f0c674" stroke-width="2"/>
+        <text x="90" y="175" text-anchor="middle" font-family="JetBrains Mono" font-size="10" fill="#6a6a76">max grad = 1 (zero-centered)</text>
+      </g>
+      <!-- ReLU panel -->
+      <g transform="translate(490,30)">
+        <text x="90" y="-10" text-anchor="middle" font-family="Outfit" font-size="11" fill="#7fc28a" letter-spacing="2" font-weight="600">RELU</text>
+        <line x1="10" y1="150" x2="170" y2="150" stroke="#3a3a46" stroke-width="0.6"/>
+        <line x1="90" y1="15" x2="90" y2="155" stroke="#3a3a46" stroke-width="0.6"/>
+        <path d="M 10,150 L 90,150 L 170,20" fill="none" stroke="#7fc28a" stroke-width="2.5"/>
+        <text x="90" y="175" text-anchor="middle" font-family="JetBrains Mono" font-size="10" fill="#6a6a76">grad = 1 for z &gt; 0, else 0</text>
+      </g>
+    </svg>
+    <div class="caption"><b>Figure 2.</b> The three classic activations. ReLU's flat positive-region gradient — exactly 1 — is why it trains so much faster than saturating alternatives.</div>
+  </div>
+
+  <h3>When to use what — the short version.</h3>
+
+  <table>
+    <tr><th>Activation</th><th>Best for</th><th>Notes</th></tr>
+    <tr><td>ReLU</td><td>Default hidden activation in MLPs and CNNs</td><td>Fast, no saturation on positive side</td></tr>
+    <tr><td>Tanh / Sigmoid</td><td>Niche — RNNs, gates, small networks</td><td>Risky in deep networks</td></tr>
+    <tr><td>Sigmoid (output)</td><td>Binary classification output layer</td><td>Use with <code>BCEWithLogitsLoss</code></td></tr>
+    <tr><td>Softmax (output)</td><td>Multi-class classification output</td><td>Use with <code>CrossEntropyLoss</code></td></tr>
+    <tr><td>No activation (output)</td><td>Regression</td><td>Raw real-valued prediction</td></tr>
+  </table>
+
+  <div class="pitfall">
+    <div class="lbl">The dying ReLU problem</div>
+    <h4>Some units can get stuck outputting 0 forever.</h4>
+    <p>If a ReLU unit's pre-activation <em>z</em> becomes strongly negative, its output is 0 <em>and</em> its gradient is 0. There's no signal to change its weights, so it stays dead. A poorly initialized network can have a significant fraction of its units dead from the start, reducing effective capacity. The modern fix: <strong>Leaky ReLU</strong> or <strong>GELU</strong> — variants that have a small non-zero slope in the negative regime, preventing permanent death. For this course we'll use ReLU throughout because its pathologies are instructive; in production, a GELU or SiLU is often slightly better.</p>
+  </div>
+
+  <div class="mcq" data-correct="b">
+    <div class="mh"><span>Check your understanding</span><span class="qnum">Q3 / 07</span></div>
+    <div class="mq">Why did ReLU largely replace sigmoid and tanh as the default hidden-layer activation in deep networks?</div>
+    <div class="opts">
+      <div class="opt" data-key="a"><span class="key">A</span><span class="text">ReLU is smoother and more differentiable.</span></div>
+      <div class="opt" data-key="b"><span class="key">B</span><span class="text">ReLU's gradient is exactly 1 in its active region, so signals propagate through deep networks without the vanishing-gradient decay that plagues saturating activations like sigmoid. It's also cheaper to compute — max(0, z) vs. an exponential.</span></div>
+      <div class="opt" data-key="c"><span class="key">C</span><span class="text">ReLU is biologically more plausible than sigmoid.</span></div>
+      <div class="opt" data-key="d"><span class="key">D</span><span class="text">ReLU has more parameters.</span></div>
+    </div>
+    <div class="feedback" data-right="Sigmoid's maximum gradient is 0.25, and it vanishes rapidly as |z| grows. Across 10 stacked sigmoid layers, gradients shrink by roughly 0.25¹⁰ ≈ 10⁻⁶ in the worst case — effectively no signal reaches the early layers. ReLU's positive-side gradient is exactly 1, so signals pass through undiminished across arbitrarily deep stacks. Combined with its computational simplicity (no exp to compute), this made training previously-infeasible depths practical. The actual activations that beat ReLU in 2018+ (GELU, SiLU) share the 'non-saturating positive side' property; that's the principle, not the specific function." data-wrong="ReLU's key advantage is <em>non-saturation on the positive side</em>. Sigmoid saturates (derivative → 0) at both ends; with 10 stacked sigmoid layers, gradients can shrink by 0.25¹⁰ ≈ 10⁻⁶ in the worst case. ReLU's gradient is exactly 1 in the active region, so signals propagate through deep stacks undiminished. It's also faster to compute — max(0, z) is cheaper than exp. Smoothness, biological plausibility, and parameter count are all irrelevant or false."></div>
+  </div>
+</section>
+
+<!-- ============ SECTION 4: UAT ============ -->
+<section>
+  <h2 data-num="04 / 06">The universal approximation theorem — and its fine print.</h2>
+
+  <p>Here is a result that sounds like magic:</p>
+
+  <div class="insight">
+    <div class="key">Universal approximation (Cybenko 1989, Hornik 1991)</div>
+    <p>A feedforward network with a single hidden layer and a non-constant, bounded, continuous activation function can approximate any continuous function on a compact subset of ℝ<sup>d</sup>, to arbitrary accuracy, given sufficient hidden units.</p>
+  </div>
+
+  <p>In plain English: an MLP with <em>one hidden layer</em> — if you make it wide enough — can represent any continuous function. Not linear functions, not polynomials, not any particular family: <em>any</em> continuous function. The architecture you just learned is already maximally expressive.</p>
+
+  <p>This is a mathematically strong statement and an oft-misunderstood one. Three important pieces of fine print:</p>
+
+  <ol style="margin: 16px 0 28px 24px; font-family: var(--display);">
+    <li style="margin-bottom: 12px;"><strong>Existence, not findability.</strong> The theorem says suitable weights <em>exist</em>; it does not say gradient descent can find them. Learning is a separate problem from representation.</li>
+    <li style="margin-bottom: 12px;"><strong>"Sufficient" hidden units can be astronomical.</strong> For practical problems, a one-hidden-layer network might need millions of units to approximate what a deeper network does with a few hundred.</li>
+    <li style="margin-bottom: 12px;"><strong>Depth is exponentially more parameter-efficient.</strong> Deep narrow networks often need dramatically fewer parameters than shallow wide ones to represent the same function. This is the empirical justification for going deep — not expressivity, but <em>efficiency</em> of expressivity.</li>
+  </ol>
+
+  <div class="cinematch">
+    <div class="tag">Why we still go deep</div>
+    <h4>Parameter efficiency is the real argument for depth.</h4>
+    <p>UAT tells us one hidden layer is enough <em>in principle</em>. Modern architectures — MLPs with 6 layers, CNNs with 50 layers, transformers with 100 — are deep because depth compounds representational power: each layer builds on features from the layer before it, producing hierarchies of abstraction. Trying to do the same job with one enormous layer is possible in theory and a disaster in practice — parameter counts explode, optimization becomes hopeless, generalization collapses. Phase 3 and 4 of this course build progressively deeper architectures precisely because depth is the efficient path to the expressivity UAT promises.</p>
+  </div>
+
+  <!-- INTERACTIVE: 1D function approximation -->
+  <div class="playground">
+    <div class="ph">
+      <div class="pt">Universal approximation, visualized</div>
+      <div class="ps">interactive</div>
+    </div>
+    <div class="desc">A 1-input → H-hidden-ReLU → 1-output MLP fitting a target curve. Add or remove neurons and watch the approximation improve. Each ReLU unit contributes a "bent line" to the output; stacking them produces piecewise-linear approximations of smooth curves. This is universal approximation made concrete.</div>
+    <div class="controls">
+      <div class="ctrl"><label>Hidden units</label>
+        <input type="range" id="uatH" min="1" max="40" value="8" step="1"/>
+        <span class="val" id="uatHV">8</span>
+      </div>
+      <div class="ctrl"><label>Target function</label>
+        <select id="uatTarget">
+          <option value="sin">sin(3x)</option>
+          <option value="abs">|x|</option>
+          <option value="step">step function</option>
+          <option value="gauss">bell curve</option>
+        </select>
+      </div>
+      <div class="ctrl"><label>&nbsp;</label>
+        <button id="uatRetrain" style="padding:8px 16px;background:var(--accent);color:#fff;border:none;border-radius:2px;font-family:var(--display);font-size:11px;font-weight:600;letter-spacing:0.1em;text-transform:uppercase;cursor:pointer">Retrain</button>
+      </div>
+    </div>
+    <svg id="uat-svg" class="pg-canvas" viewBox="0 0 600 320" style="width: 100%; height: auto;"></svg>
+    <div class="pg-output" id="uatOut"></div>
+  </div>
+
+  <div class="mcq" data-correct="d">
+    <div class="mh"><span>Check your understanding</span><span class="qnum">Q4 / 07</span></div>
+    <div class="mq">Universal approximation says a single-hidden-layer MLP can represent any continuous function. Given this, why do we bother building deep networks with many layers?</div>
+    <div class="opts">
+      <div class="opt" data-key="a"><span class="key">A</span><span class="text">Single-layer networks can't actually represent common functions — UAT is theoretical only.</span></div>
+      <div class="opt" data-key="b"><span class="key">B</span><span class="text">Deeper networks converge faster during training.</span></div>
+      <div class="opt" data-key="c"><span class="key">C</span><span class="text">To have more parameters overall.</span></div>
+      <div class="opt" data-key="d"><span class="key">D</span><span class="text">Parameter efficiency — for many natural functions, a deep network represents them with dramatically fewer parameters than a shallow-wide one. Depth also builds hierarchical features, where later layers operate on abstractions built by earlier ones.</span></div>
+    </div>
+    <div class="feedback" data-right="UAT is an existence theorem — it tells you a suitable wide-single-layer network <em>exists</em>, not that it's the right one to build. The practical argument for depth is compounding abstraction: layer 1 might detect edges, layer 2 combines those into textures, layer 3 into object parts, and so on. Representing that same hierarchy with one layer would require exponentially more neurons. Depth isn't about expressivity in the UAT sense (both architectures can represent the function); it's about representational <em>efficiency</em>." data-wrong="UAT is an existence theorem — a single hidden layer can represent any continuous function in principle, but doing so may require astronomically many units. Deep networks are more parameter-efficient: they compose features hierarchically (edges → shapes → objects in vision; words → phrases → concepts in language), representing complex functions with far fewer parameters than a single wide layer would need. Depth is also better conditioned for optimization. The argument isn't 'shallow can't do it' — it's 'deep does it more efficiently and trains better.'"></div>
+  </div>
+</section>
+
+<!-- ============ SECTION 5: MLP ON CINEMATCH ============ -->
+<section>
+  <h2 data-num="05 / 06">Your first MLP — beating the Phase 1 baseline.</h2>
+
+  <p>Time to build. We'll use the same four-line training loop from Phase 1; the only change is the model definition itself. And we'll evaluate against the linear baseline you built in Phase 1's capstone — that's the whole point. Any improvement is attributable to the new hidden layer.</p>
+
+  <pre><code><span class="k">import</span> torch
+<span class="k">import</span> torch.nn <span class="k">as</span> nn
+<span class="k">from</span> torch.utils.data <span class="k">import</span> DataLoader, random_split
+<span class="k">from</span> cinematch.data.dataset <span class="k">import</span> CineMatchClassDataset
+<span class="k">from</span> cinematch.utils.seed <span class="k">import</span> set_seed
+<span class="k">from</span> cinematch.utils.device <span class="k">import</span> get_device
+
+
+<span class="k">class</span> <span class="f">CineMatchMLP</span>(nn.Module):
+    <span class="s">"""One hidden layer, ReLU, logits output. 4 → 32 → 1."""</span>
+    <span class="k">def</span> <span class="f">__init__</span>(self, hidden=<span class="n">32</span>):
+        <span class="f">super</span>().<span class="f">__init__</span>()
+        self.fc1 = nn.<span class="f">Linear</span>(<span class="n">4</span>, hidden)
+        self.fc2 = nn.<span class="f">Linear</span>(hidden, <span class="n">1</span>)
+        self.act = nn.<span class="f">ReLU</span>()
+
+    <span class="k">def</span> <span class="f">forward</span>(self, x):
+        h = self.<span class="f">act</span>(self.<span class="f">fc1</span>(x))
+        <span class="k">return</span> self.<span class="f">fc2</span>(h)   <span class="c"># return logits; loss applies sigmoid</span>
+
+
+<span class="f">set_seed</span>(<span class="n">42</span>); device = <span class="f">get_device</span>()
+ds = <span class="f">CineMatchClassDataset</span>()
+train_ds, val_ds = <span class="f">random_split</span>(ds, [<span class="n">0.8</span>, <span class="n">0.2</span>])
+train_loader = <span class="f">DataLoader</span>(train_ds, batch_size=<span class="n">256</span>, shuffle=<span class="k">True</span>)
+val_loader = <span class="f">DataLoader</span>(val_ds, batch_size=<span class="n">256</span>)
+
+model = <span class="f">CineMatchMLP</span>(hidden=<span class="n">32</span>).<span class="f">to</span>(device)
+criterion = nn.<span class="f">BCEWithLogitsLoss</span>()
+optimizer = torch.optim.<span class="f">Adam</span>(model.<span class="f">parameters</span>(), lr=<span class="n">1e-3</span>)   <span class="c"># Adam in Module 2.4</span>
+
+<span class="k">for</span> epoch <span class="k">in</span> <span class="f">range</span>(<span class="n">20</span>):
+    model.<span class="f">train</span>()
+    train_loss, train_correct, n = <span class="n">0.0</span>, <span class="n">0</span>, <span class="n">0</span>
+    <span class="k">for</span> xb, yb <span class="k">in</span> train_loader:
+        xb, yb = xb.<span class="f">to</span>(device), yb.<span class="f">to</span>(device).<span class="f">unsqueeze</span>(<span class="n">1</span>)
+        optimizer.<span class="f">zero_grad</span>()
+        logits = <span class="f">model</span>(xb)
+        loss = <span class="f">criterion</span>(logits, yb)
+        loss.<span class="f">backward</span>()
+        optimizer.<span class="f">step</span>()
+        train_loss += loss.<span class="f">item</span>() * xb.<span class="f">size</span>(<span class="n">0</span>)
+        preds = (torch.<span class="f">sigmoid</span>(logits) &gt; <span class="n">0.5</span>).<span class="f">int</span>()
+        train_correct += (preds == yb.<span class="f">int</span>()).<span class="f">sum</span>().<span class="f">item</span>()
+        n += xb.<span class="f">size</span>(<span class="n">0</span>)
+
+    model.<span class="f">eval</span>()
+    val_correct, n_val = <span class="n">0</span>, <span class="n">0</span>
+    <span class="k">with</span> torch.<span class="f">no_grad</span>():
+        <span class="k">for</span> xb, yb <span class="k">in</span> val_loader:
+            xb, yb = xb.<span class="f">to</span>(device), yb.<span class="f">to</span>(device).<span class="f">unsqueeze</span>(<span class="n">1</span>)
+            preds = (torch.<span class="f">sigmoid</span>(<span class="f">model</span>(xb)) &gt; <span class="n">0.5</span>).<span class="f">int</span>()
+            val_correct += (preds == yb.<span class="f">int</span>()).<span class="f">sum</span>().<span class="f">item</span>()
+            n_val += xb.<span class="f">size</span>(<span class="n">0</span>)
+
+    <span class="f">print</span>(<span class="s">f"epoch {epoch+1:2d}  "</span>
+          <span class="s">f"train_loss={train_loss/n:.4f} train_acc={train_correct/n:.3f}  "</span>
+          <span class="s">f"val_acc={val_correct/n_val:.3f}"</span>)</code></pre>
+
+  <p>What changed compared to Phase 1's logistic regression? Exactly two things:</p>
+
+  <ol style="margin: 16px 0 28px 24px; font-family: var(--display);">
+    <li style="margin-bottom: 10px;"><strong>The model definition.</strong> We subclass <code class="inline">nn.Module</code>, declare two <code class="inline">Linear</code> layers and a <code class="inline">ReLU</code>, and wire them together in <code class="inline">forward</code>. Two lines of computation instead of one.</li>
+    <li style="margin-bottom: 10px;"><strong>The optimizer.</strong> We use <code class="inline">Adam</code> instead of plain SGD. Adam is a smarter optimizer that adapts per-parameter learning rates — we'll derive it in Module 2.4. For now, treat it as a sensible default that trains MLPs faster than SGD.</li>
+  </ol>
+
+  <p>Everything else is identical. Same loss, same training loop, same evaluation. This consistency is not an accident — it's the whole reason PyTorch's API is designed the way it is. The architecture plugs into a general training system.</p>
+
+  <h3>Expected results — and the gap.</h3>
+
+  <table>
+    <tr><th>Model</th><th>Val accuracy</th><th>Parameters</th><th>Where we saw it</th></tr>
+    <tr><td>Logistic regression</td><td>~0.89</td><td>5</td><td>Phase 1 capstone</td></tr>
+    <tr><td>MLP (4 → 32 → 1)</td><td>~0.94</td><td>193</td><td>Phase 2, this module</td></tr>
+    <tr><td>MLP (4 → 64 → 32 → 1)</td><td>~0.95</td><td>2,433</td><td>Phase 2 capstone</td></tr>
+  </table>
+
+  <p>The ~5-point jump from logistic regression to a one-hidden-layer MLP is the first concrete payoff for depth on CineMatch. The smaller jump from one to two hidden layers is the standard pattern — the first hidden layer captures most of the available non-linearity, and each additional layer adds diminishing returns (until you reach problems like vision and language, where the full hierarchy matters). Phase 2's capstone will make this gap concrete with proper evaluation.</p>
+
+  <div class="mcq" data-correct="b">
+    <div class="mh"><span>Check your understanding</span><span class="qnum">Q5 / 07</span></div>
+    <div class="mq">Your <code>CineMatchMLP</code> class has an <code>__init__</code> that declares layers and a <code>forward</code> that uses them. You never call <code>forward</code> directly — you call <code>model(x)</code>. How does that work?</div>
+    <div class="opts">
+      <div class="opt" data-key="a"><span class="key">A</span><span class="text"><code>model(x)</code> is a syntactic shorthand for <code>model.forward(x)</code> with no difference in behavior.</span></div>
+      <div class="opt" data-key="b"><span class="key">B</span><span class="text">Calling <code>model(x)</code> invokes <code>nn.Module</code>'s <code>__call__</code>, which runs some hooks (for gradient tracking, eval/train mode handling, forward-hook registration), <em>then</em> calls <code>forward(x)</code>. Skipping the wrapper by calling <code>forward</code> directly will break some features.</span></div>
+      <div class="opt" data-key="c"><span class="key">C</span><span class="text">It's a special PyTorch trick that bypasses Python's class system.</span></div>
+      <div class="opt" data-key="d"><span class="key">D</span><span class="text">It doesn't — you must call <code>model.forward(x)</code>.</span></div>
+    </div>
+    <div class="feedback" data-right="<code>nn.Module.__call__</code> wraps the forward pass with bookkeeping: registering the module in the autograd graph, running any forward-pre-hooks and forward-hooks, interacting with <code>torch.no_grad</code>, tracking training/eval mode, and so on. Calling <code>model.forward(x)</code> directly skips all of that and can produce wrong results or break features. Always call <code>model(x)</code> in user code; reserve <code>forward</code> for <em>defining</em> the computation inside a subclass." data-wrong="<code>model(x)</code> invokes <code>nn.Module.__call__</code>, which runs hooks, interacts with train/eval mode and autograd, and <em>then</em> calls <code>forward(x)</code>. Calling <code>forward</code> directly skips the wrapper and can corrupt behavior (forward hooks don't fire, some gradient machinery misses events). The rule is simple: <em>define</em> <code>forward</code> in your subclass; <em>call</em> <code>model(x)</code> in user code. Never invert these."></div>
+  </div>
+
+  <div class="mcq" data-correct="c">
+    <div class="mh"><span>Check your understanding</span><span class="qnum">Q6 / 07</span></div>
+    <div class="mq">Your CineMatch MLP trained to 94% validation accuracy. Logistic regression got 89% on the same split. How do you make the strongest scientific claim about why the MLP is better?</div>
+    <div class="opts">
+      <div class="opt" data-key="a"><span class="key">A</span><span class="text">The MLP has more parameters, so of course it's better.</span></div>
+      <div class="opt" data-key="b"><span class="key">B</span><span class="text">94% is better than 89% — state it as fact.</span></div>
+      <div class="opt" data-key="c"><span class="key">C</span><span class="text">Run each model with 5 random seeds, report mean ± std validation accuracy for each, and confirm the gap is much larger than the variance across seeds before claiming the MLP is genuinely better.</span></div>
+      <div class="opt" data-key="d"><span class="key">D</span><span class="text">Train for more epochs until both plateau.</span></div>
+    </div>
+    <div class="feedback" data-right="A single seed's result could be a lucky initialization. The disciplined move is to run each model with multiple random seeds (5 is a reasonable minimum), report mean ± standard deviation, and check that the gap is substantially larger than the within-model variance. If MLP is 0.94 ± 0.003 and logistic is 0.89 ± 0.002, the gap is clearly real. If MLP is 0.94 ± 0.02 and logistic is 0.89 ± 0.03, your 'improvement' might be noise. Phase 2's capstone will set this practice as habit." data-wrong="Single-seed results can be noise. The disciplined practice: run each model with 5+ random seeds, report mean ± std, and check whether the performance gap is substantially larger than the within-model variance. Only then can you claim MLP > logistic. This habit applies to every evaluation in deep learning — paper claims that don't include seed variance are weaker than they look."></div>
+  </div>
+</section>
+
+<!-- ============ SECTION 6: CHECKPOINT ============ -->
+<section>
+  <h2 data-num="06 / 06">Phase 2 begins — checkpoint.</h2>
+
+  <p>You now have the minimum-viable deep neural network. One hidden layer, one non-linearity, one output. Everything in Phase 2 and beyond — backprop (2.2), the builder's guide (2.3), optimization (2.4–2.5), regularization (2.6), performance (2.7), then CNNs, RNNs, transformers in Phase 3–4 — is a generalization of what you just built.</p>
+
+  <div class="mcq" data-correct="c">
+    <div class="mh"><span>Synthesis question</span><span class="qnum">Q7 / 07</span></div>
+    <div class="mq">A colleague proposes the following for CineMatch: <code>Linear(4, 100) → Linear(100, 1)</code>, no activation. Another proposes: <code>Linear(4, 8) → ReLU → Linear(8, 8) → ReLU → Linear(8, 1)</code>. Which proposal's outputs are in a more expressive function class?</div>
+    <div class="opts">
+      <div class="opt" data-key="a"><span class="key">A</span><span class="text">The first — it has far more parameters (401 vs. 129).</span></div>
+      <div class="opt" data-key="b"><span class="key">B</span><span class="text">The first — a wider hidden layer is always more expressive.</span></div>
+      <div class="opt" data-key="c"><span class="key">C</span><span class="text">The second — despite fewer parameters, it has two non-linear activations and can represent a much richer function class. The first collapses to one linear layer, equivalent to logistic regression's space.</span></div>
+      <div class="opt" data-key="d"><span class="key">D</span><span class="text">They're equivalent.</span></div>
+    </div>
+    <div class="feedback" data-right="The first network's two Linear layers without an activation compose into one Linear layer — its function class is identical to <code>Linear(4, 1)</code>, ≈logistic regression. Parameter count doesn't matter; all 401 parameters parameterize the same 4-dim-to-1-dim linear map. The second network, despite having fewer parameters, has <em>two</em> non-linear activations, which makes it a genuine MLP capable of representing non-linear functions. The lesson: the relevant quantity for expressivity is the <em>structure</em> of non-linearities, not raw parameter count. A small MLP beats a huge linear model on any non-linear problem." data-wrong="The first network collapses to a single linear layer — its 401 parameters all parameterize one 4→1 linear map, giving it the exact function class of logistic regression. The second network has real non-linearity via two ReLU activations, so it can represent non-linear functions. The MLP's 129 parameters buy you an entirely different function class; the linear stack's 401 parameters buy you nothing beyond what 5 would. Structure of non-linearities matters far more than parameter count."></div>
+  </div>
+
+  <div class="checkpoint">
+    <h4>Module 2.1 — Mastery checkpoint</h4>
+    <ol>
+      <li>Prove algebraically why stacking two Linear layers without an activation collapses to one Linear layer.</li>
+      <li>Write the equations of a one-hidden-layer MLP and count the parameters for a 10 → 32 → 5 configuration.</li>
+      <li>Sketch sigmoid, tanh, and ReLU — including their derivative shapes — and explain why ReLU avoids the vanishing gradient in the active region.</li>
+      <li>State the universal approximation theorem and name three reasons we still build deep networks despite it.</li>
+      <li>Define a <code>CineMatchMLP</code> subclass of <code>nn.Module</code> and explain what <code>__init__</code>, <code>forward</code>, and <code>__call__</code> each do.</li>
+      <li>Apply multi-seed evaluation to justify a claim that an MLP outperforms a linear baseline.</li>
+    </ol>
+  </div>
+
+  <h3>Where this leads.</h3>
+
+  <p>Module 2.2 takes us under the hood. You've been running <code class="inline">loss.backward()</code> since Module 0.3, but we have not actually derived what happens when you do. In 2.2 we'll take a tiny 2-2-1 network, compute its forward pass by hand with specific numbers, derive every gradient of the loss with respect to every parameter on paper, and then confirm autograd produces identical values. By the end of 2.2 there will be no mystery in backpropagation — just the chain rule, applied carefully.</p>
+
+</section>
+
+</main>
+
+<nav class="footnav">
+  <a href="module_1_4_perceptron.html" class="prev">
+    <div class="lbl">Previous module</div>
+    <div class="ttl">1.4 — The Perceptron</div>
+  </a>
+  <a href="module_2_2_backprop.html" class="next">
+    <div class="lbl">Next module</div>
+    <div class="ttl">2.2 — Backprop by Hand</div>
+  </a>
+</nav>
+
+<script>
+  // ===== UAT playground: simple in-browser 1D function approximator =====
+  const uatSvg = document.getElementById('uat-svg');
+  const uatOut = document.getElementById('uatOut');
+  const uatH = document.getElementById('uatH');
+  const uatHV = document.getElementById('uatHV');
+  const uatTarget = document.getElementById('uatTarget');
+  const uatRetrain = document.getElementById('uatRetrain');
+
+  function target(x, kind) {
+    if (kind === 'sin') return Math.sin(3 * x);
+    if (kind === 'abs') return Math.abs(x) - 0.5;
+    if (kind === 'step') return x > 0 ? 0.7 : -0.7;
+    if (kind === 'gauss') return Math.exp(-4 * x * x) - 0.5;
+    return 0;
+  }
+
+  function relu(x) { return Math.max(0, x); }
+
+  let W1, b1, w2, b2;
+  function initNet(H) {
+    W1 = new Array(H).fill(0).map(() => (Math.random() - 0.5) * 3);
+    b1 = new Array(H).fill(0).map(() => (Math.random() - 0.5) * 3);
+    w2 = new Array(H).fill(0).map(() => (Math.random() - 0.5) * 1.5);
+    b2 = (Math.random() - 0.5) * 0.3;
+  }
+
+  function forward(x, H) {
+    let y = b2;
+    for (let i = 0; i < H; i++) {
+      y += w2[i] * relu(W1[i] * x + b1[i]);
+    }
+    return y;
+  }
+
+  function train(kind, H, iters=1500) {
+    const lr = 0.03;
+    const N = 50;
+    const xs = new Array(N).fill(0).map((_, i) => -1 + 2 * i / (N - 1));
+    const ys = xs.map(x => target(x, kind));
+    for (let it = 0; it < iters; it++) {
+      // batch gradient
+      const gW1 = new Array(H).fill(0);
+      const gb1 = new Array(H).fill(0);
+      const gw2 = new Array(H).fill(0);
+      let gb2 = 0;
+      for (let j = 0; j < N; j++) {
+        const x = xs[j], y = ys[j];
+        // forward
+        const z = new Array(H).fill(0).map((_, i) => W1[i] * x + b1[i]);
+        const h = z.map(relu);
+        let pred = b2;
+        for (let i = 0; i < H; i++) pred += w2[i] * h[i];
+        const err = pred - y;     // dL/dpred for MSE (factor 2 folded into lr)
+        gb2 += err;
+        for (let i = 0; i < H; i++) {
+          gw2[i] += err * h[i];
+          const dh = err * w2[i];
+          const dz = z[i] > 0 ? dh : 0;
+          gW1[i] += dz * x;
+          gb1[i] += dz;
+        }
+      }
+      b2 -= lr * gb2 / N;
+      for (let i = 0; i < H; i++) {
+        w2[i] -= lr * gw2[i] / N;
+        W1[i] -= lr * gW1[i] / N;
+        b1[i] -= lr * gb1[i] / N;
+      }
+    }
+  }
+
+  function draw() {
+    const H = +uatH.value;
+    const kind = uatTarget.value;
+    uatHV.textContent = H;
+
+    const W = 600, Hc = 320, pad = 40;
+    const xMin = -1, xMax = 1, yMin = -1.2, yMax = 1.2;
+    const sx = (W - 2 * pad) / (xMax - xMin);
+    const sy = (Hc - 2 * pad) / (yMax - yMin);
+    const toX = x => pad + (x - xMin) * sx;
+    const toY = y => Hc - pad - (y - yMin) * sy;
+
+    let svg = '';
+    svg += `<line x1="${pad}" y1="${toY(0)}" x2="${W - pad}" y2="${toY(0)}" stroke="#3a3a46" stroke-width="0.5"/>`;
+    svg += `<line x1="${toX(0)}" y1="${pad}" x2="${toX(0)}" y2="${Hc - pad}" stroke="#3a3a46" stroke-width="0.5"/>`;
+
+    // target function (green, reference)
+    let tPts = [];
+    for (let i = 0; i <= 150; i++) {
+      const x = xMin + (xMax - xMin) * i / 150;
+      tPts.push(`${toX(x)},${toY(target(x, kind))}`);
+    }
+    svg += `<polyline points="${tPts.join(' ')}" fill="none" stroke="#7fc28a" stroke-width="2" stroke-dasharray="5,3"/>`;
+
+    // approximation (orange)
+    let aPts = [];
+    for (let i = 0; i <= 200; i++) {
+      const x = xMin + (xMax - xMin) * i / 200;
+      aPts.push(`${toX(x)},${toY(forward(x, H))}`);
+    }
+    svg += `<polyline points="${aPts.join(' ')}" fill="none" stroke="#ff5b3a" stroke-width="2"/>`;
+
+    // legend
+    svg += `<g transform="translate(${W - 170}, ${pad})">`;
+    svg += `<line x1="0" y1="0" x2="20" y2="0" stroke="#7fc28a" stroke-width="2" stroke-dasharray="5,3"/>`;
+    svg += `<text x="26" y="3" font-family="Outfit" font-size="10" fill="#9a9aa6" letter-spacing="1">TARGET</text>`;
+    svg += `<line x1="0" y1="16" x2="20" y2="16" stroke="#ff5b3a" stroke-width="2"/>`;
+    svg += `<text x="26" y="19" font-family="Outfit" font-size="10" fill="#9a9aa6" letter-spacing="1">MLP APPROXIMATION</text>`;
+    svg += `</g>`;
+
+    uatSvg.innerHTML = svg;
+
+    // compute MSE
+    let mse = 0;
+    const N = 100;
+    for (let i = 0; i <= N; i++) {
+      const x = xMin + (xMax - xMin) * i / N;
+      const err = forward(x, H) - target(x, kind);
+      mse += err * err;
+    }
+    mse /= (N + 1);
+
+    uatOut.innerHTML = `
+      <div class="lbl">Approximation</div>
+      <div>Hidden units: <span class="vl">${H}</span> &nbsp; Parameters: <span class="vl">${3 * H + 1}</span> &nbsp; MSE: <span class="vl">${mse.toFixed(4)}</span></div>
+      <div style="margin-top:6px;font-style:italic;color:#9a9aa6;font-family:'Source Serif 4',serif;font-size:13px">Each ReLU hidden unit contributes one "bend" to the approximation — more units = more bends = finer fit. This is universal approximation in action.</div>
+    `;
+  }
+
+  function retrainAll() {
+    const H = +uatH.value;
+    const kind = uatTarget.value;
+    initNet(H);
+    train(kind, H);
+    draw();
+  }
+
+  uatRetrain.addEventListener('click', retrainAll);
+  uatH.addEventListener('change', retrainAll);
+  uatH.addEventListener('input', () => { uatHV.textContent = uatH.value; });
+  uatTarget.addEventListener('change', retrainAll);
+  retrainAll();
+
+  // ===== MCQ =====
+  document.querySelectorAll('.mcq').forEach(mcq => {
+    const correct = mcq.dataset.correct;
+    const opts = mcq.querySelectorAll('.opt');
+    const fb = mcq.querySelector('.feedback');
+    opts.forEach(opt => {
+      opt.addEventListener('click', () => {
+        if (opt.classList.contains('disabled')) return;
+        const chosen = opt.dataset.key;
+        const isRight = chosen === correct;
+        opts.forEach(o => {
+          o.classList.add('disabled');
+          if (o.dataset.key === correct) o.classList.add('correct');
+          else if (o === opt && !isRight) o.classList.add('wrong');
+        });
+        if (isRight) { fb.classList.add('show', 'right'); fb.innerHTML = '<span class="verdict">Correct</span>' + fb.dataset.right; }
+        else { fb.classList.add('show', 'wrong'); fb.innerHTML = '<span class="verdict">Not quite</span>' + fb.dataset.wrong; }
+      });
+    });
+  });
+</script>
+
+</body>
+</html>

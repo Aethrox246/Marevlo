@@ -1,0 +1,480 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>OCR Track 13 - Production OCR Pipeline</title>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&family=Outfit:wght@300;400;500;600;700;800;900&family=Source+Serif+4:ital,opsz,wght@0,8..144,300;0,8..144,400;0,8..144,600;1,8..144,300;1,8..144,400&display=swap" rel="stylesheet">
+<style>:root{--bg:#0a0a0f;--t1:#ececf6;--t2:#b5b5c8;--tm:#7c7c95;
+--a1:#5eead4;--a2:#60a5fa;--a3:#f472b6;--a4:#fbbf24;--a5:#a78bfa;--ac:#fbbf24;
+--gl:linear-gradient(90deg,#5eead4 0%,#60a5fa 28%,#a78bfa 55%,#f472b6 82%,#fbbf24 100%);
+--bs:rgba(255,255,255,0.07);--sh:0 20px 80px rgba(0,0,0,0.42);--r:20px;--cw:1120px}
+*{box-sizing:border-box;margin:0;padding:0}html{scroll-behavior:smooth}
+body{background:radial-gradient(circle at 18% 14%,rgba(251,191,36,.09),transparent 30%),radial-gradient(circle at 82% 22%,rgba(96,165,250,.05),transparent 28%),var(--bg);color:var(--t1);font-family:'Outfit',sans-serif;line-height:1.75;overflow-x:hidden;-webkit-font-smoothing:antialiased}
+.sp{position:fixed;top:0;left:0;height:3px;width:0%;z-index:1000;background:var(--gl);transition:width .12s linear}
+nav{position:fixed;top:3px;left:0;right:0;z-index:999;display:flex;align-items:center;justify-content:space-between;padding:.75rem 2rem;background:rgba(10,10,15,.88);backdrop-filter:blur(12px);border-bottom:1px solid var(--bs)}
+.nbr{font-family:'JetBrains Mono',monospace;font-size:.72rem;color:var(--ac);letter-spacing:.14em;text-transform:uppercase;text-decoration:none}
+.nm{font-size:.82rem;color:var(--tm)}.na{display:flex;gap:8px}
+.nb{display:inline-flex;align-items:center;gap:6px;padding:.4rem .9rem;border-radius:999px;border:1px solid var(--bs);background:rgba(255,255,255,.03);color:var(--t2);font-size:.8rem;text-decoration:none;transition:all .18s}
+.nb:hover{border-color:var(--ac);color:var(--ac)}
+.hero{min-height:100vh;display:flex;align-items:center;justify-content:center;padding:5rem 2rem 3rem;position:relative;overflow:hidden}
+.hg{position:absolute;inset:0;background-image:linear-gradient(rgba(255,255,255,.025) 1px,transparent 1px),linear-gradient(90deg,rgba(255,255,255,.025) 1px,transparent 1px);background-size:48px 48px;mask-image:radial-gradient(circle at center,black 30%,transparent 80%);pointer-events:none}
+.hero::before{content:"";position:absolute;inset:0;background:radial-gradient(ellipse 700px 350px at 20% 40%,rgba(251,191,36,.10),transparent),radial-gradient(ellipse 640px 360px at 80% 38%,rgba(96,165,250,.06),transparent);pointer-events:none}
+.hi{max-width:1000px;text-align:center;position:relative;z-index:1}
+.hl{display:inline-flex;align-items:center;gap:10px;padding:.55rem 1rem;border-radius:999px;border:1px solid rgba(251,191,36,.25);background:rgba(251,191,36,.08);color:var(--ac);letter-spacing:1.8px;text-transform:uppercase;font-size:.76rem;margin-bottom:1.7rem}
+.dot{width:7px;height:7px;border-radius:50%;background:var(--ac);animation:pulse 2s ease-in-out infinite}
+@keyframes pulse{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.3;transform:scale(.75)}}
+h1{font-size:clamp(2.4rem,5vw,4.4rem);line-height:1.04;letter-spacing:-.04em;font-weight:900;margin-bottom:1.3rem}
+.gt{background:var(--gl);-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent}
+.hs{font-family:'Source Serif 4',serif;color:var(--t2);font-size:clamp(1rem,2vw,1.2rem);max-width:820px;margin:0 auto 2rem;line-height:1.8}
+.hm{display:flex;flex-wrap:wrap;justify-content:center;gap:12px;margin-bottom:2.5rem}
+.mp{border:1px solid var(--bs);background:rgba(17,17,26,.75);border-radius:999px;padding:.65rem 1.1rem;color:var(--t2);font-size:.88rem}
+.sc{position:absolute;bottom:2.6rem;left:50%;transform:translateX(-50%);color:var(--tm);display:flex;flex-direction:column;gap:.6rem;align-items:center;text-transform:uppercase;letter-spacing:.22em;font-size:.7rem}
+.sc .arr{width:18px;height:18px;border-right:2px solid var(--tm);border-bottom:2px solid var(--tm);transform:rotate(45deg);animation:ba 2s ease-in-out infinite}
+@keyframes ba{0%,100%{transform:rotate(45deg) translateY(0)}50%{transform:rotate(45deg) translateY(7px)}}
+.cw{max-width:var(--cw);margin:0 auto;padding:0 2rem 6rem}
+.sec{margin-bottom:5.5rem;opacity:0;transform:translateY(28px);transition:opacity .65s ease,transform .65s ease}
+.sec.vis{opacity:1;transform:translateY(0)}
+.sn{display:flex;align-items:center;gap:12px;color:var(--ac);font-family:'JetBrains Mono',monospace;font-size:.68rem;text-transform:uppercase;letter-spacing:.22em;margin-bottom:.9rem}
+.sn::after{content:"";height:1px;flex:1;background:linear-gradient(90deg,rgba(251,191,36,.7),transparent)}
+.sec h2{font-size:clamp(1.9rem,4vw,2.75rem);line-height:1.08;margin-bottom:1rem;letter-spacing:-.04em}
+.lead{font-family:'Source Serif 4',serif;font-size:1.08rem;color:var(--t2);margin-bottom:2rem;line-height:1.85}
+.card{background:linear-gradient(180deg,rgba(24,24,38,.96),rgba(17,17,28,.96));border:1px solid var(--bs);border-radius:var(--r);box-shadow:var(--sh);padding:1.8rem;margin-bottom:1.4rem}
+.cc{background:linear-gradient(180deg,rgba(11,11,22,.99),rgba(9,9,17,.99));border:1px solid var(--bs);border-radius:var(--r);box-shadow:var(--sh);padding:0;margin-bottom:1.4rem;overflow:hidden}
+.ch{display:flex;align-items:center;justify-content:space-between;padding:1rem 1.5rem;border-bottom:1px solid var(--bs)}
+.ch h3{font-size:.9rem;font-family:'JetBrains Mono',monospace;color:var(--ac)}
+.cpb{display:inline-flex;align-items:center;gap:5px;padding:.28rem .7rem;border-radius:999px;border:1px solid var(--bs);background:transparent;color:var(--tm);font-size:.72rem;cursor:pointer;transition:all .18s;font-family:'JetBrains Mono',monospace}
+.cpb:hover{border-color:var(--a1);color:var(--a1)}
+.cbody{padding:1.5rem;overflow-x:auto}
+pre{white-space:pre;color:#d8e3ff;font-family:'JetBrains Mono',monospace;font-size:.86rem;line-height:1.75}
+.kw{color:#a78bfa}.fn{color:#60a5fa}.str{color:#5eead4}.cm{color:#3d3d5a;font-style:italic}.nu{color:#fbbf24}.cl{color:#f472b6}
+.g2{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:1.3rem;margin-bottom:1.4rem}
+.g3{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:1.3rem;margin-bottom:1.4rem}
+.g4{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:1rem;margin-bottom:1.2rem}
+.mc2{border:1px solid var(--bs);border-radius:16px;padding:1.3rem;background:rgba(255,255,255,.02)}
+.mc2 h4{font-size:1rem;margin-bottom:.55rem;color:var(--t1)}.mc2 p{font-size:.9rem;color:var(--t2);line-height:1.65}
+.cl2{border-radius:16px;padding:1.2rem 1.5rem;margin:1.5rem 0;display:flex;gap:1rem;align-items:flex-start}
+.cs{background:rgba(94,234,212,.06);border:1px solid rgba(94,234,212,.18)}
+.ci{background:rgba(96,165,250,.07);border:1px solid rgba(96,165,250,.18)}
+.cr{background:rgba(244,114,182,.06);border:1px solid rgba(244,114,182,.18)}
+.cw2{background:rgba(251,191,36,.06);border:1px solid rgba(251,191,36,.18)}
+.cp{background:rgba(167,139,250,.06);border:1px solid rgba(167,139,250,.18)}
+.cico{font-size:1.2rem;flex-shrink:0;margin-top:.1rem}
+.cbd h4{font-size:.95rem;margin-bottom:.35rem;color:var(--t1)}.cbd p{font-size:.9rem;color:var(--t2);line-height:1.65}
+.tbl{width:100%;border-collapse:collapse;font-size:.87rem}
+.tbl th{text-align:left;padding:.75rem 1rem;font-family:'JetBrains Mono',monospace;font-size:.65rem;text-transform:uppercase;color:var(--tm);border-bottom:1px solid var(--bs)}
+.tbl td{padding:.75rem 1rem;border-bottom:1px solid rgba(255,255,255,.04);color:var(--t2);vertical-align:top;line-height:1.65}
+.tbl td:first-child{color:var(--t1);font-weight:600}.tbl tr:last-child td{border-bottom:none}
+.ex-box{border-radius:12px;padding:1rem 1.2rem;margin-bottom:.8rem}
+.ex-good{background:rgba(94,234,212,.05);border:1px solid rgba(94,234,212,.2)}
+.ex-bad{background:rgba(244,114,182,.05);border:1px solid rgba(244,114,182,.2)}
+.ex-label{font-family:'JetBrains Mono',monospace;font-size:.7rem;text-transform:uppercase;letter-spacing:.12em;margin-bottom:.4rem}
+.ex-text{font-size:.88rem;color:var(--t2);line-height:1.65}
+.num-card{border:1px solid var(--bs);border-radius:14px;padding:1.2rem;background:rgba(255,255,255,.02);text-align:center}
+.num-big{font-family:'JetBrains Mono',monospace;font-size:2.2rem;font-weight:700;margin-bottom:.3rem}
+.num-label{font-size:.82rem;color:var(--tm)}
+.qc{background:linear-gradient(180deg,rgba(24,24,38,.96),rgba(17,17,28,.96));border:1px solid var(--bs);border-radius:var(--r);box-shadow:var(--sh);padding:1.8rem}
+.qq{border:1px solid var(--bs);border-radius:16px;padding:1.3rem;background:rgba(255,255,255,.015);margin-bottom:1rem}
+.qq h4{font-size:1rem;margin-bottom:1rem;color:var(--t1);line-height:1.5}
+.qo{display:grid;gap:.6rem}
+.qob{border:1px solid var(--bs);border-radius:11px;padding:.9rem 1.1rem;background:rgba(255,255,255,.02);color:var(--t2);cursor:pointer;transition:all .2s;text-align:left;font-size:.9rem;font-family:'Outfit',sans-serif;width:100%;line-height:1.5}
+.qob:hover{border-color:rgba(251,191,36,.4);background:rgba(251,191,36,.04)}
+.qob.ok{border-color:rgba(94,234,212,.5);background:rgba(94,234,212,.09);color:var(--t1)}
+.qob.no{border-color:rgba(244,114,182,.4);background:rgba(244,114,182,.07)}
+.qf{font-size:.88rem;margin-top:.7rem;line-height:1.6;padding:.7rem .9rem;border-radius:10px;background:rgba(255,255,255,.02);display:none}
+.qf.show{display:block}
+.qs{padding:1.4rem;border-radius:16px;background:rgba(94,234,212,.06);border:1px solid rgba(94,234,212,.2);text-align:center;margin-top:1.2rem;display:none}
+.qs h3{font-size:2rem;color:var(--a1);margin-bottom:.4rem}.qs p{color:var(--t2);font-size:.92rem}
+.fn2{display:flex;align-items:center;justify-content:space-between;padding:2.2rem 0;border-top:1px solid var(--bs);margin-top:2rem}
+.fn2 a{display:inline-flex;align-items:center;gap:8px;padding:.75rem 1.5rem;border-radius:999px;border:1px solid var(--bs);color:var(--t2);text-decoration:none;font-size:.9rem;transition:all .2s}
+.fn2 a:hover{border-color:var(--ac);color:var(--ac)}
+.fn2 a.pr{background:rgba(167,139,250,.04);border-color:rgba(167,139,250,.2);color:var(--a5)}
+.fn2 a.nx{background:rgba(251,191,36,.04);border-color:rgba(251,191,36,.25);color:var(--ac)}
+.fcc{text-align:center;font-size:.82rem;color:var(--tm)}
+.pipe-step{border:1px solid var(--bs);border-radius:12px;padding:.9rem 1.2rem;background:rgba(255,255,255,.02)}
+.pipe-step h4{font-size:.88rem;font-family:'JetBrains Mono',monospace;color:var(--ac);margin-bottom:.35rem}
+.pipe-step p{font-size:.83rem;color:var(--t2);line-height:1.6}
+.pipe-arrow{text-align:center;color:var(--tm);font-size:1.4rem;padding:.15rem 0}
+@media(max-width:720px){.g2,.g3,.g4{grid-template-columns:repeat(2,1fr)}}</style>
+</head>
+<body>
+<div class="sp" id="sp"></div>
+<nav>
+  <a href="ocr_m0.html" class="nbr">Marevlo · OCR Track · Module 13</a>
+  <span class="nm">Production OCR Pipeline</span>
+  <div class="na"><a href="ocr_m12.html" class="pr">← M12: OCR Evaluation Metrics</a></div>
+</nav>
+<section class="hero"><div class="hg"></div><div class="hi">
+  <div class="hl"><span class="dot"></span>OCR Track · Module 13 · OCR &amp; Text Recognition Engineering</div>
+  <h1>Production OCR Pipeline<br><span class="gt">FastAPI · Celery · Auto-scaling · S3 Architecture · DLQ · Prometheus · Cost Modelling · SLA</span></h1>
+  <p class="hs">A model that achieves 0.8% CER in a notebook is not a production OCR system. Production means async task queues that absorb traffic spikes without dropping documents, worker pools that auto-scale on queue depth, GPU vs CPU routing decisions that balance cost against latency SLAs, S3-backed document storage with structured output versioning, dead-letter queues for failure isolation, Prometheus metrics with Grafana alerting, and a cost model that predicts infrastructure spend at 100k documents/day before you deploy. This module builds all of it — from FastAPI ingestion endpoint to Celery worker fleet to monitoring dashboard.</p>
+<div class="hm"><span class="mp">70 min</span><span class="mp">FastAPI async ingestion</span><span class="mp">Celery + Redis queue</span><span class="mp">Worker auto-scaling</span><span class="mp">GPU vs CPU routing</span><span class="mp">S3 storage architecture</span><span class="mp">Dead-letter queues</span><span class="mp">Prometheus monitoring</span><span class="mp">Cost modelling</span><span class="mp">SLA design</span></div>
+</div><div class="sc"><span>Scroll</span><div class="arr"></div></div></section>
+<div class="cw">
+<section class="sec" id="s1">
+<div class="sn">01 · Architecture Overview</div>
+<h2>Five Layers of a Production<br><span class="gt">OCR Pipeline</span></h2>
+<p class="lead">Production OCR is an async pipeline problem, not a synchronous request-response problem. A client submits a document and gets a job ID. The document moves through ingestion, queuing, processing, post-processing, and storage layers asynchronously. Each layer is independently scalable and failure-isolated. No layer blocks another.</p>
+<div class="card" style="padding:0;overflow:hidden"><table class="tbl">
+<thead><tr><th>Layer</th><th>Component</th><th>Responsibility</th><th>Scale unit</th></tr></thead>
+<tbody>
+<tr><td><strong style="color:var(--a4)">1. Ingestion</strong></td><td>FastAPI</td><td>Validate, store to S3, enqueue job</td><td>Horizontal (stateless)</td></tr>
+<tr><td><strong style="color:var(--a2)">2. Queue</strong></td><td>Redis + Celery</td><td>Job dispatch, priority routing, backpressure</td><td>Redis cluster</td></tr>
+<tr><td><strong style="color:var(--a1)">3. Processing</strong></td><td>Celery workers</td><td>OCR, post-processing, validation</td><td>Worker replicas (GPU/CPU)</td></tr>
+<tr><td><strong style="color:var(--a5)">4. Storage</strong></td><td>S3 + DynamoDB</td><td>Raw docs, structured output, job state</td><td>Managed (S3) / provisioned (DDB)</td></tr>
+<tr><td><strong style="color:var(--a3)">5. Monitoring</strong></td><td>Prometheus + Grafana</td><td>Latency, error rate, queue depth, cost</td><td>Single Prometheus + Grafana</td></tr>
+</tbody></table></div>
+<div class="g2" style="margin-top:1.2rem">
+<div class="card" style="margin-bottom:0">
+<h4 style="color:var(--a4);margin-bottom:.6rem">Why async, not sync?</h4>
+<p style="font-size:.85rem;color:var(--t2)">Synchronous OCR: client waits 2-8 seconds per document. At 100 concurrent clients, you need 100 threads blocked on I/O. Async OCR: client gets a job ID in under 50ms. FastAPI handles the next request immediately. OCR runs in a separate worker process. Client polls /status/{job_id} or receives a webhook. Ingestion and processing layers scale independently.</p>
+</div>
+<div class="card" style="margin-bottom:0">
+<h4 style="color:var(--a2);margin-bottom:.6rem">Queue depth as the scaling signal</h4>
+<p style="font-size:.85rem;color:var(--t2)">Queue depth is the primary autoscaling metric for OCR. When depth exceeds N times worker_capacity (TARGET_DEPTH typically 3-5), spin up workers. When depth falls below 1 times capacity for 5 minutes, scale down. More responsive than CPU-based autoscaling for I/O-bound OCR workloads because OCR workers can be idle (waiting for S3) while CPU is low.</p>
+</div></div>
+</section>
+
+<section class="sec" id="s2">
+<div class="sn">02 · FastAPI Ingestion Layer</div>
+<h2>Async Document Submission,<br><span class="gt">S3 Upload, and Job Queuing</span></h2>
+<div class="cc"><div class="ch"><h3>api/ingestion.py</h3><button class="cpb" onclick="cp(this,'c1')">Copy</button></div>
+<div class="cbody"><pre id="c1"><span class="kw">from</span> fastapi <span class="kw">import</span> FastAPI, UploadFile, File, HTTPException
+<span class="kw">from</span> fastapi.responses <span class="kw">import</span> JSONResponse
+<span class="kw">import</span> boto3, uuid, hashlib
+<span class="kw">from</span> datetime <span class="kw">import</span> datetime, timezone
+
+app = FastAPI(title=<span class="str">"OCR Pipeline API"</span>)
+s3  = boto3.<span class="fn">client</span>(<span class="str">"s3"</span>)
+ddb = boto3.<span class="fn">resource</span>(<span class="str">"dynamodb"</span>).Table(<span class="str">"ocr_jobs"</span>)
+
+MAX_BYTES      = <span class="nu">50</span> * <span class="nu">1024</span> * <span class="nu">1024</span>
+ALLOWED_TYPES  = {<span class="str">"application/pdf"</span>,<span class="str">"image/png"</span>,<span class="str">"image/jpeg"</span>,<span class="str">"image/tiff"</span>}
+
+@app.<span class="fn">post</span>(<span class="str">"/v1/documents"</span>)
+<span class="kw">async def</span> <span class="fn">submit_document</span>(
+    file: UploadFile = File(...),
+    priority: str    = <span class="str">"standard"</span>,
+    webhook: str     = <span class="kw">None</span>
+) -> JSONResponse:
+    <span class="kw">if</span> file.content_type <span class="kw">not in</span> ALLOWED_TYPES:
+        <span class="kw">raise</span> HTTPException(<span class="nu">415</span>, <span class="str">f"Unsupported: {file.content_type}"</span>)
+    data = <span class="kw">await</span> file.<span class="fn">read</span>()
+    <span class="kw">if</span> <span class="fn">len</span>(data) > MAX_BYTES:
+        <span class="kw">raise</span> HTTPException(<span class="nu">413</span>, <span class="str">"File exceeds 50MB limit"</span>)
+
+    doc_hash = hashlib.<span class="fn">sha256</span>(data).<span class="fn">hexdigest</span>()
+    job_id   = str(uuid.<span class="fn">uuid4</span>())
+    s3_key   = <span class="str">f"raw/{doc_hash[:4]}/{doc_hash}/{file.filename}"</span>
+
+    s3.<span class="fn">put_object</span>(Bucket=<span class="str">"ocr-documents"</span>, Key=s3_key, Body=data,
+                  ContentType=file.content_type,
+                  Metadata={<span class="str">"job_id"</span>: job_id})
+
+    now = datetime.<span class="fn">now</span>(timezone.utc).<span class="fn">isoformat</span>()
+    ddb.<span class="fn">put_item</span>(Item={<span class="str">"job_id"</span>:job_id, <span class="str">"status"</span>:<span class="str">"queued"</span>,
+                        <span class="str">"s3_key"</span>:s3_key, <span class="str">"priority"</span>:priority,
+                        <span class="str">"webhook"</span>:webhook <span class="kw">or</span> <span class="str">""</span>, <span class="str">"created_at"</span>:now})
+
+    queue = {<span class="str">"express"</span>:<span class="str">"ocr.express"</span>,<span class="str">"standard"</span>:<span class="str">"ocr.standard"</span>,
+             <span class="str">"bulk"</span>:<span class="str">"ocr.bulk"</span>}[priority]
+    prio  = {<span class="str">"express"</span>:<span class="nu">9</span>,<span class="str">"standard"</span>:<span class="nu">5</span>,<span class="str">"bulk"</span>:<span class="nu">1</span>}[priority]
+    <span class="kw">from</span> workers.tasks <span class="kw">import</span> process_document
+    process_document.<span class="fn">apply_async</span>(args=[job_id, s3_key],
+                                   queue=queue, priority=prio)
+    <span class="kw">return</span> JSONResponse({<span class="str">"job_id"</span>:job_id,<span class="str">"status"</span>:<span class="str">"queued"</span>,
+                          <span class="str">"poll_url"</span>:<span class="str">f"/v1/jobs/{job_id}"</span>}, status_code=<span class="nu">202</span>)
+
+@app.<span class="fn">get</span>(<span class="str">"/v1/jobs/{job_id}"</span>)
+<span class="kw">async def</span> <span class="fn">get_job</span>(job_id: str):
+    resp = ddb.<span class="fn">get_item</span>(Key={<span class="str">"job_id"</span>:job_id})
+    <span class="kw">if</span> <span class="str">"Item"</span> <span class="kw">not in</span> resp: <span class="kw">raise</span> HTTPException(<span class="nu">404</span>, <span class="str">"Not found"</span>)
+    item = resp[<span class="str">"Item"</span>]
+    <span class="kw">return</span> {<span class="str">"job_id"</span>:item[<span class="str">"job_id"</span>],<span class="str">"status"</span>:item[<span class="str">"status"</span>],
+            <span class="str">"result_key"</span>:item.get(<span class="str">"result_key"</span>,<span class="str">""</span>),
+            <span class="str">"error"</span>:item.get(<span class="str">"error"</span>,<span class="str">""</span>)}</pre></div></div>
+</section><section class="sec" id="s3">
+<div class="sn">03 · Celery Workers, Retry Logic, and Dead-Letter Queue</div>
+<h2>Three Queues, GPU/CPU Routing,<br><span class="gt">Late ACK, and DLQ on Permanent Failure</span></h2>
+<div class="cc"><div class="ch"><h3>workers/tasks.py</h3><button class="cpb" onclick="cp(this,'c2')">Copy</button></div>
+<div class="cbody"><pre id="c2"><span class="kw">from</span> celery <span class="kw">import</span> Celery
+<span class="kw">import</span> boto3, json, time, cv2, numpy <span class="kw">as</span> np
+
+app = Celery(<span class="str">"ocr"</span>, broker=<span class="str">"redis://redis:6379/0"</span>,
+             backend=<span class="str">"redis://redis:6379/1"</span>)
+app.conf.<span class="fn">update</span>(
+    task_acks_late=<span class="kw">True</span>,              <span class="cm"># ACK only after task completes</span>
+    task_reject_on_worker_lost=<span class="kw">True</span>,  <span class="cm"># requeue if worker crashes mid-task</span>
+    task_serializer=<span class="str">"json"</span>,
+    result_expires=<span class="nu">86400</span>,
+)
+s3  = boto3.<span class="fn">client</span>(<span class="str">"s3"</span>)
+ddb = boto3.<span class="fn">resource</span>(<span class="str">"dynamodb"</span>).Table(<span class="str">"ocr_jobs"</span>)
+
+<span class="kw">def</span> <span class="fn">update_job</span>(job_id: str, **kw) -> None:
+    ddb.<span class="fn">update_item</span>(Key={<span class="str">"job_id"</span>:job_id},
+        UpdateExpression=<span class="str">"SET "</span>+<span class="str">","</span>.<span class="fn">join</span>(<span class="str">f"#k{i}=:v{i}"</span> <span class="kw">for</span> i <span class="kw">in</span> <span class="fn">range</span>(<span class="fn">len</span>(kw))),
+        ExpressionAttributeNames={<span class="str">f"#k{i}"</span>:k <span class="kw">for</span> i,k <span class="kw">in</span> <span class="fn">enumerate</span>(kw)},
+        ExpressionAttributeValues={<span class="str">f":v{i}"</span>:v <span class="kw">for</span> i,v <span class="kw">in</span> <span class="fn">enumerate</span>(kw.values())})
+
+@app.task(bind=<span class="kw">True</span>, max_retries=<span class="nu">3</span>, default_retry_delay=<span class="nu">30</span>,
+          queue=<span class="str">"ocr.standard"</span>)
+<span class="kw">def</span> <span class="fn">process_document</span>(self, job_id: str, s3_key: str) -> dict:
+    t0 = time.<span class="fn">time</span>()
+    <span class="kw">try</span>:
+        <span class="fn">update_job</span>(job_id, status=<span class="str">"processing"</span>)
+        obj  = s3.<span class="fn">get_object</span>(Bucket=<span class="str">"ocr-documents"</span>, Key=s3_key)
+        data = np.<span class="fn">frombuffer</span>(obj[<span class="str">"Body"</span>].<span class="fn">read</span>(), dtype=np.uint8)
+        img  = cv2.<span class="fn">imdecode</span>(data, cv2.IMREAD_COLOR)
+        grey = cv2.<span class="fn">cvtColor</span>(img, cv2.COLOR_BGR2GRAY)
+        use_gpu = <span class="fn">_gpu_available</span>() <span class="kw">and</span> cv2.<span class="fn">Laplacian</span>(grey,cv2.CV_64F).<span class="fn">var</span>() < <span class="nu">200</span>
+        result  = <span class="fn">_run_ocr</span>(img, use_gpu=use_gpu)
+        out_key = s3_key.<span class="fn">replace</span>(<span class="str">"raw/"</span>,<span class="str">"results/"</span>) + <span class="str">".json"</span>
+        s3.<span class="fn">put_object</span>(Bucket=<span class="str">"ocr-documents"</span>, Key=out_key,
+                      Body=json.<span class="fn">dumps</span>(result), ContentType=<span class="str">"application/json"</span>)
+        elapsed = <span class="fn">round</span>(time.<span class="fn">time</span>()-t0, <span class="nu">2</span>)
+        <span class="fn">update_job</span>(job_id, status=<span class="str">"complete"</span>, result_key=out_key,
+                   processing_secs=elapsed, gpu=use_gpu)
+        <span class="kw">return</span> {<span class="str">"job_id"</span>:job_id, <span class="str">"elapsed"</span>:elapsed}
+    <span class="kw">except</span> Exception <span class="kw">as</span> exc:
+        <span class="kw">if</span> self.request.retries >= self.max_retries:
+            <span class="fn">update_job</span>(job_id, status=<span class="str">"failed"</span>, error=<span class="fn">str</span>(exc))
+            app.<span class="fn">send_task</span>(<span class="str">"workers.dlq.handle_dlq"</span>,
+                          args=[job_id, s3_key, <span class="fn">str</span>(exc)], queue=<span class="str">"ocr.dlq"</span>)
+            <span class="kw">raise</span>
+        <span class="kw">raise</span> self.<span class="fn">retry</span>(exc=exc)
+
+<span class="kw">def</span> <span class="fn">_gpu_available</span>() -> bool:
+    <span class="kw">try</span>: <span class="kw">import</span> torch; <span class="kw">return</span> torch.cuda.<span class="fn">is_available</span>()
+    <span class="kw">except</span>: <span class="kw">return</span> <span class="kw">False</span>
+
+<span class="cm"># DLQ handler — isolates permanent failures for forensics and replay</span>
+@app.task(queue=<span class="str">"ocr.dlq"</span>, max_retries=<span class="nu">0</span>)
+<span class="kw">def</span> <span class="fn">handle_dlq</span>(job_id: str, s3_key: str, error: str) -> None:
+    s3.<span class="fn">put_object</span>(Bucket=<span class="str">"ocr-documents"</span>, Key=<span class="str">f"dlq/{job_id}.json"</span>,
+                  Body=json.<span class="fn">dumps</span>({<span class="str">"job_id"</span>:job_id,<span class="str">"s3_key"</span>:s3_key,<span class="str">"error"</span>:error}),
+                  ContentType=<span class="str">"application/json"</span>)
+    boto3.<span class="fn">client</span>(<span class="str">"sns"</span>).<span class="fn">publish</span>(
+        TopicArn=<span class="str">"arn:aws:sns:eu-west-2:ACCT:ocr-alerts"</span>,
+        Message=<span class="str">f"DLQ: job {job_id}
+{error[:400]}"</span>,
+        Subject=<span class="str">"OCR DLQ Alert"</span>)</pre></div></div>
+</section>
+
+<section class="sec" id="s4">
+<div class="sn">04 · Auto-scaling Workers</div>
+<h2>Queue-Depth Scaling:<br><span class="gt">Scale Up Immediately, Scale Down With Cooldown</span></h2>
+<div class="cc"><div class="ch"><h3>infra/autoscaler.py</h3><button class="cpb" onclick="cp(this,'c3')">Copy</button></div>
+<div class="cbody"><pre id="c3"><span class="kw">import</span> redis, boto3, math, time
+
+rc  = redis.<span class="fn">Redis</span>(host=<span class="str">"redis"</span>, port=<span class="nu">6379</span>, decode_responses=<span class="kw">True</span>)
+ecs = boto3.<span class="fn">client</span>(<span class="str">"ecs"</span>)
+
+MIN_W  = {<span class="str">"ocr.express"</span>:<span class="nu">2</span>, <span class="str">"ocr.standard"</span>:<span class="nu">2</span>, <span class="str">"ocr.bulk"</span>:<span class="nu">1</span>}
+MAX_W  = {<span class="str">"ocr.express"</span>:<span class="nu">10</span>,<span class="str">"ocr.standard"</span>:<span class="nu">20</span>,<span class="str">"ocr.bulk"</span>:<span class="nu">8</span>}
+TARGET_DEPTH = <span class="nu">4</span>     <span class="cm"># target pending jobs per worker</span>
+COOLDOWN_S   = <span class="nu">300</span>   <span class="cm"># 5-min scale-down cooldown</span>
+
+last_scale_down = {q:<span class="nu">0</span> <span class="kw">for</span> q <span class="kw">in</span> MIN_W}
+
+<span class="kw">def</span> <span class="fn">autoscale</span>(queue: str) -> dict:
+    depth   = rc.<span class="fn">llen</span>(queue)
+    svc     = <span class="str">f"ocr-worker-{queue.split('.')[1]}"</span>
+    current = ecs.<span class="fn">describe_services</span>(cluster=<span class="str">"ocr-cluster"</span>,
+                  services=[svc])[<span class="str">"services"</span>][<span class="nu">0</span>][<span class="str">"runningCount"</span>]
+    desired = <span class="fn">max</span>(MIN_W[queue], <span class="fn">min</span>(MAX_W[queue],
+                  math.<span class="fn">ceil</span>(depth / TARGET_DEPTH) <span class="kw">if</span> depth > <span class="nu">0</span> <span class="kw">else</span> <span class="nu">0</span>))
+    action  = <span class="str">"none"</span>
+    <span class="kw">if</span> desired > current:
+        ecs.<span class="fn">update_service</span>(cluster=<span class="str">"ocr-cluster"</span>,service=svc,desiredCount=desired)
+        action = <span class="str">"scale_up"</span>
+    <span class="kw">elif</span> desired < current <span class="kw">and</span> time.<span class="fn">time</span>() - last_scale_down[queue] > COOLDOWN_S:
+        ecs.<span class="fn">update_service</span>(cluster=<span class="str">"ocr-cluster"</span>,service=svc,desiredCount=desired)
+        last_scale_down[queue] = time.<span class="fn">time</span>()
+        action = <span class="str">"scale_down"</span>
+    <span class="kw">return</span> {<span class="str">"queue"</span>:queue,<span class="str">"depth"</span>:depth,<span class="str">"current"</span>:current,
+            <span class="str">"desired"</span>:desired,<span class="str">"action"</span>:action}</pre></div></div>
+</section><section class="sec" id="s5">
+<div class="sn">05 · S3 Storage Layout and Output Versioning</div>
+<h2>Hash-Prefix Sharding, Output Schema,<br><span class="gt">and Lifecycle Policies</span></h2>
+<div class="cc"><div class="ch"><h3>storage/s3_schema.py</h3><button class="cpb" onclick="cp(this,'c4')">Copy</button></div>
+<div class="cbody"><pre id="c4"><span class="kw">import</span> boto3, json
+<span class="kw">from</span> datetime <span class="kw">import</span> datetime, timezone
+
+<span class="cm"># S3 key layout</span>
+<span class="cm"># raw/      {hash[:4]}/{hash}/{filename}         raw uploads</span>
+<span class="cm"># results/  {hash[:4]}/{hash}/{filename}.json    structured output</span>
+<span class="cm"># previews/ {hash[:4]}/{hash}/preview.jpg        annotated image (30d TTL)</span>
+<span class="cm"># dlq/      {job_id}.json                        failure records</span>
+<span class="cm"># audit/    {YYYY}/{MM}/{DD}/{job_id}.jsonl       append-only audit log</span>
+<span class="cm">#</span>
+<span class="cm"># hash[:4] sharding creates 65536 possible prefixes — distributes S3</span>
+<span class="cm"># partition pressure across all prefix buckets at high request rates.</span>
+
+<span class="kw">def</span> <span class="fn">store_result</span>(s3, bucket: str, doc_hash: str, filename: str,
+                  job_id: str, fields: dict, meta: dict) -> str:
+    p       = doc_hash[:<span class="nu">4</span>]
+    out_key = <span class="str">f"results/{p}/{doc_hash}/{filename}.json"</span>
+    version = <span class="nu">1</span>
+    <span class="kw">try</span>:
+        prev = json.<span class="fn">loads</span>(s3.<span class="fn">get_object</span>(Bucket=bucket, Key=out_key)
+                            [<span class="str">"Body"</span>].<span class="fn">read</span>())
+        version = prev.get(<span class="str">"version"</span>, <span class="nu">1</span>) + <span class="nu">1</span>
+    <span class="kw">except</span>: <span class="kw">pass</span>
+    payload = {
+        <span class="str">"schema_version"</span>: <span class="str">"1.0"</span>,
+        <span class="str">"version"</span>:        version,
+        <span class="str">"job_id"</span>:         job_id,
+        <span class="str">"doc_hash"</span>:       doc_hash,
+        <span class="str">"processed_at"</span>:   datetime.<span class="fn">now</span>(timezone.utc).<span class="fn">isoformat</span>(),
+        <span class="str">"fields"</span>:         fields,
+        <span class="str">"pipeline"</span>:       meta,
+    }
+    s3.<span class="fn">put_object</span>(Bucket=bucket, Key=out_key,
+                  Body=json.<span class="fn">dumps</span>(payload, indent=<span class="nu">2</span>),
+                  ContentType=<span class="str">"application/json"</span>)
+    <span class="kw">return</span> out_key
+
+<span class="cm"># Lifecycle policies:</span>
+<span class="cm"># raw/        Standard → Glacier after 90 days</span>
+<span class="cm"># results/    Retain indefinitely (structured output)</span>
+<span class="cm"># previews/   Expire after 30 days</span>
+<span class="cm"># dlq/        Retain 1 year for forensics</span></pre></div></div>
+</section>
+
+<section class="sec" id="s6">
+<div class="sn">06 · Prometheus Monitoring</div>
+<h2>Four Essential Metric Types<br><span class="gt">and Five Alert Rules</span></h2>
+<div class="cc"><div class="ch"><h3>monitoring/metrics.py</h3><button class="cpb" onclick="cp(this,'c5')">Copy</button></div>
+<div class="cbody"><pre id="c5"><span class="kw">from</span> prometheus_client <span class="kw">import</span> Counter, Histogram, Gauge, start_http_server
+
+DOCS_SUBMITTED = Counter(<span class="str">"ocr_docs_submitted_total"</span>,
+    <span class="str">"Documents submitted"</span>, [<span class="str">"priority"</span>])
+DOCS_COMPLETED = Counter(<span class="str">"ocr_docs_completed_total"</span>,
+    <span class="str">"Documents completed"</span>, [<span class="str">"priority"</span>,<span class="str">"engine"</span>])
+DOCS_FAILED    = Counter(<span class="str">"ocr_docs_failed_total"</span>,
+    <span class="str">"Documents failed (DLQ)"</span>, [<span class="str">"priority"</span>,<span class="str">"reason"</span>])
+
+OCR_LATENCY = Histogram(<span class="str">"ocr_processing_seconds"</span>,
+    <span class="str">"Processing latency"</span>, [<span class="str">"engine"</span>,<span class="str">"priority"</span>],
+    buckets=[<span class="nu">0.5</span>,<span class="nu">1</span>,<span class="nu">2</span>,<span class="nu">5</span>,<span class="nu">10</span>,<span class="nu">30</span>,<span class="nu">60</span>])
+FIELD_CONF  = Histogram(<span class="str">"ocr_field_confidence"</span>,
+    <span class="str">"Per-field confidence"</span>, [<span class="str">"field_name"</span>],
+    buckets=[<span class="nu">50</span>,<span class="nu">60</span>,<span class="nu">70</span>,<span class="nu">80</span>,<span class="nu">85</span>,<span class="nu">90</span>,<span class="nu">95</span>,<span class="nu">100</span>])
+
+QUEUE_DEPTH  = Gauge(<span class="str">"ocr_queue_depth"</span>,  <span class="str">"Queue depth"</span>,    [<span class="str">"queue_name"</span>])
+WORKER_COUNT = Gauge(<span class="str">"ocr_worker_count"</span>, <span class="str">"Active workers"</span>,  [<span class="str">"queue_name"</span>,<span class="str">"type"</span>])
+DLQ_DEPTH    = Gauge(<span class="str">"ocr_dlq_depth"</span>,    <span class="str">"DLQ depth"</span>)
+
+<span class="cm"># Alert rules (Grafana / Alertmanager):</span>
+<span class="cm"># 1. queue_depth{queue="standard"} > 100 for 5m  → scale-up check</span>
+<span class="cm"># 2. ocr_dlq_depth > 10                          → page on-call</span>
+<span class="cm"># 3. histogram_quantile(0.95, ocr_processing_seconds{priority="express"}) &gt; 60 → SLA breach</span>
+<span class="cm"># 4. rate(ocr_docs_failed_total[10m]) / rate(ocr_docs_submitted_total[10m]) &gt; 0.02 → investigate</span>
+<span class="cm"># 5. ocr_worker_count == 0                       → critical</span>
+
+start_http_server(<span class="nu">9090</span>)  <span class="cm"># Expose metrics at :9090/metrics</span></pre></div></div>
+</section><section class="sec" id="s7">
+<div class="sn">07 · Cost Model at Scale</div>
+<h2>Infrastructure Cost Per Document<br><span class="gt">At 10k, 100k, and 1M/Day</span></h2>
+<div class="card" style="padding:0;overflow:hidden"><table class="tbl">
+<thead><tr><th>Component</th><th>10k docs/day</th><th>100k docs/day</th><th>1M docs/day</th></tr></thead>
+<tbody>
+<tr><td><strong style="color:var(--a2)">CPU workers</strong></td><td>2× c6i.2xl = $16/day</td><td>12× c6i.2xl = $96/day</td><td>80× c6i.4xl = $768/day</td></tr>
+<tr><td><strong style="color:var(--a5)">GPU workers (hard docs)</strong></td><td>1× g4dn.xl = $12/day</td><td>3× g4dn.xl = $37/day</td><td>20× g4dn.xl = $249/day</td></tr>
+<tr><td><strong style="color:var(--a4)">LLM escalation (10%)</strong></td><td>1k × $0.015 = $15/day</td><td>10k × $0.015 = $150/day</td><td>100k × $0.015 = $1,500/day</td></tr>
+<tr><td><strong style="color:var(--a1)">S3 storage</strong></td><td>~$2/day</td><td>~$12/day</td><td>~$80/day</td></tr>
+<tr><td><strong style="color:var(--a3)">Redis + FastAPI</strong></td><td>~$5/day</td><td>~$18/day</td><td>~$60/day</td></tr>
+<tr><td><strong style="color:var(--a4)">Total</strong></td><td style="color:var(--a1)"><strong>~$50/day ($0.005/doc)</strong></td><td style="color:var(--a4)"><strong>~$313/day ($0.003/doc)</strong></td><td style="color:var(--a3)"><strong>~$2,657/day ($0.0027/doc)</strong></td></tr>
+</tbody></table></div>
+<div class="g2" style="margin-top:1rem">
+<div class="card" style="margin-bottom:0">
+<h4 style="color:var(--a4);margin-bottom:.6rem">Three highest-ROI cost levers</h4>
+<div style="display:flex;flex-direction:column;gap:.32rem;font-size:.84rem">
+<div style="padding:.4rem .7rem;background:rgba(251,191,36,.05);border:1px solid rgba(251,191,36,.2);border-radius:8px"><strong style="color:var(--a4)">1. LLM escalation rate.</strong> 10% to 5% LLM escalation halves LLM spend. Upstream CLAHE/Sauvola pre-processing reduces escalations at zero API cost — highest ROI investment in the pipeline.</div>
+<div style="padding:.4rem .7rem;background:rgba(251,191,36,.05);border:1px solid rgba(251,191,36,.2);border-radius:8px"><strong style="color:var(--a4)">2. Spot instances for bulk queue.</strong> Bulk workers are retry-safe on interruption. EC2 Spot saves 60-80% vs on-demand. Express queue must be on-demand.</div>
+<div style="padding:.4rem .7rem;background:rgba(251,191,36,.05);border:1px solid rgba(251,191,36,.2);border-radius:8px"><strong style="color:var(--a4)">3. S3 Intelligent Tiering.</strong> Raw documents accessed once at upload. Intelligent Tiering moves them to cheaper tiers automatically. At 1M docs/day, S3 cost drops ~60% over 90 days vs Standard.</div>
+</div></div>
+<div class="card" style="margin-bottom:0">
+<h4 style="color:var(--a2);margin-bottom:.6rem">SLA tiers</h4>
+<div class="card" style="padding:0;overflow:hidden;margin-bottom:0"><table class="tbl">
+<thead><tr><th>Tier</th><th>P50</th><th>P99</th><th>Price</th></tr></thead>
+<tbody>
+<tr><td><strong style="color:var(--a3)">Express</strong></td><td style="color:var(--a1)">&lt;15s</td><td style="color:var(--a4)">&lt;60s</td><td>3× standard</td></tr>
+<tr><td><strong style="color:var(--a2)">Standard</strong></td><td style="color:var(--a4)">&lt;2 min</td><td style="color:var(--a3)">&lt;10 min</td><td>baseline</td></tr>
+<tr><td><strong style="color:var(--a1)">Bulk</strong></td><td style="color:var(--a3)">&lt;30 min</td><td style="color:var(--a3)">&lt;4 hr</td><td>0.4× standard</td></tr>
+</tbody></table></div></div></div>
+</section>
+
+<section class="sec" id="s8">
+<div class="sn">08 · Assessment</div>
+<h2>Module 13 <span class="gt">Quiz</span></h2>
+<div class="qc">
+
+<div class="qq"><h4>1. At 50k docs/day, queue depth hits 800 at 14:00. TARGET_DEPTH=4, current workers=6, MAX_WORKERS=20, each doc takes 45s. What does the autoscaler do, and is the queue draining?</h4>
+<div class="qo">
+<button class="qob" onclick="cq(this,0,false)">A) Desired=ceil(800/4)=200, capped to 20. Scale to 20. Drain time: 800 × 45 / 20 = 30 minutes. Queue drains fully before new submissions accumulate.</button>
+<button class="qob" onclick="cq(this,0,true)">B) Desired=ceil(800/4)=200, capped to MAX_WORKERS=20. Scale immediately from 6 to 20 (no cooldown on scale-up). Throughput: 20 × (1/45s) = 26.7 docs/min. At 50k/day, incoming rate = 34.7 docs/min. Since 34.7 > 26.7, the queue grows during a sustained spike — the pipeline is below capacity. MAX_WORKERS=20 is undersized for this volume. Fix: raise MAX_WORKERS["ocr.standard"] to at least ceil(34.7 × 45 / 60) = 26 to break even, plus 30% headroom = 34. Alternatively, implement backpressure: return HTTP 429 when queue depth exceeds a threshold, preventing unbounded queue growth.</button>
+<button class="qob" onclick="cq(this,0,false)">C) Desired=200, no cap applied — ECS scales to 200. The MAX_WORKERS cap only applies during scale-down, not scale-up. Drain time: 800 × 45 / 200 = 3 minutes.</button>
+<button class="qob" onclick="cq(this,0,false)">D) No action — the 5-minute cooldown applies to scale-up events that occurred within the past 5 minutes. The scaler waits for the cooldown to expire before adjusting worker count.</button>
+</div><div class="qf" id="f0">Correct. The key insight is that MAX_WORKERS caps throughput, and when incoming rate exceeds that cap, the queue never drains during a sustained spike. The autoscaler does the right thing (scales to max), but max is insufficient. The two correct fixes are: (1) capacity planning — set MAX_WORKERS to handle peak load at target occupancy; (2) backpressure — rate-limit ingestion to match processing capacity rather than letting the queue grow unboundedly, which introduces unbounded latency for late-arriving jobs.</div></div>
+
+<div class="qq"><h4>2. A document fails three times with OOM errors. What happens step by step after the third exception inside process_document()?</h4>
+<div class="qo">
+<button class="qob" onclick="cq(this,1,false)">A) Celery automatically re-routes to a CPU worker on the fourth attempt. GPU OOM is treated as a routing signal, not a permanent failure. DynamoDB status stays "processing".</button>
+<button class="qob" onclick="cq(this,1,false)">B) The task retries indefinitely with exponential backoff — max_retries=3 applies only to application exceptions, not system-level OOM errors. Celery keeps retrying until a worker with enough GPU memory is available.</button>
+<button class="qob" onclick="cq(this,1,false)">C) The Celery worker process is killed by OOM. The task is marked FAILURE in Redis. DynamoDB status remains "processing" until a separate cleanup cron job resets stale records.</button>
+<button class="qob" onclick="cq(this,1,true)">D) On the third retry (self.request.retries == max_retries == 3), the except block fires: (1) update_job sets DynamoDB status to "failed" with the error string; (2) app.send_task routes to ocr.dlq queue; (3) the exception is re-raised — Celery marks the task FAILURE in its Redis result backend; (4) handle_dlq runs on the DLQ worker: writes failure record to S3 at dlq/{job_id}.json for forensics, publishes an SNS alert to page on-call. The original document is preserved at its raw/ S3 key. task_acks_late=True means the job was not ACKed until this point — if the worker crashed before the except block, task_reject_on_worker_lost=True would have requeued it automatically. An ops engineer calls replay_dlq_job(job_id) after fixing the OOM root cause.</button>
+</div><div class="qf" id="f1">Correct. The full failure path is deterministic and traceable at every layer: DynamoDB reflects terminal status, Prometheus captures the event via DOCS_FAILED counter, S3 preserves failure context for forensics, SNS triggers paging. task_acks_late=True combined with task_reject_on_worker_lost=True is the critical Celery configuration that prevents job loss on worker crash — without it, a crash between task start and ACK would silently discard the job.</div></div>
+
+<div class="qq"><h4>3. A colleague proposes simplifying S3 keys from raw/{hash[:4]}/{hash}/{filename} to raw/{filename}. At what volume does the current sharding become necessary, and what specific S3 behaviour does it prevent?</h4>
+<div class="qo">
+<button class="qob" onclick="cq(this,2,true)">A) The sharding prevents filename collisions — two different documents named "invoice.pdf" would overwrite each other at raw/invoice.pdf. This matters from the first document uploaded.</button>
+<button class="qob" onclick="cq(this,2,false)">B) The sharding improves S3 list performance — S3 LIST operations are O(n) within a prefix. At 100k docs, listing raw/ takes several seconds. Sharding reduces each prefix to ~1.5 docs on average, making LIST instant.</button>
+<button class="qob" onclick="cq(this,2,false)">C) The sharding prevents S3 cross-region replication lag — keys with common prefixes replicate to a single secondary region node, causing lag spikes. Sharding distributes replication load evenly across region pairs.</button>
+<button class="qob" onclick="cq(this,2,false)">D) S3 partitions its internal index by key prefix. Each partition supports 3,500 PUT/DELETE and 5,500 GET/HEAD requests per second. All keys under raw/ share one partition. At 100k docs/day average = 1.16 docs/s — fine. But traffic spikes 10-20× average: a burst of 23 docs/s approaches the 3,500/min (58/s) PUT limit for that prefix. With filenames like "invoice_*.pdf", the common prefix "invoice_" becomes a hot partition even at lower volumes. hash[:4] sharding creates 65,536 possible first-4-character prefixes, distributing requests across thousands of S3 partitions. This matters above roughly 10-50k docs/day with bursty traffic patterns. The flat raw/{filename} layout also breaks deduplication — the same document submitted twice under different filenames creates duplicate storage.</button>
+</div><div class="qf" id="f2">Correct. The S3 partition throughput limit is the primary motivation for hash-prefix sharding in high-volume document pipelines. Note that S3 automatically partitions when it detects sustained high request rates to a prefix, but this can take 15-30 minutes — during which you hit 503 SlowDown errors. Proactive hash sharding avoids this entirely. Flat raw/{filename} also breaks the deduplication logic: the SHA-256 hash in the key path ensures the same document always maps to the same S3 key regardless of submission filename, enabling content-addressable deduplication at zero cost.</div></div>
+
+<div class="qq"><h4>4. Your Prometheus alert fires: histogram_quantile(0.95, rate(ocr_processing_seconds_bucket{priority="express"}[5m])) > 60. Express SLA is P99 &lt; 60s. What does this alert tell you, and what are the three most likely root causes?</h4>
+<div class="qo">
+<button class="qob" onclick="cq(this,3,false)">A) The alert fires when any single express document takes longer than 60s. This indicates a single slow document, not a systemic issue — investigate the specific document that triggered it.</button>
+<button class="qob" onclick="cq(this,3,false)">B) The alert measures P95 latency, which is tighter than the P99 SLA. The system is within SLA — the alert is misconfigured and should use rate(ocr_processing_seconds_bucket{quantile="0.99"}) instead.</button>
+<button class="qob" onclick="cq(this,3,true)">C) The alert fires when P95 processing latency for express documents has exceeded 60s over the past 5 minutes — meaning 5% of express documents are taking longer than 60s, which implies P99 is significantly above 60s. SLA is effectively breached. Three most likely root causes: (1) Express queue worker starvation — if express workers are busy with a batch of unusually hard documents (large PDFs, heavy handwriting), new express jobs queue behind them. Fix: enforce express worker reservation — never allow express workers to process standard queue overflow. (2) S3 latency spike — each worker does a blocking S3 GET at task start. If S3 is experiencing elevated latency (check CloudWatch s3.GetObject.FirstByteLatency), all workers block longer. Fix: add S3 GET latency to Grafana dashboard and correlate with OCR latency spikes. (3) GPU memory pressure — if GPU workers are running multiple concurrent tasks and hitting memory limits, each task runs slower as the GPU swaps. Fix: limit GPU worker concurrency to 1 task per GPU worker (Celery concurrency=1 on GPU nodes).</button>
+<button class="qob" onclick="cq(this,3,false)">D) The alert measures aggregate latency across all priorities because the label filter {priority="express"} is not supported by histogram_quantile. The alert fires when the overall P95 latency exceeds 60s, which may not indicate an express-specific problem.</button>
+</div><div class="qf" id="f3">Correct. P95 exceeding the P99 SLA threshold is a strong signal of SLA breach — if 5% of documents exceed 60s at P95, then P99 is substantially above 60s. The three root causes (worker starvation, S3 latency, GPU memory pressure) represent the three distinct resource bottlenecks in the pipeline: compute, I/O, and accelerator memory. Each has a different diagnostic signal and fix. Priority queue isolation — never allowing express workers to drain into other queues — is the most impactful architectural safeguard for SLA compliance.</div></div>
+
+<div class="qq"><h4>5. You need to replay all failed jobs from the DLQ after fixing a bug that caused systematic OOM errors on documents larger than 15MB. There are 847 jobs in the DLQ. What is the correct replay procedure?</h4>
+<div class="qo">
+<button class="qob" onclick="cq(this,4,false)">A) Call replay_dlq_job() for each job ID in parallel — the function is idempotent and safe to run concurrently. All 847 jobs will be requeued simultaneously to the standard queue.</button>
+<button class="qob" onclick="cq(this,4,false)">B) Delete all DLQ records from S3 and DynamoDB, then ask clients to resubmit their documents — DLQ records do not contain enough information to replay without the original submission context.</button>
+<button class="qob" onclick="cq(this,4,true)">B) The correct replay procedure: (1) Verify the fix is deployed — confirm workers are running the patched code before replaying. Replaying against broken workers re-fills the DLQ. (2) List DLQ records: scan S3 with prefix "dlq/" filtering for replay_status="pending", collect all 847 job IDs. (3) Rate-limited replay — do not replay all 847 simultaneously. That would spike the standard queue to 847 depth instantly, potentially overwhelming workers. Replay in batches of 20-50 with 30s gaps, monitoring queue depth and worker health between batches. (4) Call replay_dlq_job() for each job ID — this re-enqueues to ocr.standard and updates DynamoDB status to "queued". (5) Monitor: watch DOCS_COMPLETED and DOCS_FAILED counters. If failures recur (new DLQ entries), halt replay and investigate. (6) After all replays complete successfully, archive DLQ records (already handled by replay_dlq_job via S3 copy with _replayed_ suffix) for the audit trail.</button>
+<button class="qob" onclick="cq(this,4,false)">C) Route DLQ replay directly to the express queue to avoid contaminating the standard queue with 847 extra jobs. Express workers will process them faster, and the DLQ can be cleared in minutes.</button>
+</div><div class="qf" id="f4">Correct. Rate-limited replay is the critical discipline that distinguishes a safe DLQ drain from a second incident. Replaying 847 jobs simultaneously creates a queue depth spike that can overload workers and produce a second wave of failures. Verifying the fix before replay is the first and most important step — a deploy gate check prevents the replay from re-triggering the original bug. The audit trail via the _replayed_ suffix S3 copy is important for compliance: it records exactly which jobs were manually replayed and when, supporting incident post-mortems and SLA reporting.</div></div>
+
+<div class="qs" id="qs"><h3 id="sc">0/5</h3><p id="sm">Complete all 5 questions to see your score.</p></div>
+</div>
+</section>
+<div class="fn2">
+  <a href="ocr_m12.html" class="pr">← M12: OCR Evaluation Metrics</a>
+  <div class="fcc"><div>Module 13 · Production OCR Pipeline</div><div style="font-size:.75rem;margin-top:4px">OCR &amp; Text Recognition Engineering · Marevlo</div></div>
+  <span></span>
+</div>
+</div>
+<script>
+window.addEventListener("scroll",function(){var h=document.documentElement;document.getElementById("sp").style.width=((h.scrollTop/(h.scrollHeight-h.clientHeight))*100)+"%";});
+var obs=new IntersectionObserver(function(e){e.forEach(function(x){if(x.isIntersecting)x.target.classList.add("vis");});},{threshold:0.07});
+document.querySelectorAll(".sec").forEach(function(s){obs.observe(s);});
+function cp(btn,id){navigator.clipboard.writeText(document.getElementById(id).innerText).then(function(){btn.textContent="Copied!";setTimeout(function(){btn.textContent="Copy";},2000);});}
+var ans=[null,null,null,null,null];
+function cq(btn,qi,ok){
+  var opts=btn.parentElement.querySelectorAll(".qob");opts.forEach(function(o){o.disabled=true;});
+  if(ans[qi]!==null)return;ans[qi]=ok;
+  var f=document.getElementById("f"+qi);
+  if(ok){btn.classList.add("ok");f.classList.add("show");f.style.color="var(--a1)";}
+  else{btn.classList.add("no");opts.forEach(function(o){if(o!==btn&&o.getAttribute("onclick").indexOf(",true)")>-1)o.classList.add("ok");});f.classList.add("show");f.style.color="var(--a3)";}
+  var filled=ans.filter(function(a){return a!==null;}).length;
+  if(filled===5){var c=ans.filter(function(a){return a===true;}).length;
+    document.getElementById("qs").style.display="block";
+    document.getElementById("sc").textContent=c+"/5";
+    document.getElementById("sm").textContent=["Good — check throughput ceiling and backpressure design.","Re-read the full DLQ failure path and task_acks_late behaviour.","Good — review S3 partition limits and hash-prefix sharding rationale.","Re-read P95 vs P99 SLA breach diagnosis and root causes.","Perfect — you have completed the OCR Track!"][c];}
+}
+</script></body></html>

@@ -1,0 +1,638 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Module 6B - Dense Retrieval: Bi-Encoders, DPR, ColBERT</title>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&family=Outfit:wght@300;400;500;600;700;800;900&family=Source+Serif+4:ital,opsz,wght@0,8..144,300;0,8..144,400;0,8..144,600;1,8..144,300;1,8..144,400&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#0a0a0f;--t1:#ececf6;--t2:#b5b5c8;--tm:#7c7c95;--a1:#5eead4;--a2:#60a5fa;--a3:#f472b6;--a4:#fbbf24;--a5:#a78bfa;--gl:linear-gradient(90deg,#5eead4 0%,#60a5fa 28%,#a78bfa 55%,#f472b6 82%,#fbbf24 100%);--bs:rgba(255,255,255,0.07);--sh:0 20px 80px rgba(0,0,0,0.42);--r:20px;--cw:1120px}
+*{box-sizing:border-box;margin:0;padding:0}html{scroll-behavior:smooth}
+body{background:radial-gradient(circle at 18% 14%,rgba(96,165,250,.08),transparent 30%),radial-gradient(circle at 82% 22%,rgba(167,139,250,.06),transparent 28%),var(--bg);color:var(--t1);font-family:'Outfit',sans-serif;line-height:1.75;overflow-x:hidden;-webkit-font-smoothing:antialiased}
+.sp{position:fixed;top:0;left:0;height:3px;width:0%;z-index:1000;background:var(--gl);transition:width .12s linear}
+nav{position:fixed;top:3px;left:0;right:0;z-index:999;display:flex;align-items:center;justify-content:space-between;padding:.75rem 2rem;background:rgba(10,10,15,.88);backdrop-filter:blur(12px);border-bottom:1px solid var(--bs)}
+.nbr{font-family:'JetBrains Mono',monospace;font-size:.72rem;color:var(--a2);letter-spacing:.14em;text-transform:uppercase;text-decoration:none}
+.nm{font-size:.82rem;color:var(--tm)}.na{display:flex;gap:8px}
+.nb{display:inline-flex;align-items:center;gap:6px;padding:.4rem .9rem;border-radius:999px;border:1px solid var(--bs);background:rgba(255,255,255,.03);color:var(--t2);font-size:.8rem;text-decoration:none;transition:all .18s}
+.nb:hover{border-color:var(--a2);color:var(--a2)}
+.hero{min-height:100vh;display:flex;align-items:center;justify-content:center;padding:5rem 2rem 3rem;position:relative;overflow:hidden}
+.hg{position:absolute;inset:0;background-image:linear-gradient(rgba(255,255,255,.025) 1px,transparent 1px),linear-gradient(90deg,rgba(255,255,255,.025) 1px,transparent 1px);background-size:48px 48px;mask-image:radial-gradient(circle at center,black 30%,transparent 80%);pointer-events:none}
+.hero::before{content:"";position:absolute;inset:0;background:radial-gradient(ellipse 700px 350px at 20% 40%,rgba(96,165,250,.10),transparent),radial-gradient(ellipse 640px 360px at 80% 38%,rgba(167,139,250,.07),transparent);pointer-events:none}
+.hi{max-width:1000px;text-align:center;position:relative;z-index:1}
+.hl{display:inline-flex;align-items:center;gap:10px;padding:.55rem 1rem;border-radius:999px;border:1px solid rgba(96,165,250,.25);background:rgba(96,165,250,.08);color:var(--a2);letter-spacing:1.8px;text-transform:uppercase;font-size:.76rem;margin-bottom:1.7rem}
+.dot{width:7px;height:7px;border-radius:50%;background:var(--a2);animation:pulse 2s ease-in-out infinite}
+@keyframes pulse{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.3;transform:scale(.75)}}
+h1{font-size:clamp(2.4rem,5vw,4.4rem);line-height:1.04;letter-spacing:-.04em;font-weight:900;margin-bottom:1.3rem}
+.gt{background:var(--gl);-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent}
+.hs{font-family:'Source Serif 4',serif;color:var(--t2);font-size:clamp(1rem,2vw,1.2rem);max-width:820px;margin:0 auto 2rem;line-height:1.8}
+.hm{display:flex;flex-wrap:wrap;justify-content:center;gap:12px;margin-bottom:2.5rem}
+.mp{border:1px solid var(--bs);background:rgba(17,17,26,.75);border-radius:999px;padding:.65rem 1.1rem;color:var(--t2);font-size:.88rem}
+.sc{position:absolute;bottom:2.6rem;left:50%;transform:translateX(-50%);color:var(--tm);display:flex;flex-direction:column;gap:.6rem;align-items:center;text-transform:uppercase;letter-spacing:.22em;font-size:.7rem}
+.sc .arr{width:18px;height:18px;border-right:2px solid var(--tm);border-bottom:2px solid var(--tm);transform:rotate(45deg);animation:ba 2s ease-in-out infinite}
+@keyframes ba{0%,100%{transform:rotate(45deg) translateY(0)}50%{transform:rotate(45deg) translateY(7px)}}
+.cw{max-width:var(--cw);margin:0 auto;padding:0 2rem 6rem}
+.snav{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:4rem}
+.smn{border:1px solid var(--bs);border-radius:16px;padding:1rem 1.2rem;text-decoration:none;transition:all .2s;background:rgba(15,15,25,.88)}
+.smn:hover{border-color:rgba(96,165,250,.4);background:rgba(96,165,250,.04)}
+.smn.cur{border-color:rgba(96,165,250,.5);background:rgba(96,165,250,.07)}
+.smn .sml{font-family:'JetBrains Mono',monospace;font-size:.62rem;text-transform:uppercase;letter-spacing:.14em;margin-bottom:.3rem;color:var(--a2)}
+.smn .smt{color:var(--t1);font-size:.92rem;font-weight:600}.smn .sms{color:var(--tm);font-size:.8rem;margin-top:.2rem}
+.sec{margin-bottom:5.5rem;opacity:0;transform:translateY(28px);transition:opacity .65s ease,transform .65s ease}
+.sec.vis{opacity:1;transform:translateY(0)}
+.sn{display:flex;align-items:center;gap:12px;color:var(--a2);font-family:'JetBrains Mono',monospace;font-size:.68rem;text-transform:uppercase;letter-spacing:.22em;margin-bottom:.9rem}
+.sn::after{content:"";height:1px;flex:1;background:linear-gradient(90deg,rgba(96,165,250,.7),transparent)}
+.sec h2{font-size:clamp(1.9rem,4vw,2.75rem);line-height:1.08;margin-bottom:1rem;letter-spacing:-.04em}
+.lead{font-family:'Source Serif 4',serif;font-size:1.08rem;color:var(--t2);margin-bottom:2rem;line-height:1.85}
+.card{background:linear-gradient(180deg,rgba(24,24,38,.96),rgba(17,17,28,.96));border:1px solid var(--bs);border-radius:var(--r);box-shadow:var(--sh);padding:1.8rem;margin-bottom:1.4rem}
+.cc{background:linear-gradient(180deg,rgba(11,11,22,.99),rgba(9,9,17,.99));border:1px solid var(--bs);border-radius:var(--r);box-shadow:var(--sh);padding:0;margin-bottom:1.4rem;overflow:hidden}
+.ch{display:flex;align-items:center;justify-content:space-between;padding:1rem 1.5rem;border-bottom:1px solid var(--bs)}
+.ch h3{font-size:.9rem;font-family:'JetBrains Mono',monospace;color:var(--a2)}
+.cpb{display:inline-flex;align-items:center;gap:5px;padding:.28rem .7rem;border-radius:999px;border:1px solid var(--bs);background:transparent;color:var(--tm);font-size:.72rem;cursor:pointer;transition:all .18s;font-family:'JetBrains Mono',monospace}
+.cpb:hover{border-color:var(--a1);color:var(--a1)}
+.cbody{padding:1.5rem;overflow-x:auto}
+pre{white-space:pre;color:#d8e3ff;font-family:'JetBrains Mono',monospace;font-size:.86rem;line-height:1.75}
+.kw{color:#a78bfa}.fn{color:#60a5fa}.str{color:#5eead4}.cm{color:#3d3d5a;font-style:italic}.nu{color:#fbbf24}.cl{color:#f472b6}
+.g2{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:1.3rem;margin-bottom:1.4rem}
+.g3{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:1.3rem;margin-bottom:1.4rem}
+.mc2{border:1px solid var(--bs);border-radius:16px;padding:1.3rem;background:rgba(255,255,255,.02)}
+.mc2 h4{font-size:1rem;margin-bottom:.55rem;color:var(--t1)}.mc2 p{font-size:.9rem;color:var(--t2);line-height:1.65}
+.cl2{border-radius:16px;padding:1.2rem 1.5rem;margin:1.5rem 0;display:flex;gap:1rem;align-items:flex-start}
+.cs{background:rgba(94,234,212,.06);border:1px solid rgba(94,234,212,.18)}
+.ci{background:rgba(96,165,250,.07);border:1px solid rgba(96,165,250,.18)}
+.cr{background:rgba(244,114,182,.06);border:1px solid rgba(244,114,182,.18)}
+.cw2{background:rgba(251,191,36,.06);border:1px solid rgba(251,191,36,.18)}
+.cp{background:rgba(167,139,250,.06);border:1px solid rgba(167,139,250,.18)}
+.cico{font-size:1.2rem;flex-shrink:0;margin-top:.1rem}
+.cbd h4{font-size:.95rem;margin-bottom:.35rem;color:var(--t1)}.cbd p{font-size:.9rem;color:var(--t2);line-height:1.65}
+.fbox{background:rgba(167,139,250,.06);border:1px solid rgba(167,139,250,.2);border-radius:16px;padding:1.6rem;text-align:center;margin-bottom:1.2rem}
+.formula{font-family:'JetBrains Mono',monospace;font-size:1.05rem;color:var(--a5);line-height:2.1;margin-bottom:.6rem}
+.fdesc{font-size:.88rem;color:var(--t2);line-height:1.75}
+.fterm{display:inline-block;padding:.1rem .38rem;border-radius:5px;font-family:'JetBrains Mono',monospace;font-size:.88rem}
+.ft-b{background:rgba(96,165,250,.12);color:var(--a2)}.ft-g{background:rgba(94,234,212,.12);color:var(--a1)}.ft-p{background:rgba(167,139,250,.12);color:var(--a5)}
+.arch-row{display:flex;align-items:center;gap:.6rem;flex-wrap:wrap;margin:1rem 0}
+.arch-box{border-radius:12px;padding:.8rem 1rem;text-align:center;font-size:.85rem;border:1px solid var(--bs)}
+.arch-arrow{color:var(--tm);font-size:1.2rem;flex-shrink:0}
+.tbl{width:100%;border-collapse:collapse;font-size:.87rem}
+.tbl th{text-align:left;padding:.75rem 1rem;font-family:'JetBrains Mono',monospace;font-size:.65rem;text-transform:uppercase;color:var(--tm);border-bottom:1px solid var(--bs)}
+.tbl td{padding:.75rem 1rem;border-bottom:1px solid rgba(255,255,255,.04);color:var(--t2);vertical-align:top}
+.tbl td:first-child{color:var(--t1);font-weight:600}.tbl tr:last-child td{border-bottom:none}
+.cos-demo{background:rgba(15,15,25,.95);border:1px solid var(--bs);border-radius:16px;padding:1.5rem;margin-bottom:1.4rem}
+.vec-row{display:flex;align-items:center;gap:.8rem;margin-bottom:.8rem;flex-wrap:wrap}
+.vec-lbl{font-family:'JetBrains Mono',monospace;font-size:.75rem;color:var(--tm);min-width:120px}
+.vec-val{font-family:'JetBrains Mono',monospace;font-size:.78rem;color:var(--a2);background:rgba(96,165,250,.07);border:1px solid rgba(96,165,250,.15);border-radius:8px;padding:.3rem .6rem}
+.sim-result{font-family:'JetBrains Mono',monospace;font-size:.9rem;padding:.8rem 1rem;border-radius:10px;background:rgba(94,234,212,.07);border:1px solid rgba(94,234,212,.2);color:var(--a1);margin-top:.8rem}
+.bdg{display:inline-block;font-size:.7rem;padding:.18rem .55rem;border-radius:6px;font-weight:700}
+.bg-g{background:rgba(94,234,212,.12);color:var(--a1);border:1px solid rgba(94,234,212,.2)}
+.bg-b{background:rgba(96,165,250,.12);color:var(--a2);border:1px solid rgba(96,165,250,.2)}
+.bg-p{background:rgba(167,139,250,.12);color:var(--a5);border:1px solid rgba(167,139,250,.2)}
+.bg-y{background:rgba(251,191,36,.12);color:var(--a4);border:1px solid rgba(251,191,36,.2)}
+.bg-r{background:rgba(244,114,182,.12);color:var(--a3);border:1px solid rgba(244,114,182,.2)}
+.model-card{border:1px solid var(--bs);border-radius:16px;padding:1.2rem;background:rgba(255,255,255,.02);margin-bottom:.8rem}
+.model-card h4{font-size:.95rem;color:var(--t1);margin-bottom:.4rem;display:flex;align-items:center;gap:.6rem}
+.model-card p{font-size:.87rem;color:var(--t2);line-height:1.65}
+.model-card .stats{display:flex;gap:.5rem;flex-wrap:wrap;margin-top:.5rem}
+.qc{background:linear-gradient(180deg,rgba(24,24,38,.96),rgba(17,17,28,.96));border:1px solid var(--bs);border-radius:var(--r);box-shadow:var(--sh);padding:1.8rem}
+.qq{border:1px solid var(--bs);border-radius:16px;padding:1.3rem;background:rgba(255,255,255,.015);margin-bottom:1rem}
+.qq h4{font-size:1rem;margin-bottom:1rem;color:var(--t1);line-height:1.5}
+.qo{display:grid;gap:.6rem}
+.qob{border:1px solid var(--bs);border-radius:11px;padding:.9rem 1.1rem;background:rgba(255,255,255,.02);color:var(--t2);cursor:pointer;transition:all .2s;text-align:left;font-size:.9rem;font-family:'Outfit',sans-serif;width:100%;line-height:1.5}
+.qob:hover{border-color:rgba(96,165,250,.4);background:rgba(96,165,250,.04)}
+.qob.ok{border-color:rgba(94,234,212,.5);background:rgba(94,234,212,.09);color:var(--t1)}
+.qob.no{border-color:rgba(244,114,182,.4);background:rgba(244,114,182,.07)}
+.qf{font-size:.88rem;margin-top:.7rem;line-height:1.6;padding:.7rem .9rem;border-radius:10px;background:rgba(255,255,255,.02);display:none}
+.qf.show{display:block}
+.qs{padding:1.4rem;border-radius:16px;background:rgba(94,234,212,.06);border:1px solid rgba(94,234,212,.2);text-align:center;margin-top:1.2rem;display:none}
+.qs h3{font-size:2rem;color:var(--a1);margin-bottom:.4rem}.qs p{color:var(--t2);font-size:.92rem}
+.fn2{display:flex;align-items:center;justify-content:space-between;padding:2.2rem 0;border-top:1px solid var(--bs);margin-top:2rem}
+.fn2 a{display:inline-flex;align-items:center;gap:8px;padding:.75rem 1.5rem;border-radius:999px;border:1px solid var(--bs);color:var(--t2);text-decoration:none;font-size:.9rem;transition:all .2s}
+.fn2 a:hover{border-color:var(--a2);color:var(--a2)}
+.fn2 a.pr{background:rgba(251,191,36,.04);border-color:rgba(251,191,36,.2);color:var(--a4)}
+.fn2 a.nx{background:rgba(94,234,212,.06);border-color:rgba(94,234,212,.3);color:var(--a1)}
+.fcc{text-align:center;font-size:.82rem;color:var(--tm)}
+@media(max-width:720px){.g2,.g3,.snav{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+<div class="sp" id="sp"></div>
+<nav>
+  <a href="#" class="nbr">Marevlo &middot; RAG Masterclass &middot; Module 6</a>
+  <span class="nm">6B &mdash; Dense Retrieval: Bi-Encoders &amp; ColBERT</span>
+  <div class="na">
+    <a href="rag_module_6a.html" class="nb">&larr; 6A: BM25</a>
+    <a href="rag_module_6c.html" class="nb">6C: SPLADE &rarr;</a>
+  </div>
+</nav>
+<section class="hero">
+  <div class="hg"></div>
+  <div class="hi">
+    <div class="hl"><span class="dot"></span>Module 6B of 3 &middot; Retrieval Methods</div>
+    <h1>Dense Retrieval:<br><span class="gt">Bi-Encoders, DPR, and ColBERT</span></h1>
+    <p class="hs">Dense retrieval solved the vocabulary mismatch problem that BM25 cannot. This module explains how bi-encoders work, derives the cosine similarity scoring with real numbers, walks through DPR training, covers every major model family (E5, BGE, ColBERT), and explains when cross-encoders are worth the latency cost.</p>
+    <div class="hm">
+      <span class="mp">60 min</span><span class="mp">Cosine similarity worked example</span>
+      <span class="mp">Bi-encoder vs cross-encoder deep dive</span>
+      <span class="mp">ColBERT late interaction explained</span>
+      <span class="mp">Model selection guide with MTEB</span>
+    </div>
+  </div>
+  <div class="sc"><span>Scroll</span><div class="arr"></div></div>
+</section>
+
+<div class="cw">
+<div class="snav">
+  <a href="rag_module_6a.html" class="smn">
+    <div class="sml">Module 6A</div><div class="smt">Sparse Retrieval</div>
+    <div class="sms">TF-IDF &middot; BM25 &middot; Inverted Index</div>
+  </a>
+  <a href="rag_module_6b.html" class="smn cur">
+    <div class="sml">Module 6B</div><div class="smt">Dense Retrieval</div>
+    <div class="sms">Bi-Encoders &middot; DPR &middot; ColBERT &middot; BGE</div>
+  </a>
+  <a href="rag_module_6c.html" class="smn">
+    <div class="sml">Module 6C</div><div class="smt">Learned Sparse + Choice</div>
+    <div class="sms">SPLADE &middot; BEIR benchmarks &middot; Decision matrix</div>
+  </a>
+</div>
+<section class="sec" id="s1">
+  <div class="sn">01 &middot; The Vocabulary Mismatch Problem</div>
+  <h2>Why BM25 Fails and<br><span class="gt">What Dense Retrieval Fixes</span></h2>
+  <p class="lead">In Module 6A, we saw that BM25 scores based on shared tokens. If query and document share no tokens, the score is zero regardless of semantic meaning. "Heart attack" and "myocardial infarction" describe the same condition but share zero tokens. "Buy" and "purchase" are synonyms but BM25 treats them as completely different. Dense retrieval solves this by mapping text into a continuous vector space where semantically similar text lands near each other &mdash; regardless of the specific words used.</p>
+
+  <div class="card">
+    <h3 style="font-size:1.05rem;color:var(--a2);margin-bottom:1rem">The Same Problem, Three Query Types BM25 Cannot Handle</h3>
+    <div class="g3">
+      <div class="mc2" style="border-color:rgba(244,114,182,.25)">
+        <h4 style="color:var(--a3)">Synonyms</h4>
+        <p>Query: "buy a plan" &nbsp; Document: "purchase a subscription"</p>
+        <p style="margin-top:.5rem;font-family:'JetBrains Mono',monospace;font-size:.75rem;color:var(--a3)">Shared tokens: 0 &nbsp; BM25 score: 0.000</p>
+        <p style="margin-top:.5rem;color:var(--a1);font-family:'JetBrains Mono',monospace;font-size:.75rem">Dense cosine: 0.87 (very similar)</p>
+      </div>
+      <div class="mc2" style="border-color:rgba(244,114,182,.25)">
+        <h4 style="color:var(--a3)">Abbreviations</h4>
+        <p>Query: "MI treatment protocol" &nbsp; Document: "myocardial infarction guidelines"</p>
+        <p style="margin-top:.5rem;font-family:'JetBrains Mono',monospace;font-size:.75rem;color:var(--a3)">Shared tokens: 0 &nbsp; BM25 score: 0.000</p>
+        <p style="margin-top:.5rem;color:var(--a1);font-family:'JetBrains Mono',monospace;font-size:.75rem">Dense cosine: 0.91 (highly similar)</p>
+      </div>
+      <div class="mc2" style="border-color:rgba(244,114,182,.25)">
+        <h4 style="color:var(--a3)">Paraphrase</h4>
+        <p>Query: "how to undo a transaction" &nbsp; Document: "steps to reverse a payment"</p>
+        <p style="margin-top:.5rem;font-family:'JetBrains Mono',monospace;font-size:.75rem;color:var(--a3)">Shared tokens: 1 ("to") &nbsp; BM25 score: ~0.001</p>
+        <p style="margin-top:.5rem;color:var(--a1);font-family:'JetBrains Mono',monospace;font-size:.75rem">Dense cosine: 0.84 (semantically close)</p>
+      </div>
+    </div>
+  </div>
+</section>
+<section class="sec" id="s2">
+  <div class="sn">02 &middot; The Bi-Encoder Architecture</div>
+  <h2>Two BERT Towers,<br><span class="gt">One Vector Space</span></h2>
+  <p class="lead">A bi-encoder encodes queries and documents independently using the same (or separate) transformer encoders. Both produce dense vectors of the same dimensionality. At retrieval time, similarity is computed with a single dot product or cosine similarity &mdash; making it fast enough to search millions of documents.</p>
+
+  <div class="card" style="padding:1.4rem">
+    <h3 style="font-size:.95rem;color:var(--a2);margin-bottom:1rem">Bi-Encoder Inference Architecture</h3>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:1.5rem;margin-bottom:1.2rem">
+      <div>
+        <p style="font-family:'JetBrains Mono',monospace;font-size:.7rem;color:var(--tm);text-transform:uppercase;margin-bottom:.6rem">OFFLINE (once per document)</p>
+        <div class="arch-row" style="flex-direction:column;align-items:flex-start;gap:.4rem">
+          <div class="arch-box" style="background:rgba(96,165,250,.07);border-color:rgba(96,165,250,.25);width:100%">"Annual subscriptions are non-refundable..."</div>
+          <div class="arch-arrow">&#8595;</div>
+          <div class="arch-box" style="background:rgba(167,139,250,.07);border-color:rgba(167,139,250,.25);width:100%">BERT Encoder (12-24 transformer layers)</div>
+          <div class="arch-arrow">&#8595; [CLS] token or mean pooling</div>
+          <div class="arch-box" style="background:rgba(94,234,212,.07);border-color:rgba(94,234,212,.25);width:100%">d<sub>doc</sub> = [0.23, -0.41, 0.87, ...] &nbsp; (768 or 1024 dims)</div>
+          <div class="arch-arrow">&#8595; stored in vector DB</div>
+          <div class="arch-box" style="background:rgba(255,255,255,.03);border-color:var(--bs);width:100%">Qdrant / Pinecone / Chroma</div>
+        </div>
+      </div>
+      <div>
+        <p style="font-family:'JetBrains Mono',monospace;font-size:.7rem;color:var(--tm);text-transform:uppercase;margin-bottom:.6rem">ONLINE (every query, real-time)</p>
+        <div class="arch-row" style="flex-direction:column;align-items:flex-start;gap:.4rem">
+          <div class="arch-box" style="background:rgba(251,191,36,.07);border-color:rgba(251,191,36,.25);width:100%">"how do I cancel my annual plan?"</div>
+          <div class="arch-arrow">&#8595;</div>
+          <div class="arch-box" style="background:rgba(167,139,250,.07);border-color:rgba(167,139,250,.25);width:100%">Same BERT Encoder (shared weights)</div>
+          <div class="arch-arrow">&#8595;</div>
+          <div class="arch-box" style="background:rgba(251,191,36,.07);border-color:rgba(251,191,36,.25);width:100%">d<sub>query</sub> = [0.19, -0.38, 0.91, ...] &nbsp; (same 768 dims)</div>
+          <div class="arch-arrow">&#8595; cosine(d_query, all d_docs) via ANN</div>
+          <div class="arch-box" style="background:rgba(94,234,212,.07);border-color:rgba(94,234,212,.25);width:100%">Top-k most similar documents returned</div>
+        </div>
+      </div>
+    </div>
+    <div class="cl2 ci" style="margin-bottom:0">
+      <div class="cico">&#128161;</div>
+      <div class="cbd">
+        <h4>Why this is fast</h4>
+        <p>Documents are encoded once at ingestion time and stored. At query time, only the query needs encoding (one forward pass, ~5ms). Similarity is then computed via Approximate Nearest Neighbor search (HNSW, IVF), which finds the closest vectors without comparing against every document. This is why Pinecone can search 1 billion vectors in under 100ms.</p>
+      </div>
+    </div>
+  </div>
+</section>
+<section class="sec" id="s3">
+  <div class="sn">03 &middot; Cosine Similarity &mdash; The Math</div>
+  <h2>How Vectors Score Relevance:<br><span class="gt">A Worked Calculation</span></h2>
+  <p class="lead">Dense retrieval scores documents by cosine similarity between query and document embeddings. Cosine measures the angle between two vectors, not their magnitude. Two texts can express the same idea in different lengths and still have cosine similarity close to 1.0 if their embeddings point in the same direction.</p>
+
+  <div class="fbox">
+    <div class="formula">cosine(q, d) = (q &middot; d) / (||q|| &middot; ||d||) = &Sigma; q<sub>i</sub>d<sub>i</sub> / (&radic;&Sigma;q<sub>i</sub>&sup2; &middot; &radic;&Sigma;d<sub>i</sub>&sup2;)</div>
+    <div class="fdesc">
+      <span class="fterm ft-b">q</span> = query embedding vector &nbsp;&middot;&nbsp;
+      <span class="fterm ft-b">d</span> = document embedding vector &nbsp;&middot;&nbsp;
+      <span class="fterm ft-g">||v||</span> = L2 norm (Euclidean length) of vector v<br>
+      Range: &minus;1 (opposite) to +1 (identical direction). For normalized embeddings the dot product q&middot;d equals cosine similarity directly.
+    </div>
+  </div>
+
+  <div class="card" style="padding:1.4rem">
+    <h3 style="font-size:.95rem;color:var(--a2);margin-bottom:1rem">Worked Example: 4-dimensional embeddings (real models use 768-1024 dims)</h3>
+    <p style="color:var(--t2);font-size:.88rem;margin-bottom:1rem;line-height:1.7">We have simplified 4-dimensional embeddings for illustration. In production, text-embedding-3-small uses 1536 dimensions, BGE-large uses 1024. The math is identical, just with more terms.</p>
+    <div style="display:grid;gap:.6rem;margin-bottom:1rem">
+      <div style="display:flex;align-items:center;gap:.8rem;flex-wrap:wrap">
+        <span style="font-family:'JetBrains Mono',monospace;font-size:.78rem;color:var(--tm);min-width:180px">Query: "annual refund"</span>
+        <span style="font-family:'JetBrains Mono',monospace;font-size:.82rem;color:var(--a2);background:rgba(96,165,250,.07);border:1px solid rgba(96,165,250,.15);border-radius:8px;padding:.3rem .7rem">q = [0.80, 0.20, 0.50, 0.10]</span>
+        <span style="font-family:'JetBrains Mono',monospace;font-size:.75rem;color:var(--tm)">||q|| = sqrt(0.64+0.04+0.25+0.01) = <strong style="color:var(--a4)">0.964</strong></span>
+      </div>
+      <div style="display:flex;align-items:center;gap:.8rem;flex-wrap:wrap">
+        <span style="font-family:'JetBrains Mono',monospace;font-size:.78rem;color:var(--tm);min-width:180px">D1: "annual subscriptions non-refundable after 30 days"</span>
+        <span style="font-family:'JetBrains Mono',monospace;font-size:.82rem;color:var(--a1);background:rgba(94,234,212,.07);border:1px solid rgba(94,234,212,.15);border-radius:8px;padding:.3rem .7rem">d1 = [0.75, 0.15, 0.55, 0.05]</span>
+        <span style="font-family:'JetBrains Mono',monospace;font-size:.75rem;color:var(--tm)">||d1|| = <strong style="color:var(--a4)">0.942</strong></span>
+      </div>
+      <div style="display:flex;align-items:center;gap:.8rem;flex-wrap:wrap">
+        <span style="font-family:'JetBrains Mono',monospace;font-size:.78rem;color:var(--tm);min-width:180px">D2: "monthly cancellation no penalty"</span>
+        <span style="font-family:'JetBrains Mono',monospace;font-size:.82rem;color:var(--a3);background:rgba(244,114,182,.07);border:1px solid rgba(244,114,182,.15);border-radius:8px;padding:.3rem .7rem">d2 = [0.10, 0.80, 0.15, 0.60]</span>
+        <span style="font-family:'JetBrains Mono',monospace;font-size:.75rem;color:var(--tm)">||d2|| = <strong style="color:var(--a4)">1.018</strong></span>
+      </div>
+    </div>
+    <div style="background:rgba(11,11,22,.8);border:1px solid var(--bs);border-radius:12px;padding:1.1rem;font-family:'JetBrains Mono',monospace;font-size:.82rem;line-height:2">
+      <span style="color:var(--tm)">// dot products</span><br>
+      q &middot; d1 = (0.80&times;0.75) + (0.20&times;0.15) + (0.50&times;0.55) + (0.10&times;0.05)<br>
+      &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;= 0.600 + 0.030 + 0.275 + 0.005 = <strong style="color:var(--a4)">0.910</strong><br>
+      q &middot; d2 = (0.80&times;0.10) + (0.20&times;0.80) + (0.50&times;0.15) + (0.10&times;0.60)<br>
+      &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;= 0.080 + 0.160 + 0.075 + 0.060 = <strong style="color:var(--a4)">0.375</strong><br><br>
+      <span style="color:var(--tm)">// cosine similarity</span><br>
+      cosine(q, d1) = 0.910 / (0.964 &times; 0.942) = 0.910 / 0.908 = <strong style="color:var(--a1)">1.002 &asymp; 1.00 (very similar)</strong><br>
+      cosine(q, d2) = 0.375 / (0.964 &times; 1.018) = 0.375 / 0.981 = <strong style="color:var(--a3)">0.382 (not similar)</strong>
+    </div>
+    <div class="cl2 cs" style="margin-top:1rem;margin-bottom:0">
+      <div class="cico">&#10003;</div>
+      <div class="cbd"><p>D1 (annual subscriptions, non-refundable) scores 1.00 &mdash; it is semantically aligned with "annual refund". D2 (monthly cancellation) scores 0.38 &mdash; different semantic territory. Notice neither the query nor D1 mention "refund" explicitly; the vector captures the semantic relationship between "non-refundable" and "refund". This is what BM25 cannot do.</p></div>
+    </div>
+  </div>
+</section>
+<section class="sec" id="s4">
+  <div class="sn">04 &middot; DPR: Dense Passage Retrieval</div>
+  <h2>The Foundational Paper:<br><span class="gt">How Bi-Encoders Are Trained</span></h2>
+  <p class="lead">DPR (Dense Passage Retrieval, Karpukhin et al., Facebook AI 2020) was the paper that proved dense retrieval could outperform BM25 on open-domain question answering. It established the training paradigm that most modern embedding models still follow.</p>
+
+  <div class="card" style="padding:1.4rem">
+    <h3 style="font-size:.95rem;color:var(--a2);margin-bottom:1rem">DPR Training Setup: Contrastive Learning with In-Batch Negatives</h3>
+    <p style="color:var(--t2);font-size:.9rem;line-height:1.7;margin-bottom:1rem">DPR trains two BERT encoders (one for questions, one for passages) using a batch of (question, positive passage, negative passages) triples:</p>
+    <div style="display:grid;gap:.6rem;margin-bottom:1rem">
+      <div style="background:rgba(94,234,212,.06);border:1px solid rgba(94,234,212,.18);border-radius:12px;padding:.8rem 1rem;font-size:.88rem">
+        <strong style="color:var(--a1)">Positive pair:</strong> Question "What is Marevlo's refund policy?" paired with passage "Annual subscriptions are non-refundable after 30 days per Marevlo's ToS section 4.2."
+      </div>
+      <div style="background:rgba(244,114,182,.05);border:1px solid rgba(244,114,182,.18);border-radius:12px;padding:.8rem 1rem;font-size:.88rem">
+        <strong style="color:var(--a3)">In-batch negatives:</strong> All other passages in the batch become negatives. If batch_size=64, each question has 63 negative passages. These are efficient: no extra sampling, just reuse what is already in GPU memory.
+      </div>
+      <div style="background:rgba(251,191,36,.05);border:1px solid rgba(251,191,36,.18);border-radius:12px;padding:.8rem 1rem;font-size:.88rem">
+        <strong style="color:var(--a4)">Hard negatives (ANCE improvement):</strong> Passages that are topically similar but not the actual answer. BM25 is used to find passages that match lexically but are wrong answers &mdash; forcing the model to learn deeper semantic distinctions.
+      </div>
+    </div>
+
+    <div class="fbox" style="margin-bottom:0">
+      <div class="formula" style="font-size:.95rem">L = &minus;log( exp(q &middot; p<sup>+</sup>) / ( exp(q &middot; p<sup>+</sup>) + &Sigma;<sub>i</sub> exp(q &middot; p<sub>i</sub><sup>&minus;</sup>) ) )</div>
+      <div class="fdesc">
+        This is the InfoNCE / NT-Xent contrastive loss. It maximizes the dot product between query and positive passage while minimizing it with all negative passages.<br>
+        <span class="fterm ft-g">p<sup>+</sup></span> = positive passage &nbsp;&middot;&nbsp; <span style="color:var(--a3)">p<sub>i</sub><sup>&minus;</sup></span> = negative passages &nbsp;&middot;&nbsp; temperature is typically set to 1.0 in DPR
+      </div>
+    </div>
+  </div>
+
+  <div class="cl2 ci">
+    <div class="cico">&#128161;</div>
+    <div class="cbd">
+      <h4>What DPR learns</h4>
+      <p>After training on 58,880 questions from Natural Questions and TriviaQA, DPR's encoders learn a vector space where semantically related questions and passages have high dot product scores. "MI treatment" and "myocardial infarction guidelines" will be near each other because the model has seen many such semantic equivalences during training. The vectors encode meaning, not vocabulary.</p>
+    </div>
+  </div>
+</section>
+<section class="sec" id="s5">
+  <div class="sn">05 &middot; Bi-Encoder vs Cross-Encoder</div>
+  <h2>The Precision vs Speed<br><span class="gt">Fundamental Tradeoff</span></h2>
+  <p class="lead">Bi-encoders encode query and document independently and score with a dot product. Cross-encoders concatenate query and document and process them together through the full transformer. Cross-encoders are dramatically more accurate but cannot scale to large corpora &mdash; which is why the two are used in different stages of the same pipeline.</p>
+
+  <div class="g2">
+    <div class="card" style="border-color:rgba(96,165,250,.2);margin-bottom:0">
+      <h3 style="color:var(--a2);font-size:1rem;margin-bottom:.9rem">Bi-Encoder (Retrieval Stage)</h3>
+      <div class="arch-row" style="flex-direction:column;align-items:stretch;gap:.4rem">
+        <div class="arch-box" style="background:rgba(96,165,250,.05);border-color:rgba(96,165,250,.2)">Query &rarr; BERT &rarr; q_vec (768d)</div>
+        <div style="text-align:center;color:var(--tm);font-size:.8rem">encoded independently</div>
+        <div class="arch-box" style="background:rgba(96,165,250,.05);border-color:rgba(96,165,250,.2)">Doc &rarr; BERT &rarr; d_vec (768d) &rarr; stored offline</div>
+        <div style="text-align:center;color:var(--tm);font-size:.8rem">similarity = dot(q_vec, d_vec)</div>
+      </div>
+      <div style="margin-top:1rem;display:flex;flex-direction:column;gap:.5rem">
+        <div><span style="color:var(--a1)">&#10003;</span> <strong>Sub-100ms</strong> on millions of docs via ANN index</div>
+        <div><span style="color:var(--a1)">&#10003;</span> Documents encoded once offline, reused forever</div>
+        <div><span style="color:var(--a1)">&#10003;</span> Scales to any corpus size</div>
+        <div><span style="color:var(--a3)">&#10007;</span> Cannot model query-document interactions (each is encoded in isolation)</div>
+        <div><span style="color:var(--a3)">&#10007;</span> Less accurate than cross-encoder on hard relevance judgments</div>
+      </div>
+      <p style="font-family:'JetBrains Mono',monospace;font-size:.75rem;color:var(--tm);margin-top:.8rem">Complexity: O(1) per doc at query time (ANN lookup)</p>
+    </div>
+    <div class="card" style="border-color:rgba(167,139,250,.2);margin-bottom:0">
+      <h3 style="color:var(--a5);font-size:1rem;margin-bottom:.9rem">Cross-Encoder (Reranking Stage)</h3>
+      <div class="arch-row" style="flex-direction:column;align-items:stretch;gap:.4rem">
+        <div class="arch-box" style="background:rgba(167,139,250,.05);border-color:rgba(167,139,250,.2)">[CLS] Query [SEP] Document [SEP]</div>
+        <div style="text-align:center;color:var(--tm);font-size:.8rem">concatenated, processed together</div>
+        <div class="arch-box" style="background:rgba(167,139,250,.05);border-color:rgba(167,139,250,.2)">BERT full forward pass on the pair</div>
+        <div style="text-align:center;color:var(--tm);font-size:.8rem">relevance_score = linear([CLS])</div>
+      </div>
+      <div style="margin-top:1rem;display:flex;flex-direction:column;gap:.5rem">
+        <div><span style="color:var(--a1)">&#10003;</span> <strong>Highest accuracy</strong> &mdash; sees query and doc together, models full interaction</div>
+        <div><span style="color:var(--a1)">&#10003;</span> Captures fine-grained relevance (negation, conditionals, context)</div>
+        <div><span style="color:var(--a3)">&#10007;</span> Cannot pre-compute: every (query, doc) pair requires a fresh forward pass</div>
+        <div><span style="color:var(--a3)">&#10007;</span> 50-200ms per pair &rarr; only feasible for top-50 candidates, not millions</div>
+        <div><span style="color:var(--a3)">&#10007;</span> Cannot be used for first-stage retrieval</div>
+      </div>
+      <p style="font-family:'JetBrains Mono',monospace;font-size:.75rem;color:var(--tm);margin-top:.8rem">Complexity: O(N) per query, can only score N~50 candidates</p>
+    </div>
+  </div>
+
+  <div class="cl2 cs">
+    <div class="cico">&#128161;</div>
+    <div class="cbd">
+      <h4>Standard 2-stage pipeline</h4>
+      <p>Stage 1 (Retrieval): Bi-encoder retrieves top-100 candidates from millions of documents in &lt;100ms. Stage 2 (Reranking): Cross-encoder rescores the 100 candidates and returns top-5 in ~500ms. The cross-encoder sees the query and each candidate together and can make much more accurate relevance judgments. Module 8 covers reranking in depth.</p>
+    </div>
+  </div>
+</section>
+<section class="sec" id="s6">
+  <div class="sn">06 &middot; ColBERT: Late Interaction</div>
+  <h2>Token-Level Matching:<br><span class="gt">Precision Without Reranker Latency</span></h2>
+  <p class="lead">ColBERT (Contextualized Late Interaction over BERT, Khattab &amp; Zaharia 2020) introduced a middle ground between bi-encoders and cross-encoders. Instead of encoding each passage into a single vector, ColBERT stores per-token embeddings for every document. At query time, each query token finds its best matching document token (MaxSim operation), giving much finer-grained matching than single-vector bi-encoders.</p>
+
+  <div class="card" style="padding:1.4rem">
+    <h3 style="font-size:.95rem;color:var(--a2);margin-bottom:1rem">ColBERT MaxSim Scoring &mdash; Worked Example</h3>
+    <p style="color:var(--t2);font-size:.88rem;line-height:1.7;margin-bottom:.9rem">Query: "annual refund" &rarr; tokenized to [annual, refund]. Document: "annual subscriptions non-refundable" &rarr; tokenized to [annual, subscriptions, non-refundable]. ColBERT stores one embedding per document token.</p>
+
+    <div class="fbox" style="margin-bottom:1rem">
+      <div class="formula" style="font-size:.95rem">S(q,d) = &Sigma;<sub>i&isin;q</sub> max<sub>j&isin;d</sub> (E<sub>q</sub>(q<sub>i</sub>) &middot; E<sub>d</sub>(d<sub>j</sub>))</div>
+      <div class="fdesc">For each query token, find the document token with maximum similarity. Sum these per-query-token maximums. This allows "refund" to match "non-refundable" by finding the nearest document token in the embedding space.</div>
+    </div>
+
+    <div style="background:rgba(11,11,22,.8);border:1px solid var(--bs);border-radius:12px;padding:1.1rem;font-family:'JetBrains Mono',monospace;font-size:.81rem;line-height:1.9;margin-bottom:.9rem">
+      <span style="color:var(--tm)">// Token embeddings (simplified 2D for illustration)</span><br>
+      E("annual") = [0.90, 0.20] &nbsp; E("refund") = [0.10, 0.85]<br><br>
+      E("annual") = [0.88, 0.22] &nbsp; E("subscriptions") = [0.40, 0.30] &nbsp; E("non-refundable") = [0.15, 0.80]<br>
+      &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;^^ close to "refund"<br><br>
+      <span style="color:var(--tm)">// MaxSim for query token "annual"</span><br>
+      sim(annual_q, annual_d) = 0.90&times;0.88 + 0.20&times;0.22 = 0.836 &larr; max<br>
+      sim(annual_q, subscriptions) = 0.90&times;0.40 + 0.20&times;0.30 = 0.420<br>
+      MaxSim("annual") = <strong style="color:var(--a1)">0.836</strong><br><br>
+      <span style="color:var(--tm)">// MaxSim for query token "refund"</span><br>
+      sim(refund_q, annual_d) = 0.10&times;0.88 + 0.85&times;0.22 = 0.275<br>
+      sim(refund_q, non-refundable) = 0.10&times;0.15 + 0.85&times;0.80 = 0.695 &larr; max<br>
+      MaxSim("refund") = <strong style="color:var(--a1)">0.695</strong><br><br>
+      S(query, doc) = 0.836 + 0.695 = <strong style="color:var(--a4)">1.531</strong>
+    </div>
+    <div class="cl2 cp" style="margin-bottom:0">
+      <div class="cico">&#128161;</div>
+      <div class="cbd">
+        <h4>Why ColBERT finds "non-refundable" for query "refund"</h4>
+        <p>In the embedding space learned by ColBERT, "refund" and "non-refundable" are semantically close neighbors (both relate to the refund concept). MaxSim finds this connection that a single-vector bi-encoder would miss unless its pooled representation happened to capture the relationship. ColBERT is more accurate than standard bi-encoders at the cost of higher storage (one vector per token vs one per document).</p>
+      </div>
+    </div>
+  </div>
+
+  <div class="cl2 cw2">
+    <div class="cico">&#9888;&#65039;</div>
+    <div class="cbd">
+      <h4>ColBERT storage cost</h4>
+      <p>A 200-token document with 128-dimensional token embeddings requires 200 &times; 128 &times; 4 bytes = 102KB per document. One million documents = 97GB. Standard bi-encoders: 1 vector &times; 768 dims per document = 3KB per document, 2.9GB for 1M docs. ColBERT v2 adds compression to reduce this ~10x, but storage remains significantly higher than single-vector approaches.</p>
+    </div>
+  </div>
+</section>
+<section class="sec" id="s7">
+  <div class="sn">07 &middot; Modern Embedding Models</div>
+  <h2>E5, BGE, Nomic, NV-Embed:<br><span class="gt">What Makes Each Different</span></h2>
+  <p class="lead">After DPR established the bi-encoder paradigm, a series of models improved retrieval quality through better training data, instruction-following capabilities, and architecture changes. Here are the models you will actually use in production and why they differ.</p>
+
+  <div class="model-card" style="border-color:rgba(96,165,250,.25)">
+    <h4><span class="bdg bg-b">Meta</span> DPR (2020)</h4>
+    <p>The original. Separate question and passage encoders trained on NQ and TriviaQA. Still a valid baseline. Not instruction-following &mdash; queries are embedded as-is without any prefix.</p>
+    <div class="stats"><span class="bdg bg-b">768d</span><span class="bdg bg-y">Open source</span><span class="bdg bg-g">NQ NDCG@10: 41.5</span></div>
+  </div>
+
+  <div class="model-card" style="border-color:rgba(167,139,250,.25)">
+    <h4><span class="bdg bg-p">Microsoft</span> E5 family (2022-2024)</h4>
+    <p>E5 (Embeddings from bidirectional Encoder representations) trained on a massive curated mixture of text pairs from multiple domains. Key innovation: instruction prefixes. For retrieval queries you prepend "query: " and for documents "passage: ". E5-large-v2 and E5-mistral-7b are strong all-round choices. Multilingual E5 covers 100+ languages.</p>
+    <div class="stats"><span class="bdg bg-p">1024d</span><span class="bdg bg-y">Open source</span><span class="bdg bg-g">MTEB avg: 56.5</span><span class="bdg bg-b">Instruction-following</span></div>
+  </div>
+
+  <div class="model-card" style="border-color:rgba(94,234,212,.25)">
+    <h4><span class="bdg bg-g">BAAI</span> BGE family (2023-2024)</h4>
+    <p>BGE (BAAI General Embedding) models are among the top performers on MTEB. BGE-large-en-v1.5 requires the instruction prefix "Represent this sentence for searching relevant passages: " for retrieval queries. BGE-M3 is multilingual and handles documents up to 8192 tokens. BGE-reranker models provide a matching cross-encoder for the reranking stage.</p>
+    <div class="stats"><span class="bdg bg-g">1024d</span><span class="bdg bg-y">Open source</span><span class="bdg bg-g">MTEB avg: 64.2</span><span class="bdg bg-b">8K token support</span></div>
+  </div>
+
+  <div class="model-card" style="border-color:rgba(94,234,212,.25)">
+    <h4><span class="bdg bg-g">Nomic</span> nomic-embed-text-v1.5 (2024)</h4>
+    <p>First truly open embedding model (training code + data released). Outperforms OpenAI text-embedding-ada-002. Supports 8192 context length. Task-specific prefixes: "search_query: " for queries, "search_document: " for documents, "clustering: " for clustering tasks. Fully local deployment, no API calls needed.</p>
+    <div class="stats"><span class="bdg bg-g">768d</span><span class="bdg bg-g">Fully open (data+code)</span><span class="bdg bg-g">8K context</span></div>
+  </div>
+
+  <div class="model-card" style="border-color:rgba(251,191,36,.25)">
+    <h4><span class="bdg bg-y">OpenAI</span> text-embedding-3-small/large (2024)</h4>
+    <p>Strong baseline, minimal setup. text-embedding-3-small is 1536d, 8192 token context. Supports Matryoshka Representation Learning (MRL): you can truncate to 256d or 512d and still get good performance, saving vector DB storage costs. Does NOT need instruction prefixes. API-only &mdash; not locally deployable.</p>
+    <div class="stats"><span class="bdg bg-y">1536d / 3072d</span><span class="bdg bg-r">API only</span><span class="bdg bg-b">MRL support</span></div>
+  </div>
+
+  <div class="cl2 ci" style="margin-top:0">
+    <div class="cico">&#128161;</div>
+    <div class="cbd">
+      <h4>How to choose: MTEB Leaderboard</h4>
+      <p>The MTEB (Massive Text Embedding Benchmark) at huggingface.co/spaces/mteb/leaderboard evaluates models on 56 datasets across 8 tasks. Look at the "Retrieval" subtask scores for your domain. For production RAG: BGE-large-en-v1.5 or nomic-embed-text for self-hosted, text-embedding-3-small for managed API. Always evaluate on a sample of your own queries before committing.</p>
+    </div>
+  </div>
+</section>
+<section class="sec" id="s8">
+  <div class="sn">08 &middot; Production Code</div>
+  <h2>Dense Retrieval From Model<br><span class="gt">to LangChain Vector Store</span></h2>
+  <div class="cc">
+    <div class="ch"><h3>dense_retrieval.py</h3><button class="cpb" onclick="cp(this,'c1')">&#10021; Copy</button></div>
+    <div class="cbody"><pre id="c1"><span class="kw">from</span> sentence_transformers <span class="kw">import</span> <span class="cl">SentenceTransformer</span>
+<span class="kw">from</span> langchain_community.vectorstores <span class="kw">import</span> <span class="cl">Qdrant</span>
+<span class="kw">from</span> langchain_community.embeddings <span class="kw">import</span> <span class="cl">HuggingFaceEmbeddings</span>
+<span class="kw">from</span> langchain.schema <span class="kw">import</span> <span class="cl">Document</span>
+<span class="kw">import</span> numpy <span class="kw">as</span> np
+
+<span class="cm"># ── BGE-large: instruction prefix required for queries ────────</span>
+model = <span class="cl">SentenceTransformer</span>(<span class="str">"BAAI/bge-large-en-v1.5"</span>)
+
+<span class="cm"># For BGE models: queries need the instruction prefix</span>
+<span class="cm"># Documents do NOT need the prefix</span>
+QUERY_PREFIX = <span class="str">"Represent this sentence for searching relevant passages: "</span>
+
+corpus = [
+    <span class="str">"Annual subscriptions are non-refundable after the 30-day trial."</span>,
+    <span class="str">"Monthly subscriptions may be cancelled at any time."</span>,
+    <span class="str">"Refund requests must include your annual subscription ID."</span>,
+    <span class="str">"Enterprise support handles annual contract refund disputes."</span>,
+]
+
+<span class="cm"># ── Embed documents (offline, store results) ──────────────────</span>
+doc_embeddings = model.encode(
+    corpus,
+    normalize_embeddings=<span class="kw">True</span>,   <span class="cm"># L2-normalize so dot product = cosine</span>
+    batch_size=<span class="nu">32</span>,
+    show_progress_bar=<span class="kw">True</span>,
+)
+<span class="cm"># doc_embeddings.shape: (4, 1024) for BGE-large</span>
+
+<span class="cm"># ── Embed and retrieve a query ─────────────────────────────────</span>
+query = <span class="str">"how do I get a refund on my annual plan?"</span>
+q_emb = model.encode(
+    [QUERY_PREFIX + query],
+    normalize_embeddings=<span class="kw">True</span>,
+)[<span class="nu">0</span>]
+
+<span class="cm"># Exact cosine similarity (small corpus): dot product since normalized</span>
+scores = doc_embeddings @ q_emb
+ranked = np.argsort(scores)[::-<span class="nu">1</span>]
+<span class="fn">print</span>(<span class="str">f"Query: {query}"</span>)
+<span class="kw">for</span> i <span class="kw">in</span> ranked:
+    <span class="fn">print</span>(<span class="str">f"  [{scores[i]:.4f}] {corpus[i][:65]}"</span>)
+
+<span class="cm"># ── LangChain + Qdrant production setup ───────────────────────</span>
+embeddings = <span class="cl">HuggingFaceEmbeddings</span>(
+    model_name=<span class="str">"BAAI/bge-large-en-v1.5"</span>,
+    encode_kwargs={<span class="str">"normalize_embeddings"</span>: <span class="kw">True</span>},
+    query_instruction=QUERY_PREFIX,
+)
+docs = [<span class="cl">Document</span>(page_content=c, metadata={<span class="str">"source"</span>: <span class="str">"policy.pdf"</span>})
+        <span class="kw">for</span> c <span class="kw">in</span> corpus]
+
+<span class="cm"># Create Qdrant collection and index documents</span>
+vectorstore = <span class="cl">Qdrant</span>.from_documents(
+    docs, embeddings,
+    location=<span class="str">":memory:"</span>,   <span class="cm"># use URL for production: "http://localhost:6333"</span>
+    collection_name=<span class="str">"policy_docs"</span>,
+)
+
+<span class="cm"># Retrieve top-5 similar documents</span>
+retriever = vectorstore.as_retriever(
+    search_type=<span class="str">"similarity"</span>,
+    search_kwargs={<span class="str">"k"</span>: <span class="nu">5</span>}
+)
+results = retriever.invoke(<span class="str">"refund for annual subscription"</span>)
+
+<span class="cm"># ── Cosine similarity with threshold (filter low-quality) ─────</span>
+retriever_with_threshold = vectorstore.as_retriever(
+    search_type=<span class="str">"similarity_score_threshold"</span>,
+    search_kwargs={<span class="str">"score_threshold"</span>: <span class="nu">0.7</span>, <span class="str">"k"</span>: <span class="nu">10</span>}
+    <span class="cm"># Only returns docs with cosine similarity >= 0.7</span>
+)</pre>
+    </div>
+  </div>
+</section>
+<section class="sec" id="s9">
+  <div class="sn">09 &middot; Assessment</div>
+  <h2>Module 6B <span class="gt">Quiz</span></h2>
+  <p class="lead">Questions about architecture tradeoffs and when to use each approach.</p>
+  <div class="qc">
+    <div class="qq">
+      <h4>1. Query: "MI symptoms". The most relevant document uses "myocardial infarction" throughout with zero token overlap with "MI". A BGE-large bi-encoder returns this document as #1. Why can it do this when BM25 cannot?</h4>
+      <div class="qo">
+        <button class="qob" onclick="cq(this,0,false)">A) BGE-large was trained on medical text so it knows medical abbreviations as lookup rules</button>
+        <button class="qob" onclick="cq(this,0,true)">B) During contrastive training, BGE-large saw many (query, document) pairs where "MI" and "myocardial infarction" co-occurred in relevant pairs. The model learned to embed them as neighboring points in vector space. Cosine similarity is then high regardless of token overlap.</button>
+        <button class="qob" onclick="cq(this,0,false)">C) BGE-large uses character n-grams so "MI" matches part of "myocardial"</button>
+        <button class="qob" onclick="cq(this,0,false)">D) Dense models expand abbreviations as a preprocessing step</button>
+      </div>
+      <div class="qf" id="f0">Correct. Dense models learn semantic relationships from data. "MI" and "myocardial infarction" appear in contexts suggesting equivalence in medical literature. The contrastive training objective pushes their embeddings close together. This generalization is what makes dense retrieval fundamentally different from lexical methods.</div>
+    </div>
+    <div class="qq">
+      <h4>2. You have two cosine scores. Query vector q = [0.6, 0.8] (already L2-normalized). Doc A = [0.7, 0.7] (normalized). Doc B = [0.9, 0.1] (normalized). Which document is more relevant and why?</h4>
+      <div class="qo">
+        <button class="qob" onclick="cq(this,1,true)">B) Doc A: cosine(q,A) = 0.6x0.7 + 0.8x0.7 = 0.42+0.56 = 0.98. Doc B: cosine(q,B) = 0.6x0.9 + 0.8x0.1 = 0.54+0.08 = 0.62. Doc A is far more similar because both dimensions align with the query. Doc B's second dimension (0.1) is nearly zero while the query's second dimension (0.8) is dominant.</button>
+        <button class="qob" onclick="cq(this,1,false)">A) Doc B because it has a higher first component (0.9 vs 0.7)</button>
+        <button class="qob" onclick="cq(this,1,false)">C) They are equal because all vectors are L2-normalized</button>
+        <button class="qob" onclick="cq(this,1,false)">D) Doc A because it has equal components which indicates balanced relevance</button>
+      </div>
+      <div class="qf" id="f1">Correct. The calculation: cosine(q,A) = (0.6x0.7)+(0.8x0.7) = 0.42+0.56 = 0.98 (near-identical direction). cosine(q,B) = (0.6x0.9)+(0.8x0.1) = 0.54+0.08 = 0.62 (different direction). Doc A has high alignment on both dimensions; Doc B dominates only on the first dimension but diverges on the second. Cosine measures angle, not magnitude.</div>
+    </div>
+    <div class="qq">
+      <h4>3. You need to retrieve from 10 million documents at query time with p50 latency under 100ms. Should you use a bi-encoder or cross-encoder for the retrieval stage?</h4>
+      <div class="qo">
+        <button class="qob" onclick="cq(this,2,true)">A) Bi-encoder. Cross-encoders process each (query, document) pair independently with a full forward pass (~50ms per pair). Scoring 10M documents would take 500,000 seconds. Bi-encoders pre-compute document embeddings offline and use ANN search (HNSW) to retrieve top-k in under 100ms regardless of corpus size.</button>
+        <button class="qob" onclick="cq(this,2,false)">B) Cross-encoder with GPU acceleration can handle 10M documents in 100ms</button>
+        <button class="qob" onclick="cq(this,2,false)">C) Either works equally well at scale with proper infrastructure</button>
+        <button class="qob" onclick="cq(this,2,false)">D) Neither; use BM25 at this scale and reserve dense for small corpora</button>
+      </div>
+      <div class="qf" id="f2">Correct. Cross-encoders cannot pre-compute anything because the score depends on both query and document together. At retrieval time they must process every document fresh. Even a fast cross-encoder at 10ms per pair would need 27.8 hours per query on 10M documents. Bi-encoders pre-compute all document vectors offline; at query time you only embed the query once and search the ANN index.</div>
+    </div>
+    <div class="qq">
+      <h4>4. ColBERT stores per-token embeddings instead of a single pooled vector. This increases storage cost. What accuracy advantage does this provide over standard bi-encoders?</h4>
+      <div class="qo">
+        <button class="qob" onclick="cq(this,3,true)">B) Each query token finds its best-matching document token via MaxSim. "refund" can match "non-refundable" if those token embeddings are close. A pooled single vector averages away these token-level distinctions &mdash; the relationship between specific query tokens and specific document tokens is lost in the pooling.</button>
+        <button class="qob" onclick="cq(this,3,false)">A) ColBERT is faster at inference because it avoids the pooling step</button>
+        <button class="qob" onclick="cq(this,3,false)">C) Per-token storage allows filtering by specific entity mentions</button>
+        <button class="qob" onclick="cq(this,3,false)">D) ColBERT trains faster because per-token loss is more stable</button>
+      </div>
+      <div class="qf" id="f3">Correct. Standard bi-encoder: "refund" and "non-refundable" are both averaged into the document's single 768-dimensional vector along with all other tokens. Whether they align with the query depends on how well pooling preserved their relationship. ColBERT: "refund" query token directly computes max similarity against all document tokens. "non-refundable" will be a close neighbor in token embedding space and will score high.</div>
+    </div>
+    <div class="qq">
+      <h4>5. You are using BGE-large-en-v1.5. A colleague removes the query instruction prefix, arguing "the model should work without it." Retrieval quality drops significantly. Why does removing the prefix hurt?</h4>
+      <div class="qo">
+        <button class="qob" onclick="cq(this,4,false)">A) The model is hardcoded to refuse queries without the prefix</button>
+        <button class="qob" onclick="cq(this,4,true)">B) BGE was trained with different prefixes for different use cases. "Represent this sentence for searching relevant passages: " signals the encoder to produce a retrieval-optimized query embedding. Without it, the encoder produces a general-purpose sentence embedding that is less aligned with the document embeddings in the index, degrading cosine similarity scores.</button>
+        <button class="qob" onclick="cq(this,4,false)">C) The prefix acts as a system prompt that summarizes the retrieval task to the model</button>
+        <button class="qob" onclick="cq(this,4,false)">D) Removing the prefix changes the tokenization of the query</button>
+      </div>
+      <div class="qf" id="f4">Correct. Instruction-following embedding models were fine-tuned with task-specific prefixes. The prefix shapes what aspect of the text the encoder emphasizes. "search relevant passages" tells the encoder: optimize for retrieval relevance. The document embeddings in your index were computed without any prefix, and the query encoder was trained to align with those when given the retrieval instruction. Removing it creates a mismatch.</div>
+    </div>
+    <div class="qs" id="qs"><h3 id="sc">0/5</h3><p id="sm"></p></div>
+  </div>
+</section>
+<div class="fn2">
+  <a href="rag_module_6a.html" class="pr">&larr; 6A: Sparse Retrieval (BM25)</a>
+  <div class="fcc"><div>Module 6B &middot; Dense Retrieval</div><div style="font-size:.75rem;margin-top:4px">RAG Masterclass &middot; Marevlo</div></div>
+  <a href="rag_module_6c.html" class="nx">6C: Learned Sparse + Decision Matrix &rarr;</a>
+</div>
+</div>
+
+<script>
+window.addEventListener('scroll', function() {
+  var h = document.documentElement;
+  document.getElementById('sp').style.width = ((h.scrollTop/(h.scrollHeight-h.clientHeight))*100)+'%';
+});
+var obs = new IntersectionObserver(function(entries) {
+  entries.forEach(function(e){ if(e.isIntersecting) e.target.classList.add('vis'); });
+},{threshold:0.07});
+document.querySelectorAll('.sec').forEach(function(s){ obs.observe(s); });
+
+function cp(btn,id) {
+  navigator.clipboard.writeText(document.getElementById(id).innerText).then(function(){
+    btn.textContent='Copied!';
+    setTimeout(function(){ btn.textContent='Copy'; },2000);
+  });
+}
+
+var ans=[null,null,null,null,null];
+function cq(btn,qi,ok){
+  var opts=btn.parentElement.querySelectorAll('.qob');
+  opts.forEach(function(o){ o.disabled=true; });
+  if(ans[qi]!==null) return;
+  ans[qi]=ok;
+  var f=document.getElementById('f'+qi);
+  if(ok){ btn.classList.add('ok'); f.classList.add('show'); f.style.color='var(--a1)'; }
+  else{
+    btn.classList.add('no');
+    opts.forEach(function(o){ if(o!==btn&&o.getAttribute('onclick').indexOf(',true)')>-1) o.classList.add('ok'); });
+    f.classList.add('show'); f.style.color='var(--a3)';
+  }
+  var filled=ans.filter(function(a){ return a!==null; }).length;
+  if(filled===5){
+    var c=ans.filter(function(a){ return a===true; }).length;
+    document.getElementById('qs').style.display='block';
+    document.getElementById('sc').textContent=c+'/5';
+    document.getElementById('sm').textContent=['Review the architecture sections.','Re-read cosine similarity.','Good. Check bi-encoder vs cross-encoder.','Almost perfect!','Perfect. Move to 6C: SPLADE.'][c];
+  }
+}
+</script>
+</body>
+</html>

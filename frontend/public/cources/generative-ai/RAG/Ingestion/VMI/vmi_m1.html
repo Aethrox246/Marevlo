@@ -1,0 +1,645 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Video & Multimodal Ingestion Track · M1 — Video Encoders — How Models See Temporal Data</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;700&family=Source+Serif+4:ital,opsz,wght@0,8..60,400;0,8..60,600;1,8..60,400&display=swap" rel="stylesheet">
+<style>:root{--bg:#08080e;--t1:#ececf6;--t2:#b5b5c8;--tm:#6b6b85;
+--a1:#5eead4;--a2:#60a5fa;--a3:#f472b6;--a4:#fbbf24;--a5:#a78bfa;--ac:#5eead4;
+--gl:linear-gradient(90deg,#5eead4 0%,#60a5fa 28%,#a78bfa 55%,#f472b6 82%,#fbbf24 100%);
+--bs:rgba(255,255,255,0.06);--sh:0 24px 80px rgba(0,0,0,0.5);--r:18px;--cw:1160px}
+*{box-sizing:border-box;margin:0;padding:0}html{scroll-behavior:smooth}
+body{background:radial-gradient(ellipse 900px 500px at 15% 10%,rgba(94,234,212,.08),transparent 50%),radial-gradient(ellipse 700px 400px at 85% 20%,rgba(96,165,250,.05),transparent 40%),var(--bg);color:var(--t1);font-family:'Outfit',sans-serif;line-height:1.75;overflow-x:hidden;-webkit-font-smoothing:antialiased}
+/* Progress bar */
+.sp{position:fixed;top:0;left:0;height:3px;width:0%;z-index:1000;background:var(--gl);transition:width .1s linear}
+/* Nav */
+nav{position:fixed;top:3px;left:0;right:0;z-index:999;display:flex;align-items:center;justify-content:space-between;padding:.7rem 2rem;background:rgba(8,8,14,.9);backdrop-filter:blur(16px);border-bottom:1px solid var(--bs)}
+.nbr{font-family:'JetBrains Mono',monospace;font-size:.7rem;color:var(--ac);letter-spacing:.16em;text-transform:uppercase;text-decoration:none;display:flex;align-items:center;gap:8px}
+.nbr-dot{width:6px;height:6px;border-radius:50%;background:var(--ac);animation:pulse 2s ease-in-out infinite}
+.nm{font-size:.8rem;color:var(--tm);max-width:400px;text-overflow:ellipsis;overflow:hidden;white-space:nowrap}
+.na{display:flex;gap:8px}
+.nb{display:inline-flex;align-items:center;gap:6px;padding:.38rem .85rem;border-radius:999px;border:1px solid var(--bs);background:rgba(255,255,255,.02);color:var(--t2);font-size:.78rem;text-decoration:none;transition:all .18s}
+.nb:hover{border-color:var(--ac);color:var(--ac)}
+/* Hero */
+.hero{min-height:100vh;display:flex;align-items:center;justify-content:center;padding:5rem 2rem 3rem;position:relative;overflow:hidden}
+.hg{position:absolute;inset:0;background-image:linear-gradient(rgba(255,255,255,.018) 1px,transparent 1px),linear-gradient(90deg,rgba(255,255,255,.018) 1px,transparent 1px);background-size:52px 52px;mask-image:radial-gradient(circle at center,black 20%,transparent 75%);pointer-events:none}
+.hi{max-width:1000px;text-align:center;position:relative;z-index:1}
+.hl{display:inline-flex;align-items:center;gap:10px;padding:.5rem 1rem;border-radius:999px;border:1px solid rgba(94,234,212,.28);background:rgba(94,234,212,.07);color:var(--ac);letter-spacing:1.8px;text-transform:uppercase;font-size:.74rem;margin-bottom:1.8rem}
+h1{font-size:clamp(2.6rem,5.5vw,5rem);line-height:1.02;letter-spacing:-.05em;font-weight:900;margin-bottom:1.2rem}
+.gt{background:var(--gl);-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent}
+.sub{font-size:.82rem;color:var(--tm);font-family:'JetBrains Mono',monospace;margin-bottom:.6rem;letter-spacing:.04em}
+.hs{font-family:'Source Serif 4',serif;color:var(--t2);font-size:clamp(1rem,1.8vw,1.18rem);max-width:800px;margin:0 auto 2.2rem;line-height:1.85}
+.hm{display:flex;flex-wrap:wrap;justify-content:center;gap:10px;margin-bottom:2.5rem}
+.mp{border:1px solid var(--bs);background:rgba(17,17,28,.8);border-radius:999px;padding:.6rem 1.1rem;color:var(--t2);font-size:.86rem}
+.mp.hl2{border-color:rgba(94,234,212,.3);color:var(--ac);background:rgba(94,234,212,.06)}
+.sc{position:absolute;bottom:2.4rem;left:50%;transform:translateX(-50%);color:var(--tm);display:flex;flex-direction:column;gap:.5rem;align-items:center;text-transform:uppercase;letter-spacing:.22em;font-size:.68rem}
+.arr{width:17px;height:17px;border-right:2px solid var(--tm);border-bottom:2px solid var(--tm);transform:rotate(45deg);animation:ba 2s ease-in-out infinite}
+@keyframes pulse{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.25;transform:scale(.7)}}
+@keyframes ba{0%,100%{transform:rotate(45deg) translateY(0)}50%{transform:rotate(45deg) translateY(8px)}}
+/* Content */
+.cw{max-width:var(--cw);margin:0 auto;padding:0 2rem 7rem}
+.sec{margin-bottom:6rem;opacity:0;transform:translateY(32px);transition:opacity .6s ease,transform .6s ease}
+.sec.vis{opacity:1;transform:translateY(0)}
+.sn{display:flex;align-items:center;gap:14px;color:var(--ac);font-family:'JetBrains Mono',monospace;font-size:.67rem;text-transform:uppercase;letter-spacing:.24em;margin-bottom:1rem}
+.sn::after{content:"";height:1px;flex:1;background:linear-gradient(90deg,rgba(94,234,212,.6),transparent)}
+.sec h2{font-size:clamp(2rem,4vw,3rem);line-height:1.06;margin-bottom:1.1rem;letter-spacing:-.04em}
+.lead{font-family:'Source Serif 4',serif;font-size:1.1rem;color:var(--t2);margin-bottom:2.2rem;line-height:1.88;max-width:860px}
+/* Cards */
+.card{background:linear-gradient(160deg,rgba(20,20,36,.98),rgba(14,14,26,.98));border:1px solid var(--bs);border-radius:var(--r);box-shadow:var(--sh);padding:2rem;margin-bottom:1.6rem}
+.card-accent{border-color:rgba(94,234,212,.25);background:linear-gradient(160deg,rgba(94,234,212,.04),rgba(14,14,26,.98))}
+/* Code blocks */
+.cc{background:linear-gradient(180deg,rgba(10,10,20,.99),rgba(8,8,16,.99));border:1px solid var(--bs);border-radius:var(--r);box-shadow:var(--sh);padding:0;margin-bottom:1.6rem;overflow:hidden}
+.ch{display:flex;align-items:center;justify-content:space-between;padding:1rem 1.6rem;border-bottom:1px solid var(--bs);background:rgba(255,255,255,.015)}
+.ch h3{font-size:.88rem;font-family:'JetBrains Mono',monospace;color:var(--ac);display:flex;align-items:center;gap:8px}
+.ch h3::before{content:"⟩";opacity:.5}
+.cpb{display:inline-flex;align-items:center;gap:5px;padding:.26rem .7rem;border-radius:999px;border:1px solid var(--bs);background:transparent;color:var(--tm);font-size:.7rem;cursor:pointer;transition:all .18s;font-family:'JetBrains Mono',monospace}
+.cpb:hover{border-color:var(--a1);color:var(--a1)}
+.cbody{padding:1.6rem;overflow-x:auto}
+pre{white-space:pre;color:#d8e3ff;font-family:'JetBrains Mono',monospace;font-size:.84rem;line-height:1.78;tab-size:4}
+.kw{color:#c084fc}.fn{color:#60a5fa}.str{color:#5eead4}.cm{color:#3d4060;font-style:italic}.nu{color:#fbbf24}.cl{color:#f472b6}.de{color:#fb923c}.op{color:#94a3b8}
+/* Architecture containers */
+.arch{background:rgba(8,8,18,.96);border:1px solid rgba(94,234,212,.18);border-radius:var(--r);padding:1.8rem;margin-bottom:1.6rem;overflow-x:auto;text-align:center}
+.arch-title{font-family:'JetBrains Mono',monospace;font-size:.68rem;text-transform:uppercase;letter-spacing:.2em;color:var(--ac);margin-bottom:1.4rem;text-align:left;display:flex;align-items:center;gap:8px}
+.arch-title::before{content:"▸";opacity:.7}
+/* Callouts */
+.callout{border-radius:14px;padding:1.2rem 1.4rem;margin-bottom:1.2rem;display:flex;gap:1rem;align-items:flex-start}
+.callout-key{background:rgba(94,234,212,.05);border:1px solid rgba(94,234,212,.22)}
+.callout-warn{background:rgba(251,191,36,.05);border:1px solid rgba(251,191,36,.22)}
+.callout-insight{background:rgba(167,139,250,.05);border:1px solid rgba(167,139,250,.22)}
+.callout-scenario{background:rgba(96,165,250,.05);border:1px solid rgba(96,165,250,.22)}
+.callout-danger{background:rgba(244,114,182,.05);border:1px solid rgba(244,114,182,.22)}
+.callout-icon{font-size:1.35rem;flex-shrink:0;margin-top:.08rem}
+.callout-body h4{font-size:.96rem;margin-bottom:.35rem;color:var(--t1);font-weight:700}
+.callout-body p{font-size:.88rem;color:var(--t2);line-height:1.68}
+.callout-body code{font-family:'JetBrains Mono',monospace;font-size:.82rem;background:rgba(255,255,255,.06);padding:.1rem .3rem;border-radius:4px;color:var(--ac)}
+/* Grids */
+.g2{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:1.4rem;margin-bottom:1.6rem}
+.g3{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:1.2rem;margin-bottom:1.6rem}
+.g4{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:1rem;margin-bottom:1.4rem}
+@media(max-width:768px){.g2,.g3,.g4{grid-template-columns:1fr}}
+.mc2{border:1px solid var(--bs);border-radius:16px;padding:1.4rem;background:rgba(255,255,255,.02);transition:border-color .2s}
+.mc2:hover{border-color:rgba(94,234,212,.3)}
+.mc2 h4{font-size:1rem;margin-bottom:.6rem;color:var(--t1);font-weight:700}
+.mc2 p{font-size:.88rem;color:var(--t2);line-height:1.68}
+.mc2 .tag{display:inline-block;font-family:'JetBrains Mono',monospace;font-size:.68rem;padding:.2rem .55rem;border-radius:999px;margin-bottom:.6rem;text-transform:uppercase;letter-spacing:.1em}
+/* Tables */
+.tbl{width:100%;border-collapse:collapse;font-size:.86rem}
+.tbl th{text-align:left;padding:.8rem 1.1rem;font-family:'JetBrains Mono',monospace;font-size:.64rem;text-transform:uppercase;color:var(--tm);border-bottom:1px solid var(--bs);letter-spacing:.08em}
+.tbl td{padding:.8rem 1.1rem;border-bottom:1px solid rgba(255,255,255,.035);color:var(--t2);vertical-align:top;line-height:1.65}
+.tbl td:first-child{color:var(--t1);font-weight:600}.tbl tr:last-child td{border-bottom:none}
+.tbl tr:hover td{background:rgba(255,255,255,.015)}
+/* Scenario box */
+.scenario{background:linear-gradient(135deg,rgba(96,165,250,.04),rgba(167,139,250,.04));border:1px solid rgba(96,165,250,.2);border-radius:var(--r);padding:1.8rem;margin-bottom:1.6rem;position:relative}
+.scenario::before{content:"SCENARIO";position:absolute;top:-1px;left:1.5rem;background:var(--bg);padding:0 .6rem;font-family:'JetBrains Mono',monospace;font-size:.62rem;color:var(--a2);letter-spacing:.2em}
+.scenario h4{color:var(--a2);margin-bottom:.8rem;font-size:1.05rem}
+.scenario p{font-size:.9rem;color:var(--t2);line-height:1.72;margin-bottom:.6rem}
+.scenario p:last-child{margin-bottom:0}
+.scenario code{font-family:'JetBrains Mono',monospace;font-size:.82rem;background:rgba(96,165,250,.1);padding:.1rem .3rem;border-radius:4px;color:var(--a2)}
+/* Quiz */
+.qc{background:linear-gradient(180deg,rgba(18,18,32,.98),rgba(12,12,24,.98));border:1px solid var(--bs);border-radius:var(--r);box-shadow:var(--sh);padding:2.2rem}
+.qc-title{font-size:1.2rem;font-weight:800;margin-bottom:.25rem;color:var(--t1)}
+.qc-sub{font-size:.82rem;color:var(--tm);margin-bottom:1.8rem;font-family:'JetBrains Mono',monospace}
+.qq{border:1px solid var(--bs);border-radius:18px;padding:1.8rem;background:rgba(255,255,255,.012);margin-bottom:1.4rem;transition:border-color .3s,background .3s}
+.qq.answered{border-color:rgba(94,234,212,.3);background:rgba(94,234,212,.02)}
+.qnum{font-family:'JetBrains Mono',monospace;font-size:.66rem;color:var(--ac);text-transform:uppercase;letter-spacing:.18em;margin-bottom:.6rem;display:flex;align-items:center;gap:8px}
+.qnum::after{content:"";height:1px;flex:1;background:rgba(94,234,212,.2)}
+.qq h4{font-size:.97rem;margin-bottom:1.2rem;color:var(--t1);line-height:1.6;font-weight:600}
+.qo{display:grid;gap:.6rem}
+.qob{border:1px solid var(--bs);border-radius:12px;padding:1rem 1.2rem;background:rgba(255,255,255,.018);color:var(--t2);cursor:pointer;transition:all .22s;text-align:left;font-size:.88rem;font-family:'Outfit',sans-serif;width:100%;line-height:1.6;position:relative;padding-left:3.2rem}
+.qob::before{content:attr(data-opt);position:absolute;left:1rem;top:50%;transform:translateY(-50%);font-family:'JetBrains Mono',monospace;font-size:.76rem;font-weight:700;color:var(--tm);width:1.4rem;text-align:center;transition:color .2s}
+.qob:hover:not([disabled]){border-color:rgba(94,234,212,.5);background:rgba(94,234,212,.05);color:var(--t1)}
+.qob:hover:not([disabled])::before{color:var(--ac)}
+.qob.ok{border-color:rgba(94,234,212,.6);background:rgba(94,234,212,.08);color:var(--t1)}
+.qob.ok::before{color:#5eead4}
+.qob.no{border-color:rgba(244,114,182,.4);background:rgba(244,114,182,.06);color:var(--t2)}
+.qob.no::before{color:#f472b6}
+.qob[disabled]{cursor:default}
+.qfeed{margin-top:1rem;border-radius:14px;padding:1.2rem 1.4rem;display:none}
+.qfeed.correct{background:rgba(94,234,212,.05);border:1px solid rgba(94,234,212,.25)}
+.qfeed.wrong{background:rgba(244,114,182,.04);border:1px solid rgba(244,114,182,.2)}
+.qfeed-head{font-weight:700;margin-bottom:.4rem;font-size:.92rem}
+.qfeed.correct .qfeed-head{color:#5eead4}
+.qfeed.wrong .qfeed-head{color:#f472b6}
+.qfeed-why{color:var(--t2);font-size:.87rem;line-height:1.68}
+.qfeed-why strong{color:var(--t1)}
+.qfeed-why code{font-family:'JetBrains Mono',monospace;font-size:.8rem;background:rgba(255,255,255,.06);padding:.1rem .3rem;border-radius:4px;color:var(--ac)}
+.qprog{display:flex;align-items:center;gap:1.2rem;margin-bottom:1.8rem}
+.qprog-bar{flex:1;height:5px;background:rgba(255,255,255,.05);border-radius:999px;overflow:hidden}
+.qprog-fill{height:100%;background:var(--gl);border-radius:999px;width:0%;transition:width .5s ease}
+.qprog-text{font-family:'JetBrains Mono',monospace;font-size:.7rem;color:var(--tm);white-space:nowrap}
+.qs{text-align:center;padding:2rem;border:1px solid var(--bs);border-radius:18px;margin-top:1.8rem;background:rgba(255,255,255,.01)}
+.qs h3{font-size:1.8rem;margin-bottom:.5rem;font-weight:800}
+.qs p{color:var(--t2);font-size:.92rem}
+/* Nav buttons */
+.pr,.nx{display:inline-flex;align-items:center;gap:7px;padding:.55rem 1.2rem;border-radius:999px;border:1px solid var(--bs);background:rgba(255,255,255,.02);color:var(--t2);font-size:.84rem;text-decoration:none;transition:all .2s}
+.pr:hover,.nx:hover{border-color:var(--ac);color:var(--ac)}
+/* Metric bars */
+.metric-row{display:flex;align-items:center;gap:1rem;margin-bottom:.7rem}
+.metric-label{font-family:'JetBrains Mono',monospace;font-size:.76rem;color:var(--t2);min-width:140px}
+.metric-bar{flex:1;height:8px;background:rgba(255,255,255,.05);border-radius:999px;overflow:hidden}
+.metric-fill{height:100%;border-radius:999px;transition:width 1.2s ease}
+.metric-val{font-family:'JetBrains Mono',monospace;font-size:.76rem;color:var(--t1);min-width:40px;text-align:right}
+/* Footer */
+footer{border-top:1px solid var(--bs);padding:3rem 2rem;text-align:center;color:var(--tm);font-size:.82rem}</style>
+</head>
+<body>
+<div class="sp" id="sp"></div>
+<nav>
+  <a class="nbr" href="#"><div class="nbr-dot"></div>Video & Multimodal Ingestion Track · M1</a>
+  <span class="nm">3D Conv · Patch Tokenisation · Divided Space-Time Attention · VideoMAE · CLIP vs VideoMAE · Optical Flow</span>
+  <div class="na"><a href="vmi_m0.html" class="pr">← M0: Multimodal Ingestion</a><a href="vmi_m2.html" class="nx">M2: Audio Encoders →</a></div>
+</nav>
+<section class="hero">
+  <div class="hg"></div>
+  <div class="hi">
+    <div class="hl">Video & Multimodal Ingestion Track · Module 1</div>
+    <h1>Video Encoders — How Models See Temporal Data</h1>
+    <p class="sub">3D Conv · Patch Tokenisation · Divided Space-Time Attention · VideoMAE · CLIP vs VideoMAE · Optical Flow</p>
+    <p class="hs">The fundamental challenge of video encoding is time. An image encoder sees one moment; a video encoder must build representations that capture not just what things look like, but how they move, change, and relate to each other across time. 3D convolutions address this directly by extending spatial kernels into the temporal dimension. Video transformers address it more efficiently through factored space-time attention, reducing the quadratic cost of full spatiotemporal attention by 8× while learning the same temporal relationships. This module covers the architectural decisions — 3D conv vs transformers, joint vs factored attention, pre-training strategy — that determine whether a video model can actually see time.</p>
+<div class="hm">
+<span class="mp hl2">⏱ 90 min</span>
+<span class="mp">2D per-frame vs 3D conv</span>
+<span class="mp">Patch tokenisation (T×H×W)</span>
+<span class="mp">Temporal positional embeddings</span>
+<span class="mp">Divided space-time attention</span>
+<span class="mp">Complexity: joint vs factored</span>
+<span class="mp">VideoMAE masked pre-training</span>
+<span class="mp">CLIP-ViT vs VideoMAE for retrieval</span>
+</div>
+  </div>
+  <div class="sc"><span>Scroll</span><div class="arr"></div></div>
+</section>
+<div class="cw">
+
+<section class="sec" id="s1">
+<div class="sn">01 · Why 2D Encoders Are Temporally Blind</div>
+<h2>3D Convolutions:<br><span class="gt">The Kernel That Sees Motion</span></h2>
+<p class="lead">A 2D convolutional encoder applied independently to each video frame produces identical features for a running person and a still photograph of that same person mid-stride. It cannot distinguish motion from appearance because its kernel has no temporal dimension. 3D convolutions extend the spatial kernel into time — a (t×h×w) kernel activates when the same spatiotemporal pattern of pixel changes appears in the video volume. This direct encoding of motion is the core architectural insight behind C3D (Tran et al. 2015) and I3D (Carreira & Zisserman 2017).</p>
+<div class="arch">
+<div class="arch-title">2D per-frame conv (temporally blind) vs 3D spatiotemporal conv (motion-aware)</div>
+<svg viewBox="0 0 900 290" xmlns="http://www.w3.org/2000/svg" style="width:100%;max-width:900px;display:block">
+<rect width="900" height="290" fill="#07070f" rx="14"/>
+<defs>
+  <marker id="v0" markerWidth="7" markerHeight="5" refX="7" refY="2.5" orient="auto"><polygon points="0 0,7 2.5,0 5" fill="#5eead4"/></marker>
+  <marker id="v1" markerWidth="7" markerHeight="5" refX="7" refY="2.5" orient="auto"><polygon points="0 0,7 2.5,0 5" fill="#a78bfa"/></marker>
+</defs>
+<text x="450" y="26" font-family="JetBrains Mono,monospace" font-size="11" fill="#5eead4" text-anchor="middle" letter-spacing="2" font-weight="bold">3D CONVOLUTION vs 2D PER-FRAME — SPATIOTEMPORAL KERNEL</text>
+
+<!-- ── LEFT: 2D conv per frame  x=14 y=44 w=390 h=228 ── -->
+<rect x="14" y="44" width="390" height="228" rx="10" fill="rgba(244,114,182,.03)" stroke="rgba(244,114,182,.25)" stroke-width="1.5"/>
+<text x="209" y="64" font-family="JetBrains Mono,monospace" font-size="9" fill="#f472b6" text-anchor="middle" font-weight="bold">2D Conv  (per-frame, no temporal context)</text>
+
+<!-- Video volume left: 4 stacked frames drawn as offset rects -->
+<rect x="44"  y="86"  width="90" height="60" rx="4" fill="rgba(244,114,182,.06)" stroke="rgba(244,114,182,.3)"/>
+<rect x="52"  y="78"  width="90" height="60" rx="4" fill="rgba(244,114,182,.08)" stroke="rgba(244,114,182,.35)"/>
+<rect x="60"  y="70"  width="90" height="60" rx="4" fill="rgba(244,114,182,.1)"  stroke="rgba(244,114,182,.4)"/>
+<rect x="68"  y="62"  width="90" height="60" rx="4" fill="rgba(244,114,182,.12)" stroke="#f472b6" stroke-width="1.5"/>
+<text x="113" y="90"  font-family="JetBrains Mono,monospace" font-size="8" fill="#f472b6" text-anchor="middle">Frame t</text>
+<text x="113" y="104" font-family="JetBrains Mono,monospace" font-size="7" fill="#7c7c95" text-anchor="middle">H × W × 3</text>
+<text x="113" y="117" font-family="JetBrains Mono,monospace" font-size="7" fill="#7c7c95" text-anchor="middle">(H=224,W=224)</text>
+<text x="70"  y="136" font-family="JetBrains Mono,monospace" font-size="7" fill="#7c7c95" text-anchor="middle">T frames</text>
+
+<!-- 2D kernel: h×w rectangle -->
+<rect x="192" y="82" width="36" height="36" rx="3" fill="rgba(244,114,182,.2)" stroke="#f472b6" stroke-width="2"/>
+<text x="210" y="98"  font-family="JetBrains Mono,monospace" font-size="7" fill="#f472b6" text-anchor="middle">k×k</text>
+<text x="210" y="110" font-family="JetBrains Mono,monospace" font-size="7" fill="#7c7c95" text-anchor="middle">kernel</text>
+<text x="210" y="140" font-family="JetBrains Mono,monospace" font-size="7" fill="#7c7c95" text-anchor="middle">NO temporal</text>
+<text x="210" y="152" font-family="JetBrains Mono,monospace" font-size="7" fill="#7c7c95" text-anchor="middle">connections</text>
+
+<!-- Output: T independent feature maps -->
+<rect x="278" y="86"  width="90" height="60" rx="4" fill="rgba(255,255,255,.04)" stroke="rgba(255,255,255,.1)"/>
+<rect x="286" y="78"  width="90" height="60" rx="4" fill="rgba(255,255,255,.04)" stroke="rgba(255,255,255,.1)"/>
+<rect x="294" y="70"  width="90" height="60" rx="4" fill="rgba(255,255,255,.04)" stroke="rgba(255,255,255,.1)"/>
+<rect x="302" y="62"  width="90" height="60" rx="4" fill="rgba(255,255,255,.04)" stroke="rgba(255,255,255,.12)"/>
+<text x="347" y="90"  font-family="JetBrains Mono,monospace" font-size="8" fill="#ececf6" text-anchor="middle">T feat. maps</text>
+<text x="347" y="104" font-family="JetBrains Mono,monospace" font-size="7" fill="#7c7c95" text-anchor="middle">independent</text>
+
+<text x="209" y="166" font-family="JetBrains Mono,monospace" font-size="8" fill="#f472b6" text-anchor="middle" font-weight="bold">Blind to temporal change</text>
+<text x="209" y="180" font-family="JetBrains Mono,monospace" font-size="7" fill="#7c7c95" text-anchor="middle">Frame t and frame t+1 processed with</text>
+<text x="209" y="192" font-family="JetBrains Mono,monospace" font-size="7" fill="#7c7c95" text-anchor="middle">identical kernel — no motion encoding.</text>
+<text x="209" y="208" font-family="JetBrains Mono,monospace" font-size="7" fill="#7c7c95" text-anchor="middle">Shuffled frames → same output.</text>
+<text x="209" y="222" font-family="JetBrains Mono,monospace" font-size="7" fill="#f472b6" text-anchor="middle">Cannot detect action or motion.</text>
+<text x="209" y="258" font-family="JetBrains Mono,monospace" font-size="7" fill="#7c7c95" text-anchor="middle">kernel: (C_in, C_out, k, k)  · cost: O(k²)</text>
+
+<!-- ── RIGHT: 3D conv  x=420 y=44 w=466 h=228 ── -->
+<rect x="420" y="44" width="466" height="228" rx="10" fill="rgba(94,234,212,.03)" stroke="rgba(94,234,212,.3)" stroke-width="1.5"/>
+<text x="653" y="64" font-family="JetBrains Mono,monospace" font-size="9" fill="#5eead4" text-anchor="middle" font-weight="bold">3D Conv  (joint spatiotemporal kernel)</text>
+
+<!-- 3D video volume: offset rects -->
+<rect x="444" y="86"  width="90" height="60" rx="4" fill="rgba(94,234,212,.06)" stroke="rgba(94,234,212,.3)"/>
+<rect x="452" y="78"  width="90" height="60" rx="4" fill="rgba(94,234,212,.08)" stroke="rgba(94,234,212,.35)"/>
+<rect x="460" y="70"  width="90" height="60" rx="4" fill="rgba(94,234,212,.1)"  stroke="rgba(94,234,212,.4)"/>
+<rect x="468" y="62"  width="90" height="60" rx="4" fill="rgba(94,234,212,.12)" stroke="#5eead4" stroke-width="1.5"/>
+<text x="513" y="90"  font-family="JetBrains Mono,monospace" font-size="8" fill="#5eead4" text-anchor="middle">Clip</text>
+<text x="513" y="104" font-family="JetBrains Mono,monospace" font-size="7" fill="#7c7c95" text-anchor="middle">T × H × W × 3</text>
+
+<!-- 3D kernel: cube shape drawn as overlapping rects -->
+<rect x="596" y="72" width="30" height="30" rx="2" fill="rgba(94,234,212,.15)" stroke="rgba(94,234,212,.4)"/>
+<rect x="604" y="80" width="30" height="30" rx="2" fill="rgba(94,234,212,.18)" stroke="rgba(94,234,212,.5)"/>
+<rect x="612" y="88" width="30" height="30" rx="2" fill="rgba(94,234,212,.22)" stroke="#5eead4" stroke-width="1.5"/>
+<text x="626" y="110" font-family="JetBrains Mono,monospace" font-size="7" fill="#5eead4" text-anchor="middle">t×k×k</text>
+<text x="626" y="122" font-family="JetBrains Mono,monospace" font-size="7" fill="#7c7c95" text-anchor="middle">3D kernel</text>
+
+<!-- Output -->
+<rect x="686" y="86"  width="90" height="60" rx="4" fill="rgba(94,234,212,.06)" stroke="rgba(94,234,212,.25)"/>
+<rect x="694" y="78"  width="90" height="60" rx="4" fill="rgba(94,234,212,.08)" stroke="rgba(94,234,212,.3)"/>
+<text x="739" y="105" font-family="JetBrains Mono,monospace" font-size="8" fill="#5eead4" text-anchor="middle">Temporal</text>
+<text x="739" y="119" font-family="JetBrains Mono,monospace" font-size="7" fill="#5eead4" text-anchor="middle">feat. maps</text>
+
+<text x="653" y="170" font-family="JetBrains Mono,monospace" font-size="8" fill="#5eead4" text-anchor="middle" font-weight="bold">Encodes motion directly in kernel</text>
+<text x="653" y="184" font-family="JetBrains Mono,monospace" font-size="7" fill="#7c7c95" text-anchor="middle">Kernel spans t=3 frames: response is high</text>
+<text x="653" y="196" font-family="JetBrains Mono,monospace" font-size="7" fill="#7c7c95" text-anchor="middle">when same spatiotemporal pattern repeats.</text>
+<text x="653" y="208" font-family="JetBrains Mono,monospace" font-size="7" fill="#7c7c95" text-anchor="middle">Shuffled frames → different output.</text>
+<text x="653" y="222" font-family="JetBrains Mono,monospace" font-size="7" fill="#5eead4" text-anchor="middle">Detects running, waving, falling.</text>
+<text x="653" y="258" font-family="JetBrains Mono,monospace" font-size="7" fill="#7c7c95" text-anchor="middle">kernel: (C_in, C_out, t, k, k)  · cost: O(t·k²) — t× more than 2D</text>
+</svg>
+</div>
+<div class="cc">
+  <div class="ch"><h3>video_tokenise.py — clip tokenisation and temporal positional embeddings</h3><button class="cpb" onclick="cp(this,'c1')">Copy</button></div>
+  <div class="cbody"><pre id="c1"><span class="kw">import</span> torch
+<span class="kw">import</span> torch.nn <span class="kw">as</span> nn
+<span class="kw">import</span> einops
+
+<span class="kw">class</span> <span class="cl">VideoTokeniser</span>(nn.Module):
+    <span class="str">"""
+    Convert a video clip (T, H, W, 3) into a sequence of patch tokens
+    with temporal positional embeddings — input format for video transformers.
+
+    Spatial patches: divide each frame into (H/P × W/P) non-overlapping patches
+    of size P×P pixels. Each patch → linear projection to D dimensions.
+    For H=W=224, P=16: 14×14 = 196 patches per frame.
+
+    Temporal tokens: each frame contributes 196 spatial tokens.
+    For T=8 frames: 8 × 196 = 1568 total tokens.
+
+    Positional encoding strategies:
+      - 3D sinusoidal: encode (t, h, w) position independently
+      - Factored: separate temporal and spatial positional embeddings added
+      - Learnable: 1568 learnable position vectors (standard ViT approach)
+
+    TimeSformer uses factored learned embeddings (separate spatial+temporal).
+    VideoMAE uses 3D position encodings with tube masking during pre-training.
+    Video-LLaVA uses CLIP ViT patch embeddings + temporal concat.
+    """</span>
+    <span class="kw">def</span> <span class="fn">__init__</span>(self, img_size: int=<span class="nu">224</span>, patch_size: int=<span class="nu">16</span>,
+                 n_frames: int=<span class="nu">8</span>, embed_dim: int=<span class="nu">768</span>):
+        super().__init__()
+        self.P = patch_size
+        self.T = n_frames
+        self.n_patches = (img_size // patch_size) ** <span class="nu">2</span>   <span class="cm"># 196 for 224/16</span>
+        <span class="cm"># Patch embedding: flatten P×P×3 → D</span>
+        self.patch_embed = nn.Linear(patch_size * patch_size * <span class="nu">3</span>, embed_dim)
+        <span class="cm"># Factored positional embeddings (TimeSformer style)</span>
+        self.spatial_pos  = nn.Parameter(torch.zeros(<span class="nu">1</span>, self.n_patches, embed_dim))
+        self.temporal_pos = nn.Parameter(torch.zeros(<span class="nu">1</span>, n_frames, embed_dim))
+        nn.init.trunc_normal_(self.spatial_pos,  std=<span class="nu">0.02</span>)
+        nn.init.trunc_normal_(self.temporal_pos, std=<span class="nu">0.02</span>)
+
+    <span class="kw">def</span> <span class="fn">patchify</span>(self, frames: torch.Tensor) -> torch.Tensor:
+        <span class="str">"""
+        frames: (B, T, C, H, W)  float32 in [0,1]
+        Returns: (B, T*N_patches, D) token sequence
+        """</span>
+        B, T, C, H, W = frames.shape
+        <span class="cm"># Extract P×P patches from each frame</span>
+        patches = einops.rearrange(
+            frames,
+            <span class="str">'b t c (h p1) (w p2) -> b t (h w) (p1 p2 c)'</span>,
+            p1=self.P, p2=self.P
+        )  <span class="cm"># (B, T, N, P²C)</span>
+        tokens = self.patch_embed(patches)   <span class="cm"># (B, T, N, D)</span>
+        <span class="cm"># Add factored positional encodings</span>
+        tokens = tokens + self.spatial_pos.unsqueeze(<span class="nu">1</span>)   <span class="cm"># broadcast over T</span>
+        tokens = tokens + self.temporal_pos.unsqueeze(<span class="nu">2</span>)  <span class="cm"># broadcast over N</span>
+        <span class="kw">return</span> einops.rearrange(tokens, <span class="str">'b t n d -> b (t n) d'</span>)
+
+    <span class="kw">def</span> <span class="fn">forward</span>(self, frames: torch.Tensor) -> torch.Tensor:
+        <span class="kw">return</span> self.patchify(frames)
+        <span class="cm"># Output: (B, T×196, D) — ready for transformer encoder</span></pre></div>
+</div>
+
+</section>
+
+<section class="sec" id="s2">
+<div class="sn">02 · Video Transformers — Factored Space-Time Attention</div>
+<h2>TimeSformer: 8× Cheaper<br><span class="gt">Than Joint Attention</span></h2>
+<p class="lead">For a clip of T=8 frames with N=196 patches per frame, joint space-time attention operates on 1568 tokens — 2.46M attention weights per head. TimeSformer's divided space-time attention splits this into two sequential operations: temporal attention (each patch attends across frames at the same spatial position) and spatial attention (standard ViT within each frame). The total cost is 320K attention weights — 8× reduction.</p>
+<div class="arch">
+<div class="arch-title">Divided space-time attention: temporal step (across frames) then spatial step (within frame)</div>
+<svg viewBox="0 0 900 270" xmlns="http://www.w3.org/2000/svg" style="width:100%;max-width:900px;display:block">
+<rect width="900" height="270" fill="#07070f" rx="14"/>
+<text x="450" y="26" font-family="JetBrains Mono,monospace" font-size="11" fill="#5eead4" text-anchor="middle" letter-spacing="2" font-weight="bold">TIMESFORMER — DIVIDED SPACE-TIME ATTENTION PATTERN</text>
+
+<!-- ── VIDEO CLIP representation: T=4 frames, N=9 patches (3×3 grid) ── -->
+<!-- Left column: label -->
+<text x="14" y="56" font-family="JetBrains Mono,monospace" font-size="8" fill="#7c7c95">T=4 frames · 3×3 patches = 36 tokens total</text>
+
+<!-- 4 frames as small grids  each frame: 3×3 patches
+     Frame 0: x=14 y=64  Frame 1: x=130 y=64  Frame 2: x=246 y=64  Frame 3: x=362 y=64
+     Each patch: 34×34  gap=2 -->
+<text x="50"  y="62" font-family="JetBrains Mono,monospace" font-size="7" fill="#7c7c95" text-anchor="middle">t=0</text>
+<text x="166" y="62" font-family="JetBrains Mono,monospace" font-size="7" fill="#7c7c95" text-anchor="middle">t=1</text>
+<text x="282" y="62" font-family="JetBrains Mono,monospace" font-size="7" fill="#7c7c95" text-anchor="middle">t=2</text>
+<text x="398" y="62" font-family="JetBrains Mono,monospace" font-size="7" fill="#7c7c95" text-anchor="middle">t=3</text>
+
+<!-- Frame 0 patches -->
+<rect x="14"  y="66" width="34" height="34" rx="2" fill="rgba(94,234,212,.1)"  stroke="rgba(94,234,212,.3)"/>
+<rect x="50"  y="66" width="34" height="34" rx="2" fill="rgba(255,255,255,.04)" stroke="rgba(255,255,255,.1)"/>
+<rect x="86"  y="66" width="34" height="34" rx="2" fill="rgba(255,255,255,.04)" stroke="rgba(255,255,255,.1)"/>
+<rect x="14"  y="102" width="34" height="34" rx="2" fill="rgba(255,255,255,.04)" stroke="rgba(255,255,255,.1)"/>
+<rect x="50"  y="102" width="34" height="34" rx="2" fill="rgba(255,255,255,.04)" stroke="rgba(255,255,255,.1)"/>
+<rect x="86"  y="102" width="34" height="34" rx="2" fill="rgba(255,255,255,.04)" stroke="rgba(255,255,255,.1)"/>
+<rect x="14"  y="138" width="34" height="34" rx="2" fill="rgba(255,255,255,.04)" stroke="rgba(255,255,255,.1)"/>
+<rect x="50"  y="138" width="34" height="34" rx="2" fill="rgba(255,255,255,.04)" stroke="rgba(255,255,255,.1)"/>
+<rect x="86"  y="138" width="34" height="34" rx="2" fill="rgba(255,255,255,.04)" stroke="rgba(255,255,255,.1)"/>
+<text x="31"  y="88" font-family="JetBrains Mono,monospace" font-size="6" fill="#5eead4" text-anchor="middle">p₀₀</text>
+
+<!-- Frame 1 patches (highlight same position p00) -->
+<rect x="130" y="66" width="34" height="34" rx="2" fill="rgba(94,234,212,.1)"  stroke="rgba(94,234,212,.3)"/>
+<rect x="166" y="66" width="34" height="34" rx="2" fill="rgba(255,255,255,.04)" stroke="rgba(255,255,255,.1)"/>
+<rect x="202" y="66" width="34" height="34" rx="2" fill="rgba(255,255,255,.04)" stroke="rgba(255,255,255,.1)"/>
+<rect x="130" y="102" width="34" height="34" rx="2" fill="rgba(255,255,255,.04)" stroke="rgba(255,255,255,.1)"/>
+<rect x="166" y="102" width="34" height="34" rx="2" fill="rgba(255,255,255,.04)" stroke="rgba(255,255,255,.1)"/>
+<rect x="202" y="102" width="34" height="34" rx="2" fill="rgba(255,255,255,.04)" stroke="rgba(255,255,255,.1)"/>
+<rect x="130" y="138" width="34" height="34" rx="2" fill="rgba(255,255,255,.04)" stroke="rgba(255,255,255,.1)"/>
+<rect x="166" y="138" width="34" height="34" rx="2" fill="rgba(255,255,255,.04)" stroke="rgba(255,255,255,.1)"/>
+<rect x="202" y="138" width="34" height="34" rx="2" fill="rgba(255,255,255,.04)" stroke="rgba(255,255,255,.1)"/>
+<text x="147" y="88" font-family="JetBrains Mono,monospace" font-size="6" fill="#5eead4" text-anchor="middle">p₀₀</text>
+
+<!-- Frame 2 patches -->
+<rect x="246" y="66" width="34" height="34" rx="2" fill="rgba(94,234,212,.1)"  stroke="rgba(94,234,212,.3)"/>
+<rect x="282" y="66" width="34" height="34" rx="2" fill="rgba(255,255,255,.04)" stroke="rgba(255,255,255,.1)"/>
+<rect x="318" y="66" width="34" height="34" rx="2" fill="rgba(255,255,255,.04)" stroke="rgba(255,255,255,.1)"/>
+<rect x="246" y="102" width="34" height="34" rx="2" fill="rgba(255,255,255,.04)" stroke="rgba(255,255,255,.1)"/>
+<rect x="282" y="102" width="34" height="34" rx="2" fill="rgba(255,255,255,.04)" stroke="rgba(255,255,255,.1)"/>
+<rect x="318" y="102" width="34" height="34" rx="2" fill="rgba(255,255,255,.04)" stroke="rgba(255,255,255,.1)"/>
+<rect x="246" y="138" width="34" height="34" rx="2" fill="rgba(255,255,255,.04)" stroke="rgba(255,255,255,.1)"/>
+<rect x="282" y="138" width="34" height="34" rx="2" fill="rgba(255,255,255,.04)" stroke="rgba(255,255,255,.1)"/>
+<rect x="318" y="138" width="34" height="34" rx="2" fill="rgba(255,255,255,.04)" stroke="rgba(255,255,255,.1)"/>
+<text x="263" y="88" font-family="JetBrains Mono,monospace" font-size="6" fill="#5eead4" text-anchor="middle">p₀₀</text>
+
+<!-- Frame 3 patches -->
+<rect x="362" y="66" width="34" height="34" rx="2" fill="rgba(94,234,212,.1)"  stroke="rgba(94,234,212,.3)"/>
+<rect x="398" y="66" width="34" height="34" rx="2" fill="rgba(255,255,255,.04)" stroke="rgba(255,255,255,.1)"/>
+<rect x="434" y="66" width="34" height="34" rx="2" fill="rgba(255,255,255,.04)" stroke="rgba(255,255,255,.1)"/>
+<rect x="362" y="102" width="34" height="34" rx="2" fill="rgba(255,255,255,.04)" stroke="rgba(255,255,255,.1)"/>
+<rect x="398" y="102" width="34" height="34" rx="2" fill="rgba(255,255,255,.04)" stroke="rgba(255,255,255,.1)"/>
+<rect x="434" y="102" width="34" height="34" rx="2" fill="rgba(255,255,255,.04)" stroke="rgba(255,255,255,.1)"/>
+<rect x="362" y="138" width="34" height="34" rx="2" fill="rgba(255,255,255,.04)" stroke="rgba(255,255,255,.1)"/>
+<rect x="398" y="138" width="34" height="34" rx="2" fill="rgba(255,255,255,.04)" stroke="rgba(255,255,255,.1)"/>
+<rect x="434" y="138" width="34" height="34" rx="2" fill="rgba(255,255,255,.04)" stroke="rgba(255,255,255,.1)"/>
+<text x="379" y="88" font-family="JetBrains Mono,monospace" font-size="6" fill="#5eead4" text-anchor="middle">p₀₀</text>
+
+<!-- ── TEMPORAL ATTENTION arrows: p00 t=0 → t=1 → t=2 → t=3 ── -->
+<text x="250" y="190" font-family="JetBrains Mono,monospace" font-size="9" fill="#5eead4" text-anchor="middle" font-weight="bold">① Temporal Attention</text>
+<text x="250" y="205" font-family="JetBrains Mono,monospace" font-size="7" fill="#7c7c95" text-anchor="middle">patch p₀₀ attends to same position across all T frames</text>
+<text x="250" y="218" font-family="JetBrains Mono,monospace" font-size="7" fill="#7c7c95" text-anchor="middle">Query=(p₀₀,t=0)  Key/Value=(p₀₀,t=0,1,2,3)</text>
+<!-- Horizontal arrows connecting p00 across frames -->
+<line x1="50"  y1="84" x2="126" y2="84" stroke="#5eead4" stroke-width="1.5" stroke-dasharray="4,2"/>
+<line x1="166" y1="84" x2="242" y2="84" stroke="#5eead4" stroke-width="1.5" stroke-dasharray="4,2"/>
+<line x1="282" y1="84" x2="358" y2="84" stroke="#5eead4" stroke-width="1.5" stroke-dasharray="4,2"/>
+<polygon points="122,80 130,84 122,88" fill="#5eead4"/>
+<polygon points="238,80 246,84 238,88" fill="#5eead4"/>
+<polygon points="354,80 362,84 354,88" fill="#5eead4"/>
+
+<!-- ── SPATIAL ATTENTION: within frame 0 all patches attend to each other ── -->
+<text x="700" y="190" font-family="JetBrains Mono,monospace" font-size="9" fill="#a78bfa" text-anchor="middle" font-weight="bold">② Spatial Attention</text>
+<text x="700" y="205" font-family="JetBrains Mono,monospace" font-size="7" fill="#7c7c95" text-anchor="middle">within each frame, all N patches attend to each other</text>
+<text x="700" y="218" font-family="JetBrains Mono,monospace" font-size="7" fill="#7c7c95" text-anchor="middle">standard ViT self-attention, T frames independently</text>
+
+<!-- Highlight frame 0 full grid with purple border -->
+<rect x="12" y="64" width="112" height="112" rx="5" fill="none" stroke="rgba(167,139,250,.5)" stroke-width="2"/>
+<!-- Spatial attention arrows within frame 0 -->
+<line x1="31" y1="88"  x2="63" y2="88"  stroke="#a78bfa" stroke-width="1" stroke-dasharray="2,2"/>
+<line x1="31" y1="88"  x2="31" y2="119" stroke="#a78bfa" stroke-width="1" stroke-dasharray="2,2"/>
+<line x1="63" y1="88"  x2="99" y2="88"  stroke="#a78bfa" stroke-width="1" stroke-dasharray="2,2"/>
+
+<!-- ── COMPLEXITY panel  x=480 y=56 ── -->
+<rect x="480" y="56" width="406" height="118" rx="10" fill="rgba(255,255,255,.02)" stroke="rgba(255,255,255,.07)"/>
+<text x="683" y="74"  font-family="JetBrains Mono,monospace" font-size="9" fill="#ececf6" text-anchor="middle" font-weight="bold">Complexity comparison (T=8, N=196)</text>
+<text x="490" y="92"  font-family="JetBrains Mono,monospace" font-size="8" fill="#f472b6">Joint space-time (full):</text>
+<text x="490" y="106" font-family="JetBrains Mono,monospace" font-size="7" fill="#7c7c95">  O((T×N)²) = O(1568²) = 2.46M weights per head</text>
+<line x1="488" y1="114" x2="878" y2="114" stroke="rgba(255,255,255,.06)"/>
+<text x="490" y="128" font-family="JetBrains Mono,monospace" font-size="8" fill="#5eead4">Divided space-time (TimeSformer):</text>
+<text x="490" y="142" font-family="JetBrains Mono,monospace" font-size="7" fill="#7c7c95">  Temporal: O(N×T²) = O(196×64) = 12,544</text>
+<text x="490" y="155" font-family="JetBrains Mono,monospace" font-size="7" fill="#7c7c95">  Spatial:  O(T×N²) = O(8×38416) = 307,328</text>
+<text x="490" y="167" font-family="JetBrains Mono,monospace" font-size="7" fill="#5eead4">  Total: 320K  →  8× cheaper than joint (2.46M)</text>
+
+<!-- Bottom bar -->
+<rect x="14" y="228" width="872" height="32" rx="8" fill="rgba(255,255,255,.02)" stroke="rgba(255,255,255,.06)"/>
+<text x="450" y="246" font-family="JetBrains Mono,monospace" font-size="8" fill="#ececf6" text-anchor="middle">Temporal attention: initialised to identity (zero output projection) → fine-tune from ImageNet ViT weights</text>
+<text x="450" y="259" font-family="JetBrains Mono,monospace" font-size="7" fill="#7c7c95" text-anchor="middle">VideoMAE uses masked tube pretraining: mask 90% of spatiotemporal tokens → reconstruct pixel values</text>
+</svg>
+</div>
+<div class="cc">
+  <div class="ch"><h3>space_time_attention.py — factored space-time attention (TimeSformer style)</h3><button class="cpb" onclick="cp(this,'c2')">Copy</button></div>
+  <div class="cbody"><pre id="c2"><span class="kw">import</span> torch
+<span class="kw">import</span> torch.nn <span class="kw">as</span> nn
+<span class="kw">import</span> torch.nn.functional <span class="kw">as</span> F
+<span class="kw">import</span> einops
+
+<span class="kw">class</span> <span class="cl">DividedSpaceTimeAttention</span>(nn.Module):
+    <span class="str">"""
+    Divided Space-Time Attention (TimeSformer, Bertasius et al. 2021).
+
+    Why factored attention?
+    Joint space-time attention over T×N tokens (e.g. 8×196=1568) has
+    O((T×N)²) complexity — 1568² ≈ 2.4M attention weights per head.
+    This is 64× the cost of standard spatial attention on 196 patches.
+
+    Factored approach: alternate between:
+      1. Temporal attention: each spatial patch attends across T frames
+         at the SAME spatial position. Query=(T, D), Key/Value=(T, D).
+         Complexity: O(N × T²) = O(196 × 64) ≈ 12K per head.
+      2. Spatial attention: within each frame, patches attend to each
+         other. Standard ViT attention.
+         Complexity: O(T × N²) = O(8 × 38416) ≈ 307K per head.
+    Total: O(N×T² + T×N²) vs joint O((TN)²) — ~8× reduction for T=8,N=196.
+
+    The temporal attention layer is initialised to identity (zero weight)
+    so at the start of fine-tuning, the model behaves like a ViT.
+    This enables initialising from ImageNet-pretrained ViT weights.
+    """</span>
+    <span class="kw">def</span> <span class="fn">__init__</span>(self, dim: int, n_heads: int=<span class="nu">12</span>, n_frames: int=<span class="nu">8</span>):
+        super().__init__()
+        self.T = n_frames
+        self.n_heads = n_heads
+        self.head_dim = dim // n_heads
+        <span class="cm"># Standard spatial multi-head attention (inherited from ViT)</span>
+        self.spatial_attn  = nn.MultiheadAttention(dim, n_heads, batch_first=<span class="kw">True</span>)
+        <span class="cm"># Temporal attention — init weights near zero so we start ≈ identity</span>
+        self.temporal_attn = nn.MultiheadAttention(dim, n_heads, batch_first=<span class="kw">True</span>)
+        <span class="kw">with</span> torch.no_grad():
+            self.temporal_attn.out_proj.weight.fill_(<span class="nu">0</span>)
+            self.temporal_attn.out_proj.bias.fill_(<span class="nu">0</span>)
+        self.norm1 = nn.LayerNorm(dim)
+        self.norm2 = nn.LayerNorm(dim)
+
+    <span class="kw">def</span> <span class="fn">forward</span>(self, x: torch.Tensor) -> torch.Tensor:
+        <span class="str">"""x: (B, T*N, D) — flattened space-time token sequence"""</span>
+        B, TN, D = x.shape
+        N = TN // self.T
+
+        <span class="cm"># ── Temporal attention: each patch attends across frames ──</span>
+        <span class="cm"># Reshape: treat each spatial position as a separate 'batch'</span>
+        xt = einops.rearrange(x, <span class="str">'b (t n) d -> (b n) t d'</span>, t=self.T, n=N)
+        xt_norm = self.norm1(xt)
+        t_out, _ = self.temporal_attn(xt_norm, xt_norm, xt_norm)
+        xt = xt + t_out    <span class="cm"># residual connection</span>
+        x  = einops.rearrange(xt, <span class="str">'(b n) t d -> b (t n) d'</span>, b=B, n=N)
+
+        <span class="cm"># ── Spatial attention: patches attend within each frame ──</span>
+        xs = einops.rearrange(x, <span class="str">'b (t n) d -> (b t) n d'</span>, t=self.T, n=N)
+        xs_norm = self.norm2(xs)
+        s_out, _ = self.spatial_attn(xs_norm, xs_norm, xs_norm)
+        xs = xs + s_out    <span class="cm"># residual connection</span>
+        x  = einops.rearrange(xs, <span class="str">'(b t) n d -> b (t n) d'</span>, b=B, t=self.T)
+        <span class="kw">return</span> x</pre></div>
+</div>
+
+</section>
+
+<section class="sec" id="s3">
+<div class="sn">03 · Pre-Training Strategy and Model Selection</div>
+<h2>VideoMAE vs CLIP-ViT:<br><span class="gt">Reconstruction vs Alignment</span></h2>
+<div class="g2">
+<div class="callout callout-key">
+  <div class="callout-icon">🔑</div>
+  <div class="callout-body">
+    <h4>Pre-training strategy determines downstream capability</h4>
+    <p><strong>VideoMAE</strong> (masked autoencoding, 90% masking): learns to reconstruct spatiotemporal structure from sparse observations. Strong for action recognition, temporal reasoning, motion understanding. Not aligned with text — poor for retrieval from text queries. <strong>CLIP-ViT per-frame</strong>: image-text contrastive pre-training at 400M pairs. Strong semantic-visual alignment — excellent for text-to-video retrieval. No temporal modelling beyond frame averaging. <strong>VideoCLIP/InternVideo</strong>: combines both — contrastive video-text + masked video modelling.</p>
+  </div>
+</div>
+<div class="scenario">
+  <h4>Model selection decision tree</h4>
+  <p><strong>Text-to-video retrieval</strong> → CLIP-ViT per-frame + temporal average pooling. <strong>Action recognition</strong> (Kinetics, UCF101) → VideoMAE fine-tuned. <strong>Video QA / VideoChat</strong> → Video-LLaVA (CLIP-ViT frames → LLM). <strong>Temporal grounding</strong> (find the 10-second clip where the action occurs) → TimeSformer + moment proposal head. <strong>Low-data domain</strong> (medical, satellite) → start with VideoMAE for structure, CLIP for semantics, fine-tune both.</p>
+</div>
+</div>
+<div class="card" style="padding:0;overflow:hidden">
+<table class="tbl">
+<thead><tr><th>Model</th><th>Pre-training</th><th>Temporal modelling</th><th>Best for</th><th>Limitation</th></tr></thead>
+<tbody>
+<tr><td><strong style="color:var(--a3)">C3D / I3D</strong></td><td>Kinetics (supervised)</td><td>3D conv across clips</td><td>Action recognition</td><td>Fixed clip length, high FLOPs</td></tr>
+<tr><td><strong style="color:var(--a2)">TimeSformer</strong></td><td>Kinetics or ImageNet ViT init</td><td>Divided space-time attn</td><td>Action recognition</td><td>No text alignment</td></tr>
+<tr><td><strong style="color:var(--a1)">VideoMAE</strong></td><td>Masked video reconstruction</td><td>Full space-time ViT</td><td>Temporal understanding</td><td>No text alignment</td></tr>
+<tr><td><strong style="color:var(--a4)">CLIP-ViT/frame</strong></td><td>Image-text contrastive</td><td>None (per-frame)</td><td>Text-to-video retrieval</td><td>Temporally blind</td></tr>
+<tr><td><strong style="color:var(--a5)">Video-LLaVA</strong></td><td>CLIP + LLM instruction tuning</td><td>Frame sampling + LLM</td><td>Video QA, captioning</td><td>Limited temporal grounding</td></tr>
+</tbody>
+</table>
+</div>
+</section>
+
+<section class="sec" id="s4">
+<div class="sn">04 · Assessment — 8 Questions</div>
+<h2>Module 1 <span class="gt">Quiz</span></h2>
+<div class="qc"><div class="qc-title">Module 1 Assessment — Video Encoders and Temporal Modelling</div><div class="qc-sub">8 questions · patch tokenisation · 3D conv · TimeSformer · VideoMAE · optical flow · RoPE · CLIP vs VideoMAE</div><div class="qprog"><div class="qprog-bar"><div class="qprog-fill"></div></div><div class="qprog-text">0/8 answered</div></div><div class="qq"><div class="qnum">Question 1 of 8</div><h4>A VideoTokeniser processes an 8-frame clip of 224×224 RGB frames with patch size P=16. What is the total number of tokens in the sequence passed to the transformer, and what is the shape of a single patch before linear projection?</h4><div class="qo"><button class="qob" data-opt="A" data-correct="true" onclick="cq(this,0,true)">A: 1568 tokens. Each patch has shape (16, 16, 3) = 768 values before projection.</button>
+<button class="qob" data-opt="B" data-correct="false" onclick="cq(this,0,false)">B: 196 tokens. The transformer receives one token per frame (8 frames → 8 tokens).</button>
+<button class="qob" data-opt="C" data-correct="false" onclick="cq(this,0,false)">C: 1024 tokens. Each frame is divided into 32×32 patches.</button>
+<button class="qob" data-opt="D" data-correct="false" onclick="cq(this,0,false)">D: 1568 tokens. Each patch has shape (14, 14, 3) = 588 values before projection.</button>
+</div><div class="qfeed"><div class="qfeed-head"></div><div class="qfeed-why">Correct. Patches per frame = (224/16)² = 14² = 196. Total tokens = 8 frames × 196 patches = 1568. Each patch is 16×16 pixels × 3 channels = 768 values, projected to D=768 embedding dimensions. The linear projection maps (768,) → (D,). This is identical to ViT-B/16 spatial tokenisation, extended across T time steps.</div></div></div><div class="qq"><div class="qnum">Question 2 of 8</div><h4>TimeSformer initialises the temporal attention layer with zero output projection weights. You are fine-tuning TimeSformer from a pre-trained ImageNet ViT-B/16 checkpoint. What does this initialisation strategy achieve?</h4><div class="qo"><button class="qob" data-opt="A" data-correct="false" onclick="cq(this,1,false)">A: It prevents catastrophic forgetting by freezing temporal attention during early training.</button>
+<button class="qob" data-opt="B" data-correct="true" onclick="cq(this,1,true)">B: Zero initialisation of the temporal attention output projection means the temporal attention layer contributes zero to the residual stream at initialisation. The model therefore starts as a pure spatial attention model — exactly equivalent to the ViT-B/16 it was initialised from. As training proceeds, gradient flow gradually activates the temporal attention. This enables loading ImageNet ViT weights directly (which have no temporal parameters) and fine-tuning on video data without a random-initialisation cold start for temporal attention. Without this, temporal attention would produce random outputs at initialisation that would corrupt the spatial features learned from ImageNet pre-training.</button>
+<button class="qob" data-opt="C" data-correct="false" onclick="cq(this,1,false)">C: Zero initialisation prevents the temporal attention from overfitting to the training videos.</button>
+<button class="qob" data-opt="D" data-correct="false" onclick="cq(this,1,false)">D: It initialises temporal attention to uniform attention across all frames — attending equally to all time steps.</button>
+</div><div class="qfeed"><div class="qfeed-head"></div><div class="qfeed-why">Correct. The zero output projection trick is the standard method for inserting new attention modules into pre-trained transformers. At initialisation, temporal attention output = Wout @ (attention output) = 0, so x = x + 0 = x — the residual connection passes the spatial features unchanged. The model starts as ViT, then gradually learns temporal patterns as the output projection weights grow from zero via gradient descent. This technique appears in TimeSformer, Lora, and ControlNet.</div></div></div><div class="qq"><div class="qnum">Question 3 of 8</div><h4>You need to choose between a 3D conv video model (C3D) and a factored space-time transformer (TimeSformer) for action recognition on 1-second clips (8 frames, 224×224). Your deployment constraint is inference latency < 50ms on a single GPU. Which do you choose and why?</h4><div class="qo"><button class="qob" data-opt="A" data-correct="false" onclick="cq(this,2,false)">A: C3D — 3D convolutions are always faster than transformers for video processing.</button>
+<button class="qob" data-opt="B" data-correct="false" onclick="cq(this,2,false)">B: TimeSformer — transformers always outperform CNNs for video understanding.</button>
+<button class="qob" data-opt="C" data-correct="true" onclick="cq(this,2,true)">C: TimeSformer with factored attention is typically faster than full 3D conv models at this input resolution. 3D conv models (C3D, I3D) stack multiple 3D conv layers each with O(t·k²·C²) complexity — a C3D with kernel (3,3,3) processes 8×224×224 in ~80ms on a V100. TimeSformer with factored attention processes the same clip in ~35ms due to the 8× complexity reduction vs joint attention, plus highly optimised FlashAttention kernels. The critical factor: 3D conv models' computational cost scales linearly with temporal resolution (8→16 frames doubles cost); TimeSformer's temporal attention cost is O(T²) but N² dominates, making it competitive. For < 50ms latency on 8 frames at 224×224, TimeSformer is the right choice.</button>
+<button class="qob" data-opt="D" data-correct="false" onclick="cq(this,2,false)">D: Neither — use a two-stream network (RGB + optical flow) which achieves lower latency than both.</button>
+</div><div class="qfeed"><div class="qfeed-head"></div><div class="qfeed-why">Correct. TimeSformer with factored attention is typically the right choice at this resolution and clip length. The key insight: factored attention reduces complexity from O((TN)²) to O(N×T² + T×N²) ≈ 8× reduction for T=8, N=196. Combined with FlashAttention's memory-efficient attention kernels, TimeSformer achieves competitive latency. C3D's 3D conv stacks are slower because each layer requires materialising the full 3D feature volume. Two-stream networks (option D) require optical flow computation which typically adds 30-50ms — worse than either option.</div></div></div><div class="qq"><div class="qnum">Question 4 of 8</div><h4>VideoMAE pre-trains a ViT on video by masking 90% of spatiotemporal patch tokens and predicting the masked pixel values. Why is a 90% masking ratio much higher than BERT's 15% text masking, and what does this high ratio force the model to learn?</h4><div class="qo"><button class="qob" data-opt="A" data-correct="false" onclick="cq(this,3,false)">A: 90% masking is used because video has 90% temporal redundancy — adjacent frames are nearly identical.</button>
+<button class="qob" data-opt="B" data-correct="false" onclick="cq(this,3,false)">B: Video tokens are semantically much more redundant than text tokens — adjacent video patches contain similar visual content. A masking ratio of 15% on video would make reconstruction trivially easy: the model could simply copy nearby unmasked tokens without understanding motion or object structure. At 90% masking, the model must infer the full spatiotemporal content from only 10% of tokens — it cannot reconstruct by local interpolation. This forces the model to: (1) learn the global structure of objects and scenes across all frames; (2) model temporal consistency (how pixels should change over time); (3) build representations that capture motion and appearance jointly. The 90% ratio also makes training 10× faster — fewer tokens per forward pass → larger batch size → faster convergence.</button>
+<button class="qob" data-opt="C" data-correct="false" onclick="cq(this,3,false)">C: 90% masking is chosen to match the compression ratio of video codecs — H.264 removes ~90% of redundant pixel information.</button>
+<button class="qob" data-opt="D" data-correct="true" onclick="cq(this,3,true)">D: The high masking ratio prevents the model from memorising specific videos — it is a regularisation technique, not an architectural choice.</button>
+</div><div class="qfeed"><div class="qfeed-head"></div><div class="qfeed-why">Correct. The key insight is semantic redundancy vs linguistic redundancy. In text, every word carries distinct semantic content — masking 15% means the model must infer specific words from context. In video, adjacent patches at the same spatial position in nearby frames are nearly identical. Masking 15% of video tokens is trivially solved by copying neighbours. 90% masking creates a genuine understanding task: reconstruct the full spatiotemporal structure from scattered glimpses. The training efficiency benefit (fewer tokens processed per step) is also significant — VideoMAE trains 5-10× faster than contrastive video methods.</div></div></div><div class="qq"><div class="qnum">Question 5 of 8</div><h4>You are applying a per-frame ViT encoder to 8-frame video clips for action recognition. The encoder produces (8, D) frame embeddings. You then apply temporal average pooling to get a single (D,) clip embedding for classification. A colleague proposes replacing average pooling with temporal self-attention. Under what conditions does temporal attention outperform average pooling?</h4><div class="qo"><button class="qob" data-opt="A" data-correct="false" onclick="cq(this,4,false)">A: Temporal attention always outperforms average pooling — it is strictly more expressive.</button>
+<button class="qob" data-opt="B" data-correct="false" onclick="cq(this,4,false)">B: Average pooling outperforms temporal attention — averaging is more stable and less prone to overfitting.</button>
+<button class="qob" data-opt="C" data-correct="true" onclick="cq(this,4,true)">C: Temporal attention outperforms average pooling when the action is temporally asymmetric or phase-dependent. Average pooling treats all frames equally — it cannot distinguish 'person picking up object' (first frame: empty hand, last frame: object in hand) from 'person putting down object' (reversed). Temporal attention can assign different weights to different frames based on their context: it can attend strongly to the frame where the action peak occurs and down-weight redundant frames. For temporally symmetric actions (walking, running in a steady state) or short clips, average pooling is nearly as good and more stable. For temporally asymmetric actions (throwing, catching, picking up), or clips that span action transitions, temporal attention significantly improves accuracy.</button>
+<button class="qob" data-opt="D" data-correct="false" onclick="cq(this,4,false)">D: Temporal attention outperforms average pooling only when the number of frames T > 16 — for 8 frames, there is insufficient temporal context for attention to be beneficial.</button>
+</div><div class="qfeed"><div class="qfeed-head"></div><div class="qfeed-why">Correct. The key condition is temporal asymmetry. Actions where temporal order matters (before/after the action completes, actions with a clear temporal peak) benefit from temporal attention. Symmetric, steady-state actions (walking, cycling at constant speed) show minimal difference. In practice, for T=8 frames from a 1-second clip of a single action category, average pooling often achieves within 1-2% of temporal attention while being 5× simpler. Temporal attention's benefit grows with clip length and action complexity.</div></div></div><div class="qq"><div class="qnum">Question 6 of 8</div><h4>What is optical flow, and why was the two-stream architecture (Simonyan & Zisserman 2014) important before transformers solved temporal modelling?</h4><div class="qo"><button class="qob" data-opt="A" data-correct="true" onclick="cq(this,5,true)">A: Optical flow is the apparent motion of pixel intensities between frames — computed as a vector field (u,v) per pixel showing how each pixel moved from frame t to frame t+1. The two-stream network trained one stream on RGB frames (appearance) and a second stream on stacked optical flow frames (motion). This was important because: (1) CNNs of that era had small receptive fields and could not capture long-range temporal dependencies — optical flow pre-computed the motion, making it explicit rather than learned; (2) RGB and optical flow are complementary — RGB captures what an object looks like; optical flow captures how it moves. For many actions, motion is the primary discriminator (waving vs standing still) while appearance is secondary. Modern video transformers learn temporal features directly from RGB, making explicit optical flow less necessary — but flow-based pretraining still helps in data-scarce settings.</button>
+<button class="qob" data-opt="B" data-correct="false" onclick="cq(this,5,false)">B: Optical flow is computed by running a second video encoder on downsampled frames. The two-stream network was important because it doubled the parameter count.</button>
+<button class="qob" data-opt="C" data-correct="false" onclick="cq(this,5,false)">C: Optical flow is the difference between consecutive frames (frame_t - frame_t-1). Two-stream networks are no longer used because optical flow computation is too slow.</button>
+<button class="qob" data-opt="D" data-correct="false" onclick="cq(this,5,false)">D: Optical flow is a 3D vector field encoding pixel motion plus depth change. Two-stream was important because it enabled training on optical flow precomputed by traditional computer vision methods.</button>
+</div><div class="qfeed"><div class="qfeed-head"></div><div class="qfeed-why">Correct. Optical flow (the 2D velocity field of pixel motion) was the key to temporal understanding before video transformers. Computing it requires methods like Farneback, TVL1, or RAFT — computationally expensive (100-500ms per frame pair), but providing explicit motion information that CNNs could not extract from static kernels. The two-stream architecture was the dominant approach from 2014-2020. Modern video transformers (TimeSformer, VideoMAE) learn motion representations directly from RGB through temporal attention, making optical flow less necessary but not obsolete — RAFT-based optical flow still boosts performance in specialised tasks like fine-grained action recognition.</div></div></div><div class="qq"><div class="qnum">Question 7 of 8</div><h4>A video encoder produces (T=8, D=768) frame embeddings. You want to add temporal positional embeddings so the model knows the temporal order of frames. You have three options: (A) learned 1D positional embeddings indexed by frame number, (B) sinusoidal positional encoding with 1D position index, (C) relative positional bias (RoPE) applied within temporal attention. For a model that needs to generalise to variable-length clips (4, 8, 16, 32 frames) at inference, which is most appropriate?</h4><div class="qo"><button class="qob" data-opt="A" data-correct="false" onclick="cq(this,6,false)">A: Learned 1D positional embeddings — highest expressivity and easiest to implement.</button>
+<button class="qob" data-opt="B" data-correct="false" onclick="cq(this,6,false)">B: Sinusoidal positional encoding — generalises to arbitrary sequence lengths by extrapolation.</button>
+<button class="qob" data-opt="C" data-correct="false" onclick="cq(this,6,false)">C: Relative positional bias (RoPE) — encodes relative distances between tokens rather than absolute positions, generalising naturally to any sequence length seen at inference.</button>
+<button class="qob" data-opt="D" data-correct="true" onclick="cq(this,6,true)">D: All three perform identically for video — temporal position is not important for action recognition.</button>
+</div><div class="qfeed"><div class="qfeed-head"></div><div class="qfeed-why">Correct. RoPE (Rotary Position Embedding) encodes relative temporal distances — the attention pattern between frame t=2 and t=5 depends on their temporal gap (3 frames) rather than their absolute positions. This generalises naturally: a model trained on 8-frame clips can process 16-frame or 32-frame clips at inference because the relative distances are interpretable at any clip length. Learned absolute embeddings (option A) cannot generalise beyond the training T — they have no mechanism to assign embeddings to position 9 if only trained up to T=8. Sinusoidal encoding (option B) extrapolates but with degraded performance for positions far outside the training range. RoPE is now the standard for video and long-context language models for exactly this reason.</div></div></div><div class="qq"><div class="qnum">Question 8 of 8</div><h4>You are choosing a video encoder for a production video retrieval system. Videos are product demonstrations (3-10 minutes, 30fps). You need clip-level embeddings every 2 seconds for downstream retrieval. The system must handle 100,000 videos per day. Compare VideoMAE (masked autoencoder pre-training) vs CLIP-ViT (image-text contrastive) applied per-frame then averaged. Which produces better retrieval embeddings and why?</h4><div class="qo"><button class="qob" data-opt="A" data-correct="false" onclick="cq(this,7,false)">A: VideoMAE always produces better embeddings — video-specific pre-training is always superior to image-based methods.</button>
+<button class="qob" data-opt="B" data-correct="true" onclick="cq(this,7,true)">B: CLIP-ViT applied per-frame produces better retrieval embeddings for product demonstrations. Product demonstration retrieval requires strong semantic-visual alignment — embeddings should respond to product appearance, brand, and category. CLIP-ViT was trained on 400M image-text pairs specifically to align visual content with semantic descriptions, making it excellent for retrieval tasks where queries are text-based ('show me demonstrations of blue wireless headphones'). VideoMAE was pre-trained on pixel reconstruction — its representations encode fine-grained spatiotemporal structure useful for action recognition, but not semantic alignment with text queries. For a retrieval system where users query with text, CLIP-ViT per-frame averaged is typically superior. VideoMAE would be preferred for temporal reasoning tasks (identifying specific product assembly steps, detecting usage patterns).</button>
+<button class="qob" data-opt="C" data-correct="false" onclick="cq(this,7,false)">C: VideoMAE produces better embeddings because it processes all T frames jointly rather than independently.</button>
+<button class="qob" data-opt="D" data-correct="false" onclick="cq(this,7,false)">D: Both produce identical retrieval quality — the embedding dimensionality is the only differentiator.</button>
+</div><div class="qfeed"><div class="qfeed-head"></div><div class="qfeed-why">Correct. The choice between VideoMAE and CLIP-ViT depends on the downstream task. Retrieval with text queries requires semantic alignment — CLIP-ViT's image-text contrastive pre-training directly optimises for this. VideoMAE's pixel reconstruction objective builds rich spatiotemporal features but without the semantic-text alignment needed for retrieval. Per-frame CLIP-ViT + temporal averaging is the standard approach for text-to-video retrieval (used by VideoCLIP, InternVideo). VideoMAE features are used downstream by fine-tuning on labelled video action datasets — not directly for retrieval from text queries.</div></div></div><div class="qs" id="qs" style="display:none"><h3 id="sc">0/8</h3><p id="sm"></p></div></div>
+</section>
+</div>
+<footer>
+  <div style="max-width:var(--cw);margin:0 auto;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:1rem">
+    <div style="display:flex;gap:.8rem"><a href="vmi_m0.html" class="pr">← M0: Multimodal Ingestion</a><a href="vmi_m2.html" class="nx">M2: Audio Encoders →</a></div>
+    <span>Video & Multimodal Ingestion Track · M1 · Video Encoders — How Models See Temporal Data</span>
+  </div>
+</footer>
+<script>
+window.addEventListener("scroll",function(){
+  var h=document.documentElement;
+  var pct=(h.scrollTop/(h.scrollHeight-h.clientHeight))*100;
+  document.getElementById("sp").style.width=pct+"%";
+});
+var obs=new IntersectionObserver(function(e){
+  e.forEach(function(x){if(x.isIntersecting)x.target.classList.add("vis");});
+},{threshold:0.06});
+document.querySelectorAll(".sec").forEach(function(s){obs.observe(s);});
+// Copy buttons
+function cp(btn,id){
+  navigator.clipboard.writeText(document.getElementById(id).innerText).then(function(){
+    var t=btn.textContent;btn.textContent="✓ Copied";
+    setTimeout(function(){btn.textContent=t;},2000);
+  });
+}
+// Metric bar animation
+window.addEventListener("load",function(){
+  document.querySelectorAll(".metric-fill[data-pct]").forEach(function(el){
+    setTimeout(function(){el.style.width=el.getAttribute("data-pct")+"%";},300);
+  });
+});
+// Quiz engine
+var qstate={};
+var qtotal=document.querySelectorAll(".qq").length;
+function updateProgress(){
+  var done=Object.keys(qstate).length;
+  var fill=document.querySelector(".qprog-fill");
+  var txt=document.querySelector(".qprog-text");
+  if(fill)fill.style.width=Math.round(done/qtotal*100)+"%";
+  if(txt)txt.textContent=done+"/"+qtotal+" answered";
+  if(done===qtotal)showScore();
+}
+function showScore(){
+  var c=Object.values(qstate).filter(function(v){return v;}).length;
+  var sc=document.getElementById("sc");
+  var sm=document.getElementById("sm");
+  if(sc)sc.textContent=c+"/"+qtotal+" correct";
+  if(sm){
+    var msgs=["Keep studying — revisit patch tokenisation: T frames × 196 patches = 1568 tokens for T=8, P=16.","Good start — review zero output projection initialisation and why it allows loading ViT ImageNet weights.","Building — re-read factored attention complexity: O(N×T² + T×N²) vs joint O((TN)²).","Solid — review VideoMAE 90% masking and why high masking ratio forces spatiotemporal understanding.","Strong — revisit average pooling vs temporal attention and when temporal asymmetry matters.","Excellent.","Outstanding.","Perfect — full mastery of video encoder architectures and pre-training strategies."][c];
+    sm.textContent=msgs[Math.min(c,msgs.length-1)];
+    sm.style.color=c>=Math.round(qtotal*0.8)?"#5eead4":"#f472b6";
+  }
+  var qs=document.getElementById("qs");
+  if(qs)qs.style.display="block";
+}
+function cq(btn,qi,isCorrect){
+  if(qstate[qi]!==undefined)return;
+  qstate[qi]=isCorrect;
+  var qq=btn.closest(".qq");
+  qq.classList.add("answered");
+  var allBtns=qq.querySelectorAll(".qob");
+  allBtns.forEach(function(b){
+    b.setAttribute("disabled","");
+    var bc=b.getAttribute("data-correct")==="true";
+    if(bc)b.classList.add("ok");
+    else if(b===btn&&!isCorrect)b.classList.add("no");
+  });
+  var feed=qq.querySelector(".qfeed");
+  if(feed){
+    feed.style.display="block";
+    feed.className="qfeed "+(isCorrect?"correct":"wrong");
+    var head=feed.querySelector(".qfeed-head");
+    if(head)head.textContent=isCorrect?"✓ Correct — "+btn.getAttribute("data-opt")+" is right":"✗ Not quite — see the explanation below";
+  }
+  updateProgress();
+}</script>
+</body></html>

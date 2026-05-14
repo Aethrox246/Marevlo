@@ -1,0 +1,622 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>MFP Algorithms Track · M2 — Greedy Expansion and Global Occupancy Bitmask</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;700&family=Source+Serif+4:ital,opsz,wght@0,8..60,400;0,8..60,600;1,8..60,400&display=swap" rel="stylesheet">
+<style>:root{--bg:#08080e;--t1:#ececf6;--t2:#b5b5c8;--tm:#6b6b85;
+--a1:#5eead4;--a2:#60a5fa;--a3:#f472b6;--a4:#fbbf24;--a5:#a78bfa;--ac:#5eead4;
+--gl:linear-gradient(90deg,#5eead4 0%,#60a5fa 28%,#a78bfa 55%,#f472b6 82%,#fbbf24 100%);
+--bs:rgba(255,255,255,0.06);--sh:0 24px 80px rgba(0,0,0,0.5);--r:18px;--cw:1160px}
+*{box-sizing:border-box;margin:0;padding:0}html{scroll-behavior:smooth}
+body{background:radial-gradient(ellipse 900px 500px at 15% 10%,rgba(94,234,212,.08),transparent 50%),radial-gradient(ellipse 700px 400px at 85% 20%,rgba(96,165,250,.05),transparent 40%),var(--bg);color:var(--t1);font-family:'Outfit',sans-serif;line-height:1.75;overflow-x:hidden;-webkit-font-smoothing:antialiased}
+/* Progress bar */
+.sp{position:fixed;top:0;left:0;height:3px;width:0%;z-index:1000;background:var(--gl);transition:width .1s linear}
+/* Nav */
+nav{position:fixed;top:3px;left:0;right:0;z-index:999;display:flex;align-items:center;justify-content:space-between;padding:.7rem 2rem;background:rgba(8,8,14,.9);backdrop-filter:blur(16px);border-bottom:1px solid var(--bs)}
+.nbr{font-family:'JetBrains Mono',monospace;font-size:.7rem;color:var(--ac);letter-spacing:.16em;text-transform:uppercase;text-decoration:none;display:flex;align-items:center;gap:8px}
+.nbr-dot{width:6px;height:6px;border-radius:50%;background:var(--ac);animation:pulse 2s ease-in-out infinite}
+.nm{font-size:.8rem;color:var(--tm);max-width:400px;text-overflow:ellipsis;overflow:hidden;white-space:nowrap}
+.na{display:flex;gap:8px}
+.nb{display:inline-flex;align-items:center;gap:6px;padding:.38rem .85rem;border-radius:999px;border:1px solid var(--bs);background:rgba(255,255,255,.02);color:var(--t2);font-size:.78rem;text-decoration:none;transition:all .18s}
+.nb:hover{border-color:var(--ac);color:var(--ac)}
+/* Hero */
+.hero{min-height:100vh;display:flex;align-items:center;justify-content:center;padding:5rem 2rem 3rem;position:relative;overflow:hidden}
+.hg{position:absolute;inset:0;background-image:linear-gradient(rgba(255,255,255,.018) 1px,transparent 1px),linear-gradient(90deg,rgba(255,255,255,.018) 1px,transparent 1px);background-size:52px 52px;mask-image:radial-gradient(circle at center,black 20%,transparent 75%);pointer-events:none}
+.hi{max-width:1000px;text-align:center;position:relative;z-index:1}
+.hl{display:inline-flex;align-items:center;gap:10px;padding:.5rem 1rem;border-radius:999px;border:1px solid rgba(94,234,212,.28);background:rgba(94,234,212,.07);color:var(--ac);letter-spacing:1.8px;text-transform:uppercase;font-size:.74rem;margin-bottom:1.8rem}
+h1{font-size:clamp(2.6rem,5.5vw,5rem);line-height:1.02;letter-spacing:-.05em;font-weight:900;margin-bottom:1.2rem}
+.gt{background:var(--gl);-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent}
+.sub{font-size:.82rem;color:var(--tm);font-family:'JetBrains Mono',monospace;margin-bottom:.6rem;letter-spacing:.04em}
+.hs{font-family:'Source Serif 4',serif;color:var(--t2);font-size:clamp(1rem,1.8vw,1.18rem);max-width:800px;margin:0 auto 2.2rem;line-height:1.85}
+.hm{display:flex;flex-wrap:wrap;justify-content:center;gap:10px;margin-bottom:2.5rem}
+.mp{border:1px solid var(--bs);background:rgba(17,17,28,.8);border-radius:999px;padding:.6rem 1.1rem;color:var(--t2);font-size:.86rem}
+.mp.hl2{border-color:rgba(94,234,212,.3);color:var(--ac);background:rgba(94,234,212,.06)}
+.sc{position:absolute;bottom:2.4rem;left:50%;transform:translateX(-50%);color:var(--tm);display:flex;flex-direction:column;gap:.5rem;align-items:center;text-transform:uppercase;letter-spacing:.22em;font-size:.68rem}
+.arr{width:17px;height:17px;border-right:2px solid var(--tm);border-bottom:2px solid var(--tm);transform:rotate(45deg);animation:ba 2s ease-in-out infinite}
+@keyframes pulse{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.25;transform:scale(.7)}}
+@keyframes ba{0%,100%{transform:rotate(45deg) translateY(0)}50%{transform:rotate(45deg) translateY(8px)}}
+/* Content */
+.cw{max-width:var(--cw);margin:0 auto;padding:0 2rem 7rem}
+.sec{margin-bottom:6rem;opacity:0;transform:translateY(32px);transition:opacity .6s ease,transform .6s ease}
+.sec.vis{opacity:1;transform:translateY(0)}
+.sn{display:flex;align-items:center;gap:14px;color:var(--ac);font-family:'JetBrains Mono',monospace;font-size:.67rem;text-transform:uppercase;letter-spacing:.24em;margin-bottom:1rem}
+.sn::after{content:"";height:1px;flex:1;background:linear-gradient(90deg,rgba(94,234,212,.6),transparent)}
+.sec h2{font-size:clamp(2rem,4vw,3rem);line-height:1.06;margin-bottom:1.1rem;letter-spacing:-.04em}
+.lead{font-family:'Source Serif 4',serif;font-size:1.1rem;color:var(--t2);margin-bottom:2.2rem;line-height:1.88;max-width:860px}
+/* Cards */
+.card{background:linear-gradient(160deg,rgba(20,20,36,.98),rgba(14,14,26,.98));border:1px solid var(--bs);border-radius:var(--r);box-shadow:var(--sh);padding:2rem;margin-bottom:1.6rem}
+.card-accent{border-color:rgba(94,234,212,.25);background:linear-gradient(160deg,rgba(94,234,212,.04),rgba(14,14,26,.98))}
+/* Code blocks */
+.cc{background:linear-gradient(180deg,rgba(10,10,20,.99),rgba(8,8,16,.99));border:1px solid var(--bs);border-radius:var(--r);box-shadow:var(--sh);padding:0;margin-bottom:1.6rem;overflow:hidden}
+.ch{display:flex;align-items:center;justify-content:space-between;padding:1rem 1.6rem;border-bottom:1px solid var(--bs);background:rgba(255,255,255,.015)}
+.ch h3{font-size:.88rem;font-family:'JetBrains Mono',monospace;color:var(--ac);display:flex;align-items:center;gap:8px}
+.ch h3::before{content:"⟩";opacity:.5}
+.cpb{display:inline-flex;align-items:center;gap:5px;padding:.26rem .7rem;border-radius:999px;border:1px solid var(--bs);background:transparent;color:var(--tm);font-size:.7rem;cursor:pointer;transition:all .18s;font-family:'JetBrains Mono',monospace}
+.cpb:hover{border-color:var(--a1);color:var(--a1)}
+.cbody{padding:1.6rem;overflow-x:auto}
+pre{white-space:pre;color:#d8e3ff;font-family:'JetBrains Mono',monospace;font-size:.84rem;line-height:1.78;tab-size:4}
+.kw{color:#c084fc}.fn{color:#60a5fa}.str{color:#5eead4}.cm{color:#3d4060;font-style:italic}.nu{color:#fbbf24}.cl{color:#f472b6}.de{color:#fb923c}.op{color:#94a3b8}
+/* Architecture containers */
+.arch{background:rgba(8,8,18,.96);border:1px solid rgba(94,234,212,.18);border-radius:var(--r);padding:1.8rem;margin-bottom:1.6rem;overflow-x:auto;text-align:center}
+.arch-title{font-family:'JetBrains Mono',monospace;font-size:.68rem;text-transform:uppercase;letter-spacing:.2em;color:var(--ac);margin-bottom:1.4rem;text-align:left;display:flex;align-items:center;gap:8px}
+.arch-title::before{content:"▸";opacity:.7}
+/* Callouts */
+.callout{border-radius:14px;padding:1.2rem 1.4rem;margin-bottom:1.2rem;display:flex;gap:1rem;align-items:flex-start}
+.callout-key{background:rgba(94,234,212,.05);border:1px solid rgba(94,234,212,.22)}
+.callout-warn{background:rgba(251,191,36,.05);border:1px solid rgba(251,191,36,.22)}
+.callout-insight{background:rgba(167,139,250,.05);border:1px solid rgba(167,139,250,.22)}
+.callout-scenario{background:rgba(96,165,250,.05);border:1px solid rgba(96,165,250,.22)}
+.callout-danger{background:rgba(244,114,182,.05);border:1px solid rgba(244,114,182,.22)}
+.callout-icon{font-size:1.35rem;flex-shrink:0;margin-top:.08rem}
+.callout-body h4{font-size:.96rem;margin-bottom:.35rem;color:var(--t1);font-weight:700}
+.callout-body p{font-size:.88rem;color:var(--t2);line-height:1.68}
+.callout-body code{font-family:'JetBrains Mono',monospace;font-size:.82rem;background:rgba(255,255,255,.06);padding:.1rem .3rem;border-radius:4px;color:var(--ac)}
+/* Grids */
+.g2{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:1.4rem;margin-bottom:1.6rem}
+.g3{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:1.2rem;margin-bottom:1.6rem}
+.g4{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:1rem;margin-bottom:1.4rem}
+@media(max-width:768px){.g2,.g3,.g4{grid-template-columns:1fr}}
+.mc2{border:1px solid var(--bs);border-radius:16px;padding:1.4rem;background:rgba(255,255,255,.02);transition:border-color .2s}
+.mc2:hover{border-color:rgba(94,234,212,.3)}
+.mc2 h4{font-size:1rem;margin-bottom:.6rem;color:var(--t1);font-weight:700}
+.mc2 p{font-size:.88rem;color:var(--t2);line-height:1.68}
+.mc2 .tag{display:inline-block;font-family:'JetBrains Mono',monospace;font-size:.68rem;padding:.2rem .55rem;border-radius:999px;margin-bottom:.6rem;text-transform:uppercase;letter-spacing:.1em}
+/* Tables */
+.tbl{width:100%;border-collapse:collapse;font-size:.86rem}
+.tbl th{text-align:left;padding:.8rem 1.1rem;font-family:'JetBrains Mono',monospace;font-size:.64rem;text-transform:uppercase;color:var(--tm);border-bottom:1px solid var(--bs);letter-spacing:.08em}
+.tbl td{padding:.8rem 1.1rem;border-bottom:1px solid rgba(255,255,255,.035);color:var(--t2);vertical-align:top;line-height:1.65}
+.tbl td:first-child{color:var(--t1);font-weight:600}.tbl tr:last-child td{border-bottom:none}
+.tbl tr:hover td{background:rgba(255,255,255,.015)}
+/* Scenario box */
+.scenario{background:linear-gradient(135deg,rgba(96,165,250,.04),rgba(167,139,250,.04));border:1px solid rgba(96,165,250,.2);border-radius:var(--r);padding:1.8rem;margin-bottom:1.6rem;position:relative}
+.scenario::before{content:"SCENARIO";position:absolute;top:-1px;left:1.5rem;background:var(--bg);padding:0 .6rem;font-family:'JetBrains Mono',monospace;font-size:.62rem;color:var(--a2);letter-spacing:.2em}
+.scenario h4{color:var(--a2);margin-bottom:.8rem;font-size:1.05rem}
+.scenario p{font-size:.9rem;color:var(--t2);line-height:1.72;margin-bottom:.6rem}
+.scenario p:last-child{margin-bottom:0}
+.scenario code{font-family:'JetBrains Mono',monospace;font-size:.82rem;background:rgba(96,165,250,.1);padding:.1rem .3rem;border-radius:4px;color:var(--a2)}
+/* Quiz */
+.qc{background:linear-gradient(180deg,rgba(18,18,32,.98),rgba(12,12,24,.98));border:1px solid var(--bs);border-radius:var(--r);box-shadow:var(--sh);padding:2.2rem}
+.qc-title{font-size:1.2rem;font-weight:800;margin-bottom:.25rem;color:var(--t1)}
+.qc-sub{font-size:.82rem;color:var(--tm);margin-bottom:1.8rem;font-family:'JetBrains Mono',monospace}
+.qq{border:1px solid var(--bs);border-radius:18px;padding:1.8rem;background:rgba(255,255,255,.012);margin-bottom:1.4rem;transition:border-color .3s,background .3s}
+.qq.answered{border-color:rgba(94,234,212,.3);background:rgba(94,234,212,.02)}
+.qnum{font-family:'JetBrains Mono',monospace;font-size:.66rem;color:var(--ac);text-transform:uppercase;letter-spacing:.18em;margin-bottom:.6rem;display:flex;align-items:center;gap:8px}
+.qnum::after{content:"";height:1px;flex:1;background:rgba(94,234,212,.2)}
+.qq h4{font-size:.97rem;margin-bottom:1.2rem;color:var(--t1);line-height:1.6;font-weight:600}
+.qo{display:grid;gap:.6rem}
+.qob{border:1px solid var(--bs);border-radius:12px;padding:1rem 1.2rem;background:rgba(255,255,255,.018);color:var(--t2);cursor:pointer;transition:all .22s;text-align:left;font-size:.88rem;font-family:'Outfit',sans-serif;width:100%;line-height:1.6;position:relative;padding-left:3.2rem}
+.qob::before{content:attr(data-opt);position:absolute;left:1rem;top:50%;transform:translateY(-50%);font-family:'JetBrains Mono',monospace;font-size:.76rem;font-weight:700;color:var(--tm);width:1.4rem;text-align:center;transition:color .2s}
+.qob:hover:not([disabled]){border-color:rgba(94,234,212,.5);background:rgba(94,234,212,.05);color:var(--t1)}
+.qob:hover:not([disabled])::before{color:var(--ac)}
+.qob.ok{border-color:rgba(94,234,212,.6);background:rgba(94,234,212,.08);color:var(--t1)}
+.qob.ok::before{color:#5eead4}
+.qob.no{border-color:rgba(244,114,182,.4);background:rgba(244,114,182,.06);color:var(--t2)}
+.qob.no::before{color:#f472b6}
+.qob[disabled]{cursor:default}
+.qfeed{margin-top:1rem;border-radius:14px;padding:1.2rem 1.4rem;display:none}
+.qfeed.correct{background:rgba(94,234,212,.05);border:1px solid rgba(94,234,212,.25)}
+.qfeed.wrong{background:rgba(244,114,182,.04);border:1px solid rgba(244,114,182,.2)}
+.qfeed-head{font-weight:700;margin-bottom:.4rem;font-size:.92rem}
+.qfeed.correct .qfeed-head{color:#5eead4}
+.qfeed.wrong .qfeed-head{color:#f472b6}
+.qfeed-why{color:var(--t2);font-size:.87rem;line-height:1.68}
+.qfeed-why strong{color:var(--t1)}
+.qfeed-why code{font-family:'JetBrains Mono',monospace;font-size:.8rem;background:rgba(255,255,255,.06);padding:.1rem .3rem;border-radius:4px;color:var(--ac)}
+.qprog{display:flex;align-items:center;gap:1.2rem;margin-bottom:1.8rem}
+.qprog-bar{flex:1;height:5px;background:rgba(255,255,255,.05);border-radius:999px;overflow:hidden}
+.qprog-fill{height:100%;background:var(--gl);border-radius:999px;width:0%;transition:width .5s ease}
+.qprog-text{font-family:'JetBrains Mono',monospace;font-size:.7rem;color:var(--tm);white-space:nowrap}
+.qs{text-align:center;padding:2rem;border:1px solid var(--bs);border-radius:18px;margin-top:1.8rem;background:rgba(255,255,255,.01)}
+.qs h3{font-size:1.8rem;margin-bottom:.5rem;font-weight:800}
+.qs p{color:var(--t2);font-size:.92rem}
+/* Nav buttons */
+.pr,.nx{display:inline-flex;align-items:center;gap:7px;padding:.55rem 1.2rem;border-radius:999px;border:1px solid var(--bs);background:rgba(255,255,255,.02);color:var(--t2);font-size:.84rem;text-decoration:none;transition:all .2s}
+.pr:hover,.nx:hover{border-color:var(--ac);color:var(--ac)}
+/* Metric bars */
+.metric-row{display:flex;align-items:center;gap:1rem;margin-bottom:.7rem}
+.metric-label{font-family:'JetBrains Mono',monospace;font-size:.76rem;color:var(--t2);min-width:140px}
+.metric-bar{flex:1;height:8px;background:rgba(255,255,255,.05);border-radius:999px;overflow:hidden}
+.metric-fill{height:100%;border-radius:999px;transition:width 1.2s ease}
+.metric-val{font-family:'JetBrains Mono',monospace;font-size:.76rem;color:var(--t1);min-width:40px;text-align:right}
+/* Footer */
+footer{border-top:1px solid var(--bs);padding:3rem 2rem;text-align:center;color:var(--tm);font-size:.82rem}</style>
+</head>
+<body>
+<div class="sp" id="sp"></div>
+<nav>
+  <a class="nbr" href="#"><div class="nbr-dot"></div>MFP Algorithms Track · M2</a>
+  <span class="nm">Greedy Argmax · Inverted Index · Bidirectional Expansion · Bitmask Suppression · MFP vs PrefixSpan</span>
+  <div class="na"><a href="mfp_m1.html" class="pr">← M1: Probabilistic Filtering</a><a href="mfp_m3.html" class="nx">M3: Trees and Complexity →</a></div>
+</nav>
+<section class="hero">
+  <div class="hg"></div>
+  <div class="hi">
+    <div class="hl">MFP Algorithms Track · Module 2</div>
+    <h1>Greedy Expansion and Global Occupancy Bitmask</h1>
+    <p class="sub">Greedy Argmax · Inverted Index · Bidirectional Expansion · Bitmask Suppression · MFP vs PrefixSpan</p>
+    <p class="hs">The greedy expander is MFP's algorithmic core — and the reason MFP scales to 1.7 million documents where PrefixSpan cannot. Starting from each ranked seed, the expander selects t* = argmax df(P∪{t}) subject to df ≥ σ at every step, committing to one path without backtracking. The global occupancy bitmask marks covered positions after each MFP is found, suppressing all sub-phrase seeds before any expensive expansion is attempted. Together, greedy expansion and bitmask suppression reduce the search from exponential recursive projections to linear expansion paths.</p>
+<div class="hm">
+<span class="mp hl2">⏱ 90 min</span>
+<span class="mp">Greedy argmax rule</span>
+<span class="mp">Successor queries via inverted index</span>
+<span class="mp">Bidirectional expansion</span>
+<span class="mp">Global occupancy bitmask</span>
+<span class="mp">O(phrase_length) bit-test suppression</span>
+<span class="mp">MFP vs PrefixSpan complexity</span>
+<span class="mp">Multilingual token-ID agnosticism</span>
+</div>
+  </div>
+  <div class="sc"><span>Scroll</span><div class="arr"></div></div>
+</section>
+<div class="cw">
+
+<section class="sec" id="s1">
+<div class="sn">01 · Greedy Expansion — Linear Path, No Branching</div>
+<h2>One Winner Per Step —<br><span class="gt">Linear Time vs Exponential Projection</span></h2>
+<p class="lead">PrefixSpan creates a projected database for every frequent extension — one projected database per branch, recursively. For a phrase with 5 frequent extensions at each of 10 steps, that is 5¹⁰ ≈ 10 million projected databases. MFP selects one winner (argmax df) at every step and commits: 10 steps, 10 inverted index lookups, zero projections. The greedy choice reliably finds the dominant boilerplate phrase because boilerplate, by definition, appears in as many documents as possible — the greedy maximum tracks exactly this.</p>
+<div class="arch">
+<div class="arch-title">Greedy MFP expansion (left) vs PrefixSpan recursive projection (right) — same seed, radically different work</div>
+<svg viewBox="0 0 900 300" xmlns="http://www.w3.org/2000/svg" style="width:100%;max-width:900px;display:block">
+<rect width="900" height="300" fill="#07070f" rx="14"/>
+<defs>
+  <marker id="g0" markerWidth="7" markerHeight="5" refX="7" refY="2.5" orient="auto"><polygon points="0 0,7 2.5,0 5" fill="#5eead4"/></marker>
+  <marker id="g1" markerWidth="7" markerHeight="5" refX="7" refY="2.5" orient="auto"><polygon points="0 0,7 2.5,0 5" fill="#f472b6"/></marker>
+</defs>
+<text x="450" y="26" font-family="JetBrains Mono,monospace" font-size="11" fill="#5eead4" text-anchor="middle" letter-spacing="2" font-weight="bold">GREEDY EXPANSION — LINEAR PATH vs RECURSIVE PROJECTION</text>
+
+<!-- ── LEFT PANEL: MFP Greedy  x=14 y=40 w=420 h=248 cx=224 ── -->
+<rect x="14" y="40" width="420" height="248" rx="10" fill="rgba(94,234,212,.03)" stroke="rgba(94,234,212,.3)" stroke-width="1.5"/>
+<text x="224" y="58" font-family="JetBrains Mono,monospace" font-size="9" fill="#5eead4" text-anchor="middle" font-weight="bold">MFP GREEDY — O(length) steps, no branching</text>
+
+<!-- Seed box y=68 cx=224 w=200 -->
+<rect x="124" y="66" width="200" height="28" rx="6" fill="rgba(94,234,212,.12)" stroke="#5eead4" stroke-width="2"/>
+<text x="224" y="84" font-family="JetBrains Mono,monospace" font-size="8" fill="#5eead4" text-anchor="middle" font-weight="bold">Seed: "rights reserved"  df=12400</text>
+
+<!-- Step 1: extend right, y=94→130 -->
+<line x1="224" y1="94" x2="224" y2="112" stroke="#5eead4" stroke-width="1.5" marker-end="url(#g0)"/>
+<text x="230" y="108" font-family="JetBrains Mono,monospace" font-size="7" fill="#7c7c95">t*="copyright"  df=12400</text>
+<rect x="94"  y="114" width="260" height="26" rx="6" fill="rgba(94,234,212,.08)" stroke="rgba(94,234,212,.45)" stroke-width="1.5"/>
+<text x="224" y="131" font-family="JetBrains Mono,monospace" font-size="8" fill="#5eead4" text-anchor="middle">"rights reserved copyright"  df=12400</text>
+
+<!-- Step 2: extend right, y=140→172 -->
+<line x1="224" y1="140" x2="224" y2="158" stroke="#5eead4" stroke-width="1.5" marker-end="url(#g0)"/>
+<text x="230" y="154" font-family="JetBrains Mono,monospace" font-size="7" fill="#7c7c95">t*="2024"  df=12400</text>
+<rect x="64"  y="160" width="320" height="26" rx="6" fill="rgba(94,234,212,.08)" stroke="rgba(94,234,212,.45)" stroke-width="1.5"/>
+<text x="224" y="177" font-family="JetBrains Mono,monospace" font-size="8" fill="#5eead4" text-anchor="middle">"rights reserved copyright 2024"  df=12400</text>
+
+<!-- Step 3: STOP (red), y=186→212 -->
+<line x1="224" y1="186" x2="224" y2="204" stroke="#f472b6" stroke-width="1.5" marker-end="url(#g1)"/>
+<text x="230" y="200" font-family="JetBrains Mono,monospace" font-size="7" fill="#f472b6">"acme" df=84 &lt; σ=100  →  STOP</text>
+<rect x="34"  y="206" width="380" height="36" rx="6" fill="rgba(244,114,182,.1)" stroke="#f472b6" stroke-width="2"/>
+<text x="224" y="222" font-family="JetBrains Mono,monospace" font-size="9" fill="#f472b6" text-anchor="middle" font-weight="bold">MFP: "rights reserved copyright 2024"</text>
+<text x="224" y="236" font-family="JetBrains Mono,monospace" font-size="7" fill="#7c7c95" text-anchor="middle">Maximal: no extension has df ≥ σ</text>
+
+<!-- Left expansion note -->
+<text x="224" y="268" font-family="JetBrains Mono,monospace" font-size="7" fill="#5eead4" text-anchor="middle">→ Also expand LEFT: "all rights reserved copyright 2024"  df=12400  (final MFP)</text>
+
+<!-- ── RIGHT PANEL: PrefixSpan  x=446 y=40 w=440 h=248 cx=666 ── -->
+<rect x="446" y="40" width="440" height="248" rx="10" fill="rgba(244,114,182,.03)" stroke="rgba(244,114,182,.2)" stroke-width="1.5"/>
+<text x="666" y="58" font-family="JetBrains Mono,monospace" font-size="9" fill="#f472b6" text-anchor="middle" font-weight="bold">PrefixSpan — recursive projections, exponential branches</text>
+
+<!-- Root node -->
+<rect x="572" y="66" width="188" height="28" rx="6" fill="rgba(244,114,182,.08)" stroke="rgba(244,114,182,.35)" stroke-width="1.5"/>
+<text x="666" y="84" font-family="JetBrains Mono,monospace" font-size="8" fill="#f472b6" text-anchor="middle">"rights"  df=12400  →  project DB</text>
+
+<!-- Branch 1: reserved -->
+<line x1="620" y1="94" x2="548" y2="120" stroke="#f472b6" stroke-width="1" marker-end="url(#g1)"/>
+<rect x="456" y="122" width="172" height="24" rx="4" fill="rgba(244,114,182,.06)" stroke="rgba(244,114,182,.25)"/>
+<text x="542" y="138" font-family="JetBrains Mono,monospace" font-size="7" fill="#f472b6" text-anchor="middle">"r. reserved"  → project DB</text>
+<line x1="500" y1="146" x2="480" y2="168" stroke="#f472b6" stroke-width="1" marker-end="url(#g1)"/>
+<rect x="456" y="170" width="100" height="20" rx="3" fill="rgba(244,114,182,.04)" stroke="rgba(244,114,182,.15)"/>
+<text x="506" y="184" font-family="JetBrains Mono,monospace" font-size="6" fill="#7c7c95" text-anchor="middle">+ copyright → project…</text>
+
+<!-- Branch 2: copyright -->
+<line x1="666" y1="94" x2="666" y2="120" stroke="#f472b6" stroke-width="1" marker-end="url(#g1)"/>
+<rect x="570" y="122" width="192" height="24" rx="4" fill="rgba(244,114,182,.06)" stroke="rgba(244,114,182,.25)"/>
+<text x="666" y="138" font-family="JetBrains Mono,monospace" font-size="7" fill="#f472b6" text-anchor="middle">"r. copyright"  → project DB</text>
+<line x1="640" y1="146" x2="610" y2="168" stroke="#f472b6" stroke-width="1" marker-end="url(#g1)"/>
+<rect x="564" y="170" width="90" height="20" rx="3" fill="rgba(244,114,182,.04)" stroke="rgba(244,114,182,.15)"/>
+<text x="609" y="184" font-family="JetBrains Mono,monospace" font-size="6" fill="#7c7c95" text-anchor="middle">+ 2024 → project…</text>
+<line x1="700" y1="146" x2="722" y2="168" stroke="#f472b6" stroke-width="1" marker-end="url(#g1)"/>
+<rect x="698" y="170" width="90" height="20" rx="3" fill="rgba(244,114,182,.04)" stroke="rgba(244,114,182,.15)"/>
+<text x="743" y="184" font-family="JetBrains Mono,monospace" font-size="6" fill="#7c7c95" text-anchor="middle">+ acme → project…</text>
+
+<!-- Branch 3: all -->
+<line x1="720" y1="94" x2="810" y2="120" stroke="#f472b6" stroke-width="1" marker-end="url(#g1)"/>
+<rect x="746" y="122" width="128" height="24" rx="4" fill="rgba(244,114,182,.06)" stroke="rgba(244,114,182,.25)"/>
+<text x="810" y="138" font-family="JetBrains Mono,monospace" font-size="7" fill="#f472b6" text-anchor="middle">"r. all"  → project DB</text>
+
+<!-- Cost label -->
+<rect x="456" y="206" width="418" height="68" rx="8" fill="rgba(255,255,255,.02)" stroke="rgba(255,255,255,.06)"/>
+<text x="665" y="224" font-family="JetBrains Mono,monospace" font-size="8" fill="#f472b6" text-anchor="middle">Each node = full projected database scan = O(corpus_size)</text>
+<text x="665" y="240" font-family="JetBrains Mono,monospace" font-size="8" fill="#7c7c95" text-anchor="middle">Branches × depth = exponential projected DBs at scale</text>
+<text x="665" y="256" font-family="JetBrains Mono,monospace" font-size="7" fill="#7c7c95" text-anchor="middle">MFP greedy: one linear path per seed, zero database projections</text>
+<text x="665" y="269" font-family="JetBrains Mono,monospace" font-size="7" fill="#5eead4" text-anchor="middle">Trade-off: MFP greedy path may not always find globally optimal MFP</text>
+</svg>
+</div>
+<div class="cc">
+  <div class="ch"><h3>greedy_expander.py — linear greedy expansion via inverted index</h3><button class="cpb" onclick="cp(this,'c1')">Copy</button></div>
+  <div class="cbody"><pre id="c1"><span class="kw">from</span> collections <span class="kw">import</span> defaultdict
+
+<span class="kw">class</span> <span class="cl">GreedyExpander</span>:
+    <span class="str">"""
+    Greedy MFP expansion using an inverted index.
+
+    Core algorithm (from paper Section 4):
+    Given seed S, repeatedly:
+      1. Query inverted index for all successors: tokens t that appear
+         immediately after S in some document.
+      2. For each candidate t, compute exact df(S + t) via the index.
+      3. Select t* = argmax df(S + t)  s.t.  df ≥ σ  (greedy choice).
+      4. If no such t* exists → stop. S is maximal → it's an MFP.
+      5. Otherwise commit to S ← S + t* and repeat.
+
+    This is the greedy LEFT extension (can also extend right → left).
+    The paper expands bi-directionally: first right, then left from seed.
+
+    Why greedy (not exhaustive)?
+    PrefixSpan recursively projects the database for each branch.
+    MFP greedy: one winner per step, no branching, no projections.
+    Linear time per expansion: O(|expansion_path| × |index_lookup|).
+    """</span>
+    <span class="kw">def</span> <span class="fn">__init__</span>(self,
+                 index: dict[tuple, list[tuple[int,int]]],
+                 sigma: int):
+        self.index = index   <span class="cm"># phrase → [(doc_id, pos), ...]</span>
+        self.sigma = sigma
+
+    <span class="kw">def</span> <span class="fn">exact_df</span>(self, phrase: tuple) -> int:
+        <span class="str">"""Exact document frequency via inverted index."""</span>
+        postings = self.index.get(phrase, [])
+        <span class="kw">return</span> len(set(doc_id <span class="kw">for</span> doc_id, _ <span class="kw">in</span> postings))
+
+    <span class="kw">def</span> <span class="fn">successors</span>(self, phrase: tuple) -> list[int]:
+        <span class="str">"""
+        Find all tokens that immediately follow `phrase` in the corpus.
+        Uses the inverted index: look up each (doc_id, pos) for phrase,
+        then check position pos + len(phrase) in that document.
+        """</span>
+        succs: dict[int, set] = defaultdict(set)
+        <span class="kw">for</span> doc_id, pos <span class="kw">in</span> self.index.get(phrase, []):
+            next_pos = pos + len(phrase)
+            <span class="cm"># In practice: look up next_pos in the document token array</span>
+            <span class="cm"># (stored separately). Here we simulate with index lookup.</span>
+            <span class="kw">for</span> token <span class="kw">in</span> self._tokens_at(doc_id, next_pos):
+                succs[token].add(doc_id)
+        <span class="kw">return</span> [(t, len(docs)) <span class="kw">for</span> t, docs <span class="kw">in</span> succs.items()
+                <span class="kw">if</span> len(docs) >= self.sigma]
+
+    <span class="kw">def</span> <span class="fn">expand</span>(self, seed: tuple) -> tuple:
+        <span class="str">"""
+        Greedily expand seed to its MFP.
+        Returns the maximal phrase — the longest extension with df ≥ σ.
+
+        Each step: try all successors, pick the one with highest df.
+        Commit immediately — no backtracking, no branching.
+        Stop when no successor meets σ → seed is maximal.
+        """</span>
+        phrase = seed
+        <span class="kw">while</span> <span class="kw">True</span>:
+            candidates = self.successors(phrase)
+            <span class="kw">if</span> <span class="kw">not</span> candidates:
+                <span class="kw">break</span>
+            <span class="cm"># Greedy: select t* with maximum df(phrase + t*)</span>
+            best_token, best_df = max(candidates, key=<span class="kw">lambda</span> x: x[<span class="nu">1</span>])
+            phrase = phrase + (best_token,)
+        <span class="kw">return</span> phrase   <span class="cm"># MFP: cannot be extended while df ≥ σ</span>
+
+    <span class="kw">def</span> <span class="fn">_tokens_at</span>(self, doc_id: int, pos: int) -> list[int]:
+        <span class="str">"""Retrieve token at position `pos` in document `doc_id`."""</span>
+        <span class="kw">raise</span> NotImplementedError(<span class="str">"Inject document store"</span>)</pre></div>
+</div>
+
+</section>
+
+<section class="sec" id="s2">
+<div class="sn">02 · Global Occupancy Bitmask — Suppression in O(1)</div>
+<h2>Once Covered, Always Suppressed —<br><span class="gt">The Maximality Enforcement Mechanism</span></h2>
+<p class="lead">Every token position in the corpus has one bit in the global bitmask. When the expander finds an MFP covering positions [start, end), it marks those bits. Any subsequent seed whose token positions are entirely occupied is suppressed without expansion — the bitmask check replaces an expensive expansion with a single integer bit operation. This is the implementation of the maximality property: a sub-phrase of a known MFP cannot itself be an MFP.</p>
+<div class="arch">
+<div class="arch-title">Bitmask state before and after MFP "All rights reserved copyright 2024" — positions 0–4 marked, sub-phrase suppressed</div>
+<svg viewBox="0 0 900 262" xmlns="http://www.w3.org/2000/svg" style="width:100%;max-width:900px;display:block">
+<rect width="900" height="262" fill="#07070f" rx="14"/>
+<text x="450" y="26" font-family="JetBrains Mono,monospace" font-size="11" fill="#5eead4" text-anchor="middle" letter-spacing="2" font-weight="bold">GLOBAL BITMASK — OCCUPANCY TRACKING AND SUPPRESSION</text>
+
+<!-- ── BEFORE (top half) y=40–118 ── -->
+<text x="220" y="48" font-family="JetBrains Mono,monospace" font-size="9" fill="#7c7c95" text-anchor="middle">BEFORE — all positions free (bits=0)</text>
+
+<!-- Token cells: x=46,86,126,166,206,246,286,326,366  w=36 h=22 y=54 -->
+<text x="30" y="70" font-family="JetBrains Mono,monospace" font-size="7" fill="#7c7c95">D1:</text>
+<rect x="46"  y="54" width="36" height="22" rx="3" fill="rgba(255,255,255,.04)" stroke="rgba(255,255,255,.1)"/><text x="64"  y="69" font-family="JetBrains Mono,monospace" font-size="7" fill="#ececf6" text-anchor="middle">All</text>
+<rect x="86"  y="54" width="36" height="22" rx="3" fill="rgba(255,255,255,.04)" stroke="rgba(255,255,255,.1)"/><text x="104" y="69" font-family="JetBrains Mono,monospace" font-size="7" fill="#ececf6" text-anchor="middle">rights</text>
+<rect x="126" y="54" width="36" height="22" rx="3" fill="rgba(255,255,255,.04)" stroke="rgba(255,255,255,.1)"/><text x="144" y="69" font-family="JetBrains Mono,monospace" font-size="7" fill="#ececf6" text-anchor="middle">reserved</text>
+<rect x="166" y="54" width="36" height="22" rx="3" fill="rgba(255,255,255,.04)" stroke="rgba(255,255,255,.1)"/><text x="184" y="69" font-family="JetBrains Mono,monospace" font-size="7" fill="#ececf6" text-anchor="middle">copyright</text>
+<rect x="206" y="54" width="36" height="22" rx="3" fill="rgba(255,255,255,.04)" stroke="rgba(255,255,255,.1)"/><text x="224" y="69" font-family="JetBrains Mono,monospace" font-size="7" fill="#ececf6" text-anchor="middle">2024</text>
+<rect x="246" y="54" width="36" height="22" rx="3" fill="rgba(255,255,255,.04)" stroke="rgba(255,255,255,.1)"/><text x="264" y="69" font-family="JetBrains Mono,monospace" font-size="7" fill="#ececf6" text-anchor="middle">Page</text>
+<rect x="286" y="54" width="36" height="22" rx="3" fill="rgba(255,255,255,.04)" stroke="rgba(255,255,255,.1)"/><text x="304" y="69" font-family="JetBrains Mono,monospace" font-size="7" fill="#ececf6" text-anchor="middle">1</text>
+<rect x="326" y="54" width="36" height="22" rx="3" fill="rgba(255,255,255,.04)" stroke="rgba(255,255,255,.1)"/><text x="344" y="69" font-family="JetBrains Mono,monospace" font-size="7" fill="#ececf6" text-anchor="middle">of</text>
+<rect x="366" y="54" width="36" height="22" rx="3" fill="rgba(255,255,255,.04)" stroke="rgba(255,255,255,.1)"/><text x="384" y="69" font-family="JetBrains Mono,monospace" font-size="7" fill="#ececf6" text-anchor="middle">12</text>
+
+<!-- Bit row before -->
+<text x="30" y="96" font-family="JetBrains Mono,monospace" font-size="7" fill="#7c7c95">bits:</text>
+<text x="64"  y="96" font-family="JetBrains Mono,monospace" font-size="8" fill="#7c7c95" text-anchor="middle">0</text>
+<text x="104" y="96" font-family="JetBrains Mono,monospace" font-size="8" fill="#7c7c95" text-anchor="middle">0</text>
+<text x="144" y="96" font-family="JetBrains Mono,monospace" font-size="8" fill="#7c7c95" text-anchor="middle">0</text>
+<text x="184" y="96" font-family="JetBrains Mono,monospace" font-size="8" fill="#7c7c95" text-anchor="middle">0</text>
+<text x="224" y="96" font-family="JetBrains Mono,monospace" font-size="8" fill="#7c7c95" text-anchor="middle">0</text>
+<text x="264" y="96" font-family="JetBrains Mono,monospace" font-size="8" fill="#7c7c95" text-anchor="middle">0</text>
+<text x="304" y="96" font-family="JetBrains Mono,monospace" font-size="8" fill="#7c7c95" text-anchor="middle">0</text>
+<text x="344" y="96" font-family="JetBrains Mono,monospace" font-size="8" fill="#7c7c95" text-anchor="middle">0</text>
+<text x="384" y="96" font-family="JetBrains Mono,monospace" font-size="8" fill="#7c7c95" text-anchor="middle">0</text>
+
+<!-- Divider / event line -->
+<line x1="14" y1="108" x2="886" y2="108" stroke="rgba(255,255,255,.06)"/>
+<text x="450" y="122" font-family="JetBrains Mono,monospace" font-size="9" fill="#5eead4" text-anchor="middle">↓  MFP "All rights reserved copyright 2024" found  →  mark positions 0–4</text>
+
+<!-- ── AFTER (bottom half) y=132–210 ── -->
+<text x="220" y="143" font-family="JetBrains Mono,monospace" font-size="9" fill="#a78bfa" text-anchor="middle">AFTER — positions 0–4 marked occupied</text>
+
+<!-- Token cells after: positions 0-4 highlighted -->
+<text x="30" y="165" font-family="JetBrains Mono,monospace" font-size="7" fill="#7c7c95">D1:</text>
+<rect x="46"  y="150" width="36" height="22" rx="3" fill="rgba(94,234,212,.22)" stroke="#5eead4" stroke-width="2"/><text x="64"  y="165" font-family="JetBrains Mono,monospace" font-size="7" fill="#5eead4" text-anchor="middle">All</text>
+<rect x="86"  y="150" width="36" height="22" rx="3" fill="rgba(94,234,212,.22)" stroke="#5eead4" stroke-width="2"/><text x="104" y="165" font-family="JetBrains Mono,monospace" font-size="7" fill="#5eead4" text-anchor="middle">rights</text>
+<rect x="126" y="150" width="36" height="22" rx="3" fill="rgba(94,234,212,.22)" stroke="#5eead4" stroke-width="2"/><text x="144" y="165" font-family="JetBrains Mono,monospace" font-size="7" fill="#5eead4" text-anchor="middle">reserved</text>
+<rect x="166" y="150" width="36" height="22" rx="3" fill="rgba(94,234,212,.22)" stroke="#5eead4" stroke-width="2"/><text x="184" y="165" font-family="JetBrains Mono,monospace" font-size="7" fill="#5eead4" text-anchor="middle">copyright</text>
+<rect x="206" y="150" width="36" height="22" rx="3" fill="rgba(94,234,212,.22)" stroke="#5eead4" stroke-width="2"/><text x="224" y="165" font-family="JetBrains Mono,monospace" font-size="7" fill="#5eead4" text-anchor="middle">2024</text>
+<rect x="246" y="150" width="36" height="22" rx="3" fill="rgba(255,255,255,.04)" stroke="rgba(255,255,255,.1)"/><text x="264" y="165" font-family="JetBrains Mono,monospace" font-size="7" fill="#ececf6" text-anchor="middle">Page</text>
+<rect x="286" y="150" width="36" height="22" rx="3" fill="rgba(255,255,255,.04)" stroke="rgba(255,255,255,.1)"/><text x="304" y="165" font-family="JetBrains Mono,monospace" font-size="7" fill="#ececf6" text-anchor="middle">1</text>
+<rect x="326" y="150" width="36" height="22" rx="3" fill="rgba(255,255,255,.04)" stroke="rgba(255,255,255,.1)"/><text x="344" y="165" font-family="JetBrains Mono,monospace" font-size="7" fill="#ececf6" text-anchor="middle">of</text>
+<rect x="366" y="150" width="36" height="22" rx="3" fill="rgba(255,255,255,.04)" stroke="rgba(255,255,255,.1)"/><text x="384" y="165" font-family="JetBrains Mono,monospace" font-size="7" fill="#ececf6" text-anchor="middle">12</text>
+
+<!-- Bit row after -->
+<text x="30" y="194" font-family="JetBrains Mono,monospace" font-size="7" fill="#7c7c95">bits:</text>
+<text x="64"  y="194" font-family="JetBrains Mono,monospace" font-size="9" fill="#5eead4" text-anchor="middle" font-weight="bold">1</text>
+<text x="104" y="194" font-family="JetBrains Mono,monospace" font-size="9" fill="#5eead4" text-anchor="middle" font-weight="bold">1</text>
+<text x="144" y="194" font-family="JetBrains Mono,monospace" font-size="9" fill="#5eead4" text-anchor="middle" font-weight="bold">1</text>
+<text x="184" y="194" font-family="JetBrains Mono,monospace" font-size="9" fill="#5eead4" text-anchor="middle" font-weight="bold">1</text>
+<text x="224" y="194" font-family="JetBrains Mono,monospace" font-size="9" fill="#5eead4" text-anchor="middle" font-weight="bold">1</text>
+<text x="264" y="194" font-family="JetBrains Mono,monospace" font-size="8" fill="#7c7c95" text-anchor="middle">0</text>
+<text x="304" y="194" font-family="JetBrains Mono,monospace" font-size="8" fill="#7c7c95" text-anchor="middle">0</text>
+<text x="344" y="194" font-family="JetBrains Mono,monospace" font-size="8" fill="#7c7c95" text-anchor="middle">0</text>
+<text x="384" y="194" font-family="JetBrains Mono,monospace" font-size="8" fill="#7c7c95" text-anchor="middle">0</text>
+
+<!-- Suppression result + right panel -->
+<text x="220" y="218" font-family="JetBrains Mono,monospace" font-size="7" fill="#f472b6" text-anchor="middle">Sub-seed "rights reserved copyright" → positions 1–3 all occupied → SUPPRESSED (skip expansion)</text>
+
+<!-- Right suppression logic panel  x=468 y=40 w=420 h=196 -->
+<rect x="468" y="40" width="418" height="200" rx="10" fill="rgba(255,255,255,.02)" stroke="rgba(255,255,255,.07)"/>
+<text x="677" y="60" font-family="JetBrains Mono,monospace" font-size="9" fill="#ececf6" text-anchor="middle" font-weight="bold">Suppression mechanism</text>
+<text x="478" y="80" font-family="JetBrains Mono,monospace" font-size="8" fill="#5eead4">Seed check before expansion:</text>
+<text x="478" y="95" font-family="JetBrains Mono,monospace" font-size="7" fill="#7c7c95">  1. Look up all (doc, pos) entries for seed in inverted index.</text>
+<text x="478" y="109" font-family="JetBrains Mono,monospace" font-size="7" fill="#7c7c95">  2. For each occurrence: test bitmask[doc_offset + pos … pos+len].</text>
+<text x="478" y="123" font-family="JetBrains Mono,monospace" font-size="7" fill="#7c7c95">  3. If ALL positions occupied → seed is sub-phrase of found MFP.</text>
+<text x="478" y="137" font-family="JetBrains Mono,monospace" font-size="7" fill="#f472b6">  4. Skip expansion entirely (O(phrase_length) bit ops).</text>
+<line x1="476" y1="146" x2="876" y2="146" stroke="rgba(255,255,255,.06)"/>
+<text x="478" y="162" font-family="JetBrains Mono,monospace" font-size="8" fill="#fbbf24">Why this is correct:</text>
+<text x="478" y="177" font-family="JetBrains Mono,monospace" font-size="7" fill="#7c7c95">  MFP maximality: a phrase whose positions are entirely within an</text>
+<text x="478" y="191" font-family="JetBrains Mono,monospace" font-size="7" fill="#7c7c95">  already-found MFP cannot itself be maximal → not an MFP.</text>
+<text x="478" y="205" font-family="JetBrains Mono,monospace" font-size="7" fill="#5eead4">  Memory: 1.7M docs × 500 tokens = 850M bits = 106 MB.</text>
+
+<!-- Bottom total bar -->
+<rect x="14" y="238" width="440" height="18" rx="5" fill="rgba(255,255,255,.02)" stroke="rgba(255,255,255,.05)"/>
+<text x="234" y="250" font-family="JetBrains Mono,monospace" font-size="7" fill="#7c7c95" text-anchor="middle">Bitmask prevents re-expanding sub-phrases of found MFPs → no duplicate output</text>
+</svg>
+</div>
+<div class="cc">
+  <div class="ch"><h3>global_bitmask.py — occupancy tracking with numpy bitarray</h3><button class="cpb" onclick="cp(this,'c2')">Copy</button></div>
+  <div class="cbody"><pre id="c2"><span class="kw">import</span> numpy <span class="kw">as</span> np
+
+<span class="kw">class</span> <span class="cl">GlobalBitmask</span>:
+    <span class="str">"""
+    Global occupancy bitmask over all token positions in the corpus.
+
+    One bit per token position: 0 = free, 1 = covered by a found MFP.
+
+    Why a bitmask?
+    After the greedy expander finds MFP P at positions [start, end) in
+    document d, all positions in [start, end) are marked as occupied.
+    Any subsequent seed whose tokens fall entirely within occupied positions
+    is suppressed without expansion — the bitmask check is O(phrase_length)
+    bit operations, far cheaper than a full expansion attempt.
+
+    This implements the 'path compression' / sub-phrase suppression property:
+    once the MFP containing a position is found, that position can never
+    be part of a DIFFERENT MFP (by the maximality definition).
+
+    Memory: total_corpus_tokens / 8 bytes.
+    For 1.7M docs × 500 tokens = 850M tokens → 850M / 8 = ~106MB.
+    """</span>
+    <span class="kw">def</span> <span class="fn">__init__</span>(self, total_positions: int):
+        <span class="cm"># Flat bit array across entire corpus</span>
+        <span class="cm"># Position encoding: doc_offset[d] + position_in_doc</span>
+        n_bytes = (total_positions + <span class="nu">7</span>) // <span class="nu">8</span>
+        self.bits = np.zeros(n_bytes, dtype=np.uint8)
+        self.total = total_positions
+
+    <span class="kw">def</span> <span class="fn">_idx</span>(self, pos: int) -> tuple[int, int]:
+        <span class="str">"""Return (byte_index, bit_index) for flat position pos."""</span>
+        <span class="kw">return</span> pos >> <span class="nu">3</span>, <span class="nu">1</span> << (pos & <span class="nu">7</span>)
+
+    <span class="kw">def</span> <span class="fn">mark</span>(self, start: int, end: int):
+        <span class="str">"""Mark positions [start, end) as occupied by an MFP."""</span>
+        <span class="kw">for</span> pos <span class="kw">in</span> range(start, end):
+            byte_i, bit_mask = self._idx(pos)
+            self.bits[byte_i] |= bit_mask
+
+    <span class="kw">def</span> <span class="fn">is_free</span>(self, start: int, end: int) -> bool:
+        <span class="str">"""
+        True if ALL positions [start, end) are currently unoccupied.
+        A seed is only processed if its positions are all free.
+
+        Optimisation: check the first and last position first (O(1))
+        before scanning the full range — seeds are often fully covered
+        by a single previous MFP, so the quick check short-circuits.
+        """</span>
+        byte_s, bit_s = self._idx(start)
+        byte_e, bit_e = self._idx(end - <span class="nu">1</span>)
+        <span class="kw">if</span> self.bits[byte_s] & bit_s: <span class="kw">return</span> <span class="kw">False</span>
+        <span class="kw">if</span> self.bits[byte_e] & bit_e: <span class="kw">return</span> <span class="kw">False</span>
+        <span class="kw">for</span> pos <span class="kw">in</span> range(start + <span class="nu">1</span>, end - <span class="nu">1</span>):
+            byte_i, bit_mask = self._idx(pos)
+            <span class="kw">if</span> self.bits[byte_i] & bit_mask: <span class="kw">return</span> <span class="kw">False</span>
+        <span class="kw">return</span> <span class="kw">True</span>
+
+    <span class="kw">def</span> <span class="fn">coverage_fraction</span>(self) -> float:
+        <span class="str">"""What fraction of corpus positions are covered by MFPs?"""</span>
+        ones = int(np.unpackbits(self.bits).sum())
+        <span class="kw">return</span> ones / self.total</pre></div>
+</div>
+
+</section>
+
+<section class="sec" id="s3">
+<div class="sn">03 · Full Expansion-Suppression Loop</div>
+<h2>Seeds → Expand → Mark → Suppress —<br><span class="gt">Until Queue Is Empty</span></h2>
+<div class="callout callout-key">
+  <div class="callout-icon">🔑</div>
+  <div class="callout-body">
+    <h4>The complete expansion algorithm (paper Algorithm 1)</h4>
+    <p>For each seed S in ranked order: (1) check bitmask — if any seed position is occupied, skip. (2) expand greedily rightward until no extension has df ≥ σ. (3) expand leftward from the current phrase until no left extension has df ≥ σ. (4) the resulting phrase is the MFP. (5) find all corpus positions of this MFP via the inverted index. (6) mark all those positions in the bitmask. (7) add MFP to output. Repeat until all seeds processed.</p>
+  </div>
+</div>
+<div class="scenario">
+  <h4>Scenario: Web corpus of 10,000 e-commerce product pages (India)</h4>
+  <p>Top seed S1 = "free delivery on orders above rs" df=8,400. Right expand: "free delivery on orders above rs 499" df=8,400 → "free delivery on orders above rs 499 ." df=8,390 → extend again: "free delivery on orders above rs 499 . terms apply" df=7,200 → no further extension ≥ σ=100. Left expand: "get free delivery on orders above rs 499 . terms apply" df=7,200 → "enjoy get free …" df=180, commit → no further. Final MFP: "get free delivery on orders above rs 499. terms apply" — a perfect promotional boilerplate phrase covering 7,200 of 10,000 product pages.</p>
+</div>
+</section>
+
+<section class="sec" id="s4">
+<div class="sn">04 · Assessment — 8 Questions</div>
+<h2>Module 2 <span class="gt">Quiz</span></h2>
+<div class="qc"><div class="qc-title">Module 2 Assessment — Greedy Expansion and Global Bitmask</div><div class="qc-sub">8 questions · greedy argmax · successor queries · bitmask suppression · bidirectional expansion · multilingual</div><div class="qprog"><div class="qprog-bar"><div class="qprog-fill"></div></div><div class="qprog-text">0/8 answered</div></div><div class="qq"><div class="qnum">Question 1 of 8</div><h4>The greedy expander selects t* = argmax df(P∪{t}) subject to df ≥ σ at each step. At step 3, the current phrase P = "all rights reserved" has df=12,400. Candidate extensions: "copyright" (df=12,400), "company" (df=2,800), "2024" (df=11,900). Which token is selected, and what is the MFP output?</h4><div class="qo"><button class="qob" data-opt="A" data-correct="true" onclick="cq(this,0,true)">t*="company" because it is less common and therefore more distinctive of boilerplate.</button>
+<button class="qob" data-opt="B" data-correct="false" onclick="cq(this,0,false)">t*="copyright" with df=12,400 (highest among candidates meeting σ). The greedy rule commits to the candidate with maximum df — the most frequently occurring extension. This is the token that appears after P in the most documents. At the next step, from P="all rights reserved copyright" the algorithm tries to extend further. If "2024" extends P with df=11,900 ≥ σ and no extension of "all rights reserved copyright 2024" meets σ, then "all rights reserved copyright 2024" is the MFP. Note: "company" (df=2,800) would also be selected if "copyright" did not exist — but the greedy maximum rule always picks the highest-df extension first.</button>
+<button class="qob" data-opt="C" data-correct="false" onclick="cq(this,0,false)">t*="2024" because the year disambiguates different versions of the boilerplate phrase.</button>
+<button class="qob" data-opt="D" data-correct="false" onclick="cq(this,0,false)">All three candidates meet σ — the expander branches to explore all three paths simultaneously.</button>
+</div><div class="qfeed"><div class="qfeed-head"></div><div class="qfeed-why">Correct. The greedy rule is simply: argmax df over all frequent extensions. "copyright" (df=12,400) is selected because it has the highest df among extensions that meet σ=100. The greedy choice is deterministic and commits immediately — no backtracking. This is the key speed advantage over PrefixSpan: PrefixSpan would spawn separate projected databases for all three candidates; MFP picks one winner and continues linearly.</div></div></div><div class="qq"><div class="qnum">Question 2 of 8</div><h4>A seed "rights reserved" at position 5 in document D1 (positions 5–6) is queued for expansion. Before starting expansion, the greedy expander checks the global bitmask and finds positions 5 and 6 are both set to 1. What does this mean, and what does the algorithm do?</h4><div class="qo"><button class="qob" data-opt="A" data-correct="false" onclick="cq(this,1,false)">The bitmask indicates positions 5–6 contain important content — expand with higher priority.</button>
+<button class="qob" data-opt="B" data-correct="true" onclick="cq(this,1,true)">Positions 5–6 are already covered by a previously identified MFP. The seed "rights reserved" is a sub-phrase of that MFP — its positions are already marked occupied. The algorithm suppresses this seed without any expansion. Expanding it would be redundant: (1) the MFP covering these positions already captures the full maximal phrase; (2) any phrase derived from this seed would itself be a sub-phrase of the covering MFP, so it cannot be an MFP (non-maximal); (3) the inverted index lookups and df computations of expansion are unnecessary work. The bitmask suppression reduces the expansion cost from O(|expansion_path| × |index_lookup|) to O(phrase_length) bit checks — a critical optimisation for the common case where many seeds are sub-phrases of the top-ranked MFPs.</button>
+<button class="qob" data-opt="C" data-correct="false" onclick="cq(this,1,false)">The bitmask is full — the algorithm has reached its memory limit and must flush results.</button>
+<button class="qob" data-opt="D" data-correct="false" onclick="cq(this,1,false)">Positions 5–6 are high-frequency tokens — the algorithm increases their priority in the expansion queue.</button>
+</div><div class="qfeed"><div class="qfeed-head"></div><div class="qfeed-why">Correct. Bitmask suppression is the mechanism that enforces the maximality property without redundant computation. Once any position is covered by an MFP, any phrase whose tokens are entirely within that covered region is guaranteed to be a sub-phrase (not maximal). The O(phrase_length) bitmask check avoids the O(expansion_depth × inverted_index_lookup) cost of a full expansion. For a well-behaved corpus, most lower-ranked seeds are suppressed by the top few MFPs, making the total expansion work nearly linear in the number of actual MFPs found.</div></div></div><div class="qq"><div class="qnum">Question 3 of 8</div><h4>PrefixSpan and BIDE+ both enumerate patterns by recursive projection — they project the database onto the suffixes of each prefix and recurse. MFP uses greedy expansion instead. What is the fundamental complexity difference, and what does MFP sacrifice by being greedy?</h4><div class="qo"><button class="qob" data-opt="A" data-correct="false" onclick="cq(this,2,false)">PrefixSpan is O(n log n) while MFP is O(n). The sacrifice is that MFP requires more memory.</button>
+<button class="qob" data-opt="B" data-correct="false" onclick="cq(this,2,false)">PrefixSpan recursive projection is exponential in the number of frequent extensions at each position: at each node in the search tree, it creates a projected database for each frequent extension and recurses. The number of projected databases is O(|frequent_extensions|^depth) — exponential in pattern length. MFP greedy expansion is O(max_pattern_length × |index_lookups_per_step|) — linear in the length of the found MFP. The sacrifice: MFP finds only one MFP per seed (the greedy winner). If two different long frequent patterns share a seed prefix, MFP finds only the one with higher df at each step and misses the other. In practice this is acceptable for boilerplate detection — you want the longest most-frequent phrase, not an exhaustive enumeration of all variants. PrefixSpan finds all frequent patterns (complete output); MFP finds only maximal ones greedily (approximate but sufficient for cleaning).</button>
+<button class="qob" data-opt="C" data-correct="true" onclick="cq(this,2,true)">PrefixSpan is linear O(n) and MFP is exponential O(2^n). MFP sacrifices correctness for speed.</button>
+<button class="qob" data-opt="D" data-correct="false" onclick="cq(this,2,false)">Both have identical complexity — MFP's greedy approach is mathematically equivalent to recursive projection.</button>
+</div><div class="qfeed"><div class="qfeed-head"></div><div class="qfeed-why">Correct. The greedy approach trades completeness for linear time. PrefixSpan guarantees finding all frequent sequential patterns (complete enumeration), but requires exponential projected databases. MFP's greedy selection commits to one path per seed and never backtracks. For the specific task of boilerplate detection, this tradeoff is excellent: the greedy maximum-df choice reliably finds the dominant long boilerplate phrase from each seed, and the bitmask prevents redundant enumeration of sub-phrases. The paper demonstrates that for real corpora, the greedy output is empirically complete — all significant boilerplate is found.</div></div></div><div class="qq"><div class="qnum">Question 4 of 8</div><h4>The global bitmask requires one bit per token position across the entire corpus. For a corpus of 1.7M documents with average length 500 tokens, what is the total bitmask memory, and why is this preferable to storing the complete list of MFP positions as a hash set?</h4><div class="qo"><button class="qob" data-opt="A" data-correct="false" onclick="cq(this,3,false)">The bitmask requires 850M bytes (one byte per token). A hash set would be smaller but slower to query.</button>
+<button class="qob" data-opt="B" data-correct="true" onclick="cq(this,3,true)">Total positions: 1.7M × 500 = 850M token positions. Bitmask: 850M / 8 = 106MB. A hash set of (doc_id, position) tuples for all covered positions would require: for each covered position, one (doc_id, pos) pair — approximately 8 bytes per pair for integer storage. If 10% of corpus positions are covered by MFPs (a typical figure for boilerplate-heavy corpora), that is 85M pairs × 8 bytes = 680MB — 6× larger than the bitmask. More importantly, bitmask lookup is O(1) with a single memory access (compute byte index, check bit). Hash set lookup is O(1) amortised but requires hashing, collision resolution, and potentially multiple memory accesses. For the suppression check that runs for every seed in the expansion queue, the bitmask's single-instruction bit test (at a fixed memory address) is faster than any hash set operation.</button>
+<button class="qob" data-opt="C" data-correct="false" onclick="cq(this,3,false)">Bitmask: 850M bits = 106MB. A hash set would be identical in size but require O(n) lookup.</button>
+<button class="qob" data-opt="D" data-correct="false" onclick="cq(this,3,false)">The bitmask requires 1.7M × 500 bytes = 850MB (one byte per token). The hash set approach is preferred for large corpora.</button>
+</div><div class="qfeed"><div class="qfeed-head"></div><div class="qfeed-why">Correct. The bitmask's 106MB requirement and O(1) bit-test lookup make it the optimal data structure for this problem. One byte per token would be 850MB — but one BIT per token is 850M/8 = 106MB. The key computation: byte_index = position >> 3 (divide by 8), bit_mask = 1 << (position & 7) (remainder). This is a single integer division and bit operation — the fastest possible lookup. For the millions of suppression checks performed during expansion, this sub-nanosecond operation is crucial.</div></div></div><div class="qq"><div class="qnum">Question 5 of 8</div><h4>The greedy expander queries "successors" of phrase P by looking up positions in the inverted index. Specifically, for each (doc_id, pos) entry for P, it checks position pos + len(P) in that document. What is the time complexity of a single successor query, and how does this compare to PrefixSpan's projected database construction?</h4><div class="qo"><button class="qob" data-opt="A" data-correct="false" onclick="cq(this,4,false)">Successor query: O(|postings|) where |postings| = number of (doc_id, pos) entries for P. PrefixSpan projected database construction: O(|corpus| × avg_doc_length). MFP successor query is cheaper by the ratio of postings to total corpus size.</button>
+<button class="qob" data-opt="B" data-correct="false" onclick="cq(this,4,false)">Successor query: O(|postings|) where |postings| is the number of (doc_id, pos) pairs for phrase P in the inverted index. For a phrase with df=12,400, |postings|=12,400 (one entry per occurrence). PrefixSpan projected database construction: for each extension step, PrefixSpan must scan the ENTIRE projected database (all documents containing the prefix, with their suffix sequences) to find frequent extensions — O(|projected_db|) which can be O(|corpus|) at shallow depths. MFP's inverted index successor query processes only the |postings| entries for the current phrase, not the full corpus. As the phrase grows longer, |postings| shrinks (df decreases), making each successive expansion step faster. PrefixSpan's projected databases grow exponentially in number but each is smaller — the total work is still exponential. MFP's total work is O(Σ_steps |postings_at_step|) — linear in the sum of df values along the expansion path.</button>
+<button class="qob" data-opt="C" data-correct="false" onclick="cq(this,4,false)">Both have identical time complexity — the inverted index is a form of projected database.</button>
+<button class="qob" data-opt="D" data-correct="true" onclick="cq(this,4,true)">Successor query: O(1) since the inverted index is a hash map. PrefixSpan is O(n²).</button>
+</div><div class="qfeed"><div class="qfeed-head"></div><div class="qfeed-why">Correct. The inverted index successor query processes exactly |postings| entries for the current phrase — only the documents where P appears. PrefixSpan must construct and scan a projected database which, at the root level, contains all documents. The inverted index is more selective: for a phrase P with df=12,400 in a 1.7M-document corpus, the index lookup touches only 0.73% of documents (12,400/1,700,000). Each expansion step further reduces |postings| as the phrase becomes more specific. This is why MFP's expansion is fast: the most expensive step (seed expansion with highest df) processes at most O(df_seed) entries, and subsequent steps process fewer.</div></div></div><div class="qq"><div class="qnum">Question 6 of 8</div><h4>After the greedy expander identifies MFP P1 = "all rights reserved copyright 2024" in document D1, a subsequent seed S2 = "reserved copyright" at different positions in document D2 is checked. The bitmask shows D2's positions for S2 are all free (bits = 0). Should S2 be expanded?</h4><div class="qo"><button class="qob" data-opt="A" data-correct="false" onclick="cq(this,5,false)">No — "reserved copyright" is a sub-phrase of P1, so it can never be an MFP regardless of which document.</button>
+<button class="qob" data-opt="B" data-correct="true" onclick="cq(this,5,true)">Yes — the bitmask tracks positions per-document. The positions of "reserved copyright" in D2 are free (not covered by any MFP in D2), so S2 is a valid seed and should be expanded. The bitmask is a global flat array of positions, encoding the occupation status of each token position across all documents. P1 was found at specific positions in D1 — those positions in D1 are marked. Positions in D2 where "reserved copyright" appears are a different set of positions in the flat array, and they are free. The algorithm correctly identifies that "reserved copyright" in D2 may be part of a different (or the same) boilerplate phrase in D2. Expansion from S2 in D2 would typically find the same MFP P1 if the same surrounding tokens appear in D2 — confirming P1's df and potentially extending the MFP if D2 has a longer consistent variant.</button>
+<button class="qob" data-opt="C" data-correct="false" onclick="cq(this,5,false)">S2 should not be expanded because "reserved copyright" is not a valid seed — it does not start at a phrase boundary.</button>
+<button class="qob" data-opt="D" data-correct="false" onclick="cq(this,5,false)">S2 should only be expanded if its est_df from the CMS is higher than P1's df.</button>
+</div><div class="qfeed"><div class="qfeed-head"></div><div class="qfeed-why">Correct. The bitmask tracks positions per-document. Marking P1's positions in D1 does not affect the free status of any positions in D2. S2 in D2 may legitimately be part of a boilerplate phrase in D2, even if it is a sub-phrase of an MFP found in D1. The global bitmask correctly handles this: it suppresses seeds whose positions are already covered IN THAT DOCUMENT, not globally across all documents. This is essential for correctness — the same phrase can appear at different positions across documents.</div></div></div><div class="qq"><div class="qnum">Question 7 of 8</div><h4>MFP expands seeds both rightward (appending tokens to the end) and leftward (prepending tokens to the start). Starting from seed "rights reserved" (df=12,400), right expansion gives "rights reserved copyright 2024". Then left expansion is applied to the result. The candidates for left extension are: "all" (df=12,400), "our" (df=800), nothing with df&lt;σ. What is the final MFP?</h4><div class="qo"><button class="qob" data-opt="A" data-correct="true" onclick="cq(this,6,true)">"rights reserved copyright 2024" — left expansion is only applied if it increases df.</button>
+<button class="qob" data-opt="B" data-correct="false" onclick="cq(this,6,false)">"All rights reserved copyright 2024" — df=12,400. Left extension proceeds symmetrically to right extension: at each step, prepend the token with maximum df that keeps df ≥ σ. t* = "all" (df=12,400) beats "our" (df=800). So the phrase becomes "all rights reserved copyright 2024". If no further left extension has df ≥ σ (e.g., prepending "©" gives df=95 < σ), the expansion stops. The final MFP is "all rights reserved copyright 2024". Note: the paper expands seeds bidirectionally to ensure the MFP is truly maximal — a right-only expansion might miss that the phrase can be extended further to the left.</button>
+<button class="qob" data-opt="C" data-correct="false" onclick="cq(this,6,false)">"our rights reserved copyright 2024" — "our" (df=800) is selected because it is less common and more specific.</button>
+<button class="qob" data-opt="D" data-correct="false" onclick="cq(this,6,false)">"all our rights reserved copyright 2024" — both left extensions are applied sequentially.</button>
+</div><div class="qfeed"><div class="qfeed-head"></div><div class="qfeed-why">Correct. Left extension selects t* = "all" (df=12,400) — the maximum df candidate meeting σ. "Our" (df=800 ≥ σ=100) would also qualify but loses the greedy maximum competition. The bidirectional expansion ensures maximality in both directions: the MFP cannot be extended to the left OR right while remaining frequent. Without left expansion, a right-expanded phrase might be a strict sub-phrase of a longer MFP that starts earlier in the document.</div></div></div><div class="qq"><div class="qnum">Question 8 of 8</div><h4>You are implementing MFP for a multilingual corpus containing English, French, and Spanish documents. The tokenizer maps "rights" and "droits" (French for "rights") to different token IDs. Does MFP correctly identify "tous droits réservés" (French equivalent of "all rights reserved") as a separate MFP from "all rights reserved"?</h4><div class="qo"><button class="qob" data-opt="A" data-correct="false" onclick="cq(this,7,false)">No — MFP cannot handle multilingual corpora because the greedy expansion requires token ID consistency.</button>
+<button class="qob" data-opt="B" data-correct="true" onclick="cq(this,7,true)">Yes — MFP operates on token IDs, not text strings. Since "droits" has a different token ID from "rights", the n-gram ("tous","droits","réservés") is a completely different tuple from ("all","rights","reserved"). Each language's boilerplate phrases have their own CMS counts and produce their own seeds. "tous droits réservés" would appear as a high-df seed in French-language documents and be expanded to its maximal form independently. MFP's token-ID representation is language-agnostic: it finds any frequently recurring token sequence regardless of what language those tokens are from. The only requirement is a consistent tokenizer that maps the same surface form to the same ID across all documents — which any standard tokenizer provides.</button>
+<button class="qob" data-opt="C" data-correct="false" onclick="cq(this,7,false)">MFP can handle multilingual corpora but requires separate CMS instances for each language.</button>
+<button class="qob" data-opt="D" data-correct="false" onclick="cq(this,7,false)">MFP identifies it as the same MFP because "rights" and "droits" are semantic equivalents.</button>
+</div><div class="qfeed"><div class="qfeed-head"></div><div class="qfeed-why">Correct. MFP is language-agnostic at the token level. Token IDs are arbitrary integers — the algorithm has no knowledge of language, semantics, or meaning. Any token sequence that appears with high document frequency across the corpus will be detected as a potential MFP, regardless of the language. The multilingual corpus will produce separate MFPs for each language's boilerplate. The only caveat: if the corpus is very multilingual, σ should be set relative to the per-language subcorpus size, not the full corpus — otherwise minority-language boilerplate may not reach the threshold.</div></div></div><div class="qs" id="qs" style="display:none"><h3 id="sc">0/8</h3><p id="sm"></p></div></div>
+</section>
+</div>
+<footer>
+  <div style="max-width:var(--cw);margin:0 auto;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:1rem">
+    <div style="display:flex;gap:.8rem"><a href="mfp_m1.html" class="pr">← M1: Probabilistic Filtering</a><a href="mfp_m3.html" class="nx">M3: Trees and Complexity →</a></div>
+    <span>MFP Algorithms Track · M2 · Greedy Expansion and Global Occupancy Bitmask</span>
+  </div>
+</footer>
+<script>
+window.addEventListener("scroll",function(){
+  var h=document.documentElement;
+  var pct=(h.scrollTop/(h.scrollHeight-h.clientHeight))*100;
+  document.getElementById("sp").style.width=pct+"%";
+});
+var obs=new IntersectionObserver(function(e){
+  e.forEach(function(x){if(x.isIntersecting)x.target.classList.add("vis");});
+},{threshold:0.06});
+document.querySelectorAll(".sec").forEach(function(s){obs.observe(s);});
+// Copy buttons
+function cp(btn,id){
+  navigator.clipboard.writeText(document.getElementById(id).innerText).then(function(){
+    var t=btn.textContent;btn.textContent="✓ Copied";
+    setTimeout(function(){btn.textContent=t;},2000);
+  });
+}
+// Metric bar animation
+window.addEventListener("load",function(){
+  document.querySelectorAll(".metric-fill[data-pct]").forEach(function(el){
+    setTimeout(function(){el.style.width=el.getAttribute("data-pct")+"%";},300);
+  });
+});
+// Quiz engine
+var qstate={};
+var qtotal=document.querySelectorAll(".qq").length;
+function updateProgress(){
+  var done=Object.keys(qstate).length;
+  var fill=document.querySelector(".qprog-fill");
+  var txt=document.querySelector(".qprog-text");
+  if(fill)fill.style.width=Math.round(done/qtotal*100)+"%";
+  if(txt)txt.textContent=done+"/"+qtotal+" answered";
+  if(done===qtotal)showScore();
+}
+function showScore(){
+  var c=Object.values(qstate).filter(function(v){return v;}).length;
+  var sc=document.getElementById("sc");
+  var sm=document.getElementById("sm");
+  if(sc)sc.textContent=c+"/"+qtotal+" correct";
+  if(sm){
+    var msgs=["Keep studying — revisit the greedy argmax rule and why it commits to one token per step.","Good start — review why bitmask suppression is correct and when it fires.","Building — re-read the PrefixSpan vs MFP complexity difference.","Solid — review bitmask memory calculation and why bits beat a hash set.","Strong — revisit successor query complexity vs PrefixSpan projected database.","Excellent.","Outstanding.","Perfect — complete mastery of greedy expansion and bitmask suppression."][c];
+    sm.textContent=msgs[Math.min(c,msgs.length-1)];
+    sm.style.color=c>=Math.round(qtotal*0.8)?"#5eead4":"#f472b6";
+  }
+  var qs=document.getElementById("qs");
+  if(qs)qs.style.display="block";
+}
+function cq(btn,qi,isCorrect){
+  if(qstate[qi]!==undefined)return;
+  qstate[qi]=isCorrect;
+  var qq=btn.closest(".qq");
+  qq.classList.add("answered");
+  var allBtns=qq.querySelectorAll(".qob");
+  allBtns.forEach(function(b){
+    b.setAttribute("disabled","");
+    var bc=b.getAttribute("data-correct")==="true";
+    if(bc)b.classList.add("ok");
+    else if(b===btn&&!isCorrect)b.classList.add("no");
+  });
+  var feed=qq.querySelector(".qfeed");
+  if(feed){
+    feed.style.display="block";
+    feed.className="qfeed "+(isCorrect?"correct":"wrong");
+    var head=feed.querySelector(".qfeed-head");
+    if(head)head.textContent=isCorrect?"✓ Correct — "+btn.getAttribute("data-opt")+" is right":"✗ Not quite — see the explanation below";
+  }
+  updateProgress();
+}</script>
+</body></html>

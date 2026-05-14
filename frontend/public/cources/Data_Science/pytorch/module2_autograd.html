@@ -1,0 +1,2291 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Module 2 — Autograd: Backprop Without Fear</title>
+  <meta name="description" content="Module 2 — Autograd: Backprop Without Fear rendered into premium HTML with exact page text preserved.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;700;800&family=Space+Grotesk:wght@500;700&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg: #040a13;
+      --bg-2: #081321;
+      --panel: rgba(9, 18, 32, 0.9);
+      --panel-soft: rgba(14, 27, 47, 0.72);
+      --line: rgba(146, 201, 255, 0.15);
+      --text: #eef4ff;
+      --muted: #aec4df;
+      --soft: #7f99bb;
+      --accent: #92d2ff;
+      --accent-2: #7cffd7;
+      --accent-3: #ffc98c;
+      --accent-4: #a08fff;
+      --shadow: 0 24px 80px rgba(0, 0, 0, 0.42);
+      --radius: 28px;
+      --content: min(1240px, calc(100vw - 28px));
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    html {
+      scroll-behavior: smooth;
+    }
+
+    body {
+      margin: 0;
+      color: var(--text);
+      font-family: "Manrope", sans-serif;
+      background:
+        radial-gradient(circle at 10% 8%, rgba(124, 255, 215, 0.1), transparent 22%),
+        radial-gradient(circle at 84% 6%, rgba(146, 201, 255, 0.14), transparent 22%),
+        radial-gradient(circle at 50% 100%, rgba(255, 201, 140, 0.08), transparent 25%),
+        linear-gradient(180deg, #02060d 0%, #06101b 38%, #030711 100%);
+      overflow-x: hidden;
+    }
+
+    body::before {
+      content: "";
+      position: fixed;
+      inset: 0;
+      pointer-events: none;
+      background-image:
+        linear-gradient(rgba(255,255,255,0.03) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(255,255,255,0.03) 1px, transparent 1px);
+      background-size: 48px 48px;
+      mask-image: radial-gradient(circle at center, black 24%, transparent 74%);
+      opacity: 0.45;
+    }
+
+    .progress {
+      position: fixed;
+      top: 0;
+      left: 0;
+      height: 4px;
+      width: 0;
+      z-index: 1000;
+      background: linear-gradient(90deg, var(--accent), var(--accent-2), var(--accent-3), var(--accent-4));
+      box-shadow: 0 0 24px rgba(124, 255, 215, 0.35);
+    }
+
+    .status-chip {
+      position: fixed;
+      right: 16px;
+      bottom: 16px;
+      z-index: 1001;
+      padding: 12px 16px;
+      border-radius: 999px;
+      background: rgba(7, 15, 27, 0.92);
+      border: 1px solid rgba(146, 201, 255, 0.18);
+      box-shadow: var(--shadow);
+      color: var(--text);
+      font-size: 0.9rem;
+      backdrop-filter: blur(18px);
+    }
+
+    .sidebar-toggle {
+      display: none;
+      position: fixed;
+      right: 16px;
+      bottom: 72px;
+      z-index: 1002;
+      padding: 12px 16px;
+      border: 0;
+      border-radius: 999px;
+      background: linear-gradient(90deg, rgba(146, 201, 255, 0.18), rgba(124, 255, 215, 0.18));
+      color: var(--text);
+      font: inherit;
+      box-shadow: var(--shadow);
+      backdrop-filter: blur(18px);
+      cursor: pointer;
+    }
+
+    .sidebar-overlay {
+      position: fixed;
+      inset: 0;
+      z-index: 999;
+      background: rgba(1, 6, 11, 0.56);
+      backdrop-filter: blur(4px);
+    }
+
+    .orb {
+      position: fixed;
+      border-radius: 50%;
+      filter: blur(30px);
+      opacity: 0.35;
+      pointer-events: none;
+      animation: drift 16s ease-in-out infinite;
+      z-index: 0;
+    }
+
+    .orb.one {
+      width: 240px;
+      height: 240px;
+      left: -60px;
+      top: 16vh;
+      background: rgba(146, 201, 255, 0.22);
+    }
+
+    .orb.two {
+      width: 220px;
+      height: 220px;
+      right: -40px;
+      top: 50vh;
+      background: rgba(124, 255, 215, 0.18);
+      animation-delay: -6s;
+    }
+
+    .orb.three {
+      width: 190px;
+      height: 190px;
+      left: 44vw;
+      bottom: -40px;
+      background: rgba(255, 201, 140, 0.13);
+      animation-delay: -9s;
+    }
+
+    .shell {
+      position: relative;
+      z-index: 1;
+      width: var(--content);
+      margin: 0 auto;
+      padding: 20px 0 72px;
+    }
+
+    .glass {
+      background: linear-gradient(180deg, rgba(10, 19, 33, 0.94), rgba(6, 12, 22, 0.98));
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      backdrop-filter: blur(22px);
+    }
+
+    .hero {
+      min-height: 100vh;
+      display: grid;
+      grid-template-columns: 1.08fr 0.92fr;
+      gap: 24px;
+      align-items: center;
+      padding: 20px 0 24px;
+    }
+
+    .hero-copy {
+      padding: 36px;
+    }
+
+    .eyebrow {
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
+      padding: 10px 14px;
+      border-radius: 999px;
+      background: rgba(124, 255, 215, 0.08);
+      border: 1px solid rgba(124, 255, 215, 0.18);
+      color: var(--accent-2);
+      font-size: 0.78rem;
+      letter-spacing: 0.16em;
+      text-transform: uppercase;
+    }
+
+    .eyebrow::before {
+      content: "";
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: var(--accent-2);
+      box-shadow: 0 0 16px rgba(124, 255, 215, 0.78);
+      animation: pulse 2.8s infinite;
+    }
+
+    h1 {
+      margin: 18px 0 12px;
+      font-family: "Space Grotesk", sans-serif;
+      font-size: clamp(2.8rem, 7vw, 5.2rem);
+      line-height: 0.94;
+      letter-spacing: -0.05em;
+    }
+
+    .subtitle {
+      margin: 0 0 14px;
+      color: var(--muted);
+      font-size: 1.04rem;
+      line-height: 1.85;
+      max-width: 68ch;
+    }
+
+    .hero-grid {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 14px;
+      margin-top: 26px;
+    }
+
+    .metric {
+      padding: 16px;
+      border-radius: 22px;
+      background: rgba(255,255,255,0.03);
+      border: 1px solid rgba(255,255,255,0.06);
+    }
+
+    .metric strong {
+      display: block;
+      font-size: 1.32rem;
+      margin-bottom: 4px;
+    }
+
+    .metric span {
+      color: var(--muted);
+      font-size: 0.9rem;
+    }
+
+    .hero-stage {
+      padding: 26px;
+      display: grid;
+      gap: 16px;
+      min-height: 520px;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .hero-stage::after {
+      content: "";
+      position: absolute;
+      width: 240px;
+      height: 240px;
+      right: -60px;
+      bottom: -80px;
+      border-radius: 50%;
+      background: radial-gradient(circle, rgba(160, 143, 255, 0.22), transparent 70%);
+    }
+
+    .code-shell {
+      display: grid;
+      gap: 10px;
+    }
+
+    .hero-card {
+      padding: 20px;
+      border-radius: 24px;
+      border: 1px solid rgba(255,255,255,0.07);
+      background: linear-gradient(135deg, rgba(146, 201, 255, 0.1), rgba(124, 255, 215, 0.06));
+    }
+
+    .hero-card span {
+      display: block;
+      margin-bottom: 10px;
+      color: var(--muted);
+      font-size: 0.78rem;
+      text-transform: uppercase;
+      letter-spacing: 0.14em;
+    }
+
+    .hero-card strong {
+      display: block;
+      white-space: pre-line;
+      font-family: "JetBrains Mono", monospace;
+      font-size: clamp(0.96rem, 1.7vw, 1.22rem);
+      line-height: 1.85;
+    }
+
+    .hero-pre {
+      margin: 0;
+      padding: 18px;
+      border-radius: 24px;
+      border: 1px solid rgba(255,255,255,0.07);
+      background: #06101c;
+      color: #d7eaff;
+      font-family: "JetBrains Mono", monospace;
+      line-height: 1.8;
+      white-space: pre-wrap;
+      overflow: auto;
+      position: relative;
+    }
+
+    .hero-pre::before {
+      content: "";
+      position: absolute;
+      top: 0;
+      left: -40%;
+      width: 35%;
+      height: 100%;
+      transform: skewX(-18deg);
+      background: linear-gradient(90deg, transparent, rgba(255,255,255,0.08), transparent);
+      animation: scan 8s linear infinite;
+    }
+
+    .block-actions {
+      display: flex;
+      justify-content: flex-end;
+    }
+
+    .copy-btn {
+      border: 0;
+      border-radius: 999px;
+      padding: 10px 14px;
+      background: linear-gradient(90deg, rgba(146, 201, 255, 0.16), rgba(124, 255, 215, 0.16));
+      color: var(--text);
+      font: inherit;
+      cursor: pointer;
+      transition: 180ms ease;
+    }
+
+    .copy-btn:hover {
+      transform: translateY(-1px);
+    }
+
+    .layout {
+      display: grid;
+      grid-template-columns: 290px minmax(0, 1fr);
+      gap: 24px;
+      align-items: start;
+    }
+
+    .sidebar {
+      position: sticky;
+      top: 18px;
+      padding: 18px;
+    }
+
+    .sidebar h2 {
+      margin: 0 0 12px;
+      font-size: 0.92rem;
+      letter-spacing: 0.16em;
+      text-transform: uppercase;
+      color: var(--accent);
+    }
+
+    .nav {
+      display: grid;
+      gap: 10px;
+      margin-bottom: 18px;
+    }
+
+    .nav a {
+      display: grid;
+      gap: 4px;
+      text-decoration: none;
+      color: var(--text);
+      padding: 12px 14px;
+      border-radius: 18px;
+      background: rgba(255,255,255,0.03);
+      border: 1px solid transparent;
+      transition: 180ms ease;
+    }
+
+    .nav a span {
+      color: var(--soft);
+      font-size: 0.76rem;
+      text-transform: uppercase;
+      letter-spacing: 0.14em;
+    }
+
+    .nav a:hover,
+    .nav a.active {
+      border-color: rgba(146, 201, 255, 0.18);
+      background: rgba(146, 201, 255, 0.08);
+      transform: translateX(4px);
+    }
+
+    .sidebar-note {
+      padding: 14px;
+      border-radius: 20px;
+      background: rgba(255,255,255,0.03);
+      border: 1px solid rgba(255,255,255,0.05);
+      color: var(--muted);
+      line-height: 1.7;
+      font-size: 0.92rem;
+    }
+
+    .sidebar-search {
+      margin-bottom: 12px;
+    }
+
+    .sidebar-search input {
+      width: 100%;
+      border: 1px solid rgba(255,255,255,0.07);
+      border-radius: 16px;
+      background: rgba(255,255,255,0.04);
+      color: var(--text);
+      padding: 12px 14px;
+      font: inherit;
+    }
+
+    .sidebar-search input::placeholder {
+      color: var(--soft);
+    }
+
+    .sidebar-meta {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 10px;
+      margin-bottom: 14px;
+    }
+
+    .sidebar-stat {
+      padding: 12px 14px;
+      border-radius: 16px;
+      background: rgba(255,255,255,0.03);
+      border: 1px solid rgba(255,255,255,0.05);
+    }
+
+    .sidebar-stat span {
+      display: block;
+      font-size: 0.72rem;
+      color: var(--soft);
+      text-transform: uppercase;
+      letter-spacing: 0.12em;
+      margin-bottom: 4px;
+    }
+
+    .sidebar-stat strong {
+      font-size: 1rem;
+      color: var(--text);
+    }
+
+    .content {
+      display: grid;
+      gap: 22px;
+    }
+
+    .page {
+      padding: 28px;
+      border-radius: 30px;
+      background: linear-gradient(180deg, rgba(8, 16, 28, 0.94), rgba(4, 9, 17, 0.98));
+      border: 1px solid var(--line);
+      box-shadow: var(--shadow);
+      opacity: 1;
+      transform: none;
+    }
+
+    body.has-motion .page {
+      padding: 28px;
+      border-radius: 30px;
+      background: linear-gradient(180deg, rgba(8, 16, 28, 0.94), rgba(4, 9, 17, 0.98));
+      border: 1px solid var(--line);
+      box-shadow: var(--shadow);
+      transform: translateY(34px);
+      opacity: 0;
+      transition: transform 700ms cubic-bezier(.22,.9,.25,1), opacity 700ms ease;
+    }
+
+    body.has-motion .page.visible {
+      transform: translateY(0);
+      opacity: 1;
+    }
+
+    .page-meta {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      gap: 14px;
+      margin-bottom: 16px;
+    }
+
+    .page-head {
+      display: grid;
+      gap: 6px;
+    }
+
+    .page-label {
+      color: var(--accent-2);
+      font-size: 0.78rem;
+      letter-spacing: 0.18em;
+      text-transform: uppercase;
+    }
+
+    .page-title {
+      color: var(--text);
+      font-size: 1rem;
+      font-weight: 700;
+      line-height: 1.5;
+    }
+
+    .page-link {
+      color: var(--soft);
+      text-decoration: none;
+      font-size: 0.92rem;
+    }
+
+    .page-link:hover {
+      color: var(--text);
+    }
+
+    .page-actions {
+      display: flex;
+      gap: 10px;
+      align-items: center;
+      flex-wrap: wrap;
+    }
+
+    .page-body {
+      display: grid;
+      gap: 16px;
+    }
+
+    .page-progress {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 8px 12px;
+      border-radius: 999px;
+      background: rgba(124, 255, 215, 0.08);
+      border: 1px solid rgba(124, 255, 215, 0.12);
+      color: var(--accent-2);
+      font-size: 0.78rem;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+    }
+
+    .text-block,
+    .math-block,
+    .output-block,
+    .callout-block {
+      margin: 0;
+      padding: 18px;
+      border-radius: 24px;
+      background: rgba(255,255,255,0.03);
+      border: 1px solid rgba(255,255,255,0.06);
+      overflow: auto;
+    }
+
+    .text-block p,
+    .callout-block p {
+      margin: 0;
+      color: #e6f1ff;
+      line-height: 1.85;
+      font-size: 0.98rem;
+    }
+
+    .text-block {
+      display: grid;
+      gap: 12px;
+    }
+
+    .text-block pre {
+      margin: 0;
+      color: #e6f1ff;
+      white-space: pre-wrap;
+      word-break: break-word;
+      font-family: "JetBrains Mono", monospace;
+      line-height: 1.82;
+      font-size: 0.92rem;
+    }
+
+    .inline-heading {
+      margin: 0;
+      font-family: "Space Grotesk", sans-serif;
+      font-size: clamp(1.1rem, 2vw, 1.45rem);
+      color: var(--text);
+      letter-spacing: -0.03em;
+    }
+
+    .math-block {
+      background: linear-gradient(135deg, rgba(160, 143, 255, 0.12), rgba(146, 201, 255, 0.08));
+      border-color: rgba(160, 143, 255, 0.18);
+    }
+
+    .math-block pre,
+    .output-block pre {
+      margin: 0;
+      color: #e6f1ff;
+      white-space: pre-wrap;
+      word-break: break-word;
+      overflow: auto;
+      font-family: "JetBrains Mono", monospace;
+      line-height: 1.82;
+      font-size: 0.92rem;
+    }
+
+    .output-block {
+      background: rgba(8, 15, 27, 0.92);
+      border-color: rgba(124, 255, 215, 0.12);
+    }
+
+    .callout-block {
+      background: linear-gradient(135deg, rgba(146, 201, 255, 0.1), rgba(124, 255, 215, 0.06));
+      border-color: rgba(146, 201, 255, 0.16);
+    }
+
+    .callout-block.warning {
+      background: linear-gradient(135deg, rgba(255, 201, 140, 0.14), rgba(146, 201, 255, 0.06));
+      border-color: rgba(255, 201, 140, 0.18);
+    }
+
+    .callout-block strong {
+      display: block;
+      margin-bottom: 6px;
+      color: var(--text);
+    }
+
+    .code-panel {
+      border-radius: 24px;
+      background: #06101c;
+      border: 1px solid rgba(255,255,255,0.06);
+      overflow: hidden;
+    }
+
+    .code-panel-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 10px;
+      padding: 12px 16px;
+      border-bottom: 1px solid rgba(255,255,255,0.06);
+      background: rgba(255,255,255,0.03);
+    }
+
+    .code-label {
+      color: var(--soft);
+      font-size: 0.78rem;
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+    }
+
+    .code-lines {
+      margin: 0;
+      padding: 16px 16px 16px 54px;
+      color: #d7eaff;
+      font-family: "JetBrains Mono", monospace;
+      font-size: 0.92rem;
+      line-height: 1.8;
+      overflow: auto;
+    }
+
+    .code-lines li {
+      white-space: pre;
+      padding-left: 10px;
+    }
+
+    .takeaway-box,
+    .knowledge-check,
+    .pager {
+      padding: 18px;
+      border-radius: 24px;
+      border: 1px solid rgba(255,255,255,0.06);
+      background: rgba(255,255,255,0.03);
+    }
+
+    .takeaway-box strong,
+    .knowledge-check strong {
+      display: block;
+      margin-bottom: 8px;
+      color: var(--text);
+      font-size: 0.92rem;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+    }
+
+    .takeaway-box p,
+    .knowledge-check li {
+      margin: 0;
+      color: var(--muted);
+      line-height: 1.8;
+    }
+
+    .knowledge-check ol {
+      margin: 0;
+      padding-left: 18px;
+      display: grid;
+      gap: 10px;
+    }
+
+    .page-learning {
+      display: grid;
+      gap: 16px;
+      grid-template-columns: 1.05fr 0.95fr;
+    }
+
+    .pager {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+
+    .pager a {
+      text-decoration: none;
+      color: var(--text);
+      padding: 10px 14px;
+      border-radius: 999px;
+      background: linear-gradient(90deg, rgba(146, 201, 255, 0.16), rgba(124, 255, 215, 0.16));
+      border: 1px solid rgba(146, 201, 255, 0.12);
+    }
+
+    .pager span {
+      color: var(--soft);
+      font-size: 0.88rem;
+    }
+
+    .hero-wow,
+    .story-thread,
+    .mental-model,
+    .pause-think,
+    .mistake-box,
+    .outcome-box,
+    .integration-box {
+      margin: 18px 0;
+      padding: 18px 20px;
+      border-radius: 22px;
+      border: 1px solid rgba(255,255,255,0.06);
+      background: rgba(255,255,255,0.03);
+    }
+
+    .hero-wow {
+      margin: 0;
+      background: linear-gradient(135deg, rgba(255, 201, 140, 0.12), rgba(146, 201, 255, 0.08));
+      border-color: rgba(255, 201, 140, 0.16);
+    }
+
+    .hero-wow strong,
+    .story-thread strong,
+    .mental-model strong,
+    .pause-think strong,
+    .mistake-box strong,
+    .outcome-box strong,
+    .integration-box strong,
+    .advanced-note summary {
+      display: block;
+      margin-bottom: 8px;
+      color: var(--text);
+      font-size: 0.84rem;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+    }
+
+    .hero-wow p,
+    .story-thread p,
+    .mental-model p,
+    .pause-think p,
+    .mistake-box p,
+    .outcome-box p,
+    .integration-box p,
+    .pause-think li,
+    .mistake-box li,
+    .outcome-box li,
+    .integration-box li,
+    .advanced-note p {
+      margin: 0;
+      color: var(--muted);
+      line-height: 1.8;
+    }
+
+    .wow-pre {
+      margin: 12px 0 10px;
+      padding: 16px;
+      border-radius: 20px;
+      background: rgba(5, 11, 20, 0.8);
+      border: 1px solid rgba(255,255,255,0.06);
+      color: #d7eaff;
+      font-family: "JetBrains Mono", monospace;
+      white-space: pre-wrap;
+      overflow: auto;
+    }
+
+    .story-thread {
+      background: linear-gradient(135deg, rgba(146, 201, 255, 0.1), rgba(124, 255, 215, 0.05));
+    }
+
+    .mental-model {
+      background: linear-gradient(135deg, rgba(160, 143, 255, 0.12), rgba(146, 201, 255, 0.06));
+    }
+
+    .mental-equation {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 12px;
+      margin-top: 14px;
+    }
+
+    .mental-equation div {
+      padding: 14px;
+      border-radius: 18px;
+      background: rgba(5, 11, 20, 0.56);
+      border: 1px solid rgba(255,255,255,0.06);
+      color: var(--text);
+      text-align: center;
+      font-weight: 700;
+    }
+
+    .pause-think {
+      background: linear-gradient(135deg, rgba(124, 255, 215, 0.11), rgba(146, 201, 255, 0.06));
+      border-color: rgba(124, 255, 215, 0.16);
+    }
+
+    .mistake-box {
+      background: linear-gradient(135deg, rgba(255, 201, 140, 0.12), rgba(160, 143, 255, 0.06));
+      border-color: rgba(255, 201, 140, 0.16);
+    }
+
+    .pause-think ul,
+    .mistake-box ul,
+    .outcome-box ul,
+    .integration-box ul {
+      margin: 10px 0 0;
+      padding-left: 20px;
+      display: grid;
+      gap: 8px;
+    }
+
+    .advanced-note {
+      margin: 18px 0;
+      border-radius: 22px;
+      border: 1px solid rgba(255,255,255,0.06);
+      background: rgba(255,255,255,0.03);
+      overflow: hidden;
+    }
+
+    .advanced-note summary {
+      cursor: pointer;
+      list-style: none;
+      padding: 18px 20px;
+      margin: 0;
+    }
+
+    .advanced-note summary::-webkit-details-marker {
+      display: none;
+    }
+
+    .advanced-body {
+      padding: 0 20px 18px;
+      display: grid;
+      gap: 10px;
+    }
+
+    .outcome-box,
+    .integration-box {
+      background: linear-gradient(135deg, rgba(146, 201, 255, 0.1), rgba(255, 201, 140, 0.06));
+      border-color: rgba(146, 201, 255, 0.16);
+    }
+
+    .footer-banner {
+      padding: 24px;
+      border-radius: 30px;
+      background: linear-gradient(135deg, rgba(146, 201, 255, 0.12), rgba(124, 255, 215, 0.08), rgba(255, 201, 140, 0.08));
+      border: 1px solid rgba(146, 201, 255, 0.16);
+      box-shadow: var(--shadow);
+    }
+
+    .footer-banner h2 {
+      margin: 0 0 10px;
+      font-family: "Space Grotesk", sans-serif;
+      font-size: clamp(1.5rem, 3vw, 2.2rem);
+    }
+
+    .footer-banner p {
+      margin: 0;
+      color: var(--muted);
+      line-height: 1.85;
+    }
+
+    @keyframes pulse {
+      0%, 100% { transform: scale(1); opacity: 1; }
+      50% { transform: scale(0.72); opacity: 0.5; }
+    }
+
+    @keyframes drift {
+      0%, 100% { transform: translate3d(0, 0, 0); }
+      50% { transform: translate3d(0, -24px, 0); }
+    }
+
+    @keyframes scan {
+      from { left: -40%; }
+      to { left: 140%; }
+    }
+
+    @media (max-width: 1080px) {
+      .hero,
+      .layout {
+        grid-template-columns: 1fr;
+      }
+
+      .sidebar {
+        position: relative;
+        top: 0;
+      }
+    }
+
+    @media (max-width: 720px) {
+      .shell {
+        width: min(100vw - 16px, 100%);
+      }
+
+      .hero-copy,
+      .hero-stage,
+      .sidebar,
+      .page,
+      .footer-banner {
+        padding: 20px;
+      }
+
+      .hero-grid {
+        grid-template-columns: 1fr;
+      }
+
+      .page-meta {
+        flex-direction: column;
+        align-items: flex-start;
+      }
+
+      .page-learning {
+        grid-template-columns: 1fr;
+      }
+
+      .sidebar-toggle {
+        display: inline-flex;
+        align-items: center;
+      }
+
+      .sidebar {
+        position: fixed;
+        top: 0;
+        right: 0;
+        width: min(88vw, 360px);
+        height: 100vh;
+        z-index: 1000;
+        overflow-y: auto;
+        transform: translateX(110%);
+        transition: transform 220ms ease;
+      }
+
+      .sidebar.is-open {
+        transform: translateX(0);
+      }
+
+      .status-chip {
+        left: 16px;
+        right: 16px;
+        bottom: 16px;
+        text-align: center;
+      }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      html {
+        scroll-behavior: auto;
+      }
+
+      * {
+        animation: none !important;
+        transition: none !important;
+      }
+
+      .page {
+        opacity: 1;
+        transform: none;
+      }
+    }
+  </style>
+</head>
+<body id="top" data-module="module2_autograd" data-sections="6">
+  <div class="progress" id="progressBar"></div>
+  <div class="status-chip" id="statusChip">Exploring module</div>
+  <button class="sidebar-toggle" id="sidebarToggle" type="button" aria-expanded="false" aria-controls="sidebarPanel">Navigate</button>
+  <div class="sidebar-overlay" id="sidebarOverlay" hidden></div>
+  <div class="orb one"></div>
+  <div class="orb two"></div>
+  <div class="orb three"></div>
+
+  <div class="shell">
+    <section class="hero">
+      <article class="glass hero-copy">
+        <div class="eyebrow">PyTorch for Data Science</div>
+        <h1>Module 2 — Autograd: Backprop Without Fear<br>Understanding PyTorch’s Automatic Differentiation Engine</h1>
+        <p class="subtitle">This is the module where tensors stop being storage and start becoming learnable systems.</p>
+        <p class="subtitle">Module Goal: Understand how PyTorch automatically computes gradients through any computation. You will build the intuition for computation graphs, learn how to control gradient flow, and implement linear regression from scratch using only tensors and autograd — no nn.Module, no shortcuts.</p>
+        <div class="hero-grid">
+          <div class="metric"><strong>12</strong><span>source pages</span></div>
+          <div class="metric"><strong>6</strong><span>named sections</span></div>
+          <div class="metric"><strong>11 min</strong><span>estimated reading time</span></div>
+          <div class="metric"><strong>2</strong><span>deep learning module</span></div>
+          <div class="metric"><strong id="completionBadge">In progress</strong><span>completion status</span></div>
+        </div>
+      </article>
+
+      <aside class="glass hero-stage">
+        <div class="hero-wow">
+          <strong>First 3 Minutes</strong>
+          <p>Start with the part that feels impossible before it feels intuitive: gradients for deep computation graphs are automatic once the tensor graph is built.</p>
+          <pre class="wow-pre">import torch
+
+x = torch.tensor(3.0, requires_grad=True)
+y = x ** 2 + 4 * x + 1
+
+y.backward()
+print(x.grad)</pre>
+          <p>One line of <code>backward()</code> computes the derivative for you. This module is about understanding exactly why that works and where it breaks.</p>
+        </div>
+        <div class="hero-card">
+          <span>Autograd Mental Map</span>
+          <strong>Build the graph
+Store local rules
+Walk backward from loss</strong>
+        </div>
+        <div class="code-shell">
+          <div class="block-actions">
+            <button class="copy-btn" type="button" data-copy="z = w * x**2 + b
+
+dz/db = 1
+dz/dw = x**2
+dz/dx = 2 * w * x" data-default-label="Copy example">Copy example</button>
+          </div>
+          <pre class="hero-pre">z = w * x**2 + b
+
+dz/db = 1
+dz/dw = x**2
+dz/dx = 2 * w * x</pre>
+        </div>
+      </aside>
+    </section>
+
+    <section class="layout">
+      <aside class="glass sidebar" id="sidebarPanel">
+        <h2>Navigate Module</h2>
+        <div class="sidebar-search">
+          <input id="sectionSearch" type="search" placeholder="Search sections" aria-label="Search sections">
+        </div>
+        <div class="sidebar-meta">
+          <div class="sidebar-stat"><span>Sections</span><strong>6</strong></div>
+          <div class="sidebar-stat"><span>Reading Time</span><strong>11 min</strong></div>
+        </div>
+        <nav class="nav" id="sidebarNav">
+          <a href="#page-01"><span>Section</span>1. Computation Graph Intuition</a><a href="#page-03"><span>Section</span>2. requires_grad, .grad, .detach(), .no_grad()</a><a href="#page-06"><span>Section</span>3. Custom Autograd Function</a><a href="#page-07"><span>Section</span>4. Numerical Gradient Checking</a><a href="#page-11"><span>Section</span>Module Summary</a><a href="#page-12"><span>Section</span>What’s Next</a>
+        </nav>
+        <div class="sidebar-note">
+          Use this module like a gradient lab: read the forward expression, predict the backward flow, then check the result in code.
+        </div>
+      </aside>
+
+      <main class="content">
+        
+        <section class="page visible" id="page-01">
+          <div class="page-meta">
+            <div class="page-head">
+              <div class="page-label">Page 01</div>
+              <div class="page-title">Autograd Overview and Computation Graph Intuition</div>
+            </div>
+            <div class="page-actions">
+              <div class="page-progress">Page 01 / 12</div>
+              <a class="page-link" href="#top">Back to top</a>
+            </div>
+          </div>
+          <div class="page-body">
+            <div class="story-thread">
+              <strong>Running Story</strong>
+              <p>Imagine we are training a credit-risk model. Module 1 gave us tensors; Module 2 explains how PyTorch learns from them by tracking every useful operation and pushing gradients backward through the graph.</p>
+            </div>
+            <div class="mental-model">
+              <strong>Mental Model</strong>
+              <p>Autograd is not magic. It is a record of the forward pass plus the local derivative rules needed to walk backward later.</p>
+              <div class="mental-equation">
+                <div>Forward History</div>
+                <div>Local Gradients</div>
+                <div>Backward Pass</div>
+              </div>
+            </div>
+            <h3 class="inline-heading">Understanding PyTorch’s Automatic Differentiation Engine</h3><h3 class="inline-heading">PyTorch for Data Science</h3><div class="text-block"><pre>Module Goal: Understand how PyTorch automatically computes gradients
+     through any computation. You will build the intuition for computation graphs,
+     learn how to control gradient flow, and implement linear regression from scratch
+     using only tensors and autograd — no nn.Module, no shortcuts.</pre></div><h3 class="inline-heading">1. Computation Graph Intuition</h3><div class="text-block"><pre>What is a Computation Graph?
+
+Every time you do math with PyTorch tensors that have requires_grad=True, PyTorch
+silently builds a directed acyclic graph (DAG) in the background. Each node in this graph
+is either:
+
+  • A tensor (the data), or
+  • A function (an operation like +, *, sin, matmul)
+
+When you call .backward(), PyTorch traverses this graph in reverse — from the output back
+to the inputs — applying the chain rule of calculus at each step to compute gradients.
+
+
+Real-World Analogy: A Factory Assembly Line (in Reverse)
+
+Imagine a factory: raw materials go in, a product comes out. To figure out how much each raw
+material contributed to the final product’s quality, you trace backwards through the assembly
+steps — that’s exactly what backprop does.</pre></div>
+      <div class="math-block">
+        <pre>x  -&gt; [square] -&gt;  x²    -&gt; [add b] -&gt;  x²+b    -&gt; [multiply w] -&gt;  w(x²+b) = loss</pre>
+      </div>
+            <div class="page-learning">
+              <div class="takeaway-box">
+                <strong>Key Takeaway</strong>
+                <p>Autograd records the forward pass, stores local derivative rules, and uses the chain rule to push gradients back to the parameters that matter.</p>
+              </div>
+              
+      <div class="knowledge-check">
+        <strong>Knowledge Check</strong>
+        <ol>
+          <li>If a loss depends on a tensor through multiple operations, what must autograd remember from the forward pass?</li>
+          <li>Why does backprop travel from the loss back toward the inputs instead of the other direction?</li>
+        </ol>
+      </div>
+            </div>
+            
+      <div class="pager">
+        <a href="#top">Course top</a>
+        <span>Page 01 of 12</span>
+        <a href="#page-02">Next page</a>
+      </div>
+          </div>
+        </section>
+        <section class="page" id="page-02">
+          <div class="page-meta">
+            <div class="page-head">
+              <div class="page-label">Page 02</div>
+              <div class="page-title">Forward and Backward on a Tiny Graph</div>
+            </div>
+            <div class="page-actions">
+              <div class="page-progress">Page 02 / 12</div>
+              <a class="page-link" href="#top">Back to top</a>
+            </div>
+          </div>
+          <div class="page-body">
+            <div class="text-block"><p>Backward pass: right to left (compute “how much does each input affect the loss?”).</p></div>
+      <div class="code-panel">
+        <div class="code-panel-header">
+          <span class="code-label">Code Example</span>
+          <button class="copy-btn" type="button" data-copy="import torch
+
+# Simple computation graph
+x = torch.tensor(3.0, requires_grad=True)          # Leaf node
+w = torch.tensor(2.0, requires_grad=True)          # Leaf node
+b = torch.tensor(1.0, requires_grad=True)          # Leaf node
+
+# Forward pass — graph is built as we compute
+y = x ** 2          # y = x²      = 9
+z = w * y + b       # z = 2x² + 1 = 19
+
+print(&quot;z =&quot;, z.item())
+print(&quot;z.grad_fn:&quot;, z.grad_fn)        # Shows the last operation
+
+# Backward pass — traverses graph, accumulates gradients" data-default-label="Copy code">Copy code</button>
+        </div>
+        <ol class="code-lines"><li>import torch</li><li>&nbsp;</li><li># Simple computation graph</li><li>x = torch.tensor(3.0, requires_grad=True)          # Leaf node</li><li>w = torch.tensor(2.0, requires_grad=True)          # Leaf node</li><li>b = torch.tensor(1.0, requires_grad=True)          # Leaf node</li><li>&nbsp;</li><li># Forward pass — graph is built as we compute</li><li>y = x ** 2          # y = x²      = 9</li><li>z = w * y + b       # z = 2x² + 1 = 19</li><li>&nbsp;</li><li>print(&quot;z =&quot;, z.item())</li><li>print(&quot;z.grad_fn:&quot;, z.grad_fn)        # Shows the last operation</li><li>&nbsp;</li><li># Backward pass — traverses graph, accumulates gradients</li></ol>
+      </div><div class="text-block"><p>z.backward()</p></div>
+      <div class="pause-think">
+        <strong>Pause & Think</strong>
+        <p>Before reading the gradients, predict them mentally. If <code>z = w * x² + b</code>, what should happen to the gradient with respect to <code>b</code>, and why?</p>
+      </div>
+      <div class="code-panel">
+        <div class="code-panel-header">
+          <span class="code-label">Code Example</span>
+          <button class="copy-btn" type="button" data-copy="# Gradients: dz/dx, dz/dw, dz/db
+print(&quot;\ndz/dx =&quot;, x.grad.item())         # d(2x²+1)/dx = 4x = 12
+print(&quot;dz/dw =&quot;, w.grad.item())          # d(2x²+1)/dw = x² = 9
+print(&quot;dz/db =&quot;, b.grad.item())          # d(2x²+1)/db = 1
+
+
+z = 19.0" data-default-label="Copy code">Copy code</button>
+        </div>
+        <ol class="code-lines"><li># Gradients: dz/dx, dz/dw, dz/db</li><li>print(&quot;\ndz/dx =&quot;, x.grad.item())         # d(2x²+1)/dx = 4x = 12</li><li>print(&quot;dz/dw =&quot;, w.grad.item())          # d(2x²+1)/dw = x² = 9</li><li>print(&quot;dz/db =&quot;, b.grad.item())          # d(2x²+1)/db = 1</li><li>&nbsp;</li><li>&nbsp;</li><li>z = 19.0</li></ol>
+      </div><div class="text-block"><p>z.grad_fn: &lt;AddBackward0 object at 0x000002AB5363B7C0&gt;</p></div>
+      <div class="math-block">
+        <pre>dz/dx = 12.0
+dz/dw = 9.0
+dz/db = 1.0</pre>
+      </div><h3 class="inline-heading">Visualising the Graph</h3>
+      <div class="code-panel">
+        <div class="code-panel-header">
+          <span class="code-label">Code Example</span>
+          <button class="copy-btn" type="button" data-copy="# A slightly deeper graph
+a = torch.tensor(2.0, requires_grad=True)
+b = torch.tensor(3.0, requires_grad=True)
+
+c = a * b             # c = 6
+d = a + b             # d = 5" data-default-label="Copy code">Copy code</button>
+        </div>
+        <ol class="code-lines"><li># A slightly deeper graph</li><li>a = torch.tensor(2.0, requires_grad=True)</li><li>b = torch.tensor(3.0, requires_grad=True)</li><li>&nbsp;</li><li>c = a * b             # c = 6</li><li>d = a + b             # d = 5</li></ol>
+      </div>
+            <div class="page-learning">
+              <div class="takeaway-box">
+                <strong>Key Takeaway</strong>
+                <p>The cleanest way to understand autograd is to inspect one small graph and manually predict each derivative before you let PyTorch compute it.</p>
+              </div>
+              
+      <div class="knowledge-check">
+        <strong>Knowledge Check</strong>
+        <ol>
+          <li>For <code>z = w * x^2 + b</code>, which variable has gradient 1, and why?</li>
+          <li>What goes wrong in your reasoning if you skip the chain rule and only inspect the last operation?</li>
+        </ol>
+      </div>
+            </div>
+            <div class="mistake-box">
+              <strong>Common Mistakes</strong>
+              <ul>
+                <li>Treating autograd as black-box magic instead of tracing the forward expression first.</li>
+                <li>Reading the graph left-to-right during backward reasoning.</li>
+                <li>Forgetting that every gradient answer still comes from the chain rule.</li>
+              </ul>
+            </div>
+            
+      <div class="pager">
+        <a href="#page-01">Previous page</a>
+        <span>Page 02 of 12</span>
+        <a href="#page-03">Next page</a>
+      </div>
+          </div>
+        </section>
+        <section class="page" id="page-03">
+          <div class="page-meta">
+            <div class="page-head">
+              <div class="page-label">Page 03</div>
+              <div class="page-title">requires_grad, detach, and no_grad Basics</div>
+            </div>
+            <div class="page-actions">
+              <div class="page-progress">Page 03 / 12</div>
+              <a class="page-link" href="#top">Back to top</a>
+            </div>
+          </div>
+          <div class="page-body">
+            <div class="text-block"><p>e.backward()</p></div>
+      <div class="code-panel">
+        <div class="code-panel-header">
+          <span class="code-label">Code Example</span>
+          <button class="copy-btn" type="button" data-copy="print(&quot;de/da =&quot;, a.grad.item())        # de/da = d(c*d)/da = b*d + c*1 = 3*5 + 6 = 21
+print(&quot;de/db =&quot;, b.grad.item())        # de/db = c*1 + d*a = 6 + 5*2 = 16
+
+# Check manually:
+# e = (a*b)*(a+b) = a²b + ab²
+# de/da = 2ab + b² = 2*2*3 + 9 = 21
+# de/db = a² + 2ab = 4 + 12 = 16" data-default-label="Copy code">Copy code</button>
+        </div>
+        <ol class="code-lines"><li>print(&quot;de/da =&quot;, a.grad.item())        # de/da = d(c*d)/da = b*d + c*1 = 3*5 + 6 = 21</li><li>print(&quot;de/db =&quot;, b.grad.item())        # de/db = c*1 + d*a = 6 + 5*2 = 16</li><li>&nbsp;</li><li># Check manually:</li><li># e = (a*b)*(a+b) = a²b + ab²</li><li># de/da = 2ab + b² = 2*2*3 + 9 = 21</li><li># de/db = a² + 2ab = 4 + 12 = 16</li></ol>
+      </div>
+      <div class="pause-think">
+        <strong>Pause & Think</strong>
+        <p>Which tensors in this module should truly require gradients: raw batch data, or model parameters like weights and bias?</p>
+      </div>
+      <div class="math-block">
+        <pre>de/da = 21.0
+de/db = 16.0</pre>
+      </div><h3 class="inline-heading">2. requires_grad, .grad, .detach(), .no_grad()</h3><div class="text-block"><p>requires_grad: Opt-In to Gradient Tracking</p><p>Not every tensor needs a gradient. Only trainable parameters (model weights) should have</p></div>
+      <div class="mental-model">
+        <strong>Mental Model</strong>
+        <p><code>requires_grad</code> is an opt-in switch. Parameters should usually be tracked. Data usually should not. <code>detach()</code> cuts a path; <code>no_grad()</code> tells PyTorch not to build one.</p>
+      </div>
+      <div class="code-panel">
+        <div class="code-panel-header">
+          <span class="code-label">Code Example</span>
+          <button class="copy-btn" type="button" data-copy="requires_grad=True. Data tensors should not.
+
+# Tensors without gradient tracking (default for most data)
+data = torch.randn(5, 3)                           # requires_grad=False (default)
+print(&quot;Data requires_grad:&quot;, data.requires_grad)
+
+# Tensors WITH gradient tracking (model parameters)
+weight = torch.randn(3, 2, requires_grad=True)
+print(&quot;Weight requires_grad:&quot;, weight.requires_grad)
+
+# Enable/disable after creation" data-default-label="Copy code">Copy code</button>
+        </div>
+        <ol class="code-lines"><li>requires_grad=True. Data tensors should not.</li><li>&nbsp;</li><li># Tensors without gradient tracking (default for most data)</li><li>data = torch.randn(5, 3)                           # requires_grad=False (default)</li><li>print(&quot;Data requires_grad:&quot;, data.requires_grad)</li><li>&nbsp;</li><li># Tensors WITH gradient tracking (model parameters)</li><li>weight = torch.randn(3, 2, requires_grad=True)</li><li>print(&quot;Weight requires_grad:&quot;, weight.requires_grad)</li><li>&nbsp;</li><li># Enable/disable after creation</li></ol>
+      </div><div class="text-block"><pre>data.requires_grad_(True)                                # In-place toggle</pre></div>
+      <div class="code-panel">
+        <div class="code-panel-header">
+          <span class="code-label">Code Example</span>
+          <button class="copy-btn" type="button" data-copy="print(&quot;Data after toggle:&quot;, data.requires_grad)" data-default-label="Copy code">Copy code</button>
+        </div>
+        <ol class="code-lines"><li>print(&quot;Data after toggle:&quot;, data.requires_grad)</li></ol>
+      </div><h3 class="inline-heading">Data requires_grad: False</h3><h3 class="inline-heading">Weight requires_grad: True</h3><div class="text-block"><p>Data after toggle: True</p></div>
+            <div class="page-learning">
+              <div class="takeaway-box">
+                <strong>Key Takeaway</strong>
+                <p>Only trainable parameters should usually track gradients. Data is typically plain input, while <code>detach()</code> and <code>no_grad()</code> are tools for cutting or skipping gradient flow.</p>
+              </div>
+              
+      <div class="knowledge-check">
+        <strong>Knowledge Check</strong>
+        <ol>
+          <li>Which tensors in a normal training step should have <code>requires_grad=True</code>: data, parameters, or both?</li>
+          <li>What is the difference between preventing a graph from being built and cutting an existing graph?</li>
+        </ol>
+      </div>
+            </div>
+            <div class="mistake-box">
+              <strong>Common Mistakes</strong>
+              <ul>
+                <li>Turning on gradients for input data that should stay plain data.</li>
+                <li>Using <code>.detach()</code> and then expecting gradients to keep flowing.</li>
+                <li>Using <code>torch.no_grad()</code> during updates you still need to differentiate.</li>
+              </ul>
+            </div>
+            
+      <div class="pager">
+        <a href="#page-02">Previous page</a>
+        <span>Page 03 of 12</span>
+        <a href="#page-04">Next page</a>
+      </div>
+          </div>
+        </section>
+        <section class="page" id="page-04">
+          <div class="page-meta">
+            <div class="page-head">
+              <div class="page-label">Page 04</div>
+              <div class="page-title">Where Gradients Live and Why They Accumulate</div>
+            </div>
+            <div class="page-actions">
+              <div class="page-progress">Page 04 / 12</div>
+              <a class="page-link" href="#top">Back to top</a>
+            </div>
+          </div>
+          <div class="page-body">
+            <div class="text-block"><p>After .backward(), gradients are stored in the .grad attribute of each leaf tensor (tensors created directly, not computed from others).</p></div>
+      <div class="code-panel">
+        <div class="code-panel-header">
+          <span class="code-label">Code Example</span>
+          <button class="copy-btn" type="button" data-copy="x = torch.tensor([1.0, 2.0, 3.0], requires_grad=True)
+
+# Scalar output required for .backward() without arguments
+loss = (x ** 2).sum()                 # sum gives scalar: 1 + 4 + 9 = 14" data-default-label="Copy code">Copy code</button>
+        </div>
+        <ol class="code-lines"><li>x = torch.tensor([1.0, 2.0, 3.0], requires_grad=True)</li><li>&nbsp;</li><li># Scalar output required for .backward() without arguments</li><li>loss = (x ** 2).sum()                 # sum gives scalar: 1 + 4 + 9 = 14</li></ol>
+      </div><div class="text-block"><p>loss.backward()</p></div>
+      <div class="code-panel">
+        <div class="code-panel-header">
+          <span class="code-label">Code Example</span>
+          <button class="copy-btn" type="button" data-copy="print(&quot;x.grad:&quot;, x.grad)                    # d(sum(x²))/dx = 2x = [2, 4, 6]" data-default-label="Copy code">Copy code</button>
+        </div>
+        <ol class="code-lines"><li>print(&quot;x.grad:&quot;, x.grad)                    # d(sum(x²))/dx = 2x = [2, 4, 6]</li></ol>
+      </div>
+      <div class="output-block">
+        <div class="block-actions">
+          <button class="copy-btn" type="button" data-copy="x.grad: tensor([2., 4., 6.])" data-default-label="Copy output">Copy output</button>
+        </div>
+        <pre>x.grad: tensor([2., 4., 6.])</pre>
+      </div><h3 class="inline-heading">The Classic Gradient Accumulation Bug</h3><div class="text-block"><p>This is one of the most common PyTorch bugs — gradients accumulate across .backward() calls unless you explicitly zero them.</p></div>
+      <div class="code-panel">
+        <div class="code-panel-header">
+          <span class="code-label">Code Example</span>
+          <button class="copy-btn" type="button" data-copy="x = torch.tensor(2.0, requires_grad=True)
+
+# Simulating a training loop WITHOUT zeroing gradients
+for step in range(3):
+    loss = x ** 2" data-default-label="Copy code">Copy code</button>
+        </div>
+        <ol class="code-lines"><li>x = torch.tensor(2.0, requires_grad=True)</li><li>&nbsp;</li><li># Simulating a training loop WITHOUT zeroing gradients</li><li>for step in range(3):</li><li>    loss = x ** 2</li></ol>
+      </div><div class="text-block"><pre>loss.backward()</pre></div>
+      <div class="code-panel">
+        <div class="code-panel-header">
+          <span class="code-label">Code Example</span>
+          <button class="copy-btn" type="button" data-copy="    print(f&quot;Step {step}: x.grad = {x.grad.item()}&quot;) # 4, 8, 12 — keeps adding!
+
+# The correct pattern: zero gradients before each backward pass" data-default-label="Copy code">Copy code</button>
+        </div>
+        <ol class="code-lines"><li>    print(f&quot;Step {step}: x.grad = {x.grad.item()}&quot;) # 4, 8, 12 — keeps adding!</li><li>&nbsp;</li><li># The correct pattern: zero gradients before each backward pass</li></ol>
+      </div><div class="text-block"><pre>x.grad.zero_()                         # or use optimizer.zero_grad() in training</pre></div>
+      <div class="code-panel">
+        <div class="code-panel-header">
+          <span class="code-label">Code Example</span>
+          <button class="copy-btn" type="button" data-copy="for step in range(3):
+    if x.grad is not None:" data-default-label="Copy code">Copy code</button>
+        </div>
+        <ol class="code-lines"><li>for step in range(3):</li><li>    if x.grad is not None:</li></ol>
+      </div><div class="text-block"><pre>x.grad.zero_()                 # ← CRITICAL: clear before each step</pre></div>
+      <div class="code-panel">
+        <div class="code-panel-header">
+          <span class="code-label">Code Example</span>
+          <button class="copy-btn" type="button" data-copy="    loss = x ** 2" data-default-label="Copy code">Copy code</button>
+        </div>
+        <ol class="code-lines"><li>    loss = x ** 2</li></ol>
+      </div><div class="text-block"><pre>loss.backward()</pre></div>
+      <div class="code-panel">
+        <div class="code-panel-header">
+          <span class="code-label">Code Example</span>
+          <button class="copy-btn" type="button" data-copy="    print(f&quot;Step {step}: x.grad = {x.grad.item()}&quot;) # 4, 4, 4 — correct!" data-default-label="Copy code">Copy code</button>
+        </div>
+        <ol class="code-lines"><li>    print(f&quot;Step {step}: x.grad = {x.grad.item()}&quot;) # 4, 4, 4 — correct!</li></ol>
+      </div>
+      <div class="math-block">
+        <pre>Step 0: x.grad = 4.0
+Step 1: x.grad = 8.0
+Step 2: x.grad = 12.0</pre>
+      </div>
+            <div class="page-learning">
+              <div class="takeaway-box">
+                <strong>Key Takeaway</strong>
+                <p>Leaf tensors store their gradients in <code>.grad</code>, and PyTorch accumulates new values there until you explicitly clear them.</p>
+              </div>
+              
+      <div class="knowledge-check">
+        <strong>Knowledge Check</strong>
+        <ol>
+          <li>Why is <code>.grad</code> attached to leaf tensors rather than every intermediate tensor by default?</li>
+          <li>If you see gradients growing across training steps, what is the first line you should look for?</li>
+        </ol>
+      </div>
+            </div>
+            <div class="mistake-box">
+              <strong>Common Mistakes</strong>
+              <ul>
+                <li>Assuming <code>.backward()</code> overwrites old gradients instead of accumulating them.</li>
+                <li>Calling <code>zero_()</code> after the update and forgetting the next backward will start from stale values.</li>
+                <li>Inspecting only the loss value when the real bug is hidden in <code>.grad</code>.</li>
+              </ul>
+            </div>
+            
+      <div class="pager">
+        <a href="#page-03">Previous page</a>
+        <span>Page 04 of 12</span>
+        <a href="#page-05">Next page</a>
+      </div>
+          </div>
+        </section>
+        <section class="page" id="page-05">
+          <div class="page-meta">
+            <div class="page-head">
+              <div class="page-label">Page 05</div>
+              <div class="page-title">detach() and torch.no_grad() in Practice</div>
+            </div>
+            <div class="page-actions">
+              <div class="page-progress">Page 05 / 12</div>
+              <a class="page-link" href="#top">Back to top</a>
+            </div>
+          </div>
+          <div class="page-body">
+            <div class="story-thread">
+              <strong>Running Story</strong>
+              <p>In a real training system, we constantly switch modes: learn during training, log safely during monitoring, and skip graph building during evaluation. This page is about choosing the right mode on purpose.</p>
+            </div>
+            
+      <div class="math-block">
+        <pre>Step 1: x.grad = 4.0
+Step 2: x.grad = 4.0</pre>
+      </div><h3 class="inline-heading">Exclamation-Triangle Warning</h3><div class="text-block"><pre>Classic Bug: Forgetting to call optimizer.zero_grad() at the start of each training
+  step. Gradients accumulate silently, leading to exploding updates. Always zero gradients
+  before loss.backward().
+
+
+.detach(): Break the Graph
+
+.detach() creates a new tensor that shares the same data but is removed from the com-
+putation graph. No gradients flow through it.</pre></div>
+      <div class="code-panel">
+        <div class="code-panel-header">
+          <span class="code-label">Code Example</span>
+          <button class="copy-btn" type="button" data-copy="x = torch.tensor(3.0, requires_grad=True)
+y = x ** 2                             # y is part of the graph
+
+# Detach — same values, no gradient connection
+y_detached = y.detach()
+print(&quot;y value:&quot;, y.item())
+print(&quot;y_detached value:&quot;, y_detached.item())
+print(&quot;y_detached.requires_grad:&quot;, y_detached.requires_grad)
+
+# Common use: logging metrics without affecting training
+loss = x ** 3
+loss_value = loss.detach().item()      # Safe to log, convert to Python float
+print(&quot;Loss for logging:&quot;, loss_value)" data-default-label="Copy code">Copy code</button>
+        </div>
+        <ol class="code-lines"><li>x = torch.tensor(3.0, requires_grad=True)</li><li>y = x ** 2                             # y is part of the graph</li><li>&nbsp;</li><li># Detach — same values, no gradient connection</li><li>y_detached = y.detach()</li><li>print(&quot;y value:&quot;, y.item())</li><li>print(&quot;y_detached value:&quot;, y_detached.item())</li><li>print(&quot;y_detached.requires_grad:&quot;, y_detached.requires_grad)</li><li>&nbsp;</li><li># Common use: logging metrics without affecting training</li><li>loss = x ** 3</li><li>loss_value = loss.detach().item()      # Safe to log, convert to Python float</li><li>print(&quot;Loss for logging:&quot;, loss_value)</li></ol>
+      </div><div class="text-block"><p>y value: 9.0 y_detached value: 9.0 y_detached.requires_grad: False Loss for logging: 27.0</p></div>
+      <div class="code-panel">
+        <div class="code-panel-header">
+          <span class="code-label">Code Example</span>
+          <button class="copy-btn" type="button" data-copy="torch.no_grad(): Disable Graph Building
+
+Use torch.no_grad() whenever you don’t need gradients — inference, evaluation, metric" data-default-label="Copy code">Copy code</button>
+        </div>
+        <ol class="code-lines"><li>torch.no_grad(): Disable Graph Building</li><li>&nbsp;</li><li>Use torch.no_grad() whenever you don’t need gradients — inference, evaluation, metric</li></ol>
+      </div><div class="text-block"><p>calculation. It’s faster and uses less memory.</p></div>
+            <div class="page-learning">
+              <div class="takeaway-box">
+                <strong>Key Takeaway</strong>
+                <p><code>detach()</code> keeps the same data without gradient history, while <code>torch.no_grad()</code> prevents new graph construction for inference, logging, and parameter updates.</p>
+              </div>
+              
+      <div class="knowledge-check">
+        <strong>Knowledge Check</strong>
+        <ol>
+          <li>When logging a loss value for the UI, why is <code>loss.detach().item()</code> safer than keeping the tensor in the graph?</li>
+          <li>During inference, what do you gain by wrapping work in <code>torch.no_grad()</code>?</li>
+        </ol>
+      </div>
+            </div>
+            <div class="mistake-box">
+              <strong>Common Mistakes</strong>
+              <ul>
+                <li>Calling <code>.item()</code> everywhere without understanding whether the tensor still belongs to a graph.</li>
+                <li>Using <code>detach()</code> on something you still need gradients for later.</li>
+                <li>Skipping <code>torch.no_grad()</code> during evaluation and paying an unnecessary memory cost.</li>
+              </ul>
+            </div>
+            
+      <div class="pager">
+        <a href="#page-04">Previous page</a>
+        <span>Page 05 of 12</span>
+        <a href="#page-06">Next page</a>
+      </div>
+          </div>
+        </section>
+        <section class="page" id="page-06">
+          <div class="page-meta">
+            <div class="page-head">
+              <div class="page-label">Page 06</div>
+              <div class="page-title">Custom Autograd Function Essentials</div>
+            </div>
+            <div class="page-actions">
+              <div class="page-progress">Page 06 / 12</div>
+              <a class="page-link" href="#top">Back to top</a>
+            </div>
+          </div>
+          <div class="page-body">
+            
+      <div class="code-panel">
+        <div class="code-panel-header">
+          <span class="code-label">Code Example</span>
+          <button class="copy-btn" type="button" data-copy="x = torch.randn(1000, 1000, requires_grad=True)
+
+# With gradient tracking (slower, more memory)
+import time
+start = time.time()
+for _ in range(100):
+    y = (x * x).sum()
+print(f&quot;With grad:    {time.time()-start:.3f}s&quot;)
+
+# Without gradient tracking (faster, less memory)
+start = time.time()
+with torch.no_grad():
+    for _ in range(100):
+        y = (x * x).sum()
+print(f&quot;Without grad: {time.time()-start:.3f}s&quot;)" data-default-label="Copy code">Copy code</button>
+        </div>
+        <ol class="code-lines"><li>x = torch.randn(1000, 1000, requires_grad=True)</li><li>&nbsp;</li><li># With gradient tracking (slower, more memory)</li><li>import time</li><li>start = time.time()</li><li>for _ in range(100):</li><li>    y = (x * x).sum()</li><li>print(f&quot;With grad:    {time.time()-start:.3f}s&quot;)</li><li>&nbsp;</li><li># Without gradient tracking (faster, less memory)</li><li>start = time.time()</li><li>with torch.no_grad():</li><li>    for _ in range(100):</li><li>        y = (x * x).sum()</li><li>print(f&quot;Without grad: {time.time()-start:.3f}s&quot;)</li></ol>
+      </div><div class="text-block"><pre>With grad:    0.009s
+Without grad: 0.007s</pre></div><h3 class="inline-heading">LIGHTBULB Tip</h3><div class="text-block"><pre>Rule of Thumb: - During training: gradients on. - During evaluation/inference:</pre></div>
+      <div class="code-panel">
+        <div class="code-panel-header">
+          <span class="code-label">Code Example</span>
+          <button class="copy-btn" type="button" data-copy="  always wrap in torch.no_grad(). - When logging a loss value: use .detach().item(),
+  never .item() directly on a tensor in the graph." data-default-label="Copy code">Copy code</button>
+        </div>
+        <ol class="code-lines"><li>  always wrap in torch.no_grad(). - When logging a loss value: use .detach().item(),</li><li>  never .item() directly on a tensor in the graph.</li></ol>
+      </div><h3 class="inline-heading">3. Custom Autograd Function</h3><div class="text-block"><p>Sometimes you need to define a forward pass whose gradient isn’t automatically derivable —</p></div>
+      <div class="code-panel">
+        <div class="code-panel-header">
+          <span class="code-label">Code Example</span>
+          <button class="copy-btn" type="button" data-copy="for example, a non-standard activation or a domain-specific operation." data-default-label="Copy code">Copy code</button>
+        </div>
+        <ol class="code-lines"><li>for example, a non-standard activation or a domain-specific operation.</li></ol>
+      </div><h3 class="inline-heading">Real-World Analogy: Teaching PyTorch a New Math Operation</h3><div class="text-block"><p>PyTorch knows how to differentiate sin, exp, matmul etc. But if you invent your own function</p></div>
+      <div class="output-block">
+        <div class="block-actions">
+          <button class="copy-btn" type="button" data-copy="(say, a clamped activation), you need to tell it: “Here’s the forward formula, and here’s the" data-default-label="Copy output">Copy output</button>
+        </div>
+        <pre>(say, a clamped activation), you need to tell it: “Here’s the forward formula, and here’s the</pre>
+      </div><div class="text-block"><p>derivative.”</p></div>
+            <div class="page-learning">
+              <div class="takeaway-box">
+                <strong>Key Takeaway</strong>
+                <p>When PyTorch cannot derive a backward rule for your custom operation, you can teach it by defining both the forward computation and the backward logic.</p>
+              </div>
+              
+      <div class="knowledge-check">
+        <strong>Knowledge Check</strong>
+        <ol>
+          <li>What does a custom autograd function need to save during the forward pass so backward can work later?</li>
+          <li>Why is a custom backward rule a contract, not just a code trick?</li>
+        </ol>
+      </div>
+            </div>
+            <details class="advanced-note">
+              <summary>Advanced Insight</summary>
+              <div class="advanced-body">
+                <p>Custom autograd functions matter when performance, numerical stability, or custom business math goes beyond PyTorch’s built-in operators. You are defining both the forward behavior and the backward contract.</p>
+              </div>
+            </details>
+            
+      <div class="pager">
+        <a href="#page-05">Previous page</a>
+        <span>Page 06 of 12</span>
+        <a href="#page-07">Next page</a>
+      </div>
+          </div>
+        </section>
+        <section class="page" id="page-07">
+          <div class="page-meta">
+            <div class="page-head">
+              <div class="page-label">Page 07</div>
+              <div class="page-title">Custom Backward and Gradient Verification</div>
+            </div>
+            <div class="page-actions">
+              <div class="page-progress">Page 07 / 12</div>
+              <a class="page-link" href="#top">Back to top</a>
+            </div>
+          </div>
+          <div class="page-body">
+            <div class="story-thread">
+              <strong>Running Story</strong>
+              <p>Before trusting a custom backward inside a real model, you need a reality check. Numerical gradient checking is the external judge that verifies your derivative logic.</p>
+            </div>
+            <div class="text-block"><pre>&quot;&quot;&quot;
+    A ReLU that clamps output to [0, cap].</pre></div>
+      <div class="math-block">
+        <pre>    Forward: f(x) = clamp(x, 0, cap)
+    Backward: gradient = 1 if 0 &lt; x &lt; cap, else 0</pre>
+      </div><div class="text-block"><pre>&quot;&quot;&quot;
+
+    @staticmethod</pre></div>
+      <div class="code-panel">
+        <div class="code-panel-header">
+          <span class="code-label">Code Example</span>
+          <button class="copy-btn" type="button" data-copy="    def forward(ctx, x, cap=1.0):" data-default-label="Copy code">Copy code</button>
+        </div>
+        <ol class="code-lines"><li>    def forward(ctx, x, cap=1.0):</li></ol>
+      </div><div class="text-block"><pre>ctx.save_for_backward(x)          # Save input for use in backward</pre></div>
+      <div class="code-panel">
+        <div class="code-panel-header">
+          <span class="code-label">Code Example</span>
+          <button class="copy-btn" type="button" data-copy="        ctx.cap = cap
+        return x.clamp(0, cap)" data-default-label="Copy code">Copy code</button>
+        </div>
+        <ol class="code-lines"><li>        ctx.cap = cap</li><li>        return x.clamp(0, cap)</li></ol>
+      </div><div class="text-block"><pre>@staticmethod</pre></div>
+      <div class="code-panel">
+        <div class="code-panel-header">
+          <span class="code-label">Code Example</span>
+          <button class="copy-btn" type="button" data-copy="    def backward(ctx, grad_output):
+        x, = ctx.saved_tensors
+        cap = ctx.cap
+        # Gradient passes through only where 0 &lt; x &lt; cap
+        grad_input = grad_output * ((x &gt; 0) &amp; (x &lt; cap)).float()
+        return grad_input, None        # None for cap (not a tensor)
+
+
+# Test it
+x = torch.tensor([-1.0, 0.5, 1.5, 2.0], requires_grad=True)
+y = ClampedReLU.apply(x, 1.0)
+print(&quot;Forward:&quot;, y)                   # [0, 0.5, 1.0, 1.0]
+
+loss = y.sum()" data-default-label="Copy code">Copy code</button>
+        </div>
+        <ol class="code-lines"><li>    def backward(ctx, grad_output):</li><li>        x, = ctx.saved_tensors</li><li>        cap = ctx.cap</li><li>        # Gradient passes through only where 0 &lt; x &lt; cap</li><li>        grad_input = grad_output * ((x &gt; 0) &amp; (x &lt; cap)).float()</li><li>        return grad_input, None        # None for cap (not a tensor)</li><li>&nbsp;</li><li>&nbsp;</li><li># Test it</li><li>x = torch.tensor([-1.0, 0.5, 1.5, 2.0], requires_grad=True)</li><li>y = ClampedReLU.apply(x, 1.0)</li><li>print(&quot;Forward:&quot;, y)                   # [0, 0.5, 1.0, 1.0]</li><li>&nbsp;</li><li>loss = y.sum()</li></ol>
+      </div><div class="text-block"><p>loss.backward()</p></div>
+      <div class="code-panel">
+        <div class="code-panel-header">
+          <span class="code-label">Code Example</span>
+          <button class="copy-btn" type="button" data-copy="print(&quot;Gradients:&quot;, x.grad)              # [0, 1, 0, 0] — only middle value passes grad" data-default-label="Copy code">Copy code</button>
+        </div>
+        <ol class="code-lines"><li>print(&quot;Gradients:&quot;, x.grad)              # [0, 1, 0, 0] — only middle value passes grad</li></ol>
+      </div>
+      <div class="output-block">
+        <div class="block-actions">
+          <button class="copy-btn" type="button" data-copy="Forward: tensor([0.0000, 0.5000, 1.0000, 1.0000], grad_fn=&lt;ClampedReLUBackward&gt;)
+Gradients: tensor([0., 1., 0., 0.])" data-default-label="Copy output">Copy output</button>
+        </div>
+        <pre>Forward: tensor([0.0000, 0.5000, 1.0000, 1.0000], grad_fn=&lt;ClampedReLUBackward&gt;)
+Gradients: tensor([0., 1., 0., 0.])</pre>
+      </div><h3 class="inline-heading">4. Numerical Gradient Checking</h3><div class="text-block"><p>How do you know your custom backward is correct? Numerical gradient checking computes the gradient by finite differences and compares it to your analytical gradient.</p></div>
+      <div class="mental-model">
+        <strong>Mental Model</strong>
+        <p>Analytical gradient is what your code claims. Numerical gradient is the slow external judge. If they disagree badly, your backward logic is wrong.</p>
+      </div>
+            <div class="page-learning">
+              <div class="takeaway-box">
+                <strong>Key Takeaway</strong>
+                <p>A custom autograd function is only trustworthy when its backward behavior matches the math you intended and survives a numerical check.</p>
+              </div>
+              
+      <div class="knowledge-check">
+        <strong>Knowledge Check</strong>
+        <ol>
+          <li>Why should the gradient be zero outside the unclamped region of this custom ReLU?</li>
+          <li>If analytical and numerical gradients disagree badly, which one do you trust first?</li>
+        </ol>
+      </div>
+            </div>
+            <div class="mistake-box">
+              <strong>Common Mistakes</strong>
+              <ul>
+                <li>Trusting a custom backward pass without checking it numerically.</li>
+                <li>Using an epsilon that is too large or too tiny and then misreading the difference.</li>
+                <li>Expecting exact equality instead of “small enough disagreement.”</li>
+              </ul>
+            </div>
+            
+      <div class="pager">
+        <a href="#page-06">Previous page</a>
+        <span>Page 07 of 12</span>
+        <a href="#page-08">Next page</a>
+      </div>
+          </div>
+        </section>
+        <section class="page" id="page-08">
+          <div class="page-meta">
+            <div class="page-head">
+              <div class="page-label">Page 08</div>
+              <div class="page-title">Finite Differences for Gradient Checking</div>
+            </div>
+            <div class="page-actions">
+              <div class="page-progress">Page 08 / 12</div>
+              <a class="page-link" href="#top">Back to top</a>
+            </div>
+          </div>
+          <div class="page-body">
+            
+      <div class="code-panel">
+        <div class="code-panel-header">
+          <span class="code-label">Code Example</span>
+          <button class="copy-btn" type="button" data-copy="def numerical_gradient(f, x, eps=1e-5):" data-default-label="Copy code">Copy code</button>
+        </div>
+        <ol class="code-lines"><li>def numerical_gradient(f, x, eps=1e-5):</li></ol>
+      </div><div class="text-block"><pre>&quot;&quot;&quot;Compute gradient of scalar function f at tensor x using finite differences.&quot;&quot;&quot;</pre></div>
+      <div class="code-panel">
+        <div class="code-panel-header">
+          <span class="code-label">Code Example</span>
+          <button class="copy-btn" type="button" data-copy="    grad = torch.zeros_like(x)
+    x_flat = x.view(-1)
+    grad_flat = grad.view(-1)
+
+    for i in range(len(x_flat)):
+        x_plus = x.clone(); x_plus.view(-1)[i] += eps
+        x_minus = x.clone(); x_minus.view(-1)[i] -= eps
+        grad_flat[i] = (f(x_plus) - f(x_minus)) / (2 * eps)
+
+    return grad
+
+
+# Test function: f(x) = sum(x^3)
+def f(x):
+    return (x ** 3).sum()
+
+
+x = torch.tensor([1.0, 2.0, 3.0], requires_grad=True)
+
+# Analytical gradient
+y = f(x)" data-default-label="Copy code">Copy code</button>
+        </div>
+        <ol class="code-lines"><li>    grad = torch.zeros_like(x)</li><li>    x_flat = x.view(-1)</li><li>    grad_flat = grad.view(-1)</li><li>&nbsp;</li><li>    for i in range(len(x_flat)):</li><li>        x_plus = x.clone(); x_plus.view(-1)[i] += eps</li><li>        x_minus = x.clone(); x_minus.view(-1)[i] -= eps</li><li>        grad_flat[i] = (f(x_plus) - f(x_minus)) / (2 * eps)</li><li>&nbsp;</li><li>    return grad</li><li>&nbsp;</li><li>&nbsp;</li><li># Test function: f(x) = sum(x^3)</li><li>def f(x):</li><li>    return (x ** 3).sum()</li><li>&nbsp;</li><li>&nbsp;</li><li>x = torch.tensor([1.0, 2.0, 3.0], requires_grad=True)</li><li>&nbsp;</li><li># Analytical gradient</li><li>y = f(x)</li></ol>
+      </div><div class="text-block"><p>y.backward()</p></div>
+      <div class="code-panel">
+        <div class="code-panel-header">
+          <span class="code-label">Code Example</span>
+          <button class="copy-btn" type="button" data-copy="analytical = x.grad.clone()
+
+# Numerical gradient
+numerical = numerical_gradient(f, x.detach())
+
+print(&quot;Analytical gradient:&quot;, analytical)
+print(&quot;Numerical gradient:&quot;, numerical)
+print(&quot;Max difference:     &quot;, (analytical - numerical).abs().max().item())
+# Should be very small (&lt; 1e-5) — confirms our backward is correct" data-default-label="Copy code">Copy code</button>
+        </div>
+        <ol class="code-lines"><li>analytical = x.grad.clone()</li><li>&nbsp;</li><li># Numerical gradient</li><li>numerical = numerical_gradient(f, x.detach())</li><li>&nbsp;</li><li>print(&quot;Analytical gradient:&quot;, analytical)</li><li>print(&quot;Numerical gradient:&quot;, numerical)</li><li>print(&quot;Max difference:     &quot;, (analytical - numerical).abs().max().item())</li><li># Should be very small (&lt; 1e-5) — confirms our backward is correct</li></ol>
+      </div>
+      <div class="output-block">
+        <div class="block-actions">
+          <button class="copy-btn" type="button" data-copy="Analytical gradient: tensor([ 3., 12., 27.])
+Numerical gradient: tensor([ 3.0518, 12.2070, 27.0844])" data-default-label="Copy output">Copy output</button>
+        </div>
+        <pre>Analytical gradient: tensor([ 3., 12., 27.])
+Numerical gradient: tensor([ 3.0518, 12.2070, 27.0844])</pre>
+      </div><div class="text-block"><pre>Max difference:      0.20703125</pre></div>
+            <div class="page-learning">
+              <div class="takeaway-box">
+                <strong>Key Takeaway</strong>
+                <p>Numerical gradient checking is slow but powerful: it gives you an external estimate of the derivative so you can validate custom backward logic.</p>
+              </div>
+              
+      <div class="knowledge-check">
+        <strong>Knowledge Check</strong>
+        <ol>
+          <li>Why do we compare analytical and numerical gradients instead of assuming the custom backward is correct?</li>
+          <li>What would you adjust first if the max difference is unexpectedly large: the backward code or the finite-difference step size?</li>
+        </ol>
+      </div>
+            </div>
+            <div class="mistake-box">
+              <strong>Common Mistakes</strong>
+              <ul>
+                <li>Expecting finite-difference gradients to match perfectly digit for digit.</li>
+                <li>Using an epsilon that is too small and amplifying floating-point noise.</li>
+                <li>Running the numerical check on tensors that still require autograd when you meant to test detached values.</li>
+              </ul>
+            </div>
+            
+      <div class="pager">
+        <a href="#page-07">Previous page</a>
+        <span>Page 08 of 12</span>
+        <a href="#page-09">Next page</a>
+      </div>
+          </div>
+        </section>
+        <section class="page" id="page-09">
+          <div class="page-meta">
+            <div class="page-head">
+              <div class="page-label">Page 09</div>
+              <div class="page-title">Linear Regression Lab Setup</div>
+            </div>
+            <div class="page-actions">
+              <div class="page-progress">Page 09 / 12</div>
+              <a class="page-link" href="#top">Back to top</a>
+            </div>
+          </div>
+          <div class="page-body">
+            <div class="story-thread">
+              <strong>Running Story</strong>
+              <p>This lab makes autograd concrete. We are training a tiny regression model from raw tensors so every step of learning stays visible.</p>
+            </div>
+            <h3 class="inline-heading">The Challenge</h3><div class="text-block"><p>Implement full linear regression using only tensors and autograd. No nn.Linear, no</p></div>
+      <div class="code-panel">
+        <div class="code-panel-header">
+          <span class="code-label">Code Example</span>
+          <button class="copy-btn" type="button" data-copy="nn.MSELoss, no torch.optim. Just raw math and .backward()." data-default-label="Copy code">Copy code</button>
+        </div>
+        <ol class="code-lines"><li>nn.MSELoss, no torch.optim. Just raw math and .backward().</li></ol>
+      </div><div class="text-block"><p>This exercise builds the muscle memory that makes every higher-level PyTorch API click into place later.</p></div><h3 class="inline-heading">The Dataset</h3>
+      <div class="code-panel">
+        <div class="code-panel-header">
+          <span class="code-label">Code Example</span>
+          <button class="copy-btn" type="button" data-copy="torch.manual_seed(42)
+
+# True relationship: y = 3x + 7 + noise
+X_train = torch.linspace(-5, 5, 100).unsqueeze(1)                                  # (100, 1)
+y_train = 3.0 * X_train + 7.0 + torch.randn(100, 1) * 1.5                          # (100, 1)
+
+print(&quot;X shape:&quot;, X_train.shape)
+print(&quot;y shape:&quot;, y_train.shape)
+print(f&quot;True params: w=3.0, b=7.0&quot;)
+
+
+X shape: torch.Size([100, 1])
+y shape: torch.Size([100, 1])" data-default-label="Copy code">Copy code</button>
+        </div>
+        <ol class="code-lines"><li>torch.manual_seed(42)</li><li>&nbsp;</li><li># True relationship: y = 3x + 7 + noise</li><li>X_train = torch.linspace(-5, 5, 100).unsqueeze(1)                                  # (100, 1)</li><li>y_train = 3.0 * X_train + 7.0 + torch.randn(100, 1) * 1.5                          # (100, 1)</li><li>&nbsp;</li><li>print(&quot;X shape:&quot;, X_train.shape)</li><li>print(&quot;y shape:&quot;, y_train.shape)</li><li>print(f&quot;True params: w=3.0, b=7.0&quot;)</li><li>&nbsp;</li><li>&nbsp;</li><li>X shape: torch.Size([100, 1])</li><li>y shape: torch.Size([100, 1])</li></ol>
+      </div>
+      <div class="output-block">
+        <div class="block-actions">
+          <button class="copy-btn" type="button" data-copy="True params: w=3.0, b=7.0" data-default-label="Copy output">Copy output</button>
+        </div>
+        <pre>True params: w=3.0, b=7.0</pre>
+      </div><h3 class="inline-heading">The Model and Training Loop</h3>
+      <div class="pause-think">
+        <strong>Pause & Think</strong>
+        <p>Before reading the loop, name the five stages you expect in manual training: forward pass, loss, backward pass, parameter update, and gradient reset.</p>
+      </div>
+      <div class="code-panel">
+        <div class="code-panel-header">
+          <span class="code-label">Code Example</span>
+          <button class="copy-btn" type="button" data-copy="#  Initialise parameters randomly
+w = torch.randn(1, 1, requires_grad=True)            # Weight
+b = torch.zeros(1,     requires_grad=True)           # Bias
+
+learning_rate = 0.01
+n_epochs      = 200
+
+loss_history = []
+
+#  Training loop
+for epoch in range(n_epochs):" data-default-label="Copy code">Copy code</button>
+        </div>
+        <ol class="code-lines"><li>#  Initialise parameters randomly</li><li>w = torch.randn(1, 1, requires_grad=True)            # Weight</li><li>b = torch.zeros(1,     requires_grad=True)           # Bias</li><li>&nbsp;</li><li>learning_rate = 0.01</li><li>n_epochs      = 200</li><li>&nbsp;</li><li>loss_history = []</li><li>&nbsp;</li><li>#  Training loop</li><li>for epoch in range(n_epochs):</li></ol>
+      </div>
+            <div class="page-learning">
+              <div class="takeaway-box">
+                <strong>Key Takeaway</strong>
+                <p>The lab turns autograd from theory into a training system: parameters, predictions, loss, backward pass, update, and reset.</p>
+              </div>
+              
+      <div class="knowledge-check">
+        <strong>Knowledge Check</strong>
+        <ol>
+          <li>Before the loop begins, which tensors are parameters and which are dataset tensors?</li>
+          <li>Why is building this lab without <code>nn.Module</code> useful for learning autograd deeply?</li>
+        </ol>
+      </div>
+            </div>
+            
+      <div class="pager">
+        <a href="#page-08">Previous page</a>
+        <span>Page 09 of 12</span>
+        <a href="#page-10">Next page</a>
+      </div>
+          </div>
+        </section>
+        <section class="page" id="page-10">
+          <div class="page-meta">
+            <div class="page-head">
+              <div class="page-label">Page 10</div>
+              <div class="page-title">Manual Training Loop with Autograd</div>
+            </div>
+            <div class="page-actions">
+              <div class="page-progress">Page 10 / 12</div>
+              <a class="page-link" href="#top">Back to top</a>
+            </div>
+          </div>
+          <div class="page-body">
+            
+      <div class="code-panel">
+        <div class="code-panel-header">
+          <span class="code-label">Code Example</span>
+          <button class="copy-btn" type="button" data-copy="   # 1. Forward pass: compute predictions
+   y_pred = X_train @ w + b              # Matrix multiply + broadcast bias
+
+   # 2. Compute loss (MSE)
+   loss = ((y_pred - y_train) ** 2).mean()
+
+   # 3. Backward pass: compute gradients" data-default-label="Copy code">Copy code</button>
+        </div>
+        <ol class="code-lines"><li>   # 1. Forward pass: compute predictions</li><li>   y_pred = X_train @ w + b              # Matrix multiply + broadcast bias</li><li>&nbsp;</li><li>   # 2. Compute loss (MSE)</li><li>   loss = ((y_pred - y_train) ** 2).mean()</li><li>&nbsp;</li><li>   # 3. Backward pass: compute gradients</li></ol>
+      </div><div class="text-block"><pre>loss.backward()</pre></div>
+      <div class="code-panel">
+        <div class="code-panel-header">
+          <span class="code-label">Code Example</span>
+          <button class="copy-btn" type="button" data-copy="   # 4. Manual gradient descent step
+   with torch.no_grad():                    # ← Don&#x27;t track these updates in the graph" data-default-label="Copy code">Copy code</button>
+        </div>
+        <ol class="code-lines"><li>   # 4. Manual gradient descent step</li><li>   with torch.no_grad():                    # ← Don&#x27;t track these updates in the graph</li></ol>
+      </div><div class="text-block"><pre>w -= learning_rate * w.grad
+       b -= learning_rate * b.grad</pre></div>
+      <div class="code-panel">
+        <div class="code-panel-header">
+          <span class="code-label">Code Example</span>
+          <button class="copy-btn" type="button" data-copy="   # 5. Zero gradients (MUST do before next backward)" data-default-label="Copy code">Copy code</button>
+        </div>
+        <ol class="code-lines"><li>   # 5. Zero gradients (MUST do before next backward)</li></ol>
+      </div><div class="text-block"><pre>w.grad.zero_()
+   b.grad.zero_()</pre></div>
+      <div class="code-panel">
+        <div class="code-panel-header">
+          <span class="code-label">Code Example</span>
+          <button class="copy-btn" type="button" data-copy="   loss_history.append(loss.item())
+
+   if epoch % 40 == 0:
+       print(f&quot;Epoch {epoch:3d}: loss={loss.item():.4f}     w={w.item():.3f}   b={b.item():.3f}&quot;
+
+print(f&quot;\nFinal: w={w.item():.3f} (true=3.0),     b={b.item():.3f} (true=7.0)&quot;)" data-default-label="Copy code">Copy code</button>
+        </div>
+        <ol class="code-lines"><li>   loss_history.append(loss.item())</li><li>&nbsp;</li><li>   if epoch % 40 == 0:</li><li>       print(f&quot;Epoch {epoch:3d}: loss={loss.item():.4f}     w={w.item():.3f}   b={b.item():.3f}&quot;</li><li>&nbsp;</li><li>print(f&quot;\nFinal: w={w.item():.3f} (true=3.0),     b={b.item():.3f} (true=7.0)&quot;)</li></ol>
+      </div><div class="text-block"><pre>Epoch   0: loss=160.0760 w=0.038 b=0.142
+Epoch 40: loss=12.1513 w=2.989 b=3.993
+Epoch 80: loss=4.1500 w=2.991 b=5.709
+Epoch 120: loss=2.5605 w=2.991 b=6.475
+Epoch 160: loss=2.2448 w=2.991 b=6.815
+
+Final: w=2.991 (true=3.0),   b=6.965 (true=7.0)</pre></div>
+      <div class="code-panel">
+        <div class="code-panel-header">
+          <span class="code-label">Code Example</span>
+          <button class="copy-btn" type="button" data-copy="# Evaluate on a test point
+with torch.no_grad():
+    x_test = torch.tensor([[4.0]])
+    y_test_pred = x_test @ w + b
+    y_test_true = 3.0 * 4.0 + 7.0
+
+print(f&quot;\nPrediction at x=4.0: {y_test_pred.item():.3f}&quot;)" data-default-label="Copy code">Copy code</button>
+        </div>
+        <ol class="code-lines"><li># Evaluate on a test point</li><li>with torch.no_grad():</li><li>    x_test = torch.tensor([[4.0]])</li><li>    y_test_pred = x_test @ w + b</li><li>    y_test_true = 3.0 * 4.0 + 7.0</li><li>&nbsp;</li><li>print(f&quot;\nPrediction at x=4.0: {y_test_pred.item():.3f}&quot;)</li></ol>
+      </div>
+            <div class="page-learning">
+              <div class="takeaway-box">
+                <strong>Key Takeaway</strong>
+                <p>Autograd computes gradients, but you still control the full training loop: forward pass, scalar loss, backward pass, update under <code>no_grad</code>, then gradient reset.</p>
+              </div>
+              
+      <div class="knowledge-check">
+        <strong>Knowledge Check</strong>
+        <ol>
+          <li>Why must the loss become a scalar before calling <code>backward()</code> in this simple loop?</li>
+          <li>What bug appears if you update <code>w</code> and <code>b</code> without <code>torch.no_grad()</code>?</li>
+        </ol>
+      </div>
+            </div>
+            <div class="mistake-box">
+              <strong>Common Mistakes</strong>
+              <ul>
+                <li>Forgetting to zero gradients before the next backward pass.</li>
+                <li>Updating parameters without <code>torch.no_grad()</code> and accidentally growing the graph.</li>
+                <li>Thinking autograd also performs optimization for you. It only gives the gradients.</li>
+              </ul>
+            </div>
+            
+      <div class="pager">
+        <a href="#page-09">Previous page</a>
+        <span>Page 10 of 12</span>
+        <a href="#page-11">Next page</a>
+      </div>
+          </div>
+        </section>
+        <section class="page" id="page-11">
+          <div class="page-meta">
+            <div class="page-head">
+              <div class="page-label">Page 11</div>
+              <div class="page-title">Why Each Training Step Matters</div>
+            </div>
+            <div class="page-actions">
+              <div class="page-progress">Page 11 / 12</div>
+              <a class="page-link" href="#top">Back to top</a>
+            </div>
+          </div>
+          <div class="page-body">
+            
+      <div class="code-panel">
+        <div class="code-panel-header">
+          <span class="code-label">Code Example</span>
+          <button class="copy-btn" type="button" data-copy="print(f&quot;True value at x=4.0: {y_test_true:.3f}&quot;)
+print(f&quot;Final loss: {loss_history[-1]:.6f}&quot;)" data-default-label="Copy code">Copy code</button>
+        </div>
+        <ol class="code-lines"><li>print(f&quot;True value at x=4.0: {y_test_true:.3f}&quot;)</li><li>print(f&quot;Final loss: {loss_history[-1]:.6f}&quot;)</li></ol>
+      </div><div class="text-block"><p>Prediction at x=4.0: 18.930</p></div>
+      <div class="output-block">
+        <div class="block-actions">
+          <button class="copy-btn" type="button" data-copy="True value at x=4.0: 19.000" data-default-label="Copy output">Copy output</button>
+        </div>
+        <pre>True value at x=4.0: 19.000</pre>
+      </div><div class="text-block"><p>Final loss: 2.182721</p></div><h3 class="inline-heading">Why Did Each Step Matter?</h3><h3 class="inline-heading">Step                          Code                              Why</h3>
+      <div class="math-block">
+        <pre>Forward pass                  y_pred = X @ w + b                Build the computation</pre>
+      </div><div class="text-block"><pre>graph
+Loss                          ((y_pred -                        Scalar to differentiate
+                              y_train)**2).mean()
+Backward                      loss.backward()                   Populate .grad on w and
+                                                                b
+Update                        w -= lr * w.grad                  Gradient descent step
+Zero grad                     w.grad.zero_()                    Prevent accumulation bug</pre></div>
+      <div class="code-panel">
+        <div class="code-panel-header">
+          <span class="code-label">Code Example</span>
+          <button class="copy-btn" type="button" data-copy="no_grad on update             with torch.no_grad():             Don’t track the update" data-default-label="Copy code">Copy code</button>
+        </div>
+        <ol class="code-lines"><li>no_grad on update             with torch.no_grad():             Don’t track the update</li></ol>
+      </div><div class="text-block"><pre>itself</pre></div><h3 class="inline-heading">Module Summary</h3><div class="outcome-box">
+        <strong>After Module 2, You Can Now</strong>
+        <ul>
+          <li>Read a computation graph and reason backward through it.</li>
+          <li>Choose when tensors should or should not track gradients.</li>
+          <li>Catch gradient accumulation bugs before they quietly ruin training.</li>
+          <li>Build and train a tiny model using only raw tensors and autograd.</li>
+        </ul>
+      </div><h3 class="inline-heading">Concept                              Key Takeaway</h3><div class="text-block"><pre>Computation graph                    Built automatically during forward pass; consumed
+                                     during backward.
+requires_grad                        Set to True only on trainable parameters, not on data.
+Gradient accumulation bug            Always call zero_grad() before loss.backward().
+.detach()                            Removes tensor from graph; use for logging and
+                                     stopping gradient flow.</pre></div>
+      <div class="code-panel">
+        <div class="code-panel-header">
+          <span class="code-label">Code Example</span>
+          <button class="copy-btn" type="button" data-copy="torch.no_grad()                      Context manager for inference — faster and" data-default-label="Copy code">Copy code</button>
+        </div>
+        <ol class="code-lines"><li>torch.no_grad()                      Context manager for inference — faster and</li></ol>
+      </div><div class="text-block"><pre>memory-efficient.</pre></div>
+      <div class="code-panel">
+        <div class="code-panel-header">
+          <span class="code-label">Code Example</span>
+          <button class="copy-btn" type="button" data-copy="Custom autograd                      Subclass torch.autograd.Function and implement" data-default-label="Copy code">Copy code</button>
+        </div>
+        <ol class="code-lines"><li>Custom autograd                      Subclass torch.autograd.Function and implement</li></ol>
+      </div><div class="text-block"><pre>forward/backward.</pre></div>
+            <div class="page-learning">
+              <div class="takeaway-box">
+                <strong>Key Takeaway</strong>
+                <p>The full training loop only works because each step has a distinct job: build the graph, produce a scalar loss, populate gradients, update safely, and clear old gradient state.</p>
+              </div>
+              
+      <div class="knowledge-check">
+        <strong>Knowledge Check</strong>
+        <ol>
+          <li>If the model stops learning, which stage of this loop would you inspect first and why?</li>
+          <li>What does the update step do that autograd itself never does for you?</li>
+        </ol>
+      </div>
+            </div>
+            
+      <div class="pager">
+        <a href="#page-10">Previous page</a>
+        <span>Page 11 of 12</span>
+        <a href="#page-12">Next page</a>
+      </div>
+          </div>
+        </section>
+        <section class="page" id="page-12">
+          <div class="page-meta">
+            <div class="page-head">
+              <div class="page-label">Page 12</div>
+              <div class="page-title">What Comes Next After Autograd</div>
+            </div>
+            <div class="page-actions">
+              <div class="page-progress">Page 12 / 12</div>
+              <a class="page-link" href="#top">Back to top</a>
+            </div>
+          </div>
+          <div class="page-body">
+            <div class="text-block"><pre>Gradient check                         Finite differences verify custom backward
+                                       implementations.</pre></div><h3 class="inline-heading">What’s Next</h3><div class="text-block"><p>Module 3 — nn.Module takes the raw autograd machinery from this module and wraps it in clean, reusable building blocks. Instead of managing w and b by hand, you’ll learn how PyTorch’s module system tracks parameters automatically — and how to build anything from a simple linear layer to a deep network.</p></div>
+            <div class="integration-box">
+              <strong>Final Integration Problem</strong>
+              <p>You have a tiny model with inputs <code>X</code>, parameters <code>w</code> and <code>b</code>, and prediction <code>y_pred = X @ w + b</code>. Before writing code, explain:</p>
+              <ul>
+                <li>Which tensors should have <code>requires_grad=True</code> and which should not.</li>
+                <li>Why <code>loss.backward()</code> must happen before the update.</li>
+                <li>Why the update should happen inside <code>torch.no_grad()</code>.</li>
+                <li>Why gradients must be cleared before the next iteration.</li>
+              </ul>
+            </div>
+            <div class="page-learning">
+              <div class="takeaway-box">
+                <strong>Key Takeaway</strong>
+                <p>Module 2 leaves you with the core gradient instincts you need before moving into higher-level PyTorch abstractions like <code>nn.Module</code>.</p>
+              </div>
+              
+      <div class="knowledge-check">
+        <strong>Knowledge Check</strong>
+        <ol>
+          <li>Which Module 2 idea will matter most when PyTorch starts managing parameters for you in Module 3?</li>
+          <li>How would you explain the difference between “compute gradients” and “update weights” to someone new to deep learning?</li>
+        </ol>
+      </div>
+            </div>
+            
+      <div class="pager">
+        <a href="#page-11">Previous page</a>
+        <span>Page 12 of 12</span>
+        <a href="#end">Finish module</a>
+      </div>
+          </div>
+        </section>
+        <section class="footer-banner page" id="end">
+          <h2>Ready for the Next Module</h2>
+          <p>Keep moving while the ideas are fresh. The next module builds directly on the concepts, patterns, and examples you just studied here.</p>
+        </section>
+      </main>
+    </section>
+  </div>
+
+  <script>
+    document.body.classList.add("has-motion");
+    const progressBar = document.getElementById("progressBar");
+    const pages = [...document.querySelectorAll(".page")];
+    const navLinks = [...document.querySelectorAll("#sidebarNav a")];
+    const searchInput = document.getElementById("sectionSearch");
+    const statusChip = document.getElementById("statusChip");
+    const sidebar = document.getElementById("sidebarPanel");
+    const sidebarToggle = document.getElementById("sidebarToggle");
+    const sidebarOverlay = document.getElementById("sidebarOverlay");
+    const completionBadge = document.getElementById("completionBadge");
+    const copyButtons = [...document.querySelectorAll(".copy-btn")];
+    const moduleSlug = document.body.dataset.module;
+    const completionStorageKey = "pytorch-course-completion-v1";
+
+    const readCompletion = () => {
+      try {
+        return JSON.parse(localStorage.getItem(completionStorageKey) || "{}");
+      } catch (error) {
+        return {};
+      }
+    };
+
+    const writeCompletion = (value) => {
+      localStorage.setItem(completionStorageKey, JSON.stringify(value));
+    };
+
+    const setCompleted = () => {
+      const state = readCompletion();
+      if (!state[moduleSlug]) {
+        state[moduleSlug] = true;
+        writeCompletion(state);
+      }
+      completionBadge.textContent = "Completed";
+    };
+
+    const refreshCompletionBadge = () => {
+      const state = readCompletion();
+      completionBadge.textContent = state[moduleSlug] ? "Completed" : "In progress";
+    };
+
+    const updateProgress = () => {
+      const scrollTop = window.scrollY;
+      const docHeight = document.documentElement.scrollHeight - window.innerHeight;
+      const progress = docHeight > 0 ? (scrollTop / docHeight) * 100 : 0;
+      progressBar.style.width = `${progress}%`;
+      if (progress > 94) {
+        setCompleted();
+      }
+    };
+
+    const revealObserver = new IntersectionObserver((entries) => {
+      entries.forEach((entry) => {
+        if (entry.isIntersecting) {
+          entry.target.classList.add("visible");
+        }
+      });
+    }, { threshold: 0.12 });
+
+    if (pages[0]) {
+      pages[0].classList.add("visible");
+    }
+
+    pages.forEach((page) => revealObserver.observe(page));
+
+    const navObserver = new IntersectionObserver((entries) => {
+      entries.forEach((entry) => {
+        if (!entry.isIntersecting) return;
+        const id = entry.target.id;
+        navLinks.forEach((link) => {
+          link.classList.toggle("active", link.getAttribute("href") === `#${id}`);
+        });
+        const activeLink = navLinks.find((link) => link.classList.contains("active"));
+        if (activeLink) {
+          const activeIndex = navLinks.indexOf(activeLink) + 1;
+          statusChip.textContent = `Section ${activeIndex} of ${navLinks.length}`;
+        }
+      });
+    }, {
+      rootMargin: "-35% 0px -50% 0px",
+      threshold: 0.01
+    });
+
+    if (searchInput) {
+      searchInput.addEventListener("input", () => {
+        const query = searchInput.value.trim().toLowerCase();
+        navLinks.forEach((link) => {
+          const match = link.textContent.toLowerCase().includes(query);
+          link.style.display = match ? "" : "none";
+        });
+      });
+    }
+
+    if (sidebarToggle) {
+      const closeSidebar = () => {
+        sidebar.classList.remove("is-open");
+        sidebarToggle.setAttribute("aria-expanded", "false");
+        sidebarOverlay.hidden = true;
+      };
+
+      sidebarToggle.addEventListener("click", () => {
+        const open = !sidebar.classList.contains("is-open");
+        sidebar.classList.toggle("is-open", open);
+        sidebarToggle.setAttribute("aria-expanded", open ? "true" : "false");
+        sidebarOverlay.hidden = !open;
+      });
+
+      sidebarOverlay.addEventListener("click", closeSidebar);
+      navLinks.forEach((link) => link.addEventListener("click", closeSidebar));
+    }
+
+    copyButtons.forEach((button) => {
+      button.addEventListener("click", async () => {
+        try {
+          await navigator.clipboard.writeText(button.dataset.copy);
+          const original = button.dataset.defaultLabel || button.textContent;
+          button.textContent = "Copied";
+          setTimeout(() => {
+            button.textContent = original;
+          }, 1200);
+        } catch (error) {
+          button.textContent = "Copy failed";
+        }
+      });
+    });
+
+    pages.forEach((page) => navObserver.observe(page));
+    refreshCompletionBadge();
+    window.addEventListener("scroll", updateProgress, { passive: true });
+    updateProgress();
+  </script>
+</body>
+</html>

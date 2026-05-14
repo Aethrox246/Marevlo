@@ -1,0 +1,461 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>OCR Track 11 - OCR Post-processing and Error Correction</title>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&family=Outfit:wght@300;400;500;600;700;800;900&family=Source+Serif+4:ital,opsz,wght@0,8..144,300;0,8..144,400;0,8..144,600;1,8..144,300;1,8..144,400&display=swap" rel="stylesheet">
+<style>:root{--bg:#0a0a0f;--t1:#ececf6;--t2:#b5b5c8;--tm:#7c7c95;
+--a1:#5eead4;--a2:#60a5fa;--a3:#f472b6;--a4:#fbbf24;--a5:#a78bfa;--ac:#60a5fa;
+--gl:linear-gradient(90deg,#5eead4 0%,#60a5fa 28%,#a78bfa 55%,#f472b6 82%,#fbbf24 100%);
+--bs:rgba(255,255,255,0.07);--sh:0 20px 80px rgba(0,0,0,0.42);--r:20px;--cw:1120px}
+*{box-sizing:border-box;margin:0;padding:0}html{scroll-behavior:smooth}
+body{background:radial-gradient(circle at 18% 14%,rgba(96,165,250,.09),transparent 30%),radial-gradient(circle at 82% 22%,rgba(96,165,250,.05),transparent 28%),var(--bg);color:var(--t1);font-family:'Outfit',sans-serif;line-height:1.75;overflow-x:hidden;-webkit-font-smoothing:antialiased}
+.sp{position:fixed;top:0;left:0;height:3px;width:0%;z-index:1000;background:var(--gl);transition:width .12s linear}
+nav{position:fixed;top:3px;left:0;right:0;z-index:999;display:flex;align-items:center;justify-content:space-between;padding:.75rem 2rem;background:rgba(10,10,15,.88);backdrop-filter:blur(12px);border-bottom:1px solid var(--bs)}
+.nbr{font-family:'JetBrains Mono',monospace;font-size:.72rem;color:var(--ac);letter-spacing:.14em;text-transform:uppercase;text-decoration:none}
+.nm{font-size:.82rem;color:var(--tm)}.na{display:flex;gap:8px}
+.nb{display:inline-flex;align-items:center;gap:6px;padding:.4rem .9rem;border-radius:999px;border:1px solid var(--bs);background:rgba(255,255,255,.03);color:var(--t2);font-size:.8rem;text-decoration:none;transition:all .18s}
+.nb:hover{border-color:var(--ac);color:var(--ac)}
+.hero{min-height:100vh;display:flex;align-items:center;justify-content:center;padding:5rem 2rem 3rem;position:relative;overflow:hidden}
+.hg{position:absolute;inset:0;background-image:linear-gradient(rgba(255,255,255,.025) 1px,transparent 1px),linear-gradient(90deg,rgba(255,255,255,.025) 1px,transparent 1px);background-size:48px 48px;mask-image:radial-gradient(circle at center,black 30%,transparent 80%);pointer-events:none}
+.hero::before{content:"";position:absolute;inset:0;background:radial-gradient(ellipse 700px 350px at 20% 40%,rgba(96,165,250,.10),transparent),radial-gradient(ellipse 640px 360px at 80% 38%,rgba(96,165,250,.06),transparent);pointer-events:none}
+.hi{max-width:1000px;text-align:center;position:relative;z-index:1}
+.hl{display:inline-flex;align-items:center;gap:10px;padding:.55rem 1rem;border-radius:999px;border:1px solid rgba(96,165,250,.25);background:rgba(96,165,250,.08);color:var(--ac);letter-spacing:1.8px;text-transform:uppercase;font-size:.76rem;margin-bottom:1.7rem}
+.dot{width:7px;height:7px;border-radius:50%;background:var(--ac);animation:pulse 2s ease-in-out infinite}
+@keyframes pulse{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.3;transform:scale(.75)}}
+h1{font-size:clamp(2.4rem,5vw,4.4rem);line-height:1.04;letter-spacing:-.04em;font-weight:900;margin-bottom:1.3rem}
+.gt{background:var(--gl);-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent}
+.hs{font-family:'Source Serif 4',serif;color:var(--t2);font-size:clamp(1rem,2vw,1.2rem);max-width:820px;margin:0 auto 2rem;line-height:1.8}
+.hm{display:flex;flex-wrap:wrap;justify-content:center;gap:12px;margin-bottom:2.5rem}
+.mp{border:1px solid var(--bs);background:rgba(17,17,26,.75);border-radius:999px;padding:.65rem 1.1rem;color:var(--t2);font-size:.88rem}
+.sc{position:absolute;bottom:2.6rem;left:50%;transform:translateX(-50%);color:var(--tm);display:flex;flex-direction:column;gap:.6rem;align-items:center;text-transform:uppercase;letter-spacing:.22em;font-size:.7rem}
+.sc .arr{width:18px;height:18px;border-right:2px solid var(--tm);border-bottom:2px solid var(--tm);transform:rotate(45deg);animation:ba 2s ease-in-out infinite}
+@keyframes ba{0%,100%{transform:rotate(45deg) translateY(0)}50%{transform:rotate(45deg) translateY(7px)}}
+.cw{max-width:var(--cw);margin:0 auto;padding:0 2rem 6rem}
+.sec{margin-bottom:5.5rem;opacity:0;transform:translateY(28px);transition:opacity .65s ease,transform .65s ease}
+.sec.vis{opacity:1;transform:translateY(0)}
+.sn{display:flex;align-items:center;gap:12px;color:var(--ac);font-family:'JetBrains Mono',monospace;font-size:.68rem;text-transform:uppercase;letter-spacing:.22em;margin-bottom:.9rem}
+.sn::after{content:"";height:1px;flex:1;background:linear-gradient(90deg,rgba(96,165,250,.7),transparent)}
+.sec h2{font-size:clamp(1.9rem,4vw,2.75rem);line-height:1.08;margin-bottom:1rem;letter-spacing:-.04em}
+.lead{font-family:'Source Serif 4',serif;font-size:1.08rem;color:var(--t2);margin-bottom:2rem;line-height:1.85}
+.card{background:linear-gradient(180deg,rgba(24,24,38,.96),rgba(17,17,28,.96));border:1px solid var(--bs);border-radius:var(--r);box-shadow:var(--sh);padding:1.8rem;margin-bottom:1.4rem}
+.cc{background:linear-gradient(180deg,rgba(11,11,22,.99),rgba(9,9,17,.99));border:1px solid var(--bs);border-radius:var(--r);box-shadow:var(--sh);padding:0;margin-bottom:1.4rem;overflow:hidden}
+.ch{display:flex;align-items:center;justify-content:space-between;padding:1rem 1.5rem;border-bottom:1px solid var(--bs)}
+.ch h3{font-size:.9rem;font-family:'JetBrains Mono',monospace;color:var(--ac)}
+.cpb{display:inline-flex;align-items:center;gap:5px;padding:.28rem .7rem;border-radius:999px;border:1px solid var(--bs);background:transparent;color:var(--tm);font-size:.72rem;cursor:pointer;transition:all .18s;font-family:'JetBrains Mono',monospace}
+.cpb:hover{border-color:var(--a1);color:var(--a1)}
+.cbody{padding:1.5rem;overflow-x:auto}
+pre{white-space:pre;color:#d8e3ff;font-family:'JetBrains Mono',monospace;font-size:.86rem;line-height:1.75}
+.kw{color:#a78bfa}.fn{color:#60a5fa}.str{color:#5eead4}.cm{color:#3d3d5a;font-style:italic}.nu{color:#fbbf24}.cl{color:#f472b6}
+.g2{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:1.3rem;margin-bottom:1.4rem}
+.g3{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:1.3rem;margin-bottom:1.4rem}
+.g4{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:1rem;margin-bottom:1.2rem}
+.mc2{border:1px solid var(--bs);border-radius:16px;padding:1.3rem;background:rgba(255,255,255,.02)}
+.mc2 h4{font-size:1rem;margin-bottom:.55rem;color:var(--t1)}.mc2 p{font-size:.9rem;color:var(--t2);line-height:1.65}
+.cl2{border-radius:16px;padding:1.2rem 1.5rem;margin:1.5rem 0;display:flex;gap:1rem;align-items:flex-start}
+.cs{background:rgba(94,234,212,.06);border:1px solid rgba(94,234,212,.18)}
+.ci{background:rgba(96,165,250,.07);border:1px solid rgba(96,165,250,.18)}
+.cr{background:rgba(244,114,182,.06);border:1px solid rgba(244,114,182,.18)}
+.cw2{background:rgba(251,191,36,.06);border:1px solid rgba(251,191,36,.18)}
+.cp{background:rgba(167,139,250,.06);border:1px solid rgba(167,139,250,.18)}
+.cico{font-size:1.2rem;flex-shrink:0;margin-top:.1rem}
+.cbd h4{font-size:.95rem;margin-bottom:.35rem;color:var(--t1)}.cbd p{font-size:.9rem;color:var(--t2);line-height:1.65}
+.tbl{width:100%;border-collapse:collapse;font-size:.87rem}
+.tbl th{text-align:left;padding:.75rem 1rem;font-family:'JetBrains Mono',monospace;font-size:.65rem;text-transform:uppercase;color:var(--tm);border-bottom:1px solid var(--bs)}
+.tbl td{padding:.75rem 1rem;border-bottom:1px solid rgba(255,255,255,.04);color:var(--t2);vertical-align:top;line-height:1.65}
+.tbl td:first-child{color:var(--t1);font-weight:600}.tbl tr:last-child td{border-bottom:none}
+.ex-box{border-radius:12px;padding:1rem 1.2rem;margin-bottom:.8rem}
+.ex-good{background:rgba(94,234,212,.05);border:1px solid rgba(94,234,212,.2)}
+.ex-bad{background:rgba(244,114,182,.05);border:1px solid rgba(244,114,182,.2)}
+.ex-label{font-family:'JetBrains Mono',monospace;font-size:.7rem;text-transform:uppercase;letter-spacing:.12em;margin-bottom:.4rem}
+.ex-text{font-size:.88rem;color:var(--t2);line-height:1.65}
+.num-card{border:1px solid var(--bs);border-radius:14px;padding:1.2rem;background:rgba(255,255,255,.02);text-align:center}
+.num-big{font-family:'JetBrains Mono',monospace;font-size:2.2rem;font-weight:700;margin-bottom:.3rem}
+.num-label{font-size:.82rem;color:var(--tm)}
+.qc{background:linear-gradient(180deg,rgba(24,24,38,.96),rgba(17,17,28,.96));border:1px solid var(--bs);border-radius:var(--r);box-shadow:var(--sh);padding:1.8rem}
+.qq{border:1px solid var(--bs);border-radius:16px;padding:1.3rem;background:rgba(255,255,255,.015);margin-bottom:1rem}
+.qq h4{font-size:1rem;margin-bottom:1rem;color:var(--t1);line-height:1.5}
+.qo{display:grid;gap:.6rem}
+.qob{border:1px solid var(--bs);border-radius:11px;padding:.9rem 1.1rem;background:rgba(255,255,255,.02);color:var(--t2);cursor:pointer;transition:all .2s;text-align:left;font-size:.9rem;font-family:'Outfit',sans-serif;width:100%;line-height:1.5}
+.qob:hover{border-color:rgba(96,165,250,.4);background:rgba(96,165,250,.04)}
+.qob.ok{border-color:rgba(94,234,212,.5);background:rgba(94,234,212,.09);color:var(--t1)}
+.qob.no{border-color:rgba(244,114,182,.4);background:rgba(244,114,182,.07)}
+.qf{font-size:.88rem;margin-top:.7rem;line-height:1.6;padding:.7rem .9rem;border-radius:10px;background:rgba(255,255,255,.02);display:none}
+.qf.show{display:block}
+.qs{padding:1.4rem;border-radius:16px;background:rgba(94,234,212,.06);border:1px solid rgba(94,234,212,.2);text-align:center;margin-top:1.2rem;display:none}
+.qs h3{font-size:2rem;color:var(--a1);margin-bottom:.4rem}.qs p{color:var(--t2);font-size:.92rem}
+.fn2{display:flex;align-items:center;justify-content:space-between;padding:2.2rem 0;border-top:1px solid var(--bs);margin-top:2rem}
+.fn2 a{display:inline-flex;align-items:center;gap:8px;padding:.75rem 1.5rem;border-radius:999px;border:1px solid var(--bs);color:var(--t2);text-decoration:none;font-size:.9rem;transition:all .2s}
+.fn2 a:hover{border-color:var(--ac);color:var(--ac)}
+.fn2 a.pr{background:rgba(167,139,250,.04);border-color:rgba(167,139,250,.2);color:var(--a5)}
+.fn2 a.nx{background:rgba(96,165,250,.04);border-color:rgba(96,165,250,.25);color:var(--ac)}
+.fcc{text-align:center;font-size:.82rem;color:var(--tm)}
+.pipe-step{border:1px solid var(--bs);border-radius:12px;padding:.9rem 1.2rem;background:rgba(255,255,255,.02)}
+.pipe-step h4{font-size:.88rem;font-family:'JetBrains Mono',monospace;color:var(--ac);margin-bottom:.35rem}
+.pipe-step p{font-size:.83rem;color:var(--t2);line-height:1.6}
+.pipe-arrow{text-align:center;color:var(--tm);font-size:1.4rem;padding:.15rem 0}
+@media(max-width:720px){.g2,.g3,.g4{grid-template-columns:repeat(2,1fr)}}</style>
+</head>
+<body>
+<div class="sp" id="sp"></div>
+<nav>
+  <a href="ocr_m0.html" class="nbr">Marevlo · OCR Track · Module 11</a>
+  <span class="nm">OCR Post-processing and Error Correction</span>
+  <div class="na"><a href="ocr_m10.html" class="pr">← M10: LLM-Augmented OCR</a><a href="ocr_m12.html" class="nx">M12: OCR Evaluation Metrics →</a></div>
+</nav>
+<section class="hero"><div class="hg"></div><div class="hi">
+  <div class="hl"><span class="dot"></span>OCR Track · Module 11 · OCR &amp; Text Recognition Engineering</div>
+  <h1>OCR Post-processing and Error Correction<br><span class="gt">Levenshtein · RapidFuzz · Domain Vocabulary · Regex Validation · BERT Rescoring · Routing</span></h1>
+  <p class="hs">Raw OCR output is a draft. Post-processing turns that draft into structured, validated data. This module covers what post-processing can and cannot fix, Levenshtein edit distance with length-adaptive thresholds, OCR substitution pre-normalisation, RapidFuzz vocabulary matching, domain word list construction, abbreviation exclusion sets, regex field validators for dates, amounts, postcodes, and NHS numbers, BERT masked LM rescoring of n-best candidates, confidence-based rejection routing, and the compound error model that explains why field accuracy degrades faster than CER.</p>
+<div class="hm"><span class="mp">65 min</span><span class="mp">Fixable vs unfixable errors</span><span class="mp">Levenshtein adaptive threshold</span><span class="mp">OCR substitution normalisation</span><span class="mp">RapidFuzz vocabulary</span><span class="mp">Domain word lists</span><span class="mp">Regex field validation</span><span class="mp">BERT LM rescoring</span><span class="mp">Rejection routing</span></div>
+</div><div class="sc"><span>Scroll</span><div class="arr"></div></div></section>
+<div class="cw">
+<section class="sec" id="s1">
+<div class="sn">01 · What Post-processing Can and Cannot Fix</div>
+<h2>The Correction Boundary:<br><span class="gt">Where Errors Become Unrecoverable</span></h2>
+<div class="g2">
+<div class="card">
+<h4 style="color:var(--a1);margin-bottom:.7rem">Correctable</h4>
+<div style="display:flex;flex-direction:column;gap:.32rem;font-size:.84rem">
+<div style="padding:.45rem .8rem;background:rgba(94,234,212,.05);border:1px solid rgba(94,234,212,.2);border-radius:9px"><strong style="color:var(--a1)">Single-char substitution in known vocab.</strong> "diseasc" to "disease" via domain fuzzy match.</div>
+<div style="padding:.45rem .8rem;background:rgba(94,234,212,.05);border:1px solid rgba(94,234,212,.2);border-radius:9px"><strong style="color:var(--a1)">Missing word spaces.</strong> "bloodpressure" to "blood pressure" via tokenisation.</div>
+<div style="padding:.45rem .8rem;background:rgba(94,234,212,.05);border:1px solid rgba(94,234,212,.2);border-radius:9px"><strong style="color:var(--a1)">Format normalisation.</strong> "12/03/24" to ISO 8601; "l,234.50" to 1234.50 via DIGIT_FIX.</div>
+<div style="padding:.45rem .8rem;background:rgba(94,234,212,.05);border:1px solid rgba(94,234,212,.2);border-radius:9px"><strong style="color:var(--a1)">Consistent OCR substitutions.</strong> rn to m, vv to w, 0 to O in alpha context — systematic and reversible.</div>
+</div></div>
+<div class="card">
+<h4 style="color:var(--a3);margin-bottom:.7rem">Not correctable</h4>
+<div style="display:flex;flex-direction:column;gap:.32rem;font-size:.84rem">
+<div style="padding:.45rem .8rem;background:rgba(244,114,182,.04);border:1px solid rgba(244,114,182,.2);border-radius:9px"><strong style="color:var(--a3)">Deleted characters.</strong> "prssure" from "pressure" — candidate set too ambiguous.</div>
+<div style="padding:.45rem .8rem;background:rgba(244,114,182,.04);border:1px solid rgba(244,114,182,.2);border-radius:9px"><strong style="color:var(--a3)">Short strings with multiple errors.</strong> "St" from "Statin" — too few characters for reliable match.</div>
+<div style="padding:.45rem .8rem;background:rgba(244,114,182,.04);border:1px solid rgba(244,114,182,.2);border-radius:9px"><strong style="color:var(--a3)">Multiple simultaneous errors.</strong> 2+ substitutions in one token — wrong match probability high.</div>
+<div style="padding:.45rem .8rem;background:rgba(244,114,182,.04);border:1px solid rgba(244,114,182,.2);border-radius:9px"><strong style="color:var(--a3)">OOV proper nouns.</strong> "Dr. Hjálmarsdóttir" — not in any vocabulary; no anchor for correction.</div>
+</div></div></div>
+</section>
+
+<section class="sec" id="s2">
+<div class="sn">02 · Levenshtein With Adaptive Threshold</div>
+<h2>Length-Proportional Matching:<br><span class="gt">max(2, len // 4)</span></h2>
+<p class="lead">A fixed edit distance threshold of 2 is appropriate for a 10-character word but catastrophically permissive for a 4-character word — "cold" at edit-2 matches "cold", "cord", "fold", and many others. The threshold must scale with word length: max(2, len // 4).</p>
+<div class="cc"><div class="ch"><h3>fuzzy_correction.py</h3><button class="cpb" onclick="cp(this,'c1')">Copy</button></div>
+<div class="cbody"><pre id="c1"><span class="kw">from</span> rapidfuzz <span class="kw">import</span> process, fuzz
+<span class="kw">import</span> re
+
+OCR_SUBS = [
+    (re.<span class="fn">compile</span>(<span class="str">r"rn"</span>),  <span class="str">"m"</span>),
+    (re.<span class="fn">compile</span>(<span class="str">r"vv"</span>),  <span class="str">"w"</span>),
+    (re.<span class="fn">compile</span>(<span class="str">r"(?&lt;=\d)O(?=\d)"</span>), <span class="str">"0"</span>),
+    (re.<span class="fn">compile</span>(<span class="str">r"(?&lt;=\d)l(?=\d)"</span>), <span class="str">"1"</span>),
+    (re.<span class="fn">compile</span>(<span class="str">r"(?&lt;=[a-z])0(?=[a-z])"</span>, re.I), <span class="str">"o"</span>),
+]
+
+<span class="kw">def</span> <span class="fn">prenormalize</span>(text: str) -> str:
+    <span class="kw">for</span> pat, repl <span class="kw">in</span> OCR_SUBS: text = pat.<span class="fn">sub</span>(repl, text)
+    <span class="kw">return</span> text
+
+<span class="kw">def</span> <span class="fn">adaptive_threshold</span>(word: str) -> int:
+    <span class="kw">return</span> <span class="fn">max</span>(<span class="nu">2</span>, <span class="fn">len</span>(word) // <span class="nu">4</span>)
+
+<span class="kw">def</span> <span class="fn">fuzzy_correct_token</span>(token: str, vocabulary: list,
+                         abort_short: int = <span class="nu">4</span>) -> str:
+    <span class="str">"""
+    abort_short: skip fuzzy matching for tokens shorter than this.
+    Short tokens: degenerate threshold, candidate set too large.
+    """</span>
+    <span class="kw">if</span> <span class="fn">len</span>(token) < abort_short: <span class="kw">return</span> token
+    normalised = <span class="fn">prenormalize</span>(token)
+    threshold  = <span class="fn">adaptive_threshold</span>(normalised)
+    result     = process.<span class="fn">extractOne</span>(
+        normalised, vocabulary, scorer=fuzz.ratio,
+        score_cutoff=<span class="nu">100</span> - threshold * <span class="nu">10</span>)
+    <span class="kw">return</span> result[<span class="nu">0</span>] <span class="kw">if</span> result <span class="kw">else</span> token
+
+MEDICAL_ABBREVS = {
+    <span class="str">"NHS"</span>,<span class="str">"GP"</span>,<span class="str">"COPD"</span>,<span class="str">"HTN"</span>,<span class="str">"T2DM"</span>,<span class="str">"MI"</span>,<span class="str">"CVA"</span>,<span class="str">"ECG"</span>,
+    <span class="str">"BP"</span>,<span class="str">"HR"</span>,<span class="str">"SpO2"</span>,<span class="str">"BMI"</span>,<span class="str">"ICU"</span>,<span class="str">"PRN"</span>,<span class="str">"QDS"</span>,<span class="str">"TDS"</span>,
+}
+
+<span class="kw">def</span> <span class="fn">correct_text</span>(text: str, vocabulary: list,
+                  abbreviations: set = <span class="kw">None</span>) -> str:
+    abbrevs = abbreviations <span class="kw">or</span> MEDICAL_ABBREVS
+    tokens  = text.<span class="fn">split</span>()
+    corrected = []
+    <span class="kw">for</span> tok <span class="kw">in</span> tokens:
+        clean = tok.<span class="fn">strip</span>(<span class="str">".,;:"</span>)
+        <span class="kw">if</span> clean.upper() <span class="kw">in</span> abbrevs: corrected.<span class="fn">append</span>(tok)
+        <span class="kw">else</span>:  corrected.<span class="fn">append</span>(<span class="fn">fuzzy_correct_token</span>(clean, vocabulary))
+    <span class="kw">return</span> <span class="str">" "</span>.<span class="fn">join</span>(corrected)</pre></div></div>
+</section><section class="sec" id="s3">
+<div class="sn">03 · Domain Vocabulary Construction</div>
+<h2>Frequency-Weighted Corpus Learning<br><span class="gt">Plus Authoritative Drug and Procedure Terms</span></h2>
+<div class="cc"><div class="ch"><h3>domain_vocabulary.py</h3><button class="cpb" onclick="cp(this,'c2')">Copy</button></div>
+<div class="cbody"><pre id="c2"><span class="kw">from</span> collections <span class="kw">import</span> defaultdict
+<span class="kw">import</span> re, unicodedata
+
+<span class="kw">class</span> <span class="cl">DomainVocabulary</span>:
+    <span class="kw">def</span> <span class="fn">__init__</span>(self):
+        self.word_freq    = defaultdict(int)
+        self.authoritative = set()
+
+    <span class="kw">def</span> <span class="fn">ingest_document</span>(self, text: str) -> None:
+        words = re.<span class="fn">findall</span>(<span class="str">r"[A-Za-z][a-z]{2,}"</span>, text)
+        <span class="kw">for</span> w <span class="kw">in</span> words:
+            self.word_freq[unicodedata.<span class="fn">normalize</span>(<span class="str">"NFC"</span>, w.lower())] += <span class="nu">1</span>
+
+    <span class="kw">def</span> <span class="fn">add_authoritative</span>(self, terms: list) -> None:
+        <span class="str">"""
+        Add terms that must appear in vocabulary regardless of corpus frequency.
+        Drug names, procedure codes, specialist terms are rare in text but
+        critical for extraction — give them high synthetic frequency weight.
+        """</span>
+        <span class="kw">for</span> term <span class="kw">in</span> terms:
+            t = term.lower()
+            self.authoritative.<span class="fn">add</span>(t)
+            self.word_freq[t] = <span class="fn">max</span>(self.word_freq[t], <span class="nu">1000</span>)
+
+    <span class="kw">def</span> <span class="fn">get_vocabulary</span>(self, min_freq: int = <span class="nu">3</span>) -> list:
+        <span class="kw">return</span> <span class="fn">sorted</span>([w <span class="kw">for</span> w, c <span class="kw">in</span> self.word_freq.items()
+                        <span class="kw">if</span> c >= min_freq <span class="kw">or</span> w <span class="kw">in</span> self.authoritative])
+
+DRUG_NAMES = [
+    <span class="str">"metformin"</span>,<span class="str">"atorvastatin"</span>,<span class="str">"amlodipine"</span>,<span class="str">"ramipril"</span>,
+    <span class="str">"omeprazole"</span>,<span class="str">"sertraline"</span>,<span class="str">"levothyroxine"</span>,<span class="str">"salbutamol"</span>,
+    <span class="str">"lisinopril"</span>,<span class="str">"paracetamol"</span>,<span class="str">"ibuprofen"</span>,<span class="str">"prednisolone"</span>,
+]
+vocab = DomainVocabulary()
+vocab.<span class="fn">add_authoritative</span>(DRUG_NAMES)</pre></div></div>
+</section>
+
+<section class="sec" id="s4">
+<div class="sn">04 · Regex Field Validation</div>
+<h2>Dates, Amounts, UK Postcodes,<br><span class="gt">and NHS Number Checksum</span></h2>
+<div class="cc"><div class="ch"><h3>field_validators.py</h3><button class="cpb" onclick="cp(this,'c3')">Copy</button></div>
+<div class="cbody"><pre id="c3"><span class="kw">import</span> re
+<span class="kw">from</span> datetime <span class="kw">import</span> datetime
+
+DIGIT_FIX = str.<span class="fn">maketrans</span>(<span class="str">"lLoOBSZI"</span>, <span class="str">"11008520"</span>)
+
+<span class="kw">def</span> <span class="fn">validate_date</span>(raw: str) -> str:
+    s = raw.<span class="fn">translate</span>(DIGIT_FIX)
+    s = re.<span class="fn">sub</span>(<span class="str">r"(\d+)(st|nd|rd|th)"</span>, <span class="str">r""</span>, s, flags=re.I)
+    patterns = [
+        (<span class="str">r"(\d{1,2})[/\-.]\s*(\d{1,2})[/\-.]\s*(\d{2,4})"</span>, <span class="str">"%d %m %Y"</span>),
+        (<span class="str">r"(\d{1,2})\s+(\w{3,9})\s+(\d{4})"</span>,               <span class="str">"%d %B %Y"</span>),
+        (<span class="str">r"(\w{3,9})\s+(\d{1,2}),?\s+(\d{4})"</span>,             <span class="str">"%B %d %Y"</span>),
+    ]
+    <span class="kw">for</span> pattern, fmt <span class="kw">in</span> patterns:
+        m = re.<span class="fn">search</span>(pattern, s)
+        <span class="kw">if not</span> m: <span class="kw">continue</span>
+        <span class="kw">try</span>:
+            <span class="kw">return</span> datetime.<span class="fn">strptime</span>(<span class="str">" "</span>.<span class="fn">join</span>(m.<span class="fn">groups</span>()), fmt).<span class="fn">strftime</span>(<span class="str">"%Y-%m-%d"</span>)
+        <span class="kw">except</span>: <span class="kw">continue</span>
+    <span class="kw">return</span> <span class="str">""</span>
+
+<span class="kw">def</span> <span class="fn">validate_nhs_number</span>(raw: str) -> str:
+    <span class="str">"""Modulus-11 checksum: sum(digit[i] * (10-i) for i in 0..8) mod 11 == digit[9]."""</span>
+    s = re.<span class="fn">sub</span>(<span class="str">r"\D"</span>, <span class="str">""</span>, raw.<span class="fn">translate</span>(DIGIT_FIX))
+    <span class="kw">if</span> <span class="fn">len</span>(s) != <span class="nu">10</span>: <span class="kw">return</span> <span class="str">""</span>
+    total = <span class="fn">sum</span>(<span class="fn">int</span>(s[i]) * (<span class="nu">10</span> - i) <span class="kw">for</span> i <span class="kw">in</span> <span class="fn">range</span>(<span class="nu">9</span>))
+    check = (<span class="nu">11</span> - total % <span class="nu">11</span>) % <span class="nu">11</span>
+    <span class="kw">return</span> s <span class="kw">if</span> check == <span class="fn">int</span>(s[<span class="nu">9</span>]) <span class="kw">else</span> <span class="str">""</span>
+
+<span class="kw">def</span> <span class="fn">recover_nhs_number</span>(raw: str) -> dict:
+    <span class="str">"""
+    If 9-digit input, try all 10 check digit appensions.
+    NHS checksum guarantees exactly one valid completion.
+    Returns: {value: str, recovered: bool}
+    """</span>
+    s = re.<span class="fn">sub</span>(<span class="str">r"\D"</span>, <span class="str">""</span>, raw.<span class="fn">translate</span>(DIGIT_FIX))
+    <span class="kw">if</span> <span class="fn">len</span>(s) == <span class="nu">10</span>:
+        v = <span class="fn">validate_nhs_number</span>(s)
+        <span class="kw">return</span> {<span class="str">"value"</span>: v, <span class="str">"recovered"</span>: <span class="kw">False</span>}
+    <span class="kw">if</span> <span class="fn">len</span>(s) == <span class="nu">9</span>:
+        valid = [s + d <span class="kw">for</span> d <span class="kw">in</span> <span class="str">"0123456789"</span>
+                 <span class="kw">if</span> <span class="fn">validate_nhs_number</span>(s + d)]
+        <span class="kw">if</span> <span class="fn">len</span>(valid) == <span class="nu">1</span>:
+            <span class="kw">return</span> {<span class="str">"value"</span>: valid[<span class="nu">0</span>], <span class="str">"recovered"</span>: <span class="kw">True</span>}
+    <span class="kw">return</span> {<span class="str">"value"</span>: <span class="str">""</span>, <span class="str">"recovered"</span>: <span class="kw">False</span>}
+
+<span class="kw">def</span> <span class="fn">validate_postcode_uk</span>(raw: str) -> str:
+    s = re.<span class="fn">sub</span>(<span class="str">r"\s+"</span>, <span class="str">""</span>, raw).<span class="fn">upper</span>()
+    s = s[:-<span class="nu">3</span>] + <span class="str">" "</span> + s[-<span class="nu">3</span>:] <span class="kw">if</span> <span class="fn">len</span>(s) >= <span class="nu">5</span> <span class="kw">else</span> s
+    <span class="kw">return</span> s <span class="kw">if</span> re.<span class="fn">match</span>(<span class="str">r"^[A-Z]{1,2}\d{1,2}[A-Z]?\s\d[A-Z]{2}$"</span>, s) <span class="kw">else</span> <span class="str">""</span></pre></div></div>
+</section><section class="sec" id="s5">
+<div class="sn">05 · BERT Masked LM Rescoring</div>
+<h2>N-Best Candidates Reranked<br><span class="gt">by Clinical Language Model Probability</span></h2>
+<div class="cc"><div class="ch"><h3>lm_rescoring.py</h3><button class="cpb" onclick="cp(this,'c4')">Copy</button></div>
+<div class="cbody"><pre id="c4"><span class="kw">from</span> transformers <span class="kw">import</span> AutoTokenizer, AutoModelForMaskedLM
+<span class="kw">import</span> torch
+
+<span class="cm"># Domain-specific BERTs outperform bert-base on their target text:</span>
+<span class="cm"># "emilyalsentzer/Bio_ClinicalBERT"   — clinical notes (recommended)</span>
+<span class="cm"># "allenai/scibert_scivocab_uncased"  — scientific papers</span>
+<span class="cm"># "bert-base-uncased"                 — general fallback</span>
+
+tokeniser = AutoTokenizer.<span class="fn">from_pretrained</span>(<span class="str">"emilyalsentzer/Bio_ClinicalBERT"</span>)
+model     = AutoModelForMaskedLM.<span class="fn">from_pretrained</span>(
+    <span class="str">"emilyalsentzer/Bio_ClinicalBERT"</span>).<span class="fn">eval</span>()
+
+<span class="kw">def</span> <span class="fn">pseudo_log_likelihood</span>(sentence: str) -> float:
+    <span class="str">"""
+    Mask each token in turn, sum log-probabilities.
+    Always apply prenormalize() before scoring —
+    OCR errors should be normalised before LM sees them.
+    Higher score = more probable under the LM.
+    """</span>
+    tokens = tokeniser(<span class="str">f"[CLS] {sentence} [SEP]"</span>, return_tensors=<span class="str">"pt"</span>)
+    ids    = tokens.input_ids[<span class="nu">0</span>]
+    score  = <span class="nu">0.0</span>
+    <span class="kw">for</span> i <span class="kw">in</span> <span class="fn">range</span>(<span class="nu">1</span>, <span class="fn">len</span>(ids) - <span class="nu">1</span>):
+        masked    = ids.<span class="fn">clone</span>()
+        masked[i] = tokeniser.mask_token_id
+        <span class="kw">with</span> torch.no_grad():
+            logits = model(masked.<span class="fn">unsqueeze</span>(<span class="nu">0</span>)).logits[<span class="nu">0</span>, i]
+        score += torch.log_softmax(logits, dim=-<span class="nu">1</span>)[ids[i]].<span class="fn">item</span>()
+    <span class="kw">return</span> score
+
+<span class="kw">def</span> <span class="fn">rescore_candidates</span>(context_words: list, candidates: list,
+                         target_pos: int) -> str:
+    <span class="str">"""
+    Rescore n-best OCR candidates in context.
+    Applies prenormalize() to each candidate before scoring.
+    Returns highest-scoring candidate.
+    """</span>
+    scored = []
+    <span class="kw">for</span> cand <span class="kw">in</span> candidates:
+        words = context_words.copy()
+        words[target_pos] = <span class="fn">prenormalize</span>(cand)  <span class="cm"># normalise before LM scores</span>
+        scored.<span class="fn">append</span>((cand, <span class="fn">pseudo_log_likelihood</span>(<span class="str">" "</span>.<span class="fn">join</span>(words))))
+    <span class="kw">return</span> <span class="fn">max</span>(scored, key=<span class="kw">lambda</span> x: x[<span class="nu">1</span>])[<span class="nu">0</span>]</pre></div></div>
+</section>
+
+<section class="sec" id="s6">
+<div class="sn">06 · Confidence-Based Rejection Routing</div>
+<h2>Three Zones Per Field:<br><span class="gt">Accept, Review, Reject</span></h2>
+<div class="cc"><div class="ch"><h3>rejection_routing.py</h3><button class="cpb" onclick="cp(this,'c5')">Copy</button></div>
+<div class="cbody"><pre id="c5"><span class="kw">from</span> dataclasses <span class="kw">import</span> dataclass
+<span class="kw">from</span> enum <span class="kw">import</span> Enum
+
+<span class="kw">class</span> <span class="cl">Zone</span>(Enum):
+    ACCEPT = <span class="str">"accept"</span>
+    REVIEW = <span class="str">"review"</span>
+    REJECT = <span class="str">"reject"</span>
+
+ZONE_CONFIG = {
+    <span class="str">"critical"</span>: (<span class="nu">90</span>, <span class="nu">70</span>),  <span class="cm"># NHS number, account number: tight</span>
+    <span class="str">"standard"</span>: (<span class="nu">75</span>, <span class="nu">55</span>),  <span class="cm"># names, dates, addresses</span>
+    <span class="str">"optional"</span>: (<span class="nu">60</span>, <span class="nu">40</span>),  <span class="cm"># notes, secondary descriptions</span>
+}
+FIELD_TIER = {
+    <span class="str">"nhs_number"</span>:  <span class="str">"critical"</span>, <span class="str">"account_number"</span>: <span class="str">"critical"</span>,
+    <span class="str">"patient_name"</span>:<span class="str">"standard"</span>, <span class="str">"dob"</span>:           <span class="str">"standard"</span>,
+    <span class="str">"postcode"</span>:   <span class="str">"standard"</span>,  <span class="str">"notes"</span>:         <span class="str">"optional"</span>,
+}
+
+@dataclass
+<span class="kw">class</span> <span class="cl">RoutingDecision</span>:
+    field: str; value: str; conf: float; zone: Zone; reason: str
+
+<span class="kw">def</span> <span class="fn">route_field_by_conf</span>(field: str, value: str, conf: float) -> RoutingDecision:
+    tier = FIELD_TIER.get(field, <span class="str">"standard"</span>)
+    hi, lo = ZONE_CONFIG[tier]
+    <span class="kw">if</span>   conf >= hi: zone, reason = Zone.ACCEPT, <span class="str">f"conf {conf:.0f} >= {hi}"</span>
+    <span class="kw">elif</span> conf >= lo: zone, reason = Zone.REVIEW, <span class="str">f"conf {conf:.0f} in [{lo},{hi})"</span>
+    <span class="kw">else</span>:            zone, reason = Zone.REJECT, <span class="str">f"conf {conf:.0f} < {lo}"</span>
+    <span class="kw">return</span> <span class="cl">RoutingDecision</span>(field, value, conf, zone, reason)</pre></div></div>
+</section>
+
+<section class="sec" id="s7">
+<div class="sn">07 · Compound Error Model</div>
+<h2>At CER=2%, A 20-Char Field<br><span class="gt">Has Only 66.8% Exact-Match Probability</span></h2>
+<div class="card" style="padding:0;overflow:hidden"><table class="tbl">
+<thead><tr><th>CER</th><th>5-char field</th><th>10-char field</th><th>20-char field</th><th>40-char field</th></tr></thead>
+<tbody>
+<tr><td>0.5%</td><td style="color:var(--a1)">97.5%</td><td style="color:var(--a1)">95.1%</td><td style="color:var(--a1)">90.5%</td><td style="color:var(--a1)">81.9%</td></tr>
+<tr><td>1.0%</td><td style="color:var(--a1)">95.1%</td><td style="color:var(--a4)">90.4%</td><td style="color:var(--a4)">81.8%</td><td style="color:var(--a3)">66.9%</td></tr>
+<tr><td>2.0%</td><td style="color:var(--a4)">90.4%</td><td style="color:var(--a3)">81.7%</td><td style="color:var(--a3)">66.8%</td><td style="color:var(--a3)">44.6%</td></tr>
+<tr><td>5.0%</td><td style="color:var(--a3)">77.4%</td><td style="color:var(--a3)">59.9%</td><td style="color:var(--a3)">35.8%</td><td style="color:var(--a3)">12.8%</td></tr>
+</tbody></table></div>
+<div class="card" style="padding:0;overflow:hidden;margin-top:1rem"><table class="tbl">
+<thead><tr><th>Post-processing step</th><th>CER improvement</th><th>Field accuracy impact</th></tr></thead>
+<tbody>
+<tr><td>Whitespace normalisation</td><td style="color:var(--a4)">0.2–0.5%</td><td style="color:var(--a4)">+2–4pp</td></tr>
+<tr><td>DIGIT_FIX substitutions</td><td style="color:var(--a4)">0.3–0.8%</td><td style="color:var(--a1)">+5–15pp on numeric fields</td></tr>
+<tr><td>Domain vocabulary fuzzy</td><td style="color:var(--a1)">1.0–3.0%</td><td style="color:var(--a1)">+10–25pp on text fields</td></tr>
+<tr><td>Regex field validation</td><td style="color:var(--tm)">N/A (pass/fail)</td><td style="color:var(--a1)">+5–15pp on structured fields</td></tr>
+<tr><td>BERT LM rescoring</td><td style="color:var(--a2)">0.5–1.5%</td><td style="color:var(--a2)">+5–12pp on ambiguous words</td></tr>
+</tbody></table></div>
+</section>
+
+<section class="sec" id="s8">
+<div class="sn">08 · Assessment</div>
+<h2>Module 11 <span class="gt">Quiz</span></h2>
+<div class="qc">
+
+<div class="qq"><h4>1. fuzzy_correct_token("St", vocabulary) returns "St" unchanged even though "Street" is in the vocabulary. Is this a bug?</h4>
+<div class="qo">
+<button class="qob" onclick="cq(this,0,true)">A) No — this is intentional. abort_short=4 skips fuzzy matching for tokens shorter than 4 characters. "St" has 2 characters. The design rationale: adaptive_threshold("St") = max(2, 2//4) = 2, allowing up to 2 edits out of 2 total characters — matching virtually anything in the vocabulary. The correction would be statistically unreliable, risking "St" being "corrected" to any 2-4 character word. Short abbreviations must be handled by a domain-specific rule-based abbreviation expander, not generic fuzzy matching.</button>
+<button class="qob" onclick="cq(this,0,false)">B) Yes — add "Street" explicitly to authoritative vocabulary at weight 1000. Authoritative terms always win fuzzy matches regardless of token length, bypassing the abort_short cutoff.</button>
+<button class="qob" onclick="cq(this,0,false)">C) Yes — use fuzz.partial_ratio instead of fuzz.ratio. partial_ratio handles prefix matches, so "St" correctly matches the start of "Street" without requiring equal length.</button>
+<button class="qob" onclick="cq(this,0,false)">D) Yes — lower abort_short from 4 to 2, and add a minimum score_cutoff of 90 for very short tokens. High cutoff prevents spurious matches while allowing "St" to match "Street".</button>
+</div><div class="qf" id="f0">Correct. The abort_short threshold is a deliberate safety mechanism. A 2-character token with an allowed edit distance of 2 matches any token 1–4 characters long — the candidate set is enormous and the correction would be random. Short abbreviations require a separate rule-based expansion map: {"St": "Street", "Ave": "Avenue", "Rd": "Road"} applied before fuzzy matching.</div></div>
+
+<div class="qq"><h4>2. validate_nhs_number("487 345 678") returns "". The correct number is "487 345 6782". The final character was dropped by OCR. What recovery approach is safe to automate?</h4>
+<div class="qo">
+<button class="qob" onclick="cq(this,1,false)">A) Pad with a trailing 0 and recheck — if checksum passes, accept. Trailing 0 is the most common OCR dropout character.</button>
+<button class="qob" onclick="cq(this,1,true)">B) Try all 10 possible appensions — but this produces multiple valid completions for any 9-digit string, so manual review is always required.</button>
+<button class="qob" onclick="cq(this,1,false)">C) Apply DIGIT_FIX before calling the validator — the missing digit is likely a letter misread as a space, and DIGIT_FIX will restore it.</button>
+<button class="qob" onclick="cq(this,1,false)">D) Try all 10 appensions (0–9) as recover_nhs_number() does. The modulus-11 checksum guarantees exactly one valid check digit for any 9-digit prefix — so if exactly one passes, accept it as a deterministic unambiguous recovery and flag with recovered=True. If zero or two+ pass (which should be impossible for a valid NHS prefix but can occur if earlier digits are also wrong), route to human review. This is safe to automate precisely because NHS checksum uniqueness makes the completion unambiguous.</button>
+</div><div class="qf" id="f1">Correct. The modulus-11 checksum property is the key: for any valid 9-digit prefix, exactly one check digit satisfies the checksum. This makes the recovery deterministic and unambiguous — unlike general fuzzy matching where multiple candidates compete. The recovered=True flag ensures audit trails distinguish auto-recovered values from directly extracted ones, supporting downstream compliance requirements.</div></div>
+
+<div class="qq"><h4>3. pseudo_log_likelihood() scores "The patient was diagnosed with hypertensi0n" as high as "hypertension". How does prenormalize() in rescore_candidates() prevent this problem?</h4>
+<div class="qo">
+<button class="qob" onclick="cq(this,2,false)">A) prenormalize() removes all digits from candidate strings before scoring, ensuring digit-contaminated OCR errors like "hypertensi0n" are filtered out before the LM sees them.</button>
+<button class="qob" onclick="cq(this,2,false)">B) prenormalize() applies BERT tokenisation normalisation that maps "hypertensi0n" to the same subword tokens as "hypertension", so the LM scores them identically and both are treated as correct.</button>
+<button class="qob" onclick="cq(this,2,true)">C) prenormalize() applies the OCR_SUBS rules including "alpha-0-alpha to o in letter context" — converting "hypertensi0n" to "hypertension" before the LM scores it. This means the LM compares two correctly normalised candidates ("hypertension" and the correct other alternatives) rather than comparing a normalised form against an unnormalised OCR error. The LM then provides real signal between genuine alternative words ("hypertension" vs "hypertonia") rather than between a correct word and an OCR-corrupted version of the same word.</button>
+<button class="qob" onclick="cq(this,2,false)">D) prenormalize() lowercases all candidate strings before scoring, preventing case-sensitive tokenisation differences that would artificially deflate the score of "Hypertension" compared to "hypertensi0n".</button>
+</div><div class="qf" id="f2">Correct. The purpose of prenormalize() before LM scoring is to convert systematic OCR substitutions into their correct characters before asking the LM to score the sentence. Without prenormalize(), the LM would score "hypertensi0n" and "hypertension" differently only if its tokeniser creates different subword sequences — which is often not the case, making the scoring meaningless. After prenormalize(), both candidates are already in their corrected form, and the LM scores them on their actual linguistic properties.</div></div>
+
+<div class="qq"><h4>4. A document has nhs_number field extracted at conf=74 and patient_name at conf=52. What does route_document() decide for each, and what is the overall document disposition?</h4>
+<div class="qo">
+<button class="qob" onclick="cq(this,3,false)">A) Both fields route to REVIEW — conf 74 and 52 are both below their respective accept thresholds. Document is flagged for review of both fields.</button>
+<button class="qob" onclick="cq(this,3,false)">B) nhs_number ACCEPT (74 >= 70 critical reject threshold); patient_name REVIEW (52 is between 55 and 75). Document review_needed=True.</button>
+<button class="qob" onclick="cq(this,3,false)">C) nhs_number REJECT (74 < 90 critical accept); patient_name ACCEPT (52 >= standard reject 55). Document review_needed=True for nhs_number.</button>
+<button class="qob" onclick="cq(this,3,true)">D) nhs_number: tier=critical, hi=90, lo=70. Conf 74 is in [70, 90) → REVIEW. patient_name: tier=standard, hi=75, lo=55. Conf 52 is below 55 → REJECT. Overall: review_needed=True, review_fields=["nhs_number","patient_name"], reject_fields=["patient_name"]. The NHS number is uncertain but not below the reject threshold; the patient name is below the standard reject floor and cannot be auto-accepted or deferred — it needs active human correction before the record can proceed.</button>
+</div><div class="qf" id="f3">Correct. The three-zone routing must be computed per-field using each field's tier configuration, not a single global threshold. nhs_number (critical tier: hi=90, lo=70) at conf 74 falls in the review band [70, 90) — uncertain but above the critical reject floor. patient_name (standard tier: hi=75, lo=55) at conf 52 falls below the reject threshold of 55 — actively rejected. A rejected field means the extracted value is too low confidence to use even for review; it must be re-extracted or manually entered. A review field means the value may be correct but needs human verification.</div></div>
+
+<div class="qq"><h4>5. You measured CER=1.8% on a medical form dataset. The most critical field is "medication_name" with average length 12 characters. What is the exact-match field accuracy for medication_name, and what single post-processing step most improves it?</h4>
+<div class="qo">
+<button class="qob" onclick="cq(this,4,false)">A) Field accuracy = 1 - 1.8% = 98.2%. CER directly gives field accuracy. The highest-impact improvement is whitespace normalisation, which handles the most common OCR error type across all field lengths.</button>
+<button class="qob" onclick="cq(this,4,false)">B) Field accuracy = 100% - 1.8% x 12 = 78.4%. Multiply CER by field length for field error rate. The highest-impact step is BERT LM rescoring, which directly models the probability of medical terms.</button>
+<button class="qob" onclick="cq(this,4,false)">C) Field accuracy = 0.982^12 = 80.4%. The compound error model gives 80.4%. The highest-impact step is DIGIT_FIX, which corrects the l/1/O/0 substitutions most common in pharmaceutical names like "metform1n".</button>
+<button class="qob" onclick="cq(this,4,true)">D) Field accuracy = 0.982^12 = 80.4% — the compound error model. At CER=1.8%, each character has a 1.8% error probability, so a 12-char field has exact-match probability 0.982^12 ≈ 0.804. The highest-impact post-processing step is domain vocabulary fuzzy correction: drug names are rare in general text but have systematic OCR failure modes (confusable characters in "atorvastat1n", "amlod1pine"). Authoritative drug name vocabulary with prenormalize() applied before matching recovers these errors reliably, with benchmark improvement of 10–25pp field accuracy on medical text fields — more than any other single step.</button>
+</div><div class="qf" id="f4">Correct. The compound error formula is (1-CER)^field_length = 0.982^12 = 80.4%. The linear approximation in B (78.4%) is wrong — it overestimates the error because it does not account for the decreasing marginal probability of additional errors. The CER-direct formula in A (98.2%) is the single-character accuracy, not the field accuracy. Domain vocabulary fuzzy correction provides the largest single-step improvement for medical text: drug names are exactly the class of terms that are rare in training corpora (low word frequency → low Tesseract confidence) but critical for extraction accuracy.</div></div>
+
+<div class="qs" id="qs"><h3 id="sc">0/5</h3><p id="sm">Complete all 5 questions to see your score.</p></div>
+</div>
+</section>
+<div class="fn2">
+  <a href="ocr_m10.html" class="pr">← M10: LLM-Augmented OCR</a>
+  <div class="fcc"><div>Module 11 · OCR Post-processing and Error Correction</div><div style="font-size:.75rem;margin-top:4px">OCR &amp; Text Recognition Engineering · Marevlo</div></div>
+  <a href="ocr_m12.html" class="nx">M12: OCR Evaluation Metrics →</a>
+</div>
+</div>
+<script>
+window.addEventListener("scroll",function(){var h=document.documentElement;document.getElementById("sp").style.width=((h.scrollTop/(h.scrollHeight-h.clientHeight))*100)+"%";});
+var obs=new IntersectionObserver(function(e){e.forEach(function(x){if(x.isIntersecting)x.target.classList.add("vis");});},{threshold:0.07});
+document.querySelectorAll(".sec").forEach(function(s){obs.observe(s);});
+function cp(btn,id){navigator.clipboard.writeText(document.getElementById(id).innerText).then(function(){btn.textContent="Copied!";setTimeout(function(){btn.textContent="Copy";},2000);});}
+var ans=[null,null,null,null,null];
+function cq(btn,qi,ok){
+  var opts=btn.parentElement.querySelectorAll(".qob");opts.forEach(function(o){o.disabled=true;});
+  if(ans[qi]!==null)return;ans[qi]=ok;
+  var f=document.getElementById("f"+qi);
+  if(ok){btn.classList.add("ok");f.classList.add("show");f.style.color="var(--a1)";}
+  else{btn.classList.add("no");opts.forEach(function(o){if(o!==btn&&o.getAttribute("onclick").indexOf(",true)")>-1)o.classList.add("ok");});f.classList.add("show");f.style.color="var(--a3)";}
+  var filled=ans.filter(function(a){return a!==null;}).length;
+  if(filled===5){var c=ans.filter(function(a){return a===true;}).length;
+    document.getElementById("qs").style.display="block";
+    document.getElementById("sc").textContent=c+"/5";
+    document.getElementById("sm").textContent=["Good — check abort_short rationale for short-token fuzzy matching.","Re-read NHS modulus-11 checksum recovery — uniqueness is the key.","Good — review prenormalize before LM scoring.","Re-read three-zone routing per field tier configuration.","Perfect. Move to M12: OCR Evaluation Metrics."][c];}
+}
+</script></body></html>

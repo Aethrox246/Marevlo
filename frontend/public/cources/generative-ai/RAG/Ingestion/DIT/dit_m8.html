@@ -1,0 +1,382 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>DiT Track 8 - Efficient Transformers for Long Documents</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;700&family=Source+Serif+4:ital,wght@0,400;0,600;1,400&display=swap" rel="stylesheet">
+<style>:root{--bg:#0a0a0f;--t1:#ececf6;--t2:#b5b5c8;--tm:#7c7c95;
+--a1:#5eead4;--a2:#60a5fa;--a3:#f472b6;--a4:#fbbf24;--a5:#a78bfa;--ac:#f472b6;
+--gl:linear-gradient(90deg,#5eead4 0%,#60a5fa 28%,#a78bfa 55%,#f472b6 82%,#fbbf24 100%);
+--bs:rgba(255,255,255,0.07);--sh:0 20px 80px rgba(0,0,0,0.42);--r:20px;--cw:1120px}
+*{box-sizing:border-box;margin:0;padding:0}html{scroll-behavior:smooth}
+body{background:radial-gradient(circle at 18% 14%,rgba(244,114,182,.09),transparent 30%),radial-gradient(circle at 82% 22%,rgba(96,165,250,.05),transparent 28%),var(--bg);color:var(--t1);font-family:'Outfit',sans-serif;line-height:1.75;overflow-x:hidden;-webkit-font-smoothing:antialiased}
+.sp{position:fixed;top:0;left:0;height:3px;width:0%;z-index:1000;background:var(--gl);transition:width .12s linear}
+nav{position:fixed;top:3px;left:0;right:0;z-index:999;display:flex;align-items:center;justify-content:space-between;padding:.75rem 2rem;background:rgba(10,10,15,.88);backdrop-filter:blur(12px);border-bottom:1px solid var(--bs)}
+.nbr{font-family:'JetBrains Mono',monospace;font-size:.72rem;color:var(--ac);letter-spacing:.14em;text-transform:uppercase;text-decoration:none}
+.nm{font-size:.82rem;color:var(--tm)}.na{display:flex;gap:8px}
+.nb{display:inline-flex;align-items:center;gap:6px;padding:.4rem .9rem;border-radius:999px;border:1px solid var(--bs);background:rgba(255,255,255,.03);color:var(--t2);font-size:.8rem;text-decoration:none;transition:all .18s}
+.nb:hover{border-color:var(--ac);color:var(--ac)}
+.hero{min-height:100vh;display:flex;align-items:center;justify-content:center;padding:5rem 2rem 3rem;position:relative;overflow:hidden}
+.hg{position:absolute;inset:0;background-image:linear-gradient(rgba(255,255,255,.025) 1px,transparent 1px),linear-gradient(90deg,rgba(255,255,255,.025) 1px,transparent 1px);background-size:48px 48px;mask-image:radial-gradient(circle at center,black 30%,transparent 80%);pointer-events:none}
+.hero::before{content:"";position:absolute;inset:0;background:radial-gradient(ellipse 700px 350px at 20% 40%,rgba(244,114,182,.10),transparent),radial-gradient(ellipse 640px 360px at 80% 38%,rgba(96,165,250,.06),transparent);pointer-events:none}
+.hi{max-width:1000px;text-align:center;position:relative;z-index:1}
+.hl{display:inline-flex;align-items:center;gap:10px;padding:.55rem 1rem;border-radius:999px;border:1px solid rgba(244,114,182,.25);background:rgba(244,114,182,.08);color:var(--ac);letter-spacing:1.8px;text-transform:uppercase;font-size:.76rem;margin-bottom:1.7rem}
+.dot{width:7px;height:7px;border-radius:50%;background:var(--ac);animation:pulse 2s ease-in-out infinite}
+@keyframes pulse{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.3;transform:scale(.75)}}
+h1{font-size:clamp(2.4rem,5vw,4.4rem);line-height:1.04;letter-spacing:-.04em;font-weight:900;margin-bottom:1.3rem}
+.gt{background:var(--gl);-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent}
+.sub{font-size:.85rem;color:var(--tm);font-family:'JetBrains Mono',monospace;margin-bottom:.5rem}
+.hs{font-family:'Source Serif 4',serif;color:var(--t2);font-size:clamp(1rem,2vw,1.2rem);max-width:820px;margin:0 auto 2rem;line-height:1.8}
+.hm{display:flex;flex-wrap:wrap;justify-content:center;gap:12px;margin-bottom:2.5rem}
+.mp{border:1px solid var(--bs);background:rgba(17,17,26,.75);border-radius:999px;padding:.65rem 1.1rem;color:var(--t2);font-size:.88rem}
+.sc{position:absolute;bottom:2.6rem;left:50%;transform:translateX(-50%);color:var(--tm);display:flex;flex-direction:column;gap:.6rem;align-items:center;text-transform:uppercase;letter-spacing:.22em;font-size:.7rem}
+.sc .arr{width:18px;height:18px;border-right:2px solid var(--tm);border-bottom:2px solid var(--tm);transform:rotate(45deg);animation:ba 2s ease-in-out infinite}
+@keyframes ba{0%,100%{transform:rotate(45deg) translateY(0)}50%{transform:rotate(45deg) translateY(7px)}}
+.cw{max-width:var(--cw);margin:0 auto;padding:0 2rem 6rem}
+.sec{margin-bottom:5.5rem;opacity:0;transform:translateY(28px);transition:opacity .65s ease,transform .65s ease}
+.sec.vis{opacity:1;transform:translateY(0)}
+.sn{display:flex;align-items:center;gap:12px;color:var(--ac);font-family:'JetBrains Mono',monospace;font-size:.68rem;text-transform:uppercase;letter-spacing:.22em;margin-bottom:.9rem}
+.sn::after{content:"";height:1px;flex:1;background:linear-gradient(90deg,rgba(244,114,182,.7),transparent)}
+.sec h2{font-size:clamp(1.9rem,4vw,2.75rem);line-height:1.08;margin-bottom:1rem;letter-spacing:-.04em}
+.lead{font-family:'Source Serif 4',serif;font-size:1.08rem;color:var(--t2);margin-bottom:2rem;line-height:1.85}
+.card{background:linear-gradient(180deg,rgba(24,24,38,.96),rgba(17,17,28,.96));border:1px solid var(--bs);border-radius:var(--r);box-shadow:var(--sh);padding:1.8rem;margin-bottom:1.4rem}
+.cc{background:linear-gradient(180deg,rgba(11,11,22,.99),rgba(9,9,17,.99));border:1px solid var(--bs);border-radius:var(--r);box-shadow:var(--sh);padding:0;margin-bottom:1.4rem;overflow:hidden}
+.ch{display:flex;align-items:center;justify-content:space-between;padding:1rem 1.5rem;border-bottom:1px solid var(--bs)}
+.ch h3{font-size:.9rem;font-family:'JetBrains Mono',monospace;color:var(--ac)}
+.cpb{display:inline-flex;align-items:center;gap:5px;padding:.28rem .7rem;border-radius:999px;border:1px solid var(--bs);background:transparent;color:var(--tm);font-size:.72rem;cursor:pointer;transition:all .18s;font-family:'JetBrains Mono',monospace}
+.cpb:hover{border-color:var(--a1);color:var(--a1)}
+.cbody{padding:1.5rem;overflow-x:auto}
+pre{white-space:pre;color:#d8e3ff;font-family:'JetBrains Mono',monospace;font-size:.86rem;line-height:1.75}
+.kw{color:#a78bfa}.fn{color:#60a5fa}.str{color:#5eead4}.cm{color:#3d3d5a;font-style:italic}.nu{color:#fbbf24}.cl{color:#f472b6}
+.g2{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:1.3rem;margin-bottom:1.4rem}
+.g3{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:1.3rem;margin-bottom:1.4rem}
+.g4{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:1rem;margin-bottom:1.2rem}
+.mc2{border:1px solid var(--bs);border-radius:16px;padding:1.3rem;background:rgba(255,255,255,.02)}
+.mc2 h4{font-size:1rem;margin-bottom:.55rem;color:var(--t1)}.mc2 p{font-size:.9rem;color:var(--t2);line-height:1.65}
+.tbl{width:100%;border-collapse:collapse;font-size:.87rem}
+.tbl th{text-align:left;padding:.75rem 1rem;font-family:'JetBrains Mono',monospace;font-size:.65rem;text-transform:uppercase;color:var(--tm);border-bottom:1px solid var(--bs)}
+.tbl td{padding:.75rem 1rem;border-bottom:1px solid rgba(255,255,255,.04);color:var(--t2);vertical-align:top;line-height:1.65}
+.tbl td:first-child{color:var(--t1);font-weight:600}.tbl tr:last-child td{border-bottom:none}
+/* Architecture diagram container */
+.arch{background:rgba(10,10,18,.95);border:1px solid rgba(244,114,182,.2);border-radius:var(--r);padding:1.5rem;margin-bottom:1.4rem;overflow-x:auto;text-align:center}
+.arch-title{font-family:'JetBrains Mono',monospace;font-size:.7rem;text-transform:uppercase;letter-spacing:.18em;color:var(--ac);margin-bottom:1.2rem;text-align:left}
+/* Callout boxes */
+.callout{border-radius:14px;padding:1.1rem 1.3rem;margin-bottom:1rem;display:flex;gap:.9rem;align-items:flex-start}
+.callout-key{background:rgba(94,234,212,.06);border:1px solid rgba(94,234,212,.2)}
+.callout-warn{background:rgba(251,191,36,.06);border:1px solid rgba(251,191,36,.2)}
+.callout-insight{background:rgba(167,139,250,.06);border:1px solid rgba(167,139,250,.2)}
+.callout-code{background:rgba(96,165,250,.06);border:1px solid rgba(96,165,250,.2)}
+.callout-icon{font-size:1.3rem;flex-shrink:0;margin-top:.05rem}
+.callout-body h4{font-size:.95rem;margin-bottom:.3rem;color:var(--t1)}
+.callout-body p{font-size:.88rem;color:var(--t2);line-height:1.65}
+/* Enhanced quiz */
+.qc{background:linear-gradient(180deg,rgba(24,24,38,.96),rgba(17,17,28,.96));border:1px solid var(--bs);border-radius:var(--r);box-shadow:var(--sh);padding:2rem}
+.qc-title{font-size:1.1rem;font-weight:700;margin-bottom:.3rem;color:var(--t1)}
+.qc-sub{font-size:.85rem;color:var(--tm);margin-bottom:1.5rem;font-family:'JetBrains Mono',monospace}
+.qq{border:1px solid var(--bs);border-radius:16px;padding:1.5rem;background:rgba(255,255,255,.015);margin-bottom:1.2rem;transition:border-color .3s}
+.qq.answered{border-color:rgba(244,114,182,.3)}
+.qnum{font-family:'JetBrains Mono',monospace;font-size:.68rem;color:var(--ac);text-transform:uppercase;letter-spacing:.15em;margin-bottom:.5rem}
+.qq h4{font-size:1rem;margin-bottom:1.1rem;color:var(--t1);line-height:1.55;font-weight:600}
+.qo{display:grid;gap:.55rem}
+.qob{border:1px solid var(--bs);border-radius:11px;padding:.95rem 1.15rem;background:rgba(255,255,255,.02);color:var(--t2);cursor:pointer;transition:all .22s;text-align:left;font-size:.9rem;font-family:'Outfit',sans-serif;width:100%;line-height:1.55;position:relative;padding-left:3rem}
+.qob::before{content:attr(data-opt);position:absolute;left:.9rem;top:50%;transform:translateY(-50%);font-family:'JetBrains Mono',monospace;font-size:.75rem;font-weight:700;color:var(--tm);transition:color .2s}
+.qob:hover:not([disabled]){border-color:rgba(244,114,182,.5);background:rgba(244,114,182,.04);color:var(--t1)}
+.qob:hover:not([disabled])::before{color:var(--ac)}
+.qob.ok{border-color:rgba(94,234,212,.6);background:rgba(94,234,212,.09);color:var(--t1)}
+.qob.ok::before{color:#5eead4}
+.qob.no{border-color:rgba(244,114,182,.4);background:rgba(244,114,182,.07);color:var(--t2)}
+.qob.no::before{color:#f472b6}
+.qob[disabled]{cursor:default}
+.qfeed{margin-top:.9rem;border-radius:12px;padding:1rem 1.2rem;display:none;font-size:.88rem;line-height:1.65}
+.qfeed.correct{background:rgba(94,234,212,.06);border:1px solid rgba(94,234,212,.25)}
+.qfeed.wrong{background:rgba(244,114,182,.05);border:1px solid rgba(244,114,182,.2)}
+.qfeed-head{font-weight:700;margin-bottom:.3rem;font-size:.9rem}
+.qfeed.correct .qfeed-head{color:#5eead4}
+.qfeed.wrong .qfeed-head{color:#f472b6}
+.qfeed-why{color:var(--t2)}
+.qprog{display:flex;align-items:center;gap:1rem;margin-bottom:1.5rem}
+.qprog-bar{flex:1;height:6px;background:rgba(255,255,255,.06);border-radius:999px;overflow:hidden}
+.qprog-fill{height:100%;background:var(--gl);border-radius:999px;width:0%;transition:width .4s ease}
+.qprog-text{font-family:'JetBrains Mono',monospace;font-size:.72rem;color:var(--tm);white-space:nowrap}
+.qs{text-align:center;padding:1.5rem;border:1px solid var(--bs);border-radius:16px;margin-top:1.5rem}
+.qs h3{font-size:1.5rem;margin-bottom:.4rem}
+.qs p{color:var(--t2);font-size:.9rem}
+.pr,.nx{display:inline-flex;align-items:center;gap:7px;padding:.55rem 1.2rem;border-radius:999px;border:1px solid var(--bs);background:rgba(255,255,255,.03);color:var(--t2);font-size:.85rem;text-decoration:none;transition:all .2s}
+.pr:hover,.nx:hover{border-color:var(--ac);color:var(--ac)}
+footer{border-top:1px solid var(--bs);padding:3rem 2rem;text-align:center;color:var(--tm);font-size:.82rem}</style>
+</head>
+<body>
+<div class="sp" id="sp"></div>
+<nav>
+  <a class="nbr" href="#">DiT Track · M8</a>
+  <span class="nm">Longformer · BigBird · Sliding Window · Global Tokens · Random Attention · O(n) Complexity</span>
+  <div class="na">
+    <a href="dit_m7.html" class="pr">← M7: Table Understanding</a>
+    <a href="dit_m9.html" class="nx">M9: Multilingual Transformers →</a>
+  </div>
+</nav>
+<section class="hero">
+  <div class="hg"></div>
+  <div class="hi">
+    <div class="hl"><div class="dot"></div>Document Intelligence Transformers · Module 8</div>
+    <h1>Efficient Transformers for Long Documents</h1>
+    <p class="sub">Longformer · BigBird · Sliding Window · Global Tokens · Random Attention · O(n) Complexity</p>
+    <p class="hs">Standard transformers hit a hard wall at 512 tokens — most legal contracts, research papers, and annual reports far exceed this limit. Efficient attention models (Longformer, BigBird) extend the context window to 4,096+ tokens using sparse attention patterns that trade full cross-token attention for structured approximations. Understanding the specific trade-offs — what information each pattern captures, what it misses, and when the approximation is sufficient — is essential for choosing the right architecture for long document tasks.</p>
+<div class="hm">
+<span class="mp">⏱ 60 min</span>
+<span class="mp">O(n²) bottleneck</span>
+<span class="mp">Sliding window attention</span>
+<span class="mp">Global tokens</span>
+<span class="mp">BigBird random edges</span>
+<span class="mp">Hierarchical processing</span>
+<span class="mp">Position imbalance diagnosis</span>
+</div>
+  </div>
+  <div class="sc"><span>Scroll to explore</span><div class="arr"></div></div>
+</section>
+<div class="cw">
+
+<section class="sec" id="s1">
+<div class="sn">01 · The Long Document Problem</div>
+<h2>From 512 Tokens to 4,096+ —<br><span class="gt">Sparse Attention Patterns</span></h2>
+<p class="lead">Standard transformers compute attention between all n² token pairs. At n=512, this is manageable. At n=4,096 (a 15-page contract), the attention matrix is 64× larger — exceeding GPU memory for typical batch sizes. Efficient attention models solve this by replacing full attention with structured sparse patterns that cover the same information at O(n) or O(n·w) cost.</p>
+<div class="arch">
+<div class="arch-title">▸ Longformer sliding window + global attention — local context + full-document reach</div>
+<svg viewBox="0 0 900 280" xmlns="http://www.w3.org/2000/svg" style="width:100%;max-width:900px">
+  <rect width="900" height="280" fill="#0a0a0f" rx="16"/>
+  <defs><marker id="la8" markerWidth="8" markerHeight="6" refX="8" refY="3" orient="auto"><polygon points="0 0,8 3,0 6" fill="#f472b6"/></marker></defs>
+  <text x="450" y="26" font-family="JetBrains Mono" font-size="11" fill="#f472b6" text-anchor="middle" letter-spacing="1">LONGFORMER — SLIDING WINDOW + GLOBAL ATTENTION</text>
+
+  <!-- Full attention label -->
+  <text x="150" y="58" font-family="JetBrains Mono" font-size="9" fill="#7c7c95" text-anchor="middle">Standard Attention (O(n²))</text>
+  <!-- Token sequence -->
+  <g>
+    <rect x="20" y="68" width="260" height="80" rx="8" fill="rgba(244,114,182,.04)" stroke="rgba(244,114,182,.2)"/>
+    <!-- Tokens -->
+    <rect x="32" y="80" width="20" height="20" rx="3" fill="rgba(244,114,182,.2)" stroke="#f472b6"/>
+    <rect x="58" y="80" width="20" height="20" rx="3" fill="rgba(244,114,182,.15)"/>
+    <rect x="84" y="80" width="20" height="20" rx="3" fill="rgba(244,114,182,.15)"/>
+    <rect x="110" y="80" width="20" height="20" rx="3" fill="rgba(244,114,182,.15)"/>
+    <rect x="136" y="80" width="20" height="20" rx="3" fill="rgba(244,114,182,.15)"/>
+    <rect x="162" y="80" width="20" height="20" rx="3" fill="rgba(244,114,182,.15)"/>
+    <rect x="188" y="80" width="20" height="20" rx="3" fill="rgba(244,114,182,.15)"/>
+    <rect x="214" y="80" width="20" height="20" rx="3" fill="rgba(244,114,182,.15)"/>
+    <rect x="240" y="80" width="20" height="20" rx="3" fill="rgba(244,114,182,.15)"/>
+    <!-- Attention arrows from token 0 to all -->
+    <g stroke="rgba(244,114,182,.5)" stroke-width=".8">
+      <line x1="42" y1="100" x2="68" y2="100"/>
+      <line x1="42" y1="100" x2="94" y2="100"/>
+      <line x1="42" y1="100" x2="120" y2="100"/>
+      <line x1="42" y1="100" x2="146" y2="100"/>
+      <line x1="42" y1="100" x2="172" y2="100"/>
+      <line x1="42" y1="100" x2="198" y2="100"/>
+      <line x1="42" y1="100" x2="224" y2="100"/>
+      <line x1="42" y1="100" x2="250" y2="100"/>
+    </g>
+    <text x="150" y="136" font-family="JetBrains Mono" font-size="8" fill="#7c7c95" text-anchor="middle">every token → every token</text>
+  </g>
+
+  <!-- Longformer label -->
+  <text x="600" y="58" font-family="JetBrains Mono" font-size="9" fill="#f472b6" text-anchor="middle">Longformer (O(n·w))</text>
+  <!-- Sliding window section -->
+  <rect x="462" y="68" width="410" height="80" rx="8" fill="rgba(244,114,182,.04)" stroke="rgba(244,114,182,.3)" stroke-width="1.5"/>
+  <!-- Global token (CLS) -->
+  <rect x="474" y="80" width="24" height="20" rx="3" fill="rgba(244,114,182,.5)" stroke="#f472b6" stroke-width="2"/>
+  <text x="486" y="93" font-family="JetBrains Mono" font-size="6" fill="#f472b6" text-anchor="middle">[G]</text>
+  <!-- Regular tokens -->
+  <rect x="506" y="80" width="20" height="20" rx="3" fill="rgba(244,114,182,.15)"/>
+  <rect x="532" y="80" width="20" height="20" rx="3" fill="rgba(167,139,250,.25)" stroke="#a78bfa" stroke-width="1.5"/>
+  <rect x="558" y="80" width="20" height="20" rx="3" fill="rgba(167,139,250,.15)"/>
+  <rect x="584" y="80" width="20" height="20" rx="3" fill="rgba(167,139,250,.15)"/>
+  <rect x="610" y="80" width="20" height="20" rx="3" fill="rgba(167,139,250,.15)"/>
+  <rect x="636" y="80" width="20" height="20" rx="3" fill="rgba(244,114,182,.15)"/>
+  <rect x="662" y="80" width="20" height="20" rx="3" fill="rgba(244,114,182,.15)"/>
+  <rect x="688" y="80" width="20" height="20" rx="3" fill="rgba(244,114,182,.15)"/>
+  <rect x="714" y="80" width="20" height="20" rx="3" fill="rgba(244,114,182,.15)"/>
+  <rect x="740" y="80" width="20" height="20" rx="3" fill="rgba(244,114,182,.15)"/>
+  <rect x="766" y="80" width="20" height="20" rx="3" fill="rgba(244,114,182,.15)"/>
+  <rect x="792" y="80" width="20" height="20" rx="3" fill="rgba(244,114,182,.15)"/>
+  <rect x="818" y="80" width="20" height="20" rx="3" fill="rgba(244,114,182,.15)"/>
+  <rect x="844" y="80" width="20" height="20" rx="3" fill="rgba(244,114,182,.15)"/>
+  <!-- Window highlight around middle token -->
+  <rect x="524" y="74" width="116" height="32" rx="5" fill="none" stroke="#a78bfa" stroke-width="1.5" stroke-dasharray="3,2"/>
+  <!-- Local window arrows from highlighted token -->
+  <g stroke="rgba(167,139,250,.7)" stroke-width="1">
+    <line x1="542" y1="100" x2="516" y2="100"/>
+    <line x1="542" y1="100" x2="568" y2="100"/>
+    <line x1="542" y1="100" x2="594" y2="100"/>
+    <line x1="542" y1="100" x2="620" y2="100"/>
+  </g>
+  <!-- Global token arrows -->
+  <g stroke="rgba(244,114,182,.5)" stroke-width=".8" stroke-dasharray="2,2">
+    <line x1="486" y1="100" x2="516" y2="100"/>
+    <line x1="486" y1="100" x2="542" y2="100"/>
+    <line x1="486" y1="100" x2="854" y2="100"/>
+  </g>
+  <text x="486" y="118" font-family="JetBrains Mono" font-size="6" fill="#f472b6" text-anchor="middle">global</text>
+  <text x="580" y="118" font-family="JetBrains Mono" font-size="6" fill="#a78bfa" text-anchor="middle">window w=4</text>
+  <text x="660" y="136" font-family="JetBrains Mono" font-size="8" fill="#7c7c95" text-anchor="middle">local window per token + global [CLS] → all</text>
+
+  <!-- Memory comparison -->
+  <rect x="20" y="170" width="860" height="88" rx="12" fill="rgba(255,255,255,.02)" stroke="rgba(255,255,255,.06)"/>
+  <text x="450" y="194" font-family="JetBrains Mono" font-size="9" fill="#ececf6" text-anchor="middle">Memory complexity: Standard BERT n=512 → 512² = 262K attention entries per layer</text>
+  <text x="450" y="212" font-family="JetBrains Mono" font-size="9" fill="#7c7c95" text-anchor="middle">Longformer n=4096, w=512 → 4096 × 512 = 2M entries  vs standard 4096² = 16.8M entries  →  8× reduction</text>
+  <text x="450" y="234" font-family="JetBrains Mono" font-size="9" fill="#f472b6" text-anchor="middle">For documents: global tokens = [CLS] + question tokens → full document cross-attention at O(n) cost</text>
+  <text x="450" y="252" font-family="JetBrains Mono" font-size="8" fill="#7c7c95" text-anchor="middle">Used in: LED (Longformer Encoder-Decoder), Legal-BERT extensions, long contract processing</text>
+</svg>
+</div>
+<div class="callout callout-key">
+  <div class="callout-icon">🔑</div>
+  <div class="callout-body">
+    <h4>Global tokens are the key design decision</h4>
+    <p>Local window attention gives each token context from its neighbours. Global tokens give specific tokens full-document reach. The design question is: which tokens need to see the whole document? For DocVQA: question tokens. For classification: [CLS]. For clause extraction: section boundary tokens. Choosing the right global tokens determines whether the sparse attention pattern captures the information needed for the task.</p>
+  </div>
+</div>
+<div class="card" style="padding:0;overflow:hidden">
+<table class="tbl">
+<thead><tr><th>Model</th><th>Max tokens</th><th>Attention type</th><th>Best document tasks</th></tr></thead>
+<tbody>
+<tr><td><strong style="color:var(--a3)">BERT</strong></td><td>512</td><td>Full O(n²)</td><td>Short documents, passages</td></tr>
+<tr><td><strong style="color:var(--a3)">Longformer</strong></td><td>4,096</td><td>Local window + global tokens</td><td>Long documents with question queries</td></tr>
+<tr><td><strong style="color:var(--a2)">BigBird</strong></td><td>4,096</td><td>Local + global + random</td><td>Long documents, universal approximation</td></tr>
+<tr><td><strong style="color:var(--a4)">LED</strong></td><td>16,384</td><td>Longformer encoder + full decoder</td><td>Long document summarisation</td></tr>
+</tbody>
+</table>
+</div>
+</section>
+
+<section class="sec" id="s2">
+<div class="sn">02 · Assessment</div>
+<h2>Module 8 <span class="gt">Quiz</span></h2>
+<div class="qc">
+<div class="qc-title">Module 8 Assessment</div>
+<div class="qc-sub">5 questions · sliding window · global tokens · BigBird random attention · long document strategies</div>
+<div class="qprog"><div class="qprog-bar"><div class="qprog-fill"></div></div><div class="qprog-text">0/5 answered</div></div>
+<div class="qq">
+<div class="qnum">Question 1 of 5</div>
+<h4>A standard BERT model processes a legal contract that is 8,000 tokens long. BERT's maximum context is 512 tokens. What are the two main strategies for handling this, and what information does each lose?</h4>
+<div class="qo"><button class="qob" data-opt="A" data-correct="true" onclick="cq(this,0,true)">Truncation (keep first 512 tokens) and summary compression (use extractive summarisation to reduce to 512 tokens). Truncation loses the document tail; compression loses fine-grained detail.</button>
+<button class="qob" data-opt="B" data-correct="false" onclick="cq(this,0,false)">Sliding window with overlap: split the document into overlapping 512-token chunks (e.g. stride 256), encode each independently, then merge predictions for overlapping tokens by averaging. This loses cross-chunk dependencies — a clause in chunk 3 cannot attend to a definition in chunk 1. Hierarchical encoding: encode each chunk independently to get chunk-level representations, then run a second transformer over chunk representations to get document-level context. This loses token-level cross-document attention — the second-level transformer operates on chunk summaries, not individual tokens. Both strategies are workarounds for the O(n²) memory constraint. Longformer and BigBird solve this at the architecture level by defining sparse attention patterns that scale to 4,096-16,384 tokens within a single forward pass.</button>
+<button class="qob" data-opt="C" data-correct="false" onclick="cq(this,0,false)">Fine-tuning on legal documents (to make BERT 'understand' that contracts are long) and using a retrieval system to fetch only the relevant 512 tokens for each query.</button>
+<button class="qob" data-opt="D" data-correct="false" onclick="cq(this,0,false)">Padding (pad document to 512 tokens, truncating from the middle) and chunking without overlap. Padding loses no information but wastes compute; chunking without overlap loses context at boundaries.</button>
+</div>
+<div class="qfeed">
+  <div class="qfeed-head"></div>
+  <div class="qfeed-why">Correct. Both workaround strategies lose cross-document attention — sliding window loses cross-chunk dependencies, hierarchical encoding loses token-level cross-document attention. These losses are real: in contracts, a liability clause in chapter 8 may reference a definition in chapter 2 that spans the chunk boundary. Efficient attention models (Longformer, BigBird) solve this by computing sparse attention patterns that cover the full sequence, trading exact global attention for approximate but full-document coverage.</div>
+</div>
+</div>
+<div class="qq">
+<div class="qnum">Question 2 of 5</div>
+<h4>Longformer designates certain tokens as 'global' — they attend to all tokens and all tokens attend to them. In a DocVQA application on a 4,000-token legal contract, which tokens should be designated as global and why?</h4>
+<div class="qo"><button class="qob" data-opt="A" data-correct="false" onclick="cq(this,1,false)">All header tokens (tokens in ALL-CAPS or bold) should be global, since document structure is encoded in headings.</button>
+<button class="qob" data-opt="B" data-correct="true" onclick="cq(this,1,true)">The question tokens and the [CLS] token should be designated as global. The question tokens need to attend to every document token to find the answer anywhere in the 4,000-token contract — restricting questions to local window attention would mean 'What is the liability cap?' can only find the answer if it happens to be within w/2 tokens of the question. Making question tokens global gives them full-document reach at O(n) cost (each global token attends to n tokens, costing O(n) per global token). The [CLS] token should be global to aggregate a document-level representation. Regular document tokens use local window attention — they attend to their neighbours, which is sufficient for encoding local syntactic and semantic context. This matches the Longformer-QA design exactly: question tokens global, context tokens local, answerable anywhere in the document.</button>
+<button class="qob" data-opt="C" data-correct="false" onclick="cq(this,1,false)">The first and last 256 tokens should be global — documents typically contain their key clauses in the introduction and conclusion sections.</button>
+<button class="qob" data-opt="D" data-correct="false" onclick="cq(this,1,false)">All tokens in named entity spans (detected by NER preprocessing) should be global, since these are the most information-dense tokens in legal contracts.</button>
+</div>
+<div class="qfeed">
+  <div class="qfeed-head"></div>
+  <div class="qfeed-why">Correct. Question tokens as global is the key design decision for DocVQA with Longformer. The reasoning is sound: the question must 'reach' every document token to find the answer, but document tokens only need local context to encode their own meaning. Making question tokens global achieves this at O(n_question × n_document) cost — linear in document length — rather than the O(n²) cost of full attention. This is the exact design used in LED (Longformer Encoder-Decoder) and Long-DocVQA systems.</div>
+</div>
+</div>
+<div class="qq">
+<div class="qnum">Question 3 of 5</div>
+<h4>BigBird uses random attention in addition to local window and global tokens. Why is random attention beneficial even though randomly sampled pairs seem arbitrary?</h4>
+<div class="qo"><button class="qob" data-opt="A" data-correct="false" onclick="cq(this,2,false)">Random attention is a regularisation technique — forcing the model to sometimes attend to random tokens prevents overfitting to local attention patterns.</button>
+<button class="qob" data-opt="B" data-correct="false" onclick="cq(this,2,false)">Random attention has no theoretical benefit — it is an engineering approximation that trades accuracy for memory savings.</button>
+<button class="qob" data-opt="C" data-correct="true" onclick="cq(this,2,true)">Random attention approximates full attention in expectation. If each token attends to r random tokens per layer across L layers, with high probability every pair of tokens has a path of length ≤ 2 through the random connections. This means information can flow between any two tokens in the document in two attention steps even without direct attention — local information from token A can reach a random bridge token C, which can reach token B. Theoretical analysis (Zaheer et al. 2020) shows that sparse attention with local + global + random components is a universal approximator — it can approximate any full attention pattern to arbitrary precision with sufficient layers. This gives BigBird full-attention expressivity at O(n) complexity per layer.</button>
+<button class="qob" data-opt="D" data-correct="false" onclick="cq(this,2,false)">Random attention allows the model to process documents in random order, making it invariant to document shuffling — important for robustness to OCR reading order errors.</button>
+</div>
+<div class="qfeed">
+  <div class="qfeed-head"></div>
+  <div class="qfeed-why">Correct. The graph-theoretic argument is the key insight: random edges in a sparse attention graph create short paths between any pair of tokens. Local edges cover nearby tokens; global tokens cover the whole sequence; random edges bridge the remaining long-range pairs. The combination ensures the sparse attention graph has small diameter — information can flow between any two positions in O(1) attention steps. This is why BigBird provably matches full-attention expressivity despite using only O(n) attention entries per layer.</div>
+</div>
+</div>
+<div class="qq">
+<div class="qnum">Question 4 of 5</div>
+<h4>You are processing 50-page annual reports (approximately 25,000 tokens each) for financial field extraction. Neither Longformer (4,096 max) nor BigBird (4,096 max) can handle the full document. What is the most practical production approach?</h4>
+<div class="qo"><button class="qob" data-opt="A" data-correct="false" onclick="cq(this,3,false)">Use GPT-4 with its 128K context window — modern LLMs with large context windows solve the long document problem without specialised architectures.</button>
+<button class="qob" data-opt="B" data-correct="false" onclick="cq(this,3,false)">Train a custom Longformer variant with a 32,768 token context window by modifying the position embedding size and retraining from scratch.</button>
+<button class="qob" data-opt="C" data-correct="false" onclick="cq(this,3,false)">Hierarchical retrieval + extraction: (1) Segment the 50-page report into logical sections (cover page, financial highlights, income statement, balance sheet, cash flow, notes) using a lightweight section detector (heading patterns or a small layout model). (2) For each extraction target (revenue, net income, total assets), use a retriever (BM25 or dense retriever) to identify which section most likely contains the answer — 'net income' is in the income statement section, 'total assets' is in the balance sheet. (3) Extract the identified section (typically 500-2,000 tokens) and run LayoutLMv3 or Longformer extraction on this section alone. This two-stage approach keeps each extraction within a single model's context window while maintaining the ability to process the full 25,000-token document. It is faster and more accurate than sliding window over the full document because each extraction operates on the relevant dense context.</button>
+<button class="qob" data-opt="D" data-correct="true" onclick="cq(this,3,true)">Apply aggressive text summarisation to reduce the document to 4,096 tokens before extraction. Extractive summarisation preserves the most information-dense sentences including financial figures.</button>
+</div>
+<div class="qfeed">
+  <div class="qfeed-head"></div>
+  <div class="qfeed-why">Correct. Hierarchical retrieval + extraction is the production-standard approach for documents that exceed any single model's context window. The key insight is that field extraction is inherently local — revenue figures appear in the income statement, not distributed throughout the entire 50-page document. Section detection localises the extraction problem. Retrieval selects the right section. Extraction operates on a bounded context. This is functionally equivalent to how a human analyst reads an annual report: they go to the income statement for P&L figures, the balance sheet for assets, not reading every page sequentially.</div>
+</div>
+</div>
+<div class="qq">
+<div class="qnum">Question 5 of 5</div>
+<h4>A Longformer model (4,096 tokens) is fine-tuned for clause NER on legal contracts. You observe that clauses appearing after token position 3,000 have 15% lower F1 than clauses in the first 1,000 tokens. What causes this and how do you fix it?</h4>
+<div class="qo"><button class="qob" data-opt="A" data-correct="false" onclick="cq(this,4,false)">Longformer's positional embeddings are trained to 4,096 tokens but the model pays less attention to later positions. Extend training to 8,192 tokens to increase positional range.</button>
+<button class="qob" data-opt="B" data-correct="false" onclick="cq(this,4,false)">Clauses at the end of contracts are semantically different — they contain boilerplate schedules and appendices with lower information density, not a positional bias.</button>
+<button class="qob" data-opt="C" data-correct="true" onclick="cq(this,4,true)">This is an imbalanced training data distribution issue. Legal contract annotation datasets typically contain more annotations for clauses in the first half of contracts (where key commercial terms appear) than for clauses in the later sections (schedules, standard conditions, signatures). The model over-fits to early-position patterns. Fix: audit the training data for annotation density by position — compute clause annotation count per 500-token window across all training contracts. If annotations are front-heavy, apply position-stratified sampling: oversample training examples from the 2,500-4,096 token range. Alternatively, use chunk-level fine-tuning: train on 512-token chunks sampled uniformly from all positions in the contract, removing the correlation between position and training frequency.</button>
+<button class="qob" data-opt="D" data-correct="false" onclick="cq(this,4,false)">Longformer's sliding window attention cannot propagate information over 3,000 tokens. The clauses at position 3,000+ have no access to early context needed for interpretation. Increase the window size from 512 to 2,048 to cover the full document in two hops.</button>
+</div>
+<div class="qfeed">
+  <div class="qfeed-head"></div>
+  <div class="qfeed-why">Correct. Annotation density imbalance is the most common cause of position-dependent performance drops in NER on long documents. Legal annotation datasets reflect the annotator's tendency to focus on commercially important early clauses. The model learns to associate 'early position' with 'important clause' rather than learning position-invariant clause detection. Position-stratified training corrects this by ensuring equal annotation coverage across all document positions during training. This is a diagnostic check that should be run on any NER model showing position-correlated performance drops.</div>
+</div>
+</div>
+<div class="qs" id="qs" style="display:none"><h3 id="sc">0/5</h3><p id="sm"></p></div>
+</div>
+</section>
+</div>
+<footer>
+  <div style="max-width:var(--cw);margin:0 auto;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:1rem">
+    <div style="display:flex;gap:1rem"><a href="dit_m7.html" class="pr">← M7: Table Understanding</a><a href="dit_m9.html" class="nx">M9: Multilingual Transformers →</a></div>
+    <span>DiT Track · M8 · Efficient Transformers for Long Documents</span>
+  </div>
+</footer>
+<script>
+window.addEventListener("scroll",function(){
+    var h=document.documentElement;
+    document.getElementById("sp").style.width=((h.scrollTop/(h.scrollHeight-h.clientHeight))*100)+"%";
+});
+var obs=new IntersectionObserver(function(e){e.forEach(function(x){if(x.isIntersecting)x.target.classList.add("vis");});},{threshold:0.07});
+document.querySelectorAll(".sec").forEach(function(s){obs.observe(s);});
+function cp(btn,id){navigator.clipboard.writeText(document.getElementById(id).innerText).then(function(){btn.textContent="Copied!";setTimeout(function(){btn.textContent="Copy";},2000);});}
+// Enhanced quiz engine
+var qstate={};
+var qtotal=document.querySelectorAll(".qq").length;
+function updateProgress(){
+    var done=Object.keys(qstate).length;
+    var pct=Math.round(done/qtotal*100);
+    var fill=document.querySelector(".qprog-fill");
+    var txt=document.querySelector(".qprog-text");
+    if(fill)fill.style.width=pct+"%";
+    if(txt)txt.textContent=done+"/"+qtotal+" answered";
+    if(done===qtotal)showFinal();
+}
+function showFinal(){
+    var correct=Object.values(qstate).filter(function(v){return v;}).length;
+    var sc=document.getElementById("sc");
+    var sm=document.getElementById("sm");
+    if(sc)sc.textContent=correct+"/"+qtotal+" correct";
+    if(sm){
+        var msgs=["Score: 1/5 — revisit the two context extension strategies and what cross-document information each loses.","Score: 2/5 — review why question tokens should be designated as global in Longformer DocVQA.","Score: 3/5 — good. Re-read the graph-theoretic argument for why random attention enables full-attention expressivity.","Score: 4/5 — strong. Review hierarchical retrieval+extraction for documents exceeding model context limits.","Score: 5/5 — excellent command of efficient transformers for long document processing."][c];
+        sm.textContent=msgs[Math.min(correct,msgs.length-1)];
+    }
+    var qs=document.getElementById("qs");
+    if(qs)qs.style.display="block";
+}
+function cq(btn,qi,isCorrect){
+    if(qstate[qi]!==undefined)return;
+    qstate[qi]=isCorrect;
+    var qq=btn.closest(".qq");
+    qq.classList.add("answered");
+    var allBtns=qq.querySelectorAll(".qob");
+    allBtns.forEach(function(b){
+        b.setAttribute("disabled","");
+        var bCorrect=b.getAttribute("data-correct")==="true";
+        if(bCorrect)b.classList.add("ok");
+        else if(b===btn&&!isCorrect)b.classList.add("no");
+    });
+    var feed=qq.querySelector(".qfeed");
+    if(feed){
+        feed.style.display="block";
+        feed.className="qfeed "+(isCorrect?"correct":"wrong");
+    }
+    updateProgress();
+}</script>
+</body></html>
