@@ -137,10 +137,10 @@ function spawnCapture(
 
 // ── Native execution (per-language) ──────────────────────────────────────────
 
-async function executeNative(language: string, code: string, stdin: string): Promise<ExecResult> {
+async function executeNative(language: string, code: string, stdin: string, timeoutMs = TIMEOUT_MS): Promise<ExecResult> {
   // Python → warm fork pool
   if (language === 'python') {
-    return pythonPool.execute(code, stdin, TIMEOUT_MS + 5_000);
+    return pythonPool.execute(code, stdin, timeoutMs, undefined);
   }
 
   // JavaScript → spawn node (already fast, ~30-60ms)
@@ -149,7 +149,7 @@ async function executeNative(language: string, code: string, stdin: string): Pro
     try {
       const srcFile = path.join(tmpDir, 'main.js');
       fs.writeFileSync(srcFile, code);
-      return await spawnCapture('node', [srcFile], stdin);
+      return await spawnCapture('node', [srcFile], stdin, { timeoutMs });
     } finally {
       fs.rmSync(tmpDir, { recursive: true, force: true });
     }
@@ -162,7 +162,7 @@ async function executeNative(language: string, code: string, stdin: string): Pro
 
     if (cachedBin) {
       // Cache hit — skip compilation entirely
-      return spawnCapture(cachedBin, [], stdin);
+      return spawnCapture(cachedBin, [], stdin, { timeoutMs });
     }
 
     const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'runner-'));
@@ -175,7 +175,7 @@ async function executeNative(language: string, code: string, stdin: string): Pro
       if (compile.statusCode !== 0) return compile;
 
       const finalBin = cacheCppBinary(hash, binFile);
-      return spawnCapture(finalBin, [], stdin);
+      return spawnCapture(finalBin, [], stdin, { timeoutMs });
     } finally {
       fs.rmSync(tmpDir, { recursive: true, force: true });
     }
@@ -189,7 +189,7 @@ async function executeNative(language: string, code: string, stdin: string): Pro
 
     if (cachedClasses) {
       // Cache hit — skip javac, just run
-      return spawnCapture('java', [...JVM_FLAGS, '-cp', cachedClasses, className], stdin);
+      return spawnCapture('java', [...JVM_FLAGS, '-cp', cachedClasses, className], stdin, { timeoutMs });
     }
 
     const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'runner-'));
@@ -201,7 +201,7 @@ async function executeNative(language: string, code: string, stdin: string): Pro
       if (compile.statusCode !== 0) return compile;
 
       const finalClasses = cacheJavaClasses(hash, tmpDir);
-      return spawnCapture('java', [...JVM_FLAGS, '-cp', finalClasses, className], stdin);
+      return spawnCapture('java', [...JVM_FLAGS, '-cp', finalClasses, className], stdin, { timeoutMs });
     } finally {
       fs.rmSync(tmpDir, { recursive: true, force: true });
     }
@@ -225,20 +225,33 @@ app.get('/health', (_req, res) => {
 });
 
 app.post('/run', async (req, res) => {
-  const { language, code, stdin = '' } = req.body as {
+  const { language, code, stdin = '', timeoutMs, memoryMb } = req.body as {
     language: string;
     code:     string;
     stdin?:   string;
+    timeoutMs?: number;
+    memoryMb?: number;
   };
 
   if (!language || !code) {
     return res.status(400).json({ error: 'language and code are required', stderr: '', statusCode: 1 });
   }
 
+  const effectiveTimeout = Math.min(timeoutMs || TIMEOUT_MS, 30_000); // Cap at 30s max
+
   // Throttle concurrent executions
   await concurrencySem.acquire();
   try {
-    const result = await executeNative(language, code, stdin);
+    const startTime = process.hrtime.bigint();
+    
+    const result: any = await executeNative(language, code, stdin, effectiveTimeout);
+    
+    const elapsed = Number(process.hrtime.bigint() - startTime) / 1e6; // ms
+    result.runtimeMs = Math.round(elapsed);
+    // memoryKb would require OS-level polling (e.g. /proc/pid/status) which is complex in Node,
+    // so we return 0 for now. The python worker can report memory limits via statusCode/stderr.
+    result.memoryKb = 0;
+
     return res.json(result);
   } catch (err: any) {
     console.error('[runner] /run error:', err.message);

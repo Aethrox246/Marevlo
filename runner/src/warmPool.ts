@@ -9,6 +9,8 @@ export interface RunResult {
 interface QueueItem {
   code:    string;
   stdin:   string;
+  timeoutMs?: number;
+  memoryMb?: number;
   resolve: (r: RunResult) => void;
   timer:   NodeJS.Timeout;
 }
@@ -84,11 +86,11 @@ class PoolWorker {
     });
   }
 
-  execute(code: string, stdin: string): Promise<RunResult> {
+  execute(code: string, stdin: string, timeoutMs?: number, memoryMb?: number): Promise<RunResult> {
     this.busy = true;
     return new Promise(resolve => {
       this.pendingResolve = resolve;
-      const payload = JSON.stringify({ code, stdin });
+      const payload = JSON.stringify({ code, stdin, timeoutMs, memoryMb });
       try {
         this.proc.stdin!.write(payload + '\n');
       } catch {
@@ -134,13 +136,13 @@ export class WarmPool {
 
     const item = this.queue.shift()!;
     clearTimeout(item.timer);
-    worker.execute(item.code, item.stdin).then(item.resolve);
+    worker.execute(item.code, item.stdin, item.timeoutMs, item.memoryMb).then(item.resolve);
   }
 
-  execute(code: string, stdin: string, timeoutMs = 20_000): Promise<RunResult> {
+  execute(code: string, stdin: string, timeoutMs = 20_000, memoryMb?: number): Promise<RunResult> {
     const worker = this.workers.find(w => !w.busy);
     if (worker) {
-      return worker.execute(code, stdin);
+      return worker.execute(code, stdin, timeoutMs, memoryMb);
     }
 
     // All workers busy — queue the request
@@ -151,7 +153,7 @@ export class WarmPool {
         resolve({ stdout: '', stderr: 'Queue timeout: too many concurrent requests', statusCode: -1 });
       }, timeoutMs);
 
-      this.queue.push({ code, stdin, resolve, timer });
+      this.queue.push({ code, stdin, timeoutMs, memoryMb, resolve, timer });
     });
   }
 

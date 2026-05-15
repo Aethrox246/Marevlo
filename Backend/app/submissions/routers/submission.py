@@ -58,7 +58,6 @@ def submit_code(
         problem_id=body.problem_id,
         language=body.language,
         code=body.code,
-        stdin=body.stdin,
     )
     return submission
 

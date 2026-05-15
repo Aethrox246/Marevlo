@@ -260,6 +260,57 @@ export default function IDE({ problem, judgeTestCases = [], onBack, onNext, onSo
         setCode(getStarterCode(problem, lang));
     };
 
+    /**
+     * Helper: Get numeric backend problem ID
+     * Returns problem.id if it's already numeric
+     * Otherwise fetches from backend by slug or title
+     */
+    const getNumericProblemId = async (prob) => {
+        if (!prob) return null;
+        
+        // If problem.id is already a number, use it directly
+        if (Number.isInteger(Number(prob.id))) {
+            return Number(prob.id);
+        }
+
+        // Try to fetch from backend
+        const token = localStorage.getItem('access_token');
+        if (!token) return null;
+
+        try {
+            // Fetch problems from backend (paginate safely)
+            let offset = 0;
+            const limit = 100;
+            
+            while (offset < 500) {  // Reasonable safety limit
+                const res = await fetch(`${API}/problems?limit=${limit}&offset=${offset}`, {
+                    headers: { 'Authorization': `Bearer ${token}` },
+                });
+                
+                if (!res.ok) break;
+                
+                const problems = await res.json();
+                if (!problems || problems.length === 0) break;
+                
+                // Try to find by slug first (most reliable)
+                if (prob.slug) {
+                    const found = problems.find(p => p.slug === prob.slug);
+                    if (found && Number.isInteger(Number(found.id))) return Number(found.id);
+                }
+                
+                // Then try by title (less reliable)
+                const found = problems.find(p => p.title === prob.title);
+                if (found && Number.isInteger(Number(found.id))) return Number(found.id);
+                
+                offset += limit;
+            }
+        } catch (err) {
+            console.warn('Error fetching backend problems:', err);
+        }
+
+        return null;
+    };
+
     // Initialize code when problem changes or language changes
     useEffect(() => {
         setCode(getStarterCode(problem, selectedLanguage));
@@ -333,213 +384,104 @@ export default function IDE({ problem, judgeTestCases = [], onBack, onNext, onSo
 
         try {
             if (isSubmission) {
-                // SUBMIT MODE: Judge against structured test cases
-                // Use judgeTestCases from problem files first, fallback to example-parsed testcases
-                const casesToJudge = judgeTestCases.length > 0 ? judgeTestCases : testcases;
-
-                if (casesToJudge.length === 0) {
-                    setOutput("Error: No test cases available for this problem.");
+                // SUBMIT MODE: Send to backend server-side judge
+                setOutput("Submitting to judge...");
+                
+                const token = localStorage.getItem('access_token');
+                if (!token) {
+                    setOutput("Error: Not authenticated. Cannot submit.");
+                    setStatus('error');
+                    setIsRunning(false);
+                    return;
+                }
+                
+                // Get numeric problem ID
+                const numericProblemId = await getNumericProblemId(problem);
+                if (!numericProblemId) {
+                    setOutput("Error: Could not identify problem. This asset problem may not be linked to a backend problem.");
                     setStatus('error');
                     setIsRunning(false);
                     return;
                 }
 
-                let allPassed = true;
-                const results = [];
+                try {
+                    const submitResponse = await fetch(`${API}/submissions/submit`, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'Authorization': `Bearer ${token}`,
+                        },
+                        body: JSON.stringify({
+                            problem_id: numericProblemId,
+                            language: selectedLanguage || 'python',
+                            code: code,
+                        }),
+                    });
 
-                for (let i = 0; i < casesToJudge.length; i++) {
-                    const tc = casesToJudge[i];
+                    if (!submitResponse.ok) {
+                        const errText = await submitResponse.text();
+                        setOutput(`Error: Failed to submit (${submitResponse.status})\n${errText}`);
+                        setStatus('error');
+                        setIsRunning(false);
+                        return;
+                    }
 
-                    // Determine stdin: if using structured judge test cases, convert input object to stdin string
-                    let stdinValue;
-                    if (useCustomInput) {
-                        stdinValue = stdin;
-                    } else if (judgeTestCases.length > 0 && tc.input) {
-                        // Structured test case from problem file
-                        stdinValue = testCaseInputToStdin(tc.input);
+                    const submission = await submitResponse.json();
+                    const submissionStatus = submission.status;
+                    const testsPassed = submission.test_cases_passed || 0;
+                    const totalTests = submission.total_test_cases || 0;
+
+                    let outputMsg = '';
+                    let uiStatus = 'error';
+
+                    switch (submissionStatus) {
+                        case 'accepted':
+                            outputMsg = `✓ Accepted!\nAll ${totalTests} test case${totalTests !== 1 ? 's' : ''} passed.`;
+                            uiStatus = 'success';
+                            break;
+                        case 'wrong_answer':
+                            outputMsg = `✗ Wrong Answer\nPassed ${testsPassed} of ${totalTests} test cases.`;
+                            uiStatus = 'error';
+                            break;
+                        case 'time_limit_exceeded':
+                            outputMsg = `✗ Time Limit Exceeded\nCode took too long to execute.`;
+                            uiStatus = 'error';
+                            break;
+                        case 'memory_limit_exceeded':
+                            outputMsg = `✗ Memory Limit Exceeded\nCode used too much memory.`;
+                            uiStatus = 'error';
+                            break;
+                        case 'runtime_error':
+                            outputMsg = `✗ Runtime Error\nCode crashed during execution.`;
+                            uiStatus = 'error';
+                            break;
+                        case 'compile_error':
+                            outputMsg = `✗ Compilation Error\nFailed to compile code.`;
+                            uiStatus = 'error';
+                            break;
+                        default:
+                            outputMsg = `✗ Submission Error\nStatus: ${submissionStatus}`;
+                            uiStatus = 'error';
+                    }
+
+                    setOutput(outputMsg);
+                    setStatus(uiStatus);
+                    setActiveTestTab('result');
+
+                    if (uiStatus === 'success') {
+                        handleSubmissionResult(true);
                     } else {
-                        // Fallback to example-parsed input
-                        stdinValue = tc.input || '';
+                        handleSubmissionResult(false);
                     }
 
-                    const { response, result } = await runSingle(stdinValue);
-
-                    if (!response.ok) {
-                        const msg = result?.error || result?.stderr || `Request failed (${response.status})`;
-                        results.push({
-                            passed: false,
-                            message: `Runtime Error:\n${msg}`,
-                            category: 'error'
-                        });
-                        allPassed = false;
-                        continue;
-                    }
-
-                    const stdout = (result?.stdout || '').trim();
-                    const stderr = (result?.stderr || '').trim();
-
-                    if (stderr) {
-                        results.push({
-                            passed: false,
-                            message: `Execution Error:\n${stderr}`,
-                            category: 'stderr'
-                        });
-                        allPassed = false;
-                        continue;
-                    }
-
-                    // Determine expected output
-                    let expectedRaw;
-                    if (judgeTestCases.length > 0) {
-                        // Structured test case — expected_output is a JSON value
-                        expectedRaw = typeof tc.expected_output === 'string'
-                            ? tc.expected_output
-                            : JSON.stringify(tc.expected_output);
-                    } else {
-                        expectedRaw = tc.expected_output || '';
-                    }
-
-                    const normalizedExpected = normalizeOutput(expectedRaw);
-                    const normalizedActual = normalizeOutput(stdout);
-
-                    if (!normalizedExpected) {
-                        // No expected output defined — treat as failure, never auto-accept
-                        results.push({
-                            passed: false,
-                            message: 'No expected output defined for this test case.',
-                            category: 'no-expected'
-                        });
-                        allPassed = false;
-                    } else if (normalizedActual !== normalizedExpected) {
-                        results.push({
-                            passed: false,
-                            message: `Expected:\n${expectedRaw}\n\nGot:\n${stdout.substring(0, 200) || '(no output)'}`,
-                            category: 'mismatch'
-                        });
-                        allPassed = false;
-                    } else {
-                        results.push({
-                            passed: true,
-                            message: `Output:\n${stdout.substring(0, 200)}`,
-                            category: 'success'
-                        });
-                    }
+                } catch (err) {
+                    const errorMsg = err?.message || 'Unknown error occurred';
+                    setOutput(`Error: ${errorMsg}`);
+                    setStatus('error');
+                    handleSubmissionResult(false);
                 }
 
-                setTestResults(results);
-                setActiveTestTab('result');
-                setOutput(
-                    allPassed
-                        ? `✓ All ${results.length} test case${results.length !== 1 ? 's' : ''} passed!`
-                        : `✗ ${results.filter(r => !r.passed).length} of ${results.length} test case${results.length !== 1 ? 's' : ''} failed`
-                );
-
-                // If all tests passed, submit to backend to record submission and award XP
-                if (allPassed && user?.id && problem?.title) {
-                    console.log('Submitting to backend:', { userId: user?.id, problemTitle: problem?.title, allPassed });
-                    try {
-                        const token = localStorage.getItem('access_token');
-                        
-                        // Try to find the numeric problem ID from backend
-                        let numericProblemId = null;
-                        
-                        try {
-                            // Fetch all problems to find the matching one
-                            const problemsRes = await fetch(`${API}/problems?limit=100`, {
-                                headers: { 'Authorization': `Bearer ${token}` },
-                            });
-                            
-                            if (problemsRes.ok) {
-                                const problemsList = await problemsRes.json();
-                                // Find problem by title or slug
-                                const foundProblem = problemsList.find(p => 
-                                    p.title === problem.title || 
-                                    p.slug === problem.id ||
-                                    p.slug === problem.slug
-                                );
-                                if (foundProblem) {
-                                    numericProblemId = foundProblem.id;
-                                    console.log('Found numeric problem ID:', numericProblemId);
-                                }
-                            }
-                        } catch (err) {
-                            console.warn('Failed to fetch problems list:', err);
-                        }
-                        
-                        if (!numericProblemId) {
-                            console.warn('Could not find numeric problem ID for submission');
-                            return;
-                        }
-
-                        const firstTestCase = (judgeTestCases.length > 0 ? judgeTestCases : testcases)[0];
-                        let stdinForSubmit = '';
-                        
-                        if (judgeTestCases.length > 0 && firstTestCase?.input) {
-                            stdinForSubmit = testCaseInputToStdin(firstTestCase.input);
-                        } else if (firstTestCase?.input) {
-                            stdinForSubmit = firstTestCase.input;
-                        }
-
-                        console.log('Fetch request to /submissions/submit:', {
-                            problemId: numericProblemId,
-                            language: selectedLanguage,
-                            stdinLength: stdinForSubmit.length,
-                            codeLength: code.length,
-                        });
-
-                        const submitResponse = await fetch(`${API}/submissions/submit`, {
-                            method: 'POST',
-                            headers: {
-                                'Content-Type': 'application/json',
-                                'Authorization': `Bearer ${token}`,
-                            },
-                            body: JSON.stringify({
-                                problem_id: numericProblemId,
-                                language: selectedLanguage || 'python',
-                                code: code,
-                                stdin: stdinForSubmit,
-                            }),
-                        });
-
-                        console.log('Submit response status:', submitResponse.status);
-
-                        if (submitResponse.ok) {
-                            const submission = await submitResponse.json();
-                            console.log('Submission recorded:', submission);
-                            // Optionally trigger a stats refresh in the parent or context
-                        } else {
-                            const errText = await submitResponse.text();
-                            console.warn('Failed to record submission:', submitResponse.status, errText);
-                        }
-                    } catch (err) {
-                        console.warn('Error submitting to backend:', err);
-                        // Don't block UX if backend submission fails
-                    }
-                } else {
-                    console.log('Submission condition not met:', { allPassed, userId: user?.id, problemTitle: problem?.title });
-                }
-
-                // Log submission to backend for DB persistence (legacy)
-                if (user?.id && problem?.id) {
-                    try {
-                        const passedCount = results.filter(r => r.passed).length;
-                        await fetch(`${API}/execute/log`, {
-                            method: "POST",
-                            headers: { "Content-Type": "application/json" },
-                            body: JSON.stringify({
-                                user_id: user.id,
-                                problem_id: problem.id,
-                                language: selectedLanguage || 'python',
-                                status: allPassed ? 'passed' : 'failed',
-                                passed: passedCount
-                            })
-                        });
-                    } catch (err) {
-                        // Ignore logging errors to avoid blocking UX
-                    }
-                }
-
-                handleSubmissionResult(allPassed);
+                setIsRunning(false);
                 return;
             }
 
