@@ -23,6 +23,7 @@ class ProblemSubmission(Base):
     language: Mapped[Optional[str]] = mapped_column(String(50), nullable=True)
     status: Mapped[Optional[str]] = mapped_column(String(50), nullable=True, index=True)
     test_cases_passed: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
+    total_test_cases: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
     execution_time: Mapped[Optional[float]] = mapped_column(Float, nullable=True)
     memory_used: Mapped[Optional[float]] = mapped_column(Float, nullable=True)
     submitted_at: Mapped[datetime] = mapped_column(
