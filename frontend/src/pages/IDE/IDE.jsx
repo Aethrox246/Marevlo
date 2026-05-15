@@ -173,9 +173,10 @@ export default function IDE({ problem, judgeTestCases = [], onBack, onNext, onSo
     const [selectedLanguage, setSelectedLanguage] = useState('java'); // Default to Java
     const [code, setCode] = useState(starterCodes[selectedLanguage]);
     const [output, setOutput] = useState("");
-    const [isRunning, setIsRunning] = useState(false);
-    const [status, setStatus] = useState('idle'); // 'idle', 'running', 'success', 'error'
+    const [testResults, setTestResults] = useState([]);
+    const [status, setStatus] = useState('idle'); // idle | running | success | error
     const [attempts, setAttempts] = useState(0);
+    const [discussError, setDiscussError] = useState(null);
     const [activeTestcase, setActiveTestcase] = useState(0);
     const [testcases, setTestcases] = useState([]);
     const [isConsoleOpen, setIsConsoleOpen] = useState(false);
@@ -627,7 +628,15 @@ export default function IDE({ problem, judgeTestCases = [], onBack, onNext, onSo
                 >
                     {/* Left Panel — Problem Description */}
                     <div style={{ width: `${hDrag.size}%`, minWidth: '240px', height: '100%', flexShrink: 0, overflow: 'hidden', borderRight: '1px solid var(--color-border)' }}>
-                        <ProblemPanel problem={problem} onBack={onBack} onActiveLadderChange={handleActiveLadderChange} solvedLadders={solvedLadders} />
+                        <ProblemPanel 
+                            problem={problem} 
+                            onBack={onBack} 
+                            onActiveLadderChange={handleActiveLadderChange} 
+                            solvedLadders={solvedLadders} 
+                            attempts={attempts}
+                            prefillError={discussError}
+                            onClearPrefill={() => setDiscussError(null)}
+                        />
                     </div>
 
                     {/* ↔ Horizontal drag handle (Ghost Hitbox) */}
@@ -691,6 +700,10 @@ export default function IDE({ problem, judgeTestCases = [], onBack, onNext, onSo
                                     onRun={() => runCode(false)}
                                     onSubmit={() => runCode(true)}
                                     isRunning={isRunning}
+                                    onDiscussError={(ctx) => {
+                                        setDiscussError(ctx);
+                                        // Mobile fallback is handled by the component switching tab automatically
+                                    }}
                                 />
                             </div>
                             <ConsolePanel
@@ -713,7 +726,15 @@ export default function IDE({ problem, judgeTestCases = [], onBack, onNext, onSo
                 <div className={`lg:hidden flex-1 flex flex-col h-full`}>
                     {activeMobileTab === 'problem' && (
                         <div className="flex-1 overflow-hidden w-full">
-                            <ProblemPanel problem={problem} onBack={onBack} onActiveLadderChange={handleActiveLadderChange} solvedLadders={solvedLadders} />
+                            <ProblemPanel 
+                                problem={problem} 
+                                onBack={onBack} 
+                                onActiveLadderChange={handleActiveLadderChange} 
+                                solvedLadders={solvedLadders} 
+                                attempts={attempts}
+                                prefillError={discussError}
+                                onClearPrefill={() => setDiscussError(null)}
+                            />
                         </div>
                     )}
                     {activeMobileTab === 'editor' && (
@@ -733,6 +754,10 @@ export default function IDE({ problem, judgeTestCases = [], onBack, onNext, onSo
                                 onRun={() => runCode(false)}
                                 onSubmit={() => runCode(true)}
                                 isRunning={isRunning}
+                                onDiscussError={(ctx) => {
+                                    setDiscussError(ctx);
+                                    setActiveMobileTab('problem');
+                                }}
                             />
                         </div>
                     )}
