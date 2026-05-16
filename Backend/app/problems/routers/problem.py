@@ -1,12 +1,12 @@
 """Problems HTTP endpoints — read-only for end users."""
 
-from typing import List, Optional
+from typing import List, Optional, Union
 
 from fastapi import APIRouter, Depends, Query
 from sqlalchemy.orm import Session
 
 from app.auth.models.user import User
-from app.core.dependencies import get_current_user, get_db
+from app.core.dependencies import get_current_user, get_db, get_optional_user
 from app.problems.schemas.problem import ProblemDetail, ProblemSummary, TestCaseOut
 from app.problems.services.problem_service import problem_service
 
@@ -41,3 +41,28 @@ def get_problem(
         description=problem.description,
         sample_testcases=[TestCaseOut.model_validate(tc) for tc in samples],
     )
+
+
+@router.get("/{problem_id}/online")
+def get_online_count(
+    problem_id: str,
+    user: Optional[User] = Depends(get_optional_user),
+    db: Session = Depends(get_db),
+):
+    """
+    Get approximate online viewer count for a problem's discussion.
+    
+    Accepts both numeric problem ID and problem slug.
+    Unauthenticated access is allowed.
+    """
+    # Try to parse as int, otherwise treat as slug
+    try:
+        problem_id_parsed: Union[int, str] = int(problem_id)
+    except ValueError:
+        problem_id_parsed = problem_id
+    
+    from app.discussions.services.discussion_service import discussion_service
+    from app.discussions.schemas.discussion import OnlineCountOut
+    
+    count = discussion_service.get_online_count(db, problem_id=problem_id_parsed)
+    return OnlineCountOut(count=count)

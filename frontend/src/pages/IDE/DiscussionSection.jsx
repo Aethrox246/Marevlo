@@ -519,6 +519,41 @@ function PostCard({ post, currentUsername, onUpvote, onDelete, onEdit, onReplyUp
 }
 
 /* ═══════════════════════════════════
+   Backend Response Normalization (snake_case → camelCase)
+═══════════════════════════════════ */
+function normalizeReply(reply) {
+    if (!reply) return reply;
+    return {
+        id: reply.id,
+        author: reply.author,
+        content: reply.content,
+        upvotes: reply.upvotes,
+        isUpvoted: reply.isUpvoted ?? reply.is_upvoted ?? false,
+        isAccepted: reply.isAccepted ?? reply.is_accepted ?? false,
+        reactions: reply.reactions || {},
+        myReactions: reply.myReactions ?? reply.my_reactions ?? [],
+        createdAt: reply.createdAt ?? reply.created_at,
+    };
+}
+
+function normalizePost(post) {
+    if (!post) return post;
+    return {
+        id: post.id,
+        author: post.author,
+        content: post.content,
+        tag: post.tag,
+        isSpoiler: post.isSpoiler ?? post.is_spoiler ?? false,
+        isPinned: post.isPinned ?? post.is_pinned ?? false,
+        isEdited: post.isEdited ?? post.is_edited ?? false,
+        upvotes: post.upvotes,
+        isUpvoted: post.isUpvoted ?? post.is_upvoted ?? false,
+        replies: (post.replies || []).map(normalizeReply),
+        createdAt: post.createdAt ?? post.created_at,
+    };
+}
+
+/* ═══════════════════════════════════
    Main Component
 ═══════════════════════════════════ */
 const DiscussionSection = memo(({ problem }) => {
@@ -571,7 +606,9 @@ const DiscussionSection = memo(({ problem }) => {
             );
             if (!res.ok) throw new Error();
             const data = await res.json();
-            setPosts((data.discussions || data || []).map(p => ({ ...p, replies: (p.replies || []).map(r => ({ reactions: {}, myReactions: [], ...r })) })));
+            // Handle both { posts: [...] } and direct array responses
+            const postsList = data.posts || data.discussions || data || [];
+            setPosts(postsList.map(p => normalizePost(p)));
         } catch {
             setPosts([]);
         } finally {
@@ -628,9 +665,9 @@ const DiscussionSection = memo(({ problem }) => {
             content: composeText.trim(),
             tag: composeTag,
             isSpoiler: composeSpoiler,
-            upvotes: 0, isUpvoted: false, isPinned: false,
+            upvotes: 0, isUpvoted: false, isPinned: false, isEdited: false,
             replies: [],
-            created_at: new Date().toISOString(),
+            createdAt: new Date().toISOString(),
             _optimistic: true,
         };
         setPosts(prev => [optimistic, ...prev]);
@@ -641,7 +678,8 @@ const DiscussionSection = memo(({ problem }) => {
                 method: 'POST',
                 body: JSON.stringify({ content: optimistic.content, tag: optimistic.tag, is_spoiler: optimistic.isSpoiler }),
             });
-            setPosts(prev => prev.map(p => p.id === optimistic.id ? { ...data, replies: [] } : p));
+            const normalized = normalizePost(data);
+            setPosts(prev => prev.map(p => p.id === optimistic.id ? { ...normalized, replies: [] } : p));
         } catch {
             setPosts(prev => prev.filter(p => p.id !== optimistic.id));
         } finally {
@@ -696,16 +734,17 @@ const DiscussionSection = memo(({ problem }) => {
         if (!user) { setLoginHint(true); setTimeout(() => setLoginHint(false), 2800); return; }
         const optimistic = {
             id: `tmp-${Date.now()}`, author: currentUsername, content,
-            upvotes: 0, isUpvoted: false, reactions: {}, myReactions: [],
-            created_at: new Date().toISOString(), _optimistic: true,
+            upvotes: 0, isUpvoted: false, isAccepted: false, reactions: {}, myReactions: [],
+            createdAt: new Date().toISOString(), _optimistic: true,
         };
         setPosts(prev => prev.map(p => p.id === postId ? { ...p, replies: [...p.replies, optimistic] } : p));
         try {
             const data = await apiCall(`/problems/${problemId}/discussions/${postId}/replies`, {
                 method: 'POST', body: JSON.stringify({ content }),
             });
+            const normalized = normalizeReply(data);
             setPosts(prev => prev.map(p => p.id === postId
-                ? { ...p, replies: p.replies.map(r => r.id === optimistic.id ? { reactions: {}, myReactions: [], ...data } : r) }
+                ? { ...p, replies: p.replies.map(r => r.id === optimistic.id ? normalized : r) }
                 : p));
         } catch {
             setPosts(prev => prev.map(p => p.id === postId

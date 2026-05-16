@@ -24,6 +24,7 @@ from slowapi.errors import RateLimitExceeded
 from app.auth.routers.auth import router as auth_router
 from app.chat.routers.chat import router as chat_router
 from app.chat.routers.ws import router as chat_ws_router
+from app.discussions.routers.discussion import router as discussions_router
 from app.chat.services.connection_manager import connection_manager
 from app.core.config import get_settings
 from app.core.error_handlers import register_exception_handlers
@@ -150,6 +151,7 @@ def create_app() -> FastAPI:
     app.include_router(auth_router)
     app.include_router(profile_router)
     app.include_router(problems_router)
+    app.include_router(discussions_router)
     app.include_router(submissions_router)
     app.include_router(feed_router)
     app.include_router(chat_router)
