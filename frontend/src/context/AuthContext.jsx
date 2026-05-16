@@ -75,7 +75,10 @@ export function AuthProvider({ children }) {
             const err = await resp.json().catch(() => ({}));
             throw new Error(err.detail || `HTTP ${resp.status}`);
         }
-        return resp.json();
+        if (resp.status === 204) return null;
+
+        const text = await resp.text();
+        return text ? JSON.parse(text) : null;
     }, [logout]);
 
     /** Refresh profile stats + achievements from backend.

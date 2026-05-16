@@ -574,7 +574,6 @@ const DiscussionSection = memo(({ problem }) => {
     const [mentionQuery,   setMentionQuery]   = useState(null);
     const [mentionPos,     setMentionPos]     = useState(null);
     const textareaRef  = useRef(null);
-    const pendingDelete = useRef(null);
 
     const problemId = problem?.id || problem?.slug;
 
@@ -714,19 +713,18 @@ const DiscussionSection = memo(({ problem }) => {
         }
     };
 
-    /* ─── Delete post with undo ─── */
-    const handleDeletePost = (postId) => {
+    /* ─── Delete post ─── */
+    const handleDeletePost = async (postId) => {
         const snapshot = posts;
         setPosts(prev => prev.filter(p => p.id !== postId));
-        let undone = false;
-        pendingDelete.current = postId;
+        setToast({ message: 'Post deleted.' });
 
-        const undoFn   = () => { undone = true; pendingDelete.current = null; setPosts(snapshot); setToast(null); };
-        const commitFn = async () => {
-            if (undone) return;
-            try { await apiCall(`/problems/${problemId}/discussions/${postId}`, { method: 'DELETE' }); } catch { /* silent */ }
-        };
-        setToast({ message: 'Post deleted.', undoFn, commitFn });
+        try {
+            await apiCall(`/problems/${problemId}/discussions/${postId}`, { method: 'DELETE' });
+        } catch {
+            setPosts(snapshot);
+            setToast({ message: 'Could not delete post.' });
+        }
     };
 
     /* ─── Add reply ─── */
@@ -813,11 +811,10 @@ const DiscussionSection = memo(({ problem }) => {
         try { await apiCall(`/problems/${problemId}/discussions/${postId}/replies/${replyId}`, { method: 'DELETE' }); } catch { /* silent */ }
     };
 
-    /* ─── Dismiss toast + commit delete ─── */
+    /* ─── Dismiss toast ─── */
     const dismissToast = useCallback(() => {
-        if (toast?.commitFn) toast.commitFn();
         setToast(null);
-    }, [toast]);
+    }, []);
 
     /* ─── Derived list ─── */
     const visiblePosts = (() => {
