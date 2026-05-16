@@ -11,6 +11,7 @@ export { default as TabBar } from './TabBar';
 export { default as TestcasePanel } from './TestcasePanel';
 export { default as StatusNotification } from './StatusNotification';
 export { default as EmptyState } from './EmptyState';
+export { default as DiscussionSection } from './DiscussionSection';
 
 // Legacy exports (for backward compatibility)
 export { default as EditorToolbar } from './EditorToolbar';

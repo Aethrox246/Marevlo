@@ -184,9 +184,9 @@ export default function IDE({ problem, judgeTestCases = [], onBack, onNext, onSo
     const [useCustomInput, setUseCustomInput] = useState(false);
     const [autoWrapReturn, setAutoWrapReturn] = useState(true);
     const [activeTestTab, setActiveTestTab] = useState('testcase');
-    const [testResults, setTestResults] = useState([]);
     const [activeLadder, setActiveLadder] = useState(null); // Current ladder from Approaches tab
     const [solvedLadders, setSolvedLadders] = useState({}); // { approachId: { ladderIndex: true } }
+    const [isRunning, setIsRunning] = useState(false);
     const languages = [
         { id: 'cpp', name: 'C++' },
         { id: 'java', name: 'Java' },

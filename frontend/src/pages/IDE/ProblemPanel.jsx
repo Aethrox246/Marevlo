@@ -7,6 +7,7 @@ import {
 } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 import TabBar from './TabBar';
+import DiscussionSection from './DiscussionSection';
 
 /* EXPLANATION PARSER — extracts every section from the raw text */
 function parseExplanation(text) {
@@ -400,6 +401,7 @@ const ProblemPanel = memo(({ problem, onBack, onActiveLadderChange, solvedLadder
     const tabs = [
         { id: 'description', label: 'Description' },
         { id: 'approaches', label: 'Approaches' },
+        { id: 'discussions', label: 'Discussions' },
     ];
 
     const approaches = useMemo(() => problem?.approaches || [], [problem]);
@@ -745,6 +747,11 @@ const ProblemPanel = memo(({ problem, onBack, onActiveLadderChange, solvedLadder
                             </div>
                         )}
                     </div>
+                )}
+
+                {/* DISCUSSIONS TAB */}
+                {activeTab === 'discussions' && (
+                    <DiscussionSection problem={problem} />
                 )}
 
                 {/* READER MODE */}
