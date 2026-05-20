@@ -1165,99 +1165,93 @@ export default function Courses() {
                     50% { background-position: 100% 50%; }
                     100% { background-position: 0% 50%; }
                 }
+                @keyframes heroPulse {
+                    0%,100% { opacity:0.55; transform:scale(1); }
+                    50%     { opacity:0.75; transform:scale(1.06); }
+                }
+                @keyframes heroGlow {
+                    0%,100% { opacity:0.4; transform:scale(1) translateY(0); }
+                    50%     { opacity:0.65; transform:scale(1.08) translateY(-8px); }
+                }
+                @keyframes shimmer {
+                    0%   { background-position: -200% center; }
+                    100% { background-position:  200% center; }
+                }
+                .courses-hero-title-grad {
+                    background: linear-gradient(135deg, #fff 0%, #e0e7ff 35%, #a5f3fc 65%, #818cf8 100%);
+                    background-size: 200% auto;
+                    -webkit-background-clip: text;
+                    -webkit-text-fill-color: transparent;
+                    background-clip: text;
+                    animation: shimmer 6s linear infinite;
+                }
+                .courses-stat-card { transition: transform 0.2s, border-color 0.2s; }
+                .courses-stat-card:hover { transform: translateY(-2px); border-color: rgba(99,102,241,0.35) !important; }
                 .search-focus:focus { outline:none; }
             `}</style>
 
-            <div className="relative z-10 max-w-6xl mx-auto px-4 py-8 sm:py-12">
+            {/* Hero Section — full-width, outside container */}
+            {!pathIds.length && (
+                <div className="relative overflow-hidden border-b bg-white dark:bg-black border-black/[0.06] dark:border-white/[0.06]" style={{minHeight:'340px'}}>
+                    {/* Centre top glow */}
+                    <div className="absolute -top-20 left-1/2 -translate-x-1/2 w-[600px] h-[360px] rounded-full pointer-events-none" style={{background:'radial-gradient(ellipse,rgba(99,102,241,0.28) 0%,transparent 70%)',filter:'blur(60px)',animation:'heroGlow 8s ease-in-out infinite'}} />
+                    {/* Teal glow left */}
+                    <div className="absolute top-1/2 -left-32 -translate-y-1/2 w-[380px] h-[380px] rounded-full pointer-events-none" style={{background:'radial-gradient(circle,rgba(6,182,212,0.45) 0%,transparent 65%)',filter:'blur(80px)',animation:'heroPulse 7s ease-in-out infinite'}} />
+                    {/* Violet glow right */}
+                    <div className="absolute top-1/2 -right-32 -translate-y-1/2 w-[360px] h-[360px] rounded-full pointer-events-none" style={{background:'radial-gradient(circle,rgba(139,92,246,0.4) 0%,transparent 65%)',filter:'blur(80px)',animation:'heroPulse 9s ease-in-out 1.5s infinite'}} />
 
-                {/* Home-level header — dark hero matching Projects page */}
-                {!pathIds.length && (
-                    <header className="mb-10">
-                        {/* Dark hero banner */}
+                    <div className="relative z-10 text-center px-6 pt-12 pb-10 max-w-4xl mx-auto">
+                        {/* Pill badge */}
                         <div style={{
-                            position: 'relative', overflow: 'hidden',
-                            background: '#09090f',
-                            borderRadius: 24,
-                            padding: '52px 24px 46px',
-                            marginBottom: 0,
-                            border: '1px solid rgba(255,255,255,0.06)',
+                            display: 'inline-flex', alignItems: 'center', gap: 7,
+                            padding: '5px 14px', borderRadius: 999,
+                            background: 'rgba(255,255,255,0.055)',
+                            border: '1px solid rgba(255,255,255,0.1)',
+                            fontSize: '0.68rem', fontWeight: 700,
+                            color: 'rgba(255,255,255,0.5)',
+                            letterSpacing: '0.12em', textTransform: 'uppercase',
+                            marginBottom: 20,
+                            backdropFilter: 'blur(8px)',
                         }}>
-                            {/* Left glow — teal */}
-                            <div style={{
-                                position: 'absolute', top: '50%', left: -140, transform: 'translateY(-50%)',
-                                width: 400, height: 400, borderRadius: '50%',
-                                background: 'radial-gradient(circle, rgba(6,182,212,0.5) 0%, transparent 65%)',
-                                filter: 'blur(70px)', pointerEvents: 'none',
-                            }} />
-                            {/* Right glow — indigo */}
-                            <div style={{
-                                position: 'absolute', top: '50%', right: -140, transform: 'translateY(-50%)',
-                                width: 360, height: 360, borderRadius: '50%',
-                                background: 'radial-gradient(circle, rgba(99,102,241,0.45) 0%, transparent 65%)',
-                                filter: 'blur(70px)', pointerEvents: 'none',
-                            }} />
+                            <GraduationCap size={10} style={{ color: '#06b6d4' }} />
+                            Structured Curriculum
+                        </div>
 
-                            <div style={{ position: 'relative', zIndex: 1, textAlign: 'center' }}>
-                                {/* Pill badge */}
-                                <div style={{
-                                    display: 'inline-flex', alignItems: 'center', gap: 7,
-                                    padding: '5px 14px', borderRadius: 999,
+                        <h1 className="text-5xl md:text-[3.75rem] font-black tracking-tight leading-none text-white mb-3">
+                            Course Library
+                        </h1>
+
+                        <p style={{ margin: '0 auto 28px', fontSize: '0.95rem', color: 'rgba(255,255,255,0.38)', lineHeight: 1.7, maxWidth: 460 }}>
+                            Explore structured learning paths — from Python basics to production AI systems.
+                        </p>
+
+                        {/* Stat chips */}
+                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, flexWrap: 'wrap' }}>
+                            {[
+                                { icon: <Layers size={13} />,    label: `${COURSE_TREE.length} Categories` },
+                                { icon: <BookOpen size={13} />,  label: `${totalAllLessons} Lessons` },
+                                { icon: <Sparkles size={13} />,  label: 'All Levels' },
+                                { icon: <Zap size={13} />,       label: 'New Courses Weekly' },
+                            ].map(({ icon, label }) => (
+                                <div key={label} style={{
+                                    display: 'inline-flex', alignItems: 'center', gap: 6,
+                                    padding: '6px 14px', borderRadius: 999,
                                     background: 'rgba(255,255,255,0.055)',
-                                    border: '1px solid rgba(255,255,255,0.1)',
-                                    fontSize: '0.68rem', fontWeight: 700,
-                                    color: 'rgba(255,255,255,0.5)',
-                                    letterSpacing: '0.12em', textTransform: 'uppercase',
-                                    marginBottom: 20,
+                                    border: '1px solid rgba(255,255,255,0.09)',
+                                    fontSize: '0.76rem', fontWeight: 600,
+                                    color: 'rgba(255,255,255,0.6)',
                                     backdropFilter: 'blur(8px)',
                                 }}>
-                                    <GraduationCap size={10} style={{ color: '#06b6d4' }} />
-                                    Structured Curriculum
+                                    <span style={{ color: 'rgba(255,255,255,0.35)' }}>{icon}</span>
+                                    {label}
                                 </div>
-
-                                <h1 style={{
-                                    margin: '0 0 14px',
-                                    fontSize: 'clamp(2rem, 5vw, 2.9rem)',
-                                    fontWeight: 900, letterSpacing: '-0.04em', lineHeight: 1.1,
-                                    color: '#ffffff',
-                                }}>
-                                    Course Library
-                                </h1>
-
-                                <p style={{
-                                    margin: '0 auto 28px',
-                                    fontSize: '0.95rem',
-                                    color: 'rgba(255,255,255,0.38)',
-                                    lineHeight: 1.7, maxWidth: 460,
-                                }}>
-                                    Explore structured learning paths — from Python basics to production AI systems.
-                                </p>
-
-                                {/* Stat chips */}
-                                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, flexWrap: 'wrap' }}>
-                                    {[
-                                        { icon: <Layers size={13} />,       label: `${COURSE_TREE.length} Categories` },
-                                        { icon: <BookOpen size={13} />,     label: `${totalAllLessons} Lessons` },
-                                        { icon: <Sparkles size={13} />,    label: 'All Levels' },
-                                        { icon: <Zap size={13} />,         label: 'New Courses Weekly' },
-                                    ].map(({ icon, label }) => (
-                                        <div key={label} style={{
-                                            display: 'inline-flex', alignItems: 'center', gap: 6,
-                                            padding: '6px 14px', borderRadius: 999,
-                                            background: 'rgba(255,255,255,0.055)',
-                                            border: '1px solid rgba(255,255,255,0.09)',
-                                            fontSize: '0.76rem', fontWeight: 600,
-                                            color: 'rgba(255,255,255,0.6)',
-                                            backdropFilter: 'blur(8px)',
-                                        }}>
-                                            <span style={{ color: 'rgba(255,255,255,0.35)' }}>{icon}</span>
-                                            {label}
-                                        </div>
-                                    ))}
-                                </div>
-                            </div>
+                            ))}
                         </div>
-                    </header>
-                )}
+                    </div>
+                </div>
+            )}
+
+            <div className="relative z-10 max-w-6xl mx-auto px-4 py-8 sm:py-12">
 
                 {/* Filter Bar (Sticky) */}
                 <div style={{

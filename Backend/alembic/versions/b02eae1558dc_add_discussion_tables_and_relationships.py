@@ -115,12 +115,18 @@ def upgrade() -> None:
                existing_type=sa.INTEGER(),
                server_default=None,
                existing_nullable=True)
-    op.drop_index('idx_problems_topic', table_name='problems')
-    op.drop_column('problems', 'topic')
-    op.drop_index('idx_user_profiles_xp', table_name='user_profiles')
-    op.drop_column('user_profiles', 'college_year')
-    op.drop_column('user_profiles', 'dob')
-    op.drop_column('user_profiles', 'problems_solved')
+    # op.drop_index('idx_problems_topic', table_name='problems')
+    op.execute("DROP INDEX IF EXISTS idx_problems_topic")
+    # op.drop_column('problems', 'topic')
+    op.execute("ALTER TABLE problems DROP COLUMN IF EXISTS topic")
+    # op.drop_index('idx_user_profiles_xp', table_name='user_profiles')
+    op.execute("DROP INDEX IF EXISTS idx_user_profiles_xp")
+    # op.drop_column('user_profiles', 'college_year')
+    op.execute("ALTER TABLE user_profiles DROP COLUMN IF EXISTS college_year")
+    # op.drop_column('user_profiles', 'dob')
+    op.execute("ALTER TABLE user_profiles DROP COLUMN IF EXISTS dob")
+    # op.drop_column('user_profiles', 'problems_solved')
+    op.execute("ALTER TABLE user_profiles DROP COLUMN IF EXISTS problems_solved")
     # ### end Alembic commands ###
 
 

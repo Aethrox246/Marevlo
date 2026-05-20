@@ -335,7 +335,7 @@ export default function Login({ onLogin, onSignup }) {
             {forgotOpen && (
                 <div className="fixed inset-0 z-50 flex items-center justify-center p-4 backdrop-blur-md"
                     style={{ backgroundColor: 'rgba(0,0,0,0.6)' }}>
-                    <div className="w-full max-w-md rounded-2xl bg-[#0a0a1a] border border-white/10 shadow-2xl relative overflow-hidden">
+                    <div className="w-full max-w-md rounded-2xl bg-[#0d0d0d] border border-white/10 shadow-2xl relative overflow-hidden">
                         
                         <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-violet-600 to-cyan-500"></div>
                         

@@ -3,9 +3,12 @@ import {
     X, Eye, Heart, Clock, Github, ExternalLink, Download,
     Target, FlaskConical, Database, GraduationCap, BarChart2,
     CheckCircle, FileText, ChevronRight, ArrowUpRight, Code2,
-    BookOpen, Layers, Star, ArrowLeft, Cpu
+    BookOpen, Layers, Star, ArrowLeft, Cpu, MessageSquare, Trophy,
+    Copy, Check, Terminal
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
+import ProjectComments from '../components/ProjectComments';
+import ProjectLeaderboard from '../components/ProjectLeaderboard';
 
 function fmtNum(n) { return n >= 1000 ? (n / 1000).toFixed(1) + 'k' : String(n); }
 
@@ -21,11 +24,13 @@ function getCategoryAccent(cat) {
 }
 
 const TABS = [
-    { id: 'overview',     label: 'Overview',    icon: BookOpen },
-    { id: 'methodology',  label: 'Methodology', icon: FlaskConical },
-    { id: 'data',         label: 'Data',        icon: Database },
-    { id: 'evaluation',   label: 'Evaluation',  icon: BarChart2 },
-    { id: 'papers',       label: 'Papers',      icon: GraduationCap },
+    { id: 'overview',     label: 'Overview',     icon: BookOpen },
+    { id: 'methodology',  label: 'Methodology',  icon: FlaskConical },
+    { id: 'data',         label: 'Data',         icon: Database },
+    { id: 'evaluation',   label: 'Evaluation',   icon: BarChart2 },
+    { id: 'papers',       label: 'Papers',       icon: GraduationCap },
+    { id: 'discussion',   label: 'Discussion',   icon: MessageSquare },
+    { id: 'leaderboard',  label: 'Leaderboard',  icon: Trophy },
 ];
 
 /* ─── Section heading ─────────────────────────────────── */
@@ -115,8 +120,27 @@ function MethodologyTab({ project, isDark }) {
     );
 }
 
+/* ─── Copy-to-clipboard hook ──────────────────────────── */
+function useCopy(timeout = 1500) {
+    const [copied, setCopied] = useState(null);
+    const copy = (text, key) => {
+        navigator.clipboard.writeText(text).then(() => {
+            setCopied(key);
+            setTimeout(() => setCopied(null), timeout);
+        });
+    };
+    return { copied, copy };
+}
+
+function cliCommand(ds) {
+    if (ds.source === 'HuggingFace') return `huggingface-cli download ${ds.name}`;
+    if (ds.source === 'Kaggle')      return `kaggle datasets download -d ${ds.name}`;
+    return null;
+}
+
 /* ─── Data Tab ────────────────────────────────────────── */
 function DataTab({ project, isDark }) {
+    const { copied, copy } = useCopy();
     return (
         <div className="space-y-6">
             {/* Datasets */}
@@ -124,22 +148,50 @@ function DataTab({ project, isDark }) {
                 <div>
                     <SectionHeading icon={Database} color="text-cyan-400">Datasets Available</SectionHeading>
                     <div className="space-y-3">
-                        {project.datasets.map((ds, i) => (
-                            <a key={i} href={ds.url} target="_blank" rel="noopener noreferrer"
-                                className={`flex items-start gap-3 p-4 rounded-xl border transition-all hover:-translate-y-0.5 no-underline group ${
-                                    isDark ? 'bg-[#1b1b21] border-white/[0.06] hover:border-cyan-500/30' : 'bg-gray-50 border-gray-200 hover:border-cyan-400/40'
+                        {project.datasets.map((ds, i) => {
+                            const cmd = cliCommand(ds);
+                            return (
+                                <div key={i} className={`p-4 rounded-xl border transition-all ${
+                                    isDark ? 'bg-[#1b1b21] border-white/[0.06]' : 'bg-gray-50 border-gray-200'
                                 }`}>
-                                <Database size={15} className="text-cyan-400 flex-shrink-0 mt-0.5" />
-                                <div className="flex-1 min-w-0">
-                                    <div className="flex items-center gap-2 mb-1">
-                                        <span className={`text-[0.83rem] font-bold ${isDark ? 'text-white/90' : 'text-gray-800'}`}>{ds.name}</span>
-                                        <span className="text-[0.62rem] font-bold px-1.5 py-0.5 rounded bg-cyan-500/15 text-cyan-400">{ds.source}</span>
+                                    {/* Row 1: icon + name + source badge */}
+                                    <div className="flex items-start gap-3 mb-3">
+                                        <Database size={15} className="text-cyan-400 flex-shrink-0 mt-0.5" />
+                                        <div className="flex-1 min-w-0">
+                                            <div className="flex items-center gap-2 mb-1 flex-wrap">
+                                                <span className={`text-[0.83rem] font-bold ${isDark ? 'text-white/90' : 'text-gray-800'}`}>{ds.name}</span>
+                                                <span className="text-[0.62rem] font-bold px-1.5 py-0.5 rounded bg-cyan-500/15 text-cyan-400">{ds.source}</span>
+                                            </div>
+                                            <p className={`text-[0.78rem] leading-relaxed ${isDark ? 'text-white/45' : 'text-gray-500'}`}>{ds.desc}</p>
+                                        </div>
                                     </div>
-                                    <p className={`text-[0.78rem] leading-relaxed ${isDark ? 'text-white/45' : 'text-gray-500'}`}>{ds.desc}</p>
+
+                                    {/* Row 2: CLI command + action buttons */}
+                                    <div className="flex items-center gap-2 flex-wrap">
+                                        {cmd && (
+                                            <div className={`flex items-center gap-2 flex-1 min-w-0 px-3 py-1.5 rounded-lg font-mono text-[0.72rem] border ${
+                                                isDark ? 'bg-black/30 border-white/[0.08] text-white/50' : 'bg-gray-100 border-gray-300 text-gray-500'
+                                            }`}>
+                                                <Terminal size={11} className="flex-shrink-0" />
+                                                <span className="truncate">{cmd}</span>
+                                                <button
+                                                    onClick={() => copy(cmd, `cli-${i}`)}
+                                                    className={`flex-shrink-0 ml-auto transition-colors ${copied === `cli-${i}` ? 'text-emerald-400' : isDark ? 'text-white/30 hover:text-white/60' : 'text-gray-400 hover:text-gray-600'}`}
+                                                    title="Copy command">
+                                                    {copied === `cli-${i}` ? <Check size={12} /> : <Copy size={12} />}
+                                                </button>
+                                            </div>
+                                        )}
+                                        {ds.url !== '#' && (
+                                            <a href={ds.url} target="_blank" rel="noopener noreferrer"
+                                                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[0.75rem] font-semibold bg-cyan-500/10 text-cyan-400 border border-cyan-500/20 hover:bg-cyan-500/20 transition-colors no-underline whitespace-nowrap">
+                                                <ArrowUpRight size={13} /> Open Dataset
+                                            </a>
+                                        )}
+                                    </div>
                                 </div>
-                                {ds.url !== '#' && <ArrowUpRight size={14} className={`flex-shrink-0 mt-0.5 transition-transform group-hover:translate-x-0.5 group-hover:-translate-y-0.5 ${isDark ? 'text-white/30' : 'text-gray-400'}`} />}
-                            </a>
-                        ))}
+                            );
+                        })}
                     </div>
                 </div>
             )}
@@ -248,6 +300,8 @@ export default function ProjectDetail({ project, isDark, onClose }) {
         data:        <DataTab        project={project} isDark={isDark} />,
         evaluation:  <EvaluationTab  project={project} isDark={isDark} />,
         papers:      <PapersTab      project={project} isDark={isDark} />,
+        discussion:  <ProjectComments   projectId={project.id} isDark={isDark} />,
+        leaderboard: <ProjectLeaderboard projectId={project.id} minimumScore={project.minimumScore} isDark={isDark} />,
     };
 
     return (

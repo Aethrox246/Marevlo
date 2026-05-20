@@ -128,28 +128,25 @@ export default function ProblemList({ onSelect }) {
 
     return (
         <div className="flex-1 overflow-y-auto custom-scrollbar">
-            {/* Hero Header — dark banner matching Projects / Courses pages */}
-            <div style={{
-                position: 'relative', overflow: 'hidden',
-                background: '#09090f',
-                borderBottom: '1px solid rgba(255,255,255,0.06)',
-            }}>
-                {/* Left glow — teal */}
-                <div style={{
-                    position: 'absolute', top: '50%', left: -130,
-                    transform: 'translateY(-50%)',
-                    width: 380, height: 380, borderRadius: '50%',
-                    background: 'radial-gradient(circle, rgba(6,182,212,0.52) 0%, transparent 65%)',
-                    filter: 'blur(68px)', pointerEvents: 'none',
-                }} />
-                {/* Right glow — indigo */}
-                <div style={{
-                    position: 'absolute', top: '50%', right: -130,
-                    transform: 'translateY(-50%)',
-                    width: 340, height: 340, borderRadius: '50%',
-                    background: 'radial-gradient(circle, rgba(99,102,241,0.45) 0%, transparent 65%)',
-                    filter: 'blur(68px)', pointerEvents: 'none',
-                }} />
+            <style>{`
+                @keyframes heroPulse {
+                    0%,100% { opacity:0.55; transform:scale(1); }
+                    50%     { opacity:0.75; transform:scale(1.06); }
+                }
+                @keyframes heroGlow {
+                    0%,100% { opacity:0.4; transform:scale(1) translateY(0); }
+                    50%     { opacity:0.65; transform:scale(1.08) translateY(-8px); }
+                }
+            `}</style>
+
+            {/* Hero Header — full-width, animated glows matching Projects / Courses pages */}
+            <div className="relative overflow-hidden border-b bg-white dark:bg-black border-black/[0.06] dark:border-white/[0.06]" style={{minHeight:'340px'}}>
+                {/* Centre top glow */}
+                <div className="absolute -top-20 left-1/2 -translate-x-1/2 w-[600px] h-[360px] rounded-full pointer-events-none" style={{background:'radial-gradient(ellipse,rgba(99,102,241,0.28) 0%,transparent 70%)',filter:'blur(60px)',animation:'heroGlow 8s ease-in-out infinite'}} />
+                {/* Teal glow left */}
+                <div className="absolute top-1/2 -left-32 -translate-y-1/2 w-[380px] h-[380px] rounded-full pointer-events-none" style={{background:'radial-gradient(circle,rgba(6,182,212,0.45) 0%,transparent 65%)',filter:'blur(80px)',animation:'heroPulse 7s ease-in-out infinite'}} />
+                {/* Violet glow right */}
+                <div className="absolute top-1/2 -right-32 -translate-y-1/2 w-[360px] h-[360px] rounded-full pointer-events-none" style={{background:'radial-gradient(circle,rgba(139,92,246,0.4) 0%,transparent 65%)',filter:'blur(80px)',animation:'heroPulse 9s ease-in-out 1.5s infinite'}} />
 
                 <div style={{ position: 'relative', zIndex: 1, textAlign: 'center', padding: '48px 24px 44px' }}>
                     {/* Pill badge */}

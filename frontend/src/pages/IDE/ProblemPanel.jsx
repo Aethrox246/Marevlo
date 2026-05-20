@@ -3,7 +3,7 @@ import {
     ThumbsUp, ThumbsDown, Lock, ChevronDown, Lightbulb, Code,
     BookOpen, Clock, HardDrive, Sparkles, Zap, BrainCircuit, Bug,
     Maximize2, ArrowLeft, Eye, Layers, Target, AlertTriangle,
-    Link2, ListOrdered, Hash, Cpu, GraduationCap, Puzzle, ArrowRight
+    Link2, ListOrdered, Hash, Cpu, GraduationCap, Puzzle, ArrowRight, BarChart2
 } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 import TabBar from './TabBar';
@@ -458,6 +458,15 @@ const ProblemPanel = memo(({ problem, onBack, onActiveLadderChange, solvedLadder
         return text.replace(/(\s)(Step \d+:)/g, '\n$2').replace(/(\s)(Result:)/g, '\n\n$2').replace(/(\s)(Compare )/g, '\n  $2').trim();
     };
 
+    const renderVisualization = () => {
+        return (
+            <iframe
+                style={{ width: '100%', height: 300, border: '1px solid var(--color-border)', borderRadius: 6, background: 'var(--color-surface-hover)', display: 'block', marginTop: 6 }}
+                title="Visualization"
+            />
+        );
+    };
+
     if (!problem) {
         return <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', color: 'var(--color-muted-text)', fontSize: 14 }}>Select a problem to begin</div>;
     }
@@ -532,12 +541,20 @@ const ProblemPanel = memo(({ problem, onBack, onActiveLadderChange, solvedLadder
                                                 <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--color-muted-text)', width: 50, textTransform: 'uppercase', letterSpacing: '0.04em' }}>Output</span>
                                                 <code style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 13, color: '#10b981', flex: 1, background: 'color-mix(in srgb, #10b981 5%, var(--color-surface))', padding: '5px 10px', borderRadius: 6, border: '1px solid color-mix(in srgb, #10b981 15%, transparent)' }}>{ex.output}</code>
                                             </div>
-                                            {ex.explanation && (
-                                                <details style={{ marginTop: 2 }}>
-                                                    <summary style={{ fontSize: 11, fontWeight: 600, color: '#818cf8', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4 }}><Eye size={12} /> Show trace</summary>
-                                                    <pre style={{ marginTop: 6, fontSize: 11, lineHeight: 1.6, background: 'var(--color-surface-hover)', borderRadius: 6, padding: '8px 10px', whiteSpace: 'pre-wrap', fontFamily: "'JetBrains Mono', monospace", border: '1px solid var(--color-border)', maxHeight: 240, overflow: 'auto' }}>{formatHint(ex.explanation)}</pre>
-                                                </details>
-                                            )}
+                                            <div style={{ display: 'flex', gap: 16, alignItems: 'flex-start', flexWrap: 'wrap', marginTop: 2 }}>
+                                                {ex.explanation && (
+                                                    <details>
+                                                        <summary style={{ fontSize: 11, fontWeight: 600, color: '#818cf8', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4 }}><Eye size={12} /> Show trace</summary>
+                                                        <pre style={{ marginTop: 6, fontSize: 11, lineHeight: 1.6, background: 'var(--color-surface-hover)', borderRadius: 6, padding: '8px 10px', whiteSpace: 'pre-wrap', fontFamily: "'JetBrains Mono', monospace", border: '1px solid var(--color-border)', maxHeight: 240, overflow: 'auto' }}>{formatHint(ex.explanation)}</pre>
+                                                    </details>
+                                                )}
+                                                {i < 2 && (
+                                                    <details>
+                                                        <summary style={{ fontSize: 11, fontWeight: 600, color: '#818cf8', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4 }}><BarChart2 size={12} /> Visualization</summary>
+                                                        <div style={{ marginTop: 6 }}>{renderVisualization()}</div>
+                                                    </details>
+                                                )}
+                                            </div>
                                         </div>
                                     </div>
                                 ))}
