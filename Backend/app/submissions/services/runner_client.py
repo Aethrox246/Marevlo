@@ -24,12 +24,19 @@ class RunnerClient:
     def __init__(self, *, timeout_seconds: float = 30.0) -> None:
         self.timeout = timeout_seconds
 
-    def run(self, *, language: str, code: str, stdin: str = "") -> dict:
+    def run(self, *, language: str, code: str, stdin: str = "", timeout_ms: int | None = None, memory_mb: int | None = None) -> dict:
         url = f"{get_settings().IDE_RUNNER_URL.rstrip('/')}/run"
+        
+        payload = {"language": language, "code": code, "stdin": stdin}
+        if timeout_ms is not None:
+            payload["timeoutMs"] = timeout_ms
+        if memory_mb is not None:
+            payload["memoryMb"] = memory_mb
+
         try:
             resp = requests.post(
                 url,
-                json={"language": language, "code": code, "stdin": stdin},
+                json=payload,
                 timeout=self.timeout,
             )
         except RequestException as exc:
@@ -51,6 +58,7 @@ class RunnerClient:
             "stderr": data.get("stderr", ""),
             "exit_code": int(data.get("statusCode", data.get("exit_code", 0)) or 0),
             "runtime_ms": data.get("runtimeMs") or data.get("runtime_ms"),
+            "memory_kb": data.get("memoryKb") or data.get("memory_kb"),
         }
 
 

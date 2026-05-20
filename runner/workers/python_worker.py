@@ -26,15 +26,16 @@ import os, sys, json, signal, io, traceback, resource
 TIMEOUT_SECS   = 12
 MAX_OUTPUT_B   = 1 * 1024 * 1024   # 1 MB stdout limit per run
 MAX_STDERR_B   = 64 * 1024          # 64 KB stderr limit
-MAX_MEMORY_B   = 256 * 1024 * 1024  # 256 MB virtual address space
+MAX_MEMORY_MB  = 256                # 256 MB virtual address space (default)
 
 # ── child execution ────────────────────────────────────────────────────────────
 
-def _run_child(code: str, stdin_data: str, write_fd: int) -> None:
+def _run_child(code: str, stdin_data: str, write_fd: int, timeout_secs: int = TIMEOUT_SECS, memory_mb: int = MAX_MEMORY_MB) -> None:
     """Runs inside the forked child. Never returns (always os._exit)."""
     # Apply memory cap
     try:
-        resource.setrlimit(resource.RLIMIT_AS, (MAX_MEMORY_B, MAX_MEMORY_B))
+        memory_bytes = memory_mb * 1024 * 1024
+        resource.setrlimit(resource.RLIMIT_AS, (memory_bytes, memory_bytes))
     except Exception:
         pass
 
@@ -47,6 +48,9 @@ def _run_child(code: str, stdin_data: str, write_fd: int) -> None:
     exit_code = 0
     try:
         exec(compile(code, '<user>', 'exec'), {'__name__': '__main__'})  # noqa: S102
+    except MemoryError:
+        sys.stderr.write("Memory limit exceeded\n")
+        exit_code = 1
     except SystemExit as e:
         exit_code = int(e.code) if isinstance(e.code, int) else 0
     except BaseException:                                                 # noqa: BLE001
@@ -67,13 +71,13 @@ def _run_child(code: str, stdin_data: str, write_fd: int) -> None:
 
 # ── parent logic ───────────────────────────────────────────────────────────────
 
-def _run_in_fork(code: str, stdin_data: str) -> dict:
+def _run_in_fork(code: str, stdin_data: str, timeout_secs: int = TIMEOUT_SECS, memory_mb: int = MAX_MEMORY_MB) -> dict:
     r_fd, w_fd = os.pipe()
     pid = os.fork()
 
     if pid == 0:
         os.close(r_fd)
-        _run_child(code, stdin_data, w_fd)
+        _run_child(code, stdin_data, w_fd, timeout_secs, memory_mb)
         # _run_child always os._exit; this line is unreachable
         os._exit(1)
 
@@ -91,7 +95,7 @@ def _run_in_fork(code: str, stdin_data: str) -> dict:
             pass
 
     old_handler = signal.signal(signal.SIGALRM, _alarm_handler)
-    signal.alarm(TIMEOUT_SECS)
+    signal.alarm(timeout_secs)
 
     chunks: list[bytes] = []
     with os.fdopen(r_fd, 'rb') as r:
@@ -110,7 +114,7 @@ def _run_in_fork(code: str, stdin_data: str) -> dict:
         pass
 
     if timed_out:
-        return {'stdout': '', 'stderr': f'Timed out after {TIMEOUT_SECS}s', 'statusCode': -1}
+        return {'stdout': '', 'stderr': f'Timed out after {timeout_secs}s', 'statusCode': -1}
 
     raw = b''.join(chunks).decode('utf-8', errors='replace').strip()
     if not raw:
@@ -144,7 +148,10 @@ def main() -> None:
 
         try:
             req    = json.loads(line)
-            result = _run_in_fork(req.get('code', ''), req.get('stdin', ''))
+            timeout_ms = req.get('timeoutMs', TIMEOUT_SECS * 1000)
+            timeout_secs = max(1, min(timeout_ms // 1000, 60))  # Convert to secs, min 1s, max 60s
+            memory_mb = req.get('memoryMb', MAX_MEMORY_MB)
+            result = _run_in_fork(req.get('code', ''), req.get('stdin', ''), timeout_secs, memory_mb)
         except Exception as e:
             result = {'stdout': '', 'stderr': str(e), 'statusCode': 1}
 

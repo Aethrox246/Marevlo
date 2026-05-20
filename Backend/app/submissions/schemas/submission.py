@@ -27,7 +27,6 @@ class SubmitRequest(BaseModel):
     problem_id: int
     language: str = Field(..., min_length=1, max_length=50)
     code: str = Field(..., min_length=1, max_length=200_000)
-    stdin: str = ""  # Test case input (optional, can be empty for hidden test validation)
 
 
 class SubmissionOut(BaseModel):
@@ -39,6 +38,7 @@ class SubmissionOut(BaseModel):
     language: Optional[str] = None
     status: Optional[str] = None
     test_cases_passed: Optional[int] = None
+    total_test_cases: Optional[int] = None
     execution_time: Optional[float] = None
     memory_used: Optional[float] = None
     submitted_at: datetime

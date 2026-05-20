@@ -27,4 +27,11 @@ from app.notifications.models.notification import Notification  # noqa: F401
 from app.problems.models.problem import Problem, ProblemTestCase  # noqa: F401
 from app.profile.models.profile import UserAchievement, UserProfile  # noqa: F401
 from app.submissions.models.submission import ProblemSubmission  # noqa: F401
+from app.discussions.models.discussion import (  # noqa: F401
+    DiscussionPost,
+    DiscussionPostUpvote,
+    DiscussionReply,
+    DiscussionReplyUpvote,
+    DiscussionReplyReaction,
+)
 from app.mira.models import db_models as _mira_db_models  # noqa: F401
