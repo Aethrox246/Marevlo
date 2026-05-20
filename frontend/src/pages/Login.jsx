@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Layers, ArrowRight, Github, Code2, Cpu, Globe, X, Mail, Lock } from 'lucide-react';
+import { ArrowRight, Github, Code2, Cpu, Globe, X, Mail, Lock } from 'lucide-react';
 import { getFirebaseAuth } from '../lib/firebase';
 import AuthVisual from '../components/AuthVisual';
 
@@ -207,9 +207,6 @@ export default function Login({ onLogin, onSignup }) {
 
                 <div className="mx-auto w-full max-w-sm lg:w-96 relative">
                     <div className="mb-10">
-                        <div className="inline-flex items-center justify-center w-12 h-12 rounded-xl bg-white/5 border border-white/10 shadow-[0_0_15px_rgba(139,92,246,0.3)] mb-6 backdrop-blur-md">
-                            <Layers size={24} className="text-violet-400" />
-                        </div>
                         <h2 className="text-4xl font-extrabold tracking-tight text-white mb-2">Welcome back</h2>
                         <p className="text-white/50 text-base">
                             Sign in to continue your coding streak.

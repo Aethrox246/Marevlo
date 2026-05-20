@@ -6,6 +6,26 @@ from typing import List, Optional
 from pydantic import BaseModel, ConfigDict, Field
 
 
+class ReactionSummary(BaseModel):
+    """Grouped reaction count per emoji."""
+
+    emoji: str
+    count: int
+    reacted_by_me: bool = False
+
+
+class ReactionCreate(BaseModel):
+    emoji: str = Field(..., min_length=1, max_length=8)
+
+
+class ReplyPreview(BaseModel):
+    """Embedded snapshot of the message being replied to."""
+
+    id: int
+    sender_username: str
+    content: str  # truncated to 200 chars
+
+
 class MessageOut(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
@@ -14,10 +34,20 @@ class MessageOut(BaseModel):
     sender_username: str
     content: str
     is_edited: bool
+    is_deleted: bool = False
+    deleted_for_everyone: bool = False
+    reply_to_id: Optional[int] = None
+    reply_to: Optional[ReplyPreview] = None
+    reactions: List[ReactionSummary] = []
     created_at: str
     time_ago: str
     session_id: Optional[int] = None
     log_id: Optional[int] = None
+    is_read: bool = False
+
+
+class MessageEdit(BaseModel):
+    content: str = Field(..., min_length=1, max_length=10_000)
 
 
 class ChatOut(BaseModel):
@@ -30,6 +60,8 @@ class ChatOut(BaseModel):
     last_message_preview: Optional[str] = None
     last_message_at: Optional[str] = None
     unread_count: int = 0
+    other_user_online: bool = False
+    other_user_last_seen_at: Optional[str] = None
     created_at: str
 
 
@@ -51,6 +83,7 @@ class ChatListOut(BaseModel):
 
 class MessageCreate(BaseModel):
     content: str = Field(..., min_length=1, max_length=10_000)
+    reply_to_id: Optional[int] = None
 
 
 class FollowOut(BaseModel):

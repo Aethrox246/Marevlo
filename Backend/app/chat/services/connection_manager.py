@@ -21,12 +21,15 @@ from typing import Any, Dict, List, Optional
 
 from fastapi import WebSocket
 
+from redis.exceptions import RedisError
+
 from app.core.config import get_settings
 from app.core.redis_client import redis_manager
 
 logger = logging.getLogger(__name__)
 
 PUBSUB_CHANNEL = "chat_events"
+ONLINE_USERS_KEY = "ws_online_users"   # Redis set — shared across all ECS tasks
 PING_INTERVAL_SECONDS = 25
 RECONNECT_BACKOFF_INITIAL = 1.0
 RECONNECT_BACKOFF_MAX = 30.0
@@ -70,6 +73,11 @@ class ConnectionManager:
         await websocket.accept()
         self._connections.setdefault(user_id, []).append(websocket)
         logger.info("ws_connected user_id=%d total=%d", user_id, len(self._connections[user_id]))
+        # Register in the shared Redis set so all instances agree on online status.
+        try:
+            await redis_manager.async_.sadd(ONLINE_USERS_KEY, str(user_id))
+        except Exception as exc:
+            logger.warning("redis_online_set_add_failed user_id=%d err=%s", user_id, exc)
         await self._publish({
             "type": "status_update",
             "user_id": user_id,
@@ -77,7 +85,7 @@ class ConnectionManager:
             "_broadcast": True,
         })
 
-    async def disconnect(self, websocket: WebSocket, user_id: int) -> None:
+    async def disconnect(self, websocket: WebSocket, user_id: int, last_seen_at: Optional[str] = None) -> None:
         sockets = self._connections.get(user_id)
         if not sockets:
             return
@@ -87,13 +95,36 @@ class ConnectionManager:
             pass
         if not sockets:
             del self._connections[user_id]
-            await self._publish({
+            # Remove from shared Redis set — user is now offline on this instance
+            # and has no remaining sockets anywhere (local check; cross-instance
+            # stragglers will clean up when their own sockets close).
+            try:
+                await redis_manager.async_.srem(ONLINE_USERS_KEY, str(user_id))
+            except Exception as exc:
+                logger.warning("redis_online_set_rem_failed user_id=%d err=%s", user_id, exc)
+            payload: dict = {
                 "type": "status_update",
                 "user_id": user_id,
                 "status": "offline",
                 "_broadcast": True,
-            })
+            }
+            if last_seen_at:
+                payload["last_seen_at"] = last_seen_at
+            await self._publish(payload)
         logger.info("ws_disconnected user_id=%d remaining=%d", user_id, len(self._connections.get(user_id, [])))
+
+    # ── Online status ───────────────────────────────────────────────────
+    def is_user_online(self, user_id: int) -> bool:
+        """Return True if the user has an active WebSocket on ANY instance.
+
+        Checks the shared Redis set first; falls back to local connections
+        so the REST endpoints still work if Redis is temporarily unavailable.
+        """
+        try:
+            return bool(redis_manager.sync.sismember(ONLINE_USERS_KEY, str(user_id)))
+        except (RedisError, Exception) as exc:
+            logger.warning("redis_online_check_failed user_id=%d err=%s — using local fallback", user_id, exc)
+            return bool(self._connections.get(user_id))
 
     # ── Public sending API ──────────────────────────────────────────────
     async def send_to_user(self, user_id: int, payload: dict) -> None:

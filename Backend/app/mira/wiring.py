@@ -187,6 +187,10 @@ async def _resolve_db_factory(app: FastAPI):
 
     db_url = os.environ.get("DATABASE_URL")
     if not db_url:
+        from app.core.config import get_settings
+        db_url = get_settings().DATABASE_URL
+
+    if not db_url:
         raise RuntimeError(
             "[mira] DATABASE_URL not set and no existing session factory on app.state"
         )
