@@ -4,7 +4,7 @@ Tracks when a user last had an active WebSocket connection, used for
 "last seen" display in chat.
 
 Revision ID: users_002_last_seen_at
-Revises: chat_006_message_reactions
+Revises: chat_007_deleted_for_sender
 Create Date: 2026-05-21
 """
 from __future__ import annotations
@@ -13,7 +13,7 @@ import sqlalchemy as sa
 from alembic import op
 
 revision = "users_002_last_seen_at"
-down_revision = "chat_006_message_reactions"
+down_revision = "chat_007_deleted_for_sender"
 branch_labels = None
 depends_on = None
 
