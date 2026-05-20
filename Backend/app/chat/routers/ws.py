@@ -13,6 +13,7 @@ this path is disabled in production (ENV=prod) to prevent accidental misuse.
 """
 
 import logging
+from datetime import datetime, timezone
 from typing import Optional
 
 from fastapi import APIRouter, Depends, Query, WebSocket, WebSocketDisconnect
@@ -89,4 +90,10 @@ async def websocket_endpoint(
     except Exception as exc:
         logger.warning("ws_error user_id=%d err=%s", user.id, exc)
     finally:
-        await connection_manager.disconnect(websocket, user.id)
+        now = datetime.now(timezone.utc)
+        try:
+            user.last_seen_at = now
+            db.commit()
+        except Exception:
+            db.rollback()
+        await connection_manager.disconnect(websocket, user.id, last_seen_at=now.isoformat())

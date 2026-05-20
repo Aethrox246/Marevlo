@@ -7,7 +7,7 @@ autogenerate misses tables, and FK targets fail to resolve at runtime.
 """
 # noqa: F401 — imports here are for side-effect (model registration).
 from app.auth.models.user import EmailOTP, User, UserSession  # noqa: F401
-from app.chat.models.chat import Chat, Follow, Message, MessageRead  # noqa: F401
+from app.chat.models.chat import Chat, Follow, Message, MessageRead, MessageReaction  # noqa: F401
 from app.common.activity_log import ActivityLog  # noqa: F401
 from app.common.security_event import SecurityEvent  # noqa: F401
 from app.courses.models.course import CourseComment, CourseReaction  # noqa: F401

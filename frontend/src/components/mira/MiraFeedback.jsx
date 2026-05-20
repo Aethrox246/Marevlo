@@ -46,7 +46,7 @@ export function MiraFeedback({ matchedConcepts, styleUsed, onFeedback }) {
             <span>{prettyConceptName(concept)}</span>
             {state ? (
               <span className={styles.feedbackDone}>
-                {state === "yes" ? "Thanks ✓" : "Noted"}
+                {state === "yes" ? "Thanks ✓" : "Got it, I’ll adjust 🌸"}
               </span>
             ) : (
               <div className={styles.feedbackBtnGroup}>
@@ -56,7 +56,7 @@ export function MiraFeedback({ matchedConcepts, styleUsed, onFeedback }) {
                   onClick={() => handleClick(concept, true)}
                   aria-label={`Understood ${concept}`}
                 >
-                  Understood
+                  ✓ Got it
                 </button>
                 <button
                   type="button"
@@ -64,7 +64,7 @@ export function MiraFeedback({ matchedConcepts, styleUsed, onFeedback }) {
                   onClick={() => handleClick(concept, false)}
                   aria-label={`Not quite on ${concept}`}
                 >
-                  Not quite
+                  🤔 Not quite
                 </button>
               </div>
             )}

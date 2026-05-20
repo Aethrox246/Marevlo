@@ -16,7 +16,7 @@ from sqlalchemy import and_, func, or_, select
 from sqlalchemy.orm import Session, aliased, selectinload
 
 from app.auth.models.user import User, UserSession
-from app.chat.models.chat import Chat, Follow, Message, MessageRead
+from app.chat.models.chat import Chat, Follow, Message, MessageRead, MessageReaction
 from app.common.activity_log import ActivityLog
 from app.core.exceptions import Conflict, Forbidden, NotFound, ValidationError
 from app.feed.schemas.post import format_relative_time
@@ -133,7 +133,11 @@ class ChatService:
                     "user_1_username": u1.username,
                     "user_2_username": u2.username,
                     "is_active": c.is_active,
-                    "last_message_preview": (last.content[:100] if last else None),
+                    "last_message_preview": (
+                        None if not last
+                        else "[deleted]" if last.is_deleted
+                        else last.content[:100]
+                    ),
                     "last_message_at": (
                         format_relative_time(c.last_message_at) if c.last_message_at else None
                     ),
@@ -142,6 +146,15 @@ class ChatService:
                 }
             )
         return out, total
+
+    def get_chat_by_id(self, db: Session, *, chat_id: int, user_id: int) -> Chat:
+        """Return a chat the caller is a participant of, or raise Forbidden."""
+        chat = db.get(Chat, chat_id)
+        if not chat:
+            raise NotFound("Chat not found")
+        if user_id not in (chat.user_1_id, chat.user_2_id):
+            raise Forbidden("You are not a participant in this chat")
+        return chat
 
     def get_or_create_chat(
         self, db: Session, *, current_user_id: int, other_user_id: int
@@ -179,7 +192,11 @@ class ChatService:
                 select(Message)
                 .where(Message.chat_id == chat.id)
                 .order_by(Message.created_at.asc(), Message.id.asc())
-                .options(selectinload(Message.sender))
+                .options(
+                    selectinload(Message.sender),
+                    selectinload(Message.reply_to_msg).selectinload(Message.sender),
+                    selectinload(Message.reactions),
+                )
                 .limit(limit)
             )
             .scalars()
@@ -194,6 +211,7 @@ class ChatService:
         sender_id: int,
         content: str,
         session_id: Optional[int],
+        reply_to_id: Optional[int] = None,
     ) -> Tuple[Message, int]:
         """Returns (message, recipient_user_id)."""
         from app.moderation.services.moderation_service import moderation_service
@@ -230,12 +248,19 @@ class ChatService:
         db.add(log)
         db.flush()
 
+        # Validate reply_to_id belongs to the same chat
+        if reply_to_id is not None:
+            parent = db.get(Message, reply_to_id)
+            if not parent or parent.chat_id != chat_id:
+                raise NotFound("Replied-to message not found in this chat")
+
         msg = Message(
             chat_id=chat_id,
             sender_id=sender_id,
             session_id=session_id,
             log_id=log.id,
             content=content,
+            reply_to_id=reply_to_id,
         )
         db.add(msg)
         chat.last_message_at = datetime.now(timezone.utc)
@@ -255,6 +280,9 @@ class ChatService:
             raise NotFound("Message not found")
         if msg.sender_id == reader_id:
             return None  # don't read-receipt your own messages
+        chat = db.get(Chat, msg.chat_id)
+        if not chat or reader_id not in (chat.user_1_id, chat.user_2_id):
+            raise Forbidden("You are not a participant in this chat")
 
         existing = db.execute(
             select(MessageRead.id)
@@ -266,6 +294,153 @@ class ChatService:
         db.add(MessageRead(message_id=message_id, reader_id=reader_id))
         db.commit()
         return msg.sender_id
+
+    def edit_message(
+        self,
+        db: Session,
+        *,
+        chat_id: int,
+        message_id: int,
+        editor_id: int,
+        content: str,
+    ) -> Tuple[Message, int]:
+        """Edit a message. Returns (message, recipient_user_id)."""
+        msg = db.get(Message, message_id)
+        if not msg or msg.chat_id != chat_id:
+            raise NotFound("Message not found")
+        if msg.sender_id != editor_id:
+            raise Forbidden("Cannot edit another user's message")
+        if msg.is_deleted:
+            raise ValidationError("Cannot edit a deleted message")
+
+        chat = db.get(Chat, chat_id)
+        recipient = chat.user_1_id if chat.user_2_id == editor_id else chat.user_2_id
+
+        msg.content = content
+        msg.is_edited = True
+        db.commit()
+        db.refresh(msg)
+        return msg, recipient
+
+    def delete_message(
+        self,
+        db: Session,
+        *,
+        chat_id: int,
+        message_id: int,
+        deleter_id: int,
+        for_everyone: bool = False,
+    ) -> Tuple[Message, int]:
+        """Soft-delete a message. Returns (message, recipient_user_id).
+
+        for_everyone=True: visible as deleted by both users (max 15-min window).
+        for_everyone=False: only the sender sees the deletion.
+        """
+        from datetime import timezone, timedelta
+
+        msg = db.get(Message, message_id)
+        if not msg or msg.chat_id != chat_id:
+            raise NotFound("Message not found")
+        if msg.sender_id != deleter_id:
+            raise Forbidden("Cannot delete another user's message")
+
+        chat = db.get(Chat, chat_id)
+        recipient = chat.user_1_id if chat.user_2_id == deleter_id else chat.user_2_id
+
+        if for_everyone:
+            now = datetime.now(timezone.utc)
+            created_at = msg.created_at if msg.created_at.tzinfo else msg.created_at.replace(tzinfo=timezone.utc)
+            age_seconds = (now - created_at).total_seconds()
+            if age_seconds > 900:  # 15-minute window
+                raise ValidationError("Can only delete for everyone within 15 minutes of sending")
+            # Public deletion: mark for everyone and overwrite content in DB
+            msg.deleted_for_everyone = True
+            msg.is_deleted = True
+            msg.content = "[deleted]"
+        else:
+            # Sender-only hide: recipient can still read the original message.
+            # Do NOT touch is_deleted or content — only flag the sender's view.
+            msg.deleted_for_sender = True
+
+        db.commit()
+        db.refresh(msg)
+        return msg, recipient
+
+    # ── Reactions ────────────────────────────────────────────────────────
+    # Allowed emojis — keep list short to prevent abuse (no Unicode injection)
+    REACTION_EMOJIS: frozenset[str] = frozenset(
+        {"👍", "❤️", "😂", "😮", "😢", "🙏", "🔥", "👏"}
+    )
+
+    def get_reactions_grouped(
+        self, db: Session, *, message_id: int, viewer_id: int
+    ) -> list[dict]:
+        """Return reaction summaries grouped by emoji with reacted_by_me flag."""
+        rows = (
+            db.execute(
+                select(MessageReaction).where(MessageReaction.message_id == message_id)
+            )
+            .scalars()
+            .all()
+        )
+        groups: dict[str, dict] = {}
+        for r in rows:
+            e = r.emoji
+            groups.setdefault(e, {"emoji": e, "count": 0, "reacted_by_me": False})
+            groups[e]["count"] += 1
+            if r.user_id == viewer_id:
+                groups[e]["reacted_by_me"] = True
+        return list(groups.values())
+
+    def add_reaction(
+        self, db: Session, *, chat_id: int, message_id: int, user_id: int, emoji: str
+    ) -> Tuple[Message, int]:
+        if emoji not in self.REACTION_EMOJIS:
+            raise ValidationError("Emoji not allowed")
+        msg = db.get(Message, message_id)
+        if not msg or msg.chat_id != chat_id:
+            raise NotFound("Message not found")
+        if msg.is_deleted:
+            raise ValidationError("Cannot react to a deleted message")
+
+        existing = db.execute(
+            select(MessageReaction)
+            .where(MessageReaction.message_id == message_id)
+            .where(MessageReaction.user_id == user_id)
+            .where(MessageReaction.emoji == emoji)
+        ).scalar_one_or_none()
+        if existing:
+            raise Conflict("Already reacted with this emoji")
+
+        chat = db.get(Chat, chat_id)
+        recipient = chat.user_1_id if chat.user_2_id == user_id else chat.user_2_id
+
+        db.add(MessageReaction(message_id=message_id, user_id=user_id, emoji=emoji))
+        db.commit()
+        return msg, recipient
+
+    def remove_reaction(
+        self, db: Session, *, chat_id: int, message_id: int, user_id: int, emoji: str
+    ) -> Tuple[Message, int]:
+        msg = db.get(Message, message_id)
+        if not msg or msg.chat_id != chat_id:
+            raise NotFound("Message not found")
+
+        existing = db.execute(
+            select(MessageReaction)
+            .where(MessageReaction.message_id == message_id)
+            .where(MessageReaction.user_id == user_id)
+            .where(MessageReaction.emoji == emoji)
+        ).scalar_one_or_none()
+        if not existing:
+            raise NotFound("Reaction not found")
+
+        chat = db.get(Chat, chat_id)
+        recipient = chat.user_1_id if chat.user_2_id == user_id else chat.user_2_id
+
+        db.delete(existing)
+        db.commit()
+        return msg, recipient
 
     # ── Follows ─────────────────────────────────────────────────────────
     def follow(self, db: Session, *, follower_id: int, target_id: int) -> Follow:
@@ -334,7 +509,10 @@ class ChatService:
         rows = (
             db.execute(
                 select(User)
-                .where(User.username.ilike(f"%{q}%"))
+                .where(User.username.ilike(
+                    f"%{q.replace(chr(92), chr(92)*2).replace('%', r'\%').replace('_', r'\_')}%",
+                    escape='\\',
+                ))
                 .where(User.is_active.is_(True))
                 .where(~User.id.in_(excluded))
                 .where(User.deleted_at.is_(None))

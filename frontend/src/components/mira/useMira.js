@@ -12,9 +12,11 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { miraApi, MiraApiError } from "./miraApi";
 import { useMiraContext } from "./MiraContextProvider";
+import { useAuth } from "../../context/AuthContext";
 
-/** Feature check — runs once on mount. */
+/** Feature check — re-runs whenever the logged-in user changes. */
 export function useMiraFeatureCheck() {
+  const { user } = useAuth();
   const [state, setState] = useState({
     enabled: false,
     isAdmin: false,
@@ -23,7 +25,13 @@ export function useMiraFeatureCheck() {
   });
 
   useEffect(() => {
+    if (!user) {
+      setState({ enabled: false, isAdmin: false, loading: false, error: null });
+      return;
+    }
+
     let cancelled = false;
+    setState((s) => ({ ...s, loading: true }));
     (async () => {
       try {
         const r = await miraApi.featureCheck();
@@ -49,7 +57,7 @@ export function useMiraFeatureCheck() {
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [user?.id]); // re-runs when the user logs in or out
 
   return state;
 }

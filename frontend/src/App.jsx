@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, Suspense } from 'react';
-import { BrowserRouter as Router, Routes, Route, useNavigate, useParams, Outlet, Navigate } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route, useNavigate, useParams, Outlet, Navigate, useLocation } from 'react-router-dom';
 import { Zap, Sun, Moon } from 'lucide-react';
 
 import NavItem from './components/NavItem';
@@ -335,12 +335,22 @@ export default function App() {
                                 <Route path="/research/course/:id" element={<ResearchCourseContent />} />
                             </Route>
                         </Routes>
-                        <MiraWidget />
+                        <MiraRouteGate />
                     </Router>
                 </MiraContextProvider>
             </AuthProvider>
         </ThemeProvider>
     );
+}
+
+function MiraRouteGate() {
+    const { pathname } = useLocation();
+
+    if (pathname === '/' || pathname === '/feed' || pathname === '/messages') {
+        return null;
+    }
+
+    return <MiraWidget />;
 }
 
 // Helper components to bridge the gap between old props and new Router/Context

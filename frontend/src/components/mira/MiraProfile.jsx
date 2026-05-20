@@ -7,6 +7,7 @@
 
 import { useEffect } from "react";
 import styles from "./styles.module.css";
+import { MiraAvatar } from "./MiraAvatar";
 import { useMiraProfile } from "./useMira";
 
 export function MiraProfile() {
@@ -19,7 +20,10 @@ export function MiraProfile() {
   if (loading && !profile) {
     return (
       <div className={styles.profilePanel}>
-        <div className={styles.emptyState}>Loading profile...</div>
+        <div className={styles.profileEmptyState}>
+          <MiraAvatar size={48} mood="thinking" />
+          <p className={styles.profileEmptyStateText}>Loading your profile…</p>
+        </div>
       </div>
     );
   }
@@ -27,7 +31,12 @@ export function MiraProfile() {
   if (!profile) {
     return (
       <div className={styles.profilePanel}>
-        <div className={styles.emptyState}>No profile data yet. Send a question to start.</div>
+        <div className={styles.profileEmptyState}>
+          <MiraAvatar size={48} mood="idle" />
+          <p className={styles.profileEmptyStateText}>
+            Ask me a question and I’ll start learning what helps you most 🌸
+          </p>
+        </div>
       </div>
     );
   }

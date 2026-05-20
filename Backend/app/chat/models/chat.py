@@ -10,6 +10,7 @@ from sqlalchemy import (
     ForeignKey,
     Index,
     Integer,
+    String,
     Text,
     UniqueConstraint,
     func,
@@ -108,6 +109,20 @@ class Message(Base):
     is_edited: Mapped[bool] = mapped_column(
         Boolean, default=False, server_default="false", nullable=False
     )
+    is_deleted: Mapped[bool] = mapped_column(
+        Boolean, default=False, server_default="false", nullable=False
+    )
+    deleted_for_everyone: Mapped[bool] = mapped_column(
+        Boolean, default=False, server_default="false", nullable=False
+    )
+    # Sender-only hide: message is hidden from the sender's view but the
+    # recipient can still read it.  Does NOT set is_deleted or change content.
+    deleted_for_sender: Mapped[bool] = mapped_column(
+        Boolean, default=False, server_default="false", nullable=False
+    )
+    reply_to_id: Mapped[Optional[int]] = mapped_column(
+        Integer, ForeignKey("messages.id", ondelete="SET NULL"), nullable=True
+    )
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), nullable=False
     )
@@ -120,6 +135,15 @@ class Message(Base):
 
     chat = relationship("Chat", back_populates="messages", lazy="select")
     sender = relationship("User", foreign_keys=[sender_id], lazy="select")
+    reply_to_msg = relationship(
+        "Message",
+        foreign_keys=[reply_to_id],
+        remote_side="Message.id",
+        lazy="select",
+    )
+    reactions = relationship(
+        "MessageReaction", cascade="all, delete-orphan", lazy="select", back_populates="message"
+    )
     reads = relationship(
         "MessageRead", cascade="all, delete-orphan", lazy="noload", back_populates="message"
     )
@@ -152,4 +176,30 @@ class MessageRead(Base):
         UniqueConstraint("message_id", "reader_id", name="uq_message_reader"),
         Index("idx_message_reads_message_id", "message_id"),
         Index("idx_message_reads_reader_id", "reader_id"),
+    )
+
+
+class MessageReaction(Base):
+    """Per-user emoji reaction on a message."""
+
+    __tablename__ = "message_reactions"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
+    message_id: Mapped[int] = mapped_column(
+        Integer, ForeignKey("messages.id", ondelete="CASCADE"), nullable=False
+    )
+    user_id: Mapped[int] = mapped_column(
+        Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False
+    )
+    emoji: Mapped[str] = mapped_column(String(16), nullable=False)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
+
+    message = relationship("Message", back_populates="reactions", lazy="select")
+    reactor = relationship("User", foreign_keys=[user_id], lazy="select")
+
+    __table_args__ = (
+        UniqueConstraint("message_id", "user_id", "emoji", name="uq_message_reaction"),
+        Index("idx_message_reactions_message_id", "message_id"),
     )

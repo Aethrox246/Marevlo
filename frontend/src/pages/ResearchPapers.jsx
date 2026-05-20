@@ -500,111 +500,122 @@ export default function ResearchPapers() {
 
     return (
         <div className="overflow-y-auto h-full" style={{ backgroundColor: 'var(--color-app-bg)', color: 'var(--color-primary-text)' }}>
-            {/* Inline keyframes for glow orbs */}
+            {/* Keyframes */}
             <style>{`
-                @keyframes rpOrb1 { 0%,100%{transform:translate(0,0) scale(1)} 50%{transform:translate(30px,-20px) scale(1.1)} }
-                @keyframes rpOrb2 { 0%,100%{transform:translate(0,0) scale(1)} 50%{transform:translate(-25px,15px) scale(1.05)} }
+                @keyframes rpOrb1 { 0%,100%{transform:translate(0,0) scale(1)} 50%{transform:translate(30px,-20px) scale(1.15)} }
+                @keyframes rpOrb2 { 0%,100%{transform:translate(0,0) scale(1)} 50%{transform:translate(-25px,15px) scale(1.08)} }
                 @keyframes rpShimmer { 0%{background-position:200% center} 100%{background-position:-200% center} }
+                @keyframes rpPulse { 0%,100%{opacity:1;transform:scale(1)} 50%{opacity:0.55;transform:scale(0.82)} }
+                @keyframes rpFadeUp { from{opacity:0;transform:translateY(18px)} to{opacity:1;transform:translateY(0)} }
+                .rp-back-btn:hover { background: linear-gradient(135deg,rgba(245,158,11,0.16) 0%,rgba(245,158,11,0.07) 100%) !important; border-color: rgba(245,158,11,0.38) !important; transform: translateX(-3px) !important; box-shadow: 0 0 0 1px rgba(245,158,11,0.1) inset, 0 8px 24px rgba(245,158,11,0.12) !important; }
+                .rp-stat-card:hover { transform: translateY(-2px) !important; border-color: var(--sc) !important; box-shadow: 0 8px 24px rgba(0,0,0,0.3), 0 0 0 1px var(--sc) inset !important; }
             `}</style>
 
             <div style={{ maxWidth: '1100px', margin: '0 auto', padding: '48px 24px 96px' }}>
 
-                {/* Back button */}
+                {/* ── Back button ───────────────────────────────────────── */}
                 <button
+                    className="rp-back-btn"
                     onClick={() => navigate('/research')}
                     style={{
-                        display: 'flex', alignItems: 'center', gap: '8px',
-                        marginBottom: '36px', padding: '10px 18px',
-                        borderRadius: '14px', fontSize: '0.82rem', fontWeight: 600,
-                        background: 'rgba(212,160,23,0.08)',
-                        border: '1px solid rgba(212,160,23,0.2)',
-                        color: '#d4a017', cursor: 'pointer',
-                        transition: 'all 0.25s',
-                    }}
-                    onMouseEnter={e => {
-                        e.currentTarget.style.background = 'rgba(212,160,23,0.15)';
-                        e.currentTarget.style.borderColor = 'rgba(212,160,23,0.4)';
-                        e.currentTarget.style.transform = 'translateX(-3px)';
-                    }}
-                    onMouseLeave={e => {
-                        e.currentTarget.style.background = 'rgba(212,160,23,0.08)';
-                        e.currentTarget.style.borderColor = 'rgba(212,160,23,0.2)';
-                        e.currentTarget.style.transform = 'translateX(0)';
+                        display: 'inline-flex', alignItems: 'center', gap: '9px',
+                        marginBottom: '40px', padding: '10px 20px',
+                        borderRadius: '100px', fontSize: '0.8rem', fontWeight: 600,
+                        letterSpacing: '0.01em',
+                        background: 'linear-gradient(135deg, rgba(245,158,11,0.1) 0%, rgba(245,158,11,0.04) 100%)',
+                        border: '1px solid rgba(245,158,11,0.2)',
+                        boxShadow: '0 0 0 1px rgba(245,158,11,0.06) inset, 0 4px 16px rgba(0,0,0,0.25)',
+                        color: '#f59e0b', cursor: 'pointer',
+                        transition: 'all 0.22s cubic-bezier(.4,0,.2,1)',
                     }}
                 >
-                    <ArrowLeft size={16} />
+                    <ArrowLeft size={14} strokeWidth={2.5} />
                     Back to Research
                 </button>
 
-                {/* Enhanced Hero Section */}
-                <div style={{ marginBottom: '48px', position: 'relative', overflow: 'visible' }}>
-                    {/* Glow orbs */}
+                {/* ── Hero Section ──────────────────────────────────────── */}
+                <div style={{ marginBottom: '52px', position: 'relative', overflow: 'visible', animation: 'rpFadeUp 0.5s ease both' }}>
+                    {/* Ambient glow orbs */}
                     <div style={{
-                        position: 'absolute', top: '-30px', right: '40px', width: '180px', height: '180px',
-                        borderRadius: '50%', background: 'radial-gradient(circle, #f59e0b18 0%, transparent 70%)',
-                        animation: 'rpOrb1 8s ease-in-out infinite', pointerEvents: 'none', zIndex: 0,
+                        position: 'absolute', top: '-40px', right: '20px', width: '260px', height: '260px',
+                        borderRadius: '50%', background: 'radial-gradient(circle, rgba(245,158,11,0.13) 0%, transparent 65%)',
+                        animation: 'rpOrb1 9s ease-in-out infinite', pointerEvents: 'none', zIndex: 0,
+                        filter: 'blur(8px)',
                     }} />
                     <div style={{
-                        position: 'absolute', top: '10px', right: '180px', width: '120px', height: '120px',
-                        borderRadius: '50%', background: 'radial-gradient(circle, #d4a01718 0%, transparent 70%)',
-                        animation: 'rpOrb2 10s ease-in-out infinite', pointerEvents: 'none', zIndex: 0,
+                        position: 'absolute', top: '20px', right: '200px', width: '160px', height: '160px',
+                        borderRadius: '50%', background: 'radial-gradient(circle, rgba(251,191,36,0.1) 0%, transparent 70%)',
+                        animation: 'rpOrb2 12s ease-in-out infinite', pointerEvents: 'none', zIndex: 0,
                     }} />
 
                     <div style={{ position: 'relative', zIndex: 1 }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '14px' }}>
-                            <div style={{ width: '28px', height: '2px', background: 'linear-gradient(90deg,#f59e0b,#fbbf24)' }} />
-                            <span style={{ fontSize: '11px', fontWeight: 700, letterSpacing: '0.22em', textTransform: 'uppercase', color: '#f59e0b' }}>
+                        {/* Eyebrow label */}
+                        <div style={{ display: 'inline-flex', alignItems: 'center', gap: '10px', marginBottom: '16px', padding: '5px 14px 5px 8px', borderRadius: '100px', background: 'rgba(245,158,11,0.06)', border: '1px solid rgba(245,158,11,0.14)' }}>
+                            <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: '#f59e0b', boxShadow: '0 0 8px #f59e0b', display: 'inline-block', animation: 'rpPulse 2.6s ease-in-out infinite' }} />
+                            <span style={{ fontSize: '10.5px', fontWeight: 700, letterSpacing: '0.2em', textTransform: 'uppercase', color: '#f59e0b' }}>
                                 Curated Research
                             </span>
                         </div>
+
+                        {/* Title */}
                         <h1 style={{
-                            fontSize: 'clamp(2rem,4vw,3.2rem)', fontWeight: 900, lineHeight: 1.08,
-                            letterSpacing: '-0.03em', marginBottom: '12px',
-                            background: 'linear-gradient(135deg, var(--color-primary-text) 0%, var(--color-primary-text) 40%, #f59e0b 100%)',
-                            WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent',
-                            backgroundClip: 'text',
+                            fontSize: 'clamp(2.2rem,4.5vw,3.6rem)', fontWeight: 900, lineHeight: 1.06,
+                            letterSpacing: '-0.035em', marginBottom: '14px',
+                            background: 'linear-gradient(135deg, #ffffff 0%, #f5f5ff 30%, #fbbf24 72%, #f59e0b 100%)',
+                            WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', backgroundClip: 'text',
                         }}>
                             Research Papers
                         </h1>
-                        <p style={{ color: 'var(--color-muted-text)', fontSize: '1rem', maxWidth: '500px', lineHeight: 1.7 }}>
+
+                        {/* Subtitle */}
+                        <p style={{ color: 'rgba(180,185,210,0.65)', fontSize: '1rem', maxWidth: '480px', lineHeight: 1.72, marginBottom: '28px' }}>
                             {PAPERS.length} foundational and cutting-edge papers across AI, ML, and systems research. Filter, search, and read.
                         </p>
 
-                        {/* Stats bar */}
-                        <div style={{
-                            display: 'flex', gap: '24px', marginTop: '20px', flexWrap: 'wrap',
-                        }}>
+                        {/* Stats strip */}
+                        <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
                             {[
                                 { label: 'Total Papers', value: PAPERS.length, icon: BookOpen, color: '#f59e0b' },
-                                { label: 'Bookmarked', value: bookmarks.length, icon: Bookmark, color: '#8b5cf6' },
-                                { label: 'Reading', value: Object.values(statuses).filter(s => s === 'reading').length, icon: Clock, color: '#06b6d4' },
-                                { label: 'Completed', value: Object.values(statuses).filter(s => s === 'done').length, icon: CheckCircle2, color: '#10b981' },
+                                { label: 'Bookmarked',   value: bookmarks.length, icon: Bookmark, color: '#8b5cf6' },
+                                { label: 'Reading',      value: Object.values(statuses).filter(s => s === 'reading').length, icon: Clock, color: '#06b6d4' },
+                                { label: 'Completed',    value: Object.values(statuses).filter(s => s === 'done').length, icon: CheckCircle2, color: '#10b981' },
                             ].map(stat => (
-                                <div key={stat.label} style={{
-                                    display: 'flex', alignItems: 'center', gap: '8px',
-                                    padding: '8px 16px', borderRadius: '12px',
-                                    background: `${stat.color}0a`, border: `1px solid ${stat.color}22`,
+                                <div key={stat.label} className="rp-stat-card" style={{
+                                    display: 'flex', alignItems: 'center', gap: '10px',
+                                    padding: '10px 18px', borderRadius: '14px',
+                                    background: `linear-gradient(135deg, ${stat.color}0d 0%, ${stat.color}05 100%)`,
+                                    border: `1px solid ${stat.color}1e`,
+                                    boxShadow: `0 4px 16px rgba(0,0,0,0.2)`,
+                                    transition: 'all 0.22s cubic-bezier(.4,0,.2,1)',
+                                    '--sc': `${stat.color}38`,
                                 }}>
-                                    <stat.icon size={14} color={stat.color} />
-                                    <span style={{ fontSize: '18px', fontWeight: 800, color: stat.color }}>{stat.value}</span>
-                                    <span style={{ fontSize: '11px', color: 'var(--color-muted-text)', fontWeight: 600 }}>{stat.label}</span>
+                                    <div style={{ width: '32px', height: '32px', borderRadius: '9px', background: `${stat.color}12`, border: `1px solid ${stat.color}22`, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                                        <stat.icon size={15} color={stat.color} />
+                                    </div>
+                                    <div>
+                                        <div style={{ fontSize: '20px', fontWeight: 800, color: stat.color, lineHeight: 1.1, fontVariantNumeric: 'tabular-nums' }}>{stat.value}</div>
+                                        <div style={{ fontSize: '10px', color: 'rgba(180,185,210,0.45)', fontWeight: 600, letterSpacing: '0.04em', textTransform: 'uppercase', marginTop: '1px' }}>{stat.label}</div>
+                                    </div>
                                 </div>
                             ))}
                         </div>
                     </div>
                 </div>
 
-                {/* Search + Filters */}
+                {/* ── Search + Filters ─────────────────────────────────── */}
                 <div style={{ marginBottom: '36px' }}>
                     {/* Search bar */}
-                    <div style={{
-                        position: 'relative', marginBottom: '20px',
-                    }}>
-                        <Search size={16} style={{
-                            position: 'absolute', left: '16px', top: '50%',
-                            transform: 'translateY(-50%)', color: 'var(--color-muted-text)',
+                    <div style={{ position: 'relative', marginBottom: '18px' }}>
+                        {/* Search icon */}
+                        <div style={{
+                            position: 'absolute', left: '16px', top: '50%', transform: 'translateY(-50%)',
+                            width: '32px', height: '32px', borderRadius: '8px',
+                            background: 'rgba(245,158,11,0.08)', border: '1px solid rgba(245,158,11,0.14)',
+                            display: 'flex', alignItems: 'center', justifyContent: 'center',
                             pointerEvents: 'none',
-                        }} />
+                        }}>
+                            <Search size={14} color="#f59e0b" />
+                        </div>
                         <input
                             ref={searchRef}
                             type="text"
@@ -612,34 +623,39 @@ export default function ResearchPapers() {
                             value={search}
                             onChange={e => setSearch(e.target.value)}
                             style={{
-                                width: '100%', padding: '12px 90px 12px 44px',
-                                borderRadius: '14px', fontSize: '14px',
-                                background: 'var(--color-surface)',
-                                border: '1px solid var(--color-border)',
+                                width: '100%', padding: '14px 110px 14px 58px',
+                                borderRadius: '16px', fontSize: '14px',
+                                background: 'linear-gradient(135deg, rgba(255,255,255,0.03) 0%, rgba(255,255,255,0.015) 100%)',
+                                border: '1px solid rgba(255,255,255,0.08)',
                                 color: 'var(--color-primary-text)',
                                 outline: 'none', boxSizing: 'border-box',
-                                transition: 'border-color 0.2s, box-shadow 0.2s',
+                                boxShadow: '0 4px 20px rgba(0,0,0,0.2), 0 1px 0 rgba(255,255,255,0.04) inset',
+                                transition: 'border-color 0.22s, box-shadow 0.22s',
                             }}
-                            onFocus={e => { e.target.style.borderColor = '#f59e0b'; e.target.style.boxShadow = '0 0 0 3px #f59e0b18'; }}
-                            onBlur={e => { e.target.style.borderColor = 'var(--color-border)'; e.target.style.boxShadow = 'none'; }}
+                            onFocus={e => {
+                                e.target.style.borderColor = 'rgba(245,158,11,0.35)';
+                                e.target.style.boxShadow = '0 0 0 3px rgba(245,158,11,0.1), 0 4px 20px rgba(0,0,0,0.25), 0 1px 0 rgba(255,255,255,0.04) inset';
+                            }}
+                            onBlur={e => {
+                                e.target.style.borderColor = 'rgba(255,255,255,0.08)';
+                                e.target.style.boxShadow = '0 4px 20px rgba(0,0,0,0.2), 0 1px 0 rgba(255,255,255,0.04) inset';
+                            }}
                         />
                         {/* Ctrl+K hint */}
                         <div style={{
                             position: 'absolute', right: '14px', top: '50%', transform: 'translateY(-50%)',
-                            display: 'flex', alignItems: 'center', gap: '4px', pointerEvents: 'none',
+                            display: 'flex', alignItems: 'center', gap: '3px', pointerEvents: 'none',
                         }}>
                             <kbd style={{
-                                fontSize: '10px', fontWeight: 600, padding: '2px 6px',
-                                borderRadius: '5px', background: 'var(--color-border)',
-                                color: 'var(--color-muted-text)', border: '1px solid var(--color-border)',
-                                fontFamily: 'inherit',
+                                fontSize: '9.5px', fontWeight: 700, padding: '3px 7px', borderRadius: '6px',
+                                background: 'rgba(255,255,255,0.05)', color: 'rgba(180,185,210,0.45)',
+                                border: '1px solid rgba(255,255,255,0.08)', fontFamily: 'inherit', letterSpacing: '0.02em',
                             }}>Ctrl</kbd>
-                            <span style={{ fontSize: '10px', color: 'var(--color-muted-text)' }}>+</span>
+                            <span style={{ fontSize: '9px', color: 'rgba(180,185,210,0.3)' }}>+</span>
                             <kbd style={{
-                                fontSize: '10px', fontWeight: 600, padding: '2px 6px',
-                                borderRadius: '5px', background: 'var(--color-border)',
-                                color: 'var(--color-muted-text)', border: '1px solid var(--color-border)',
-                                fontFamily: 'inherit',
+                                fontSize: '9.5px', fontWeight: 700, padding: '3px 7px', borderRadius: '6px',
+                                background: 'rgba(255,255,255,0.05)', color: 'rgba(180,185,210,0.45)',
+                                border: '1px solid rgba(255,255,255,0.08)', fontFamily: 'inherit',
                             }}>K</kbd>
                         </div>
                     </div>
