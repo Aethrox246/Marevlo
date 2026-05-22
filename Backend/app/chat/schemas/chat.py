@@ -3,12 +3,10 @@ from __future__ import annotations
 
 from typing import List, Optional
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 
 class ReactionSummary(BaseModel):
-    """Grouped reaction count per emoji."""
-
     emoji: str
     count: int
     reacted_by_me: bool = False
@@ -19,11 +17,9 @@ class ReactionCreate(BaseModel):
 
 
 class ReplyPreview(BaseModel):
-    """Embedded snapshot of the message being replied to."""
-
     id: int
     sender_username: str
-    content: str  # truncated to 200 chars
+    content: str
 
 
 class MessageOut(BaseModel):
@@ -46,8 +42,20 @@ class MessageOut(BaseModel):
     is_read: bool = False
 
 
-class MessageEdit(BaseModel):
+class _MessageContent(BaseModel):
     content: str = Field(..., min_length=1, max_length=10_000)
+
+    @field_validator("content")
+    @classmethod
+    def strip_content(cls, v: str) -> str:
+        v = v.strip()
+        if not v:
+            raise ValueError("cannot be blank")
+        return v
+
+
+class MessageEdit(_MessageContent):
+    pass
 
 
 class ChatOut(BaseModel):
@@ -81,8 +89,7 @@ class ChatListOut(BaseModel):
     pagination: dict
 
 
-class MessageCreate(BaseModel):
-    content: str = Field(..., min_length=1, max_length=10_000)
+class MessageCreate(_MessageContent):
     reply_to_id: Optional[int] = None
 
 

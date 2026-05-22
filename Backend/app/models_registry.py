@@ -35,3 +35,4 @@ from app.discussions.models.discussion import (  # noqa: F401
     DiscussionReplyReaction,
 )
 from app.mira.models import db_models as _mira_db_models  # noqa: F401
+from app.bug_reports.models.bug_report import BugReport  # noqa: F401

@@ -6,240 +6,268 @@ Covers: M28 (Serving at Scale — ANN Search)
 
 Run: python Lab_05_faiss_serving.py
 
-Requirements: numpy, faiss-cpu (pip install faiss-cpu)
-Note: This lab uses synthetic embeddings if Lab 04 hasn't been run.
+Requirements: numpy, rich, faiss-cpu (pip install faiss-cpu)
+Note: Uses synthetic embeddings if Lab 04 hasn't been run.
 """
 
 import numpy as np
 import time
 
+from rich.console import Console
+from rich.table import Table
+from rich.panel import Panel
+from rich.progress import Progress, BarColumn, TextColumn, TimeElapsedColumn, SpinnerColumn
+from rich import box
+
+console = Console()
+
+console.print(Panel(
+    "[bold cyan]Lab 05 · FAISS ANN Serving Benchmark[/bold cyan]\n"
+    "[dim]Marevlo Research — Recommender Systems Track[/dim]",
+    border_style="cyan", expand=False
+))
+
 try:
     import faiss
     HAS_FAISS = True
+    console.print(f"  [green]✓ FAISS loaded[/green]")
 except ImportError:
     HAS_FAISS = False
-    print("⚠️  faiss not installed. Install with: pip install faiss-cpu")
-    print("    (or faiss-gpu for GPU acceleration)")
+    console.print("[bold red]✗ faiss not installed.[/bold red]  Run: pip install faiss-cpu")
     exit(1)
 
 
-# ═══════════════════════════════════════════════════════════════
+# ─────────────────────────────────────────────────────────────
 # 1. GENERATE EMBEDDINGS
-# ═══════════════════════════════════════════════════════════════
+# ─────────────────────────────────────────────────────────────
 
 def generate_embeddings(n_items=480_000, n_users=10_000, k=128):
-    """
-    Generate synthetic embeddings simulating BPR-MF output.
-    In production, these come from Lab 04's trained model.
-    """
-    print(f"Generating synthetic embeddings: {n_items} items, {n_users} users, k={k}")
-    
-    # Simulate clustered embeddings (items from same category are nearby)
-    n_clusters = 50
+    console.print(Panel(
+        f"[bold]Generating embeddings[/bold]\n"
+        f"  Items: [cyan]{n_items:,}[/cyan]   Users: [cyan]{n_users:,}[/cyan]   Dim: [cyan]{k}[/cyan]",
+        border_style="blue", expand=False
+    ))
+
+    n_clusters      = 50
     cluster_centers = np.random.randn(n_clusters, k).astype(np.float32)
-    
     item_embeddings = np.zeros((n_items, k), dtype=np.float32)
     for i in range(n_items):
-        cluster = i % n_clusters
+        cluster            = i % n_clusters
         item_embeddings[i] = cluster_centers[cluster] + np.random.randn(k).astype(np.float32) * 0.3
-    
-    # Normalize to unit length (required for inner product → cosine via FAISS)
-    norms = np.linalg.norm(item_embeddings, axis=1, keepdims=True)
+
+    norms           = np.linalg.norm(item_embeddings, axis=1, keepdims=True)
     item_embeddings = item_embeddings / np.maximum(norms, 1e-8)
-    
+
     user_embeddings = np.random.randn(n_users, k).astype(np.float32)
-    user_norms = np.linalg.norm(user_embeddings, axis=1, keepdims=True)
+    user_norms      = np.linalg.norm(user_embeddings, axis=1, keepdims=True)
     user_embeddings = user_embeddings / np.maximum(user_norms, 1e-8)
-    
+
     return item_embeddings, user_embeddings
 
 
-# ═══════════════════════════════════════════════════════════════
-# 2. BRUTE FORCE BASELINE (Module 28 S1)
-# ═══════════════════════════════════════════════════════════════
+# ─────────────────────────────────────────────────────────────
+# 2. BRUTE FORCE BASELINE
+# ─────────────────────────────────────────────────────────────
 
 def brute_force_search(user_emb, item_embeddings, k=500):
-    """Exact nearest neighbors via full dot product."""
     scores = item_embeddings @ user_emb
-    top_k = np.argpartition(scores, -k)[-k:]
-    top_k = top_k[np.argsort(scores[top_k])[::-1]]
+    top_k  = np.argpartition(scores, -k)[-k:]
+    top_k  = top_k[np.argsort(scores[top_k])[::-1]]
     return top_k, scores[top_k]
 
 
-# ═══════════════════════════════════════════════════════════════
-# 3. FAISS INDEX CONSTRUCTION (Module 28 S2)
-# ═══════════════════════════════════════════════════════════════
+# ─────────────────────────────────────────────────────────────
+# 3. FAISS INDEX CONSTRUCTION
+# ─────────────────────────────────────────────────────────────
 
 def build_flat_index(item_embeddings):
-    """Exact index — brute force via FAISS (baseline)."""
-    k = item_embeddings.shape[1]
-    index = faiss.IndexFlatIP(k)  # Inner Product (cosine on normalized vectors)
+    k     = item_embeddings.shape[1]
+    index = faiss.IndexFlatIP(k)
     index.add(item_embeddings)
     return index
 
 
 def build_ivf_pq_index(item_embeddings, nlist=1024, m=32, nbits=8):
-    """
-    IVF-PQ index from Module 28:
-    - IVF: partition items into nlist clusters, search only nearby clusters
-    - PQ: compress each vector from k*4 bytes to m bytes
-    
-    Together: ~100× faster than brute force at 95%+ recall.
-    """
-    k = item_embeddings.shape[1]
-    n_items = item_embeddings.shape[0]
-    
-    # Quantizer: used to assign items to clusters
+    """IVF-PQ: cluster search + vector compression — ~100× faster at 95%+ recall."""
+    k         = item_embeddings.shape[1]
     quantizer = faiss.IndexFlatIP(k)
-    
-    # IVF-PQ index
-    index = faiss.IndexIVFPQ(quantizer, k, nlist, m, nbits)
-    
-    # Train the index (learns cluster centers + PQ codebook)
-    print(f"  Training IVF-PQ index (nlist={nlist}, m={m})...")
-    t0 = time.time()
-    index.train(item_embeddings)
-    train_time = time.time() - t0
-    print(f"  Training time: {train_time:.1f}s")
-    
-    # Add all items
+    index     = faiss.IndexIVFPQ(quantizer, k, nlist, m, nbits)
+
+    with Progress(
+        SpinnerColumn(),
+        TextColumn("  [cyan]Training IVF-PQ index...[/cyan]"),
+        TimeElapsedColumn(),
+        console=console,
+        transient=True,
+    ) as progress:
+        progress.add_task("train", total=None)
+        index.train(item_embeddings)
+
     index.add(item_embeddings)
-    print(f"  Index size: {n_items} vectors")
-    
+    console.print(f"  IVF-PQ built: [cyan]nlist={nlist}[/cyan]  [cyan]m={m}[/cyan]  "
+                  f"[cyan]{item_embeddings.shape[0]:,}[/cyan] vectors")
     return index
 
 
 def build_hnsw_index(item_embeddings, M=32, ef_construction=200):
-    """
-    HNSW index from Module 28:
-    Hierarchical graph — multi-layer navigation.
-    Excellent recall, fast search, but uses more memory than IVF-PQ.
-    """
-    k = item_embeddings.shape[1]
+    """HNSW: hierarchical graph — excellent recall, memory-efficient."""
+    k     = item_embeddings.shape[1]
     index = faiss.IndexHNSWFlat(k, M)
     index.hnsw.efConstruction = ef_construction
-    
-    print(f"  Building HNSW index (M={M}, efConstruction={ef_construction})...")
-    t0 = time.time()
-    index.add(item_embeddings)
-    build_time = time.time() - t0
-    print(f"  Build time: {build_time:.1f}s")
-    
+
+    with Progress(
+        SpinnerColumn(),
+        TextColumn("  [cyan]Building HNSW index...[/cyan]"),
+        TimeElapsedColumn(),
+        console=console,
+        transient=True,
+    ) as progress:
+        progress.add_task("build", total=None)
+        index.add(item_embeddings)
+
+    console.print(f"  HNSW built: [cyan]M={M}[/cyan]  [cyan]efConstruction={ef_construction}[/cyan]  "
+                  f"[cyan]{item_embeddings.shape[0]:,}[/cyan] vectors")
     return index
 
 
-# ═══════════════════════════════════════════════════════════════
+# ─────────────────────────────────────────────────────────────
 # 4. BENCHMARKING
-# ═══════════════════════════════════════════════════════════════
+# ─────────────────────────────────────────────────────────────
 
 def benchmark_latency(index, user_embeddings, k=500, n_queries=1000, nprobe=None):
-    """Measure P50 and P99 query latency."""
     if nprobe is not None and hasattr(index, 'nprobe'):
         index.nprobe = nprobe
-    
     latencies = []
     for i in range(min(n_queries, len(user_embeddings))):
-        query = user_embeddings[i:i+1]
-        t0 = time.perf_counter()
-        distances, indices = index.search(query, k)
-        t1 = time.perf_counter()
-        latencies.append((t1 - t0) * 1000)  # ms
-    
+        query = user_embeddings[i:i + 1]
+        t0    = time.perf_counter()
+        index.search(query, k)
+        latencies.append((time.perf_counter() - t0) * 1000)
     latencies = np.array(latencies)
-    return {
-        "P50_ms": np.percentile(latencies, 50),
-        "P99_ms": np.percentile(latencies, 99),
-        "mean_ms": np.mean(latencies),
-    }
+    return {"P50_ms": np.percentile(latencies, 50),
+            "P99_ms": np.percentile(latencies, 99),
+            "mean_ms": np.mean(latencies)}
 
 
-def benchmark_recall(index, item_embeddings, user_embeddings, k=500, 
+def benchmark_recall(index, item_embeddings, user_embeddings, k=500,
                      n_queries=100, nprobe=None):
-    """Compare ANN results to brute force (ground truth)."""
     if nprobe is not None and hasattr(index, 'nprobe'):
         index.nprobe = nprobe
-    
     recalls = []
     for i in range(min(n_queries, len(user_embeddings))):
-        query = user_embeddings[i]
-        
-        # Ground truth (brute force)
+        query      = user_embeddings[i]
         gt_indices, _ = brute_force_search(query, item_embeddings, k)
-        gt_set = set(gt_indices)
-        
-        # ANN result
-        distances, ann_indices = index.search(user_embeddings[i:i+1], k)
-        ann_set = set(ann_indices[0])
-        
-        recall = len(gt_set & ann_set) / len(gt_set)
-        recalls.append(recall)
-    
+        gt_set     = set(gt_indices)
+        _, ann_idx = index.search(user_embeddings[i:i + 1], k)
+        ann_set    = set(ann_idx[0])
+        recalls.append(len(gt_set & ann_set) / len(gt_set))
     return np.mean(recalls)
 
 
-# ═══════════════════════════════════════════════════════════════
+# ─────────────────────────────────────────────────────────────
 # 5. MAIN
-# ═══════════════════════════════════════════════════════════════
+# ─────────────────────────────────────────────────────────────
 
 if __name__ == "__main__":
-    print("=" * 60)
-    print("  Lab 05 · FAISS ANN Serving Benchmark")
-    print("  Marevlo Research — Recommender Systems Track")
-    print("=" * 60)
-    
-    # Use smaller scale for quick demo (scale up for production test)
-    N_ITEMS = 100_000  # Change to 480_000 for Kartify-scale
+    N_ITEMS = 100_000   # Change to 480_000 for Kartify-scale
     N_USERS = 1_000
-    K_DIM = 128
-    
+    K_DIM   = 128
+
     item_emb, user_emb = generate_embeddings(N_ITEMS, N_USERS, K_DIM)
-    
-    # ─── Brute Force Baseline ───
-    print(f"\n{'─' * 50}")
-    print("1. Brute Force (exact)")
-    flat_index = build_flat_index(item_emb)
-    bf_latency = benchmark_latency(flat_index, user_emb, k=500, n_queries=200)
-    print(f"   P50: {bf_latency['P50_ms']:.2f}ms  P99: {bf_latency['P99_ms']:.2f}ms")
-    
-    # ─── IVF-PQ ───
-    print(f"\n{'─' * 50}")
-    print("2. IVF-PQ (approximate)")
-    ivf_index = build_ivf_pq_index(item_emb, nlist=256, m=32)
-    
-    for nprobe in [4, 8, 16, 32]:
+
+    results = {}   # {method: {P50, P99, recall}}
+
+    # ── 1. Brute Force ──
+    console.print(Panel("[bold]1. Brute Force[/bold] (exact baseline)", border_style="blue", expand=False))
+    flat_index  = build_flat_index(item_emb)
+    bf_latency  = benchmark_latency(flat_index, user_emb, k=500, n_queries=200)
+    bf_recall   = 1.0
+    results["Brute Force"] = {**bf_latency, "recall": bf_recall}
+    console.print(f"  P50: [cyan]{bf_latency['P50_ms']:.2f}ms[/cyan]  "
+                  f"P99: [yellow]{bf_latency['P99_ms']:.2f}ms[/yellow]  "
+                  f"Recall: [green]1.000[/green]")
+
+    # ── 2. IVF-PQ sweep ──
+    console.print(Panel("[bold]2. IVF-PQ[/bold] · nprobe sweep", border_style="magenta", expand=False))
+    ivf_index   = build_ivf_pq_index(item_emb, nlist=256, m=32)
+    nprobes     = [4, 8, 16, 32]
+    ivf_table   = Table(box=box.ROUNDED, border_style="magenta", header_style="bold magenta",
+                        title="IVF-PQ — nprobe Sweep")
+    ivf_table.add_column("nprobe",     style="bold cyan", justify="right")
+    ivf_table.add_column("P50 (ms)",   style="green",     justify="right")
+    ivf_table.add_column("P99 (ms)",   style="yellow",    justify="right")
+    ivf_table.add_column("Recall@500", style="cyan",      justify="right")
+    ivf_table.add_column("Latency",    justify="center")
+    ivf_table.add_column("Recall",     justify="center")
+
+    best_ivf_key = None
+    for nprobe in nprobes:
         lat = benchmark_latency(ivf_index, user_emb, k=500, n_queries=200, nprobe=nprobe)
         rec = benchmark_recall(ivf_index, item_emb, user_emb, k=500, n_queries=50, nprobe=nprobe)
-        target_lat = "✅" if lat["P99_ms"] < 10 else "❌"
-        target_rec = "✅" if rec > 0.95 else "⚠️" if rec > 0.90 else "❌"
-        print(f"   nprobe={nprobe:>2d}: P50={lat['P50_ms']:.2f}ms P99={lat['P99_ms']:.2f}ms {target_lat} | "
-              f"Recall@500={rec:.3f} {target_rec}")
-    
-    # ─── HNSW ───
-    print(f"\n{'─' * 50}")
-    print("3. HNSW (approximate)")
-    hnsw_index = build_hnsw_index(item_emb, M=32)
-    hnsw_lat = benchmark_latency(hnsw_index, user_emb, k=500, n_queries=200)
-    hnsw_rec = benchmark_recall(hnsw_index, item_emb, user_emb, k=500, n_queries=50)
-    print(f"   P50: {hnsw_lat['P50_ms']:.2f}ms  P99: {hnsw_lat['P99_ms']:.2f}ms | "
-          f"Recall@500={hnsw_rec:.3f}")
-    
-    # ─── Summary ───
-    print(f"\n{'=' * 60}")
-    print("  SERVING BENCHMARK SUMMARY")
-    print(f"{'=' * 60}")
-    print(f"  {'Method':<20} {'P99 (ms)':>10} {'Recall@500':>12} {'Target':>8}")
-    print(f"  {'─' * 52}")
-    print(f"  {'Brute Force':<20} {bf_latency['P99_ms']:>10.2f} {'1.000':>12} {'—':>8}")
-    
-    best_ivf = benchmark_latency(ivf_index, user_emb, k=500, n_queries=200, nprobe=16)
-    best_ivf_rec = benchmark_recall(ivf_index, item_emb, user_emb, k=500, n_queries=50, nprobe=16)
-    print(f"  {'IVF-PQ (nprobe=16)':<20} {best_ivf['P99_ms']:>10.2f} {best_ivf_rec:>12.3f} {'<10ms':>8}")
-    print(f"  {'HNSW (M=32)':<20} {hnsw_lat['P99_ms']:>10.2f} {hnsw_rec:>12.3f} {'<10ms':>8}")
-    
-    speedup = bf_latency['P99_ms'] / best_ivf['P99_ms'] if best_ivf['P99_ms'] > 0 else 0
-    print(f"\n  IVF-PQ speedup over brute force: {speedup:.0f}×")
-    print(f"  Items indexed: {N_ITEMS:,}")
-    
-    print(f"\n✅ Lab 05 complete.")
-    print(f"   Retrieval serving is production-ready if P99 < 10ms and Recall > 95%")
-    print(f"   Next: Lab 06 (Full capstone pipeline)")
+        key = f"IVF-PQ (nprobe={nprobe})"
+        results[key] = {**lat, "recall": rec}
+
+        lat_ok  = lat["P99_ms"] < 10
+        rec_ok  = rec > 0.95
+        lat_sym = "[bold green]✓[/bold green]" if lat_ok else "[bold red]✗[/bold red]"
+        rec_sym = "[bold green]✓[/bold green]" if rec_ok else ("[yellow]~[/yellow]" if rec > 0.90 else "[bold red]✗[/bold red]")
+
+        if lat_ok and rec_ok and best_ivf_key is None:
+            best_ivf_key = key
+
+        ivf_table.add_row(
+            str(nprobe),
+            f"{lat['P50_ms']:.2f}", f"{lat['P99_ms']:.2f}",
+            f"{rec:.3f}", lat_sym, rec_sym
+        )
+    console.print(ivf_table)
+
+    # ── 3. HNSW ──
+    console.print(Panel("[bold]3. HNSW[/bold] · M=32", border_style="green", expand=False))
+    hnsw_index  = build_hnsw_index(item_emb, M=32)
+    hnsw_lat    = benchmark_latency(hnsw_index, user_emb, k=500, n_queries=200)
+    hnsw_rec    = benchmark_recall(hnsw_index, item_emb, user_emb, k=500, n_queries=50)
+    results["HNSW (M=32)"] = {**hnsw_lat, "recall": hnsw_rec}
+    console.print(f"  P50: [cyan]{hnsw_lat['P50_ms']:.2f}ms[/cyan]  "
+                  f"P99: [yellow]{hnsw_lat['P99_ms']:.2f}ms[/yellow]  "
+                  f"Recall: [green]{hnsw_rec:.3f}[/green]")
+
+    # ── Summary table ──
+    console.print(Panel("[bold]🏆 Serving Benchmark Summary[/bold]", border_style="cyan", expand=False))
+    summ_table = Table(box=box.ROUNDED, border_style="cyan", header_style="bold cyan",
+                       title=f"N_ITEMS={N_ITEMS:,}  K={K_DIM}  k@500")
+    summ_table.add_column("Method",      style="bold",    justify="left")
+    summ_table.add_column("P50 (ms)",    style="green",   justify="right")
+    summ_table.add_column("P99 (ms)",    style="yellow",  justify="right")
+    summ_table.add_column("Recall@500",  style="cyan",    justify="right")
+    summ_table.add_column("Speedup",     style="magenta", justify="right")
+    summ_table.add_column("P99 <10ms",   justify="center")
+
+    bf_p99 = results["Brute Force"]["P99_ms"]
+    display_methods = ["Brute Force"] + [f"IVF-PQ (nprobe={p})" for p in nprobes] + ["HNSW (M=32)"]
+    for method in display_methods:
+        if method not in results:
+            continue
+        r       = results[method]
+        speedup = bf_p99 / r["P99_ms"] if r["P99_ms"] > 0 else 0
+        ok      = r["P99_ms"] < 10
+        sym     = "[bold green]✓[/bold green]" if ok else "[dim]–[/dim]"
+        summ_table.add_row(
+            method,
+            f"{r['P50_ms']:.2f}", f"{r['P99_ms']:.2f}",
+            f"{r['recall']:.3f}",
+            f"{speedup:.0f}×" if speedup > 1.1 else "1×",
+            sym
+        )
+    console.print(summ_table)
+
+    best_ivf_key = best_ivf_key or "IVF-PQ (nprobe=16)"
+    speedup_best = bf_p99 / results.get(best_ivf_key, results["Brute Force"])["P99_ms"]
+    console.print(Panel(
+        f"[bold green]✓ Lab 05 complete![/bold green]\n"
+        f"Best ANN speedup over brute force: [bold cyan]{speedup_best:.0f}×[/bold cyan]  "
+        f"({N_ITEMS:,} items indexed)\n\n"
+        f"[dim]Retrieval is production-ready when P99 < 10ms AND Recall > 95%[/dim]\n"
+        f"[dim]Next → Lab 06: Full capstone pipeline (retrieval → ranking → MMR)[/dim]",
+        border_style="green", expand=False
+    ))

@@ -24,17 +24,17 @@ def upgrade() -> None:
                existing_type=sa.VARCHAR(length=20),
                server_default=None,
                existing_nullable=False)
-    op.drop_index('idx_mira_appeal_pending', table_name='mira_appeal_queue', postgresql_where="((status)::text = 'pending'::text)")
+    op.drop_index('idx_mira_appeal_pending', table_name='mira_appeal_queue', postgresql_where="((status)::text = 'pending'::text)", if_exists=True)
     op.alter_column('mira_concept_lattices', 'version',
                existing_type=sa.INTEGER(),
                server_default=None,
                existing_nullable=False)
-    op.drop_index('idx_mira_episodic_user_time', table_name='mira_episodic')
+    op.drop_index('idx_mira_episodic_user_time', table_name='mira_episodic', if_exists=True)
     op.alter_column('mira_gate_status', 'attempt_count',
                existing_type=sa.INTEGER(),
                server_default=None,
                existing_nullable=False)
-    op.drop_index('idx_mira_grading_user', table_name='mira_grading_events')
+    op.drop_index('idx_mira_grading_user', table_name='mira_grading_events', if_exists=True)
     op.alter_column('mira_review_queue', 'interval_days',
                existing_type=sa.INTEGER(),
                server_default=None,
@@ -115,12 +115,12 @@ def upgrade() -> None:
                existing_type=sa.INTEGER(),
                server_default=None,
                existing_nullable=True)
-    op.drop_index('idx_problems_topic', table_name='problems')
-    op.drop_column('problems', 'topic')
-    op.drop_index('idx_user_profiles_xp', table_name='user_profiles')
-    op.drop_column('user_profiles', 'college_year')
-    op.drop_column('user_profiles', 'dob')
-    op.drop_column('user_profiles', 'problems_solved')
+    op.drop_index('idx_problems_topic', table_name='problems', if_exists=True)
+    op.execute('ALTER TABLE problems DROP COLUMN IF EXISTS topic')
+    op.drop_index('idx_user_profiles_xp', table_name='user_profiles', if_exists=True)
+    op.execute('ALTER TABLE user_profiles DROP COLUMN IF EXISTS college_year')
+    op.execute('ALTER TABLE user_profiles DROP COLUMN IF EXISTS dob')
+    op.execute('ALTER TABLE user_profiles DROP COLUMN IF EXISTS problems_solved')
     # ### end Alembic commands ###
 
 
