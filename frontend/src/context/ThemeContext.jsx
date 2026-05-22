@@ -30,7 +30,7 @@ export function ThemeProvider({ children }) {
 
     // Apply theme immediately on page load (before React hydrates)
     useEffect(() => {
-        const saved = localStorage.getItem('algosphere-theme');
+        const saved = localStorage.getItem('marevlo-theme');
         if (saved === 'dark') {
             document.documentElement.classList.add('dark');
         }

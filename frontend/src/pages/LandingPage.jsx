@@ -538,7 +538,7 @@ function TypingTerminal() {
         <div
             className="relative rounded-2xl overflow-hidden shadow-2xl border skew-y-1 hover:skew-y-0 transition-all duration-700"
             style={{
-                background: '#0f0f23',
+                background: '#0d0d0d',
                 borderColor: `${snippet.color}40`,
                 boxShadow: `0 0 60px ${snippet.color}22, 0 25px 50px rgba(0,0,0,0.5)`,
             }}
@@ -716,7 +716,7 @@ function BFSVisualizer({ isDark = false }) {
     return (
         <div className="lg:col-span-5 rounded-3xl border overflow-hidden relative"
             style={{
-                background: isDark ? '#0a0a1a' : 'linear-gradient(145deg, #17223a, #222f4f)',
+                background: isDark ? '#0d0d0d' : 'linear-gradient(145deg, #17223a, #222f4f)',
                 borderColor: isDark ? 'rgba(6,182,212,0.35)' : 'rgba(59,130,246,0.28)'
             }}>
             <div className="absolute -top-10 -left-10 w-48 h-48 rounded-full blur-[60px] opacity-15 pointer-events-none"
@@ -752,7 +752,7 @@ function BFSVisualizer({ isDark = false }) {
 
                 {/* Graph SVG */}
                 <div className="relative rounded-2xl overflow-hidden mb-3"
-                    style={{ background: 'linear-gradient(135deg,#0f0f23,#1a1a3e)', border: '1px solid rgba(6,182,212,0.15)', height: 158 }}>
+                    style={{ background: '#0d0d0d', border: '1px solid rgba(6,182,212,0.15)', height: 158 }}>
                     <svg viewBox="0 0 310 158" className="w-full h-full">
                         {/* Edges */}
                         {BFS_EDGES.map(([a, b]) => {
@@ -914,7 +914,7 @@ function AITutorCard({ isDark = false }) {
     return (
         <div className="lg:col-span-3 rounded-3xl border overflow-hidden relative transition-all duration-500"
             style={{
-                background: isDark ? '#0f0f23' : 'linear-gradient(145deg, #1a2440, #253255)',
+                background: isDark ? '#0d0d0d' : 'linear-gradient(145deg, #1a2440, #253255)',
                 borderColor: isPremium ? 'rgba(139,92,246,0.35)' : 'rgba(6,182,212,0.3)'
             }}>
             <style>{`
@@ -1112,7 +1112,7 @@ function ApproachesCard({ isDark = false }) {
     return (
         <div className="lg:col-span-5 rounded-3xl relative overflow-hidden"
             style={{
-                background: isDark ? '#0a0a1a' : 'linear-gradient(145deg, #16213a, #1f2c49)',
+                background: isDark ? '#0d0d0d' : 'linear-gradient(145deg, #16213a, #1f2c49)',
                 border: '1px solid rgba(255,255,255,0.07)'
             }}>
 
@@ -1311,7 +1311,7 @@ function LaddersCard({ isDark = false }) {
     return (
         <div className="lg:col-span-7 rounded-3xl relative overflow-hidden"
             style={{
-                background: isDark ? '#080814' : 'linear-gradient(145deg, #151f37, #1d2a48)',
+                background: isDark ? '#0d0d0d' : 'linear-gradient(145deg, #151f37, #1d2a48)',
                 border: '1px solid rgba(255,255,255,0.07)'
             }}>
 
@@ -1651,7 +1651,7 @@ export default function LandingPage({ onStart, onExplore }) {
                         {/* [4] Courses — PREMIUM DARK (col 4) */}
                         <div className="lg:col-span-4 rounded-3xl border overflow-hidden relative group hover:scale-[1.01] transition-transform duration-300"
                             style={{
-                                background: isDark ? '#0f0f23' : 'linear-gradient(145deg, #1a2440, #263457)',
+                                background: isDark ? '#0d0d0d' : 'linear-gradient(145deg, #1a2440, #263457)',
                                 borderColor: 'rgba(99,102,241,0.3)'
                             }}>
                             <div className="absolute -bottom-16 -right-16 w-48 h-48 rounded-full blur-[60px] opacity-20 pointer-events-none"
@@ -1796,16 +1796,16 @@ export default function LandingPage({ onStart, onExplore }) {
             </section>
 
             {/* HOW IT WORKS - REDESIGNED */}
-            <section className={`py-32 relative overflow-hidden ${isDark ? 'bg-[#0A0A15]' : 'bg-slate-50'}`}>
+            <section className="py-32 relative overflow-hidden bg-black">
                 {/* Background glow effects */}
-                <div className="absolute inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-[0.03] mix-blend-overlay"></div>
-                <div className={`absolute top-0 right-1/4 w-[500px] h-[500px] rounded-full blur-[120px] pointer-events-none ${isDark ? 'bg-indigo-600/20' : 'bg-indigo-400/10'}`}></div>
-                <div className={`absolute bottom-0 left-1/4 w-[600px] h-[600px] rounded-full blur-[150px] pointer-events-none ${isDark ? 'bg-purple-600/10' : 'bg-purple-400/10'}`}></div>
+                <div className="absolute inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-[0.02] mix-blend-overlay"></div>
+                <div className="absolute top-0 right-1/4 w-[500px] h-[500px] rounded-full blur-[120px] pointer-events-none bg-indigo-600/10"></div>
+                <div className="absolute bottom-0 left-1/4 w-[600px] h-[600px] rounded-full blur-[150px] pointer-events-none bg-purple-600/8"></div>
 
                 <div className="max-w-7xl mx-auto px-4 relative z-10">
                     <div className="text-center mb-24">
-                        <h2 className={`text-4xl md:text-5xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r mb-6 tracking-tight ${isDark ? 'from-white via-indigo-100 to-indigo-300' : 'from-gray-900 via-indigo-800 to-indigo-600'}`}>Your Path to Mastery</h2>
-                        <p className={`text-lg max-w-2xl mx-auto leading-relaxed ${isDark ? 'text-neutral-400' : 'text-neutral-600'}`}>
+                        <h2 className="text-4xl md:text-5xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r mb-6 tracking-tight from-white via-indigo-100 to-indigo-300">Your Path to Mastery</h2>
+                        <p className="text-lg max-w-2xl mx-auto leading-relaxed text-neutral-400">
                             A structured, scientifically-backed workflow designed to take you from novice to expert through consistent practice and AI-driven feedback.
                         </p>
                     </div>
@@ -1835,13 +1835,9 @@ export default function LandingPage({ onStart, onExplore }) {
                             ].map((item, i) => (
                                 <div key={i} className={`relative group w-full max-w-[300px] md:w-[280px] p-8 md:p-10 rounded-[2.5rem] transition-all duration-700 hover:scale-[1.15] hover:z-50 ${item.anim} ${item.offset} backdrop-blur-2xl`}
                                     style={{
-                                        background: isDark
-                                            ? 'linear-gradient(145deg, rgba(30,30,50,0.6) 0%, rgba(10,10,20,0.9) 100%)'
-                                            : 'linear-gradient(145deg, rgba(255,255,255,0.9) 0%, rgba(241,245,249,0.95) 100%)',
-                                        border: `1px solid ${item.color}${isDark ? '50' : '30'}`,
-                                        boxShadow: isDark
-                                            ? `0 30px 60px -20px rgba(0,0,0,0.8), inset 0 0 20px ${item.color}15`
-                                            : `0 20px 40px -15px rgba(0,0,0,0.1), inset 0 0 20px ${item.color}08`
+                                        background: 'linear-gradient(145deg, rgba(20,20,20,0.8) 0%, rgba(0,0,0,0.95) 100%)',
+                                        border: `1px solid ${item.color}50`,
+                                        boxShadow: `0 30px 60px -20px rgba(0,0,0,0.8), inset 0 0 20px ${item.color}15`
                                     }}>
 
                                     {/* Intense Hover Aura */}
@@ -1849,15 +1845,15 @@ export default function LandingPage({ onStart, onExplore }) {
                                     <div className="absolute -inset-[2px] rounded-[2.6rem] opacity-0 group-hover:opacity-100 transition-opacity duration-1000 -z-10 blur-xl block" style={{ background: `linear-gradient(45deg, ${item.color}, transparent, ${item.color})`, animation: 'spinSlow 10s linear infinite' }}></div>
 
                                     {/* Number Badge */}
-                                    <div className={`absolute -top-6 -right-6 w-16 h-16 rounded-full flex flex-col items-center justify-center font-black text-xl text-white shadow-2xl border-4 group-hover:rotate-[360deg] transition-transform duration-[1.5s] ease-in-out ${isDark ? 'border-[#0A0A15]' : 'border-slate-50'}`}
-                                        style={{ background: `linear-gradient(135deg, ${item.color}, ${isDark ? '#000' : '#334155'})`, boxShadow: `0 10px 40px -5px ${item.color}` }}>
+                                    <div className="absolute -top-6 -right-6 w-16 h-16 rounded-full flex flex-col items-center justify-center font-black text-xl text-white shadow-2xl border-4 border-black group-hover:rotate-[360deg] transition-transform duration-[1.5s] ease-in-out"
+                                        style={{ background: `linear-gradient(135deg, ${item.color}, #000)`, boxShadow: `0 10px 40px -5px ${item.color}` }}>
                                         {item.step}
                                     </div>
 
                                     {/* Icon & Content */}
                                     <div className="text-6xl mb-6 group-hover:-translate-y-4 group-hover:scale-125 transition-transform duration-500 drop-shadow-[0_10px_20px_rgba(0,0,0,0.5)]">{item.icon}</div>
-                                    <h3 className={`text-2xl font-black mb-3 tracking-tighter ${isDark ? 'text-white' : 'text-gray-900'}`} style={{ textShadow: isDark ? `0 0 20px ${item.color}40` : 'none' }}>{item.title}</h3>
-                                    <p className={`text-sm leading-relaxed font-medium transition-colors ${isDark ? 'text-neutral-300 group-hover:text-white' : 'text-neutral-600 group-hover:text-gray-900'}`}>{item.desc}</p>
+                                    <h3 className="text-2xl font-black mb-3 tracking-tighter text-white" style={{ textShadow: `0 0 20px ${item.color}40` }}>{item.title}</h3>
+                                    <p className="text-sm leading-relaxed font-medium transition-colors text-neutral-300 group-hover:text-white">{item.desc}</p>
                                 </div>
                             ))}
                         </div>
