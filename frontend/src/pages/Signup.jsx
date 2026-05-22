@@ -47,15 +47,17 @@ export default function Signup({ onLogin, onSignupSuccess }) {
             return;
         }
 
+        const payload = {
+            username: formData.name.trim().replace(/\s+/g, '_'),  // Replace spaces with underscores
+            email: formData.email,
+            password: formData.password,
+        };
+
         try {
             const response = await fetch(`${API}/auth/signup`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    email: formData.email,
-                    username: formData.name || (formData.email ? formData.email.split('@')[0] : ''),
-                    password: formData.password,
-                }),
+                body: JSON.stringify(payload),
             });
 
             if (!response.ok) {
@@ -80,11 +82,15 @@ export default function Signup({ onLogin, onSignupSuccess }) {
             const { auth, googleProvider, signInWithPopup } = await getFirebaseAuth();
             const result = await signInWithPopup(auth, googleProvider);
             const idToken = await result.user.getIdToken();
+            const displayName = result.user.displayName;
 
             const response = await fetch(`${API}/auth/google`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ id_token: idToken }),
+                body: JSON.stringify({
+    id_token: idToken,
+    display_name: displayName
+}),
             });
 
             if (!response.ok) {
