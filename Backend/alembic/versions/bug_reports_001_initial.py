@@ -4,7 +4,7 @@ Creates the bug_reports table for user-submitted platform bug reports,
 including optional screenshot S3 key storage.
 
 Revision ID: bug_reports_001_initial
-Revises: profile_003_student_fields
+Revises: chat_007_deleted_for_sender, profile_004_contact_fields
 Create Date: 2026-05-22
 """
 from __future__ import annotations
@@ -14,7 +14,7 @@ import sqlalchemy as sa
 
 
 revision = "bug_reports_001_initial"
-down_revision = ("chat_007_deleted_for_sender", "d3f8c2a1b4e9", "users_002_last_seen_at")
+down_revision = ("chat_007_deleted_for_sender", "profile_004_contact_fields")
 branch_labels = None
 depends_on = None
 
