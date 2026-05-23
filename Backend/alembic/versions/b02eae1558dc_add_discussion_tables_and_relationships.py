@@ -17,6 +17,5 @@ depends_on: Union[str, Sequence[str], None] = None
 def upgrade() -> None:
     pass
 
-
 def downgrade() -> None:
     pass

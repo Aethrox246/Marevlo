@@ -483,19 +483,26 @@ class AuthService:
         )
 
         user = self._get_user_by_email(db, email_norm)
-        if not user:
-            raise InvalidCredentials("Invalid OTP or email")
 
-        otp_entry = db.execute(
-            select(EmailOTP)
-            .where(EmailOTP.user_id == user.id)
-            .where(EmailOTP.used_at.is_(None))
-            .where(EmailOTP.expires_at > datetime.now(timezone.utc))
-            .order_by(EmailOTP.created_at.desc())
-            .limit(1)
-        ).scalar_one_or_none()
+        # Look up the OTP entry only when a real user exists.
+        otp_entry = None
+        if user is not None:
+            otp_entry = db.execute(
+                select(EmailOTP)
+                .where(EmailOTP.user_id == user.id)
+                .where(EmailOTP.used_at.is_(None))
+                .where(EmailOTP.expires_at > datetime.now(timezone.utc))
+                .order_by(EmailOTP.created_at.desc())
+                .limit(1)
+            ).scalar_one_or_none()
 
-        if not otp_entry or not verify_otp(otp, otp_entry.code_hash):
+        # Always run HMAC regardless of whether user/OTP was found — prevents
+        # email-enumeration via timing differences between the two code paths.
+        _sentinel = hash_otp("000000")
+        stored_hash = otp_entry.code_hash if otp_entry else _sentinel
+        otp_valid = verify_otp(otp, stored_hash)
+
+        if not user or not otp_entry or not otp_valid:
             raise InvalidCredentials("Invalid or expired OTP")
 
         now = datetime.now(timezone.utc)

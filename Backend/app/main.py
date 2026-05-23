@@ -54,6 +54,7 @@ from app.mira.router import (
     admin_router as mira_admin_router,
     router as mira_router,
 )
+from app.bug_reports.routers.bug_report import router as bug_reports_router
 from app.mira.wiring import init_mira_on_startup, shutdown_mira
 from app.unlock.router import router as unlock_router
 
@@ -166,7 +167,11 @@ def create_app() -> FastAPI:
     app.include_router(announcements_admin_router)
     app.include_router(mira_router)
     app.include_router(mira_admin_router)
+<<<<<<< HEAD
     app.include_router(unlock_router)
+=======
+    app.include_router(bug_reports_router)
+>>>>>>> 71503e3df5ee208de961432f5ea9b71bb6ca8a45
 
     # ── Health ──────────────────────────────────────────────────────────
     @app.get("/", tags=["meta"])

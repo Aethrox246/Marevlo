@@ -267,112 +267,139 @@ export default function Messages() {
                             background: 'var(--color-surface)',
                         }}
                     >
-                        {/* ── LinkedIn-style Messaging Header ── */}
+                        {/* ── Messaging Header ── */}
                         <div
-                            className="flex-shrink-0 px-4 pt-4 pb-3 border-b"
-                            style={{ borderColor: 'var(--color-border)', background: 'var(--color-surface)' }}
+                            className="flex-shrink-0 relative overflow-hidden"
+                            style={{ borderBottom: '1px solid var(--color-border)', background: 'var(--color-surface)' }}
                         >
-                            {/* Title row */}
-                            <div className="flex items-center justify-between mb-3">
-                                <div className="flex items-center gap-2">
-                                    <h1 className="text-lg font-bold" style={{ color: 'var(--color-primary-text)' }}>Messaging</h1>
-                                    {totalUnread > 0 && (
-                                        <span
-                                            className="inline-flex items-center justify-center w-5 h-5 rounded-full text-[10px] font-bold text-white"
+                            {/* Top gradient accent line */}
+                            <span
+                                aria-hidden
+                                className="absolute top-0 left-0 right-0 h-px"
+                                style={{ background: 'linear-gradient(90deg, transparent, #6366f1 30%, #8b5cf6 60%, transparent)' }}
+                            />
+                            {/* Ambient glow */}
+                            <div className="absolute -top-6 -left-6 w-40 h-24 pointer-events-none" style={{ background: 'radial-gradient(ellipse, rgba(99,102,241,0.08) 0%, transparent 70%)' }} />
+
+                            <div className="relative px-5 pt-5 pb-4">
+                                {/* Title row */}
+                                <div className="flex items-center justify-between mb-4">
+                                    <div className="flex items-center gap-2.5">
+                                        <h1
+                                            className="text-xl font-bold tracking-tight"
                                             style={{
-                                                background: 'linear-gradient(135deg, #6366f1, #8b5cf6)',
-                                                boxShadow: '0 2px 6px rgba(99,102,241,0.45)',
+                                                background: 'linear-gradient(135deg, var(--color-primary-text) 50%, #6366f1 100%)',
+                                                WebkitBackgroundClip: 'text',
+                                                WebkitTextFillColor: 'transparent',
+                                                backgroundClip: 'text',
                                             }}
                                         >
-                                            {totalUnread > 9 ? '9+' : totalUnread}
-                                        </span>
-                                    )}
-                                </div>
-                                <button
-                                    onClick={() => setShowUserSearch(true)}
-                                    aria-label="New chat"
-                                    className="p-2 rounded-xl transition-all"
-                                    style={{ color: 'var(--color-muted-text)' }}
-                                    title="New message"
-                                    onMouseEnter={e => {
-                                        e.currentTarget.style.backgroundColor = 'rgba(99,102,241,0.1)';
-                                        e.currentTarget.style.color = '#6366f1';
-                                    }}
-                                    onMouseLeave={e => {
-                                        e.currentTarget.style.backgroundColor = 'transparent';
-                                        e.currentTarget.style.color = 'var(--color-muted-text)';
-                                    }}
-                                >
-                                    <PenSquare size={18} />
-                                </button>
-                            </div>
-
-                            {/* Search box */}
-                            <div className="relative mb-3">
-                                <Search
-                                    size={15}
-                                    className="absolute left-3 top-1/2 -translate-y-1/2"
-                                    style={{ color: 'var(--color-muted-text)' }}
-                                />
-                                <input
-                                    type="text"
-                                    placeholder="Search messages"
-                                    value={searchQuery}
-                                    onChange={(e) => setSearchQuery(e.target.value)}
-                                    className="w-full pl-9 pr-9 py-2 rounded-full text-sm focus:outline-none transition-all"
-                                    style={{
-                                        backgroundColor: 'var(--color-surface-hover)',
-                                        color: 'var(--color-primary-text)',
-                                        border: `1.5px solid ${searchQuery ? '#6366f1' : 'transparent'}`,
-                                        boxShadow: searchQuery ? '0 0 0 3px rgba(99,102,241,0.1)' : 'none',
-                                    }}
-                                />
-                                {searchQuery && (
-                                    <button
-                                        onClick={() => setSearchQuery('')}
-                                        aria-label="Clear search"
-                                        className="absolute right-2.5 top-1/2 -translate-y-1/2 p-1 rounded-full"
-                                        style={{ color: 'var(--color-muted-text)' }}
-                                    >
-                                        <X size={13} />
-                                    </button>
-                                )}
-                            </div>
-
-                            {/* Filter tabs */}
-                            <div className="flex gap-1.5">
-                                {[
-                                    { id: 'all', label: 'Inbox', badge: chats.length > 0 ? chats.length : null },
-                                    { id: 'unread', label: 'Unread', badge: totalUnread > 0 ? totalUnread : null },
-                                    { id: 'connections', label: 'Connected' },
-                                ].map(tab => (
-                                    <button
-                                        key={tab.id}
-                                        onClick={() => setActiveFilter(tab.id)}
-                                        className="px-3 py-1.5 rounded-full text-xs font-medium transition-all flex items-center gap-1.5"
-                                        style={{
-                                            background: activeFilter === tab.id
-                                                ? 'linear-gradient(135deg, #6366f1, #7c3aed)'
-                                                : 'transparent',
-                                            color: activeFilter === tab.id ? '#fff' : 'var(--color-muted-text)',
-                                            border: activeFilter === tab.id ? 'none' : '1px solid var(--color-border)',
-                                            boxShadow: activeFilter === tab.id ? '0 2px 8px rgba(99,102,241,0.3)' : 'none',
-                                        }}
-                                    >
-                                        {tab.label}
-                                        {tab.badge != null && (
+                                            Messages
+                                        </h1>
+                                        {totalUnread > 0 && (
                                             <span
-                                                className="inline-flex items-center justify-center rounded-full text-[9px] font-bold px-1.5 min-w-[16px] h-4"
+                                                className="inline-flex items-center justify-center min-w-[22px] h-[22px] px-1.5 rounded-full text-[10px] font-bold text-white"
                                                 style={{
-                                                    background: activeFilter === tab.id ? 'rgba(255,255,255,0.25)' : 'rgba(99,102,241,0.15)',
-                                                    color: activeFilter === tab.id ? '#fff' : '#6366f1',
+                                                    background: 'linear-gradient(135deg, #6366f1, #8b5cf6)',
+                                                    boxShadow: '0 2px 8px rgba(99,102,241,0.5)',
                                                 }}
                                             >
-                                                {tab.badge > 99 ? '99+' : tab.badge}
+                                                {totalUnread > 9 ? '9+' : totalUnread}
                                             </span>
                                         )}
+                                    </div>
+                                    <button
+                                        onClick={() => setShowUserSearch(true)}
+                                        aria-label="New chat"
+                                        className="p-2 rounded-xl transition-all duration-200"
+                                        style={{ color: 'var(--color-muted-text)', border: '1px solid var(--color-border)' }}
+                                        title="New message"
+                                        onMouseEnter={e => {
+                                            e.currentTarget.style.backgroundColor = 'rgba(99,102,241,0.08)';
+                                            e.currentTarget.style.borderColor = 'rgba(99,102,241,0.3)';
+                                            e.currentTarget.style.color = '#6366f1';
+                                            e.currentTarget.style.transform = 'rotate(8deg) scale(1.05)';
+                                        }}
+                                        onMouseLeave={e => {
+                                            e.currentTarget.style.backgroundColor = 'transparent';
+                                            e.currentTarget.style.borderColor = 'var(--color-border)';
+                                            e.currentTarget.style.color = 'var(--color-muted-text)';
+                                            e.currentTarget.style.transform = 'rotate(0) scale(1)';
+                                        }}
+                                    >
+                                        <PenSquare size={16} />
                                     </button>
-                                ))}
+                                </div>
+
+                                {/* Search box */}
+                                <div className="relative mb-3.5">
+                                    <Search
+                                        size={14}
+                                        className="absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none transition-colors duration-200"
+                                        style={{ color: searchQuery ? '#6366f1' : 'var(--color-muted-text)' }}
+                                    />
+                                    <input
+                                        type="text"
+                                        placeholder="Search conversations…"
+                                        value={searchQuery}
+                                        onChange={(e) => setSearchQuery(e.target.value)}
+                                        className="w-full pl-9 pr-8 py-2.5 rounded-xl text-sm focus:outline-none transition-all duration-200"
+                                        style={{
+                                            backgroundColor: 'var(--color-surface-hover)',
+                                            color: 'var(--color-primary-text)',
+                                            border: `1px solid ${searchQuery ? 'rgba(99,102,241,0.4)' : 'var(--color-border)'}`,
+                                            boxShadow: searchQuery ? '0 0 0 3px rgba(99,102,241,0.08)' : 'none',
+                                        }}
+                                    />
+                                    {searchQuery && (
+                                        <button
+                                            onClick={() => setSearchQuery('')}
+                                            aria-label="Clear search"
+                                            className="absolute right-2.5 top-1/2 -translate-y-1/2 p-1 rounded-lg transition-colors"
+                                            style={{ color: 'var(--color-muted-text)' }}
+                                            onMouseEnter={e => { e.currentTarget.style.backgroundColor = 'var(--color-surface)'; }}
+                                            onMouseLeave={e => { e.currentTarget.style.backgroundColor = 'transparent'; }}
+                                        >
+                                            <X size={12} />
+                                        </button>
+                                    )}
+                                </div>
+
+                                {/* Filter tabs */}
+                                <div className="flex gap-1.5">
+                                    {[
+                                        { id: 'all', label: 'All', badge: chats.length > 0 ? chats.length : null },
+                                        { id: 'unread', label: 'Unread', badge: totalUnread > 0 ? totalUnread : null },
+                                        { id: 'connections', label: 'Connected' },
+                                    ].map(tab => (
+                                        <button
+                                            key={tab.id}
+                                            onClick={() => setActiveFilter(tab.id)}
+                                            className="px-3 py-1.5 rounded-lg text-xs font-semibold transition-all duration-200 flex items-center gap-1.5"
+                                            style={{
+                                                background: activeFilter === tab.id
+                                                    ? 'linear-gradient(135deg, #6366f1, #7c3aed)'
+                                                    : 'var(--color-surface-hover)',
+                                                color: activeFilter === tab.id ? '#fff' : 'var(--color-muted-text)',
+                                                border: `1px solid ${activeFilter === tab.id ? 'transparent' : 'var(--color-border)'}`,
+                                                boxShadow: activeFilter === tab.id ? '0 2px 12px rgba(99,102,241,0.35)' : 'none',
+                                            }}
+                                        >
+                                            {tab.label}
+                                            {tab.badge != null && (
+                                                <span
+                                                    className="inline-flex items-center justify-center rounded-full text-[9px] font-bold px-1.5 min-w-[16px] h-4"
+                                                    style={{
+                                                        background: activeFilter === tab.id ? 'rgba(255,255,255,0.25)' : 'rgba(99,102,241,0.15)',
+                                                        color: activeFilter === tab.id ? '#fff' : '#6366f1',
+                                                    }}
+                                                >
+                                                    {tab.badge > 99 ? '99+' : tab.badge}
+                                                </span>
+                                            )}
+                                        </button>
+                                    ))}
+                                </div>
                             </div>
                         </div>
 
@@ -594,67 +621,86 @@ export default function Messages() {
                                 onBack={() => setShowUserSearch(false)}
                             />
                         ) : (
-                            <div className="hidden lg:flex flex-col items-center justify-center h-full px-8 text-center">
-                                {/* Floating orbs behind icon */}
-                                <div className="relative mb-8">
+                            <div
+                            className="hidden lg:flex flex-col items-center justify-center h-full px-8 text-center relative overflow-hidden"
+                            style={{
+                                backgroundImage: 'radial-gradient(circle, rgba(99,102,241,0.05) 1px, transparent 1px)',
+                                backgroundSize: '28px 28px',
+                            }}
+                        >
+                                {/* Center glow orb */}
+                                <div
+                                    className="absolute pointer-events-none"
+                                    style={{
+                                        width: '360px', height: '360px',
+                                        background: 'radial-gradient(circle, rgba(99,102,241,0.07) 0%, transparent 65%)',
+                                        animation: 'emptyPulse 4s ease-in-out infinite',
+                                    }}
+                                />
+
+                                {/* Icon */}
+                                <div className="relative mb-7 z-10">
                                     <div
-                                        className="absolute inset-0 rounded-full opacity-30"
+                                        className="w-24 h-24 rounded-[28px] flex items-center justify-center"
                                         style={{
-                                            background: 'radial-gradient(circle, rgba(99,102,241,0.4) 0%, transparent 70%)',
-                                            width: '160px', height: '160px',
-                                            top: '50%', left: '50%',
-                                            transform: 'translate(-50%, -50%)',
-                                            animation: 'emptyPulse 3s ease-in-out infinite',
-                                        }}
-                                    />
-                                    <div
-                                        className="w-28 h-28 rounded-[2rem] flex items-center justify-center relative"
-                                        style={{
-                                            background: 'linear-gradient(135deg, rgba(99,102,241,0.18), rgba(139,92,246,0.2))',
-                                            boxShadow: '0 12px 40px rgba(99,102,241,0.2)',
-                                            border: '1px solid rgba(99,102,241,0.15)',
+                                            background: 'linear-gradient(135deg, rgba(99,102,241,0.15) 0%, rgba(139,92,246,0.2) 100%)',
+                                            border: '1px solid rgba(99,102,241,0.18)',
+                                            boxShadow: '0 16px 48px rgba(99,102,241,0.18), inset 0 1px 0 rgba(255,255,255,0.08)',
                                         }}
                                     >
-                                        <MessageCircle size={44} style={{ color: '#8b5cf6' }} />
-                                        <Sparkles
-                                            size={20}
-                                            className="absolute -top-2 -right-2"
-                                            style={{ color: '#f59e0b', filter: 'drop-shadow(0 0 6px #f59e0b)' }}
-                                        />
+                                        <MessageCircle size={40} style={{ color: '#8b5cf6' }} />
                                     </div>
+                                    <Sparkles
+                                        size={18}
+                                        className="absolute -top-2 -right-2"
+                                        style={{ color: '#f59e0b', filter: 'drop-shadow(0 0 8px rgba(245,158,11,0.8))' }}
+                                    />
+                                    {/* Floating dot decorations */}
+                                    <div className="absolute -bottom-1 -left-3 w-2.5 h-2.5 rounded-full" style={{ background: 'linear-gradient(135deg, #10b981, #14b8a6)', boxShadow: '0 0 8px rgba(16,185,129,0.5)' }} />
+                                    <div className="absolute top-2 -right-4 w-1.5 h-1.5 rounded-full" style={{ background: '#6366f1', opacity: 0.6 }} />
                                 </div>
 
-                                <h2 className="text-2xl font-bold mb-3" style={{ color: 'var(--color-primary-text)' }}>
-                                    Your messages
-                                </h2>
-                                <p className="text-sm max-w-[260px] leading-relaxed" style={{ color: 'var(--color-muted-text)' }}>
-                                    Pick a conversation from the left, or start a new one to connect with a classmate.
-                                </p>
-
-                                <div className="flex gap-3 mt-8">
-                                    <button
-                                        onClick={() => setShowUserSearch(true)}
-                                        className="px-5 py-2.5 rounded-xl font-semibold text-sm text-white transition-all duration-200 flex items-center gap-2 hover:scale-105 active:scale-95"
+                                <div className="z-10">
+                                    <h2
+                                        className="text-2xl font-bold mb-2.5 tracking-tight"
                                         style={{
-                                            background: 'linear-gradient(135deg, #6366f1, #8b5cf6)',
-                                            boxShadow: '0 4px 16px rgba(99,102,241,0.4)',
+                                            background: 'linear-gradient(135deg, var(--color-primary-text) 0%, #6366f1 100%)',
+                                            WebkitBackgroundClip: 'text',
+                                            WebkitTextFillColor: 'transparent',
+                                            backgroundClip: 'text',
                                         }}
                                     >
-                                        <PenSquare size={15} />
-                                        New chat
+                                        Your inbox
+                                    </h2>
+                                    <p className="text-sm max-w-[240px] leading-relaxed mx-auto" style={{ color: 'var(--color-muted-text)' }}>
+                                        Select a conversation or start a new one to connect with a classmate.
+                                    </p>
+                                </div>
+
+                                <div className="flex gap-3 mt-8 z-10">
+                                    <button
+                                        onClick={() => setShowUserSearch(true)}
+                                        className="px-5 py-2.5 rounded-xl font-semibold text-sm text-white transition-all duration-200 flex items-center gap-2 hover:scale-105 active:scale-95 hover:-translate-y-0.5"
+                                        style={{
+                                            background: 'linear-gradient(135deg, #6366f1, #7c3aed)',
+                                            boxShadow: '0 4px 20px rgba(99,102,241,0.45)',
+                                        }}
+                                    >
+                                        <PenSquare size={14} />
+                                        New conversation
                                     </button>
                                 </div>
 
                                 <div
-                                    className="mt-8 px-5 py-2.5 rounded-2xl text-xs flex items-center gap-2"
+                                    className="mt-6 px-4 py-2 rounded-xl text-xs flex items-center gap-1.5 z-10"
                                     style={{
-                                        background: 'rgba(99,102,241,0.07)',
-                                        border: '1px solid rgba(99,102,241,0.14)',
+                                        background: 'rgba(99,102,241,0.06)',
+                                        border: '1px solid rgba(99,102,241,0.12)',
                                         color: 'var(--color-muted-text)',
                                     }}
                                 >
-                                    <span>🔒</span>
-                                    <span>Messages are private between you and the other person</span>
+                                    <span style={{ opacity: 0.7 }}>🔒</span>
+                                    <span>End-to-end private between you and the recipient</span>
                                 </div>
                             </div>
                         )}

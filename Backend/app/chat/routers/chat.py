@@ -87,16 +87,11 @@ def list_chats(
     items, total = chat_service.list_chats(
         db, current_user_id=user.id, page=page, limit=limit
     )
-    # Enrich each item with real-time online status
+    # Enrich with real-time online presence — in-memory, no DB round-trips.
+    # other_user_last_seen_at is pre-loaded by the service from its bulk user fetch.
     for item in items:
         other_id = item["user_2_id"] if item["user_1_id"] == user.id else item["user_1_id"]
-        other_user = db.get(User, other_id)
         item["other_user_online"] = connection_manager.is_user_online(other_id)
-        item["other_user_last_seen_at"] = (
-            other_user.last_seen_at.isoformat()
-            if other_user and other_user.last_seen_at
-            else None
-        )
     return ChatListOut(
         chats=[ChatOut(**i) for i in items],
         pagination={
@@ -142,12 +137,14 @@ def get_or_create_chat(
             ).scalars().all()
         )
 
+    u1_obj = users.get(chat.user_1_id)
+    u2_obj = users.get(chat.user_2_id)
     return ChatDetailOut(
         id=chat.id,
         user_1_id=chat.user_1_id,
         user_2_id=chat.user_2_id,
-        user_1_username=users[chat.user_1_id].username,
-        user_2_username=users[chat.user_2_id].username,
+        user_1_username=u1_obj.username if u1_obj else "deleted_user",
+        user_2_username=u2_obj.username if u2_obj else "deleted_user",
         is_active=chat.is_active,
         messages=[
             _msg_to_out(
@@ -163,7 +160,9 @@ def get_or_create_chat(
 
 
 @router.post("/chats/{chat_id}/messages", response_model=MessageOut)
+@limiter.limit("60/minute")
 def send_message(
+    request: Request,
     chat_id: int,
     body: MessageCreate,
     background: BackgroundTasks,
@@ -222,7 +221,9 @@ def typing_indicator(
 
 
 @router.post("/chats/{chat_id}/messages/{message_id}/read")
+@limiter.limit("120/minute")
 def mark_read(
+    request: Request,
     chat_id: int,
     message_id: int,
     background: BackgroundTasks,
@@ -360,6 +361,9 @@ def remove_reaction(
 
 
 # ── User status ───────────────────────────────────────────────────────────
+_MAX_STATUS_IDS = 50  # guard against huge IN(...) queries
+
+
 @router.get("/users/status")
 def get_users_status(
     ids: str = Query(..., description="Comma-separated user IDs"),
@@ -369,7 +373,12 @@ def get_users_status(
     try:
         user_ids = [int(i.strip()) for i in ids.split(",") if i.strip()]
     except ValueError:
-        raise HTTPException(status_code=400, detail="Invalid ids")
+        raise HTTPException(status_code=400, detail="Invalid ids parameter")
+    if len(user_ids) > _MAX_STATUS_IDS:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Too many IDs — maximum {_MAX_STATUS_IDS} per request.",
+        )
     users = db.execute(select(User).where(User.id.in_(user_ids))).scalars().all()
     return {
         u.id: {

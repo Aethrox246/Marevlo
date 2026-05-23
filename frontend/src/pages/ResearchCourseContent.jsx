@@ -101,12 +101,12 @@ const RESEARCH_HTML_MAP = {
     'rs2-d30': '/Research-courses/Recommender system 2/T3_DEEP_M30.html',
 
     // Recommender System — Labs (6 modules)
-    'rs2-l01': '/Research-courses/Recommender system 2/Lab_01_interaction_matrix.py',
-    'rs2-l02': '/Research-courses/Recommender system 2/Lab_02_popularity_cbf.py',
-    'rs2-l03': '/Research-courses/Recommender system 2/Lab_03_item_knn_shrinkage (1).py',
-    'rs2-l04': '/Research-courses/Recommender system 2/Lab_04_bpr_mf.py',
-    'rs2-l05': '/Research-courses/Recommender system 2/Lab_05_faiss_serving.py',
-    'rs2-l06': '/Research-courses/Recommender system 2/Lab_06_capstone_pipeline.py',
+    'rs2-l01': '/Research-courses/Recommender system 2/Lab_01_interaction_matrix.html',
+    'rs2-l02': '/Research-courses/Recommender system 2/Lab_02_popularity_cbf.html',
+    'rs2-l03': '/Research-courses/Recommender system 2/Lab_03_item_knn_shrinkage.html',
+    'rs2-l04': '/Research-courses/Recommender system 2/Lab_04_bpr_mf.html',
+    'rs2-l05': '/Research-courses/Recommender system 2/Lab_05_faiss_serving.html',
+    'rs2-l06': '/Research-courses/Recommender system 2/Lab_06_capstone_pipeline.html',
 
 };
 

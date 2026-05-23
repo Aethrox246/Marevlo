@@ -1,6 +1,8 @@
 import React, { useState, useEffect, useRef, Suspense } from 'react';
 import { BrowserRouter as Router, Routes, Route, useNavigate, useParams, Outlet, Navigate, useLocation } from 'react-router-dom';
 import { Zap, Sun, Moon } from 'lucide-react';
+import BugReportModal from './components/BugReportModal';
+import NotificationBell from './components/NotificationBell';
 
 import NavItem from './components/NavItem';
 import { AuthProvider, useAuth } from './context/AuthContext';
@@ -188,6 +190,7 @@ function Navigation() {
     const { isDark, toggleTheme } = useTheme();
     const navigate = useNavigate();
     const [showProfileMenu, setShowProfileMenu] = useState(false);
+    const [showBugReport, setShowBugReport] = useState(false);
     const profileMenuRef = useRef(null);
 
     // Close dropdown when clicking anywhere outside
@@ -209,6 +212,7 @@ function Navigation() {
     };
 
     return (
+        <>
         <nav className="fixed top-0 left-0 right-0 z-50 border-b bg-surface/95 backdrop-blur-xl transition-all duration-200" style={{ borderColor: 'var(--color-border)' }}>
             {/* Subtle Gradient Overlay */}
             <div className="absolute inset-0 bg-gradient-to-b from-white/0 to-black/5 pointer-events-none"></div>
@@ -275,6 +279,8 @@ function Navigation() {
                                 <Zap size={14} fill="currentColor" />
                                 <span className="font-mono font-bold text-xs">{userPoints} XP</span>
                             </div>
+
+                            <NotificationBell />
 
                             <div className="relative" ref={profileMenuRef}>
                                 <button
@@ -343,6 +349,20 @@ function Navigation() {
                                                 }}
                                             >About Us</div>
                                             <div className="h-px my-1" style={{ backgroundColor: 'var(--color-border)' }}></div>
+                                            <div
+                                                onClick={() => { setShowBugReport(true); setShowProfileMenu(false); }}
+                                                className="w-full text-left px-4 py-2 text-sm cursor-pointer transition-colors"
+                                                style={{ color: 'var(--color-muted-text)' }}
+                                                onMouseEnter={(e) => {
+                                                    e.currentTarget.style.backgroundColor = 'var(--color-surface-hover)';
+                                                    e.currentTarget.style.color = 'var(--color-primary-text)';
+                                                }}
+                                                onMouseLeave={(e) => {
+                                                    e.currentTarget.style.backgroundColor = 'transparent';
+                                                    e.currentTarget.style.color = 'var(--color-muted-text)';
+                                                }}
+                                            >Report a Bug</div>
+                                            <div className="h-px my-1" style={{ backgroundColor: 'var(--color-border)' }}></div>
                                             <button onClick={() => { logout(); navigate('/'); }} className="w-full text-left px-4 py-2 text-sm text-red-500 hover:bg-red-500/10 transition-colors">Sign Out</button>
                                     </div>
                                 )}
@@ -380,6 +400,10 @@ function Navigation() {
                 </div>
             </div>
         </nav>
+        {showBugReport && (
+            <BugReportModal isDark={isDark} onClose={() => setShowBugReport(false)} />
+        )}
+        </>
     );
 }
 

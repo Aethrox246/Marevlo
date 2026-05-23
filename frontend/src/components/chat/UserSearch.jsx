@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Search, ArrowLeft, Loader, AlertCircle, MessageCircle } from 'lucide-react';
+import { Search, ArrowLeft, Loader, AlertCircle, MessageCircle, Command } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 
 const API_BASE = import.meta.env.VITE_API_URL;
@@ -34,13 +34,11 @@ export default function UserSearch({ onUserSelected, onBack }) {
     const inputRef = useRef(null);
     const token = localStorage.getItem('access_token');
 
-    // Mount fade-in
     useEffect(() => {
         const t = requestAnimationFrame(() => setVisible(true));
         return () => cancelAnimationFrame(t);
     }, []);
 
-    // Debounced search
     useEffect(() => {
         const timer = setTimeout(() => {
             if (searchQuery.length >= 2) {
@@ -79,107 +77,182 @@ export default function UserSearch({ onUserSelected, onBack }) {
 
     return (
         <div
-            className="h-full flex flex-col transition-opacity duration-200"
+            className="h-full flex flex-col"
             style={{
                 background: 'var(--color-app-bg)',
                 opacity: visible ? 1 : 0,
+                transition: 'opacity 0.18s ease',
             }}
         >
-            {/* ── Header ── */}
+            {/* ── Command Palette Header ── */}
             <div
-                className="flex-shrink-0 px-4 pt-4 pb-3 relative"
+                className="flex-shrink-0 relative overflow-hidden"
                 style={{
                     background: 'var(--color-surface)',
                     borderBottom: '1px solid var(--color-border)',
-                    boxShadow: '0 4px 20px -8px rgba(99,102,241,0.18)',
                 }}
             >
-                {/* Gradient accent line */}
+                {/* Top gradient line */}
                 <span
                     aria-hidden
-                    className="absolute top-0 left-0 right-0 h-0.5"
-                    style={{ background: 'linear-gradient(90deg, #6366f1, #8b5cf6, #06b6d4)' }}
+                    className="absolute top-0 left-0 right-0 h-px"
+                    style={{ background: 'linear-gradient(90deg, transparent, #6366f1 30%, #8b5cf6 60%, transparent)' }}
                 />
 
-                <div className="flex items-center gap-3 mb-3">
-                    <button
-                        onClick={onBack}
-                        className="p-2 rounded-xl transition-all hover:scale-105 flex-shrink-0"
-                        style={{ backgroundColor: 'var(--color-surface-hover)', color: 'var(--color-primary-text)' }}
-                        aria-label="Back"
-                    >
-                        <ArrowLeft size={18} />
-                    </button>
-                    <div className="min-w-0">
-                        <h2 className="text-base font-bold leading-tight" style={{ color: 'var(--color-primary-text)' }}>New message</h2>
-                        <p className="text-xs mt-0.5" style={{ color: 'var(--color-muted-text)' }}>
-                            Search for a classmate to chat with
-                        </p>
-                    </div>
-                </div>
+                {/* Ambient glow */}
+                <div
+                    className="absolute -top-8 left-1/2 -translate-x-1/2 w-64 h-24 pointer-events-none"
+                    style={{ background: 'radial-gradient(ellipse, rgba(99,102,241,0.12) 0%, transparent 70%)' }}
+                />
 
-                {/* Search box */}
-                <div className="relative">
-                    <Search
-                        size={16}
-                        className="absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none"
-                        style={{ color: searchQuery ? '#6366f1' : 'var(--color-muted-text)' }}
-                    />
-                    <input
-                        ref={inputRef}
-                        type="text"
-                        placeholder="Search by username…"
-                        value={searchQuery}
-                        onChange={(e) => setSearchQuery(e.target.value)}
-                        autoFocus
-                        className="w-full pl-10 pr-4 py-2.5 rounded-2xl text-sm focus:outline-none transition-all"
+                <div className="relative px-5 pt-5 pb-4">
+                    {/* Back row */}
+                    <div className="flex items-center gap-3 mb-5">
+                        <button
+                            onClick={onBack}
+                            className="p-2 rounded-xl transition-all duration-200 flex-shrink-0"
+                            style={{
+                                backgroundColor: 'var(--color-surface-hover)',
+                                color: 'var(--color-primary-text)',
+                                border: '1px solid var(--color-border)',
+                            }}
+                            onMouseEnter={e => { e.currentTarget.style.borderColor = 'rgba(99,102,241,0.4)'; e.currentTarget.style.color = '#6366f1'; }}
+                            onMouseLeave={e => { e.currentTarget.style.borderColor = 'var(--color-border)'; e.currentTarget.style.color = 'var(--color-primary-text)'; }}
+                            aria-label="Back"
+                        >
+                            <ArrowLeft size={16} />
+                        </button>
+                        <div className="min-w-0">
+                            <h2
+                                className="text-base font-bold leading-tight tracking-tight"
+                                style={{
+                                    background: 'linear-gradient(135deg, var(--color-primary-text) 40%, #6366f1)',
+                                    WebkitBackgroundClip: 'text',
+                                    WebkitTextFillColor: 'transparent',
+                                    backgroundClip: 'text',
+                                }}
+                            >
+                                New conversation
+                            </h2>
+                            <p className="text-xs mt-0.5 font-medium" style={{ color: 'var(--color-muted-text)' }}>
+                                Find a classmate to chat with
+                            </p>
+                        </div>
+                    </div>
+
+                    {/* Command-palette search box */}
+                    <div
+                        className="relative rounded-2xl overflow-hidden transition-all duration-200"
                         style={{
-                            backgroundColor: 'var(--color-surface-hover)',
-                            color: 'var(--color-primary-text)',
-                            border: `1.5px solid ${searchQuery ? '#6366f1' : 'transparent'}`,
-                            boxShadow: searchQuery ? '0 0 0 3px rgba(99,102,241,0.1)' : 'none',
+                            border: `1px solid ${searchQuery ? 'rgba(99,102,241,0.5)' : 'var(--color-border)'}`,
+                            boxShadow: searchQuery
+                                ? '0 0 0 3px rgba(99,102,241,0.1), 0 4px 16px rgba(99,102,241,0.08)'
+                                : '0 1px 4px rgba(0,0,0,0.06)',
+                            background: 'var(--color-surface-hover)',
                         }}
-                    />
-                    {loading && searchQuery.length >= 2 && (
-                        <Loader
-                            size={14}
-                            className="absolute right-3.5 top-1/2 -translate-y-1/2 animate-spin"
-                            style={{ color: '#6366f1' }}
+                    >
+                        <div className="flex items-center px-3.5 py-0.5 gap-3">
+                            <Search
+                                size={16}
+                                className="flex-shrink-0 transition-colors duration-200"
+                                style={{ color: searchQuery ? '#6366f1' : 'var(--color-muted-text)' }}
+                            />
+                            <input
+                                ref={inputRef}
+                                type="text"
+                                placeholder="Search by username…"
+                                value={searchQuery}
+                                onChange={(e) => setSearchQuery(e.target.value)}
+                                autoFocus
+                                className="flex-1 py-3 text-sm focus:outline-none bg-transparent"
+                                style={{ color: 'var(--color-primary-text)' }}
+                            />
+                            {loading && searchQuery.length >= 2 ? (
+                                <Loader size={14} className="flex-shrink-0 animate-spin" style={{ color: '#6366f1' }} />
+                            ) : (
+                                <kbd
+                                    className="hidden sm:flex items-center gap-1 px-1.5 py-1 rounded-lg text-[10px] font-medium flex-shrink-0"
+                                    style={{
+                                        background: 'var(--color-surface)',
+                                        border: '1px solid var(--color-border)',
+                                        color: 'var(--color-muted-text)',
+                                        fontFamily: 'inherit',
+                                    }}
+                                >
+                                    <Command size={9} />
+                                    K
+                                </kbd>
+                            )}
+                        </div>
+
+                        {/* Animated focus underline */}
+                        <div
+                            className="h-px transition-all duration-300"
+                            style={{
+                                background: 'linear-gradient(90deg, #6366f1, #8b5cf6)',
+                                opacity: searchQuery ? 1 : 0,
+                                transform: searchQuery ? 'scaleX(1)' : 'scaleX(0)',
+                                transformOrigin: 'left',
+                            }}
                         />
+                    </div>
+
+                    {searchQuery.length > 0 && searchQuery.length < 2 && (
+                        <p className="text-[11px] mt-2 ml-1" style={{ color: 'var(--color-muted-text)' }}>
+                            Type at least 2 characters…
+                        </p>
                     )}
                 </div>
             </div>
 
-            {/* ── Results / States ── */}
+            {/* ── Results area ── */}
             <div className="flex-1 overflow-y-auto custom-scrollbar">
-
                 {error && (
-                    <div className="m-4 p-4 rounded-2xl flex items-center gap-2.5"
-                        style={{ backgroundColor: 'rgba(239,68,68,0.08)', color: '#ef4444', border: '1px solid rgba(239,68,68,0.15)' }}
+                    <div
+                        className="m-4 p-3.5 rounded-2xl flex items-center gap-2.5"
+                        style={{ backgroundColor: 'rgba(239,68,68,0.07)', color: '#ef4444', border: '1px solid rgba(239,68,68,0.12)' }}
                     >
-                        <AlertCircle size={16} />
+                        <AlertCircle size={16} className="flex-shrink-0" />
                         <span className="text-sm">{error}</span>
                     </div>
                 )}
 
-                {/* Empty — prompt to start typing */}
+                {/* Empty prompt */}
                 {!loading && searchQuery.length === 0 && (
-                    <div className="flex flex-col items-center justify-center h-full pb-16 gap-5 px-8 text-center">
-                        <div
-                            className="w-20 h-20 rounded-[1.5rem] flex items-center justify-center relative"
-                            style={{
-                                background: 'linear-gradient(135deg, rgba(99,102,241,0.15), rgba(139,92,246,0.18))',
-                                boxShadow: '0 8px 24px rgba(99,102,241,0.12)',
-                            }}
-                        >
-                            <Search size={30} style={{ color: '#8b5cf6', opacity: 0.85 }} />
+                    <div className="flex flex-col items-center justify-center h-full pb-20 gap-6 px-8 text-center">
+                        {/* Dot grid background */}
+                        <div className="absolute inset-0 pointer-events-none" style={{
+                            backgroundImage: 'radial-gradient(circle, rgba(99,102,241,0.07) 1px, transparent 1px)',
+                            backgroundSize: '28px 28px',
+                            maskImage: 'radial-gradient(ellipse 60% 60% at 50% 50%, black 0%, transparent 100%)',
+                        }} />
+                        <div className="relative">
+                            <div
+                                className="w-20 h-20 rounded-[22px] flex items-center justify-center"
+                                style={{
+                                    background: 'linear-gradient(135deg, rgba(99,102,241,0.12) 0%, rgba(139,92,246,0.16) 100%)',
+                                    border: '1px solid rgba(99,102,241,0.15)',
+                                    boxShadow: '0 12px 32px rgba(99,102,241,0.12)',
+                                }}
+                            >
+                                <Search size={30} style={{ color: '#8b5cf6' }} />
+                            </div>
+                            <div
+                                className="absolute -bottom-1 -right-1 w-7 h-7 rounded-xl flex items-center justify-center"
+                                style={{ background: 'linear-gradient(135deg, #6366f1, #7c3aed)', boxShadow: '0 4px 10px rgba(99,102,241,0.4)' }}
+                            >
+                                <span className="text-white text-xs font-bold">+</span>
+                            </div>
                         </div>
                         <div>
-                            <h3 className="font-bold text-base mb-1" style={{ color: 'var(--color-primary-text)' }}>
-                                Find someone
+                            <h3
+                                className="font-bold text-base mb-1.5 tracking-tight"
+                                style={{ color: 'var(--color-primary-text)' }}
+                            >
+                                Start a conversation
                             </h3>
-                            <p className="text-sm leading-relaxed" style={{ color: 'var(--color-muted-text)' }}>
-                                Type at least 2 characters to find classmates
+                            <p className="text-sm leading-relaxed" style={{ color: 'var(--color-muted-text)', maxWidth: '220px' }}>
+                                Search by username to find classmates and start chatting
                             </p>
                         </div>
                     </div>
@@ -187,16 +260,16 @@ export default function UserSearch({ onUserSelected, onBack }) {
 
                 {/* No results */}
                 {!loading && searchQuery.length >= 2 && results.length === 0 && (
-                    <div className="flex flex-col items-center justify-center py-16 gap-4 px-8 text-center">
+                    <div className="flex flex-col items-center justify-center py-20 gap-4 px-8 text-center">
                         <div
-                            className="w-16 h-16 rounded-2xl flex items-center justify-center"
-                            style={{ background: 'var(--color-surface-hover)' }}
+                            className="w-14 h-14 rounded-2xl flex items-center justify-center"
+                            style={{ background: 'var(--color-surface-hover)', border: '1px solid var(--color-border)' }}
                         >
-                            <AlertCircle size={26} style={{ color: 'var(--color-muted-text)', opacity: 0.5 }} />
+                            <AlertCircle size={24} style={{ color: 'var(--color-muted-text)', opacity: 0.5 }} />
                         </div>
                         <div>
                             <h3 className="font-semibold text-sm mb-1" style={{ color: 'var(--color-primary-text)' }}>
-                                No users found
+                                No results for "{searchQuery}"
                             </h3>
                             <p className="text-xs" style={{ color: 'var(--color-muted-text)' }}>
                                 Try a different username
@@ -205,28 +278,36 @@ export default function UserSearch({ onUserSelected, onBack }) {
                     </div>
                 )}
 
-                {/* Results list */}
+                {/* Results */}
                 {results.length > 0 && (
-                    <div className="p-3 space-y-1.5">
+                    <div className="p-3 space-y-1">
+                        <p className="px-2 pb-2 text-[11px] font-semibold uppercase tracking-wider" style={{ color: 'var(--color-muted-text)' }}>
+                            {results.length} result{results.length !== 1 ? 's' : ''}
+                        </p>
                         {results.map((searchUser, idx) => (
                             <div
                                 key={searchUser.id}
                                 onClick={() => onUserSelected(searchUser.id)}
-                                className="p-3 rounded-2xl cursor-pointer flex items-center gap-3 transition-all duration-150 group"
+                                role="button"
+                                tabIndex={0}
+                                onKeyDown={e => { if (e.key === 'Enter') onUserSelected(searchUser.id); }}
+                                className="p-3.5 rounded-2xl cursor-pointer flex items-center gap-3.5 transition-all duration-150 outline-none group"
                                 style={{
-                                    backgroundColor: 'var(--color-surface)',
-                                    border: '1px solid transparent',
-                                    animation: `userResultIn 0.2s ease-out ${idx * 50}ms both`,
+                                    background: 'var(--color-surface)',
+                                    border: '1px solid var(--color-border)',
+                                    animation: `userResultIn 0.22s cubic-bezier(0.16, 1, 0.3, 1) ${idx * 45}ms both`,
                                 }}
                                 onMouseEnter={e => {
-                                    e.currentTarget.style.backgroundColor = 'rgba(99,102,241,0.07)';
-                                    e.currentTarget.style.borderColor = 'rgba(99,102,241,0.15)';
-                                    e.currentTarget.style.transform = 'translateX(2px)';
+                                    e.currentTarget.style.background = 'rgba(99,102,241,0.05)';
+                                    e.currentTarget.style.borderColor = 'rgba(99,102,241,0.25)';
+                                    e.currentTarget.style.transform = 'translateY(-1px)';
+                                    e.currentTarget.style.boxShadow = '0 4px 16px rgba(99,102,241,0.1)';
                                 }}
                                 onMouseLeave={e => {
-                                    e.currentTarget.style.backgroundColor = 'var(--color-surface)';
-                                    e.currentTarget.style.borderColor = 'transparent';
-                                    e.currentTarget.style.transform = 'translateX(0)';
+                                    e.currentTarget.style.background = 'var(--color-surface)';
+                                    e.currentTarget.style.borderColor = 'var(--color-border)';
+                                    e.currentTarget.style.transform = 'translateY(0)';
+                                    e.currentTarget.style.boxShadow = 'none';
                                 }}
                             >
                                 {/* Avatar */}
@@ -234,7 +315,7 @@ export default function UserSearch({ onUserSelected, onBack }) {
                                     className="w-11 h-11 rounded-2xl flex items-center justify-center flex-shrink-0 text-sm font-bold text-white"
                                     style={{
                                         background: getGradientFromUsername(searchUser.username),
-                                        boxShadow: '0 4px 12px rgba(0,0,0,0.12)',
+                                        boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
                                     }}
                                 >
                                     {searchUser.username[0].toUpperCase()}
@@ -245,21 +326,21 @@ export default function UserSearch({ onUserSelected, onBack }) {
                                     <h3 className="font-semibold text-sm truncate" style={{ color: 'var(--color-primary-text)' }}>
                                         {searchUser.username}
                                     </h3>
-                                    <p className="text-xs truncate mt-0.5" style={{ color: 'var(--color-muted-text)' }}>
+                                    <p className="text-xs truncate mt-0.5 font-medium" style={{ color: 'var(--color-muted-text)' }}>
                                         @{searchUser.username}
                                     </p>
                                 </div>
 
-                                {/* CTA button */}
+                                {/* CTA */}
                                 <div
-                                    className="flex-shrink-0 flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold text-white transition-all group-hover:scale-105"
+                                    className="flex-shrink-0 flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-semibold text-white transition-all duration-200 group-hover:scale-105 group-hover:shadow-lg"
                                     style={{
-                                        background: 'linear-gradient(135deg, #6366f1, #8b5cf6)',
-                                        boxShadow: '0 2px 8px rgba(99,102,241,0.3)',
+                                        background: 'linear-gradient(135deg, #6366f1, #7c3aed)',
+                                        boxShadow: '0 2px 10px rgba(99,102,241,0.3)',
                                     }}
                                 >
                                     <MessageCircle size={12} />
-                                    Chat
+                                    Message
                                 </div>
                             </div>
                         ))}
@@ -269,7 +350,7 @@ export default function UserSearch({ onUserSelected, onBack }) {
 
             <style>{`
                 @keyframes userResultIn {
-                    from { opacity: 0; transform: translateY(10px) scale(0.98); }
+                    from { opacity: 0; transform: translateY(8px) scale(0.98); }
                     to   { opacity: 1; transform: translateY(0) scale(1); }
                 }
             `}</style>

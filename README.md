@@ -1,6 +1,6 @@
 # Marevlo Backend
 
-Production-grade FastAPI backend for the Marevlo platform — auth, profiles, feed, chat, courses, problems, submissions, notebook launch, **learning system**, **notifications**, **moderation**, and **observability**.
+Production-grade FastAPI backend for the Marevlo platform — auth, profiles, feed, chat, courses, problems, submissions, notebook launch, **learning system**, **notifications**, **moderation**, **bug reporting**, and **observability**.
 
 ## What's in here
 
@@ -17,6 +17,7 @@ app/
 ├── moderation/        # reports, blocks, admin queue, profanity filter, soft-delete
 ├── learning/          # course enrollment, lesson progress, notes, bookmarks, dashboard
 ├── notifications/     # in-app notifications + admin announcements
+├── bug_reports/       # user-submitted bug reports with optional screenshot upload
 ├── common/            # activity log + security audit log
 └── core/              # config, db, security, storage, middleware, errors,
                        # rate-limiting, body-size cap, idempotency keys,
@@ -78,6 +79,16 @@ In-app notification system with admin-broadcast support:
 - **Endpoints**: `GET /notifications`, `GET /notifications/unread-count`, `POST /notifications/{id}/read`, `POST /notifications/mark-all-read`.
 - **Admin**: `POST /admin/announcements` fans out to every active user.
 - **Transactional email**: `send_otp`, `send_password_changed`, `send_suspicious_login`. SMTP via SES in prod; dev fallback prints to stdout.
+
+## Bug reporting
+
+Users can submit bug reports from the profile dropdown menu on the frontend.
+
+- **Endpoint**: `POST /bug-reports` — multipart form (title, description, optional screenshot).
+- **Screenshot upload**: JPEG/PNG/WebP accepted, ≤ 8 MB. Validated with magic-byte sniffing + Pillow re-encode. Stored in S3 at `bug-reports/{user_id}/{uuid}.{ext}`. Upload failure is non-fatal; the report is still saved.
+- **DB schema**: `bug_reports` table — `id`, `user_id` (FK → users, SET NULL on delete), `title` (200), `description` (text), `screenshot_key` (S3 key, nullable), `status` (`open` / `resolved`, default `open`), `created_at`.
+- **Auth**: requires authenticated user (`get_current_user`). Anonymous reports not accepted.
+- **Frontend**: `BugReportModal` component — dark/light theme aware, inline validation, screenshot preview, success state. Mounted in the `Navigation` component and toggled via profile dropdown.
 
 ## User learning system
 
