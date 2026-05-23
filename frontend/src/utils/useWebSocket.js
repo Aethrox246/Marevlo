@@ -59,7 +59,6 @@ export function useWebSocket(user) {
 
         ws.onopen = () => {
             if (!isMounted.current) { ws.close(); return; }
-            console.log('WebSocket connected');
             const wasReconnect = reconnectAttempts.current > 0;
             reconnectAttempts.current = 0;
             setIsConnected(true);
@@ -67,7 +66,7 @@ export function useWebSocket(user) {
                 clearTimeout(reconnectTimeout.current);
                 reconnectTimeout.current = null;
             }
-            // BUG-11: notify listeners so they can re-fetch missed messages
+            // let chat components re-fetch any messages missed during the disconnect
             if (wasReconnect) {
                 window.dispatchEvent(new CustomEvent('ws_reconnected'));
             }
@@ -83,7 +82,6 @@ export function useWebSocket(user) {
         };
 
         ws.onclose = () => {
-            console.log('WebSocket disconnected');
             setIsConnected(false);
             if (wsRef.current === ws) {
                 wsRef.current = null;
@@ -95,7 +93,6 @@ export function useWebSocket(user) {
             ) {
                 const delay = RECONNECT_DELAY * Math.min(2 ** reconnectAttempts.current, 16);
                 reconnectAttempts.current += 1;
-                console.log(`WebSocket reconnecting in ${delay}ms (attempt ${reconnectAttempts.current}/${MAX_RECONNECT_ATTEMPTS})`);
                 reconnectTimeout.current = setTimeout(connect, delay);
             }
         };
