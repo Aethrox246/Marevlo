@@ -1,5 +1,13 @@
-"""Bug report HTTP endpoints."""
-from __future__ import annotationsiimport logging
+"""Bug report HTTP endpoints (minimal, fixed).
+
+This file had merge/format corruption; provide a minimal working endpoint
+that accepts a form `title` and `description`, creates a `BugReport` row,
+and returns the id and status. Screenshot/upload is omitted here.
+"""
+from __future__ import annotations
+
+import logging
+
 from fastapi import APIRouter, Depends, Form, HTTPException, Request
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
@@ -22,13 +30,12 @@ class BugReportOut(BaseModel):
 @router.post("", status_code=201, response_model=BugReportOut)
 @limiter.limit("5/hour")
 async def submit_bug_report(
-    request: Request,  # noqa: ARG001 — slowapi reads this via introspection
+    request: Request,  # slowapi reads this via introspection
     title: str = Form(..., min_length=5, max_length=200),
     description: str = Form(..., min_length=10, max_length=5000),
     user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ) -> BugReportOut:
-    """Submit a bug report (title + description). Screenshot support coming when S3 is configured."""
     title_clean = title.strip()
     if len(title_clean) < 5:
         raise HTTPException(422, "Title must be at least 5 non-whitespace characters.")
@@ -43,13 +50,6 @@ async def submit_bug_report(
     )
     db.add(report)
     db.commit()
-    return BugReportOut(id=report.id, status=report.status)
+    db.refresh(report)
 
-        content=report.screenshot_data,
-        media_type=report.screenshot_mime or "image/jpeg",
-    )
-ated — no extra round-trip needed.
     return BugReportOut(id=report.id, status=report.status)
-sh(report)
-
-    return {"id": report.id, "status": report.status}

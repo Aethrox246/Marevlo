@@ -680,8 +680,11 @@ export default function ChatWindow({ chatId: chatIdProp, userId, onBack }) {
                         <Info size={20} />
                     </button>
                     <button
+                        onPointerDown={(e) => { console.log('header more pointerdown'); e.stopPropagation(); }}
+                        onMouseDown={(e) => { console.log('header more mousedown'); e.stopPropagation(); }}
+                        onClick={(e) => { console.log('header more click'); e.stopPropagation(); setShowInfoPanel(p => !p); }}
                         className="p-2 rounded-full transition-all duration-200"
-                        style={{ color: 'var(--color-muted-text)' }}
+                        style={{ color: 'var(--color-muted-text)', zIndex: 60, pointerEvents: 'auto' }}
                         title="More options"
                         onMouseEnter={e => e.currentTarget.style.backgroundColor = 'var(--color-surface-hover)'}
                         onMouseLeave={e => e.currentTarget.style.backgroundColor = 'transparent'}
@@ -870,6 +873,13 @@ export default function ChatWindow({ chatId: chatIdProp, userId, onBack }) {
                                     onPointerDown={(e) => {
                                         if (isDeleted || message._optimistic) return;
                                         if (e.pointerType === 'mouse' && e.button !== 0) return;
+                                        // If the pointerdown originated on an interactive control, don't capture
+                                        const tgt = e.target;
+                                        try {
+                                            if (tgt && tgt.closest && tgt.closest('button, a, input, textarea, [role="button"]')) return;
+                                        } catch (err) {
+                                            // ignore DOM errors
+                                        }
                                         e.currentTarget.setPointerCapture(e.pointerId);
                                         swipeRef.current = {
                                             startX: e.clientX,
@@ -1031,9 +1041,13 @@ export default function ChatWindow({ chatId: chatIdProp, userId, onBack }) {
                                         {/* Hover action button */}
                                         {canActOn && !isEditing && (
                                             <button
-                                                onClick={() => setActionMenuId(actionMenuId === message.id ? null : message.id)}
-                                                className="absolute top-1 -left-9 p-1.5 rounded-full opacity-0 group-hover:opacity-100 transition-all z-10"
+                                                onPointerDown={(e) => e.stopPropagation()}
+                                                onMouseDown={(e) => e.stopPropagation()}
+                                                onClick={(e) => { e.stopPropagation(); setActionMenuId(actionMenuId === message.id ? null : message.id); }}
+                                                className="absolute top-1 -left-9 p-1.5 rounded-full opacity-0 group-hover:opacity-100 transition-all"
                                                 style={{
+                                                    zIndex: 60,
+                                                    pointerEvents: 'auto',
                                                     backgroundColor: 'var(--color-surface)',
                                                     color: 'var(--color-muted-text)',
                                                     border: '1px solid var(--color-border)',
@@ -1048,8 +1062,13 @@ export default function ChatWindow({ chatId: chatIdProp, userId, onBack }) {
                                         {/* Dropdown */}
                                         {canActOn && actionMenuId === message.id && (
                                             <div
+                                                onPointerDown={(e) => e.stopPropagation()}
+                                                onMouseDown={(e) => e.stopPropagation()}
+                                                onClick={(e) => e.stopPropagation()}
                                                 className="absolute z-30 right-0 top-9 rounded-2xl shadow-2xl overflow-hidden"
                                                 style={{
+                                                    zIndex: 70,
+                                                    pointerEvents: 'auto',
                                                     backgroundColor: 'var(--color-surface)',
                                                     border: '1px solid var(--color-border)',
                                                     minWidth: '140px',
@@ -1293,8 +1312,11 @@ export default function ChatWindow({ chatId: chatIdProp, userId, onBack }) {
                                         {/* Floating emoji picker */}
                                         {!isDeleted && emojiPickerMsgId === message.id && (
                                             <div
+                                                onPointerDown={(e) => e.stopPropagation()}
+                                                onMouseDown={(e) => e.stopPropagation()}
+                                                onClick={(e) => e.stopPropagation()}
                                                 className={`absolute z-30 flex gap-1 p-2 rounded-2xl shadow-xl border bottom-full mb-1 ${isOwn ? 'right-0' : 'left-0'}`}
-                                                style={{ background: 'var(--color-surface)', borderColor: 'var(--color-border)' }}
+                                                style={{ background: 'var(--color-surface)', borderColor: 'var(--color-border)', zIndex: 70, pointerEvents: 'auto' }}
                                             >
                                                 {REACTION_EMOJIS.map(emoji => (
                                                     <button
@@ -1551,9 +1573,11 @@ export default function ChatWindow({ chatId: chatIdProp, userId, onBack }) {
                         />
                         {/* Close */}
                         <button
-                            onClick={() => setShowInfoPanel(false)}
+                            onPointerDown={(e) => { console.log('info close pointerdown'); e.stopPropagation(); }}
+                            onMouseDown={(e) => { console.log('info close mousedown'); e.stopPropagation(); }}
+                            onClick={(e) => { console.log('info close click'); e.stopPropagation(); setShowInfoPanel(false); }}
                             className="absolute top-3 right-3 w-7 h-7 rounded-full flex items-center justify-center transition-all"
-                            style={{ background: 'rgba(0,0,0,0.35)', color: '#fff' }}
+                            style={{ background: 'rgba(0,0,0,0.35)', color: '#fff', zIndex: 80, pointerEvents: 'auto' }}
                             onMouseEnter={e => { e.currentTarget.style.background = 'rgba(0,0,0,0.6)'; }}
                             onMouseLeave={e => { e.currentTarget.style.background = 'rgba(0,0,0,0.35)'; }}
                         >

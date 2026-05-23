@@ -167,11 +167,8 @@ def create_app() -> FastAPI:
     app.include_router(announcements_admin_router)
     app.include_router(mira_router)
     app.include_router(mira_admin_router)
-<<<<<<< HEAD
     app.include_router(unlock_router)
-=======
     app.include_router(bug_reports_router)
->>>>>>> 71503e3df5ee208de961432f5ea9b71bb6ca8a45
 
     # ── Health ──────────────────────────────────────────────────────────
     @app.get("/", tags=["meta"])
