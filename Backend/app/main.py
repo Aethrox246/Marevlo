@@ -55,6 +55,7 @@ from app.mira.router import (
     router as mira_router,
 )
 from app.mira.wiring import init_mira_on_startup, shutdown_mira
+from app.unlock.router import router as unlock_router
 
 # Import the registry so all models are loaded into Base.metadata.
 from app import models_registry  # noqa: F401
@@ -165,6 +166,7 @@ def create_app() -> FastAPI:
     app.include_router(announcements_admin_router)
     app.include_router(mira_router)
     app.include_router(mira_admin_router)
+    app.include_router(unlock_router)
 
     # ── Health ──────────────────────────────────────────────────────────
     @app.get("/", tags=["meta"])

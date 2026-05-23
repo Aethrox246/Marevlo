@@ -933,7 +933,7 @@ function CourseCard({ node, onDrillDown, onStartLeaf }) {
                                     border: '1px solid rgba(99,102,241,0.3)',
                                 }}
                                 onMouseEnter={(e) => {
-                                    e.currentTarget.style.background = 'linear-gradient(135deg,#6366f1,#8b5cf6)';
+                                    e.currentTarget.style.background = 'linear-gradient(135deg,#6366f1,#06b6d4)';
                                     e.currentTarget.style.color = '#fff';
                                     e.currentTarget.style.boxShadow = '0 4px 12px rgba(99,102,241,0.35)';
                                 }}
@@ -957,9 +957,9 @@ function CourseCard({ node, onDrillDown, onStartLeaf }) {
                                     border: '1px solid rgba(139,92,246,0.3)',
                                 }}
                                 onMouseEnter={(e) => {
-                                    e.currentTarget.style.background = 'linear-gradient(135deg,#8b5cf6,#a855f7)';
+                                    e.currentTarget.style.background = 'linear-gradient(135deg,#4f46e5,#6366f1)';
                                     e.currentTarget.style.color = '#fff';
-                                    e.currentTarget.style.boxShadow = '0 4px 12px rgba(139,92,246,0.35)';
+                                    e.currentTarget.style.boxShadow = '0 4px 12px rgba(99,102,241,0.35)';
                                 }}
                                 onMouseLeave={(e) => {
                                     e.currentTarget.style.background = 'var(--color-surface-hover)';
@@ -1197,8 +1197,8 @@ export default function Courses() {
                     <div className="absolute -top-20 left-1/2 -translate-x-1/2 w-[600px] h-[360px] rounded-full pointer-events-none" style={{background:'radial-gradient(ellipse,rgba(99,102,241,0.28) 0%,transparent 70%)',filter:'blur(60px)',animation:'heroGlow 8s ease-in-out infinite'}} />
                     {/* Teal glow left */}
                     <div className="absolute top-1/2 -left-32 -translate-y-1/2 w-[380px] h-[380px] rounded-full pointer-events-none" style={{background:'radial-gradient(circle,rgba(6,182,212,0.45) 0%,transparent 65%)',filter:'blur(80px)',animation:'heroPulse 7s ease-in-out infinite'}} />
-                    {/* Violet glow right */}
-                    <div className="absolute top-1/2 -right-32 -translate-y-1/2 w-[360px] h-[360px] rounded-full pointer-events-none" style={{background:'radial-gradient(circle,rgba(139,92,246,0.4) 0%,transparent 65%)',filter:'blur(80px)',animation:'heroPulse 9s ease-in-out 1.5s infinite'}} />
+                    {/* Indigo glow right */}
+                    <div className="absolute top-1/2 -right-32 -translate-y-1/2 w-[360px] h-[360px] rounded-full pointer-events-none" style={{background:'radial-gradient(circle,rgba(99,102,241,0.22) 0%,transparent 65%)',filter:'blur(80px)',animation:'heroPulse 9s ease-in-out 1.5s infinite'}} />
 
                     <div className="relative z-10 text-center px-6 pt-12 pb-10 max-w-4xl mx-auto">
                         {/* Pill badge */}
@@ -1217,11 +1217,11 @@ export default function Courses() {
                             Structured Curriculum
                         </div>
 
-                        <h1 className="text-5xl md:text-[3.75rem] font-black tracking-tight leading-none text-white mb-3">
+                        <h1 className="text-5xl md:text-[3.75rem] font-black tracking-tight leading-none courses-hero-title-grad mb-3">
                             Course Library
                         </h1>
 
-                        <p style={{ margin: '0 auto 28px', fontSize: '0.95rem', color: 'rgba(255,255,255,0.38)', lineHeight: 1.7, maxWidth: 460 }}>
+                        <p style={{ margin: '0 auto 28px', fontSize: '0.95rem', color: 'rgba(255,255,255,0.62)', lineHeight: 1.7, maxWidth: 460 }}>
                             Explore structured learning paths — from Python basics to production AI systems.
                         </p>
 
@@ -1242,7 +1242,7 @@ export default function Courses() {
                                     color: 'rgba(255,255,255,0.6)',
                                     backdropFilter: 'blur(8px)',
                                 }}>
-                                    <span style={{ color: 'rgba(255,255,255,0.35)' }}>{icon}</span>
+                                    <span style={{ color: 'rgba(255,255,255,0.55)' }}>{icon}</span>
                                     {label}
                                 </div>
                             ))}
@@ -1251,98 +1251,7 @@ export default function Courses() {
                 </div>
             )}
 
-            <div className="relative z-10 max-w-6xl mx-auto px-4 py-8 sm:py-12">
-
-                {/* Filter Bar (Sticky) */}
-                <div style={{
-                    position: 'sticky', top: 0, zIndex: 100,
-                    margin: '0 -16px 24px', padding: '12px 16px',
-                    background: 'rgba(var(--color-app-bg-rgb, 10, 10, 15), 0.8)',
-                    backdropFilter: 'blur(12px)',
-                    borderBottom: '1px solid var(--color-border)',
-                }}>
-                    <div className="max-w-6xl mx-auto flex flex-col gap-4">
-                        <div className="flex items-center gap-3">
-                            {/* Search Input with Gradient Tracer */}
-                            <div style={{
-                                flex: 1, padding: '1.5px', borderRadius: 14,
-                                background: search ? 'linear-gradient(90deg, #6366f1, #06b6d4, #8b5cf6, #06b6d4, #6366f1)' : 'var(--color-border)',
-                                backgroundSize: '300% 300%',
-                                animation: search ? 'searchGradientTracer 3s linear infinite' : 'none',
-                                transition: 'all 0.3s ease',
-                                boxShadow: search ? '0 8px 32px -8px rgba(6,182,212,0.3)' : 'none',
-                            }}>
-                                <div style={{
-                                    display: 'flex', alignItems: 'center', gap: 10,
-                                    background: 'var(--color-app-bg)', borderRadius: 13,
-                                    padding: '10px 16px',
-                                }}>
-                                    <Search size={18} style={{ color: search ? '#06b6d4' : 'var(--color-muted-text)', transition: 'color 0.3s' }} />
-                                    <input
-                                        ref={searchRef}
-                                        value={search}
-                                        onChange={e => setSearch(e.target.value)}
-                                        placeholder="Search courses, modules, skills... (Ctrl+K)"
-                                        className="search-focus flex-1 bg-transparent border-none text-sm font-medium focus:ring-0"
-                                        style={{ color: 'var(--color-primary-text)' }}
-                                    />
-                                    {search && (
-                                        <button onClick={() => setSearch('')} className="p-1 hover:bg-red-500/10 rounded-full text-red-500 transition-colors">
-                                            <X size={14} />
-                                        </button>
-                                    )}
-                                </div>
-                            </div>
-
-                            {/* Level Filter Toggle */}
-                            <button
-                                onClick={() => setShowLevelFilters(!showLevelFilters)}
-                                className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-bold transition-all"
-                                style={{
-                                    background: showLevelFilters ? 'rgba(99,102,241,0.1)' : 'var(--color-surface)',
-                                    border: `1px solid ${showLevelFilters ? '#6366f1' : 'var(--color-border)'}`,
-                                    color: showLevelFilters ? '#6366f1' : 'var(--color-muted-text)',
-                                }}
-                            >
-                                <Filter size={16} />
-                                <span className="hidden sm:inline">Levels</span>
-                                {activeLevels.length > 0 && <span className="ml-1 px-1.5 py-0.5 rounded-md bg-indigo-500 text-white text-[10px]">{activeLevels.length}</span>}
-                            </button>
-                        </div>
-
-                        {/* Level Filter Chips */}
-                        {showLevelFilters && (
-                            <div className="flex flex-wrap gap-2 animate-in fade-in slide-in-from-top-2 duration-300">
-                                {Object.keys(LEVEL_COLORS).map(level => {
-                                    const isActive = activeLevels.includes(level);
-                                    const colors = LEVEL_COLORS[level];
-                                    return (
-                                        <button
-                                            key={level}
-                                            onClick={() => toggleLevel(level)}
-                                            className="px-3 py-1.5 rounded-full text-[11px] font-extrabold uppercase tracking-wider transition-all"
-                                            style={{
-                                                background: isActive ? colors.bg.replace('0.12', '0.25') : 'var(--color-surface)',
-                                                border: `1px solid ${isActive ? colors.color : 'var(--color-border)'}`,
-                                                color: isActive ? colors.color : 'var(--color-muted-text)',
-                                            }}
-                                        >
-                                            {level}
-                                        </button>
-                                    );
-                                })}
-                                {activeLevels.length > 0 && (
-                                    <button
-                                        onClick={() => setActiveLevels([])}
-                                        className="px-3 py-1.5 rounded-full text-[11px] font-extrabold uppercase tracking-wider text-red-500 hover:bg-red-500/10 transition-all border border-transparent"
-                                    >
-                                        Clear All
-                                    </button>
-                                )}
-                            </div>
-                        )}
-                    </div>
-                </div>
+            <div className="relative z-10 py-8 sm:py-12" style={{ width: '70%', margin: '0 auto' }}>
 
                 {/* Breadcrumb (when inside a folder and not searching) */}
                 {pathIds.length > 0 && !filteredResults && (

@@ -719,8 +719,8 @@ function BFSVisualizer({ isDark = false }) {
                 background: isDark ? '#0d0d0d' : 'linear-gradient(145deg, #17223a, #222f4f)',
                 borderColor: isDark ? 'rgba(6,182,212,0.35)' : 'rgba(59,130,246,0.28)'
             }}>
-            <div className="absolute -top-10 -left-10 w-48 h-48 rounded-full blur-[60px] opacity-15 pointer-events-none"
-                style={{ background: 'radial-gradient(circle, #06b6d4, #8b5cf6)' }} />
+            <div className="absolute -top-10 -left-10 w-48 h-48 rounded-full blur-[60px] opacity-12 pointer-events-none"
+                style={{ background: 'radial-gradient(circle, #06b6d4, transparent)' }} />
             <div className="p-6 relative z-10">
 
                 {/* Header */}
@@ -939,7 +939,7 @@ function AITutorCard({ isDark = false }) {
             `}</style>
 
             <div className="absolute -bottom-10 -right-10 w-48 h-48 rounded-full blur-[60px] opacity-20 pointer-events-none transition-colors duration-700 delay-100"
-                style={{ background: isPremium ? 'radial-gradient(circle, #8b5cf6, #ec4899)' : 'radial-gradient(circle, #06b6d4, #3b82f6)', transform: isThinking ? 'scale(1.2)' : 'scale(1)' }} />
+                style={{ background: isPremium ? 'radial-gradient(circle, #8b5cf6, #6366f1)' : 'radial-gradient(circle, #06b6d4, #3b82f6)', transform: isThinking ? 'scale(1.2)' : 'scale(1)' }} />
 
             <div className="p-5 relative z-10 flex flex-col h-full">
                 {/* Header */}
@@ -1496,9 +1496,8 @@ export default function LandingPage({ onStart, onExplore }) {
         <div className="overflow-y-auto h-full text-primary-text scroll-smooth bg-app-bg">
             {/* Background Blobs */}
             <div className="fixed inset-0 overflow-hidden pointer-events-none -z-10">
-                <div className="absolute -top-[10%] -left-[10%] w-[45%] h-[45%] rounded-full blur-[140px] opacity-15 animate-blob" style={{ background: 'radial-gradient(circle, #6366f1, #8b5cf6)' }} />
-                <div className="absolute top-[25%] -right-[10%] w-[35%] h-[35%] rounded-full blur-[140px] opacity-10 animate-blob animation-delay-2000" style={{ background: 'radial-gradient(circle, #06b6d4, #0ea5e9)' }} />
-                <div className="absolute -bottom-[10%] left-[20%] w-[35%] h-[35%] rounded-full blur-[140px] opacity-10 animate-blob animation-delay-4000" style={{ background: 'radial-gradient(circle, #8b5cf6, #6366f1)' }} />
+                <div className="absolute -top-[10%] -left-[10%] w-[40%] h-[40%] rounded-full blur-[160px] opacity-[0.10] animate-blob" style={{ background: 'radial-gradient(circle, #6366f1, transparent)' }} />
+                <div className="absolute top-[30%] -right-[8%] w-[32%] h-[32%] rounded-full blur-[140px] opacity-[0.07] animate-blob animation-delay-2000" style={{ background: 'radial-gradient(circle, #06b6d4, transparent)' }} />
             </div>
 
             {/* HERO */}
@@ -1515,11 +1514,11 @@ export default function LandingPage({ onStart, onExplore }) {
                         </div>
 
                         {/* Headline */}
-                        <h1 className="text-6xl md:text-7xl font-extrabold leading-tight mb-6 tracking-tighter text-black">
+                        <h1 className={`text-6xl md:text-7xl font-extrabold leading-tight mb-6 tracking-tighter ${isDark ? 'text-white' : 'text-gray-900'}`}>
                             Learn. Solve.
                             <br />
                             <span style={{
-                                background: 'linear-gradient(135deg, #6366f1 0%, #8b5cf6 50%, #06b6d4 100%)',
+                                background: 'linear-gradient(135deg, #6366f1 0%, #06b6d4 100%)',
                                 WebkitBackgroundClip: 'text',
                                 WebkitTextFillColor: 'transparent',
                                 backgroundClip: 'text',
@@ -1529,11 +1528,11 @@ export default function LandingPage({ onStart, onExplore }) {
                         </h1>
 
                         {/* Subtext */}
-                        <p className="text-xl text-neutral-600 mb-8 max-w-lg leading-relaxed font-medium">
+                        <p className={`text-xl mb-8 max-w-lg leading-relaxed font-medium ${isDark ? 'text-neutral-400' : 'text-neutral-600'}`}>
                             Marevlo gives you the{' '}
                             <strong className="font-semibold" style={{ color: '#6366f1' }}>curriculum</strong>
                             , the{' '}
-                            <strong className="font-semibold" style={{ color: '#8b5cf6' }}>tools</strong>
+                            <strong className="font-semibold" style={{ color: '#6366f1' }}>tools</strong>
                             , and the{' '}
                             <strong className="font-semibold" style={{ color: '#06b6d4' }}>community</strong>
                             {' '}to go from complete beginner to a confident problem solver one concept at a time.
@@ -1545,15 +1544,16 @@ export default function LandingPage({ onStart, onExplore }) {
                                 onClick={onStart}
                                 className="px-8 py-4 text-white rounded-xl font-bold text-lg transition-all flex items-center justify-center hover:-translate-y-0.5 hover:shadow-2xl"
                                 style={{
-                                    background: 'linear-gradient(135deg, #6366f1, #8b5cf6)',
-                                    boxShadow: '0 8px 32px rgba(99,102,241,0.35)',
+                                    background: 'linear-gradient(135deg, #6366f1, #06b6d4)',
+                                    boxShadow: '0 8px 32px rgba(99,102,241,0.30)',
                                 }}
                             >
                                 Start Learning <ChevronRight className="ml-2 w-5 h-5" />
                             </button>
                             <button
                                 onClick={onExplore}
-                                className="px-8 py-4 bg-white text-black border-2 border-neutral-200 rounded-xl font-bold text-lg hover:border-indigo-300 hover:bg-neutral-50 transition-all flex items-center justify-center shadow-md hover:shadow-lg hover:-translate-y-0.5"
+                                className={`px-8 py-4 rounded-xl font-bold text-lg transition-all flex items-center justify-center hover:-translate-y-0.5 ${isDark ? 'hover:bg-white/10' : 'bg-white text-gray-900 border-2 border-neutral-200 hover:border-indigo-300 hover:bg-neutral-50 shadow-md hover:shadow-lg'}`}
+                                style={isDark ? { background: 'rgba(255,255,255,0.06)', border: '1.5px solid rgba(255,255,255,0.12)', color: '#ffffff' } : {}}
                             >
                                 Explore Community
                             </button>
@@ -1563,10 +1563,10 @@ export default function LandingPage({ onStart, onExplore }) {
                         <div className="flex flex-wrap gap-2 mb-10">
                             {[
                                 { l: 'DSA', c: '#6366f1' },
-                                { l: 'Algorithms', c: '#8b5cf6' },
+                                { l: 'Algorithms', c: '#6366f1' },
                                 { l: 'Data Structures', c: '#06b6d4' },
                                 { l: 'System Design', c: '#6366f1' },
-                                { l: 'Visualization', c: '#8b5cf6' },
+                                { l: 'Visualization', c: '#06b6d4' },
                                 { l: 'Courses', c: '#06b6d4' },
                             ].map(({ l, c }) => (
                                 <span
@@ -1581,7 +1581,7 @@ export default function LandingPage({ onStart, onExplore }) {
                         <div className="flex flex-wrap gap-2 opacity-80">
                             {[
                                 { label: 'Solve DSA like LeetCode', color: '#6366f1' },
-                                { label: 'Visualize every concept', color: '#8b5cf6' },
+                                { label: 'Visualize every concept', color: '#6366f1' },
                                 { label: 'Learn with a community', color: '#06b6d4' },
                             ].map(({ label, color }) => (
                                 <div
@@ -1610,8 +1610,6 @@ export default function LandingPage({ onStart, onExplore }) {
 
             {/* MAREVLO ECOSYSTEM: PLATFORM IN ACTION */}
             <section className="relative pt-32 pb-36 px-4 overflow-hidden">
-                <BackgroundFx variant="hero" />
-
                 <div className="max-w-7xl mx-auto px-4 relative z-10">
 
                     {/* Header */}
@@ -1620,14 +1618,14 @@ export default function LandingPage({ onStart, onExplore }) {
                             style={{ background: 'rgba(99,102,241,0.06)', borderColor: 'rgba(99,102,241,0.2)' }}>
                             <span className="text-xs font-bold tracking-widest uppercase" style={{ color: '#6366f1' }}>Platform in Action</span>
                         </div>
-                        <h2 className="text-5xl font-extrabold text-black tracking-tighter mb-4">
+                        <h2 className={`text-5xl font-extrabold tracking-tighter mb-4 ${isDark ? 'text-white' : 'text-gray-900'}`}>
                             Everything you need,{' '}
                             <span style={{
-                                background: 'linear-gradient(135deg, #6366f1, #8b5cf6, #06b6d4)',
+                                background: 'linear-gradient(135deg, #6366f1, #06b6d4)',
                                 WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', backgroundClip: 'text',
                             }}>built inside one platform</span>
                         </h2>
-                        <p className="text-neutral-500 max-w-xl mx-auto text-lg">
+                        <p className={`max-w-xl mx-auto text-lg ${isDark ? 'text-neutral-400' : 'text-neutral-600'}`}>
                             Not a collection of random resources. A tightly integrated system — courses, problems, approaches, visualizations, and an AI assistant, all working together.
                         </p>
                     </div>
@@ -1654,8 +1652,8 @@ export default function LandingPage({ onStart, onExplore }) {
                                 background: isDark ? '#0d0d0d' : 'linear-gradient(145deg, #1a2440, #263457)',
                                 borderColor: 'rgba(99,102,241,0.3)'
                             }}>
-                            <div className="absolute -bottom-16 -right-16 w-48 h-48 rounded-full blur-[60px] opacity-20 pointer-events-none"
-                                style={{ background: 'radial-gradient(circle, #6366f1, #8b5cf6)' }} />
+                            <div className="absolute -bottom-16 -right-16 w-48 h-48 rounded-full blur-[60px] opacity-15 pointer-events-none"
+                                style={{ background: 'radial-gradient(circle, #6366f1, transparent)' }} />
                             <div className="p-6 relative z-10">
                                 <div className="flex items-center gap-2 mb-5">
                                     <div className="w-7 h-7 rounded-lg flex items-center justify-center text-sm"
@@ -1667,10 +1665,10 @@ export default function LandingPage({ onStart, onExplore }) {
                                 {/* Real Marevlo courses */}
                                 <div className="space-y-2.5">
                                     {[
-                                        { title: 'Generative AI', emoji: '🧠', tag: 'Hot 🔥', lessons: 28, bar: 'linear-gradient(135deg,#6366f1,#8b5cf6,#06b6d4)', tagC: '#ef4444', glow: '#6366f120' },
-                                        { title: 'Data Science', emoji: '📊', tag: 'New 🌟', lessons: 34, bar: 'linear-gradient(135deg,#10b981,#06b6d4,#6366f1)', tagC: '#10b981', glow: '#10b98120' },
-                                        { title: 'Clustering', emoji: '🔵', tag: 'New ✨', lessons: 12, bar: 'linear-gradient(135deg,#f43f5e,#ec4899,#8b5cf6)', tagC: '#f43f5e', glow: '#f43f5e20' },
-                                        { title: 'LangGraph', emoji: '⚡', tag: 'New 🌟', lessons: 8, bar: 'linear-gradient(135deg,#ec4899,#f43f5e,#8b5cf6)', tagC: '#ec4899', glow: '#ec489920' },
+                                        { title: 'Generative AI', emoji: '🧠', tag: 'Hot 🔥', lessons: 28, bar: 'linear-gradient(135deg,#6366f1,#4f46e5)', tagC: '#6366f1', glow: '#6366f112' },
+                                        { title: 'Data Science', emoji: '📊', tag: 'New 🌟', lessons: 34, bar: 'linear-gradient(135deg,#06b6d4,#0891b2)', tagC: '#06b6d4', glow: '#06b6d412' },
+                                        { title: 'Clustering', emoji: '🔵', tag: 'New ✨', lessons: 12, bar: 'linear-gradient(135deg,#818cf8,#6366f1)', tagC: '#818cf8', glow: '#6366f10c' },
+                                        { title: 'LangGraph', emoji: '⚡', tag: 'New 🌟', lessons: 8, bar: 'linear-gradient(135deg,#22d3ee,#06b6d4)', tagC: '#22d3ee', glow: '#06b6d40c' },
                                     ].map(({ title, emoji, tag, lessons, bar, tagC, glow }) => (
                                         <div key={title}
                                             className="relative flex items-center gap-3 px-3 py-3 rounded-2xl cursor-pointer transition-all duration-200 hover:-translate-y-0.5"
@@ -1719,9 +1717,9 @@ export default function LandingPage({ onStart, onExplore }) {
                             }}>
                             {/* Animated Background Gradients & Grids */}
                             <div className="absolute inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-[0.03] mix-blend-overlay"></div>
-                            <div className="absolute top-0 right-0 w-full h-full bg-[radial-gradient(ellipse_at_top_right,_var(--tw-gradient-stops))] from-indigo-500/20 via-purple-500/5 hover:via-purple-500/10 to-transparent transition-colors duration-700"></div>
-                            <div className="absolute top-1/2 left-1/4 -translate-x-1/2 -translate-y-1/2 w-[600px] h-64 rounded-full blur-[100px] opacity-30 pointer-events-none animate-pulse"
-                                style={{ background: 'radial-gradient(circle, #8b5cf6, transparent)' }} />
+                            <div className="absolute top-0 right-0 w-full h-full bg-[radial-gradient(ellipse_at_top_right,_var(--tw-gradient-stops))] from-indigo-500/20 via-indigo-500/5 hover:via-indigo-500/10 to-transparent transition-colors duration-700"></div>
+                            <div className="absolute top-1/2 left-1/4 -translate-x-1/2 -translate-y-1/2 w-[600px] h-64 rounded-full blur-[100px] opacity-20 pointer-events-none animate-pulse"
+                                style={{ background: 'radial-gradient(circle, #6366f1, transparent)' }} />
 
                             <div className="p-8 md:p-12 relative z-10 flex flex-col md:flex-row gap-12 items-center">
                                 {/* Left desc */}
@@ -1733,16 +1731,16 @@ export default function LandingPage({ onStart, onExplore }) {
                                             <div className="absolute inset-0 bg-gradient-to-tr from-indigo-500/40 to-transparent"></div>
                                             <span className="relative z-10 text-lg">🚀</span>
                                         </div>
-                                        <span className="text-xs font-black tracking-[0.2em] uppercase bg-clip-text text-transparent bg-gradient-to-r from-indigo-400 to-purple-400">Massive Question Bank</span>
+                                        <span className="text-xs font-black tracking-[0.2em] uppercase bg-clip-text text-transparent bg-gradient-to-r from-indigo-300 to-cyan-400">Massive Question Bank</span>
                                     </div>
                                     <h3 className="text-4xl md:text-5xl font-extrabold mb-5 tracking-tight text-transparent bg-clip-text bg-gradient-to-br from-white via-white to-white/60 leading-tight">
                                         1,000+ Interactive<br />
-                                        <span className="text-transparent bg-clip-text bg-gradient-to-r from-indigo-400 via-purple-400 to-pink-400">Challenges</span>
+                                        <span className="text-transparent bg-clip-text bg-gradient-to-r from-indigo-300 to-cyan-400">Challenges</span>
                                     </h3>
                                     <p className="text-neutral-300 text-sm md:text-base max-w-md mb-8 leading-relaxed font-medium">Dive into our massive syllabus covering every core pattern. Each question features stunning visualizers, multi-approach ladders, and an integrated AI IDE to keep you hooked.</p>
 
                                     <div className="flex flex-wrap gap-3">
-                                        {[['1000+ Questions', '#10b981'], ['Interactive IDE', '#8b5cf6'], ['Visualizers', '#ec4899']].map(([text, color]) => (
+                                        {[['1000+ Questions', '#6366f1'], ['Interactive IDE', '#06b6d4'], ['Visualizers', '#6366f1']].map(([text, color]) => (
                                             <div key={text} className="flex items-center gap-2 text-xs font-bold px-4 py-2 rounded-xl backdrop-blur-md transition-all hover:-translate-y-1 cursor-default"
                                                 style={{ background: `${color}15`, color: color, border: `1px solid ${color}40`, boxShadow: `0 4px 12px ${color}10` }}>
                                                 <div className="w-1.5 h-1.5 rounded-full animate-pulse" style={{ backgroundColor: color }}></div>
@@ -1800,7 +1798,7 @@ export default function LandingPage({ onStart, onExplore }) {
                 {/* Background glow effects */}
                 <div className="absolute inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-[0.02] mix-blend-overlay"></div>
                 <div className="absolute top-0 right-1/4 w-[500px] h-[500px] rounded-full blur-[120px] pointer-events-none bg-indigo-600/10"></div>
-                <div className="absolute bottom-0 left-1/4 w-[600px] h-[600px] rounded-full blur-[150px] pointer-events-none bg-purple-600/8"></div>
+                <div className="absolute bottom-0 left-1/4 w-[600px] h-[600px] rounded-full blur-[150px] pointer-events-none bg-indigo-500/6"></div>
 
                 <div className="max-w-7xl mx-auto px-4 relative z-10">
                     <div className="text-center mb-24">
@@ -1828,10 +1826,10 @@ export default function LandingPage({ onStart, onExplore }) {
                         {/* Staggered, overlapping animated floating cards */}
                         <div className="flex flex-col md:flex-row justify-center items-center gap-12 md:gap-0 relative z-10 md:h-[450px]">
                             {[
-                                { step: "01", title: "Set Goals", desc: "Define your level & identify weak algorithmic spots.", icon: "🎯", color: "#4f46e5", anim: "animate-float-1", offset: "md:-mt-32 md:z-10" },
-                                { step: "02", title: "Practice", desc: "Solve adaptive challenges daily in our immersive IDE.", icon: "⌨️", color: "#2563eb", anim: "animate-float-2", offset: "md:mt-32 md:-ml-8 md:z-20" },
-                                { step: "03", title: "Collaborate", desc: "Review multi-approach code with community peers.", icon: "🤝", color: "#9333ea", anim: "animate-float-3", offset: "md:-mt-24 md:-ml-8 md:z-30" },
-                                { step: "04", title: "Succeed", desc: "Crush those hard interviews and get verified.", icon: "🚀", color: "#db2777", anim: "animate-float-4", offset: "md:mt-40 md:-ml-8 md:z-40" }
+                                { step: "01", title: "Set Goals", desc: "Define your level & identify weak algorithmic spots.", icon: "🎯", color: "#6366f1", anim: "animate-float-1", offset: "md:-mt-32 md:z-10" },
+                                { step: "02", title: "Practice", desc: "Solve adaptive challenges daily in our immersive IDE.", icon: "⌨️", color: "#4f46e5", anim: "animate-float-2", offset: "md:mt-32 md:-ml-8 md:z-20" },
+                                { step: "03", title: "Collaborate", desc: "Review multi-approach code with community peers.", icon: "🤝", color: "#3b82f6", anim: "animate-float-3", offset: "md:-mt-24 md:-ml-8 md:z-30" },
+                                { step: "04", title: "Succeed", desc: "Crush those hard interviews and get verified.", icon: "🚀", color: "#06b6d4", anim: "animate-float-4", offset: "md:mt-40 md:-ml-8 md:z-40" }
                             ].map((item, i) => (
                                 <div key={i} className={`relative group w-full max-w-[300px] md:w-[280px] p-8 md:p-10 rounded-[2.5rem] transition-all duration-700 hover:scale-[1.15] hover:z-50 ${item.anim} ${item.offset} backdrop-blur-2xl`}
                                     style={{

@@ -374,7 +374,7 @@ export default function Feed() {
                 <div className="feed-orb feed-orb-3" />
             </div>
 
-            <div className="relative z-10 max-w-6xl mx-auto px-3 sm:px-4 py-6 sm:py-8">
+            <div className="relative z-10 py-6 sm:py-8" style={{ width: '70%', margin: '0 auto' }}>
                 <div className="grid grid-cols-1 lg:grid-cols-[1fr_340px] gap-6 lg:gap-8">
 
                     {/* LEFT COLUMN */}
@@ -383,7 +383,7 @@ export default function Feed() {
                         {/* Gradient Hero Header */}
                         <TiltCard>
                             <div className="relative rounded-2xl overflow-hidden p-6 sm:p-7 h-full" style={{
-                                background: 'linear-gradient(135deg, #6366f1 0%, #8b5cf6 45%, #06b6d4 100%)',
+                                background: 'linear-gradient(135deg, #6366f1 0%, #06b6d4 100%)',
                                 boxShadow: '0 8px 32px rgba(99,102,241,0.35)'
                             }}>
                                 {/* Decorative shapes */}
@@ -464,7 +464,7 @@ export default function Feed() {
                                         className="px-3 sm:px-4 py-1.5 rounded-full text-xs sm:text-sm font-semibold transition-all duration-200"
                                         style={{
                                             background: sortBy === key
-                                                ? 'linear-gradient(135deg, #6366f1, #8b5cf6)'
+                                                ? 'linear-gradient(135deg, #6366f1, #06b6d4)'
                                                 : 'transparent',
                                             color: sortBy === key ? '#fff' : 'var(--color-muted-text)',
                                             boxShadow: sortBy === key ? '0 2px 10px rgba(99,102,241,0.4)' : 'none',
@@ -487,7 +487,7 @@ export default function Feed() {
                                     {/* Icon row */}
                                     <div className="flex items-center justify-center gap-4 mb-5">
                                         {[
-                                            { icon: <PenTool size={22} />, bg: 'linear-gradient(135deg,#6366f1,#8b5cf6)', shadow: 'rgba(99,102,241,0.4)' },
+                                            { icon: <PenTool size={22} />, bg: 'linear-gradient(135deg,#6366f1,#06b6d4)', shadow: 'rgba(99,102,241,0.4)' },
                                             { icon: <Newspaper size={30} />, bg: 'linear-gradient(135deg,#06b6d4,#0ea5e9)', shadow: 'rgba(6,182,212,0.4)' },
                                             { icon: <Calendar size={22} />, bg: 'linear-gradient(135deg,#f43f5e,#ec4899)', shadow: 'rgba(244,63,94,0.4)' },
                                         ].map(({ icon, bg, shadow }, i) => (
@@ -517,7 +517,7 @@ export default function Feed() {
                                             onClick={() => setIsArticleModalOpen(true)}
                                             className="px-5 py-2.5 rounded-xl text-sm font-bold text-white transition-all duration-200 flex items-center justify-center gap-2"
                                             style={{
-                                                background: 'linear-gradient(135deg, #6366f1, #8b5cf6)',
+                                                background: 'linear-gradient(135deg, #6366f1, #06b6d4)',
                                                 boxShadow: '0 4px 16px rgba(99,102,241,0.4)'
                                             }}
                                             onMouseEnter={e => e.currentTarget.style.transform = 'translateY(-2px)'}
@@ -575,13 +575,13 @@ export default function Feed() {
                                 border: '1px solid var(--color-border)',
                                 backgroundColor: 'var(--color-surface)',
                             }}>
-                                <div style={{ height: 4, background: 'linear-gradient(90deg, #f43f5e, #ec4899, #8b5cf6)' }} />
+                                <div style={{ height: 4, background: 'linear-gradient(90deg, #6366f1, #06b6d4)' }} />
                                 <div className="p-5 sm:p-6">
                                     <h3 className="text-sm font-bold flex items-center gap-2 mb-4">
                                         <span style={{
                                             display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
                                             width: 30, height: 30, borderRadius: '50%',
-                                            background: 'linear-gradient(135deg, #f43f5e, #ec4899)',
+                                            background: 'linear-gradient(135deg, #6366f1, #06b6d4)',
                                             color: '#fff'
                                         }}>
                                             <Users size={15} />
@@ -601,13 +601,13 @@ export default function Feed() {
                                 border: '1px solid var(--color-border)',
                                 backgroundColor: 'var(--color-surface)',
                             }}>
-                                <div style={{ height: 4, background: 'linear-gradient(90deg, #10b981, #06b6d4)' }} />
+                                <div style={{ height: 4, background: 'linear-gradient(90deg, #6366f1, #06b6d4)' }} />
                                 <div className="p-5 sm:p-6">
                                     <h3 className="text-sm font-bold flex items-center gap-2 mb-4">
                                         <span style={{
                                             display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
                                             width: 30, height: 30, borderRadius: '50%',
-                                            background: 'linear-gradient(135deg, #10b981, #06b6d4)',
+                                            background: 'linear-gradient(135deg, #6366f1, #06b6d4)',
                                             color: '#fff'
                                         }}>
                                             <Zap size={15} />
@@ -694,13 +694,13 @@ export default function Feed() {
                         }}
                     >
                         {/* Modal header with gradient */}
-                        <div style={{ height: 4, background: 'linear-gradient(90deg, #6366f1, #8b5cf6, #06b6d4)', borderRadius: '1.5rem 1.5rem 0 0' }} />
+                        <div style={{ height: 4, background: 'linear-gradient(90deg, #6366f1, #06b6d4)', borderRadius: '1.5rem 1.5rem 0 0' }} />
                         <div className="p-5 sm:p-6 flex justify-between items-center" style={{ borderBottom: '1px solid var(--color-border)' }}>
                             <h2 className="text-xl font-bold flex items-center gap-2.5" style={{ color: 'var(--color-primary-text)' }}>
                                 <span style={{
                                     display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
                                     width: 36, height: 36, borderRadius: '50%',
-                                    background: 'linear-gradient(135deg,#6366f1,#8b5cf6)', color: '#fff'
+                                    background: 'linear-gradient(135deg,#6366f1,#06b6d4)', color: '#fff'
                                 }}>
                                     <PenTool size={18} />
                                 </span>
@@ -806,7 +806,7 @@ export default function Feed() {
                                 className="px-7 py-2.5 rounded-xl font-bold text-white text-sm transition-all duration-200"
                                 style={{
                                     background: articleTitle.trim() && articleContent.trim()
-                                        ? 'linear-gradient(135deg, #6366f1, #8b5cf6)'
+                                        ? 'linear-gradient(135deg, #6366f1, #06b6d4)'
                                         : 'var(--color-border)',
                                     boxShadow: articleTitle.trim() && articleContent.trim()
                                         ? '0 4px 16px rgba(99,102,241,0.4)'
@@ -835,7 +835,7 @@ export default function Feed() {
                             animation: 'feedModalIn 0.3s cubic-bezier(0.34,1.56,0.64,1)'
                         }}
                     >
-                        <div style={{ height: 4, background: 'linear-gradient(90deg, #f43f5e, #ec4899, #8b5cf6)', borderRadius: '1.5rem 1.5rem 0 0' }} />
+                        <div style={{ height: 4, background: 'linear-gradient(90deg, #f43f5e, #ec4899)', borderRadius: '1.5rem 1.5rem 0 0' }} />
                         <div className="p-5 sm:p-6 flex justify-between items-center" style={{ borderBottom: '1px solid var(--color-border)' }}>
                             <h2 className="text-xl font-bold flex items-center gap-2.5" style={{ color: 'var(--color-primary-text)' }}>
                                 <span style={{
@@ -981,7 +981,7 @@ export default function Feed() {
                 }
                 .feed-orb-3 {
                     width: 250px; height: 250px;
-                    background: radial-gradient(circle, rgba(244,63,94,0.12), transparent 70%);
+                    background: radial-gradient(circle, rgba(99,102,241,0.10), transparent 70%);
                     top: 40%; left: 40%;
                     animation-delay: -7s;
                 }
