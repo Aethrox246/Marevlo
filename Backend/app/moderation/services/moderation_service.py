@@ -106,9 +106,12 @@ class ModerationService:
         limit: int = 20,
     ) -> tuple[list[dict], int]:
         items: list[dict] = []
+        post_count = 0
+        comment_count = 0
+        count = 0
 
         if target_type in ("post", "all"):
-            count = db.execute(
+            post_count = db.execute(
                 select(func.count(PostReport.id)).where(PostReport.status == status)
             ).scalar() or 0
             rows = db.execute(
@@ -134,8 +137,13 @@ class ModerationService:
                         "created_at": r.created_at,
                     }
                 )
+            if target_type == "post":
+                count = int(post_count)
 
         if target_type in ("comment", "all"):
+            comment_count = db.execute(
+                select(func.count(CommentReport.id)).where(CommentReport.status == status)
+            ).scalar() or 0
             crows = db.execute(
                 select(CommentReport, User.username)
                 .join(User, User.id == CommentReport.reporter_id)
@@ -159,16 +167,12 @@ class ModerationService:
                         "created_at": r.created_at,
                     }
                 )
+            if target_type == "comment":
+                count = int(comment_count)
 
         # Combined total for "all"
         if target_type == "all":
-            count_p = db.execute(
-                select(func.count(PostReport.id)).where(PostReport.status == status)
-            ).scalar() or 0
-            count_c = db.execute(
-                select(func.count(CommentReport.id)).where(CommentReport.status == status)
-            ).scalar() or 0
-            count = int(count_p) + int(count_c)
+            count = int(post_count) + int(comment_count)
             # Sort merged list newest first.
             items.sort(key=lambda r: r["created_at"], reverse=True)
             items = items[: limit]

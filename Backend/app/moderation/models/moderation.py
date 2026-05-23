@@ -67,6 +67,7 @@ class PostReport(Base):
         Index("idx_post_reports_status", "status"),
         Index("idx_post_reports_post", "post_id"),
         Index("idx_post_reports_created", "created_at"),
+        Index("idx_post_reports_status_created", "status", "created_at"),
     )
 
 
@@ -98,6 +99,7 @@ class CommentReport(Base):
         Index("idx_comment_reports_status", "status"),
         Index("idx_comment_reports_comment", "comment_id"),
         Index("idx_comment_reports_created", "created_at"),
+        Index("idx_comment_reports_status_created", "status", "created_at"),
     )
 
 

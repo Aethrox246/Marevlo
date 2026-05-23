@@ -76,6 +76,10 @@ class UserSession(Base):
 
     user = relationship("User")
 
+    __table_args__ = (
+        Index("idx_user_sessions_user_logout_login", "user_id", "logout_time", "login_time"),
+    )
+
 
 class EmailOTP(Base):
     __tablename__ = "email_otps"

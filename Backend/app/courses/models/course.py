@@ -44,6 +44,7 @@ class CourseReaction(Base):
             name="ck_course_reactions_type",
         ),
         Index("idx_course_reactions_course_id", "course_id"),
+        Index("idx_course_reactions_user_id", "user_id"),
     )
 
 
@@ -63,4 +64,5 @@ class CourseComment(Base):
     __table_args__ = (
         Index("idx_course_comments_user_id", "user_id"),
         Index("idx_course_comments_created_at", "created_at"),
+        Index("idx_course_comments_course_created", "course_id", "created_at"),
     )

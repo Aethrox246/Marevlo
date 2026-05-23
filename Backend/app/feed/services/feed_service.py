@@ -104,10 +104,25 @@ class FeedService:
         return posts, total_count, liked_set
 
     # ── Serialization ───────────────────────────────────────────────────
-    def to_out(self, post: Post, *, liked_by_me: bool) -> PostOut:
+    def to_out(
+        self,
+        post: Post,
+        *,
+        liked_by_me: bool,
+        url_cache: dict[str, Optional[str]] | None = None,
+    ) -> PostOut:
         author = post.author
         is_article = post.type == "article"
         is_event = post.type == "event"
+
+        def resolve_url_cached(object_key: Optional[str]) -> Optional[str]:
+            if not object_key:
+                return None
+            if url_cache is None:
+                return storage.resolve_url(object_key)
+            if object_key not in url_cache:
+                url_cache[object_key] = storage.resolve_url(object_key)
+            return url_cache[object_key]
 
         event_details = None
         if is_event:
@@ -120,11 +135,11 @@ class FeedService:
         # Images
         images: list[str] = []
         for k in (post.image_object_keys or []):
-            url = storage.resolve_url(k) if k else None
+            url = resolve_url_cached(k)
             if url:
                 images.append(url)
         if not images and post.image_url:
-            url = storage.resolve_url(post.image_url)
+            url = resolve_url_cached(post.image_url)
             if url:
                 images.append(url)
 
