@@ -247,7 +247,40 @@ function Layout() {
 
 function ProblemWrapper() {
     const navigate = useNavigate();
-    return <ProblemList onSelect={(p) => navigate(`/ide/${p.id}`)} />
+    const location = useLocation();
+
+    useEffect(() => {
+    const mainElement = document.querySelector('main');
+
+    if (!mainElement) return;
+
+    const savedScroll = sessionStorage.getItem('problemListScroll');
+
+    if (savedScroll) {
+        requestAnimationFrame(() => {
+            requestAnimationFrame(() => {
+                mainElement.scrollTop = Number(savedScroll);
+            });
+        });
+    }
+}, [location.pathname]);
+
+    return (
+        <ProblemList
+        onSelect={(p) => {
+    const mainElement = document.querySelector('main');
+
+    if (mainElement) {
+        sessionStorage.setItem(
+            'problemListScroll',
+            mainElement.scrollTop
+        );
+    }
+
+    navigate(`/ide/${p.id}`);
+}}
+        />
+    );
 }
 
 function IDEWrapper() {

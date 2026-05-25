@@ -101,9 +101,29 @@ function SkeletonCard() {
 
 export default function ProblemList({ onSelect }) {
     const [topics, setTopics]                 = useState([]);
-    const [expandedTopics, setExpandedTopics] = useState({ arrays: true });
-    const [visibleCounts, setVisibleCounts]   = useState({ arrays: 10 });
+const [expandedTopics, setExpandedTopics] = useState(() => {
+    const saved = sessionStorage.getItem('problemListExpandedTopics');
+    return saved ? JSON.parse(saved) : { arrays: true };
+});
+    const [visibleCounts, setVisibleCounts] = useState(() => {
+    const saved = sessionStorage.getItem('problemListVisibleCounts');
+    return saved ? JSON.parse(saved) : { arrays: 10 };
+});
     const [loading, setLoading]               = useState(true);
+
+    useEffect(() => {
+    sessionStorage.setItem(
+        'problemListExpandedTopics',
+        JSON.stringify(expandedTopics)
+    );
+}, [expandedTopics]);
+
+useEffect(() => {
+    sessionStorage.setItem(
+        'problemListVisibleCounts',
+        JSON.stringify(visibleCounts)
+    );
+}, [visibleCounts]);
 
     useEffect(() => {
         loadAllTopics()
@@ -375,7 +395,18 @@ export default function ProblemList({ onSelect }) {
                                                     return (
                                                 <button
                                                     key={problem.id}
-                                                    onClick={() => onSelect(problem)}
+                                                   onClick={() => {
+    const mainElement = document.querySelector('main');
+
+    if (mainElement) {
+        sessionStorage.setItem(
+            'problemListScroll',
+            mainElement.scrollTop
+        );
+    }
+
+    onSelect(problem);
+}}
                                                     className="w-full flex items-center justify-between px-5 py-3.5 text-left group transition-all"
                                                     style={{
                                                         borderTop: idx > 0 ? '1px solid var(--color-border)' : 'none',
