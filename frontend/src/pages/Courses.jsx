@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import {
     ChevronRight, Play, BookOpen, Layers, Brain,
@@ -1069,6 +1069,21 @@ export default function Courses() {
     const [showLevelFilters, setShowLevelFilters] = useState(false);
     const searchRef = useRef(null);
 
+    const urlPathIds = React.useMemo(() => {
+        const segments = location.pathname.split('/').filter(Boolean);
+        if (segments[0] !== 'courses' || segments.length < 2) return [];
+        return segments.slice(1);
+    }, [location.pathname]);
+
+    useEffect(() => {
+        if (urlPathIds.length > 0) {
+            setPathIds(urlPathIds);
+            return;
+        }
+
+        setPathIds(location.state?.pathIds || []);
+    }, [location.pathname, location.state, urlPathIds]);
+
     // Keyboard shortcut: Cmd/Ctrl+K → focus search
     React.useEffect(() => {
         const handler = e => {
@@ -1137,13 +1152,21 @@ export default function Courses() {
     // Root category node (for hero)
     const rootCatNode = pathIds.length ? findNode(COURSE_TREE, [pathIds[0]]) : null;
 
+    const syncCourseUrl = (ids) => {
+        const nextPath = ids.length ? `/courses/${ids.join('/')}` : '/courses';
+        navigate(nextPath, { state: { pathIds: ids } });
+    };
+
     const handleDrillDown = (node) => {
-        setPathIds(prev => [...prev, node.id]);
+        const nextIds = [...pathIds, node.id];
+        setPathIds(nextIds);
+        syncCourseUrl(nextIds);
         window.scrollTo({ top: 0, behavior: 'smooth' });
     };
 
     const handleNavigate = (ids) => {
         setPathIds(ids);
+        syncCourseUrl(ids);
         window.scrollTo({ top: 0, behavior: 'smooth' });
     };
 

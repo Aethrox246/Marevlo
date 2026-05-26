@@ -429,20 +429,22 @@ function ProblemWrapper() {
 function IDEWrapper() {
     const { addPoints } = useAuth();
     const navigate = useNavigate();
-    const { id } = useParams();
+    const { id, topicId } = useParams();
     const [problem, setProblem] = React.useState(null);
     const [allProblems, setAllProblems] = React.useState([]);
     const [loading, setLoading] = React.useState(true);
 
     React.useEffect(() => {
         loadAllTopics().then(topics => {
-            const flat = topics.flatMap(t => t.problems);
+            const flat = topicId
+                ? (topics.find(t => t.id === topicId)?.problems || [])
+                : topics.flatMap(t => t.problems);
             setAllProblems(flat);
             const found = flat.find(p => String(p.id) === id);
             setProblem(found ? found._raw : null);
             setLoading(false);
         }).catch(() => setLoading(false));
-    }, [id]);
+    }, [id, topicId]);
 
     const handleNext = () => {
         const currentIndex = allProblems.findIndex(p => String(p.id) === id);
@@ -450,9 +452,9 @@ function IDEWrapper() {
             ? allProblems[currentIndex + 1]
             : null;
         if (nextProblem) {
-            navigate(`/ide/${nextProblem.id}`);
+            navigate(topicId ? `/problems/${topicId}/${nextProblem.id}` : `/ide/${nextProblem.id}`);
         } else {
-            navigate('/problems');
+            navigate(topicId ? `/problems/${topicId}` : '/problems');
         }
     };
 
@@ -474,7 +476,7 @@ function IDEWrapper() {
     return <IDE
         problem={problem}
         judgeTestCases={judgeTestCases}
-        onBack={() => navigate('/problems')}
+        onBack={() => navigate(topicId ? `/problems/${topicId}` : '/problems')}
         onSolved={() => addPoints(50)}
         onNext={handleNext}
     />;
@@ -493,12 +495,13 @@ export default function App() {
                                 <Route path="/signup" element={<SignupWrapper />} />
                                 <Route path="/problems" element={<ProblemWrapper />} />
                                 <Route path="/problems/:topicId" element={<TopicProblems />} />
+                                <Route path="/problems/:topicId/:id" element={<IDEWrapper />} />
                                 <Route path="/ide" element={<IDEWrapper />} />
                                 <Route path="/ide/:id" element={<IDEWrapper />} />
                                 <Route path="/feed" element={<FeedWrapper />} />
                                 <Route path="/messages" element={<MessagesWrapper />} />
                                 <Route path="/project" element={<Project />} />
-                                <Route path="/courses" element={<Courses />} />
+                                <Route path="/courses/*" element={<Courses />} />
                                 <Route path="/course/:id" element={<CourseContent />} />
                                 <Route path="/jobs" element={<JobBoardGuard><JobBoard /></JobBoardGuard>} />
                                 <Route path="/plan" element={<Plan />} />
@@ -507,7 +510,7 @@ export default function App() {
                                 <Route path="/research" element={<Research />} />
                                 <Route path="/research/papers" element={<ResearchPapers />} />
                                 <Route path="/research/paper/:slug" element={<ResearchPaperContent />} />
-                                <Route path="/research/courses" element={<ResearchCourses />} />
+                                <Route path="/research/courses/*" element={<ResearchCourses />} />
                                 <Route path="/research/track/recommender-system" element={<T3TrackLanding />} />
                                 <Route path="/research/course/:id" element={<ResearchCourseContent />} />
                             </Route>
