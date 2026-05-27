@@ -1,0 +1,304 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Prefix Suffix Search - Visualization</title>
+    <style>
+        :root {
+            --bg-page: #0d1117;
+            --bg-surface: #161b22;
+            --bg-input: #0d1117;
+            --border-main: #30363d;
+            --btn-bg: #21262d;
+            --btn-hover: #2d333b;
+            --text-main: #c9d1d9;
+            --text-dim: #8b949e;
+            --text-log: #58a6ff;
+            --accent-orange: #e3b341;
+            --accent-blue: #388bfd;
+            --accent-green: #3fb950;
+            --accent-red: #f85149;
+            --accent-purple: #a371f7;
+        }
+
+        * { box-sizing: border-box; }
+        body {
+            background-color: var(--bg-page);
+            color: var(--text-main);
+            font-family: system-ui, -apple-system, sans-serif;
+            margin: 0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            min-height: 100vh;
+            padding-bottom: 40px;
+        }
+
+        .input-bar {
+            width: 100%;
+            background-color: var(--bg-surface);
+            padding: 12px 16px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 12px;
+            border-bottom: 1px solid var(--border-main);
+            flex-wrap: wrap;
+        }
+        button {
+            height: 32px; border-radius: 6px; padding: 0 16px; background: var(--btn-bg);
+            border: 1px solid var(--border-main); color: var(--text-main); font-size: 13px; cursor: pointer;
+        }
+        button:hover { background: var(--btn-hover); }
+
+        .visual-container {
+            margin-top: 30px;
+            display: flex;
+            gap: 40px;
+            width: 100%;
+            max-width: 1200px;
+            justify-content: center;
+            flex-wrap: wrap;
+        }
+
+        .words-list {
+            background: var(--bg-surface);
+            border: 2px solid var(--border-main);
+            border-radius: 8px;
+            padding: 15px;
+            width: 280px;
+        }
+        .words-list h3 { margin: 0 0 10px 0; font-size: 15px; color: var(--accent-blue); }
+
+        .query-area {
+            background: var(--bg-surface);
+            border: 2px solid var(--accent-orange);
+            border-radius: 8px;
+            padding: 20px;
+            min-width: 420px;
+            text-align: center;
+        }
+
+        .result-area {
+            background: var(--bg-surface);
+            border: 2px solid var(--accent-green);
+            border-radius: 8px;
+            padding: 15px;
+            width: 260px;
+        }
+
+        .action-panel {
+            margin-top: 25px;
+            background: var(--bg-surface);
+            border: 1px solid var(--border-main);
+            border-radius: 6px;
+            padding: 16px 22px;
+            width: 860px;
+            text-align: center;
+            font-family: monospace;
+            min-height: 90px;
+            font-size: 15px;
+            line-height: 1.5;
+        }
+
+        .controls {
+            margin-top: 20px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .log-panel {
+            margin-top: 15px;
+            background: var(--bg-surface);
+            border: 1px solid var(--border-main);
+            border-radius: 6px;
+            padding: 12px 16px;
+            width: 860px;
+            height: 160px;
+            overflow-y: auto;
+            font-family: 'Courier New', monospace;
+            font-size: 13.5px;
+        }
+
+        .tile {
+            padding: 8px 14px;
+            background: #21262d;
+            border: 2px solid var(--border-main);
+            border-radius: 6px;
+            margin: 4px;
+            font-family: monospace;
+        }
+        .tile.match {
+            border-color: var(--accent-green);
+            background: #0f2a1a;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="input-bar">
+        <button onclick="loadExample(0)">Example 1</button>
+        <button onclick="loadExample(1)">Example 2</button>
+        <button onclick="resetAll()">Reset</button>
+    </div>
+
+    <div class="visual-container">
+        <!-- Words List -->
+        <div class="words-list">
+            <h3>All Words</h3>
+            <div id="all-words"></div>
+        </div>
+
+        <!-- Current Query -->
+        <div class="query-area">
+            <div style="color:var(--accent-orange); font-weight:bold; margin-bottom:12px;">Current Query</div>
+            <div id="query-display" style="font-size:22px; margin:15px 0;"></div>
+            <div id="current-check" style="margin-top:15px; min-height:60px;"></div>
+        </div>
+
+        <!-- Result -->
+        <div class="result-area">
+            <h3 style="margin:0 0 12px 0; color:var(--accent-green);">Highest Index</h3>
+            <div id="result-value" style="font-size:48px; font-weight:bold; color:var(--accent-green); text-align:center; min-height:80px;"></div>
+        </div>
+    </div>
+
+    <div class="action-panel" id="main-panel">Click Play to start demonstration</div>
+
+    <div class="controls">
+        <button onclick="resetAll()">↺ Reset</button>
+        <button onclick="backStep()">← Back</button>
+        <button onclick="togglePlay()" id="play-btn">▶ Play</button>
+        <button onclick="nextStep()">Next →</button>
+        <span style="margin-left:20px; font-size:13px;">Speed:</span>
+        <input type="range" id="speed-slider" min="0" max="2" value="1">
+    </div>
+
+    <div class="log-panel" id="log-container"></div>
+
+    <script>
+        let words = [];
+        let currentResult = -1;
+        let steps = [];
+        let stepIndex = 0;
+        let timer = null;
+        const delays = [1650, 950, 480];
+
+        function init() {
+            loadExample(0);
+        }
+
+        function loadExample(ex) {
+            if (ex === 0) {
+                words = ["apple", "appetizer", "banana"];
+            } else {
+                words = ["cat", "dog", "catdog"];
+            }
+            currentResult = -1;
+            steps = [];
+            document.getElementById('log-container').innerHTML = '';
+
+            addStep(`Words loaded: [${words.join(', ')}]`, true);
+
+            if (ex === 0) {
+                addStep("Query: prefix='app', suffix='er'");
+                addStep("Check index 0 'apple': prefix 'app' ✓, suffix 'le' ✗ → no");
+                addStep("Check index 1 'appetizer': prefix 'app' ✓, suffix 'er' ✓ → result = 1");
+                currentResult = 1;
+                addStep("Check index 2 'banana': prefix 'ban' ✗ → skip");
+            } else {
+                addStep("Query: prefix='cat', suffix='dog'");
+                addStep("Check index 0 'cat': prefix 'cat' ✓, suffix 'cat' ✗ → no");
+                addStep("Check index 1 'dog': prefix 'dog' ✗ → skip");
+                addStep("Check index 2 'catdog': prefix 'cat' ✓, suffix 'dog' ✓ → result = 2");
+                currentResult = 2;
+            }
+
+            addStep(`Final highest index: <b>${currentResult}</b>`, true);
+
+            stepIndex = 0;
+            renderStep(0);
+        }
+
+        function addStep(text) {
+            steps.push({
+                panel: text,
+                result: currentResult,
+                log: text
+            });
+        }
+
+        function renderWords() {
+            const container = document.getElementById('all-words');
+            container.innerHTML = '';
+            words.forEach((w, i) => {
+                const div = document.createElement('div');
+                div.className = 'tile';
+                div.textContent = `${i}: ${w}`;
+                container.appendChild(div);
+            });
+        }
+
+        function renderStep(idx) {
+            const step = steps[idx];
+            if (!step) return;
+
+            renderWords();
+            document.getElementById('query-display').innerHTML = step.panel.includes('Query') ? step.panel : 'Processing...';
+            document.getElementById('current-check').innerHTML = step.panel.includes('Check') ? step.panel : '';
+            document.getElementById('result-value').innerText = step.result;
+            document.getElementById('main-panel').innerHTML = step.panel;
+
+            const logDiv = document.getElementById('log-container');
+            logDiv.innerHTML = '';
+            for (let i = 0; i <= idx; i++) {
+                const line = document.createElement('div');
+                line.style.margin = '4px 0';
+                line.innerHTML = steps[i].log;
+                logDiv.appendChild(line);
+            }
+            logDiv.scrollTop = logDiv.scrollHeight;
+        }
+
+        function nextStep() {
+            if (stepIndex < steps.length - 1) {
+                stepIndex++;
+                renderStep(stepIndex);
+            } else pause();
+        }
+
+        function backStep() {
+            if (stepIndex > 0) {
+                stepIndex--;
+                renderStep(stepIndex);
+            }
+        }
+
+        function resetAll() {
+            pause();
+            stepIndex = 0;
+            renderStep(0);
+        }
+
+        function togglePlay() {
+            const btn = document.getElementById('play-btn');
+            if (timer) pause();
+            else {
+                btn.textContent = 'Pause';
+                if (stepIndex >= steps.length - 1) stepIndex = 0;
+                timer = setInterval(nextStep, delays[document.getElementById('speed-slider').value]);
+            }
+        }
+
+        function pause() {
+            clearInterval(timer);
+            timer = null;
+            document.getElementById('play-btn').textContent = 'Play';
+        }
+
+        window.onload = init;
+    </script>
+</body>
+</html>

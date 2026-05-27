@@ -1,0 +1,1855 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Module 5.1 (Part 2) — Least Squares &amp; Correlation vs Regression | Quantum Neural Analytics OS</title>
+<style>
+:root {
+  --bg-deep: #03040a;
+  --bg-navy: #060818;
+  --bg-panel: rgba(10, 15, 35, 0.55);
+  --neon-cyan: #00f0ff;
+  --neon-purple: #b14dff;
+  --neon-magenta: #ff2bd6;
+  --neon-amber: #ffb547;
+  --neon-green: #00ffaa;
+  --neon-red: #ff4d6d;
+  --text-primary: #e6f4ff;
+  --text-soft: #d8e6ff;
+  --text-dim: #7a8bbf;
+  --border-glow: rgba(0, 240, 255, 0.25);
+  --glass-blur: blur(18px);
+  --mono: 'JetBrains Mono', 'Fira Code', 'Consolas', monospace;
+}
+* { margin: 0; padding: 0; box-sizing: border-box; }
+html { scroll-behavior: smooth; }
+body {
+  background: var(--bg-deep);
+  color: var(--text-soft);
+  font-family: 'Inter', 'Segoe UI', system-ui, sans-serif;
+  overflow-x: hidden;
+  line-height: 1.65;
+  min-height: 100vh;
+  position: relative;
+}
+body::before {
+  content: '';
+  position: fixed; inset: 0;
+  background-image:
+    linear-gradient(rgba(0, 240, 255, 0.04) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(0, 240, 255, 0.04) 1px, transparent 1px);
+  background-size: 60px 60px;
+  pointer-events: none; z-index: 0;
+  animation: gridShift 30s linear infinite;
+}
+body::after {
+  content: '';
+  position: fixed; inset: 0;
+  background:
+    radial-gradient(circle at 18% 22%, rgba(0, 240, 255, 0.12), transparent 42%),
+    radial-gradient(circle at 82% 65%, rgba(177, 77, 255, 0.13), transparent 45%),
+    radial-gradient(circle at 50% 95%, rgba(255, 43, 214, 0.08), transparent 40%);
+  pointer-events: none; z-index: 0;
+}
+@keyframes gridShift { 0% { background-position: 0 0,0 0; } 100% { background-position: 60px 60px,60px 60px; } }
+#particle-canvas { position: fixed; inset: 0; z-index: 1; pointer-events: none; }
+.container { position: relative; z-index: 10; max-width: 1280px; margin: 0 auto; padding: 32px 24px 120px; }
+.hud {
+  display: flex; justify-content: space-between; align-items: center;
+  padding: 14px 22px; background: var(--bg-panel); backdrop-filter: var(--glass-blur);
+  border: 1px solid var(--border-glow); border-radius: 14px;
+  font-family: var(--mono); font-size: 11px; letter-spacing: 1.8px; text-transform: uppercase;
+  margin-bottom: 50px; box-shadow: 0 0 30px rgba(0,240,255,0.1);
+  flex-wrap: wrap; gap: 10px;
+}
+.hud-left { color: var(--neon-cyan); }
+.hud-center { color: var(--text-soft); }
+.hud-right { color: var(--neon-purple); display: flex; align-items: center; gap: 8px; }
+.hud-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--neon-cyan); box-shadow: 0 0 12px var(--neon-cyan); animation: pulse 1.6s ease-in-out infinite; }
+@keyframes pulse { 0%,100% { opacity: 1; transform: scale(1); } 50% { opacity: 0.4; transform: scale(1.3); } }
+.hero {
+  position: relative; text-align: center; padding: 90px 24px 60px; margin-bottom: 80px;
+  border: 1px solid var(--border-glow); border-radius: 28px;
+  background: linear-gradient(135deg, rgba(10,15,40,0.6), rgba(20,5,40,0.4));
+  backdrop-filter: var(--glass-blur); overflow: hidden;
+  box-shadow: 0 0 60px rgba(0,240,255,0.1), inset 0 0 80px rgba(177,77,255,0.06);
+}
+.hero-bg-svg { position: absolute; inset: 0; width: 100%; height: 100%; opacity: 0.45; pointer-events: none; }
+.hero-tag {
+  display: inline-block; font-family: var(--mono); font-size: 11px; letter-spacing: 3px;
+  color: var(--neon-cyan); padding: 6px 18px; border: 1px solid var(--neon-cyan);
+  border-radius: 999px; margin-bottom: 26px; text-transform: uppercase;
+  background: rgba(0,240,255,0.05); box-shadow: 0 0 20px rgba(0,240,255,0.2); position: relative; z-index: 2;
+}
+.hero h1 {
+  font-family: 'Inter','Segoe UI',system-ui,sans-serif; font-size: clamp(2.2rem, 5.5vw, 4.4rem);
+  font-weight: 900; line-height: 1.05; letter-spacing: -2px;
+  background: linear-gradient(135deg, #ffffff 0%, var(--neon-cyan) 40%, var(--neon-purple) 80%, var(--neon-magenta) 100%);
+  background-size: 200% 200%; -webkit-background-clip: text; background-clip: text;
+  -webkit-text-fill-color: transparent; animation: gradientShift 8s ease infinite;
+  margin: 0 auto 18px; text-shadow: 0 0 80px rgba(177,77,255,0.2); text-align: center; position: relative; z-index: 2;
+}
+@keyframes gradientShift { 0%,100% { background-position: 0% 50%; } 50% { background-position: 100% 50%; } }
+.hero .subtitle { font-size: 1.15rem; color: var(--text-soft); max-width: 780px; margin: 0 auto 26px; position: relative; z-index: 2; }
+.hero .overview { font-size: 0.95rem; color: var(--text-dim); max-width: 840px; margin: 0 auto 30px; position: relative; z-index: 2; font-style: italic; }
+.hero-meta { display: flex; justify-content: center; flex-wrap: wrap; gap: 12px; position: relative; z-index: 2; margin-top: 20px; }
+.meta-chip {
+  display: inline-flex; align-items: center; gap: 10px; padding: 10px 18px;
+  background: rgba(10,15,35,0.6); border: 1px solid var(--border-glow); border-radius: 10px;
+  font-family: var(--mono); font-size: 11px; letter-spacing: 1.5px; text-transform: uppercase; transition: all 0.3s;
+}
+.meta-chip:hover { border-color: var(--neon-cyan); box-shadow: 0 0 18px rgba(0,240,255,0.2); transform: translateY(-2px); }
+.meta-chip .label { color: var(--text-dim); }
+.meta-chip .value { color: var(--neon-cyan); font-weight: 700; }
+.section { margin-bottom: 90px; position: relative; }
+.section-header { display: flex; align-items: center; gap: 18px; margin-bottom: 36px; }
+.section-num {
+  font-family: var(--mono); font-size: 13px; color: var(--neon-cyan);
+  padding: 8px 14px; border: 1px solid var(--neon-cyan); border-radius: 8px;
+  background: rgba(0,240,255,0.06); letter-spacing: 2px; white-space: nowrap;
+}
+.section-title {
+  font-size: clamp(1.5rem, 3vw, 2.1rem); font-weight: 700;
+  background: linear-gradient(90deg, #fff, var(--neon-cyan));
+  -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent;
+}
+.section-line { flex: 1; height: 1px; background: linear-gradient(90deg, var(--neon-cyan), transparent); margin-left: 8px; }
+.sub-section-marker {
+  font-family: var(--mono); font-size: 11px; color: var(--neon-purple); letter-spacing: 3px;
+  text-transform: uppercase; margin-bottom: 14px; padding: 6px 12px; display: inline-block;
+  border: 1px solid var(--neon-purple); border-radius: 6px; background: rgba(177,77,255,0.05);
+}
+.concept-block {
+  background: var(--bg-panel); backdrop-filter: var(--glass-blur);
+  border: 1px solid var(--border-glow); border-radius: 20px; padding: 32px;
+  margin-bottom: 24px; position: relative; overflow: hidden;
+}
+.concept-block::after {
+  content: ''; position: absolute; bottom: -50%; right: -10%; width: 320px; height: 320px;
+  background: radial-gradient(circle, rgba(0,240,255,0.08), transparent 70%); pointer-events: none;
+}
+.concept-block h3 { font-size: 1.35rem; color: var(--neon-cyan); margin-bottom: 14px; display: flex; align-items: center; gap: 12px; }
+.concept-block h3::before { content: '◆'; color: var(--neon-purple); font-size: 1rem; }
+.concept-block h4 { font-size: 1.05rem; color: var(--neon-magenta); margin-top: 18px; margin-bottom: 10px; }
+.concept-block p { color: var(--text-soft); margin-bottom: 14px; font-size: 1rem; }
+.concept-block strong { color: #fff; }
+.concept-block em { color: var(--neon-magenta); font-style: normal; }
+.concept-block ul { list-style: none; padding-left: 0; }
+.concept-block ul li { padding: 6px 0 6px 22px; position: relative; color: var(--text-soft); }
+.concept-block ul li::before { content: '▸'; position: absolute; left: 0; color: var(--neon-cyan); }
+.highlight-box { background: linear-gradient(135deg, rgba(0,240,255,0.07), rgba(177,77,255,0.06)); border-left: 3px solid var(--neon-cyan); padding: 16px 22px; border-radius: 10px; margin: 18px 0; font-size: 0.95rem; }
+.success-box { background: linear-gradient(135deg, rgba(0,255,170,0.06), rgba(0,240,255,0.05)); border-left: 3px solid var(--neon-green); padding: 16px 22px; border-radius: 10px; margin: 18px 0; font-size: 0.95rem; }
+.warning-box { background: linear-gradient(135deg, rgba(255,77,109,0.08), rgba(255,181,71,0.06)); border-left: 3px solid var(--neon-red); padding: 16px 22px; border-radius: 10px; margin: 18px 0; font-size: 0.95rem; }
+.warning-box strong { color: var(--neon-red); }
+.viz-wrap { background: var(--bg-panel); backdrop-filter: var(--glass-blur); border: 1px solid var(--border-glow); border-radius: 22px; padding: 30px; margin-bottom: 28px; position: relative; }
+.viz-title { font-size: 1.15rem; color: var(--neon-cyan); margin-bottom: 8px; font-family: var(--mono); letter-spacing: 1px; text-transform: uppercase; }
+.viz-desc { font-size: 0.92rem; color: var(--text-soft); margin-bottom: 22px; }
+.viz-canvas { width: 100%; background: rgba(0,0,0,0.35); border-radius: 12px; border: 1px solid rgba(0,240,255,0.2); display: block; }
+input[type="range"] { width: 100%; -webkit-appearance: none; appearance: none; background: transparent; height: 24px; }
+input[type="range"]::-webkit-slider-runnable-track { height: 4px; background: linear-gradient(90deg, var(--neon-cyan), var(--neon-purple)); border-radius: 4px; }
+input[type="range"]::-moz-range-track { height: 4px; background: linear-gradient(90deg, var(--neon-cyan), var(--neon-purple)); border-radius: 4px; }
+input[type="range"]::-webkit-slider-thumb { -webkit-appearance: none; appearance: none; width: 18px; height: 18px; border-radius: 50%; background: #fff; margin-top: -7px; cursor: pointer; box-shadow: 0 0 12px rgba(0,240,255,0.8); }
+input[type="range"]::-moz-range-thumb { width: 18px; height: 18px; border-radius: 50%; background: #fff; border: 0; cursor: pointer; box-shadow: 0 0 12px rgba(0,240,255,0.8); }
+.slider-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 20px; margin-bottom: 18px; }
+.slider-cell { background: rgba(0,0,0,0.25); border: 1px solid var(--border-glow); border-radius: 12px; padding: 16px; }
+.slider-label { display: flex; justify-content: space-between; font-family: var(--mono); font-size: 11px; text-transform: uppercase; letter-spacing: 1.5px; color: var(--text-dim); margin-bottom: 10px; }
+.slider-label span:last-child { color: var(--neon-cyan); font-size: 14px; font-weight: 700; }
+.stat-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px; margin-top: 14px; }
+.stat-box { background: rgba(0,240,255,0.05); border: 1px solid var(--border-glow); border-radius: 10px; padding: 14px; text-align: center; }
+.stat-label { font-family: var(--mono); font-size: 10px; color: var(--text-dim); text-transform: uppercase; letter-spacing: 1.5px; margin-bottom: 6px; }
+.stat-value { font-size: 1.4rem; font-weight: 700; color: var(--neon-cyan); font-family: var(--mono); }
+.stat-value.purple { color: var(--neon-purple); }
+.stat-value.magenta { color: var(--neon-magenta); }
+.stat-value.amber { color: var(--neon-amber); }
+.stat-value.green { color: var(--neon-green); }
+.stat-value.red { color: var(--neon-red); }
+.btn-row { display: flex; flex-wrap: wrap; gap: 12px; margin-bottom: 20px; }
+.btn { background: rgba(0,240,255,0.06); border: 1px solid var(--border-glow); color: var(--neon-cyan); padding: 10px 20px; border-radius: 10px; font-family: var(--mono); font-size: 12px; letter-spacing: 1.5px; cursor: pointer; text-transform: uppercase; transition: all 0.25s; }
+.btn:hover { background: rgba(0,240,255,0.15); box-shadow: 0 0 22px rgba(0,240,255,0.3); transform: translateY(-2px); }
+.btn.purple { border-color: rgba(177,77,255,0.4); color: var(--neon-purple); }
+.btn.purple:hover { background: rgba(177,77,255,0.15); box-shadow: 0 0 22px rgba(177,77,255,0.3); }
+.btn.magenta { border-color: rgba(255,43,214,0.4); color: var(--neon-magenta); }
+.btn.magenta:hover { background: rgba(255,43,214,0.15); box-shadow: 0 0 22px rgba(255,43,214,0.3); }
+.btn.green { border-color: rgba(0,255,170,0.4); color: var(--neon-green); }
+.btn.green:hover { background: rgba(0,255,170,0.15); box-shadow: 0 0 22px rgba(0,255,170,0.3); }
+.btn.amber { border-color: rgba(255,181,71,0.4); color: var(--neon-amber); }
+.btn.amber:hover { background: rgba(255,181,71,0.15); box-shadow: 0 0 22px rgba(255,181,71,0.3); }
+.btn.active { background: linear-gradient(135deg, rgba(0,240,255,0.3), rgba(177,77,255,0.2)); border-color: var(--neon-cyan); color: #fff; box-shadow: 0 0 18px rgba(0,240,255,0.4); }
+.formula-card { background: linear-gradient(135deg, rgba(10,15,40,0.85), rgba(30,10,50,0.75)); border: 1px solid var(--border-glow); border-radius: 16px; padding: 28px; margin-bottom: 22px; position: relative; overflow: hidden; }
+.formula-card::before { content: ''; position: absolute; top: 0; left: 0; width: 4px; height: 100%; background: linear-gradient(180deg, var(--neon-cyan), var(--neon-purple), var(--neon-magenta)); }
+.formula-label { font-family: var(--mono); font-size: 11px; color: var(--neon-cyan); letter-spacing: 2px; text-transform: uppercase; margin-bottom: 14px; }
+.formula { font-family: var(--mono); font-size: 1.25rem; color: #fff; text-align: center; padding: 18px 12px; background: rgba(0,0,0,0.35); border-radius: 10px; margin: 14px 0; letter-spacing: 1px; overflow-x: auto; }
+.formula-explain { color: var(--text-soft); font-size: 0.95rem; margin-top: 12px; }
+.var-list { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 10px; margin-top: 14px; }
+.var-item { background: rgba(0,0,0,0.3); border: 1px solid rgba(0,240,255,0.15); border-radius: 8px; padding: 10px 14px; font-size: 0.88rem; }
+.var-item code { font-family: var(--mono); color: var(--neon-cyan); font-weight: 700; }
+.dual-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 18px; margin-top: 16px; }
+.dual-cell { background: rgba(0,0,0,0.25); border: 1px solid var(--border-glow); border-radius: 12px; padding: 20px; }
+.dual-cell h4 { font-family: var(--mono); font-size: 12px; color: var(--neon-cyan); letter-spacing: 2px; text-transform: uppercase; margin-bottom: 12px; }
+.dual-cell.purple h4 { color: var(--neon-purple); }
+.dual-cell.magenta h4 { color: var(--neon-magenta); }
+.dual-cell.green h4 { color: var(--neon-green); }
+.dual-cell.amber h4 { color: var(--neon-amber); }
+.dual-cell ul { list-style: none; padding-left: 0; }
+.dual-cell li { padding: 6px 0 6px 18px; color: var(--text-soft); font-size: 0.92rem; border-bottom: 1px dashed rgba(0,240,255,0.08); position: relative; }
+.dual-cell li:last-child { border-bottom: 0; }
+.dual-cell li::before { content: '▸'; position: absolute; left: 0; color: var(--neon-cyan); }
+.deep-dive { background: linear-gradient(135deg, rgba(10,15,35,0.7), rgba(20,5,40,0.55)); border: 1px solid var(--border-glow); border-radius: 18px; padding: 26px; margin: 18px 0; }
+.deep-dive .dd-label { font-family: var(--mono); font-size: 11px; color: var(--neon-magenta); letter-spacing: 2px; text-transform: uppercase; margin-bottom: 10px; padding: 4px 10px; display: inline-block; border: 1px solid var(--neon-magenta); border-radius: 6px; background: rgba(255,43,214,0.05); }
+.deep-dive h4 { font-size: 1.1rem; color: #fff; margin-bottom: 10px; }
+.deep-dive p { color: var(--text-soft); font-size: 0.95rem; margin-bottom: 12px; }
+.deep-dive ul { list-style: none; padding-left: 0; }
+.deep-dive li { padding: 5px 0 5px 20px; color: var(--text-soft); font-size: 0.95rem; position: relative; }
+.deep-dive li::before { content: '▸'; position: absolute; left: 0; color: var(--neon-magenta); }
+.part-nav { display: flex; justify-content: space-between; flex-wrap: wrap; gap: 14px; margin-top: 50px; padding: 22px; background: var(--bg-panel); backdrop-filter: var(--glass-blur); border: 1px solid var(--border-glow); border-radius: 16px; }
+.part-nav-item { flex: 1; min-width: 200px; padding: 14px 18px; background: rgba(0,240,255,0.04); border: 1px solid rgba(0,240,255,0.15); border-radius: 10px; }
+.part-nav-item.current { background: linear-gradient(135deg, rgba(0,240,255,0.15), rgba(177,77,255,0.12)); border-color: var(--neon-cyan); box-shadow: 0 0 18px rgba(0,240,255,0.2); }
+.part-nav-item.done { background: rgba(0,255,170,0.04); border-color: rgba(0,255,170,0.3); }
+.part-nav-label { font-family: var(--mono); font-size: 10px; letter-spacing: 2px; color: var(--text-dim); text-transform: uppercase; margin-bottom: 6px; }
+.part-nav-item.current .part-nav-label { color: var(--neon-cyan); }
+.part-nav-item.done .part-nav-label { color: var(--neon-green); }
+.part-nav-title { font-size: 0.92rem; color: #fff; font-weight: 600; }
+.quiz-card { background: var(--bg-panel); backdrop-filter: var(--glass-blur); border: 1px solid var(--border-glow); border-radius: 18px; padding: 28px; margin-bottom: 22px; }
+.quiz-q { font-size: 1.05rem; color: #fff; margin-bottom: 18px; font-weight: 500; }
+.quiz-q .qnum { font-family: var(--mono); color: var(--neon-cyan); margin-right: 10px; }
+.quiz-q .qlevel { font-family: var(--mono); font-size: 10px; letter-spacing: 1.5px; padding: 3px 10px; border-radius: 5px; margin-left: 8px; text-transform: uppercase; font-weight: 700; }
+.qlevel.easy { background: rgba(0,255,170,0.12); color: var(--neon-green); border: 1px solid rgba(0,255,170,0.4); }
+.qlevel.mod { background: rgba(255,181,71,0.12); color: var(--neon-amber); border: 1px solid rgba(255,181,71,0.4); }
+.qlevel.hard { background: rgba(255,77,109,0.12); color: var(--neon-red); border: 1px solid rgba(255,77,109,0.4); }
+.quiz-options { display: grid; gap: 10px; }
+.quiz-opt { padding: 14px 18px; background: rgba(0,240,255,0.04); border: 1px solid var(--border-glow); border-radius: 10px; cursor: pointer; color: var(--text-soft); transition: all 0.25s; font-size: 0.95rem; }
+.quiz-opt:hover { background: rgba(0,240,255,0.12); border-color: var(--neon-cyan); color: #fff; transform: translateX(4px); }
+.quiz-opt.correct { background: rgba(0,255,170,0.15); border-color: var(--neon-green); color: var(--neon-green); box-shadow: 0 0 18px rgba(0,255,170,0.3); }
+.quiz-opt.wrong { background: rgba(255,77,109,0.15); border-color: var(--neon-red); color: var(--neon-red); }
+.quiz-feedback { margin-top: 14px; padding: 12px 16px; border-radius: 10px; font-size: 0.9rem; display: none; }
+.quiz-feedback.show { display: block; }
+.quiz-feedback.ok { background: rgba(0,255,170,0.08); border: 1px solid rgba(0,255,170,0.4); color: var(--neon-green); }
+.quiz-feedback.no { background: rgba(255,77,109,0.08); border: 1px solid rgba(255,77,109,0.4); color: #ff7e9d; }
+.ai-panel { position: relative; background: linear-gradient(135deg, rgba(0,240,255,0.06), rgba(177,77,255,0.06)); border: 1px solid var(--border-glow); border-radius: 24px; padding: 38px 30px; backdrop-filter: var(--glass-blur); overflow: hidden; }
+.ai-head { display: flex; align-items: center; gap: 16px; margin-bottom: 26px; }
+.ai-avatar { width: 54px; height: 54px; border-radius: 50%; background: linear-gradient(135deg, var(--neon-cyan), var(--neon-purple)); display: flex; align-items: center; justify-content: center; font-family: var(--mono); font-weight: 800; color: var(--bg-deep); font-size: 18px; box-shadow: 0 0 24px rgba(0,240,255,0.5); animation: aiPulse 2.4s ease-in-out infinite; }
+@keyframes aiPulse { 0%,100% { box-shadow: 0 0 24px rgba(0,240,255,0.5); } 50% { box-shadow: 0 0 40px rgba(177,77,255,0.6); } }
+.ai-meta .ai-name { font-size: 1.05rem; color: #fff; font-weight: 600; }
+.ai-meta .ai-role { font-family: var(--mono); font-size: 11px; color: var(--neon-cyan); letter-spacing: 2px; text-transform: uppercase; }
+.takeaway { display: flex; gap: 14px; align-items: flex-start; padding: 14px 0; border-bottom: 1px dashed rgba(0,240,255,0.15); }
+.takeaway:last-child { border-bottom: 0; }
+.takeaway-num { font-family: var(--mono); font-size: 13px; color: var(--neon-cyan); background: rgba(0,240,255,0.08); border: 1px solid var(--border-glow); padding: 4px 10px; border-radius: 6px; flex-shrink: 0; font-weight: 600; }
+.takeaway-text { color: var(--text-soft); font-size: 0.95rem; }
+.takeaway-text strong { color: #fff; }
+.module-footer { margin-top: 60px; padding: 26px; text-align: center; font-family: var(--mono); font-size: 11px; color: var(--text-dim); letter-spacing: 2px; text-transform: uppercase; border-top: 1px solid var(--border-glow); }
+.real-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 18px; margin-top: 14px; }
+.real-card { background: rgba(10,15,35,0.6); border: 1px solid var(--border-glow); border-radius: 14px; padding: 20px; transition: all 0.3s; }
+.real-card:hover { transform: translateY(-4px); border-color: var(--neon-purple); box-shadow: 0 8px 24px rgba(177,77,255,0.2); }
+.real-card h4 { color: var(--neon-magenta); margin-bottom: 8px; font-size: 1rem; }
+.real-card p { color: var(--text-soft); font-size: 0.9rem; }
+.step-list { counter-reset: stepc; list-style: none; padding: 0; margin-top: 14px; }
+.step-list li { counter-increment: stepc; position: relative; padding: 14px 16px 14px 60px; background: rgba(0,0,0,0.28); border: 1px solid var(--border-glow); border-radius: 10px; margin-bottom: 10px; color: var(--text-soft); font-size: 0.95rem; }
+.step-list li::before { content: counter(stepc, decimal-leading-zero); position: absolute; left: 14px; top: 14px; font-family: var(--mono); font-size: 12px; color: var(--neon-cyan); background: rgba(0,240,255,0.08); border: 1px solid var(--neon-cyan); padding: 4px 8px; border-radius: 6px; font-weight: 700; }
+.step-list li strong { color: #fff; }
+.calc-table { width: 100%; border-collapse: collapse; margin-top: 14px; font-family: var(--mono); font-size: 0.88rem; }
+.calc-table th, .calc-table td { padding: 10px 12px; border: 1px solid rgba(0,240,255,0.15); text-align: center; color: var(--text-soft); }
+.calc-table th { background: rgba(0,240,255,0.08); color: var(--neon-cyan); font-weight: 700; letter-spacing: 1px; text-transform: uppercase; font-size: 0.78rem; }
+.calc-table tr.total { background: rgba(177,77,255,0.08); }
+.calc-table tr.total td { color: var(--neon-purple); font-weight: 700; }
+.written-eval { background: linear-gradient(135deg, rgba(255,43,214,0.06), rgba(177,77,255,0.06)); border: 1px solid rgba(255,43,214,0.35); border-radius: 22px; padding: 32px; margin-bottom: 24px; }
+.we-label { font-family: var(--mono); font-size: 11px; color: var(--neon-magenta); letter-spacing: 3px; text-transform: uppercase; margin-bottom: 14px; padding: 6px 12px; display: inline-block; border: 1px solid var(--neon-magenta); border-radius: 6px; background: rgba(255,43,214,0.05); }
+.write-q { margin: 22px 0; }
+.write-q .qhead { display: flex; align-items: baseline; gap: 10px; margin-bottom: 10px; flex-wrap: wrap; }
+.write-q .qhead .qnum { font-family: var(--mono); color: var(--neon-magenta); font-weight: 700; font-size: 0.95rem; }
+.write-q .qhead .qtext { font-size: 1rem; color: #fff; font-weight: 500; }
+.write-q .qhead .qfrom { font-family: var(--mono); font-size: 9.5px; letter-spacing: 1.5px; padding: 3px 9px; border-radius: 5px; text-transform: uppercase; font-weight: 700; background: rgba(0,240,255,0.1); color: var(--neon-cyan); border: 1px solid rgba(0,240,255,0.4); }
+textarea.ans-area { width: 100%; min-height: 130px; background: rgba(0,0,0,0.38); border: 1px solid rgba(255,43,214,0.3); border-radius: 10px; padding: 14px; color: var(--text-soft); font-family: 'Inter','Segoe UI',system-ui,sans-serif; font-size: 0.95rem; line-height: 1.6; resize: vertical; outline: none; transition: all 0.25s; }
+textarea.ans-area:focus { border-color: var(--neon-magenta); box-shadow: 0 0 18px rgba(255,43,214,0.25); }
+.eval-out { display: none; margin-top: 20px; padding: 20px; background: rgba(0,0,0,0.4); border-radius: 14px; border: 1px solid var(--border-glow); }
+.eval-out.show { display: block; }
+.eval-out h4 { color: var(--neon-cyan); font-family: var(--mono); font-size: 12px; letter-spacing: 2px; text-transform: uppercase; margin-bottom: 14px; }
+.eval-q-result { margin: 18px 0; padding: 16px; background: rgba(10,15,40,0.6); border: 1px solid var(--border-glow); border-radius: 10px; }
+.eval-q-result .qhead2 { display: flex; justify-content: space-between; flex-wrap: wrap; gap: 8px; margin-bottom: 10px; align-items: baseline; }
+.eval-q-result .qhead2 strong { color: #fff; font-size: 0.95rem; }
+.eval-q-result .grade { font-family: var(--mono); font-size: 11px; letter-spacing: 1.5px; padding: 4px 10px; border-radius: 5px; text-transform: uppercase; font-weight: 700; }
+.eval-q-result .grade.high { background: rgba(0,255,170,0.12); color: var(--neon-green); border: 1px solid rgba(0,255,170,0.4); }
+.eval-q-result .grade.mid { background: rgba(255,181,71,0.12); color: var(--neon-amber); border: 1px solid rgba(255,181,71,0.4); }
+.eval-q-result .grade.low { background: rgba(255,77,109,0.12); color: var(--neon-red); border: 1px solid rgba(255,77,109,0.4); }
+.score-pill-row { display: flex; gap: 8px; flex-wrap: wrap; margin: 10px 0 14px; }
+.score-pill { background: rgba(0,0,0,0.4); padding: 6px 12px; border-radius: 20px; font-family: var(--mono); font-size: 10.5px; letter-spacing: 1.2px; border: 1px solid var(--border-glow); color: var(--text-soft); }
+.cov-list { font-size: 0.9rem; line-height: 1.7; color: var(--text-soft); margin: 8px 0; }
+.cov-list .covered { color: var(--neon-green); }
+.cov-list .missing { color: var(--neon-amber); }
+.cov-list strong { color: #fff; }
+.eval-q-result details { margin-top: 10px; }
+.eval-q-result summary { cursor: pointer; color: var(--neon-cyan); font-family: var(--mono); font-size: 11px; letter-spacing: 1.5px; text-transform: uppercase; font-weight: 700; padding: 6px 0; }
+.eval-q-result summary:hover { color: var(--neon-magenta); }
+.model-ans { margin-top: 10px; padding: 12px 14px; background: rgba(0,240,255,0.04); border-left: 2px solid var(--neon-cyan); border-radius: 0 8px 8px 0; font-size: 0.92rem; color: var(--text-soft); line-height: 1.65; }
+.overall-msg { margin-top: 22px; padding: 16px 18px; background: linear-gradient(135deg, rgba(0,240,255,0.05), rgba(177,77,255,0.05)); border-left: 3px solid var(--neon-cyan); border-radius: 0 10px 10px 0; font-size: 0.95rem; color: var(--text-soft); line-height: 1.65; }
+.overall-msg strong { color: #fff; }
+@media (max-width: 720px) {
+  .container { padding: 20px 14px 80px; }
+  .hero { padding: 60px 18px 50px; }
+  .section { margin-bottom: 60px; }
+  .concept-block, .viz-wrap, .ai-panel, .quiz-card, .written-eval { padding: 22px 18px; }
+  .formula { font-size: 0.95rem; padding: 14px 8px; }
+  .calc-table { font-size: 0.78rem; }
+  .calc-table th, .calc-table td { padding: 6px 4px; }
+}
+
+  /* â”€â”€ SCROLL REVEAL â”€â”€ */
+  .reveal {
+    opacity: 0;
+    transform: translateY(30px);
+    transition: all 0.8s cubic-bezier(0.16, 1, 0.3, 1);
+  }
+  .reveal.visible { opacity: 1; transform: translateY(0); }
+
+  /* â”€â”€ GRID DRIFT â”€â”€ */
+  @keyframes gridDrift {
+    0%   { background-position: 0 0, 0 0; }
+    100% { background-position: 60px 60px, 60px 60px; }
+  }
+
+  /* â”€â”€ SLIDE IN (quiz feedback) â”€â”€ */
+  @keyframes slideIn {
+    from { opacity: 0; transform: translateY(8px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+  .quiz-feedback.show { animation: slideIn 0.4s; }
+
+  /* â”€â”€ AI PANEL ROTATE â”€â”€ */
+  @keyframes rotate { to { transform: rotate(360deg); } }
+  .ai-panel { overflow: hidden; }
+  .ai-panel::before {
+    content: ''; position: absolute; top: -50%; left: -50%;
+    width: 200%; height: 200%;
+    background: conic-gradient(from 0deg, transparent, rgba(0,240,255,0.05), transparent, rgba(177,77,255,0.05), transparent);
+    animation: rotate 20s linear infinite;
+    pointer-events: none; z-index: 0;
+  }
+  .ai-panel > * { position: relative; z-index: 1; }
+
+  /* â”€â”€ SCANLINES â”€â”€ */
+  .scanlines {
+    position: fixed; inset: 0;
+    background: repeating-linear-gradient(0deg,
+      rgba(0,240,255,0.012) 0px, rgba(0,240,255,0.012) 1px,
+      transparent 1px, transparent 4px);
+    pointer-events: none; z-index: 999; mix-blend-mode: screen;
+  }
+</style>
+</head>
+<body>
+<div class="scanlines"></div>
+
+<canvas id="particle-canvas"></canvas>
+
+<div class="container">
+
+  <div class="hud">
+    <div class="hud-left">⟁ QNA-OS v4.7 // Module 5.1 — Part 2</div>
+    <div class="hud-center">Least Squares · Correlation vs Regression</div>
+    <div class="hud-right"><span class="hud-dot"></span>Optimizer Core Online</div>
+  </div>
+
+  <section class="hero">
+    <svg class="hero-bg-svg" viewBox="0 0 1200 400" preserveAspectRatio="none">
+      <defs>
+        <linearGradient id="bowlGrad" x1="0" y1="0" x2="1" y2="1">
+          <stop offset="0%" stop-color="#00f0ff" stop-opacity="0.55"/>
+          <stop offset="100%" stop-color="#b14dff" stop-opacity="0.55"/>
+        </linearGradient>
+      </defs>
+      <!-- SSE bowl contours -->
+      <ellipse cx="320" cy="200" rx="180" ry="100" fill="none" stroke="url(#bowlGrad)" stroke-width="1.5" opacity="0.55"/>
+      <ellipse cx="320" cy="200" rx="130" ry="72" fill="none" stroke="url(#bowlGrad)" stroke-width="1.5" opacity="0.7"/>
+      <ellipse cx="320" cy="200" rx="80" ry="44" fill="none" stroke="url(#bowlGrad)" stroke-width="1.5" opacity="0.85"/>
+      <ellipse cx="320" cy="200" rx="35" ry="20" fill="rgba(0,255,170,0.15)" stroke="#00ffaa" stroke-width="2"/>
+      <circle cx="320" cy="200" r="6" fill="#00ffaa"/>
+      <text x="320" y="180" fill="#00ffaa" font-family="JetBrains Mono" font-size="11" text-anchor="middle" font-weight="700">MIN SSE</text>
+      <text x="320" y="80" fill="#00f0ff" font-family="JetBrains Mono" font-size="13" text-anchor="middle" opacity="0.9">ERROR LANDSCAPE</text>
+      <text x="320" y="340" fill="#7a8bbf" font-family="JetBrains Mono" font-size="11" text-anchor="middle" opacity="0.7">SLOPE  β₁ →</text>
+      <!-- arrow to scatter -->
+      <path d="M 540 200 L 660 200" stroke="#ff2bd6" stroke-width="1.5" opacity="0.7"/>
+      <polygon points="650,194 665,200 650,206" fill="#ff2bd6" opacity="0.8"/>
+      <!-- mini scatter on right -->
+      <g transform="translate(720,80)">
+        <g fill="#00f0ff" opacity="0.55">
+          <circle cx="20" cy="200" r="3"/>
+          <circle cx="60" cy="170" r="3"/>
+          <circle cx="100" cy="150" r="3"/>
+          <circle cx="140" cy="110" r="3"/>
+          <circle cx="180" cy="80" r="3"/>
+          <circle cx="220" cy="50" r="3"/>
+          <circle cx="80" cy="160" r="3"/>
+          <circle cx="160" cy="100" r="3"/>
+        </g>
+        <line x1="10" y1="210" x2="240" y2="30" stroke="url(#bowlGrad)" stroke-width="2.5" opacity="0.85"/>
+        <text x="125" y="0" fill="#b14dff" font-family="JetBrains Mono" font-size="11" text-anchor="middle" opacity="0.9">BEST-FIT LINE</text>
+      </g>
+      <rect x="1010" y="160" width="160" height="70" rx="12" fill="rgba(10,15,40,0.6)" stroke="#00f0ff" stroke-opacity="0.5"/>
+      <text x="1090" y="190" fill="#fff" font-family="JetBrains Mono" font-size="13" text-anchor="middle" font-weight="700">r vs β̂₁</text>
+      <text x="1090" y="212" fill="#ff2bd6" font-family="JetBrains Mono" font-size="9.5" text-anchor="middle" opacity="0.85">TWO COUSINS</text>
+    </svg>
+    <div class="hero-tag">◉ MODULE 5.1 — PART 2 of 2</div>
+    <h1>Least Squares &amp; Correlation vs Regression</h1>
+    <p class="subtitle">Out of every line we could draw, which one is best — and by what rule? And once we have the best line, how does the slope compare to the famous correlation coefficient? Let's finish the regression story.</p>
+    <p class="overview">Part 2 closes Module 5.1 with the two remaining topics. First, <strong>least squares</strong> — the precise rule that turns "best line" from a vague idea into a calculation, with closed-form formulas for the intercept and slope. Second, <strong>correlation vs regression</strong> — how the Pearson correlation r and the regression slope β̂₁ measure the same relationship in different ways, and the clean bridge formula that connects them. At the end you will take both a multiple-choice quiz and a written-answer challenge covering Parts 1 and 2.</p>
+    <div class="hero-meta">
+      <div class="meta-chip"><span class="label">Duration:</span><span class="value">60 Min</span></div>
+      <div class="meta-chip"><span class="label">Level:</span><span class="value">Beg → Int</span></div>
+      <div class="meta-chip"><span class="label">Topics:</span><span class="value">04 / 04</span></div>
+      <div class="meta-chip"><span class="label">Formulas:</span><span class="value">04</span></div>
+      <div class="meta-chip"><span class="label">Practice:</span><span class="value">6 Mcq + 5 Written</span></div>
+      <div class="meta-chip"><span class="label">Prereq:</span><span class="value">M-5.1 Part 1</span></div>
+    </div>
+  </section>
+
+  <div class="part-nav">
+    <div class="part-nav-item done">
+      <div class="part-nav-label">✓ Part 1 —Complete</div>
+      <div class="part-nav-title">Best-Fit Line · Residuals</div>
+    </div>
+    <div class="part-nav-item current">
+      <div class="part-nav-label">⟁ Part 2 —Now</div>
+      <div class="part-nav-title">Least Squares · Correlation vs Regression</div>
+    </div>
+  </div>
+
+  <section class="section reveal">
+    <div class="section-header">
+      <div class="section-num">⟁ Objectives</div>
+      <h2 class="section-title">What You'll Learn in Part 2</h2>
+      <div class="section-line"></div>
+    </div>
+    <div class="dual-grid">
+      <div class="dual-cell">
+        <h4>🎯 Least Squares Rule</h4>
+        <ul>
+          <li>Why we square residuals</li>
+          <li>The Sum of Squared Errors (SSE)</li>
+          <li>The error landscape — a smooth bowl</li>
+          <li>Closed-form formulas for β̂₀ and β̂₁</li>
+        </ul>
+      </div>
+      <div class="dual-cell purple">
+        <h4>🔗 Correlation vs Regression</h4>
+        <ul>
+          <li>What Pearson r measures</li>
+          <li>What β̂₁ measures</li>
+          <li>The bridge formula β̂₁ = r × (s_y / s_x)</li>
+          <li>R² and how it relates to r</li>
+        </ul>
+      </div>
+      <div class="dual-cell magenta">
+        <h4>🌍 Where It Lives</h4>
+        <ul>
+          <li>Modern ML loss functions</li>
+          <li>Finance — CAPM model</li>
+          <li>Quality control</li>
+          <li>Feature screening in data science</li>
+        </ul>
+      </div>
+      <div class="dual-cell green">
+        <h4>🧮 Practice &amp; Eval</h4>
+        <ul>
+          <li>SSE landscape explorer</li>
+          <li>Correlation gallery</li>
+          <li>6 MCQ + 5 AI-graded written answers</li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <!-- ═══════════════════ TOPIC 3 — LEAST SQUARES ═══════════════════ -->
+  <section class="section reveal">
+    <div class="section-header">
+      <div class="section-num">Topic 3</div>
+      <h2 class="section-title">Least Squares Intuition</h2>
+      <div class="section-line"></div>
+    </div>
+
+    <!-- WHAT -->
+    <div class="concept-block">
+      <div class="sub-section-marker">What it is</div>
+      <h3>What is the Least Squares Rule?</h3>
+      <p>In Part 1 we said the best-fit line "sits as close as possible to all the dots." Least squares is the precise rule that makes this idea exact. It is a recipe in three steps:</p>
+      <ul>
+        <li><strong>Step 1:</strong> For every data point, take the residual (the gap between the dot and the line).</li>
+        <li><strong>Step 2:</strong> Square each residual — multiply it by itself.</li>
+        <li><strong>Step 3:</strong> Add up all those squared residuals. The total is one number that scores the line.</li>
+      </ul>
+      <p>This total is called the <strong>Sum of Squared Errors</strong>, written SSE. Smaller SSE = better line. The <em>least squares line</em> is whichever line makes SSE as small as it can possibly be — no other line scores lower on the same data.</p>
+      <div class="highlight-box">
+        <strong>Simple meaning:</strong> Least squares is the rule that says — out of every line we could draw, the best one is the line that gives the smallest total of squared misses. Find that line, and you've found the least-squares fit.
+      </div>
+      <h4>The SSE formula</h4>
+      <div class="formula">SSE = Σ (yᵢ − ŷᵢ)²  =  Σ eᵢ²</div>
+      <ul>
+        <li><strong>Σ</strong> means "add up all of them" — sum over every data point i from 1 to n.</li>
+        <li><strong>yᵢ</strong> is the actual y for point i.</li>
+        <li><strong>ŷᵢ</strong> is what the line predicts at point i.</li>
+        <li><strong>eᵢ = yᵢ − ŷᵢ</strong> is the residual we met in Part 1.</li>
+      </ul>
+    </div>
+
+    <!-- WHY -->
+    <div class="concept-block">
+      <div class="sub-section-marker">Why we need it</div>
+      <h3>Why Squaring? Why Not Just Add the Residuals?</h3>
+      <p>This is a fair question. We could simply add residuals together — why complicate things by squaring? Three solid reasons:</p>
+      <div class="dual-grid">
+        <div class="dual-cell">
+          <h4>1. Stops cancellation</h4>
+          <ul>
+            <li>Positive residuals and negative residuals cancel out</li>
+            <li>A terrible line could add to zero and look perfect</li>
+            <li>Squaring makes every miss count positively</li>
+          </ul>
+        </div>
+        <div class="dual-cell purple">
+          <h4>2. Penalises big misses</h4>
+          <ul>
+            <li>A residual of 10 contributes 100 to SSE</li>
+            <li>A residual of 1 contributes only 1</li>
+            <li>The line works hard to avoid large mistakes</li>
+          </ul>
+        </div>
+        <div class="dual-cell magenta">
+          <h4>3. Has a clean solution</h4>
+          <ul>
+            <li>The squared sum is a smooth curve in parameter space</li>
+            <li>Calculus gives one exact answer</li>
+            <li>No iterative search needed</li>
+          </ul>
+        </div>
+      </div>
+      <div class="success-box">
+        <strong>Big idea:</strong> Squaring solves three problems at once — it removes the sign, weights big errors more, and gives us a smooth function we can solve exactly. That's why least squares became the standard method, and why it still drives most of statistics and machine learning today.
+      </div>
+    </div>
+
+    <!-- WHY USED -->
+    <div class="concept-block">
+      <div class="sub-section-marker">Why it's used everywhere</div>
+      <h3>The Reach of Least Squares</h3>
+      <p>Once you understand least squares, you understand the engine behind a surprisingly large chunk of data science:</p>
+      <ul>
+        <li><strong>Many classical methods -</strong> including regression, ANOVA, and related inference tools — are closely connected to least-squares ideas.</li>
+        <li><strong>Machine learning:</strong> the "Mean Squared Error" (MSE) loss used to train countless models — including the output of neural networks for regression tasks — is just SSE divided by n.</li>
+        <li><strong>Signal processing:</strong> noise reduction, curve fitting, and Kalman filters all use the least-squares principle.</li>
+        <li><strong>GPS &amp; navigation:</strong> your phone's location is computed by least-squares fitting against satellite signals.</li>
+        <li><strong>Physics &amp; engineering:</strong> fitting models to measurements of physical systems.</li>
+      </ul>
+    </div>
+
+    <!-- HOW DOES IT WORK -->
+    <div class="concept-block">
+      <div class="sub-section-marker">How it works</div>
+      <h3>The Error Landscape — A Visual Story</h3>
+      <p>Here is the geometric picture. We are choosing two numbers: β̂₀ (intercept) and β̂₁ (slope). Each pair of numbers gives a different line, and each line has a different SSE. So SSE is really a function of those two numbers.</p>
+      <p>If we plotted SSE in 3D, with β̂₀ on one floor axis and β̂₁ on the other floor axis, SSE would rise upward. The resulting shape would look like a smooth bowl that opens upward. Somewhere at the bottom of that bowl is one lowest point. That point — the unique pair (β̂₀, β̂₁) where SSE is smallest — <strong>is the least-squares solution</strong>.</p>
+      <p>This bowl shape is important. It means:</p>
+      <ul>
+        <li>For ordinary linear regression with <strong>valid data</strong>, there is one least-squares solution.</li>
+        <li>You can find it by many optimisation methods work by moving toward lower error values</li>
+        <li>Once you reach the bottom, no small change in either coefficient can make SSE smaller.</li>
+      </ul>
+    </div>
+
+    <!-- INTERACTIVE 1: SQUARES VIZ -->
+    <div class="viz-wrap">
+      <div class="viz-title">⟁ Interactive — Why "Squared"? See the Squares</div>
+      <div class="viz-desc">The name "least squares" is literal. For every data point, we draw an actual square whose side equals the residual. Its area equals the residual squared. The total shaded area is the SSE. Move the line and watch the total area shrink toward its smallest possible value.</div>
+      <div class="slider-row">
+        <div class="slider-cell">
+          <div class="slider-label"><span>Intercept β̂₀</span><span id="t3B0Val">5.0</span></div>
+          <input type="range" id="t3B0" min="-20" max="60" value="5" step="0.5">
+        </div>
+        <div class="slider-cell">
+          <div class="slider-label"><span>Slope β̂₁</span><span id="t3B1Val">2.0</span></div>
+          <input type="range" id="t3B1" min="-1" max="7" value="2" step="0.05">
+        </div>
+      </div>
+      <div class="btn-row">
+        <button class="btn green" id="t3Snap">Snap to Best Fit</button>
+      </div>
+      <canvas id="t3Canvas" class="viz-canvas" width="900" height="460"></canvas>
+      <div class="stat-grid">
+        <div class="stat-box"><div class="stat-label">Total area (SSE)</div><div class="stat-value" id="t3Sse">—</div></div>
+        <div class="stat-box"><div class="stat-label">Smallest possible SSE</div><div class="stat-value green" id="t3BestSse">—</div></div>
+        <div class="stat-box"><div class="stat-label">Best β̂₀</div><div class="stat-value purple" id="t3Bb0">—</div></div>
+        <div class="stat-box"><div class="stat-label">Best β̂₁</div><div class="stat-value magenta" id="t3Bb1">—</div></div>
+      </div>
+      <div class="highlight-box" style="margin-top:18px;" id="t3Insight">
+        Each cyan-tinted square has area equal to one squared residual. Total shaded area = total SSE.
+      </div>
+    </div>
+
+    <!-- INTERACTIVE 2: SSE LANDSCAPE -->
+    <div class="viz-wrap">
+      <div class="viz-title">⟁ Interactive — The SSE Bowl Seen From Above</div>
+      <div class="viz-desc">A bird's-eye view of the error landscape. The horizontal axis is the slope β̂₁; the vertical axis is the intercept β̂₀. Dark cyan = low SSE (good line). Bright = high SSE (bad line). The green dot is the global minimum. The orange dot is your current choice from the panel above. Walking downhill from any starting point always arrives at the green dot — that is what "training" a model actually does.</div>
+      <canvas id="t3LandCanvas" class="viz-canvas" width="900" height="420"></canvas>
+      <div class="highlight-box" style="margin-top:18px;">
+        <strong>The lesson:</strong> SSE is a smooth bowl. There is exactly one best line, and any optimisation algorithm — from simple calculus to gradient descent in deep learning — converges to the same spot.
+      </div>
+    </div>
+
+    <!-- MATHEMATICAL — CLOSED FORM -->
+    <div class="formula-card">
+      <div class="formula-label">⟁ The Closed-Form Solution</div>
+      <p class="formula-explain">For one predictor, the best β̂₀ and β̂₁ can be written directly from the data — no iteration needed:</p>
+      <div class="formula">β̂₁ = Σ (xᵢ − x̄)(yᵢ − ȳ) / Σ (xᵢ − x̄)²</div>
+      <div class="formula">β̂₀ = ȳ − β̂₁ × x̄</div>
+      <p class="formula-explain"><strong>What every symbol means:</strong></p>
+      <div class="var-list">
+        <div class="var-item"><code>x̄</code> — the mean (average) of all x values</div>
+        <div class="var-item"><code>ȳ</code> — the mean of all y values</div>
+        <div class="var-item"><code>xᵢ − x̄</code> — how far point i's x is from the mean of x</div>
+        <div class="var-item"><code>yᵢ − ȳ</code> — how far point i's y is from the mean of y</div>
+        <div class="var-item"><code>Σ</code> — add up across all data points</div>
+        <div class="var-item"><code>β̂₁, β̂₀</code> — the resulting best slope and intercept</div>
+      </div>
+      <p class="formula-explain"><strong>How to read the slope formula in plain words:</strong> for each point, multiply "how much x is above its mean" by "how much y is above its mean." Add these products across all points (top). Then divide by the total of the x-deviations squared (bottom). The top measures how x and y move together; the bottom rescales into x-units.</p>
+      <p class="formula-explain"><strong>How to read the intercept formula:</strong> once you know the slope, the intercept is forced by one fact — the fitted line must pass through the centre of the data, the point (x̄, ȳ). Plug x = x̄ into ŷ = β̂₀ + β̂₁ x̄ and set it equal to ȳ. Solving gives β̂₀ = ȳ − β̂₁ x̄.</p>
+      <p class="formula-explain"><strong>Where this comes from:</strong> Take SSE as a function of β̂₀ and β̂₁. Use calculus to find where it's smallest — take the partial derivative with respect to each, set both to zero. The two resulting equations (called the <em>normal equations</em>) solve to exactly the two formulas above.</p>
+    </div>
+
+    <!-- WORKED EXAMPLE -->
+    <div class="deep-dive">
+      <div class="dd-label">⟁ Worked Example</div>
+      <h4>Example: Finding β̂₀ and β̂₁ for Café Sales vs Temperature</h4>
+      <p>A small café tracked daily temperature (°C) and cups of cold coffee sold over five days:</p>
+      <table class="calc-table">
+        <thead><tr><th>Day</th><th>Temp x (°C)</th><th>Cups y</th></tr></thead>
+        <tbody>
+          <tr><td>1</td><td>20</td><td>30</td></tr>
+          <tr><td>2</td><td>22</td><td>35</td></tr>
+          <tr><td>3</td><td>25</td><td>45</td></tr>
+          <tr><td>4</td><td>28</td><td>60</td></tr>
+          <tr><td>5</td><td>30</td><td>65</td></tr>
+        </tbody>
+      </table>
+      <p style="margin-top:14px;"><strong>Step 1 — Compute the means:</strong></p>
+      <ul>
+        <li>x̄ = (20 + 22 + 25 + 28 + 30) / 5 = <strong>25</strong></li>
+        <li>ȳ = (30 + 35 + 45 + 60 + 65) / 5 = <strong>47</strong></li>
+      </ul>
+      <p><strong>Step 2 — Build deviations and products:</strong></p>
+      <table class="calc-table">
+        <thead><tr><th>x</th><th>y</th><th>x − x̄</th><th>y − ȳ</th><th>(x−x̄)(y−ȳ)</th><th>(x−x̄)²</th></tr></thead>
+        <tbody>
+          <tr><td>20</td><td>30</td><td>−5</td><td>−17</td><td>+85</td><td>25</td></tr>
+          <tr><td>22</td><td>35</td><td>−3</td><td>−12</td><td>+36</td><td>9</td></tr>
+          <tr><td>25</td><td>45</td><td>0</td><td>−2</td><td>0</td><td>0</td></tr>
+          <tr><td>28</td><td>60</td><td>+3</td><td>+13</td><td>+39</td><td>9</td></tr>
+          <tr><td>30</td><td>65</td><td>+5</td><td>+18</td><td>+90</td><td>25</td></tr>
+          <tr class="total"><td colspan="4" style="text-align:right;">Sum →</td><td>250</td><td>68</td></tr>
+        </tbody>
+      </table>
+      <p style="margin-top:14px;"><strong>Step 3 — Apply the formulas:</strong></p>
+      <ul>
+        <li>β̂₁ = 250 / 68 ≈ <strong>3.68</strong> cups per °C</li>
+        <li>β̂₀ = 47 − 3.68 × 25 ≈ <strong>−44.91</strong> cups</li>
+      </ul>
+      <p><strong>Step 4 — Final line and prediction:</strong></p>
+      <div class="formula">ŷ = −44.91 + 3.68 × x</div>
+      <ul>
+        <li>Each extra degree of temperature adds about 3.68 cups of cold coffee sold, on average.</li>
+        <li>At 27 °C the line predicts ŷ = −44.91 + 3.68 × 27 ≈ <strong>54.5 cups</strong>.</li>
+        <li>The intercept −44.91 is the predicted sales at x = 0 °C. That number is not useful by itself (cold coffee sales would be near zero at freezing temperatures), but it correctly fixes the line's height through the data range.</li>
+      </ul>
+      <div class="success-box">
+        <strong>The lesson:</strong> Two short formulas turn raw data into a complete prediction equation. This is exactly what every regression library does behind the scenes when you call <code>lm()</code> or <code>LinearRegression().fit()</code>.
+      </div>
+    </div>
+
+    <!-- WHEN -->
+    <div class="concept-block">
+      <div class="sub-section-marker">When to use it</div>
+      <h3>When Least Squares Works Well — and When It Doesn't</h3>
+      <div class="dual-grid">
+        <div class="dual-cell green">
+          <h4>✔ Works well when</h4>
+          <ul>
+            <li>The relationship between x and y is roughly straight</li>
+            <li>The noise in the data is symmetric around the line</li>
+            <li>There are no extreme outliers pulling the line</li>
+            <li>All x values are not identical (otherwise the denominator is zero)</li>
+          </ul>
+        </div>
+        <div class="dual-cell magenta">
+          <h4>✘ Struggles when</h4>
+          <ul>
+            <li>The data is curved — a straight line will systematically miss</li>
+            <li>A few extreme points dominate (squaring amplifies their pull)</li>
+            <li>The output is categorical (yes/no) — use logistic regression instead</li>
+            <li>You need predictions outside the observed range of x</li>
+          </ul>
+        </div>
+      </div>
+      <div class="warning-box">
+        <strong>Outlier alert:</strong> A single bad data point can move the least-squares line a lot, because its squared residual is huge. Always check for outliers before trusting the fit. Robust alternatives (like least absolute deviations) exist for noisy data.
+      </div>
+    </div>
+
+    <!-- REAL LIFE -->
+    <div class="concept-block">
+      <div class="sub-section-marker">Real-life examples</div>
+      <h3>Where Least Squares Powers Everyday Tech</h3>
+      <div class="real-grid">
+        <div class="real-card">
+          <h4>📡 GPS Positioning</h4>
+          <p>Your phone receives signals from multiple satellites with small errors. GPS often uses least-squares methods to estimate location from multiple satellite signals.</p>
+        </div>
+        <div class="real-card">
+          <h4>🎯 ML Training Loss</h4>
+          <p>The MSE (Mean Squared Error) loss in neural networks is the average squared residual. Many regression models use mean squared error, which is closely related to least squares.</p>
+        </div>
+        <div class="real-card">
+          <h4>🌐 A/B Testing</h4>
+          <p>Least squares can be used to model how user metrics change across experiments or features. Least squares gives the cleanest estimate of how much each change moves the metric.</p>
+        </div>
+        <div class="real-card">
+          <h4>🏗️ Engineering Calibration</h4>
+          <p>Bridges, buildings and aircraft are checked by fitting measured strain against load. Least squares estimates the structural response curve.</p>
+        </div>
+        <div class="real-card">
+          <h4>💹 Asset Pricing</h4>
+          <p>The "beta" of a stock — how strongly it follows the market — is the least-squares slope of stock returns against market returns. That's the CAPM model.</p>
+        </div>
+        <div class="real-card">
+          <h4>🔬 Lab Curve Fitting</h4>
+          <p>Scientists fit lines through experimental measurements to estimate reaction rates, dose-response curves, decay constants — all least squares.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ═══════════════════ TOPIC 4 — CORRELATION vs REGRESSION ═══════════════════ -->
+  <section class="section reveal">
+    <div class="section-header">
+      <div class="section-num">Topic 4</div>
+      <h2 class="section-title">Correlation vs Regression</h2>
+      <div class="section-line"></div>
+    </div>
+
+    <!-- WHAT -->
+    <div class="concept-block">
+      <div class="sub-section-marker">What it is</div>
+      <h3>Two Cousins, Two Different Questions</h3>
+      <p>Correlation and regression are closely related but answer different questions about the same data.</p>
+      <div class="dual-grid">
+        <div class="dual-cell">
+          <h4>Correlation (r)</h4>
+          <ul>
+            <li>One single number, between −1 and +1</li>
+            <li>Tells you <strong>strength and direction</strong> of a linear relationship</li>
+            <li>r near +1 → strong positive (move together)</li>
+            <li>r near −1 → strong negative (move opposite)</li>
+            <li>r near 0 → no straight-line pattern</li>
+            <li>Has no units — pure shape information</li>
+            <li>Swapping x and y does not change r</li>
+          </ul>
+        </div>
+        <div class="dual-cell purple">
+          <h4>Regression slope (β̂₁)</h4>
+          <ul>
+            <li>Has real units (y per unit of x)</li>
+            <li>Tells you <strong>how much</strong> y changes per 1-unit change in x</li>
+            <li>Can be any real number, not just between −1 and +1</li>
+            <li>Swapping x and y gives a different number</li>
+            <li>Used for prediction, not just description</li>
+          </ul>
+        </div>
+      </div>
+      <div class="highlight-box">
+        <strong>The short version:</strong> Correlation answers "how tightly do the dots hug a line?" Regression answers "what is that line?" — and the slope of that line is β̂₁.
+      </div>
+      <h4>The Pearson correlation formula</h4>
+      <div class="formula">r = Σ(xᵢ − x̄)(yᵢ − ȳ) / √[ Σ(xᵢ − x̄)² × Σ(yᵢ − ȳ)² ]</div>
+      <ul>
+        <li>Top: same "joint movement" term we saw in the slope formula.</li>
+        <li>Bottom: a square-root combination of the spread of x and the spread of y.</li>
+        <li>The denominator forces the answer to lie between −1 and +1.</li>
+      </ul>
+    </div>
+
+    <!-- WHY -->
+    <div class="concept-block">
+      <div class="sub-section-marker">Why we need both</div>
+      <h3>Why Strength and Magnitude Are Not the Same Thing</h3>
+      <p>This is the most common confusion in applied statistics. Strength (how tight the cloud is) and magnitude (how steep the line is) can disagree in surprising ways:</p>
+      <ul>
+        <li>You can have <strong>strong correlation</strong> (r ≈ 0.95) but a <strong>tiny slope</strong>, if y barely varies. Example: body temperature plotted against age — the dots may hug a line tightly, but the line is almost flat.</li>
+        <li>You can have <strong>modest correlation</strong> (r ≈ 0.4) but a <strong>huge slope</strong>, if y varies wildly. The cloud is loose, but its lean is steep and real.</li>
+      </ul>
+      <div class="warning-box">
+        <strong>The danger of using only one:</strong> Reporting only r tells the reader nothing about the practical size of the effect. Reporting only β̂₁ tells nothing about how reliable the line is. Real analyses report both.
+      </div>
+    </div>
+
+    <!-- HOW -->
+    <div class="concept-block">
+      <div class="sub-section-marker">How they connect</div>
+      <h3>The Bridge Formula</h3>
+      <p>Correlation and the regression slope are not independent — they are connected by one clean equation:</p>
+      <div class="formula">β̂₁ = r × (s_y / s_x)</div>
+      <ul>
+        <li><strong>r</strong> — Pearson correlation</li>
+        <li><strong>s_y</strong> — standard deviation of y (how spread out y is)</li>
+        <li><strong>s_x</strong> — standard deviation of x (how spread out x is)</li>
+        <li><strong>β̂₁</strong> — regression slope (the one we computed with least squares)</li>
+      </ul>
+      <p>In words: the slope equals the correlation, <strong>scaled by the ratio of the spreads</strong>. The correlation gives the "shape" (strength and direction); the spread ratio puts it into real units.</p>
+      <h4>What this tells us</h4>
+      <ul>
+        <li>If y varies far more than x (s_y/s_x is large), even a moderate correlation produces a big slope.</li>
+        <li>If y barely varies (s_y/s_x is small), even a near-perfect correlation produces a tiny slope.</li>
+        <li>This is why we always need <strong>both</strong> numbers to understand a relationship.</li>
+      </ul>
+      <h4>R² — the third related number</h4>
+      <p>If you square the correlation, you get a number between 0 and 1 called <strong>R²</strong> (the coefficient of determination):</p>
+      <div class="formula">R² = r²</div>
+      <p>It has a clean meaning — the fraction of variation in y that the line explains. R² = 0.8 means the line accounts for 80% of the up-and-down variation in y; the remaining 20% is left in the residuals. R² is the most common number reported when summarising a regression. We will study it more carefully in Module 5.6.</p>
+    </div>
+
+    <!-- INTERACTIVE: CORRELATION GALLERY -->
+    <div class="viz-wrap">
+      <div class="viz-title">⟁ Interactive — Correlation Gallery</div>
+      <div class="viz-desc">Click each button to load a dataset with a different target correlation. Watch how the cloud's shape changes — tighter cloud = stronger r, looser cloud = weaker r. The fitted orange line and the computed r, slope, and R² update for each dataset.</div>
+      <div class="btn-row">
+        <button class="btn" data-r="0.95">r ≈ +0.95 (Strong +)</button>
+        <button class="btn purple" data-r="0.60">r ≈ +0.60 (Moderate +)</button>
+        <button class="btn amber" data-r="0.10">r ≈ +0.10 (Almost none)</button>
+        <button class="btn magenta" data-r="-0.80">r ≈ −0.80 (Strong −)</button>
+      </div>
+      <canvas id="t4Canvas" class="viz-canvas" width="900" height="380"></canvas>
+      <div class="stat-grid">
+        <div class="stat-box"><div class="stat-label">Pearson r</div><div class="stat-value" id="t4R">—</div></div>
+        <div class="stat-box"><div class="stat-label">Slope β̂₁</div><div class="stat-value purple" id="t4Slope">—</div></div>
+        <div class="stat-box"><div class="stat-label">Intercept β̂₀</div><div class="stat-value magenta" id="t4Int">—</div></div>
+        <div class="stat-box"><div class="stat-label">R² = r²</div><div class="stat-value green" id="t4R2">—</div></div>
+      </div>
+      <div class="highlight-box" style="margin-top:18px;" id="t4Insight">
+        Click any of the correlation buttons above to load a dataset and see how the line responds.
+      </div>
+    </div>
+
+    <!-- INTERACTIVE: BRIDGE FORMULA -->
+    <div class="viz-wrap">
+      <div class="viz-title">⟁ Interactive — Same Correlation, Different Slopes</div>
+      <div class="viz-desc">This panel fixes the correlation r and lets you stretch the data vertically (changing s_y) and horizontally (changing s_x). Watch what happens — the cloud's shape stays the same, but the slope of the fitted line changes dramatically. This is the bridge formula β̂₁ = r × (s_y / s_x) in action.</div>
+      <div class="slider-row">
+        <div class="slider-cell">
+          <div class="slider-label"><span>Fixed correlation r</span><span id="t5RVal">0.80</span></div>
+          <input type="range" id="t5R" min="-0.99" max="0.99" value="0.80" step="0.01">
+        </div>
+        <div class="slider-cell">
+          <div class="slider-label"><span>Vertical stretch (s_y)</span><span id="t5SyVal">1.0</span></div>
+          <input type="range" id="t5Sy" min="0.3" max="3" value="1" step="0.05">
+        </div>
+        <div class="slider-cell">
+          <div class="slider-label"><span>Horizontal stretch (s_x)</span><span id="t5SxVal">1.0</span></div>
+          <input type="range" id="t5Sx" min="0.3" max="3" value="1" step="0.05">
+        </div>
+      </div>
+      <canvas id="t5Canvas" class="viz-canvas" width="900" height="360"></canvas>
+      <div class="stat-grid">
+        <div class="stat-box"><div class="stat-label">Observed r</div><div class="stat-value" id="t5ROut">—</div></div>
+        <div class="stat-box"><div class="stat-label">Slope β̂₁</div><div class="stat-value purple" id="t5Slope">—</div></div>
+        <div class="stat-box"><div class="stat-label">s_y / s_x</div><div class="stat-value magenta" id="t5Ratio">—</div></div>
+        <div class="stat-box"><div class="stat-label">r × (s_y / s_x)</div><div class="stat-value green" id="t5Check">—</div></div>
+      </div>
+      <div class="highlight-box" style="margin-top:18px;">
+        <strong>The pattern:</strong> The slope number in the "Slope β̂₁" box always equals "r × (s_y / s_x)" — the bridge formula holds exactly, no matter how you stretch the data. The cloud's shape (r) is constant; only the units change.
+      </div>
+    </div>
+
+    <!-- WORKED EXAMPLE -->
+    <div class="deep-dive">
+      <div class="dd-label">⟁ Worked Example</div>
+      <h4>Example: Same Data, Two Numbers</h4>
+      <p>Returning to our café data:</p>
+      <ul>
+        <li>Slope β̂₁ ≈ 3.68 cups per °C (from Topic 3)</li>
+      </ul>
+      <p>Now let's also compute the correlation. From the table:</p>
+      <ul>
+        <li>Σ(x − x̄)(y − ȳ) = 250</li>
+        <li>Σ(x − x̄)² = 68</li>
+        <li>Σ(y − ȳ)² = (−17)² + (−12)² + (−2)² + 13² + 18² = 289 + 144 + 4 + 169 + 324 = 930</li>
+      </ul>
+      <p>Plug into the Pearson formula:</p>
+      <div class="formula">r = 250 / √(68 × 930) = 250 / √63240 ≈ 250 / 251.5 ≈ 0.994</div>
+      <p>And R²:</p>
+      <div class="formula">R² = r² ≈ 0.988</div>
+      <p><strong>Reading both numbers:</strong></p>
+      <ul>
+        <li>r ≈ 0.99 — temperature and cold-coffee sales are very tightly linked. The dots hug a line almost perfectly.</li>
+        <li>β̂₁ ≈ 3.68 cups per °C — every extra degree adds about 3.68 cups of expected sales.</li>
+        <li>R² ≈ 0.99 — the fitted line explains roughly 99% of the day-to-day variation in cups sold. Only 1% is "left over" in residuals.</li>
+      </ul>
+      <h4>Bridge check</h4>
+      <p>Let's verify the bridge formula:</p>
+      <ul>
+        <li>s_x = √(68/5) ≈ 3.69 °C</li>
+        <li>s_y = √(930/5) ≈ 13.64 cups</li>
+        <li>r × (s_y / s_x) = 0.994 × (13.64 / 3.69) ≈ 0.994 × 3.70 ≈ <strong>3.68</strong> ✓</li>
+      </ul>
+      <div class="success-box">
+        <strong>The lesson:</strong> r tells the café that temperature is a powerful predictor of cold-coffee sales. β̂₁ tells them the practical rule: "for each degree warmer, prep about 4 more cups." Both numbers together give the full picture.
+      </div>
+    </div>
+
+    <!-- WHEN -->
+    <div class="concept-block">
+      <div class="sub-section-marker">When to use which</div>
+      <h3>A Short Decision Guide</h3>
+      <ol class="step-list">
+        <li><strong>Summarise a relationship in one number?</strong> Use correlation r. It is comparable across studies and free of units.</li>
+        <li><strong>Predict y from x?</strong> Use the regression equation. Correlation alone cannot produce predicted values in the original units.</li>
+        <li><strong>Quantify the effect size in real units?</strong> Use the regression slope β̂₁. The correlation cannot answer this.</li>
+        <li><strong>Compare two datasets on different scales?</strong> Use correlation. The slope depends on units, so direct comparison is risky.</li>
+        <li><strong>Report quality of fit?</strong> Use R² (= r² in simple linear regression). It tells the reader what fraction of variation the line captures.</li>
+      </ol>
+    </div>
+
+    <!-- IMPORTANT WARNING -->
+    <div class="concept-block">
+      <div class="sub-section-marker">A famous warning</div>
+      <h3>Correlation Is Not Causation</h3>
+      <p>This deserves its own paragraph. A high correlation between x and y — or a steep regression slope — does <strong>not</strong> prove that x causes y. Both variables could be driven by a third unseen factor.</p>
+      <p>Classic example: ice-cream sales and drowning deaths are positively correlated. Ice cream does not cause drowning. Both rise in summer — when people swim more, and when they eat more ice cream. Heat is the hidden cause of both.</p>
+      <p>Regression measures association, not causation. To establish causation you need experimental design (randomised trials) or careful causal inference methods. We'll cover this in Module 6.6.</p>
+    </div>
+
+    <!-- REAL LIFE -->
+    <div class="concept-block">
+      <div class="sub-section-marker">Real-life examples</div>
+      <h3>Where Both Numbers Show Up Together</h3>
+      <div class="real-grid">
+        <div class="real-card">
+          <h4>📊 Research Papers</h4>
+          <p>Scientific papers almost always report both r (or R²) and the regression slope. r tells the reader how reliable the relationship is; the slope tells them how big the effect is.</p>
+        </div>
+        <div class="real-card">
+          <h4>📉 Stock Market Beta</h4>
+          <p>"Beta" of a stock = the regression slope of its returns against the market. Correlation tells investors how closely the stock follows the market overall.</p>
+        </div>
+        <div class="real-card">
+          <h4>🧬 Genetics &amp; Heritability</h4>
+          <p>Researchers compute correlations of traits between parents and children. The slope translates this into a heritability estimate in real units.</p>
+        </div>
+        <div class="real-card">
+          <h4>🔍 Feature Screening in ML</h4>
+          <p>Data scientists compute correlations of every feature with the target. Features with strong correlation get selected. Then a regression model fits the actual prediction equation.</p>
+        </div>
+        <div class="real-card">
+          <h4>🏃 Sports Performance</h4>
+          <p>Coaches compute correlation between training metrics and game performance. The slope tells them how much each extra training session translates into real-game gains.</p>
+        </div>
+        <div class="real-card">
+          <h4>🌡️ Climate Science</h4>
+          <p>Correlation of CO₂ levels with global temperature tells the strength of the link. The regression slope quantifies the actual temperature rise per ppm of CO₂.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ═══════════════════ QUIZ — MCQ (Part 2 + cross-module) ═══════════════════ -->
+  <section class="section reveal">
+    <div class="section-header">
+      <div class="section-num">Quiz — Mcq</div>
+      <h2 class="section-title">Multiple-Choice — Part 2</h2>
+      <div class="section-line"></div>
+    </div>
+
+    <div class="quiz-card">
+      <div class="quiz-q"><span class="qnum">Q1</span>Why does the least-squares method square the residuals before adding them up?<span class="qlevel easy">Easy</span></div>
+      <div class="quiz-options">
+        <div class="quiz-opt" onclick="checkQ(this,false)">To make the numbers look bigger</div>
+        <div class="quiz-opt" onclick="checkQ(this,true)">To stop positive and negative misses from cancelling, and to penalise large misses more heavily</div>
+        <div class="quiz-opt" onclick="checkQ(this,false)">Because residuals are always positive anyway</div>
+        <div class="quiz-opt" onclick="checkQ(this,false)">To convert residuals into percentages</div>
+      </div>
+      <div class="quiz-feedback"></div>
+    </div>
+
+    <div class="quiz-card">
+      <div class="quiz-q"><span class="qnum">Q2</span>The best-fit (least-squares) line always passes through which point?<span class="qlevel easy">Easy</span></div>
+      <div class="quiz-options">
+        <div class="quiz-opt" onclick="checkQ(this,true)">The point (x̄, ȳ) — the means of x and y</div>
+        <div class="quiz-opt" onclick="checkQ(this,false)">The origin (0, 0)</div>
+        <div class="quiz-opt" onclick="checkQ(this,false)">The point with the largest x value</div>
+        <div class="quiz-opt" onclick="checkQ(this,false)">A random data point</div>
+      </div>
+      <div class="quiz-feedback"></div>
+    </div>
+
+    <div class="quiz-card">
+      <div class="quiz-q"><span class="qnum">Q3</span>If the Pearson correlation is r = 0.6, the standard deviation of y is 20, and the standard deviation of x is 5, what is the regression slope β̂₁?<span class="qlevel mod">Moderate</span></div>
+      <div class="quiz-options">
+        <div class="quiz-opt" onclick="checkQ(this,false)">0.6</div>
+        <div class="quiz-opt" onclick="checkQ(this,false)">3.0</div>
+        <div class="quiz-opt" onclick="checkQ(this,true)">2.4</div>
+        <div class="quiz-opt" onclick="checkQ(this,false)">12.0</div>
+      </div>
+      <div class="quiz-feedback"></div>
+    </div>
+
+    <div class="quiz-card">
+      <div class="quiz-q"><span class="qnum">Q4</span>You compute r = 0.9 between two variables. What does R² tell us, and what is its value?<span class="qlevel mod">Moderate</span></div>
+      <div class="quiz-options">
+        <div class="quiz-opt" onclick="checkQ(this,false)">R² = 0.9 — the line passes through 90% of the points</div>
+        <div class="quiz-opt" onclick="checkQ(this,true)">R² = 0.81 — the line explains about 81% of the variation in y</div>
+        <div class="quiz-opt" onclick="checkQ(this,false)">R² = 1.8 — twice the correlation</div>
+        <div class="quiz-opt" onclick="checkQ(this,false)">R² = 0.9 — same as the correlation by definition</div>
+      </div>
+      <div class="quiz-feedback"></div>
+    </div>
+
+    <div class="quiz-card">
+      <div class="quiz-q"><span class="qnum">Q5</span>A study reports r = 0.99 between a person's left-hand length and right-hand length, but a regression slope of only 1.02. Why is the slope so small even though correlation is huge?<span class="qlevel hard">Hard</span></div>
+      <div class="quiz-options">
+        <div class="quiz-opt" onclick="checkQ(this,false)">The data is faulty — that's impossible</div>
+        <div class="quiz-opt" onclick="checkQ(this,false)">Correlation is always bigger than the slope</div>
+        <div class="quiz-opt" onclick="checkQ(this,true)">Left and right hand lengths have nearly equal spreads (s_y / s_x ≈ 1), so β̂₁ ≈ r × 1 ≈ r</div>
+        <div class="quiz-opt" onclick="checkQ(this,false)">There must be an error in the calculation</div>
+      </div>
+      <div class="quiz-feedback"></div>
+    </div>
+
+    <div class="quiz-card">
+      <div class="quiz-q"><span class="qnum">Q6</span>Which of the following is NOT a safe use of a simple linear regression?<span class="qlevel hard">Hard</span></div>
+      <div class="quiz-options">
+        <div class="quiz-opt" onclick="checkQ(this,false)">Predicting y for a new x inside the observed range</div>
+        <div class="quiz-opt" onclick="checkQ(this,false)">Estimating how much y changes per unit increase in x</div>
+        <div class="quiz-opt" onclick="checkQ(this,false)">Comparing the strength of two relationships using correlations</div>
+        <div class="quiz-opt" onclick="checkQ(this,true)">Concluding that x causes y because the slope is large and the fit is tight</div>
+      </div>
+      <div class="quiz-feedback"></div>
+    </div>
+  </section>
+
+  <!-- ═══════════════════ WRITTEN EVALUATION CHALLENGE ═══════════════════ -->
+  <section class="section reveal">
+    <div class="section-header">
+      <div class="section-num">Ai Eval</div>
+      <h2 class="section-title">Written Answer Challenge — Parts 1 &amp; 2</h2>
+      <div class="section-line"></div>
+    </div>
+
+    <div class="written-eval">
+      <div class="we-label">▲ AI Written Evaluation</div>
+      <p style="color:var(--text-soft); margin-top:6px; margin-bottom:18px;">Five open-response questions covering both parts of Module 5.1. Write each answer in your own words — the AI evaluator will check which key concepts you covered, flag any gaps, score your coverage, and reveal a model answer for comparison. You don't need to match exact wording; the evaluator looks for the underlying ideas.</p>
+
+      <div class="write-q" data-q="1">
+        <div class="qhead">
+          <span class="qnum">Q1</span>
+          <span class="qfrom">From Part 1 · Best-Fit Line</span>
+        </div>
+        <p style="color:#fff; font-size:1rem; margin-bottom:10px;">Explain in your own words what a best-fit line is and what the two numbers β₀ and β₁ in the equation ŷ = β₀ + β₁ x represent. Use an everyday example if helpful.</p>
+        <textarea class="ans-area" id="ans1" placeholder="Type your answer here..."></textarea>
+      </div>
+
+      <div class="write-q" data-q="2">
+        <div class="qhead">
+          <span class="qnum">Q2</span>
+          <span class="qfrom">From Part 1 · Residuals</span>
+        </div>
+        <p style="color:#fff; font-size:1rem; margin-bottom:10px;">What is a residual? Why is it useful to compute residuals after fitting a line — give at least two distinct reasons. What pattern in a residual plot would tell you the straight-line model is wrong?</p>
+        <textarea class="ans-area" id="ans2" placeholder="Type your answer here..."></textarea>
+      </div>
+
+      <div class="write-q" data-q="3">
+        <div class="qhead">
+          <span class="qnum">Q3</span>
+          <span class="qfrom">From Part 2 · Least Squares</span>
+        </div>
+        <p style="color:#fff; font-size:1rem; margin-bottom:10px;">Explain why the least-squares method squares the residuals before summing them. What problem would arise if we simply added the raw residuals instead? Mention at least two distinct advantages of squaring.</p>
+        <textarea class="ans-area" id="ans3" placeholder="Type your answer here..."></textarea>
+      </div>
+
+      <div class="write-q" data-q="4">
+        <div class="qhead">
+          <span class="qnum">Q4</span>
+          <span class="qfrom">From Part 2 · Correlation vs Regression</span>
+        </div>
+        <p style="color:#fff; font-size:1rem; margin-bottom:10px;">Describe the difference between the Pearson correlation r and the regression slope β̂₁. How are they linked mathematically? Give an example where a strong correlation produces a small slope (or vice versa) to show why both numbers are needed.</p>
+        <textarea class="ans-area" id="ans4" placeholder="Type your answer here..."></textarea>
+      </div>
+
+      <div class="write-q" data-q="5">
+        <div class="qhead">
+          <span class="qnum">Q5</span>
+          <span class="qfrom">Cross-module · Interpretation</span>
+        </div>
+        <p style="color:#fff; font-size:1rem; margin-bottom:10px;">A researcher fits a line of ice-cream sales (y) against daily temperature (x) and gets a slope of 5 with R² = 0.85. Explain what these two numbers mean in plain language. Can the researcher conclude that hot weather <em>causes</em> people to buy more ice cream? Why or why not?</p>
+        <textarea class="ans-area" id="ans5" placeholder="Type your answer here..."></textarea>
+      </div>
+
+      <div class="btn-row" style="margin-top:24px;">
+        <button class="btn magenta" id="submitWritten">▲ Submit for AI Evaluation</button>
+        <button class="btn purple" id="resetWritten">Reset Answers</button>
+      </div>
+
+      <div class="eval-out" id="evalOut">
+        <h4>⟁ Evaluation Report</h4>
+        <div id="evalBody"></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ═══════════════════ AI SYNTHESIS — MODULE COMPLETE ═══════════════════ -->
+  <section class="section reveal">
+    <div class="section-header">
+      <div class="section-num">Module Recap</div>
+      <h2 class="section-title">AI Synthesis — Full Module 5.1</h2>
+      <div class="section-line"></div>
+    </div>
+    <div class="ai-panel">
+      <div class="ai-head">
+        <div class="ai-avatar">Ξ</div>
+        <div class="ai-meta">
+          <div class="ai-name">QNA-Σ // Synthesis Core</div>
+          <div class="ai-role">Regression Analyst — Stage 2 — Complete</div>
+        </div>
+      </div>
+      <div>
+        <div class="takeaway">
+          <div class="takeaway-num">01</div>
+          <div class="takeaway-text"><strong>A best-fit line</strong> turns a cloud of dots into a single prediction equation ŷ = β₀ + β₁ x. The intercept β₀ is the height at x = 0; the slope β₁ is the change in ŷ per one-unit change in x.</div>
+        </div>
+        <div class="takeaway">
+          <div class="takeaway-num">02</div>
+          <div class="takeaway-text"><strong>A residual</strong> is the vertical gap between an actual y and the line's predicted ŷ: eᵢ = yᵢ − ŷᵢ. Positive means under-predicted; negative means over-predicted.</div>
+        </div>
+        <div class="takeaway">
+          <div class="takeaway-num">03</div>
+          <div class="takeaway-text"><strong>Least squares</strong> finds the line by minimising SSE = Σ eᵢ². Squaring stops cancellation, penalises big misses, and gives a smooth function with a unique minimum.</div>
+        </div>
+        <div class="takeaway">
+          <div class="takeaway-num">04</div>
+          <div class="takeaway-text"><strong>The SSE landscape</strong> is a smooth bowl with one lowest point. That point is the best (β̂₀, β̂₁) — every modern optimisation algorithm converges to it.</div>
+        </div>
+        <div class="takeaway">
+          <div class="takeaway-num">05</div>
+          <div class="takeaway-text"><strong>Closed-form formulas:</strong> β̂₁ = Σ(xᵢ−x̄)(yᵢ−ȳ) / Σ(xᵢ−x̄)²  and  β̂₀ = ȳ − β̂₁ x̄. Two short calculations turn data into a complete prediction equation.</div>
+        </div>
+        <div class="takeaway">
+          <div class="takeaway-num">06</div>
+          <div class="takeaway-text"><strong>Correlation r</strong> is a unitless number between −1 and +1 that measures the strength and direction of a linear relationship. It captures shape only.</div>
+        </div>
+        <div class="takeaway">
+          <div class="takeaway-num">07</div>
+          <div class="takeaway-text"><strong>Regression slope β̂₁</strong> measures magnitude — how much y changes per unit of x, in real units. It has units; r does not.</div>
+        </div>
+        <div class="takeaway">
+          <div class="takeaway-num">08</div>
+          <div class="takeaway-text"><strong>The bridge formula</strong> β̂₁ = r × (s_y / s_x) connects them. The slope is the correlation scaled by the ratio of the spreads.</div>
+        </div>
+        <div class="takeaway">
+          <div class="takeaway-num">09</div>
+          <div class="takeaway-text"><strong>R² = r²</strong> in simple linear regression — the fraction of variation in y explained by the line. R² = 0.81 means 81% of y's variation is captured.</div>
+        </div>
+        <div class="takeaway">
+          <div class="takeaway-num">10</div>
+          <div class="takeaway-text"><strong>Correlation is not causation.</strong> A tight fit and a steep slope show association, not cause. Establishing causation needs experimental design or causal inference — covered in Module 6.6.</div>
+        </div>
+        <div class="takeaway">
+          <div class="takeaway-num">11</div>
+          <div class="takeaway-text"><strong>Coming next (Module 5.2):</strong> we extend from one predictor to many. Multiple linear regression — predicting y from x₁, x₂, x₃ … — and the assumptions, multicollinearity, and residual diagnostics that come with it.</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <div class="part-nav">
+    <div class="part-nav-item done">
+      <div class="part-nav-label">✓ Module 5.1 — Complete</div>
+      <div class="part-nav-title">Simple Linear Regression Intuition</div>
+    </div>
+    <div class="part-nav-item current">
+      <div class="part-nav-label">⟁ Module 5.2 — Up Next</div>
+      <div class="part-nav-title">Multiple Linear Regression &amp; Assumptions</div>
+    </div>
+  </div>
+
+  <div class="module-footer">⟁ END OF MODULE 5.1 // Regression core fully calibrated. Continue → Module 5.2: Multiple Linear Regression &amp; Assumptions ⟁</div>
+</div>
+
+<script>
+/* PARTICLE BACKGROUND */
+const canvas = document.getElementById('particle-canvas');
+const ctx = canvas.getContext('2d');
+let particles = [];
+function sizeCanvas() { canvas.width = window.innerWidth; canvas.height = window.innerHeight; }
+sizeCanvas();
+window.addEventListener('resize', sizeCanvas);
+function initParticles() {
+  particles = [];
+  const count = Math.min(60, Math.floor(window.innerWidth / 25));
+  for (let i = 0; i < count; i++) {
+    particles.push({ x: Math.random()*canvas.width, y: Math.random()*canvas.height, vx: (Math.random()-0.5)*0.4, vy: (Math.random()-0.5)*0.4, r: Math.random()*1.6+0.5, hue: Math.random()<0.5?'0,240,255':'177,77,255' });
+  }
+}
+initParticles();
+window.addEventListener('resize', initParticles);
+function drawParticles() {
+  ctx.clearRect(0,0,canvas.width,canvas.height);
+  particles.forEach(p => {
+    p.x += p.vx; p.y += p.vy;
+    if (p.x<0||p.x>canvas.width) p.vx*=-1;
+    if (p.y<0||p.y>canvas.height) p.vy*=-1;
+    ctx.beginPath();
+    ctx.fillStyle = `rgba(${p.hue},0.7)`;
+    ctx.shadowColor = `rgba(${p.hue},1)`;
+    ctx.shadowBlur = 12;
+    ctx.arc(p.x,p.y,p.r,0,Math.PI*2);
+    ctx.fill();
+  });
+  ctx.shadowBlur = 0;
+  for (let i=0;i<particles.length;i++) {
+    for (let j=i+1;j<particles.length;j++) {
+      const dx = particles[i].x-particles[j].x;
+      const dy = particles[i].y-particles[j].y;
+      const d = Math.sqrt(dx*dx+dy*dy);
+      if (d<130) {
+        ctx.strokeStyle = `rgba(0,240,255,${0.12*(1-d/130)})`;
+        ctx.lineWidth = 0.5;
+        ctx.beginPath();
+        ctx.moveTo(particles[i].x,particles[i].y);
+        ctx.lineTo(particles[j].x,particles[j].y);
+        ctx.stroke();
+      }
+    }
+  }
+  requestAnimationFrame(drawParticles);
+}
+drawParticles();
+
+/* HELPERS */
+function gaussRand() {
+  let u = 0, v = 0;
+  while (u === 0) u = Math.random();
+  while (v === 0) v = Math.random();
+  return Math.sqrt(-2*Math.log(u)) * Math.cos(2*Math.PI*v);
+}
+function leastSquares(d) {
+  const n = d.length;
+  const mx = d.reduce((s,p)=>s+p.x,0)/n;
+  const my = d.reduce((s,p)=>s+p.y,0)/n;
+  let num=0, den=0;
+  d.forEach(p=>{ num+=(p.x-mx)*(p.y-my); den+=(p.x-mx)*(p.x-mx); });
+  const b1 = den===0 ? 0 : num/den;
+  const b0 = my - b1*mx;
+  return {b0,b1};
+}
+function sseOf(d,b0,b1) {
+  return d.reduce((s,p)=>{const e=p.y-(b0+b1*p.x);return s+e*e;},0);
+}
+function pearson(d) {
+  const n=d.length;
+  const mx=d.reduce((s,p)=>s+p.x,0)/n;
+  const my=d.reduce((s,p)=>s+p.y,0)/n;
+  let num=0, dx=0, dy=0;
+  d.forEach(p=>{ num+=(p.x-mx)*(p.y-my); dx+=(p.x-mx)**2; dy+=(p.y-my)**2; });
+  return num / Math.sqrt(dx*dy);
+}
+function stdev(arr) {
+  const m = arr.reduce((s,v)=>s+v,0)/arr.length;
+  return Math.sqrt(arr.reduce((s,v)=>s+(v-m)**2,0)/arr.length);
+}
+
+/* ═══════════════ INTERACTIVE 1 — SQUARES VIZ ═══════════════ */
+const t3Canvas = document.getElementById('t3Canvas');
+const t3Ctx = t3Canvas.getContext('2d');
+const t3Data = (function(){
+  const arr=[]; const seed=[0.12,0.45,0.78,0.23,0.91,0.34,0.67,0.05,0.55,0.83,0.40,0.69];
+  seed.forEach((s,i)=>{
+    const x = 1 + s*9;
+    const noise = ((i*13%9)-4)*1.4;
+    arr.push({x, y: 12 + 6*x + noise});
+  });
+  return arr;
+})();
+const t3Best = leastSquares(t3Data);
+
+function t3Draw() {
+  const w = t3Canvas.width, h = t3Canvas.height;
+  t3Ctx.clearRect(0,0,w,h);
+  const padL = 70, padR = 30, padT = 30, padB = 50;
+  const plotW = w - padL - padR;
+  const plotH = h - padT - padB;
+  const xLo = 0, xHi = 11, yLo = 0, yHi = 90;
+  const xToPx = v => padL + (v-xLo)/(xHi-xLo)*plotW;
+  const yToPx = v => padT + plotH - (v-yLo)/(yHi-yLo)*plotH;
+
+  t3Ctx.strokeStyle = 'rgba(0,240,255,0.06)'; t3Ctx.lineWidth = 1;
+  for (let gx=0; gx<=11; gx++) {
+    t3Ctx.beginPath(); t3Ctx.moveTo(xToPx(gx), padT); t3Ctx.lineTo(xToPx(gx), padT+plotH); t3Ctx.stroke();
+  }
+  for (let gy=0; gy<=90; gy+=15) {
+    t3Ctx.beginPath(); t3Ctx.moveTo(padL, yToPx(gy)); t3Ctx.lineTo(padL+plotW, yToPx(gy)); t3Ctx.stroke();
+  }
+
+  t3Ctx.strokeStyle = '#9fb4d6'; t3Ctx.lineWidth = 1.5;
+  t3Ctx.beginPath();
+  t3Ctx.moveTo(padL, padT); t3Ctx.lineTo(padL, padT+plotH); t3Ctx.lineTo(padL+plotW, padT+plotH);
+  t3Ctx.stroke();
+  t3Ctx.fillStyle = '#9fb4d6'; t3Ctx.font = '11px JetBrains Mono'; t3Ctx.textAlign = 'center';
+  for (let v=0; v<=10; v+=2) t3Ctx.fillText(v, xToPx(v), padT+plotH+18);
+  t3Ctx.textAlign = 'right';
+  for (let v=0; v<=90; v+=15) t3Ctx.fillText(v, padL-8, yToPx(v)+4);
+  t3Ctx.fillStyle = '#00f0ff'; t3Ctx.font = 'bold 12px JetBrains Mono'; t3Ctx.textAlign = 'center';
+  t3Ctx.fillText('PREDICTOR (X)', padL+plotW/2, padT+plotH+38);
+  t3Ctx.save();
+  t3Ctx.translate(22, padT+plotH/2);
+  t3Ctx.rotate(-Math.PI/2);
+  t3Ctx.fillText('RESPONSE (Y)', 0, 0);
+  t3Ctx.restore();
+
+  const b0 = parseFloat(document.getElementById('t3B0').value);
+  const b1 = parseFloat(document.getElementById('t3B1').value);
+  document.getElementById('t3B0Val').textContent = b0.toFixed(1);
+  document.getElementById('t3B1Val').textContent = b1.toFixed(2);
+
+  // squares — side length in pixels = |yhat_px - y_px|
+  t3Data.forEach(p=>{
+    const yhat = b0+b1*p.x;
+    const py1 = yToPx(p.y);
+    const py2 = yToPx(yhat);
+    const side = Math.abs(py1-py2);
+    const xPix = xToPx(p.x);
+    const yTop = Math.min(py1,py2);
+    t3Ctx.fillStyle = 'rgba(0,240,255,0.10)';
+    t3Ctx.strokeStyle = 'rgba(0,240,255,0.55)';
+    t3Ctx.lineWidth = 1;
+    t3Ctx.fillRect(xPix, yTop, side, side);
+    t3Ctx.strokeRect(xPix, yTop, side, side);
+    // dashed residual line
+    t3Ctx.strokeStyle = 'rgba(255,43,214,0.7)';
+    t3Ctx.setLineDash([3,3]);
+    t3Ctx.beginPath();
+    t3Ctx.moveTo(xPix, py1); t3Ctx.lineTo(xPix, py2);
+    t3Ctx.stroke();
+    t3Ctx.setLineDash([]);
+  });
+
+  // line
+  t3Ctx.strokeStyle = '#ffb547'; t3Ctx.lineWidth = 3;
+  t3Ctx.shadowColor = '#ffb547'; t3Ctx.shadowBlur = 8;
+  t3Ctx.beginPath();
+  t3Ctx.moveTo(xToPx(0), yToPx(b0));
+  t3Ctx.lineTo(xToPx(11), yToPx(b0+b1*11));
+  t3Ctx.stroke();
+  t3Ctx.shadowBlur = 0;
+
+  // points
+  t3Data.forEach(p=>{
+    t3Ctx.fillStyle = '#00f0ff';
+    t3Ctx.shadowColor = '#00f0ff'; t3Ctx.shadowBlur = 8;
+    t3Ctx.beginPath();
+    t3Ctx.arc(xToPx(p.x), yToPx(p.y), 5, 0, Math.PI*2);
+    t3Ctx.fill();
+    t3Ctx.shadowBlur = 0;
+  });
+
+  // legend
+  t3Ctx.fillStyle = '#ffb547'; t3Ctx.font = 'bold 11px JetBrains Mono'; t3Ctx.textAlign = 'left';
+  t3Ctx.fillText('━━ YOUR LINE', padL+10, padT+18);
+  t3Ctx.fillStyle = '#00f0ff';
+  t3Ctx.fillText('□ SQUARED RESIDUAL', padL+150, padT+18);
+
+  const sse = sseOf(t3Data,b0,b1);
+  document.getElementById('t3Sse').textContent = sse.toFixed(0);
+  document.getElementById('t3BestSse').textContent = sseOf(t3Data,t3Best.b0,t3Best.b1).toFixed(0);
+  document.getElementById('t3Bb0').textContent = t3Best.b0.toFixed(1);
+  document.getElementById('t3Bb1').textContent = t3Best.b1.toFixed(2);
+
+  if (window.t3LandRefresh) window.t3LandRefresh(b0,b1);
+}
+document.getElementById('t3B0').addEventListener('input', t3Draw);
+document.getElementById('t3B1').addEventListener('input', t3Draw);
+document.getElementById('t3Snap').addEventListener('click', ()=>{
+  document.getElementById('t3B0').value = t3Best.b0.toFixed(2);
+  document.getElementById('t3B1').value = t3Best.b1.toFixed(2);
+  t3Draw();
+});
+
+/* ═══════════════ INTERACTIVE 2 — SSE LANDSCAPE ═══════════════ */
+const t3LandCanvas = document.getElementById('t3LandCanvas');
+const t3LandCtx = t3LandCanvas.getContext('2d');
+const b0RangeL = [t3Best.b0 - 45, t3Best.b0 + 45];
+const b1RangeL = [t3Best.b1 - 3, t3Best.b1 + 3];
+const GW = 90, GH = 50;
+const grid = [];
+let minSSE = Infinity, maxSSE = 0;
+for (let j=0; j<GH; j++) {
+  grid[j] = [];
+  for (let i=0; i<GW; i++) {
+    const b1v = b1RangeL[0] + (i/(GW-1))*(b1RangeL[1]-b1RangeL[0]);
+    const b0v = b0RangeL[1] - (j/(GH-1))*(b0RangeL[1]-b0RangeL[0]);
+    const v = sseOf(t3Data, b0v, b1v);
+    grid[j][i] = v;
+    if (v < minSSE) minSSE = v;
+    if (v > maxSSE) maxSSE = v;
+  }
+}
+
+function t3LandDraw(userB0, userB1) {
+  const w = t3LandCanvas.width, h = t3LandCanvas.height;
+  t3LandCtx.clearRect(0,0,w,h);
+  const padL = 70, padR = 140, padT = 30, padB = 50;
+  const plotW = w - padL - padR;
+  const plotH = h - padT - padB;
+  const cellW = plotW / GW;
+  const cellH = plotH / GH;
+
+  for (let j=0; j<GH; j++) {
+    for (let i=0; i<GW; i++) {
+      const v = grid[j][i];
+      const t = Math.log(v - minSSE + 1) / Math.log(maxSSE - minSSE + 1);
+      // dark cyan low, bright purple/red high
+      const r = Math.floor(t * 120);
+      const g = Math.floor((1-t)*150);
+      const b = Math.floor(80 + (1-t)*120);
+      t3LandCtx.fillStyle = `rgb(${r},${g},${b})`;
+      t3LandCtx.fillRect(padL + i*cellW, padT + j*cellH, cellW+0.5, cellH+0.5);
+    }
+  }
+
+  // contour rings
+  const levels = [0.03, 0.10, 0.22, 0.45];
+  levels.forEach(lev => {
+    const target = minSSE + lev * (maxSSE - minSSE);
+    for (let j=0; j<GH-1; j++) {
+      for (let i=0; i<GW-1; i++) {
+        const v00 = grid[j][i], v10 = grid[j][i+1];
+        if ((v00-target)*(v10-target) < 0) {
+          t3LandCtx.fillStyle = 'rgba(236,235,230,0.35)';
+          t3LandCtx.beginPath();
+          t3LandCtx.arc(padL + (i+0.5)*cellW, padT + j*cellH, 0.9, 0, Math.PI*2);
+          t3LandCtx.fill();
+        }
+      }
+    }
+  });
+
+  // axes
+  t3LandCtx.strokeStyle = '#9fb4d6'; t3LandCtx.lineWidth = 1.5;
+  t3LandCtx.beginPath();
+  t3LandCtx.moveTo(padL, padT); t3LandCtx.lineTo(padL, padT+plotH); t3LandCtx.lineTo(padL+plotW, padT+plotH);
+  t3LandCtx.stroke();
+
+  t3LandCtx.fillStyle = '#9fb4d6'; t3LandCtx.font = '10px JetBrains Mono'; t3LandCtx.textAlign = 'center';
+  [b1RangeL[0], (b1RangeL[0]+b1RangeL[1])/2, b1RangeL[1]].forEach((v,k)=>{
+    const x = padL + (k/2)*plotW;
+    t3LandCtx.fillText(v.toFixed(1), x, padT+plotH+18);
+  });
+  t3LandCtx.textAlign = 'right';
+  [b0RangeL[1], (b0RangeL[0]+b0RangeL[1])/2, b0RangeL[0]].forEach((v,k)=>{
+    const y = padT + (k/2)*plotH;
+    t3LandCtx.fillText(v.toFixed(0), padL-8, y+4);
+  });
+
+  t3LandCtx.fillStyle = '#00f0ff'; t3LandCtx.font = 'bold 12px JetBrains Mono'; t3LandCtx.textAlign = 'center';
+  t3LandCtx.fillText('SLOPE β̂₁ →', padL+plotW/2, padT+plotH+38);
+  t3LandCtx.save();
+  t3LandCtx.translate(22, padT+plotH/2);
+  t3LandCtx.rotate(-Math.PI/2);
+  t3LandCtx.fillText('INTERCEPT β̂₀ →', 0, 0);
+  t3LandCtx.restore();
+
+  // min point (green)
+  const minX = padL + (t3Best.b1-b1RangeL[0])/(b1RangeL[1]-b1RangeL[0]) * plotW;
+  const minY = padT + (b0RangeL[1]-t3Best.b0)/(b0RangeL[1]-b0RangeL[0]) * plotH;
+
+  // line from user to min
+  const ux = padL + (userB1-b1RangeL[0])/(b1RangeL[1]-b1RangeL[0]) * plotW;
+  const uy = padT + (b0RangeL[1]-userB0)/(b0RangeL[1]-b0RangeL[0]) * plotH;
+  if (ux>=padL && ux<=padL+plotW && uy>=padT && uy<=padT+plotH) {
+    t3LandCtx.strokeStyle = 'rgba(255,181,71,0.5)';
+    t3LandCtx.lineWidth = 1.2;
+    t3LandCtx.setLineDash([4,3]);
+    t3LandCtx.beginPath();
+    t3LandCtx.moveTo(ux,uy); t3LandCtx.lineTo(minX,minY);
+    t3LandCtx.stroke();
+    t3LandCtx.setLineDash([]);
+    // user dot
+    t3LandCtx.fillStyle = '#ffb547';
+    t3LandCtx.shadowColor = '#ffb547'; t3LandCtx.shadowBlur = 12;
+    t3LandCtx.beginPath();
+    t3LandCtx.arc(ux,uy,7,0,Math.PI*2); t3LandCtx.fill();
+    t3LandCtx.shadowBlur = 0;
+    t3LandCtx.fillStyle = '#ffb547'; t3LandCtx.font = 'bold 10px JetBrains Mono'; t3LandCtx.textAlign = 'left';
+    t3LandCtx.fillText('YOU', ux+10, uy-8);
+  }
+
+  // min dot
+  t3LandCtx.fillStyle = '#00ffaa';
+  t3LandCtx.shadowColor = '#00ffaa'; t3LandCtx.shadowBlur = 14;
+  t3LandCtx.beginPath();
+  t3LandCtx.arc(minX,minY,7,0,Math.PI*2); t3LandCtx.fill();
+  t3LandCtx.shadowBlur = 0;
+  t3LandCtx.fillStyle = '#00ffaa'; t3LandCtx.font = 'bold 10px JetBrains Mono'; t3LandCtx.textAlign = 'left';
+  t3LandCtx.fillText('MIN SSE', minX+10, minY+4);
+
+  // colour legend
+  const lx = w - padR + 30, ly = padT + 20, lh = 220;
+  t3LandCtx.fillStyle = '#fff'; t3LandCtx.font = 'bold 11px JetBrains Mono'; t3LandCtx.textAlign = 'left';
+  t3LandCtx.fillText('SSE', lx, padT+10);
+  for (let k=0; k<40; k++) {
+    const t = k/39;
+    const r = Math.floor(t * 120);
+    const g = Math.floor((1-t)*150);
+    const b = Math.floor(80 + (1-t)*120);
+    t3LandCtx.fillStyle = `rgb(${r},${g},${b})`;
+    t3LandCtx.fillRect(lx, ly+(1-t)*lh, 20, lh/40+1);
+  }
+  t3LandCtx.fillStyle = '#9fb4d6'; t3LandCtx.font = '10px JetBrains Mono';
+  t3LandCtx.fillText('low', lx+26, ly+8);
+  t3LandCtx.fillText('high', lx+26, ly+lh+5);
+}
+window.t3LandRefresh = t3LandDraw;
+t3Draw();
+
+/* ═══════════════ INTERACTIVE 3 — CORRELATION GALLERY ═══════════════ */
+const t4Canvas = document.getElementById('t4Canvas');
+const t4Ctx = t4Canvas.getContext('2d');
+function t4Generate(targetR) {
+  const N = 45;
+  const data = [];
+  const baseSlope = targetR >= 0 ? 0.8 : -0.8;
+  const desired = Math.abs(targetR);
+  const sx = 5.77;
+  let sd_n;
+  if (desired < 0.05) sd_n = 50;
+  else { sd_n = Math.sqrt((baseSlope*baseSlope * sx*sx) * (1-desired*desired)/(desired*desired)); }
+  for (let i=0; i<N; i++) {
+    const x = Math.random()*20;
+    const z = gaussRand();
+    const y = 8 + baseSlope*x + z*sd_n;
+    data.push({x,y});
+  }
+  return data;
+}
+function t4Draw(data) {
+  const w = t4Canvas.width, h = t4Canvas.height;
+  t4Ctx.clearRect(0,0,w,h);
+  const padL = 70, padR = 30, padT = 30, padB = 50;
+  const plotW = w - padL - padR;
+  const plotH = h - padT - padB;
+  const ys = data.map(p=>p.y);
+  const xLo = 0, xHi = 20;
+  const ymin = Math.min(...ys, 0) - 2;
+  const ymax = Math.max(...ys) + 2;
+  const xToPx = v => padL + (v-xLo)/(xHi-xLo)*plotW;
+  const yToPx = v => padT + plotH - (v-ymin)/(ymax-ymin)*plotH;
+
+  t4Ctx.strokeStyle = 'rgba(0,240,255,0.06)'; t4Ctx.lineWidth = 1;
+  for (let gx=0; gx<=20; gx+=4) {
+    t4Ctx.beginPath(); t4Ctx.moveTo(xToPx(gx), padT); t4Ctx.lineTo(xToPx(gx), padT+plotH); t4Ctx.stroke();
+  }
+
+  t4Ctx.strokeStyle = '#9fb4d6'; t4Ctx.lineWidth = 1.5;
+  t4Ctx.beginPath();
+  t4Ctx.moveTo(padL, padT); t4Ctx.lineTo(padL, padT+plotH); t4Ctx.lineTo(padL+plotW, padT+plotH);
+  t4Ctx.stroke();
+  t4Ctx.fillStyle = '#9fb4d6'; t4Ctx.font = '11px JetBrains Mono'; t4Ctx.textAlign = 'center';
+  for (let v=0; v<=20; v+=4) t4Ctx.fillText(v, xToPx(v), padT+plotH+18);
+  t4Ctx.fillStyle = '#00f0ff'; t4Ctx.font = 'bold 12px JetBrains Mono';
+  t4Ctx.fillText('X', padL+plotW/2, padT+plotH+38);
+  t4Ctx.save();
+  t4Ctx.translate(22, padT+plotH/2);
+  t4Ctx.rotate(-Math.PI/2);
+  t4Ctx.fillText('Y', 0, 0);
+  t4Ctx.restore();
+
+  const lsq = leastSquares(data);
+  const r = pearson(data);
+
+  // line
+  t4Ctx.strokeStyle = '#ffb547'; t4Ctx.lineWidth = 3;
+  t4Ctx.shadowColor = '#ffb547'; t4Ctx.shadowBlur = 8;
+  t4Ctx.beginPath();
+  t4Ctx.moveTo(xToPx(xLo), yToPx(lsq.b0+lsq.b1*xLo));
+  t4Ctx.lineTo(xToPx(xHi), yToPx(lsq.b0+lsq.b1*xHi));
+  t4Ctx.stroke();
+  t4Ctx.shadowBlur = 0;
+
+  // points
+  data.forEach(p=>{
+    t4Ctx.fillStyle = '#00f0ff';
+    t4Ctx.shadowColor = '#00f0ff'; t4Ctx.shadowBlur = 6;
+    t4Ctx.beginPath();
+    t4Ctx.arc(xToPx(p.x), yToPx(p.y), 4, 0, Math.PI*2);
+    t4Ctx.fill();
+    t4Ctx.shadowBlur = 0;
+  });
+
+  document.getElementById('t4R').textContent = r.toFixed(2);
+  document.getElementById('t4Slope').textContent = lsq.b1.toFixed(2);
+  document.getElementById('t4Int').textContent = lsq.b0.toFixed(2);
+  document.getElementById('t4R2').textContent = (r*r).toFixed(2);
+
+  const ins = document.getElementById('t4Insight');
+  if (Math.abs(r) > 0.85) ins.innerHTML = `<strong>Strong relationship.</strong> r = ${r.toFixed(2)} means the dots hug the line tightly. R² = ${(r*r).toFixed(2)} — the line explains about ${Math.round(r*r*100)}% of the variation in y.`;
+  else if (Math.abs(r) > 0.4) ins.innerHTML = `<strong>Moderate relationship.</strong> r = ${r.toFixed(2)}. The dots show a trend but with noticeable scatter. R² = ${(r*r).toFixed(2)} — about ${Math.round(r*r*100)}% of y's variation is captured.`;
+  else ins.innerHTML = `<strong>Weak or no relationship.</strong> r = ${r.toFixed(2)} — the cloud looks roughly random. R² = ${(r*r).toFixed(2)} — the line barely explains any variation in y.`;
+}
+document.querySelectorAll('button[data-r]').forEach(btn=>{
+  btn.addEventListener('click', ()=> t4Draw(t4Generate(parseFloat(btn.dataset.r))));
+});
+t4Draw(t4Generate(0.95));
+
+/* ═══════════════ INTERACTIVE 4 — BRIDGE FORMULA ═══════════════ */
+const t5Canvas = document.getElementById('t5Canvas');
+const t5Ctx = t5Canvas.getContext('2d');
+const N5 = 55;
+const baseZ = [];
+for (let i=0; i<N5; i++) {
+  baseZ.push({ a: gaussRand(), b: gaussRand() });
+}
+function t5Draw() {
+  const r = parseFloat(document.getElementById('t5R').value);
+  const sy = parseFloat(document.getElementById('t5Sy').value);
+  const sx = parseFloat(document.getElementById('t5Sx').value);
+  document.getElementById('t5RVal').textContent = r.toFixed(2);
+  document.getElementById('t5SyVal').textContent = sy.toFixed(2);
+  document.getElementById('t5SxVal').textContent = sx.toFixed(2);
+
+  const data = baseZ.map(z=>({
+    x: z.a * sx * 3 + 10,
+    y: (r*z.a + Math.sqrt(Math.max(0,1-r*r))*z.b) * sy * 3 + 12
+  }));
+
+  const w = t5Canvas.width, h = t5Canvas.height;
+  t5Ctx.clearRect(0,0,w,h);
+  const padL = 70, padR = 30, padT = 30, padB = 50;
+  const plotW = w - padL - padR;
+  const plotH = h - padT - padB;
+  const xs = data.map(p=>p.x), ys = data.map(p=>p.y);
+  const xmin = Math.min(...xs)-1, xmax=Math.max(...xs)+1;
+  const ymin = Math.min(...ys)-1, ymax=Math.max(...ys)+1;
+  const xToPx = v => padL + (v-xmin)/(xmax-xmin)*plotW;
+  const yToPx = v => padT + plotH - (v-ymin)/(ymax-ymin)*plotH;
+
+  t5Ctx.strokeStyle = '#9fb4d6'; t5Ctx.lineWidth = 1.5;
+  t5Ctx.beginPath();
+  t5Ctx.moveTo(padL, padT); t5Ctx.lineTo(padL, padT+plotH); t5Ctx.lineTo(padL+plotW, padT+plotH);
+  t5Ctx.stroke();
+  t5Ctx.fillStyle = '#00f0ff'; t5Ctx.font = 'bold 12px JetBrains Mono'; t5Ctx.textAlign = 'center';
+  t5Ctx.fillText('X', padL+plotW/2, padT+plotH+38);
+  t5Ctx.save();
+  t5Ctx.translate(22, padT+plotH/2);
+  t5Ctx.rotate(-Math.PI/2);
+  t5Ctx.fillText('Y', 0, 0);
+  t5Ctx.restore();
+
+  const lsq = leastSquares(data);
+  const rOut = pearson(data);
+  const sxv = stdev(xs);
+  const syv = stdev(ys);
+
+  t5Ctx.strokeStyle = '#ffb547'; t5Ctx.lineWidth = 3;
+  t5Ctx.shadowColor = '#ffb547'; t5Ctx.shadowBlur = 8;
+  t5Ctx.beginPath();
+  t5Ctx.moveTo(xToPx(xmin), yToPx(lsq.b0+lsq.b1*xmin));
+  t5Ctx.lineTo(xToPx(xmax), yToPx(lsq.b0+lsq.b1*xmax));
+  t5Ctx.stroke();
+  t5Ctx.shadowBlur = 0;
+
+  data.forEach(p=>{
+    t5Ctx.fillStyle = '#b14dff';
+    t5Ctx.shadowColor = '#b14dff'; t5Ctx.shadowBlur = 6;
+    t5Ctx.beginPath();
+    t5Ctx.arc(xToPx(p.x), yToPx(p.y), 3.5, 0, Math.PI*2);
+    t5Ctx.fill();
+    t5Ctx.shadowBlur = 0;
+  });
+
+  document.getElementById('t5ROut').textContent = rOut.toFixed(2);
+  document.getElementById('t5Slope').textContent = lsq.b1.toFixed(3);
+  document.getElementById('t5Ratio').textContent = (syv/sxv).toFixed(3);
+  document.getElementById('t5Check').textContent = (rOut * syv/sxv).toFixed(3);
+}
+['t5R','t5Sy','t5Sx'].forEach(id => document.getElementById(id).addEventListener('input', t5Draw));
+t5Draw();
+
+/* ═══════════════ QUIZ MCQ ═══════════════ */
+function checkQ(el, correct) {
+  const opts = el.parentElement.querySelectorAll('.quiz-opt');
+  opts.forEach(o => o.classList.remove('correct','wrong'));
+  const fb = el.parentElement.parentElement.querySelector('.quiz-feedback');
+  if (correct) {
+    el.classList.add('correct');
+    fb.className = 'quiz-feedback show ok';
+    fb.textContent = '✓ Correct! Regression reasoning confirmed.';
+  } else {
+    el.classList.add('wrong');
+    fb.className = 'quiz-feedback show no';
+    fb.textContent = '✗ Not quite — review the relevant section and try again.';
+  }
+}
+
+/* ═══════════════ AI WRITTEN EVALUATION ═══════════════ */
+const rubric = {
+  1: {
+    concepts: [
+      { name: 'Best-fit line runs through middle of scatter cloud', keys: ['middle','cloud','close','near','through','scatter','center','centre','pass'] },
+      { name: 'Single line that summarises the whole dataset', keys: ['single','one','straight','summari','equation','line']},
+      { name: 'β₀ = intercept (value of y when x = 0)', keys: ['intercept','zero','x=0','x = 0','where','crosses','height','axis']},
+      { name: 'β₁ = slope (change in y per 1 unit of x)', keys: ['slope','per','unit','increase','change','rise','steep','rate']},
+      { name: 'Concrete example given', keys: ['example','study','hours','marks','height','weight','price','sales','temperature','dose']}
+    ],
+    model: "A best-fit line is one single straight line that runs through the middle of a scatter plot, sitting as close as possible to every dot at the same time. It turns a cloud of data points into a usable equation. In ŷ = β₀ + β₁ x, β₀ (intercept) is the predicted value of y when x = 0 — where the line crosses the vertical axis. β₁ (slope) is the change in predicted y when x goes up by one unit. For example, fitting hours studied against marks may give ŷ = 28.6 + 6.3x, meaning a student who studies 0 hours is predicted to score 28.6 marks, and every extra hour adds about 6.3 marks."
+  },
+  2: {
+    concepts: [
+      { name: 'Residual = actual y minus predicted ŷ', keys: ['actual','observed','minus','predict','gap','difference','y - y','y minus','y-hat','distance']},
+      { name: 'Used to score / measure how good the line is', keys: ['score','measure','good','best','quality','how well','total']},
+      { name: 'Used to find / compute the best line', keys: ['find','best','compute','fit','minim','optim']},
+      { name: 'Used to diagnose model problems / check assumptions', keys: ['diagnos','check','problem','assumption','plot','random']},
+      { name: 'A clear pattern (curve / fan) signals straight-line model is wrong', keys: ['curve','pattern','fan','u-shape','wave','wrong','not straight','non-linear','bend']}
+    ],
+    model: "A residual is the vertical gap between an actual data point and the line's prediction at that same x — formally e = y − ŷ. Residuals are useful for at least two reasons. (1) They score the line: smaller residuals overall mean a better fit, so they let us compare lines objectively. (2) They drive the search for the best line — the least-squares method literally chooses the line that makes residuals as small as possible. They also help diagnose problems: plotting residuals against x should show a random shapeless cloud. If a clear pattern appears — for example a U-shape or curve, or a widening fan — it tells us the straight-line model is wrong for this data and a different model is needed."
+  },
+  3: {
+    concepts: [
+      { name: 'Cancellation problem with raw residuals (positives & negatives cancel)', keys: ['cancel','positive','negative','sign','opposite','offset','zero total']},
+      { name: 'Squaring removes the sign / makes every miss count', keys: ['square','positive','sign','remove','always','count']},
+      { name: 'Squaring penalises large misses more heavily', keys: ['penal','large','big','heavier','more','weight','amplif']},
+      { name: 'Without squaring, a bad line could appear perfect', keys: ['bad line','terrible','misleading','deceptive','any line','fake','appear']},
+      { name: 'Smooth function / unique solution / calculus-friendly', keys: ['smooth','unique','calculus','closed','derivative','one answer','minimum','bowl']}
+    ],
+    model: "The least-squares method squares residuals before summing because just adding raw residuals would let positive and negative misses cancel — a very bad line could end up with a sum of zero and falsely look perfect. Squaring fixes this in three ways. First, every squared residual is positive, so misses cannot cancel. Second, squaring penalises large misses much more than small ones (a residual of 10 contributes 100; a residual of 1 contributes only 1), which pushes the line to avoid big mistakes. Third, the resulting function is smooth and has exactly one minimum, so calculus gives a clean closed-form solution — no iterative search needed."
+  },
+  4: {
+    concepts: [
+      { name: 'Correlation r measures strength + direction; unitless; bounded -1 to +1', keys: ['strength','direction','unit','dimensionless','bounded','-1','1','range','tight']},
+      { name: 'Slope β̂₁ measures magnitude in real units per unit of x', keys: ['magnitude','unit','per','real','change','how much','rate']},
+      { name: 'Bridge formula β̂₁ = r × (s_y / s_x)', keys: ['s_y','s_x','sy','sx','standard deviation','ratio','spread','bridge','sd']},
+      { name: 'Strong r can pair with small slope when s_y is small', keys: ['small','tiny','flat','barely','varies','little']},
+      { name: 'Moderate r can produce large slope when s_y is large', keys: ['large','big','huge','wild','varies a lot','wide']}
+    ],
+    model: "Correlation r and the regression slope β̂₁ measure the same relationship from different angles. r is a unitless number between −1 and +1 that captures the strength and direction of the linear pattern — how tightly the dots hug a line. β̂₁ measures magnitude: how many units y changes per one-unit change in x, in real units. They are linked by the bridge formula β̂₁ = r × (s_y / s_x), where s_y and s_x are the standard deviations of y and x. Because of this scaling, a strong correlation can produce a tiny slope if y barely varies (s_y is small) — for example, body temperature against age. A modest correlation can produce a huge slope if y varies wildly. That is why we always need both numbers — r tells you how reliable the relationship is, the slope tells you how big the effect is."
+  },
+  5: {
+    concepts: [
+      { name: 'Slope = 5 means +5 sales per +1 °C', keys: ['five','5','per','one','degree','each','more','additional','extra']},
+      { name: 'Effect is on average, not exact', keys: ['average','on average','expected','approximately','typically','about']},
+      { name: 'R² = 0.85 means 85% of variation in y is explained by the line', keys: ['85','eighty-five','eighty five','fraction','explain','variation','captured','accounts','percent']},
+      { name: 'Correlation/association is not causation', keys: ['caus','not cause','does not mean','does not imply','association','correlation','correl']},
+      { name: 'Possible confounders / third variables / lurking factors', keys: ['confound','third','lurking','other factor','holiday','summer','outdoor','heat','season']}
+    ],
+    model: "A slope of 5 means that for every one-degree increase in temperature, ice-cream sales increase by about 5 units on average. R² = 0.85 means the fitted line explains about 85% of the day-to-day variation in sales — the remaining 15% is noise or other factors. The researcher cannot conclude that hot weather causes the extra sales. Regression measures association, not causation. Both temperature and ice-cream sales might be driven by a third factor — being summer, school holidays, weekends, people spending more time outdoors. To establish causation, the researcher would need an experimental design or a careful causal-inference method. Regression alone shows the two variables move together, not why."
+  }
+};
+
+function evalAnswer(text, conceptList) {
+  const lower = text.toLowerCase();
+  const covered = [], missing = [];
+  conceptList.forEach(c => {
+    const hit = c.keys.some(k => lower.includes(k));
+    if (hit) covered.push(c.name); else missing.push(c.name);
+  });
+  return { covered, missing, score: covered.length / conceptList.length };
+}
+
+document.getElementById('submitWritten').addEventListener('click', () => {
+  const out = document.getElementById('evalBody');
+  const ans = [1,2,3,4,5].map(i => document.getElementById('ans'+i).value.trim());
+
+  if (ans.every(a => a.length === 0)) {
+    out.innerHTML = '<p style="color:#ff7e9d;">Please write at least one answer before submitting.</p>';
+    document.getElementById('evalOut').classList.add('show');
+    return;
+  }
+
+  let html = '';
+  let totalScore = 0, answered = 0, totalWords = 0;
+
+  ans.forEach((text, i) => {
+    const q = i + 1;
+    const rubricEntry = rubric[q];
+    if (text.length < 5) {
+      html += `<div class="eval-q-result">
+        <div class="qhead2"><strong>Question ${q}</strong>
+        <span class="grade low">No answer</span></div>
+        <p style="color:#fde68a; font-size:0.92rem; margin:0;">No substantial answer provided — skipping evaluation for this question.</p>
+      </div>`;
+      return;
+    }
+    const wordCount = text.split(/\s+/).filter(Boolean).length;
+    totalWords += wordCount;
+    const ev = evalAnswer(text, rubricEntry.concepts);
+    totalScore += ev.score;
+    answered++;
+    const pct = Math.round(ev.score * 100);
+    let grade, gradeClass;
+    if (pct >= 75) { grade = 'Strong'; gradeClass = 'high'; }
+    else if (pct >= 50) { grade = 'Solid'; gradeClass = 'mid'; }
+    else if (pct >= 25) { grade = 'Partial'; gradeClass = 'mid'; }
+    else { grade = 'Needs depth'; gradeClass = 'low'; }
+
+    html += `<div class="eval-q-result">
+      <div class="qhead2">
+        <strong>Question ${q}</strong>
+        <span class="grade ${gradeClass}">${grade} · ${pct}%</span>
+      </div>
+      <div class="score-pill-row">
+        <span class="score-pill">Concepts: ${ev.covered.length} / ${rubricEntry.concepts.length}</span>
+        <span class="score-pill">Words: ${wordCount}</span>
+      </div>`;
+
+    if (ev.covered.length) {
+      html += `<div class="cov-list"><strong class="covered">✓ Concepts you addressed:</strong><br>
+        ${ev.covered.map(c => '&nbsp;&nbsp;▸ ' + c).join('<br>')}
+      </div>`;
+    }
+    if (ev.missing.length) {
+      html += `<div class="cov-list"><strong class="missing">! Could strengthen by adding:</strong><br>
+        ${ev.missing.map(c => '&nbsp;&nbsp;▸ ' + c).join('<br>')}
+      </div>`;
+    }
+    html += `<details>
+      <summary>▸ Show model answer</summary>
+      <div class="model-ans">${rubricEntry.model}</div>
+    </details></div>`;
+  });
+
+  const avgPct = answered ? Math.round((totalScore / answered) * 100) : 0;
+  let overall;
+  if (totalWords < 100) {
+    overall = `Your answers are brief (${totalWords} words total across ${answered} questions). Try elaborating each point with a short example or by walking through the reasoning step by step. Overall concept coverage: ${avgPct}%.`;
+  } else if (totalWords < 350) {
+    overall = `Good level of detail (${totalWords} words across ${answered} questions). To go deeper, link each idea to a concrete example or to other topics from the module. Overall concept coverage: ${avgPct}%.`;
+  } else {
+    overall = `Thorough explanations — ${totalWords} words across ${answered} questions. Excellent depth. Make sure every concept is clearly explained rather than just mentioned. Overall concept coverage: ${avgPct}%.`;
+  }
+
+  html += `<div class="overall-msg"><strong>Overall feedback:</strong> ${overall}</div>`;
+
+  out.innerHTML = html;
+  document.getElementById('evalOut').classList.add('show');
+  document.getElementById('evalOut').scrollIntoView({ behavior: 'smooth', block: 'start' });
+});
+
+document.getElementById('resetWritten').addEventListener('click', () => {
+  [1,2,3,4,5].forEach(i => { document.getElementById('ans'+i).value = ''; });
+  document.getElementById('evalOut').classList.remove('show');
+  document.getElementById('evalBody').innerHTML = '';
+});
+
+/* â”€â”€ SCROLL REVEAL OBSERVER â”€â”€ */
+(function() {
+  const reveals = document.querySelectorAll('.reveal');
+  if (!reveals.length) return;
+  const obs = new IntersectionObserver((entries) => {
+    entries.forEach(e => { if (e.isIntersecting) { e.target.classList.add('visible'); obs.unobserve(e.target); } });
+  }, { threshold: 0, rootMargin: '0px 0px -40px 0px' });
+  reveals.forEach(r => obs.observe(r));
+})();
+</script>
+</body>
+</html>

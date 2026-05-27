@@ -1,0 +1,351 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Max Rectangle in Binary Matrix</title>
+    <style>
+        :root {
+            --bg-page: #0d1117;
+            --bg-surface: #161b22;
+            --border-main: #30363d;
+            --btn-bg: #21262d;
+            --btn-hover: #2d333b;
+            --text-main: #c9d1d9;
+            --text-dim: #8b949e;
+            --accent-purple: #a371f7;
+            --accent-blue: #388bfd;
+            --accent-green: #3fb950;
+            --accent-orange: #e3b341;
+        }
+
+        * { box-sizing: border-box; }
+        body {
+            background-color: var(--bg-page);
+            color: var(--text-main);
+            font-family: system-ui, -apple-system, sans-serif;
+            margin: 0;
+            padding: 20px 0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        h1 { color: var(--accent-purple); margin: 0 0 8px 0; }
+
+        .input-bar {
+            width: 100%;
+            max-width: 1100px;
+            background: var(--bg-surface);
+            padding: 12px;
+            display: flex;
+            gap: 12px;
+            flex-wrap: wrap;
+            justify-content: center;
+            border-bottom: 1px solid var(--border-main);
+            margin-bottom: 20px;
+        }
+        button {
+            padding: 8px 16px;
+            background: var(--btn-bg);
+            border: 1px solid var(--border-main);
+            color: var(--text-main);
+            border-radius: 6px;
+            cursor: pointer;
+        }
+        button:hover { background: var(--btn-hover); }
+
+        .matrix {
+            display: grid;
+            gap: 4px;
+            padding: 12px;
+            background: #21262d;
+            border-radius: 12px;
+        }
+
+        .cell {
+            width: 32px;
+            height: 32px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 14px;
+            font-family: monospace;
+            border-radius: 4px;
+            transition: all 0.2s;
+        }
+
+        .cell.one {
+            background: #3fb950;
+            color: black;
+        }
+
+        .cell.zero {
+            background: #2d333b;
+            color: #8b949e;
+        }
+
+        .heights {
+            display: flex;
+            gap: 6px;
+            padding: 16px;
+            background: #21262d;
+            border-radius: 12px;
+            align-items: flex-end;
+        }
+
+        .bar {
+            width: 28px;
+            background: var(--accent-blue);
+            display: flex;
+            align-items: flex-end;
+            justify-content: center;
+            color: white;
+            font-size: 12px;
+            transition: height 0.3s;
+        }
+
+        .info {
+            margin: 20px 0;
+            text-align: center;
+            font-family: monospace;
+        }
+
+        .action-panel {
+            background: var(--bg-surface);
+            border: 1px solid var(--border-main);
+            border-radius: 10px;
+            padding: 18px;
+            width: 100%;
+            max-width: 1000px;
+            min-height: 140px;
+            margin: 20px 0;
+            font-family: monospace;
+        }
+
+        .controls {
+            margin: 20px 0;
+            display: flex;
+            align-items: center;
+            gap: 16px;
+            flex-wrap: wrap;
+            justify-content: center;
+        }
+
+        .log-panel {
+            background: var(--bg-page);
+            border: 1px solid var(--border-main);
+            border-radius: 10px;
+            padding: 16px;
+            width: 100%;
+            max-width: 1000px;
+            height: 240px;
+            overflow-y: auto;
+            font-family: 'Courier New', monospace;
+            font-size: 14px;
+        }
+    </style>
+</head>
+<body>
+
+    <h1>Max Rectangle in Binary Matrix</h1>
+    <p style="color:var(--text-dim);margin-bottom:20px;">Histogram + Monotonic Stack</p>
+
+    <div class="input-bar">
+        <button onclick="loadExample(0)">Example 1</button>
+        <button onclick="loadExample(1)">Example 2</button>
+        <button onclick="resetSim()">Reset</button>
+    </div>
+
+    <div class="matrix" id="matrix-vis" style="grid-template-columns: repeat(5, 32px);"></div>
+
+    <div class="heights" id="heights-vis"></div>
+
+    <div class="info" id="info">
+        Current Row: <span id="row-val" style="color:var(--accent-orange)">—</span> | 
+        Max Area: <span id="max-area" style="color:var(--accent-green)">0</span>
+    </div>
+
+    <div class="action-panel" id="action">Click an example to begin</div>
+
+    <div class="controls">
+        <button onclick="prevStep()">← Back</button>
+        <button onclick="togglePlay()" id="play-btn">▶ Play</button>
+        <button onclick="nextStep()">Next →</button>
+        <label>Speed <input type="range" id="speed" min="0" max="2" value="1"></label>
+    </div>
+
+    <div class="log-panel" id="log"></div>
+
+    <script>
+        let matrix = [];
+        let steps = [];
+        let stepIdx = 0;
+        let timer = null;
+        let isPlaying = false;
+        const delays = [1650, 850, 380];
+
+        const examples = [
+            [[1,0,1,0,0],[1,0,1,1,1],[1,1,1,1,1],[1,0,0,1,0]],
+            [[0,0,0],[0,0,0]]
+        ];
+
+        function generateSteps(mat) {
+            matrix = mat.map(row => [...row]);
+            const n = matrix.length;
+            const m = matrix[0].length;
+            steps = [];
+
+            let heights = new Array(m).fill(0);
+            let maxArea = 0;
+
+            steps.push({
+                panel: `<b>Initialize</b><br>heights = [${heights.join(', ')}]`,
+                log: `Start processing matrix`,
+                matrix: matrix.map(r => [...r]),
+                heights: [...heights],
+                maxArea: 0,
+                currentRow: -1,
+                action: 'Initialize'
+            });
+
+            for (let i = 0; i < n; i++) {
+                // Update heights
+                for (let j = 0; j < m; j++) {
+                    if (matrix[i][j] === 1) {
+                        heights[j]++;
+                    } else {
+                        heights[j] = 0;
+                    }
+                }
+
+                // Compute largest rectangle in this histogram
+                const stack = [];
+                let rowMax = 0;
+
+                for (let j = 0; j <= m; j++) {
+                    const h = j < m ? heights[j] : 0;
+                    while (stack.length && h < heights[stack[stack.length - 1]]) {
+                        const tp = stack.pop();
+                        const height = heights[tp];
+                        const width = stack.length === 0 ? j : j - stack[stack.length - 1] - 1;
+                        const area = height * width;
+                        rowMax = Math.max(rowMax, area);
+                    }
+                    stack.push(j);
+                }
+
+                maxArea = Math.max(maxArea, rowMax);
+
+                steps.push({
+                    panel: `Row ${i}<br>heights = [${heights.join(', ')}]<br>Row max = ${rowMax}`,
+                    log: `Row ${i}: heights [${heights.join(', ')}], row max area ${rowMax}`,
+                    matrix: matrix.map(r => [...r]),
+                    heights: [...heights],
+                    maxArea: maxArea,
+                    currentRow: i,
+                    action: `Processed row ${i}`
+                });
+            }
+
+            steps.push({
+                panel: `<b>FINAL RESULT</b><br>Maximum Area = ${maxArea}`,
+                log: `Maximum rectangle area = ${maxArea}`,
+                matrix: matrix.map(r => [...r]),
+                heights: [...heights],
+                maxArea: maxArea,
+                currentRow: n,
+                action: 'Complete'
+            });
+        }
+
+        function renderMatrix(mat) {
+            const container = document.getElementById('matrix-vis');
+            container.style.gridTemplateColumns = `repeat(${mat[0].length}, 32px)`;
+            container.innerHTML = '';
+            for (let row of mat) {
+                for (let val of row) {
+                    const cell = document.createElement('div');
+                    cell.className = `cell ${val === 1 ? 'one' : 'zero'}`;
+                    cell.textContent = val;
+                    container.appendChild(cell);
+                }
+            }
+        }
+
+        function renderHeights(heights) {
+            const container = document.getElementById('heights-vis');
+            container.innerHTML = '';
+            const maxH = Math.max(...heights, 1);
+            heights.forEach(h => {
+                const bar = document.createElement('div');
+                bar.className = 'bar';
+                bar.style.height = `${(h / maxH) * 180 + 20}px`;
+                bar.textContent = h;
+                container.appendChild(bar);
+            });
+        }
+
+        function renderStep(idx) {
+            stepIdx = idx;
+            const step = steps[idx];
+            if (!step) return;
+
+            document.getElementById('action').innerHTML = step.panel || '—';
+            renderMatrix(step.matrix);
+            renderHeights(step.heights);
+
+            document.getElementById('row-val').textContent = step.currentRow >= 0 ? step.currentRow : '—';
+            document.getElementById('max-area').textContent = step.maxArea;
+
+            const logEl = document.getElementById('log');
+            logEl.innerHTML = steps.slice(0, idx + 1).map(s => 
+                `<div style="margin:5px 0;">${s.log}</div>`
+            ).join('');
+            logEl.scrollTop = logEl.scrollHeight;
+        }
+
+        function nextStep() {
+            if (stepIdx < steps.length - 1) renderStep(stepIdx + 1);
+            else pause();
+        }
+
+        function prevStep() {
+            if (stepIdx > 0) renderStep(stepIdx - 1);
+        }
+
+        function resetSim() {
+            pause();
+            stepIdx = 0;
+            renderStep(0);
+        }
+
+        function togglePlay() {
+            const btn = document.getElementById('play-btn');
+            if (isPlaying) {
+                pause();
+            } else {
+                isPlaying = true;
+                btn.textContent = '❚❚ Pause';
+                timer = setInterval(() => {
+                    if (stepIdx < steps.length - 1) nextStep();
+                    else pause();
+                }, delays[document.getElementById('speed').value]);
+            }
+        }
+
+        function pause() {
+            clearInterval(timer);
+            isPlaying = false;
+            document.getElementById('play-btn').textContent = '▶ Play';
+        }
+
+        function loadExample(n) {
+            generateSteps(examples[n]);
+            resetSim();
+        }
+
+        window.onload = () => loadExample(0);
+    </script>
+</body>
+</html>

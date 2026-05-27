@@ -1,0 +1,323 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Shortest Unique Substring for Each Word - Brute Force Visualization</title>
+    <style>
+        :root {
+            --bg-page: #0d1117;
+            --bg-surface: #161b22;
+            --border-main: #30363d;
+            --accent-purple: #a371f7;
+            --accent-green: #3fb950;
+            --accent-orange: #e3b341;
+            --accent-red: #f85149;
+            --text-main: #c9d1d9;
+            --text-dim: #8b949e;
+        }
+        * { box-sizing: border-box; }
+        body {
+            background: var(--bg-page); color: var(--text-main);
+            font-family: system-ui, -apple-system, sans-serif;
+            margin: 0; padding: 20px 0; display: flex; flex-direction: column; align-items: center;
+        }
+        .input-bar {
+            background: var(--bg-surface); padding: 12px 20px; border-radius: 8px;
+            border: 1px solid var(--border-main); display: flex; gap: 12px; align-items: center; flex-wrap: wrap;
+            margin-bottom: 24px;
+        }
+        input[type="text"] {
+            background: #0d1117; border: 1px solid var(--border-main); color: var(--text-main);
+            padding: 8px 12px; border-radius: 6px; width: 520px; font-family: monospace;
+        }
+        button {
+            padding: 8px 16px; background: #21262d; border: 1px solid var(--border-main);
+            color: var(--text-main); border-radius: 6px; cursor: pointer;
+        }
+        button:hover { background: #30363d; }
+
+        .words-container {
+            display: flex; flex-direction: column; gap: 18px; width: 760px;
+        }
+        .word-row {
+            background: var(--bg-surface); padding: 14px 20px; border-radius: 8px;
+            border: 1px solid var(--border-main);
+        }
+        .word-label { font-size: 12px; color: var(--text-dim); margin-bottom: 8px; }
+        .tiles { display: flex; gap: 5px; flex-wrap: wrap; }
+        .tile {
+            width: 42px; height: 52px; display: flex; flex-direction: column;
+            align-items: center; justify-content: center; border-radius: 6px;
+            font-size: 17px; font-weight: 700; font-family: monospace;
+            transition: all 0.3s; border: 2px solid var(--border-main);
+            background: #21262d;
+        }
+        .tile.current { border-color: var(--accent-purple); background: #1e1030; transform: scale(1.08); }
+        .tile.unique { border-color: var(--accent-green); }
+
+        .action-panel {
+            background: var(--bg-surface); border: 1px solid var(--border-main);
+            border-radius: 8px; padding: 18px 24px; margin: 20px 0; width: 760px;
+            font-family: monospace; line-height: 1.5; min-height: 110px;
+        }
+
+        .result-panel {
+            background: var(--bg-surface); border: 1px solid var(--border-main);
+            border-radius: 8px; padding: 16px 20px; width: 760px; margin-bottom: 20px;
+            font-family: monospace;
+        }
+
+        .controls {
+            margin: 24px 0; display: flex; gap: 12px; align-items: center;
+        }
+        input[type="range"] { width: 160px; accent-color: var(--accent-purple); }
+
+        .log-panel {
+            width: 760px; height: 190px; overflow-y: auto; background: #0d1117;
+            border: 1px solid var(--border-main); border-radius: 8px; padding: 14px;
+            font-family: monospace; font-size: 13px; line-height: 1.45;
+        }
+        .legend {
+            display: flex; gap: 24px; margin: 20px 0; font-size: 13px; color: var(--text-dim);
+        }
+    </style>
+</head>
+<body>
+
+    <div class="input-bar">
+        <label>Words (comma separated):</label>
+        <input type="text" id="input-words" value="cat,dog,apple">
+        <button onclick="loadCustom()">Load</button>
+        <button onclick="loadExample(0)">Ex 1: cat,dog,apple</button>
+        <button onclick="loadExample(1)">Ex 2: aa,ab</button>
+    </div>
+
+    <div style="font-family:monospace;color:var(--accent-purple);margin-bottom:12px;">
+        Brute Force — For each word, shortest substring not appearing in any other word
+    </div>
+
+    <div class="words-container" id="words-container"></div>
+
+    <div class="action-panel" id="action-panel">
+        Click Play / Next to start processing...
+    </div>
+
+    <div class="result-panel" id="result-panel">
+        <strong>Results so far:</strong><br>
+        <span id="results-content" style="color:var(--accent-green)"></span>
+    </div>
+
+    <div class="controls">
+        <button onclick="resetViz()">Reset</button>
+        <button onclick="stepBack()">← Back</button>
+        <button onclick="togglePlay()" id="play-btn">▶ Play</button>
+        <button onclick="stepForward()">Next →</button>
+        <span style="margin-left:20px;color:var(--text-dim)">Speed</span>
+        <input type="range" id="speed" min="0" max="2" value="1">
+    </div>
+
+    <div class="legend">
+        <div><span style="color:var(--accent-purple)">■</span> Current Candidate Substring</div>
+        <div><span style="color:var(--accent-green)">■</span> Unique Substring Found</div>
+    </div>
+
+    <div class="log-panel" id="log-panel"></div>
+
+    <script>
+        let words = ["cat", "dog", "apple"];
+        let steps = [];
+        let stepIdx = 0;
+        let timer = null;
+        const delays = [1250, 620, 280];
+
+        function generateSteps() {
+            steps = [];
+            let allSubstrings = new Map(); // substring -> count
+
+            // Build global frequency
+            steps.push({
+                type: 'init',
+                panel: `Building global substring frequency map from ${words.length} words`,
+                log: `Start: Count all substrings across words`,
+                currentWord: -1,
+                candidate: '',
+                results: []
+            });
+
+            for (let k = 0; k < words.length; k++) {
+                const w = words[k];
+                for (let i = 0; i < w.length; i++) {
+                    for (let j = i + 1; j <= w.length; j++) {
+                        const sub = w.substring(i, j);
+                        allSubstrings.set(sub, (allSubstrings.get(sub) || 0) + 1);
+                    }
+                }
+            }
+
+            let results = [];
+
+            for (let k = 0; k < words.length; k++) {
+                const w = words[k];
+                let found = false;
+
+                steps.push({
+                    type: 'processWord',
+                    currentWord: k,
+                    panel: `Processing word ${k}: "<b>${w}</b>"`,
+                    log: `Start checking word "${w}" for shortest unique substring`,
+                    candidate: '',
+                    results: [...results]
+                });
+
+                for (let L = 1; L <= w.length && !found; L++) {
+                    for (let i = 0; i <= w.length - L; i++) {
+                        const sub = w.substring(i, i + L);
+
+                        steps.push({
+                            type: 'check',
+                            currentWord: k,
+                            candidate: sub,
+                            panel: `Check substring "<b>${sub}</b>" (length ${L})`,
+                            log: `Candidate "${sub}" → count = ${allSubstrings.get(sub) || 0}`,
+                            results: [...results]
+                        });
+
+                        if ((allSubstrings.get(sub) || 0) === 1) {
+                            results.push(sub);
+                            found = true;
+                            steps.push({
+                                type: 'found',
+                                currentWord: k,
+                                candidate: sub,
+                                panel: `✅ Found shortest unique: "<b>${sub}</b>"`,
+                                log: `Unique! Added "${sub}" for word ${k}`,
+                                results: [...results]
+                            });
+                            break;
+                        }
+                    }
+                }
+
+                if (!found) {
+                    results.push(w);
+                    steps.push({
+                        type: 'found',
+                        currentWord: k,
+                        candidate: w,
+                        panel: `No shorter unique → whole word "<b>${w}</b>"`,
+                        log: `No shorter unique substring, using full word "${w}"`,
+                        results: [...results]
+                    });
+                }
+            }
+
+            steps.push({
+                type: 'final',
+                panel: `✅ Final results: <b>${JSON.stringify(results)}</b>`,
+                log: `All words processed. Final shortest unique substrings`,
+                results: results
+            });
+        }
+
+        function renderStep(idx) {
+            const step = steps[idx];
+            if (!step) return;
+
+            // Render all words
+            const container = document.getElementById('words-container');
+            container.innerHTML = '';
+            words.forEach((w, k) => {
+                const row = document.createElement('div');
+                row.className = 'word-row';
+                row.innerHTML = `<div class="word-label">Word ${k}: <b>"${w}"</b></div><div class="tiles" id="tiles-${k}"></div>`;
+                container.appendChild(row);
+
+                const tilesDiv = document.getElementById(`tiles-${k}`);
+                for (let pos = 0; pos < w.length; pos++) {
+                    const tile = document.createElement('div');
+                    tile.className = 'tile';
+                    tile.textContent = w[pos];
+                    if (step.currentWord === k && step.candidate) {
+                        // Simple highlight if candidate is part of this word
+                        if (w.includes(step.candidate)) {
+                            tile.classList.add('current');
+                        }
+                    }
+                    tilesDiv.appendChild(tile);
+                }
+            });
+
+            document.getElementById('action-panel').innerHTML = step.panel;
+
+            // Results
+            let resHtml = step.results.map((r, idx) => `Word ${idx}: <b>"${r}"</b><br>`).join('');
+            document.getElementById('results-content').innerHTML = resHtml;
+
+            // Log
+            const logEl = document.getElementById('log-panel');
+            logEl.innerHTML = steps.slice(0, idx+1).map(s => `<div>${s.log}</div>`).join('');
+            logEl.scrollTop = logEl.scrollHeight;
+        }
+
+        function loadExample(ex) {
+            words = ex === 0 ? ["cat", "dog", "apple"] : ["aa", "ab"];
+            document.getElementById('input-words').value = words.join(',');
+            generateSteps();
+            resetViz();
+        }
+
+        function loadCustom() {
+            const input = document.getElementById('input-words').value.trim();
+            if (input) {
+                words = input.split(',').map(w => w.trim()).filter(Boolean);
+                generateSteps();
+                resetViz();
+            }
+        }
+
+        function resetViz() {
+            if (timer) clearInterval(timer);
+            timer = null;
+            document.getElementById('play-btn').textContent = '▶ Play';
+            stepIdx = 0;
+            renderStep(0);
+        }
+
+        function stepForward() {
+            if (stepIdx < steps.length - 1) {
+                stepIdx++;
+                renderStep(stepIdx);
+            }
+        }
+
+        function stepBack() {
+            if (stepIdx > 0) {
+                stepIdx--;
+                renderStep(stepIdx);
+            }
+        }
+
+        function togglePlay() {
+            const btn = document.getElementById('play-btn');
+            if (timer) {
+                clearInterval(timer);
+                timer = null;
+                btn.textContent = '▶ Play';
+            } else {
+                btn.textContent = '⏸ Pause';
+                timer = setInterval(() => {
+                    if (stepIdx < steps.length - 1) stepForward();
+                    else {
+                        clearInterval(timer);
+                        timer = null;
+                        btn.textContent = '▶ Play';
+                    }
+                }, delays[parseInt(document.getElementById('speed').value)]);
+            }
+        }
+
+        window.onload = () => loadExample(0);
+    </script>
+</body>
+</html>

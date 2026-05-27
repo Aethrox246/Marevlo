@@ -1,0 +1,364 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Count Distinct Substrings - Trie</title>
+    <style>
+        :root {
+            --bg: #0d1117;
+            --surface: #161b22;
+            --border: #30363d;
+            --text: #c9d1d9;
+            --muted: #8b949e;
+            --purple: #a371f7;
+            --blue: #58a6ff;
+            --green: #3fb950;
+            --orange: #e3b341;
+        }
+        * { box-sizing: border-box; }
+        body {
+            margin: 0;
+            padding: 20px;
+            background: var(--bg);
+            color: var(--text);
+            font-family: system-ui, sans-serif;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+        h1 { color: var(--purple); margin: 0 0 8px 0; }
+        .subtitle { color: var(--muted); margin-bottom: 20px; }
+        .controls {
+            display: flex;
+            gap: 12px;
+            flex-wrap: wrap;
+            justify-content: center;
+            margin: 15px 0;
+        }
+        button {
+            background: #21262d;
+            color: var(--text);
+            border: 1px solid var(--border);
+            padding: 10px 18px;
+            border-radius: 8px;
+            cursor: pointer;
+        }
+        button:hover { background: #30363d; }
+        .main {
+            display: flex;
+            gap: 40px;
+            flex-wrap: wrap;
+            justify-content: center;
+            width: 100%;
+            max-width: 1300px;
+        }
+        .panel {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 18px;
+        }
+        .string-panel { width: 420px; }
+        .trie-panel { width: 620px; }
+        .label {
+            color: var(--purple);
+            font-weight: bold;
+            margin-bottom: 10px;
+            text-align: center;
+        }
+        .string-container {
+            background: #21262d;
+            border: 3px solid var(--blue);
+            border-radius: 12px;
+            padding: 20px;
+            font-family: monospace;
+            font-size: 28px;
+            letter-spacing: 6px;
+            text-align: center;
+        }
+        .trie {
+            background: #21262d;
+            border: 3px solid var(--blue);
+            border-radius: 12px;
+            padding: 20px;
+            min-height: 460px;
+            overflow: auto;
+            font-family: monospace;
+        }
+        .trie-node {
+            display: inline-block;
+            background: #30363d;
+            border: 3px solid #58a6ff;
+            border-radius: 10px;
+            padding: 12px 18px;
+            margin: 12px 8px;
+            text-align: center;
+            position: relative;
+        }
+        .trie-node.current {
+            border-color: var(--orange);
+            box-shadow: 0 0 0 4px rgba(227,179,65,0.4);
+        }
+        .trie-node .count {
+            color: var(--green);
+            font-size: 13px;
+            margin-top: 4px;
+        }
+        .children {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            justify-content: center;
+            margin-top: 14px;
+        }
+        .info {
+            margin: 20px 0;
+            padding: 16px;
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            font-family: monospace;
+            min-height: 140px;
+            font-size: 18px;
+        }
+        .action {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            padding: 16px;
+            width: 100%;
+            max-width: 1100px;
+            margin: 20px 0;
+            min-height: 110px;
+            font-family: monospace;
+        }
+        .log {
+            background: #0d1117;
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            padding: 14px;
+            width: 100%;
+            max-width: 1100px;
+            height: 240px;
+            overflow-y: auto;
+            font-family: 'Courier New', monospace;
+            font-size: 14px;
+        }
+    </style>
+</head>
+<body>
+    <h1>Count Distinct Substrings</h1>
+    <p class="subtitle">Trie of All Suffixes → Number of Distinct Substrings</p>
+
+    <div class="controls">
+        <button onclick="loadExample(0)">Example 1: "abc"</button>
+        <button onclick="loadExample(1)">Example 2: "aaa"</button>
+        <button onclick="resetViz()">Reset</button>
+    </div>
+
+    <div class="main">
+        <div class="panel string-panel">
+            <div class="label">Input String</div>
+            <div class="string-container" id="string-view"></div>
+        </div>
+
+        <div class="panel trie-panel">
+            <div class="label">Trie (All Suffixes Inserted)</div>
+            <div class="trie" id="trie"></div>
+        </div>
+    </div>
+
+    <div class="info">
+        <strong>Current Suffix:</strong> <span id="current-suffix" style="color:var(--orange)"></span><br>
+        <strong>New Nodes Added:</strong> <span id="new-nodes" style="color:var(--green)"></span><br>
+        <strong>Total Distinct Substrings:</strong> <span id="total-count" style="color:var(--purple); font-size:24px;"></span>
+    </div>
+
+    <div class="action" id="action">Click an example to start</div>
+
+    <div class="controls">
+        <button onclick="prevStep()">← Prev</button>
+        <button onclick="togglePlay()" id="play-btn">▶ Play</button>
+        <button onclick="nextStep()">Next →</button>
+        <label>Speed <input type="range" id="speed" min="0" max="2" value="1"></label>
+    </div>
+
+    <div class="log" id="log"></div>
+
+    <script>
+        let root = null;
+        let steps = [];
+        let stepIdx = 0;
+        let timer = null;
+        let isPlaying = false;
+        let s = "";
+        let totalDistinct = 0;
+
+        class TrieNode {
+            constructor() {
+                this.children = new Array(26).fill(null);
+            }
+        }
+
+        function createTrie() {
+            return new TrieNode();
+        }
+
+        function insertSuffix(suffix) {
+            let node = root;
+            let newNodes = 0;
+            const path = [];
+            for (let ch of suffix) {
+                const idx = ch.charCodeAt(0) - 97;
+                path.push(ch);
+                if (!node.children[idx]) {
+                    node.children[idx] = new TrieNode();
+                    newNodes++;
+                }
+                node = node.children[idx];
+            }
+            return {newNodes, path};
+        }
+
+        function generateSteps(str) {
+            s = str;
+            root = createTrie();
+            steps = [];
+            totalDistinct = 0;
+
+            steps.push({
+                action: "Initialize Trie",
+                panel: `String: <span style="color:var(--orange)">${s}</span>`,
+                log: "Trie root created. Count = 0",
+                highlight: [],
+                currentSuffix: "",
+                newNodes: 0,
+                total: 0
+            });
+
+            for (let i = 0; i < s.length; i++) {
+                const suffix = s.slice(i);
+                const {newNodes, path} = insertSuffix(suffix);
+                totalDistinct += newNodes;
+
+                steps.push({
+                    action: `Insert suffix "${suffix}"`,
+                    panel: `Added <span style="color:var(--green)">${newNodes}</span> new nodes`,
+                    log: `Suffix "${suffix}" → +${newNodes} nodes`,
+                    highlight: path,
+                    currentSuffix: suffix,
+                    newNodes: newNodes,
+                    total: totalDistinct
+                });
+            }
+
+            steps.push({
+                action: "Final Count",
+                panel: `Total distinct substrings: <span style="color:var(--purple); font-size:26px;">${totalDistinct}</span>`,
+                log: `All suffixes inserted. Final count = ${totalDistinct}`,
+                highlight: [],
+                currentSuffix: "",
+                newNodes: 0,
+                total: totalDistinct
+            });
+        }
+
+        function buildTrieHTML(node, prefix = "", highlight = []) {
+            if (!node) return '';
+            let html = `<div class="trie-node ${highlight.length && prefix.length <= highlight.length ? 'current' : ''}">`;
+            html += `<div>${prefix || 'ROOT'}</div>`;
+            if (prefix) html += `<div class="count">node</div>`;
+
+            let chHtml = '<div class="children">';
+            let has = false;
+            for (let i = 0; i < 26; i++) {
+                if (node.children[i]) {
+                    has = true;
+                    const ch = String.fromCharCode(97 + i);
+                    chHtml += buildTrieHTML(node.children[i], prefix + ch, highlight);
+                }
+            }
+            chHtml += '</div>';
+            if (has) html += chHtml;
+            html += '</div>';
+            return html;
+        }
+
+        function renderTrie(highlight = []) {
+            const cont = document.getElementById('trie');
+            cont.innerHTML = buildTrieHTML(root, "", highlight);
+        }
+
+        function renderString() {
+            const cont = document.getElementById('string-view');
+            cont.textContent = s;
+        }
+
+        function renderStep(idx) {
+            stepIdx = Math.max(0, Math.min(idx, steps.length - 1));
+            const step = steps[stepIdx];
+
+            document.getElementById('action').innerHTML = step.panel;
+            document.getElementById('current-suffix').textContent = step.currentSuffix || '—';
+            document.getElementById('new-nodes').textContent = step.newNodes || 0;
+            document.getElementById('total-count').textContent = step.total;
+
+            renderString();
+            renderTrie(step.highlight || []);
+
+            const logEl = document.getElementById('log');
+            logEl.innerHTML = steps.slice(0, stepIdx + 1).map(s => `<div>${s.log}</div>`).join('');
+            logEl.scrollTop = logEl.scrollHeight;
+        }
+
+        function nextStep() {
+            if (stepIdx < steps.length - 1) renderStep(stepIdx + 1);
+            else pause();
+        }
+
+        function prevStep() {
+            if (stepIdx > 0) renderStep(stepIdx - 1);
+        }
+
+        function togglePlay() {
+            const btn = document.getElementById('play-btn');
+            if (isPlaying) {
+                pause();
+            } else {
+                isPlaying = true;
+                btn.textContent = '❚❚ Pause';
+                const speedMap = [1200, 650, 320];
+                timer = setInterval(() => {
+                    if (stepIdx < steps.length - 1) nextStep();
+                    else pause();
+                }, speedMap[document.getElementById('speed').value]);
+            }
+        }
+
+        function pause() {
+            clearInterval(timer);
+            isPlaying = false;
+            document.getElementById('play-btn').textContent = '▶ Play';
+        }
+
+        function resetViz() {
+            pause();
+            stepIdx = 0;
+            renderStep(0);
+        }
+
+        function loadExample(n) {
+            const examples = [
+                { str: "abc" },
+                { str: "aaa" }
+            ];
+            const ex = examples[n];
+            generateSteps(ex.str);
+            resetViz();
+        }
+
+        window.onload = () => loadExample(0);
+    </script>
+</body>
+</html>

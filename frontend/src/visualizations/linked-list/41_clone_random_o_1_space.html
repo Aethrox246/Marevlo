@@ -1,0 +1,434 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Clone random (O(1) space) - Visualization</title>
+    <style>
+        :root {
+            --bg-page: #0d1117;
+            --bg-surface: #161b22;
+            --bg-input: #0d1117;
+            --border-main: #30363d;
+            --btn-bg: #21262d;
+            --btn-hover: #2d333b;
+            --text-main: #c9d1d9;
+            --text-dim: #8b949e;
+            --text-log: #58a6ff;
+            --accent-orange: #e3b341;
+            --accent-blue: #388bfd;
+            --accent-green: #3fb950;
+            --accent-red: #f85149;
+            --accent-purple: #a371f7;
+        }
+
+        * { box-sizing: border-box; }
+        body {
+            background-color: var(--bg-page);
+            color: var(--text-main);
+            font-family: system-ui, -apple-system, sans-serif;
+            margin: 0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            min-height: 100vh;
+            padding-bottom: 40px;
+        }
+
+        /* ROW 1: INPUT BAR */
+        .input-bar {
+            width: 100%;
+            background-color: var(--bg-surface);
+            padding: 12px 16px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 8px;
+            border-bottom: 1px solid var(--border-main);
+            flex-wrap: wrap;
+        }
+        label.ui-label { font-family: 'Courier New', monospace; font-size: 13px; color: var(--text-dim); }
+        button {
+            height: 32px; border-radius: 6px; padding: 0 14px; background: var(--btn-bg);
+            border: 1px solid var(--border-main); color: var(--text-main); font-size: 13px; cursor: pointer;
+            transition: background 0.2s ease;
+        }
+        button:hover { background: var(--btn-hover); }
+
+        /* ROW 2: VISUAL */
+        .visual-container { margin-top: 30px; display: flex; flex-direction: column; align-items: center; gap: 30px; width: 100%; }
+        .list-wrapper { display: flex; align-items: center; gap: 8px; flex-wrap: nowrap; justify-content: center; max-width: 900px; min-height: 90px; position: relative; }
+        
+        .node-unit { display: flex; flex-direction: column; align-items: center; gap: 4px; position: relative; }
+        .node {
+            min-width: 54px; height: 54px; display: flex; align-items: center; justify-content: center;
+            border-radius: 8px; font-size: 17px; font-weight: 700; font-family: 'Courier New', monospace;
+            transition: all 0.3s ease; border: 3px solid var(--border-main); background: #21262d;
+            color: var(--text-main); position: relative;
+        }
+        .node.current { border-color: var(--accent-orange); box-shadow: 0 0 14px rgba(227, 179, 65, 0.5); }
+        .node.cloned { border-color: var(--accent-green); box-shadow: 0 0 14px rgba(63, 185, 80, 0.5); }
+        .node-index { font-size: 11px; color: var(--text-dim); font-family: monospace; }
+        
+        .arrow { font-size: 24px; color: var(--accent-blue); font-weight: bold; line-height: 1; padding: 0 6px; }
+
+        /* ROW 3: PANEL */
+        .action-panel {
+            margin-top: 40px; background: var(--bg-surface); border: 1px solid var(--border-main);
+            border-radius: 6px; padding: 12px 20px; width: 680px; text-align: center; font-family: monospace; min-height: 72px;
+            display: flex; flex-direction: column; justify-content: center; font-size: 15px; line-height: 1.5;
+        }
+
+        /* ROW 4: INFO PANEL */
+        .info-panel { margin-top: 10px; display: flex; gap: 10px; flex-wrap: wrap; justify-content: center; }
+        .info-cell {
+            background: var(--bg-surface); border: 1px solid var(--border-main); border-radius: 6px;
+            padding: 8px 14px; display: flex; flex-direction: column; align-items: center; min-width: 92px; gap: 4px;
+        }
+        .info-label { font-size: 11px; color: var(--text-dim); }
+        .info-value { font-family: monospace; font-size: 15px; font-weight: 700; text-align: center; }
+
+        /* ROW 5: RESULT DISPLAY */
+        .result-display { margin-top: 10px; display: flex; flex-direction: column; align-items: center; }
+        #res-val { font-size: 18px; color: var(--text-dim); font-family: monospace; transition: all 0.3s; font-weight: bold; }
+        .pop { animation: popAnim 400ms ease; color: var(--accent-green) !important; font-size: 24px !important; text-shadow: 0 0 12px var(--accent-green); }
+
+        @keyframes popAnim { 0%{transform:scale(1)} 50%{transform:scale(1.15)} 100%{transform:scale(1)} }
+
+        /* ROW 6: STATUS BAR */
+        .status-bar { margin-top: 8px; font-size: 13px; color: var(--text-dim); height: 1.2em; text-align: center; width: 600px;}
+
+        /* ROW 7: CONTROLS */
+        .controls { margin-top: 24px; display: flex; align-items: center; gap: 8px; }
+        input[type="range"] { accent-color: var(--accent-blue); width: 100px; cursor: pointer; }
+
+        /* ROW 8: LEGEND */
+        .legend { margin-top: 12px; display: flex; gap: 16px; flex-wrap: wrap; justify-content: center; max-width: 800px; }
+        .legend-item { display: flex; align-items: center; font-size: 12px; color: var(--text-dim); }
+        .dot { width: 10px; height: 10px; border-radius: 2px; margin-right: 6px; display: inline-block; }
+
+        /* ROW 9: LOG PANEL */
+        .log-panel {
+            margin-top: 12px; background: var(--bg-page); border: 1px solid var(--border-main);
+            border-radius: 6px; padding: 12px 16px; width: 700px; max-width: 90%; height: 120px;
+            overflow-y: auto; font-family: 'Courier New', monospace; font-size: 13px;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="input-bar">
+        <label class="ui-label">Clone random (O(1) space interweaving)</label>
+        <button onclick="loadExample(1)">Ex 1 (1→2→3 with random cycle)</button>
+        <button onclick="loadExample(2)">Ex 2 (single node)</button>
+    </div>
+
+    <div class="visual-container">
+        <div class="ui-label">Clone List with Random Pointers (Interweaving O(1) space)</div>
+        
+        <div>
+            <div class="ui-label" style="margin-bottom:6px">Original List</div>
+            <div class="list-wrapper" id="original-container"></div>
+        </div>
+
+        <div>
+            <div class="ui-label" style="margin-bottom:6px">Interweaved List (original + clones)</div>
+            <div class="list-wrapper" id="interweaved-container"></div>
+        </div>
+
+        <div>
+            <div class="ui-label" style="margin-bottom:6px">Final Cloned List</div>
+            <div class="list-wrapper" id="cloned-container"></div>
+        </div>
+    </div>
+
+    <div class="action-panel" id="main-panel">—</div>
+
+    <div class="info-panel">
+        <div class="info-cell">
+            <span class="info-label">current node</span>
+            <span class="info-value" id="val-current" style="color: var(--accent-orange);">—</span>
+        </div>
+        <div class="info-cell">
+            <span class="info-label">cloned node</span>
+            <span class="info-value" id="val-clone" style="color: var(--accent-green);">—</span>
+        </div>
+        <div class="info-cell">
+            <span class="info-label">random set</span>
+            <span class="info-value" id="val-random" style="color: var(--accent-purple);">—</span>
+        </div>
+    </div>
+
+    <div class="result-display">
+        <span class="ui-label" style="margin-bottom: 4px;">final cloned list =</span>
+        <span id="res-val">—</span>
+    </div>
+
+    <div class="status-bar" id="status-text"></div>
+
+    <div class="controls">
+        <button onclick="reset()">↺ Reset</button>
+        <button onclick="back()">← Back</button>
+        <button onclick="togglePlay()" id="play-btn">Play</button>
+        <button onclick="next()">Next →</button>
+        <div class="controls" style="margin-top:0">
+            <span class="ui-label" style="margin-right:4px; font-size:11px">Speed</span>
+            <input type="range" id="speed-slider" min="0" max="2" value="1">
+        </div>
+    </div>
+
+    <div class="legend">
+        <div class="legend-item"><span class="dot" style="background:#21262d; border:3px solid var(--accent-orange)"></span> original node</div>
+        <div class="legend-item"><span class="dot" style="background:#21262d; border:3px solid var(--accent-green)"></span> cloned node</div>
+        <div class="legend-item"><span class="dot" style="background:#21262d; border:3px solid var(--accent-purple)"></span> random pointer</div>
+    </div>
+
+    <div class="log-panel" id="log"></div>
+
+    <script>
+        let nodes = [];
+        let randomMap = {};
+        let steps = [];
+        let stepIndex = 0;
+        let timer = null;
+        const delays = [1800, 900, 450];
+
+        // Example data from JSON
+        let exampleData = {
+            1: {
+                values: [1,2,3],
+                random: [2,0,1], // indices in 0-based: 1.random=3 (index 2), 2.random=1 (index 0), 3.random=2 (index 1)
+                finalValues: [1,2,3],
+                finalRandom: [2,0,1]
+            },
+            2: {
+                values: [5],
+                random: [-1], // null
+                finalValues: [5],
+                finalRandom: [-1]
+            }
+        };
+
+        function init() { loadExample(1); }
+
+        function loadExample(exId) {
+            const data = exampleData[exId];
+            nodes = [...data.values];
+            randomMap = {};
+            data.random.forEach((rIdx, i) => {
+                if (rIdx >= 0) randomMap[i] = rIdx;
+            });
+            generateSteps(data);
+            reset();
+        }
+
+        function generateSteps(data) {
+            steps = [];
+            let original = [...data.values];
+            let interweaved = [];
+            let cloned = [];
+
+            steps.push({
+                type: 'init',
+                originalState: [...original],
+                interweavedState: [],
+                clonedState: [],
+                panel: `Interweaving O(1) space clone:<br>1. Interweave clones after originals<br>2. Set random pointers<br>3. Separate into clone list`,
+                statusText: `Start`,
+                log: `original = [${original.join(',')}]`,
+                logColor: 'var(--text-dim)'
+            });
+
+            // Pass 1: Interweave
+            for (let i = 0; i < original.length; i++) {
+                steps.push({
+                    type: 'interweave',
+                    originalState: [...original],
+                    interweavedState: [...interweaved],
+                    clonedState: [],
+                    panel: `Insert clone of <b>${original[i]}</b> after it`,
+                    statusText: `Interweave`,
+                    log: `inserted clone of ${original[i]}`,
+                    logColor: 'var(--accent-green)'
+                });
+                interweaved.push(original[i], original[i]); // original + clone
+            }
+
+            steps.push({
+                type: 'interweaved',
+                originalState: [...original],
+                interweavedState: [...interweaved],
+                clonedState: [],
+                panel: `Interweaved list ready`,
+                statusText: `Interweaved`,
+                log: `interweaved complete`,
+                logColor: 'var(--accent-purple)'
+            });
+
+            // Pass 2: Set random pointers (simulate for viz)
+            for (let i = 0; i < original.length; i++) {
+                let cloneIdx = i * 2 + 1;
+                let randIdx = randomMap[i];
+                if (randIdx >= 0) {
+                    steps.push({
+                        type: 'set-random',
+                        originalState: [...original],
+                        interweavedState: [...interweaved],
+                        clonedState: [],
+                        panel: `Set clone of <b>${original[i]}</b> random to clone of <b>${original[randIdx]}</b>`,
+                        statusText: `Set random`,
+                        log: `random set`,
+                        logColor: 'var(--accent-orange)'
+                    });
+                }
+            }
+
+            steps.push({
+                type: 'randoms-set',
+                originalState: [...original],
+                interweavedState: [...interweaved],
+                clonedState: [],
+                panel: `Random pointers set`,
+                statusText: `Randoms set`,
+                log: `randoms complete`,
+                logColor: 'var(--accent-green)'
+            });
+
+            // Pass 3: Separate
+            for (let i = 0; i < original.length; i++) {
+                steps.push({
+                    type: 'separate',
+                    originalState: [...original],
+                    interweavedState: [],
+                    clonedState: [...cloned],
+                    panel: `Separate cloned nodes`,
+                    statusText: `Separate`,
+                    log: `separated`,
+                    logColor: 'var(--accent-purple)'
+                });
+                cloned.push(original[i]);
+            }
+
+            steps.push({
+                type: 'final',
+                originalState: [...original],
+                interweavedState: [],
+                clonedState: [...cloned],
+                complete: true,
+                finalStr: cloned.join('→'),
+                panel: `Final cloned list: <b>${cloned.join('→')}</b>`,
+                statusText: `Done`,
+                log: `clone complete`,
+                logColor: 'var(--accent-green)',
+                bold: true
+            });
+        }
+
+        function renderList(containerId, state) {
+            const container = document.getElementById(containerId);
+            container.innerHTML = '';
+            if (state.length === 0) {
+                const empty = document.createElement('div');
+                empty.style.color = 'var(--text-dim)';
+                empty.style.fontFamily = 'monospace';
+                empty.innerText = 'null';
+                container.appendChild(empty);
+                return;
+            }
+            for (let i = 0; i < state.length; i++) {
+                const unit = document.createElement('div');
+                unit.className = 'node-unit';
+                const nodeEl = document.createElement('div');
+                let cls = 'node';
+                nodeEl.className = cls;
+                nodeEl.innerText = state[i];
+                const idxLabel = document.createElement('div');
+                idxLabel.className = 'node-index';
+                idxLabel.innerText = '';
+                unit.append(nodeEl, idxLabel);
+                container.appendChild(unit);
+                if (i < state.length - 1) {
+                    const arrow = document.createElement('div');
+                    arrow.className = 'arrow';
+                    arrow.innerText = '→';
+                    container.appendChild(arrow);
+                }
+            }
+        }
+
+        function renderStep(idx) {
+            const step = steps[idx];
+            if (!step) return;
+
+            renderList('original-container', step.originalState || []);
+            renderList('interweaved-container', step.interweavedState || []);
+            renderList('cloned-container', step.clonedState || []);
+
+            document.getElementById('main-panel').innerHTML = step.panel || '—';
+            document.getElementById('val-current').innerText = step.originalState && step.originalState.length ? step.originalState[0] : '—';
+            document.getElementById('val-clone').innerText = step.clonedState && step.clonedState.length ? step.clonedState[step.clonedState.length - 1] : '—';
+            document.getElementById('val-random').innerText = step.type === 'set-random' ? 'YES' : 'no';
+
+            const resVal = document.getElementById('res-val');
+            resVal.innerText = step.complete ? step.finalStr : '—';
+            if (step.complete) resVal.className = 'pop';
+            else resVal.className = '';
+
+            document.getElementById('status-text').innerText = step.statusText || '';
+
+            const logPanel = document.getElementById('log');
+            logPanel.innerHTML = '';
+            for (let k = 0; k <= idx; k++) {
+                if (steps[k].log) {
+                    const line = document.createElement('div');
+                    line.style.marginBottom = '3px';
+                    line.style.whiteSpace = 'pre-wrap';
+                    if (steps[k].logColor) line.style.color = steps[k].logColor;
+                    if (steps[k].bold) line.style.fontWeight = 'bold';
+                    line.innerText = steps[k].log;
+                    logPanel.appendChild(line);
+                }
+            }
+            logPanel.scrollTop = logPanel.scrollHeight;
+        }
+
+        function next() {
+            if (stepIndex < steps.length - 1) {
+                stepIndex++;
+                renderStep(stepIndex);
+            } else pause();
+        }
+
+        function back() {
+            if (stepIndex > 0) {
+                stepIndex--;
+                renderStep(stepIndex);
+            }
+        }
+
+        function reset() {
+            pause();
+            stepIndex = 0;
+            renderStep(0);
+        }
+
+        function togglePlay() {
+            const btn = document.getElementById('play-btn');
+            if (timer) pause();
+            else {
+                btn.innerText = 'Pause';
+                if (stepIndex >= steps.length - 1) stepIndex = 0;
+                timer = setInterval(next, delays[document.getElementById('speed-slider').value]);
+            }
+        }
+
+        function pause() {
+            clearInterval(timer);
+            timer = null;
+            document.getElementById('play-btn').innerText = 'Play';
+        }
+
+        window.onload = init;
+    </script>
+</body>
+</html>

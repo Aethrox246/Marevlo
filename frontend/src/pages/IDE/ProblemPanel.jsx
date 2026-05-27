@@ -8,6 +8,7 @@ import {
 import ReactMarkdown from 'react-markdown';
 import TabBar from './TabBar';
 import DiscussionSection from './DiscussionSection';
+import { loadVizHtml, hasViz } from '../../visualizations/loader';
 
 /* EXPLANATION PARSER — extracts every section from the raw text */
 function parseExplanation(text) {
@@ -389,6 +390,97 @@ const getApproachIcon = (name = '') => {
 
 const getDifficultyColor = (d) => ({ Easy: '#10b981', Medium: '#f59e0b', Hard: '#ef4444' }[d] || 'var(--color-muted-text)');
 
+/* VIZ FRAME — loads a self-contained animation bundled into the JS build.
+ * Content is fetched via Vite's glob loader (NOT via a URL), then rendered
+ * with srcdoc so it bypasses all server-side routing. */
+const VizFrame = memo(({ topicKey, vizFile, exampleIndex }) => {
+    const [status, setStatus] = useState('loading'); // 'loading' | 'ok' | 'error'
+    const [html, setHtml] = useState(null);
+
+    useEffect(() => {
+        let cancelled = false;
+        setStatus('loading');
+        loadVizHtml(topicKey, vizFile).then(content => {
+            if (cancelled) return;
+            if (content && typeof content === 'string' && content.length > 0) {
+                // Inject the example index so the .htm can read it without a query string.
+                // The .htm uses URLSearchParams(window.location.search) — we shim that to
+                // return the right value by injecting a script before any other script.
+                const shim = `<script>(function(){var p=new URLSearchParams();p.set('example','${exampleIndex}');var orig=URLSearchParams;window.URLSearchParams=function(s){return (s===undefined||s===window.location.search)?p:new orig(s);};})();<\/script>`;
+                const patched = content.replace(/<head>/i, `<head>${shim}`);
+                setHtml(patched);
+                setStatus('ok');
+            } else {
+                setStatus('error');
+            }
+        }).catch(() => {
+            if (!cancelled) setStatus('error');
+        });
+        return () => { cancelled = true; };
+    }, [topicKey, vizFile, exampleIndex]);
+
+    return (
+        <div style={{
+            marginTop: 8,
+            borderRadius: 10,
+            overflow: 'hidden',
+            border: '1px solid var(--color-border)',
+            background: '#0d1117',
+            boxShadow: '0 4px 16px rgba(0,0,0,0.18)',
+            position: 'relative',
+        }}>
+            <div style={{
+                padding: '8px 12px',
+                background: 'color-mix(in srgb, #818cf8 8%, var(--color-surface))',
+                borderBottom: '1px solid var(--color-border)',
+                display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8,
+            }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                    <BarChart2 size={12} style={{ color: '#818cf8' }} />
+                    <span style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', color: '#818cf8' }}>
+                        Visualization · Example {exampleIndex + 1}
+                    </span>
+                </div>
+            </div>
+
+            {/* Loading overlay */}
+            {status === 'loading' && (
+                <div style={{ height: 580, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#8b949e', fontSize: 12, gap: 8 }}>
+                    <div style={{ width: 14, height: 14, border: '2px solid #30363d', borderTopColor: '#818cf8', borderRadius: '50%', animation: 'pp-spin 0.8s linear infinite' }} />
+                    Loading visualization…
+                </div>
+            )}
+
+            {/* Error state — no bundled file found */}
+            {status === 'error' && (
+                <div style={{ height: 580, padding: 14, fontSize: 12, color: '#ef4444', background: 'rgba(239,68,68,0.06)', display: 'flex', flexDirection: 'column', gap: 6, justifyContent: 'center', alignItems: 'center', textAlign: 'center' }}>
+                    <div style={{ fontWeight: 700 }}>✗ No visualization available</div>
+                    <div style={{ color: '#8b949e' }}>
+                        Missing: <code style={{ fontFamily: 'monospace' }}>{topicKey}/{vizFile}</code>
+                    </div>
+                </div>
+            )}
+
+            {status === 'ok' && html && (
+                <iframe
+                    srcDoc={html}
+                    style={{
+                        width: '100%',
+                        minWidth: 0,
+                        height: 580,
+                        border: 'none',
+                        background: '#0d1117',
+                        display: 'block',
+                    }}
+                    title={`Visualization Example ${exampleIndex + 1}`}
+                    sandbox="allow-scripts"
+                />
+            )}
+        </div>
+    );
+});
+VizFrame.displayName = 'VizFrame';
+
 /* PROBLEM PANEL */
 const ProblemPanel = memo(({ problem, onBack, onActiveLadderChange, solvedLadders = {} }) => {
     const [activeTab, setActiveTab] = useState('description');
@@ -397,6 +489,7 @@ const ProblemPanel = memo(({ problem, onBack, onActiveLadderChange, solvedLadder
     const [activeLadder, setActiveLadder] = useState(0);
     const [vote, setVote] = useState(null);
     const [readerMode, setReaderMode] = useState(null);
+    const [vizOpen, setVizOpen] = useState({}); // { [exampleIndex]: boolean }
 
     const tabs = [
         { id: 'description', label: 'Description' },
@@ -458,11 +551,18 @@ const ProblemPanel = memo(({ problem, onBack, onActiveLadderChange, solvedLadder
         return text.replace(/(\s)(Step \d+:)/g, '\n$2').replace(/(\s)(Result:)/g, '\n\n$2').replace(/(\s)(Compare )/g, '\n  $2').trim();
     };
 
-    const renderVisualization = () => {
+    const vizFile = problem._vizFile;
+    const topicKey = problem._topicKey;
+    const hasVisualization = hasViz(topicKey, vizFile);
+
+    const renderVisualization = (exampleIndex) => {
+        if (!hasVisualization) return null;
         return (
-            <iframe
-                style={{ width: '100%', height: 300, border: '1px solid var(--color-border)', borderRadius: 6, background: 'var(--color-surface-hover)', display: 'block', marginTop: 6 }}
-                title="Visualization"
+            <VizFrame
+                topicKey={topicKey}
+                vizFile={vizFile}
+                exampleIndex={exampleIndex}
+                key={`${topicKey}/${vizFile}#${exampleIndex}`}
             />
         );
     };
@@ -479,6 +579,7 @@ const ProblemPanel = memo(({ problem, onBack, onActiveLadderChange, solvedLadder
                 .pp-scroll::-webkit-scrollbar-thumb:hover{background-color:var(--color-muted-text)}
                 @keyframes pp-pulse{0%{transform:scale(.85);box-shadow:0 0 0 0 rgba(16,185,129,.4)}70%{transform:scale(1);box-shadow:0 0 0 5px rgba(16,185,129,0)}100%{transform:scale(.85);box-shadow:0 0 0 0 rgba(16,185,129,0)}}
                 @keyframes pp-up{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:translateY(0)}}
+                @keyframes pp-spin{from{transform:rotate(0deg)}to{transform:rotate(360deg)}}
                 .pp-float{animation:pp-up .3s ease-out forwards}
                 details>summary{list-style:none} details>summary::-webkit-details-marker{display:none}
             `}</style>
@@ -530,8 +631,8 @@ const ProblemPanel = memo(({ problem, onBack, onActiveLadderChange, solvedLadder
                                     <span style={{ width: 3, height: 16, borderRadius: 1, background: '#818cf8' }} /> Examples
                                 </h3>
                                 {problem.examples.map((ex, i) => (
-                                    <div key={i} style={{ border: '1px solid var(--color-border)', borderRadius: 10, overflow: 'hidden', marginBottom: 12 }}>
-                                        <div style={{ padding: '7px 14px', background: 'var(--color-surface-hover)', borderBottom: '1px solid var(--color-border)', fontSize: 12, fontWeight: 600, color: 'var(--color-muted-text)' }}>Example {i + 1}</div>
+                                    <div key={i} style={{ border: '1px solid var(--color-border)', borderRadius: 14, overflow: 'hidden', marginBottom: 12 }}>
+                                        <div style={{ padding: '8px 14px', background: 'var(--color-surface-hover)', borderBottom: '1px solid var(--color-border)', fontSize: 12, fontWeight: 600, color: 'var(--color-muted-text)' }}>Example {i + 1}</div>
                                         <div style={{ padding: 14, display: 'flex', flexDirection: 'column', gap: 10 }}>
                                             <div style={{ display: 'flex', gap: 10, alignItems: 'baseline' }}>
                                                 <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--color-muted-text)', width: 50, textTransform: 'uppercase', letterSpacing: '0.04em' }}>Input</span>
@@ -548,13 +649,22 @@ const ProblemPanel = memo(({ problem, onBack, onActiveLadderChange, solvedLadder
                                                         <pre style={{ marginTop: 6, fontSize: 11, lineHeight: 1.6, background: 'var(--color-surface-hover)', borderRadius: 6, padding: '8px 10px', whiteSpace: 'pre-wrap', fontFamily: "'JetBrains Mono', monospace", border: '1px solid var(--color-border)', maxHeight: 240, overflow: 'auto' }}>{formatHint(ex.explanation)}</pre>
                                                     </details>
                                                 )}
-                                                {i < 2 && (
-                                                    <details>
-                                                        <summary style={{ fontSize: 11, fontWeight: 600, color: '#818cf8', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4 }}><BarChart2 size={12} /> Visualization</summary>
-                                                        <div style={{ marginTop: 6 }}>{renderVisualization()}</div>
-                                                    </details>
+                                                {i < 2 && hasVisualization && (
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => setVizOpen(prev => ({ ...prev, [i]: !prev[i] }))}
+                                                        style={{
+                                                            fontSize: 11, fontWeight: 600, color: '#818cf8',
+                                                            cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4,
+                                                            background: 'transparent', border: 'none', padding: 0,
+                                                            fontFamily: 'inherit',
+                                                        }}
+                                                    >
+                                                        <BarChart2 size={12} /> {vizOpen[i] ? 'Hide visualization' : 'Visualization'}
+                                                    </button>
                                                 )}
                                             </div>
+                                            {vizOpen[i] && hasVisualization && renderVisualization(i)}
                                         </div>
                                     </div>
                                 ))}
@@ -712,7 +822,7 @@ const ProblemPanel = memo(({ problem, onBack, onActiveLadderChange, solvedLadder
                                             </div>
                                             {lad.examples.map((ex, ei) => {
                                                 return (
-                                                    <div key={ei} style={{ borderRadius: 8, border: '1px solid var(--color-border)', overflow: 'hidden', marginBottom: 8 }}>
+                                                    <div key={ei} style={{ borderRadius: 14, border: '1px solid var(--color-border)', overflow: 'hidden', marginBottom: 8 }}>
                                                         <div style={{ padding: '10px 12px', display: 'flex', flexDirection: 'column', gap: 8 }}>
                                                             <div style={{ display: 'flex', gap: 8 }}>
                                                                 <span style={{ fontSize: 10, fontWeight: 700, color: 'var(--color-muted-text)', width: 44, textTransform: 'uppercase', flexShrink: 0 }}>Input</span>
@@ -784,8 +894,8 @@ const ProblemPanel = memo(({ problem, onBack, onActiveLadderChange, solvedLadder
                         <div style={{ padding: '24px 28px' }}>
                             {readerMode.lad.desc && <p style={{ fontSize: 14, color: 'var(--color-muted-text)', lineHeight: 1.8, marginBottom: 20 }}>{readerMode.lad.desc}</p>}
                             {readerMode.lad.examples?.map((ex, i) => (
-                                <div key={i} style={{ marginBottom: 14, borderRadius: 8, border: '1px solid var(--color-border)', overflow: 'hidden' }}>
-                                    <div style={{ padding: '6px 12px', background: 'var(--color-surface-hover)', fontSize: 11, fontWeight: 600, color: 'var(--color-muted-text)' }}>Example {i + 1}</div>
+                                <div key={i} style={{ marginBottom: 14, borderRadius: 14, border: '1px solid var(--color-border)', overflow: 'hidden' }}>
+                                    <div style={{ padding: '7px 14px', background: 'var(--color-surface-hover)', borderBottom: '1px solid var(--color-border)', fontSize: 11, fontWeight: 600, color: 'var(--color-muted-text)' }}>Example {i + 1}</div>
                                     <div style={{ padding: 12, display: 'flex', flexDirection: 'column', gap: 6 }}>
                                         <div><strong style={{ fontSize: 10, color: 'var(--color-muted-text)', textTransform: 'uppercase' }}>Input: </strong><code style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 12 }}>{ex.input}</code></div>
                                         <div><strong style={{ fontSize: 10, color: 'var(--color-muted-text)', textTransform: 'uppercase' }}>Output: </strong><code style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 12, color: '#10b981' }}>{ex.output}</code></div>

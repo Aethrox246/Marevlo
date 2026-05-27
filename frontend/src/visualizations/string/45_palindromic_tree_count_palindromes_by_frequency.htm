@@ -1,0 +1,309 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Count Distinct Palindromes by Frequency - Brute Force Visualization</title>
+    <style>
+        :root {
+            --bg-page: #0d1117;
+            --bg-surface: #161b22;
+            --border-main: #30363d;
+            --accent-purple: #a371f7;
+            --accent-green: #3fb950;
+            --accent-orange: #e3b341;
+            --accent-red: #f85149;
+            --text-main: #c9d1d9;
+            --text-dim: #8b949e;
+        }
+        * { box-sizing: border-box; }
+        body {
+            background: var(--bg-page); color: var(--text-main);
+            font-family: system-ui, -apple-system, sans-serif;
+            margin: 0; padding: 20px 0; display: flex; flex-direction: column; align-items: center;
+        }
+        .input-bar {
+            background: var(--bg-surface); padding: 12px 20px; border-radius: 8px;
+            border: 1px solid var(--border-main); display: flex; gap: 12px; align-items: center; flex-wrap: wrap;
+            margin-bottom: 24px;
+        }
+        input[type="text"] {
+            background: #0d1117; border: 1px solid var(--border-main); color: var(--text-main);
+            padding: 8px 12px; border-radius: 6px; width: 280px; font-family: monospace;
+        }
+        button {
+            padding: 8px 16px; background: #21262d; border: 1px solid var(--border-main);
+            color: var(--text-main); border-radius: 6px; cursor: pointer;
+        }
+        button:hover { background: #30363d; }
+
+        .string-display {
+            display: flex; gap: 6px; flex-wrap: wrap; justify-content: center;
+            background: var(--bg-surface); padding: 20px; border-radius: 10px;
+            border: 1px solid var(--border-main); margin-bottom: 20px;
+        }
+        .tile {
+            width: 48px; height: 58px; display: flex; flex-direction: column;
+            align-items: center; justify-content: center; border-radius: 6px;
+            font-size: 22px; font-weight: 700; font-family: monospace;
+            transition: all 0.25s; border: 2px solid var(--border-main);
+            background: #21262d;
+        }
+        .tile.current-range { border-color: var(--accent-purple); background: #1e1030; }
+        .tile.pal { border-color: var(--accent-green); }
+
+        .dict-panel {
+            background: var(--bg-surface); border: 1px solid var(--border-main);
+            border-radius: 8px; padding: 16px 20px; width: 620px; margin: 16px 0;
+            font-family: monospace; font-size: 14px; min-height: 110px;
+        }
+
+        .action-panel {
+            background: var(--bg-surface); border: 1px solid var(--border-main);
+            border-radius: 8px; padding: 18px 24px; margin: 16px 0; min-height: 110px;
+            font-family: monospace; line-height: 1.5;
+        }
+
+        .info-grid {
+            display: grid; grid-template-columns: 1fr 1fr; gap: 16px; max-width: 620px;
+        }
+        .info-box {
+            background: var(--bg-surface); padding: 14px; border-radius: 6px;
+            border: 1px solid var(--border-main); text-align: center;
+        }
+
+        .controls {
+            margin: 24px 0; display: flex; gap: 12px; align-items: center;
+        }
+        input[type="range"] { width: 160px; accent-color: var(--accent-purple); }
+
+        .log-panel {
+            width: 720px; height: 190px; overflow-y: auto; background: #0d1117;
+            border: 1px solid var(--border-main); border-radius: 8px; padding: 14px;
+            font-family: monospace; font-size: 13px; line-height: 1.45;
+        }
+        .legend {
+            display: flex; gap: 24px; margin: 20px 0; font-size: 13px; color: var(--text-dim);
+        }
+    </style>
+</head>
+<body>
+
+    <div class="input-bar">
+        <label>s =</label>
+        <input type="text" id="input-str" value="aba">
+        <button onclick="loadCustom()">Load</button>
+        <button onclick="loadExample(0)">Ex 1: "aba"</button>
+        <button onclick="loadExample(1)">Ex 2: "a"</button>
+    </div>
+
+    <div style="font-family:monospace;color:var(--accent-purple);margin-bottom:12px;">
+        Brute Force — All Substrings → Check Palindrome → Count Frequencies
+    </div>
+
+    <div class="string-display" id="tiles-container"></div>
+
+    <div class="action-panel" id="action-panel">
+        Click Play / Next to begin...
+    </div>
+
+    <div class="dict-panel" id="dict-panel">
+        <strong>Palindrome Counts:</strong><br>
+        <span id="dict-content" style="color:var(--accent-green)">—</span>
+    </div>
+
+    <div class="info-grid">
+        <div class="info-box">
+            <div style="font-size:11px;color:var(--text-dim)">Current Substring</div>
+            <div id="curr-sub" style="font-size:18px;font-family:monospace;color:var(--accent-orange)">—</div>
+        </div>
+        <div class="info-box">
+            <div style="font-size:11px;color:var(--text-dim)">Is Palindrome?</div>
+            <div id="is-pal" style="font-size:18px;font-weight:700">—</div>
+        </div>
+    </div>
+
+    <div class="controls">
+        <button onclick="resetViz()">Reset</button>
+        <button onclick="stepBack()">← Back</button>
+        <button onclick="togglePlay()" id="play-btn">▶ Play</button>
+        <button onclick="stepForward()">Next →</button>
+        <span style="margin-left:20px;color:var(--text-dim)">Speed</span>
+        <input type="range" id="speed" min="0" max="2" value="1">
+    </div>
+
+    <div class="legend">
+        <div><span style="color:var(--accent-purple)">■</span> Current Range</div>
+        <div><span style="color:var(--accent-green)">■</span> Palindrome Found</div>
+    </div>
+
+    <div class="log-panel" id="log-panel"></div>
+
+    <script>
+        let s = "aba";
+        let steps = [];
+        let stepIdx = 0;
+        let timer = null;
+        const delays = [1200, 650, 280];
+
+        function isPalindrome(substr) {
+            return substr === substr.split('').reverse().join('');
+        }
+
+        function generateSteps() {
+            steps = [];
+            let palCount = {};
+            const n = s.length;
+
+            steps.push({
+                type: 'init',
+                i: -1, j: -1,
+                substr: '',
+                isPal: false,
+                count: {...palCount},
+                panel: `String: <b>"${s}"</b> (n=${n}) | Start counting palindromic substrings`,
+                log: `Initialize empty count map`
+            });
+
+            for (let i = 0; i < n; i++) {
+                for (let j = i; j < n; j++) {
+                    const substr = s.substring(i, j+1);
+                    const isPal = isPalindrome(substr);
+
+                    steps.push({
+                        type: 'check',
+                        i: i, j: j,
+                        substr: substr,
+                        isPal: isPal,
+                        count: {...palCount},
+                        panel: `Substring s[${i}:${j+1}] = "<b>${substr}</b>"`,
+                        log: `Check [${i},${j}] "${substr}" → ${isPal ? 'PALINDROME' : 'not'}`
+                    });
+
+                    if (isPal) {
+                        if (!palCount[substr]) palCount[substr] = 0;
+                        palCount[substr]++;
+
+                        steps.push({
+                            type: 'update',
+                            i: i, j: j,
+                            substr: substr,
+                            isPal: true,
+                            count: {...palCount},
+                            panel: `✅ Palindrome "${substr}" → count = ${palCount[substr]}`,
+                            log: `Increment count["${substr}"] → ${palCount[substr]}`
+                        });
+                    }
+                }
+            }
+
+            steps.push({
+                type: 'final',
+                i: -1, j: -1,
+                substr: '',
+                isPal: false,
+                count: {...palCount},
+                panel: `✅ Final result: ${JSON.stringify(palCount)}`,
+                log: `All substrings processed. Final palindrome frequencies`
+            });
+        }
+
+        function renderStep(idx) {
+            const step = steps[idx];
+            if (!step) return;
+
+            // Tiles
+            const container = document.getElementById('tiles-container');
+            container.innerHTML = '';
+            for (let k = 0; k < s.length; k++) {
+                const tile = document.createElement('div');
+                tile.className = 'tile';
+                tile.innerHTML = `<span>${s[k]}</span><span style="font-size:9px;color:#8b949e">${k}</span>`;
+                if (step.i !== -1 && k >= step.i && k <= step.j) {
+                    tile.classList.add('current-range');
+                }
+                container.appendChild(tile);
+            }
+
+            document.getElementById('action-panel').innerHTML = step.panel;
+
+            // Dictionary
+            let dictHtml = '';
+            for (let key in step.count) {
+                dictHtml += `<b>"${key}"</b>: ${step.count[key]}<br>`;
+            }
+            document.getElementById('dict-content').innerHTML = dictHtml || '(empty)';
+
+            document.getElementById('curr-sub').innerText = step.substr || '—';
+            document.getElementById('is-pal').innerHTML = step.isPal ? 
+                '<span style="color:var(--accent-green)">YES ✓</span>' : 
+                '<span style="color:var(--accent-red)">NO ✗</span>';
+
+            // Log
+            const logEl = document.getElementById('log-panel');
+            logEl.innerHTML = steps.slice(0, idx+1).map(s => 
+                `<div>${s.log}</div>`
+            ).join('');
+            logEl.scrollTop = logEl.scrollHeight;
+        }
+
+        function loadExample(ex) {
+            s = ex === 0 ? "aba" : "a";
+            document.getElementById('input-str').value = s;
+            generateSteps();
+            resetViz();
+        }
+
+        function loadCustom() {
+            s = document.getElementById('input-str').value.trim() || s;
+            generateSteps();
+            resetViz();
+        }
+
+        function resetViz() {
+            if (timer) clearInterval(timer);
+            timer = null;
+            document.getElementById('play-btn').textContent = '▶ Play';
+            stepIdx = 0;
+            renderStep(0);
+        }
+
+        function stepForward() {
+            if (stepIdx < steps.length - 1) {
+                stepIdx++;
+                renderStep(stepIdx);
+            }
+        }
+
+        function stepBack() {
+            if (stepIdx > 0) {
+                stepIdx--;
+                renderStep(stepIdx);
+            }
+        }
+
+        function togglePlay() {
+            const btn = document.getElementById('play-btn');
+            if (timer) {
+                clearInterval(timer);
+                timer = null;
+                btn.textContent = '▶ Play';
+            } else {
+                btn.textContent = '⏸ Pause';
+                timer = setInterval(() => {
+                    if (stepIdx < steps.length - 1) {
+                        stepIdx++;
+                        renderStep(stepIdx);
+                    } else {
+                        clearInterval(timer);
+                        timer = null;
+                        btn.textContent = '▶ Play';
+                    }
+                }, delays[parseInt(document.getElementById('speed').value)]);
+            }
+        }
+
+        window.onload = () => loadExample(0);
+    </script>
+</body>
+</html>

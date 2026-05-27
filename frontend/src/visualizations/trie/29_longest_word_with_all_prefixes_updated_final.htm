@@ -1,0 +1,312 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Longest Word with All Prefixes - Trie DFS</title>
+    <style>
+        :root {
+            --bg: #0d1117;
+            --surface: #161b22;
+            --border: #30363d;
+            --text: #c9d1d9;
+            --muted: #8b949e;
+            --purple: #a371f7;
+            --blue: #58a6ff;
+            --green: #3fb950;
+            --orange: #e3b341;
+            --red: #ff7b72;
+        }
+        * { box-sizing: border-box; }
+        body {
+            margin: 0; padding: 20px;
+            background: var(--bg); color: var(--text);
+            font-family: system-ui, sans-serif;
+            display: flex; flex-direction: column; align-items: center;
+        }
+        h1 { color: var(--purple); margin: 0 0 8px 0; }
+        .subtitle { color: var(--muted); margin-bottom: 20px; }
+        .controls { display: flex; gap: 12px; flex-wrap: wrap; justify-content: center; margin: 15px 0; }
+        button {
+            background: #21262d; color: var(--text);
+            border: 1px solid var(--border); padding: 10px 18px;
+            border-radius: 8px; cursor: pointer;
+        }
+        button:hover { background: #30363d; }
+        .main { display: flex; gap: 40px; flex-wrap: wrap; justify-content: center; width: 100%; max-width: 1350px; }
+        .panel { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 18px; }
+        .words-panel { width: 340px; }
+        .trie-panel { width: 620px; }
+        .label { color: var(--purple); font-weight: bold; margin-bottom: 10px; text-align: center; }
+        .array-list { display: flex; flex-wrap: wrap; gap: 10px; padding: 12px; background: #21262d; border-radius: 10px; }
+        .tile { padding: 10px 18px; background: #30363d; border: 2px solid var(--orange); border-radius: 8px; font-family: monospace; font-size: 15px; }
+        .trie { background: #21262d; border: 3px solid var(--blue); border-radius: 12px; padding: 20px; min-height: 480px; overflow: auto; font-family: monospace; }
+        .trie-node {
+            display: inline-block; background: #30363d; border: 3px solid #58a6ff;
+            border-radius: 10px; padding: 14px 20px; margin: 12px 8px; text-align: center;
+        }
+        .trie-node.current { border-color: var(--orange); box-shadow: 0 0 0 5px rgba(227,179,65,0.3); }
+        .trie-node .label { font-size: 18px; font-weight: bold; color: var(--green); }
+        .trie-node .end { color: var(--red); font-size: 13px; }
+        .children { display: flex; flex-wrap: wrap; gap: 12px; justify-content: center; margin-top: 16px; }
+        .info { margin: 20px 0; padding: 18px; background: var(--surface); border: 1px solid var(--border); border-radius: 10px; font-family: monospace; min-height: 140px; }
+        .action { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 18px; width: 100%; max-width: 1100px; margin: 20px 0; min-height: 110px; font-family: monospace; }
+        .log { background: #0d1117; border: 1px solid var(--border); border-radius: 10px; padding: 14px; width: 100%; max-width: 1100px; height: 260px; overflow-y: auto; font-family: 'Courier New', monospace; font-size: 14px; }
+    </style>
+</head>
+<body>
+    <h1>Longest Word with All Prefixes</h1>
+    <p class="subtitle">Trie + DFS • All prefixes must exist</p>
+
+    <div class="controls">
+        <button onclick="loadExample(0)">Example 1: apple/app/apply</button>
+        <button onclick="loadExample(1)">Example 2: world/wor/worl</button>
+        <button onclick="resetViz()">Reset</button>
+    </div>
+
+    <div class="main">
+        <div class="panel words-panel">
+            <div class="label">Input Words</div>
+            <div class="array-list" id="words-list"></div>
+        </div>
+        <div class="panel trie-panel">
+            <div class="label">Trie (isEnd marked with ★)</div>
+            <div class="trie" id="trie"></div>
+        </div>
+    </div>
+
+    <div class="info">
+        <strong>Phase:</strong> <span id="phase" style="color:var(--orange)"></span><br>
+        <strong>Current Word:</strong> <span id="current" style="color:var(--blue)"></span><br>
+        <strong>Longest Found:</strong> <span id="longest" style="color:var(--green); font-size:22px;"></span>
+    </div>
+
+    <div class="action" id="action">Click an example to start</div>
+
+    <div class="controls">
+        <button onclick="prevStep()">← Prev</button>
+        <button onclick="togglePlay()" id="play-btn">▶ Play</button>
+        <button onclick="nextStep()">Next →</button>
+        <label>Speed <input type="range" id="speed" min="0" max="2" value="1"></label>
+    </div>
+
+    <div class="log" id="log"></div>
+
+    <script>
+        let root = null;
+        let steps = [];
+        let stepIdx = 0;
+        let timer = null;
+        let isPlaying = false;
+        let inputWords = [];
+        let result = "";
+
+        class TrieNode {
+            constructor() {
+                this.children = {};
+                this.isEnd = false;
+            }
+        }
+
+        function createTrie() {
+            return new TrieNode();
+        }
+
+        function insert(word) {
+            let node = root;
+            const path = [];
+            for (let ch of word) {
+                path.push(ch);
+                if (!node.children[ch]) {
+                    node.children[ch] = new TrieNode();
+                }
+                node = node.children[ch];
+            }
+            node.isEnd = true;
+            return path;
+        }
+
+        function dfs(node, path, longest) {
+            let current = longest[0];
+            if (node.isEnd && (path.length > current.length || (path.length === current.length && path < current))) {
+                longest[0] = path;
+            }
+            // Sort children for deterministic lex order
+            const sortedKeys = Object.keys(node.children).sort();
+            for (let ch of sortedKeys) {
+                const child = node.children[ch];
+                if (child.isEnd) {  // Only continue on valid prefix
+                    dfs(child, path + ch, longest);
+                }
+            }
+        }
+
+        function findLongest() {
+            let longest = [""];
+            dfs(root, "", longest);
+            return longest[0];
+        }
+
+        function generateSteps(words) {
+            inputWords = [...words];
+            root = createTrie();
+            steps = [];
+
+            steps.push({
+                action: "Initialize Trie",
+                log: "Root created",
+                phase: "Init",
+                current: "",
+                longest: "",
+                highlight: []
+            });
+
+            // Insert phase
+            for (let word of words) {
+                const path = insert(word);
+                steps.push({
+                    action: `insert("${word}")`,
+                    log: `Inserted "${word}"`,
+                    phase: "Insert",
+                    current: word,
+                    longest: "",
+                    highlight: path
+                });
+            }
+
+            // DFS phase
+            steps.push({
+                action: "Start DFS from root",
+                log: "Beginning DFS traversal (only valid prefix paths)",
+                phase: "DFS",
+                current: "",
+                longest: "",
+                highlight: []
+            });
+
+            // Simulate DFS steps (simplified for visualization)
+            const longestArr = [""];
+            let currentPath = "";
+            dfsStep(root, "", longestArr, currentPath);
+        }
+
+        function dfsStep(node, path, longestArr, currentPath) {
+            if (node.isEnd) {
+                if (path.length > longestArr[0].length || (path.length === longestArr[0].length && path < longestArr[0])) {
+                    longestArr[0] = path;
+                    steps.push({
+                        action: `Valid word: "${path}"`,
+                        log: `Found valid word "${path}" → update longest`,
+                        phase: "DFS",
+                        current: path,
+                        longest: longestArr[0],
+                        highlight: path.split('')
+                    });
+                }
+            }
+            const sortedKeys = Object.keys(node.children).sort();
+            for (let ch of sortedKeys) {
+                const child = node.children[ch];
+                if (child.isEnd) {
+                    dfsStep(child, path + ch, longestArr, currentPath);
+                }
+            }
+        }
+
+        function buildTrieHTML(node, prefix = "", highlight = [], depth = 0) {
+            if (!node) return '';
+            const isCurrent = highlight.length > depth;
+            let html = `<div class="trie-node ${isCurrent ? 'current' : ''}">`;
+            html += `<div class="label">${prefix || 'ROOT'}</div>`;
+            if (node.isEnd) html += `<div class="end">★ END</div>`;
+
+            let chHTML = '<div class="children">';
+            let hasCh = false;
+            const sortedKeys = Object.keys(node.children).sort();
+            for (let ch of sortedKeys) {
+                hasCh = true;
+                chHTML += buildTrieHTML(node.children[ch], prefix + ch, highlight, depth + 1);
+            }
+            chHTML += '</div>';
+            if (hasCh) html += chHTML;
+            html += '</div>';
+            return html;
+        }
+
+        function renderTrie(highlight = []) {
+            document.getElementById('trie').innerHTML = buildTrieHTML(root, "", highlight);
+        }
+
+        function renderWords() {
+            const cont = document.getElementById('words-list');
+            cont.innerHTML = inputWords.map(w => `<div class="tile">${w}</div>`).join('');
+        }
+
+        function renderStep(idx) {
+            stepIdx = Math.max(0, Math.min(idx, steps.length - 1));
+            const step = steps[stepIdx];
+
+            document.getElementById('phase').textContent = step.phase;
+            document.getElementById('current').textContent = step.current || '—';
+            document.getElementById('longest').textContent = step.longest || '—';
+            document.getElementById('action').innerHTML = `<strong>${step.action}</strong>`;
+
+            renderWords();
+            renderTrie(step.highlight || []);
+
+            const logEl = document.getElementById('log');
+            logEl.innerHTML = steps.slice(0, stepIdx + 1).map(s => `<div>${s.log}</div>`).join('');
+            logEl.scrollTop = logEl.scrollHeight;
+        }
+
+        function nextStep() {
+            if (stepIdx < steps.length - 1) renderStep(stepIdx + 1);
+            else pause();
+        }
+
+        function prevStep() {
+            if (stepIdx > 0) renderStep(stepIdx - 1);
+        }
+
+        function togglePlay() {
+            const btn = document.getElementById('play-btn');
+            if (isPlaying) {
+                pause();
+            } else {
+                isPlaying = true;
+                btn.textContent = '❚❚ Pause';
+                const speeds = [900, 450, 180];
+                timer = setInterval(() => {
+                    if (stepIdx < steps.length - 1) nextStep();
+                    else pause();
+                }, speeds[parseInt(document.getElementById('speed').value)]);
+            }
+        }
+
+        function pause() {
+            clearInterval(timer);
+            isPlaying = false;
+            document.getElementById('play-btn').textContent = '▶ Play';
+        }
+
+        function resetViz() {
+            pause();
+            stepIdx = 0;
+            renderStep(0);
+        }
+
+        function loadExample(n) {
+            let words = [];
+            if (n === 0) {
+                words = ["a", "ap", "app", "appl", "apple", "apply"];
+            } else {
+                words = ["w", "wo", "wor", "worl", "world"];
+            }
+            generateSteps(words);
+            resetViz();
+        }
+
+        window.onload = () => loadExample(0);
+    </script>
+</body>
+</html>

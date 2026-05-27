@@ -1,0 +1,402 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Shortest Palindrome by Adding Characters at Both Ends - Visualization</title>
+    <style>
+        :root {
+            --bg-page: #0d1117;
+            --bg-surface: #161b22;
+            --bg-input: #0d1117;
+            --border-main: #30363d;
+            --btn-bg: #21262d;
+            --btn-hover: #2d333b;
+            --text-main: #c9d1d9;
+            --text-dim: #8b949e;
+            --accent-orange: #e3b341;
+            --accent-blue: #388bfd;
+            --accent-green: #3fb950;
+            --accent-red: #f85149;
+            --accent-purple: #a371f7;
+        }
+
+        * { box-sizing: border-box; }
+        body {
+            background-color: var(--bg-page);
+            color: var(--text-main);
+            font-family: system-ui, -apple-system, sans-serif;
+            margin: 0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            min-height: 100vh;
+            padding-bottom: 40px;
+        }
+
+        .input-bar {
+            width: 100%; background-color: var(--bg-surface); padding: 12px 16px;
+            display: flex; justify-content: center; align-items: center; gap: 12px; border-bottom: 1px solid var(--border-main);
+        }
+        label.ui-label { font-family: 'Courier New', monospace; font-size: 13px; color: var(--text-dim); }
+        input[type="text"] {
+            background: var(--bg-input); border: 1px solid var(--border-main); color: var(--text-main);
+            height: 32px; border-radius: 6px; padding: 0 10px; font-size: 13px; width: 220px;
+        }
+
+        button {
+            height: 32px; border-radius: 6px; padding: 0 14px; background: var(--btn-bg);
+            border: 1px solid var(--border-main); color: var(--text-main); font-size: 13px; cursor: pointer;
+        }
+        button:hover { background: var(--btn-hover); }
+
+        .visual-container { margin-top: 30px; display: flex; flex-direction: column; align-items: center; gap: 20px; width: 100%; }
+        .string-display { display: flex; gap: 6px; justify-content: center; padding: 20px 0; flex-wrap: wrap; max-width: 900px; }
+
+        .tile-unit { display: flex; flex-direction: column; align-items: center; gap: 4px; }
+        .tile {
+            min-width: 36px; height: 36px; display: flex; align-items: center; justify-content: center;
+            border-radius: 6px; font-size: 17px; font-weight: 600; font-family: 'Courier New', monospace;
+            transition: all 0.3s ease; border: 2px solid var(--border-main); background: #21262d;
+            color: var(--text-main);
+        }
+        .tile.center { background: #1e1030; border-color: var(--accent-purple); transform: scale(1.2); }
+        .tile.valid-pal { background: #0f2a1a; border-color: var(--accent-green); box-shadow: 0 0 12px var(--accent-green); }
+        .tile.mismatch { background: #2a0d0d; border-color: var(--accent-red); }
+
+        .action-panel {
+            margin-top: 20px; background: var(--bg-surface); border: 1px solid var(--border-main);
+            border-radius: 6px; padding: 14px 20px; width: 780px; text-align: center; font-family: monospace; min-height: 140px;
+            display: flex; flex-direction: column; justify-content: center; font-size: 15px; line-height: 1.5;
+        }
+
+        .info-panel { margin-top: 10px; display: flex; gap: 12px; flex-wrap: wrap; justify-content: center; }
+        .info-cell {
+            background: var(--bg-surface); border: 1px solid var(--border-main); border-radius: 6px;
+            padding: 8px 14px; display: flex; flex-direction: column; align-items: center; min-width: 150px; gap: 4px;
+        }
+        .info-label { font-size: 11px; color: var(--text-dim); }
+        .info-value { font-family: monospace; font-size: 15px; font-weight: 700; }
+
+        .result-display { margin-top: 10px; display: flex; flex-direction: column; align-items: center; gap: 6px; }
+        #res-val { font-size: 32px; color: var(--text-dim); font-family: monospace; transition: all 0.3s; font-weight: bold; }
+        .pop { animation: popAnim 400ms ease; color: var(--accent-green) !important; text-shadow: 0 0 15px var(--accent-green); }
+
+        @keyframes popAnim { 0%{transform:scale(1)} 50%{transform:scale(1.3)} 100%{transform:scale(1)} }
+
+        .status-bar { margin-top: 8px; font-size: 13px; color: var(--text-dim); height: 1.2em; text-align: center; width: 760px; }
+
+        .controls { margin-top: 24px; display: flex; align-items: center; gap: 10px; }
+        input[type="range"] { accent-color: var(--accent-blue); width: 140px; }
+
+        .legend { margin-top: 12px; display: flex; gap: 18px; flex-wrap: wrap; justify-content: center; }
+        .legend-item { display: flex; align-items: center; font-size: 12px; color: var(--text-dim); }
+        .dot { width: 12px; height: 12px; border-radius: 3px; margin-right: 6px; display: inline-block; }
+
+        .log-panel {
+            margin-top: 12px; background: var(--bg-page); border: 1px solid var(--border-main);
+            border-radius: 6px; padding: 12px 16px; width: 780px; max-width: 90%; height: 170px;
+            overflow-y: auto; font-family: 'Courier New', monospace; font-size: 13px; line-height: 1.4;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="input-bar">
+        <label class="ui-label">Input String s =</label>
+        <input type="text" id="s-input" placeholder="ab" style="width:240px">
+        <button onclick="loadCustom()">Load</button>
+        <button onclick="loadExample(1)">Ex 1 (ab)</button>
+        <button onclick="loadExample(2)">Ex 2 (abcd)</button>
+    </div>
+
+    <div class="visual-container">
+        <div class="ui-label">Brute Force — Shortest Palindrome by Adding Characters at Both Ends</div>
+        
+        <div class="string-display" id="strings-display"></div>
+    </div>
+
+    <div class="action-panel" id="main-panel">—</div>
+
+    <div class="info-panel">
+        <div class="info-cell">
+            <span class="info-label">Final Length</span>
+            <span class="info-value" id="val-final" style="color: var(--accent-purple);">—</span>
+        </div>
+        <div class="info-cell">
+            <span class="info-label">Left Add</span>
+            <span class="info-value" id="val-left" style="color: var(--accent-blue);">—</span>
+        </div>
+        <div class="info-cell">
+            <span class="info-label">Right Add</span>
+            <span class="info-value" id="val-right" style="color: var(--accent-green);">—</span>
+        </div>
+    </div>
+
+    <div class="result-display">
+        <span class="ui-label" style="margin-bottom: 6px;">Shortest Palindrome =</span>
+        <span id="res-val">—</span>
+    </div>
+
+    <div class="status-bar" id="status-text"></div>
+
+    <div class="controls">
+        <button onclick="reset()">↺ Reset</button>
+        <button onclick="back()">← Back</button>
+        <button onclick="togglePlay()" id="play-btn">Play</button>
+        <button onclick="next()">Next →</button>
+        <div style="margin-left:20px">
+            <span class="ui-label" style="margin-right:6px; font-size:11px">Speed</span>
+            <input type="range" id="speed-slider" min="0" max="2" value="1">
+        </div>
+    </div>
+
+    <div class="legend">
+        <div class="legend-item"><span class="dot" style="background:var(--accent-purple)"></span> Final Candidate</div>
+        <div class="legend-item"><span class="dot" style="background:var(--accent-green)"></span> Valid Palindrome</div>
+    </div>
+
+    <div class="log-panel" id="log"></div>
+
+    <script>
+        let currentS = "ab";
+        let steps = [];
+        let stepIndex = 0;
+        let timer = null;
+        const delays = [1400, 700, 350];
+
+        function init() { loadExample(1); }
+
+        function loadExample(exIndex) {
+            currentS = exIndex === 1 ? "ab" : "abcd";
+            document.getElementById('s-input').value = currentS;
+            generateSteps();
+            reset();
+        }
+
+        function loadCustom() {
+            const val = document.getElementById('s-input').value.trim();
+            if (val) {
+                currentS = val;
+                generateSteps();
+                reset();
+            }
+        }
+
+        function generateSteps() {
+            steps = [];
+            const n = currentS.length;
+            let best = null;
+            let bestLen = Infinity;
+
+            steps.push({
+                type: 'init',
+                panel: `Input: s = <b>"${currentS}"</b> (n=${n})<br>Brute Force: Try all final lengths and left/right additions`,
+                statusText: `Checking possible final lengths from ${n} to ${2*n-1}...`,
+                log: `s = "${currentS}"\nn = ${n}`
+            });
+
+            for (let finalLen = n; finalLen <= 2 * n - 1; finalLen++) {
+                steps.push({
+                    type: 'new_length',
+                    finalLen: finalLen,
+                    panel: `Trying final length = ${finalLen}`,
+                    statusText: `Final length = ${finalLen}`,
+                    log: `\nFinal length ${finalLen}:`
+                });
+
+                for (let leftAdd = 0; leftAdd <= finalLen - n; leftAdd++) {
+                    const rightAdd = finalLen - n - leftAdd;
+                    let candidate = '?'.repeat(leftAdd) + currentS + '?'.repeat(rightAdd);
+
+                    steps.push({
+                        type: 'candidate',
+                        finalLen: finalLen,
+                        leftAdd: leftAdd,
+                        rightAdd: rightAdd,
+                        candidate: candidate,
+                        panel: `left_add=${leftAdd}, right_add=${rightAdd} → candidate = <b>"${candidate}"</b>`,
+                        statusText: `left=${leftAdd}, right=${rightAdd}`,
+                        log: `  left=${leftAdd}, right=${rightAdd} → "${candidate}"`
+                    });
+
+                    // Simulate filling to make palindrome (mirror from ends)
+                    let filled = candidate.split('');
+                    let isPal = true;
+                    for (let i = 0; i < finalLen; i++) {
+                        if (filled[i] === '?') {
+                            if (filled[finalLen - 1 - i] === '?') {
+                                filled[i] = currentS[0]; // arbitrary fill for viz
+                                filled[finalLen - 1 - i] = currentS[0];
+                            } else {
+                                filled[i] = filled[finalLen - 1 - i];
+                            }
+                        } else if (filled[finalLen - 1 - i] === '?') {
+                            filled[finalLen - 1 - i] = filled[i];
+                        } else if (filled[i] !== filled[finalLen - 1 - i]) {
+                            isPal = false;
+                            break;
+                        }
+                    }
+                    const finalCandidate = filled.join('');
+
+                    steps.push({
+                        type: 'check_pal',
+                        finalLen: finalLen,
+                        leftAdd: leftAdd,
+                        rightAdd: rightAdd,
+                        finalCandidate: finalCandidate,
+                        panel: `Filled candidate: <b>"${finalCandidate}"</b>`,
+                        statusText: `Is palindrome? ${isPal ? 'Yes' : 'No'}`,
+                        log: `    Filled: "${finalCandidate}" → ${isPal ? 'palindrome' : 'not palindrome'}`
+                    });
+
+                    const containsOriginal = finalCandidate.includes(currentS);
+
+                    if (isPal && containsOriginal) {
+                        steps.push({
+                            type: 'valid',
+                            finalLen: finalLen,
+                            leftAdd: leftAdd,
+                            rightAdd: rightAdd,
+                            finalCandidate: finalCandidate,
+                            panel: `<b>Valid!</b> Length ${finalLen}, "${finalCandidate}" contains "${currentS}"`,
+                            statusText: `Valid candidate of length ${finalLen}`,
+                            log: `  → Valid! "${finalCandidate}"`
+                        });
+
+                        if (finalLen < bestLen) {
+                            bestLen = finalLen;
+                            best = finalCandidate;
+                            steps.push({
+                                type: 'new_best',
+                                finalCandidate: finalCandidate,
+                                panel: `New best: <b>"${finalCandidate}"</b> (length ${finalLen})`,
+                                statusText: `Updated best to length ${finalLen}`,
+                                log: `    New best: "${finalCandidate}"`
+                            });
+                        }
+                    } else {
+                        steps.push({
+                            type: 'invalid',
+                            panel: `Invalid (not palindrome or doesn't contain original)`,
+                            statusText: `Invalid`,
+                            log: `  Invalid`
+                        });
+                    }
+                }
+            }
+
+            steps.push({
+                type: 'final',
+                finalCandidate: best || currentS,
+                panel: `Shortest palindrome found: <b>"${best || currentS}"</b>`,
+                statusText: `Done! Shortest = "${best || currentS}"`,
+                complete: true,
+                finalResult: best || currentS
+            });
+        }
+
+        function renderStep(idx) {
+            const step = steps[idx];
+            if (!step) return;
+
+            const container = document.getElementById('strings-display');
+            container.innerHTML = '';
+            let displayStr = step.finalCandidate || step.candidate || currentS;
+            if (!displayStr) displayStr = currentS;
+
+            for (let pos = 0; pos < displayStr.length; pos++) {
+                const unit = document.createElement('div');
+                unit.className = 'tile-unit';
+                const idxTile = document.createElement('div');
+                idxTile.className = 'tile';
+                idxTile.style.fontSize = '11px';
+                idxTile.style.height = '24px';
+                idxTile.style.opacity = '0.7';
+                idxTile.innerText = pos;
+                const chTile = document.createElement('div');
+                chTile.className = 'tile';
+                chTile.innerText = displayStr[pos];
+
+                if (step.type === 'valid' || step.type === 'new_best' || step.type === 'final') {
+                    chTile.classList.add('valid-pal');
+                }
+                if (step.type === 'candidate' && step.finalLen) {
+                    chTile.classList.add('center');
+                }
+
+                unit.append(idxTile, chTile);
+                container.appendChild(unit);
+            }
+
+            document.getElementById('main-panel').innerHTML = step.panel || '—';
+            document.getElementById('val-final').innerText = step.finalLen !== undefined ? step.finalLen : '—';
+            document.getElementById('val-left').innerText = step.leftAdd !== undefined ? step.leftAdd : '—';
+            document.getElementById('val-right').innerText = step.rightAdd !== undefined ? step.rightAdd : '—';
+
+            const resVal = document.getElementById('res-val');
+            if (step.complete) {
+                resVal.innerText = step.finalResult || currentS;
+                resVal.classList.add('pop');
+            } else {
+                resVal.classList.remove('pop');
+            }
+
+            document.getElementById('status-text').innerText = step.statusText || '—';
+
+            const logPanel = document.getElementById('log');
+            logPanel.innerHTML = '';
+            for (let k = 0; k <= idx; k++) {
+                if (steps[k].log) {
+                    const line = document.createElement('div');
+                    line.style.marginBottom = '5px';
+                    line.style.whiteSpace = 'pre-wrap';
+                    if (steps[k].complete) line.style.fontWeight = 'bold';
+                    line.innerText = steps[k].log;
+                    logPanel.appendChild(line);
+                }
+            }
+            logPanel.scrollTop = logPanel.scrollHeight;
+        }
+
+        function next() {
+            if (stepIndex < steps.length - 1) {
+                stepIndex++;
+                renderStep(stepIndex);
+            } else pause();
+        }
+
+        function back() {
+            if (stepIndex > 0) {
+                stepIndex--;
+                renderStep(stepIndex);
+            }
+        }
+
+        function reset() {
+            pause();
+            stepIndex = 0;
+            renderStep(0);
+        }
+
+        function togglePlay() {
+            const btn = document.getElementById('play-btn');
+            if (timer) pause();
+            else {
+                btn.innerText = 'Pause';
+                if (stepIndex >= steps.length - 1) stepIndex = 0;
+                timer = setInterval(next, delays[document.getElementById('speed-slider').value]);
+            }
+        }
+
+        function pause() {
+            clearInterval(timer);
+            timer = null;
+            document.getElementById('play-btn').innerText = 'Play';
+        }
+
+        window.onload = init;
+    </script>
+</body>
+</html>

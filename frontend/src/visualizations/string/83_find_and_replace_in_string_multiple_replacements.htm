@@ -1,0 +1,557 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Find and Replace in String (Multiple Replacements) - Visualization</title>
+    <style>
+        :root {
+            --bg-page: #0d1117;
+            --bg-surface: #161b22;
+            --bg-input: #0d1117;
+            --border-main: #30363d;
+            --btn-bg: #21262d;
+            --btn-hover: #2d333b;
+            --text-main: #c9d1d9;
+            --text-dim: #8b949e;
+            --text-log: #58a6ff;
+            --accent-orange: #e3b341;
+            --accent-blue: #388bfd;
+            --accent-green: #3fb950;
+            --accent-red: #f85149;
+            --accent-purple: #a371f7;
+        }
+
+        * { box-sizing: border-box; }
+        body {
+            background-color: var(--bg-page);
+            color: var(--text-main);
+            font-family: system-ui, -apple-system, sans-serif;
+            margin: 0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            min-height: 100vh;
+            padding-bottom: 40px;
+        }
+
+        .input-bar {
+            width: 100%;
+            background-color: var(--bg-surface);
+            padding: 12px 16px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 8px;
+            border-bottom: 1px solid var(--border-main);
+            flex-wrap: wrap;
+        }
+        label.ui-label { font-family: 'Courier New', monospace; font-size: 13px; color: var(--text-dim); }
+        input[type="text"] {
+            background: var(--bg-input);
+            border: 1px solid var(--border-main);
+            color: var(--text-main);
+            height: 32px;
+            border-radius: 6px;
+            padding: 0 10px;
+            width: 420px;
+            font-size: 13px;
+        }
+
+        button {
+            height: 32px; border-radius: 6px; padding: 0 14px; background: var(--btn-bg);
+            border: 1px solid var(--border-main); color: var(--text-main); font-size: 13px; cursor: pointer;
+            transition: background 0.2s ease;
+        }
+        button:hover { background: var(--btn-hover); }
+
+        .visual-container { margin-top: 30px; display: flex; flex-direction: column; align-items: center; gap: 20px; width: 100%; }
+        .string-display { display: flex; flex-direction: column; gap: 12px; justify-content: center; position: relative; padding: 20px 0; }
+        
+        .tile-unit { display: flex; flex-direction: column; align-items: center; gap: 4px; position: relative; }
+        .tile {
+            min-width: 50px; height: 50px; display: flex; align-items: center; justify-content: center;
+            border-radius: 6px; font-size: 22px; font-weight: 600; font-family: 'Courier New', monospace;
+            transition: all 0.3s ease; border: 2px solid var(--border-main); background: #21262d;
+            color: var(--text-main);
+        }
+        .tile-index { font-size: 11px; color: var(--text-dim); font-family: monospace; }
+        
+        .tile.center { background: #1e1030; border-color: var(--accent-purple); color: var(--accent-purple); z-index: 2; transform: scale(1.1);}
+        .tile.expanding { background: #0d2244; border-color: var(--accent-blue); color: var(--accent-blue); }
+        .tile.valid-pal { background: #0f2a1a; border-color: var(--accent-green); color: var(--accent-green); box-shadow: 0 0 10px var(--accent-green); }
+        .tile.mismatch { background: #2a0d0d; border-color: var(--accent-red); color: var(--accent-red); transform: scale(0.95); opacity: 0.8; }
+        .tile.idle { opacity: 0.9; }
+
+        .string-row {
+            display: flex;
+            gap: 8px;
+            align-items: center;
+        }
+        .string-label {
+            font-family: monospace;
+            font-size: 13px;
+            color: var(--text-dim);
+            min-width: 110px;
+            text-align: right;
+        }
+
+        .action-panel {
+            margin-top: 20px; background: var(--bg-surface); border: 1px solid var(--border-main);
+            border-radius: 6px; padding: 12px 20px; width: 680px; text-align: center; font-family: monospace; min-height: 70px;
+            display: flex; flex-direction: column; justify-content: center; font-size: 15px; line-height: 1.5;
+        }
+
+        .info-panel { margin-top: 10px; display: flex; gap: 10px; flex-wrap: wrap; justify-content: center; }
+        .info-cell {
+            background: var(--bg-surface); border: 1px solid var(--border-main); border-radius: 6px;
+            padding: 8px 14px; display: flex; flex-direction: column; align-items: center; min-width: 110px; gap: 4px;
+        }
+        .info-label { font-size: 11px; color: var(--text-dim); }
+        .info-value { font-family: monospace; font-size: 16px; font-weight: 700; text-align: center; }
+
+        .result-display { margin-top: 10px; display: flex; flex-direction: column; align-items: center; }
+        #res-val { font-size: 24px; color: var(--text-dim); font-family: monospace; transition: all 0.3s; font-weight: bold; }
+        .pop { animation: popAnim 400ms ease; color: var(--accent-green) !important; text-shadow: 0 0 12px var(--accent-green); }
+
+        @keyframes popAnim { 0%{transform:scale(1)} 50%{transform:scale(1.25)} 100%{transform:scale(1)} }
+
+        .status-bar { margin-top: 8px; font-size: 13px; color: var(--text-dim); height: 1.2em; text-align: center; width: 600px;}
+
+        .controls { margin-top: 24px; display: flex; align-items: center; gap: 8px; }
+        input[type="range"] { accent-color: var(--accent-blue); width: 100px; cursor: pointer; }
+
+        .legend { margin-top: 12px; display: flex; gap: 16px; flex-wrap: wrap; justify-content: center; max-width: 800px; }
+        .legend-item { display: flex; align-items: center; font-size: 12px; color: var(--text-dim); }
+        .dot { width: 10px; height: 10px; border-radius: 2px; margin-right: 6px; display: inline-block; }
+
+        .log-panel {
+            margin-top: 12px; background: var(--bg-page); border: 1px solid var(--border-main);
+            border-radius: 6px; padding: 12px 16px; width: 700px; max-width: 90%; height: 130px;
+            overflow-y: auto; font-family: 'Courier New', monospace; font-size: 13px;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="input-bar">
+        <label class="ui-label">params =</label>
+        <input type="text" id="str-input" placeholder='{"s":"abcd","indices":[0,2],"sources":["a","cd"],"targets":["eee","ffff"]}'>
+        <button onclick="loadCustom()">Load</button>
+        <button onclick="loadExample(0)">Ex 1 (abcd → eeebffff)</button>
+        <button onclick="loadExample(1)">Ex 2 (abcd → eecd)</button>
+    </div>
+
+    <div class="visual-container">
+        <div class="ui-label">Original String → Result Builder (sorted operations + pointer i)</div>
+        <div class="string-display" id="tiles-container"></div>
+    </div>
+
+    <div class="action-panel" id="main-panel">—</div>
+
+    <div class="info-panel">
+        <div class="info-cell">
+            <span class="info-label">Current i</span>
+            <span class="info-value" id="val-i" style="color: var(--accent-purple);">—</span>
+        </div>
+        <div class="info-cell">
+            <span class="info-label">Current Op</span>
+            <span class="info-value" id="val-op" style="color: var(--accent-blue);">—</span>
+        </div>
+        <div class="info-cell">
+            <span class="info-label">Match?</span>
+            <span class="info-value" id="val-match" style="color: var(--accent-blue);">—</span>
+        </div>
+        <div class="info-cell">
+            <span class="info-label">Result Len</span>
+            <span class="info-value" id="val-rlen" style="color: var(--accent-green);">0</span>
+        </div>
+    </div>
+
+    <div class="result-display">
+        <span class="ui-label" style="margin-bottom: 4px;">final result =</span>
+        <span id="res-val">—</span>
+    </div>
+
+    <div class="status-bar" id="status-text"></div>
+
+    <div class="controls">
+        <button onclick="reset()">↺ Reset</button>
+        <button onclick="back()">← Back</button>
+        <button onclick="togglePlay()" id="play-btn">Play</button>
+        <button onclick="next()">Next →</button>
+        <div class="controls" style="margin-top:0">
+            <span class="ui-label" style="margin-right:4px; font-size:11px">Speed</span>
+            <input type="range" id="speed-slider" min="0" max="2" value="1">
+        </div>
+    </div>
+
+    <div class="legend">
+        <div class="legend-item"><span class="dot" style="background:var(--accent-purple)"></span> Current i / Op Index</div>
+        <div class="legend-item"><span class="dot" style="background:var(--accent-blue)"></span> Copy / Check Range</div>
+        <div class="legend-item"><span class="dot" style="background:var(--accent-green)"></span> Copied or Replaced</div>
+        <div class="legend-item"><span class="dot" style="background:var(--accent-red)"></span> Mismatch (Skip)</div>
+    </div>
+
+    <div class="log-panel" id="log"></div>
+
+    <script>
+        let currentS = "abcd";
+        let currentIndices = [];
+        let currentSources = [];
+        let currentTargets = [];
+        let steps = [];
+        let stepIndex = 0;
+        let timer = null;
+        const delays = [1600, 800, 400];
+
+        function init() { loadExample(0); }
+
+        function loadExample(exIndex) {
+            if (exIndex === 0) {
+                currentS = "abcd";
+                currentIndices = [0, 2];
+                currentSources = ["a", "cd"];
+                currentTargets = ["eee", "ffff"];
+            } else {
+                currentS = "abcd";
+                currentIndices = [0, 2];
+                currentSources = ["ab", "ec"];
+                currentTargets = ["ee", "ffff"];
+            }
+            document.getElementById('str-input').value = JSON.stringify({
+                s: currentS,
+                indices: currentIndices,
+                sources: currentSources,
+                targets: currentTargets
+            });
+            generateSteps();
+            reset();
+        }
+
+        function loadCustom() {
+            try {
+                const val = document.getElementById('str-input').value.trim();
+                const parsed = JSON.parse(val);
+                if (!parsed.s || !Array.isArray(parsed.indices) || !Array.isArray(parsed.sources) || !Array.isArray(parsed.targets)) {
+                    throw new Error();
+                }
+                currentS = parsed.s;
+                currentIndices = parsed.indices;
+                currentSources = parsed.sources;
+                currentTargets = parsed.targets;
+                generateSteps();
+                reset();
+            } catch(e) {
+                alert("Please enter valid JSON like {\"s\":\"abcd\",\"indices\":[0,2],\"sources\":[\"a\",\"cd\"],\"targets\":[\"eee\",\"ffff\"]}");
+            }
+        }
+
+        function generateSteps() {
+            steps = [];
+            const n = currentS.length;
+            let ops = [];
+            for (let k = 0; k < currentIndices.length; k++) {
+                ops.push({
+                    idx: currentIndices[k],
+                    src: currentSources[k],
+                    tgt: currentTargets[k]
+                });
+            }
+            ops.sort((a, b) => a.idx - b.idx);
+
+            // INIT
+            steps.push({
+                type: 'init',
+                i: 0,
+                resultStr: '',
+                originalStates: Array(n).fill('idle'),
+                resultStates: [],
+                panel: `String: <b>"${currentS}"</b> (length ${n})<br>Sorted operations: <b>${JSON.stringify(ops.map(o => [o.idx, o.src, o.tgt]))}</b>`,
+                statusText: `Sorted ${ops.length} operations by index. Starting build with i=0...`,
+                log: `Problem initialized.\ns = "${currentS}"\nSorted ops: ${JSON.stringify(ops.map(o => [o.idx, o.src, o.tgt]))}`,
+                count: 0
+            });
+
+            let simI = 0;
+            let simResult = '';
+            let simResultStates = [];
+            let currentOriginalStates = Array(n).fill('idle');
+
+            for (let opIdx = 0; opIdx < ops.length; opIdx++) {
+                const op = ops[opIdx];
+                const opDesc = `(${op.idx}, '${op.src}' → '${op.tgt}')`;
+
+                // COPY PREFIX (if any)
+                const copyStart = simI;
+                const copyEnd = op.idx;
+                if (copyStart < copyEnd) {
+                    let origStates = [...currentOriginalStates];
+                    for (let j = copyStart; j < copyEnd; j++) {
+                        origStates[j] = 'valid-pal';
+                    }
+                    const added = currentS.slice(copyStart, copyEnd).split('');
+                    const addedStates = added.map(() => 'expanding');
+                    const newResult = simResult + currentS.slice(copyStart, copyEnd);
+                    const newResultStates = [...simResultStates, ...addedStates];
+
+                    steps.push({
+                        type: 'copy-prefix',
+                        i: simI,
+                        op: op,
+                        resultStr: newResult,
+                        originalStates: origStates,
+                        resultStates: newResultStates,
+                        panel: `Copy prefix <b>s[${copyStart}:${copyEnd}] = "${currentS.slice(copyStart, copyEnd)}"</b> to result.`,
+                        statusText: `Copying characters before op at index ${op.idx}...`,
+                        log: `  Copy s[${copyStart}:${copyEnd}] = "${currentS.slice(copyStart, copyEnd)}" → result="${newResult}"`
+                    });
+
+                    simResult = newResult;
+                    simResultStates = newResultStates;
+                    currentOriginalStates = origStates;
+                    simI = copyEnd;
+                } else {
+                    // No prefix
+                    steps.push({
+                        type: 'no-copy',
+                        i: simI,
+                        op: op,
+                        resultStr: simResult,
+                        originalStates: [...currentOriginalStates],
+                        resultStates: [...simResultStates],
+                        panel: `i == op.index (${simI}). No prefix to copy.`,
+                        statusText: `At operation ${opDesc}...`,
+                        log: `  No prefix to copy (i already at op index).`
+                    });
+                }
+
+                // CHECK MATCH
+                const checkStart = op.idx;
+                const srcLen = op.src.length;
+                const checkEnd = checkStart + srcLen;
+                let match = (checkEnd <= n) && (currentS.slice(checkStart, checkEnd) === op.src);
+
+                let origStatesCheck = [...currentOriginalStates];
+                const checkClass = match ? 'valid-pal' : 'mismatch';
+                for (let j = checkStart; j < checkEnd && j < n; j++) {
+                    origStatesCheck[j] = checkClass;
+                }
+
+                steps.push({
+                    type: 'check-match',
+                    i: simI,
+                    op: op,
+                    match: match,
+                    resultStr: simResult,
+                    originalStates: origStatesCheck,
+                    resultStates: [...simResultStates],
+                    panel: match 
+                        ? `<span style="color:var(--accent-green)">MATCH</span>: s[${checkStart}:${checkEnd}] == "${op.src}"`
+                        : `<span style="color:var(--accent-red)">MISMATCH</span>: s[${checkStart}:${Math.min(checkEnd, n)}] != "${op.src}"`,
+                    statusText: match ? `Source matches → replace` : `Source does not match → skip`,
+                    log: `  Check s[${checkStart}:${checkEnd}] == "${op.src}" → ${match ? 'YES' : 'NO'}`
+                });
+
+                // If match → REPLACE
+                if (match) {
+                    const addedTarget = op.tgt.split('');
+                    const addedTargetStates = addedTarget.map(() => 'valid-pal');
+                    const newResult2 = simResult + op.tgt;
+                    const newResultStates2 = [...simResultStates, ...addedTargetStates];
+
+                    steps.push({
+                        type: 'replace',
+                        i: simI + srcLen,
+                        op: op,
+                        resultStr: newResult2,
+                        originalStates: origStatesCheck,
+                        resultStates: newResultStates2,
+                        panel: `<span style="color:var(--accent-green)">REPLACE</span> with target <b>"${op.tgt}"</b>`,
+                        statusText: `Appended target "${op.tgt}"`,
+                        log: `  → Replace! Append "${op.tgt}". New i = ${op.idx} + ${srcLen} = ${op.idx + srcLen}`
+                    });
+
+                    simResult = newResult2;
+                    simResultStates = newResultStates2;
+                    currentOriginalStates = origStatesCheck;
+                    simI = op.idx + srcLen;
+                } else {
+                    // Mismatch → i stays at op.idx (already is)
+                    currentOriginalStates = [...currentOriginalStates]; // do NOT keep red permanently
+                }
+            }
+
+            // REMAINING CHARACTERS
+            if (simI < n) {
+                const remainStart = simI;
+                let origStatesRemain = [...currentOriginalStates];
+                for (let j = remainStart; j < n; j++) {
+                    origStatesRemain[j] = 'valid-pal';
+                }
+                const addedRemain = currentS.slice(remainStart).split('');
+                const addedRemainStates = addedRemain.map(() => 'expanding');
+                const finalResult = simResult + currentS.slice(remainStart);
+                const finalResultStates = [...simResultStates, ...addedRemainStates];
+
+                steps.push({
+                    type: 'remaining',
+                    i: simI,
+                    resultStr: finalResult,
+                    originalStates: origStatesRemain,
+                    resultStates: finalResultStates,
+                    panel: `<span style="color:var(--accent-green)">Append remaining</span> <b>s[${simI}:] = "${currentS.slice(simI)}"</b>`,
+                    statusText: `Appending remaining characters from index ${simI}...`,
+                    log: `  Remaining s[${simI}:] = "${currentS.slice(simI)}" appended.`
+                });
+
+                simResult = finalResult;
+                simResultStates = finalResultStates;
+                currentOriginalStates = origStatesRemain;
+            }
+
+            // FINAL
+            steps.push({
+                type: 'final',
+                i: n,
+                resultStr: simResult,
+                originalStates: Array(n).fill('idle'),
+                resultStates: simResultStates,
+                panel: `All operations processed.<br>Final result = <b>"${simResult}"</b>`,
+                complete: true,
+                finalResult: simResult,
+                statusText: `Done. Final result: "${simResult}"`,
+                log: `\nFinal Result: "${simResult}"`,
+                bold: true,
+                count: simResult.length
+            });
+        }
+
+        function renderStep(idx) {
+            const step = steps[idx];
+            if (!step) return;
+
+            const container = document.getElementById('tiles-container');
+            container.innerHTML = '';
+
+            // Row 1: Original s
+            const row1 = document.createElement('div');
+            row1.className = 'string-row';
+            const label1 = document.createElement('div');
+            label1.className = 'string-label';
+            label1.innerText = 'Original s';
+            row1.appendChild(label1);
+            currentS.split('').forEach((char, i) => {
+                const unit = document.createElement('div');
+                unit.className = 'tile-unit';
+                const tile = document.createElement('div');
+                tile.className = `tile ${step.originalStates[i] || 'idle'}`;
+                tile.innerText = char;
+                const idxLabel = document.createElement('div');
+                idxLabel.className = 'tile-index';
+                idxLabel.innerText = `[${i}]`;
+                unit.append(tile, idxLabel);
+                row1.appendChild(unit);
+            });
+            container.appendChild(row1);
+
+            // Row 2: Result
+            const row2 = document.createElement('div');
+            row2.className = 'string-row';
+            const label2 = document.createElement('div');
+            label2.className = 'string-label';
+            label2.innerText = 'Result';
+            row2.appendChild(label2);
+            if (step.resultStr && step.resultStr.length > 0) {
+                step.resultStr.split('').forEach((char, i) => {
+                    const unit = document.createElement('div');
+                    unit.className = 'tile-unit';
+                    const tile = document.createElement('div');
+                    tile.className = `tile ${step.resultStates[i] || 'idle'}`;
+                    tile.innerText = char;
+                    const idxLabel = document.createElement('div');
+                    idxLabel.className = 'tile-index';
+                    idxLabel.innerText = `[${i}]`;
+                    unit.append(tile, idxLabel);
+                    row2.appendChild(unit);
+                });
+            } else {
+                const empty = document.createElement('div');
+                empty.style.fontFamily = 'monospace';
+                empty.style.color = 'var(--text-dim)';
+                empty.innerText = '(empty)';
+                row2.appendChild(empty);
+            }
+            container.appendChild(row2);
+
+            document.getElementById('main-panel').innerHTML = step.panel || '—';
+
+            document.getElementById('val-i').innerText = step.i !== undefined ? step.i : '—';
+            document.getElementById('val-op').innerText = step.op ? `(${step.op.idx},'${step.op.src}'→'${step.op.tgt}')` : '—';
+            document.getElementById('val-match').innerText = step.match !== undefined 
+                ? (step.match ? 'YES ✓' : 'NO ✗') 
+                : '—';
+            document.getElementById('val-rlen').innerText = step.resultStr ? step.resultStr.length : 0;
+
+            const resVal = document.getElementById('res-val');
+            resVal.innerText = step.complete ? `"${step.finalResult}"` : '—';
+            if (step.complete) resVal.classList.add('pop');
+            else resVal.classList.remove('pop');
+
+            document.getElementById('status-text').innerText = step.statusText || '';
+
+            const logPanel = document.getElementById('log');
+            logPanel.innerHTML = '';
+            for (let k = 0; k <= idx; k++) {
+                if (steps[k].log) {
+                    const line = document.createElement('div');
+                    line.style.marginBottom = '2px';
+                    line.style.whiteSpace = 'pre-wrap';
+                    if (steps[k].bold && k === idx) line.style.fontWeight = 'bold';
+                    line.innerText = steps[k].log;
+                    logPanel.appendChild(line);
+                }
+            }
+            logPanel.scrollTop = logPanel.scrollHeight;
+        }
+
+        function next() {
+            if (stepIndex < steps.length - 1) {
+                stepIndex++;
+                renderStep(stepIndex);
+            } else pause();
+        }
+
+        function back() {
+            if (stepIndex > 0) {
+                stepIndex--;
+                renderStep(stepIndex);
+            }
+        }
+
+        function reset() {
+            pause();
+            stepIndex = 0;
+            renderStep(0);
+        }
+
+        function togglePlay() {
+            const btn = document.getElementById('play-btn');
+            if (timer) pause();
+            else {
+                btn.innerText = 'Pause';
+                if (stepIndex >= steps.length - 1) stepIndex = 0;
+                timer = setInterval(next, delays[document.getElementById('speed-slider').value]);
+            }
+        }
+
+        function pause() {
+            clearInterval(timer);
+            timer = null;
+            document.getElementById('play-btn').innerText = 'Play';
+        }
+
+        window.onload = init;
+    </script>
+</body>
+</html>

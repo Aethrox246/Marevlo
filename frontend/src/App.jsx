@@ -130,7 +130,7 @@ function IDEWrapper() {
             const flat = topics.flatMap(t => t.problems);
             setAllProblems(flat);
             const found = flat.find(p => String(p.id) === id);
-            setProblem(found ? found._raw : null);
+            setProblem(found ? { ...found._raw, _vizFile: found._vizFile, _topicKey: found._topicKey } : null);
             setLoading(false);
         }).catch(() => setLoading(false));
     }, [id]);

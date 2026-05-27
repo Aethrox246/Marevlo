@@ -1,0 +1,821 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Dynamic Circular Buffer</title>
+
+<style>
+
+:root{
+    --bg-page:#0d1117;
+    --bg-surface:#161b22;
+    --border-main:#30363d;
+
+    --btn-bg:#21262d;
+    --btn-hover:#2d333b;
+
+    --text-main:#c9d1d9;
+    --text-dim:#8b949e;
+
+    --accent-orange:#e3b341;
+    --accent-blue:#388bfd;
+    --accent-green:#3fb950;
+    --accent-red:#f85149;
+    --accent-purple:#a371f7;
+}
+
+*{
+    box-sizing:border-box;
+}
+
+body{
+    background-color:var(--bg-page);
+
+    color:var(--text-main);
+
+    font-family:system-ui,-apple-system,sans-serif;
+
+    margin:0;
+
+    padding:20px 0;
+
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+}
+
+h1{
+    color:var(--accent-purple);
+
+    margin:0 0 10px 0;
+}
+
+.input-bar{
+    width:100%;
+    max-width:1100px;
+
+    background:var(--bg-surface);
+
+    padding:12px;
+
+    display:flex;
+
+    gap:12px;
+
+    flex-wrap:wrap;
+
+    justify-content:center;
+
+    border-bottom:1px solid var(--border-main);
+
+    margin-bottom:20px;
+}
+
+button{
+    padding:8px 16px;
+
+    background:var(--btn-bg);
+
+    border:1px solid var(--border-main);
+
+    color:var(--text-main);
+
+    border-radius:6px;
+
+    cursor:pointer;
+}
+
+button:hover{
+    background:var(--btn-hover);
+}
+
+.queue-container{
+
+    background:var(--bg-surface);
+
+    border:3px solid var(--accent-purple);
+
+    border-radius:12px;
+
+    padding:20px;
+
+    width:100%;
+
+    max-width:900px;
+}
+
+.queue-label{
+
+    color:var(--accent-purple);
+
+    text-align:center;
+
+    margin-bottom:12px;
+
+    font-weight:bold;
+}
+
+.array{
+
+    display:flex;
+
+    gap:8px;
+
+    padding:20px;
+
+    background:#21262d;
+
+    border-radius:10px;
+
+    min-height:100px;
+
+    flex-wrap:wrap;
+}
+
+.tile{
+
+    background:#2d333b;
+
+    border:2px solid var(--accent-blue);
+
+    padding:14px 22px;
+
+    border-radius:8px;
+
+    font-family:monospace;
+
+    font-size:18px;
+
+    min-width:60px;
+
+    text-align:center;
+
+    position:relative;
+}
+
+.tile.front::after{
+
+    content:'FRONT';
+
+    position:absolute;
+
+    top:-24px;
+
+    left:50%;
+
+    transform:translateX(-50%);
+
+    font-size:10px;
+
+    color:var(--accent-green);
+
+    font-weight:bold;
+}
+
+.tile.rear::after{
+
+    content:'REAR';
+
+    position:absolute;
+
+    bottom:-24px;
+
+    left:50%;
+
+    transform:translateX(-50%);
+
+    font-size:10px;
+
+    color:var(--accent-orange);
+
+    font-weight:bold;
+}
+
+.action-panel{
+
+    background:var(--bg-surface);
+
+    border:1px solid var(--border-main);
+
+    border-radius:10px;
+
+    padding:20px;
+
+    width:100%;
+
+    max-width:900px;
+
+    min-height:140px;
+
+    margin:20px 0;
+
+    font-family:monospace;
+
+    font-size:15px;
+
+    line-height:1.65;
+}
+
+.controls{
+
+    margin:20px 0;
+
+    display:flex;
+
+    align-items:center;
+
+    gap:16px;
+
+    flex-wrap:wrap;
+
+    justify-content:center;
+}
+
+.log-panel{
+
+    background:var(--bg-page);
+
+    border:1px solid var(--border-main);
+
+    border-radius:10px;
+
+    padding:16px 20px;
+
+    width:100%;
+
+    max-width:900px;
+
+    height:220px;
+
+    overflow-y:auto;
+
+    font-family:'Courier New', monospace;
+
+    font-size:14px;
+}
+
+.info{
+
+    color:var(--accent-green);
+
+    font-size:14px;
+
+    margin:10px 0;
+
+    text-align:center;
+}
+
+</style>
+</head>
+
+<body>
+
+<h1>Dynamic Circular Buffer</h1>
+
+<p style="
+color:var(--text-dim);
+margin-bottom:20px;
+">
+Resizable Circular Queue with Doubling Strategy
+</p>
+
+<div class="input-bar">
+
+    <button onclick="loadExample(0)">
+        Example 1
+    </button>
+
+    <button onclick="loadExample(1)">
+        Example 2
+    </button>
+
+    <button onclick="resetSim()">
+        Reset
+    </button>
+
+</div>
+
+<div class="queue-container">
+
+    <div class="queue-label">
+        Circular Array Buffer
+    </div>
+
+    <div class="array"
+         id="array-vis"></div>
+
+    <div class="info">
+
+        Capacity:
+        <span id="cap-val">3</span>
+
+        |
+
+        Size:
+        <span id="size-val">0</span>
+
+        |
+
+        Front:
+        <span id="front-val">0</span>
+
+        |
+
+        Rear:
+        <span id="rear-val">-1</span>
+
+    </div>
+
+</div>
+
+<div class="action-panel"
+     id="action">
+
+Click an example to begin simulation
+
+</div>
+
+<div class="controls">
+
+    <button onclick="prevStep()">
+        ← Back
+    </button>
+
+    <button onclick="togglePlay()"
+            id="play-btn">
+
+        ▶ Play
+
+    </button>
+
+    <button onclick="nextStep()">
+        Next →
+    </button>
+
+    <label>
+        Speed
+        <input type="range"
+               id="speed"
+               min="0"
+               max="2"
+               value="1">
+    </label>
+
+</div>
+
+<div class="log-panel"
+     id="log"></div>
+
+<script>
+
+let arr = [];
+
+let capacity = 3;
+
+let size = 0;
+
+let front = 0;
+
+let rear = -1;
+
+let steps = [];
+
+let stepIdx = 0;
+
+let timer = null;
+
+let isPlaying = false;
+
+const delays = [1650,850,380];
+
+const examples = [
+
+    [
+        "enqueue(1)",
+        "enqueue(2)",
+        "enqueue(3)",
+        "dequeue()",
+        "enqueue(4)",
+        "enqueue(5)",
+        "dequeue()",
+        "dequeue()"
+    ],
+
+    [
+        "enqueue('A')",
+        "enqueue('B')",
+        "dequeue()",
+        "enqueue('C')",
+        "dequeue()",
+        "enqueue('D')",
+        "peek()"
+    ]
+];
+
+function generateSteps(ops){
+
+    capacity = 3;
+
+    if(
+        ops.includes("enqueue('A')")
+    ){
+        capacity = 2;
+    }
+
+    arr =
+        new Array(capacity)
+        .fill(null);
+
+    size = 0;
+
+    front = 0;
+
+    rear = -1;
+
+    steps = [];
+
+    steps.push({
+
+        panel:
+            `<b>Initialize</b><br>
+            Capacity=${capacity},
+            Size=0,
+            Front=0,
+            Rear=-1`,
+
+        log:
+            `Queue initialized`,
+
+        arr:[...arr],
+
+        capacity:capacity,
+
+        size:size,
+
+        front:front,
+
+        rear:rear
+    });
+
+    for(let op of ops){
+
+        let action = op;
+
+        // ENQUEUE
+
+        if(op.startsWith("enqueue")){
+
+            const val =
+                op.match(/\((.*)\)/)[1]
+                .replace(/['"]/g,'');
+
+            // RESIZE
+
+            if(size === capacity){
+
+                const newCap =
+                    capacity * 2;
+
+                const newArr =
+                    new Array(newCap)
+                    .fill(null);
+
+                for(let i = 0; i < size; i++){
+
+                    newArr[i] =
+                        arr[
+                            (front + i)
+                            % capacity
+                        ];
+                }
+
+                arr = newArr;
+
+                capacity = newCap;
+
+                front = 0;
+
+                rear = size - 1;
+
+                action +=
+                    ` → RESIZE to ${capacity}`;
+            }
+
+            rear =
+                (rear + 1)
+                % capacity;
+
+            arr[rear] = val;
+
+            size++;
+
+            action +=
+                ` → inserted ${val}`;
+        }
+
+        // DEQUEUE
+
+        else if(op === "dequeue()"){
+
+            if(size > 0){
+
+                const val =
+                    arr[front];
+
+                arr[front] = null;
+
+                front =
+                    (front + 1)
+                    % capacity;
+
+                size--;
+
+                action +=
+                    ` → removed ${val}`;
+
+            }else{
+
+                action +=
+                    ` → EMPTY`;
+            }
+        }
+
+        // PEEK
+
+        else if(op === "peek()"){
+
+            const val =
+                size > 0
+                ? arr[front]
+                : "EMPTY";
+
+            action +=
+                ` → ${val}`;
+        }
+
+        steps.push({
+
+            panel:
+                `<b>${op}</b><br>
+                ${action}`,
+
+            log:action,
+
+            arr:[...arr],
+
+            capacity:capacity,
+
+            size:size,
+
+            front:front,
+
+            rear:rear
+        });
+    }
+
+    // CORRECT FINAL QUEUE
+
+    let finalQueue = [];
+
+    for(let i = 0; i < size; i++){
+
+        finalQueue.push(
+            arr[
+                (front + i)
+                % capacity
+            ]
+        );
+    }
+
+    steps.push({
+
+        panel:
+            `<b>FINAL</b><br>
+            Capacity=${capacity},
+            Size=${size},
+            Queue=[${finalQueue.join(', ')}]`,
+
+        log:
+            `Final queue:
+            [${finalQueue.join(', ')}]`,
+
+        arr:[...arr],
+
+        capacity:capacity,
+
+        size:size,
+
+        front:front,
+
+        rear:rear
+    });
+}
+
+function renderArray(
+    a,
+    cap,
+    fr,
+    rr
+){
+
+    const container =
+        document.getElementById(
+            'array-vis'
+        );
+
+    container.innerHTML = '';
+
+    for(let i = 0; i < cap; i++){
+
+        const tile =
+            document.createElement('div');
+
+        tile.className =
+            'tile';
+
+        tile.textContent =
+            a[i] !== null
+            ? a[i]
+            : '—';
+
+        if(i === fr){
+
+            tile.classList.add(
+                'front'
+            );
+        }
+
+        if(i === rr){
+
+            tile.classList.add(
+                'rear'
+            );
+        }
+
+        container.appendChild(tile);
+    }
+
+    document.getElementById(
+        'cap-val'
+    ).textContent = cap;
+
+    document.getElementById(
+        'size-val'
+    ).textContent = size;
+
+    document.getElementById(
+        'front-val'
+    ).textContent = fr;
+
+    document.getElementById(
+        'rear-val'
+    ).textContent = rr;
+}
+
+function renderStep(idx){
+
+    stepIdx = idx;
+
+    const step =
+        steps[idx];
+
+    if(!step) return;
+
+    document.getElementById(
+        'action'
+    ).innerHTML =
+        step.panel || '—';
+
+    renderArray(
+        step.arr,
+        step.capacity,
+        step.front,
+        step.rear
+    );
+
+    const logEl =
+        document.getElementById(
+            'log'
+        );
+
+    logEl.innerHTML =
+        steps
+        .slice(0,idx+1)
+        .map(
+            s=>`
+            <div style="
+            margin:5px 0;
+            ">
+            ${s.log}
+            </div>`
+        )
+        .join('');
+
+    logEl.scrollTop =
+        logEl.scrollHeight;
+}
+
+function nextStep(){
+
+    if(
+        stepIdx <
+        steps.length - 1
+    ){
+
+        renderStep(stepIdx + 1);
+
+    }else{
+
+        pause();
+    }
+}
+
+function prevStep(){
+
+    if(stepIdx > 0){
+
+        renderStep(stepIdx - 1);
+    }
+}
+
+function resetSim(){
+
+    pause();
+
+    stepIdx = 0;
+
+    renderStep(0);
+}
+
+function togglePlay(){
+
+    const btn =
+        document.getElementById(
+            'play-btn'
+        );
+
+    if(isPlaying){
+
+        pause();
+
+    }else{
+
+        isPlaying = true;
+
+        btn.textContent =
+            '❚❚ Pause';
+
+        timer =
+            setInterval(()=>{
+
+                if(
+                    stepIdx <
+                    steps.length - 1
+                ){
+
+                    nextStep();
+
+                }else{
+
+                    pause();
+                }
+
+            },delays[
+                document.getElementById(
+                    'speed'
+                ).value
+            ]);
+    }
+}
+
+function pause(){
+
+    clearInterval(timer);
+
+    isPlaying = false;
+
+    document.getElementById(
+        'play-btn'
+    ).textContent =
+        '▶ Play';
+}
+
+function loadExample(n){
+
+    generateSteps(
+        examples[n]
+    );
+
+    resetSim();
+}
+
+window.onload = ()=>{
+
+    loadExample(0);
+};
+
+</script>
+
+</body>
+</html>

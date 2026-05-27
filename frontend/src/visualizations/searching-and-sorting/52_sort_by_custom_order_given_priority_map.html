@@ -1,0 +1,530 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sort by Custom Priority Map - Counting Sort Visualization</title>
+    <style>
+        :root {
+            --bg-page: #0d1117;
+            --bg-surface: #161b22;
+            --bg-input: #0d1117;
+            --border-main: #30363d;
+            --btn-bg: #21262d;
+            --btn-hover: #2d333b;
+            --text-main: #c9d1d9;
+            --text-dim: #8b949e;
+            --accent-orange: #e3b341;
+            --accent-blue: #388bfd;
+            --accent-green: #3fb950;
+            --accent-red: #f85149;
+            --accent-purple: #a371f7;
+        }
+
+        * { box-sizing: border-box; }
+        body {
+            background-color: var(--bg-page);
+            color: var(--text-main);
+            font-family: system-ui, -apple-system, sans-serif;
+            margin: 0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            min-height: 100vh;
+            padding-bottom: 40px;
+        }
+
+        /* INPUT BAR */
+        .input-bar {
+            width: 100%;
+            background-color: var(--bg-surface);
+            padding: 12px 16px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 8px;
+            border-bottom: 1px solid var(--border-main);
+            flex-wrap: wrap;
+        }
+        label.ui-label { font-family: 'Courier New', monospace; font-size: 13px; color: var(--text-dim); }
+        input[type="text"] {
+            background: var(--bg-input);
+            border: 1px solid var(--border-main);
+            color: var(--text-main);
+            height: 32px;
+            border-radius: 6px;
+            padding: 0 10px;
+            font-size: 13px;
+        }
+        .arr-input { width: 220px; }
+        .map-input { width: 300px; }
+
+        button {
+            height: 32px; border-radius: 6px; padding: 0 14px; background: var(--btn-bg);
+            border: 1px solid var(--border-main); color: var(--text-main); font-size: 13px; cursor: pointer;
+            transition: background 0.2s ease;
+        }
+        button:hover { background: var(--btn-hover); }
+
+        /* VISUAL CONTAINER */
+        .visual-container { margin-top: 30px; display: flex; flex-direction: column; align-items: center; gap: 20px; width: 100%; max-width: 920px; }
+        
+        .array-wrapper {
+            display: flex;
+            gap: 6px;
+            padding: 10px;
+            background: var(--bg-surface);
+            border: 2px solid var(--border-main);
+            border-radius: 8px;
+            width: 100%;
+        }
+        .tile {
+            min-width: 48px; height: 48px; display: flex; align-items: center; justify-content: center;
+            border-radius: 8px; font-size: 17px; font-weight: 700; font-family: 'Courier New', monospace;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); border: 3px solid var(--border-main); background: #21262d;
+            color: var(--text-main);
+            box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+        }
+        .tile-index { font-size: 9px; color: var(--text-dim); font-family: monospace; margin-top: 2px; }
+        
+        /* STATES */
+        .tile.search-space { background: #0d2244; border-color: var(--accent-blue); }
+        .tile.candidate { background: #2a1600; border-color: var(--accent-orange); color: var(--accent-orange); transform: scale(1.12); }
+        .tile.winning { background: #0f2a1a; border-color: var(--accent-green); color: var(--accent-green); transform: scale(1.15); box-shadow: 0 0 18px var(--accent-green); }
+        .tile.eliminated { opacity: 0.3; background: #161b22; border-color: var(--border-main); color: var(--text-dim); }
+        .tile.current { animation: pulse 700ms infinite; border-color: var(--accent-purple); box-shadow: 0 0 20px var(--accent-purple); }
+        
+        @keyframes pulse { 0%,100%{transform:scale(1)} 50%{transform:scale(1.08)} }
+
+        /* COUNT ARRAY */
+        .count-section {
+            margin-top: 10px;
+            padding: 12px 20px;
+            background: var(--bg-surface);
+            border: 2px solid var(--accent-purple);
+            border-radius: 8px;
+            width: 100%;
+        }
+        .count-container {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+            justify-content: center;
+        }
+        .count-tile {
+            min-width: 52px; height: 52px; display: flex; flex-direction: column; align-items: center; justify-content: center;
+            border-radius: 8px; font-size: 16px; font-weight: 700; font-family: 'Courier New', monospace;
+            border: 3px solid var(--accent-purple); background: #21262d; color: var(--accent-purple);
+            box-shadow: 0 0 12px rgba(163, 113, 247, 0.4);
+        }
+
+        /* RESULT */
+        .result-display { margin-top: 20px; display: flex; flex-direction: column; align-items: center; gap: 8px; }
+        .result-bar {
+            display: flex;
+            gap: 6px;
+            padding: 8px 16px;
+            background: var(--bg-surface);
+            border: 2px solid var(--accent-green);
+            border-radius: 8px;
+        }
+        #res-val { font-size: 23px; color: var(--accent-green); font-family: monospace; font-weight: bold; }
+
+        .info-panel { margin-top: 12px; display: flex; gap: 14px; flex-wrap: wrap; justify-content: center; }
+        .info-cell {
+            background: var(--bg-surface); border: 1px solid var(--border-main); border-radius: 6px;
+            padding: 10px 18px; display: flex; flex-direction: column; align-items: center; min-width: 120px; gap: 4px;
+        }
+        .info-label { font-size: 11px; color: var(--text-dim); }
+        .info-value { font-family: monospace; font-size: 18px; font-weight: 700; color: var(--accent-green); }
+
+        .status-bar { margin-top: 8px; font-size: 13px; color: var(--text-dim); height: 1.4em; text-align: center; }
+
+        /* CONTROLS */
+        .controls { margin-top: 24px; display: flex; align-items: center; gap: 12px; }
+        input[type="range"] { accent-color: var(--accent-blue); width: 120px; }
+
+        /* LEGEND */
+        .legend { margin-top: 16px; display: flex; gap: 20px; flex-wrap: wrap; justify-content: center; max-width: 860px; }
+        .legend-item { display: flex; align-items: center; font-size: 12.5px; color: var(--text-dim); }
+        .dot { width: 14px; height: 14px; border-radius: 4px; margin-right: 8px; display: inline-block; }
+
+        /* LOG */
+        .log-panel {
+            margin-top: 18px; background: var(--bg-page); border: 1px solid var(--border-main);
+            border-radius: 6px; padding: 16px 20px; width: 720px; max-width: 92%; height: 148px;
+            overflow-y: auto; font-family: 'Courier New', monospace; font-size: 13px; line-height: 1.5;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="input-bar">
+        <label class="ui-label">arr =</label>
+        <input type="text" id="arr-input" class="arr-input" placeholder='["banana","apple","cherry"]'>
+        <label class="ui-label">priority_map =</label>
+        <input type="text" id="map-input" class="map-input" placeholder='{"apple":1,"banana":2,"cherry":3}'>
+        <button onclick="loadCustom()">Load</button>
+        <button onclick="loadExample(['banana','apple','cherry'], {'apple':1,'banana':2,'cherry':3})">Ex 1</button>
+        <button onclick="loadExample([5,3,8,3,1], {5:1,3:5,8:20,1:10})">Ex 2</button>
+    </div>
+
+    <div class="visual-container">
+        <div class="ui-label">Input Array:</div>
+        <div class="array-wrapper" id="input-container"></div>
+
+        <div class="count-section">
+            <div class="ui-label" style="margin-bottom:8px">Count Array (by priority index):</div>
+            <div class="count-container" id="count-container"></div>
+        </div>
+
+        <div class="ui-label">Output Array (building...):</div>
+        <div class="array-wrapper" id="output-container"></div>
+    </div>
+
+    <div class="action-panel" id="main-panel" style="width:720px; min-height:72px; font-size:14px; line-height:1.6">—</div>
+
+    <div class="info-panel">
+        <div class="info-cell">
+            <span class="info-label">min_p</span>
+            <span class="info-value" id="val-minp" style="color: var(--accent-purple);">—</span>
+        </div>
+        <div class="info-cell">
+            <span class="info-label">max_p</span>
+            <span class="info-value" id="val-maxp" style="color: var(--accent-orange);">—</span>
+        </div>
+        <div class="info-cell">
+            <span class="info-label">Range</span>
+            <span class="info-value" id="val-range" style="color: var(--accent-green);">—</span>
+        </div>
+    </div>
+
+    <div class="result-display">
+        <span class="ui-label" style="margin-bottom: 4px;">Final Sorted Array</span>
+        <div class="result-bar" id="result-bar"></div>
+    </div>
+
+    <div class="status-bar" id="status-text"></div>
+
+    <div class="controls">
+        <button onclick="reset()">↺ Reset</button>
+        <button onclick="back()">← Back</button>
+        <button onclick="togglePlay()" id="play-btn">Play</button>
+        <button onclick="next()">Next →</button>
+        <div style="margin-left:12px; display:flex; align-items:center; gap:6px;">
+            <span class="ui-label" style="font-size:11px">Speed</span>
+            <input type="range" id="speed-slider" min="0" max="2" value="1">
+        </div>
+    </div>
+
+    <div class="legend">
+        <div class="legend-item"><span class="dot" style="background:#0d2244; border:2px solid var(--accent-blue)"></span> Search space</div>
+        <div class="legend-item"><span class="dot" style="background:#2a1600; border:2px solid var(--accent-orange)"></span> Current element</div>
+        <div class="legend-item"><span class="dot" style="background:#0f2a1a; border:2px solid var(--accent-green)"></span> Placed in output</div>
+        <div class="legend-item"><span class="dot" style="background:#161b22; border:2px solid var(--border-main)"></span> Eliminated</div>
+    </div>
+
+    <div class="log-panel" id="log"></div>
+
+    <script>
+        let arr = ['banana', 'apple', 'cherry'];
+        let priorityMap = { 'apple': 1, 'banana': 2, 'cherry': 3 };
+        let steps = [];
+        let stepIndex = 0;
+        let timer = null;
+        const delays = [1800, 900, 450];
+
+        function init() {
+            loadExample(['banana', 'apple', 'cherry'], { 'apple': 1, 'banana': 2, 'cherry': 3 });
+        }
+
+        function parseInput(arrStr, mapStr) {
+            try {
+                const parsedArr = JSON.parse(arrStr);
+                const parsedMap = JSON.parse(mapStr);
+                return { arr: parsedArr, map: parsedMap };
+            } catch(e) {
+                return { arr: ['banana', 'apple', 'cherry'], map: { 'apple': 1, 'banana': 2, 'cherry': 3 } };
+            }
+        }
+
+        function loadExample(newArr, newMap) {
+            arr = [...newArr];
+            priorityMap = { ...newMap };
+            document.getElementById('arr-input').value = JSON.stringify(arr);
+            document.getElementById('map-input').value = JSON.stringify(priorityMap);
+            generateSteps();
+            reset();
+        }
+
+        function loadCustom() {
+            const arrStr = document.getElementById('arr-input').value;
+            const mapStr = document.getElementById('map-input').value;
+            const parsed = parseInput(arrStr, mapStr);
+            if (parsed.arr && parsed.map) {
+                loadExample(parsed.arr, parsed.map);
+            } else {
+                alert("Enter valid JSON arrays and map");
+            }
+        }
+
+        function generateSteps() {
+            steps = [];
+            const n = arr.length;
+            if (n === 0) return;
+
+            // Compute min and max priority
+            const priorities = Object.values(priorityMap);
+            if (priorities.length === 0) {
+                // No priorities, return original
+                steps.push({
+                    type: 'final',
+                    inputStates: arr.map(() => 'search-space'),
+                    countStates: [],
+                    outputStates: arr.map(() => 'search-space'),
+                    panel: 'No priority map → return original array',
+                    complete: true,
+                    finalStr: JSON.stringify(arr),
+                    statusText: 'No priorities, original array returned',
+                    log: 'Priority map empty, returning input as-is',
+                    logColor: 'var(--accent-orange)'
+                });
+                return;
+            }
+            const minP = Math.min(...priorities);
+            const maxP = Math.max(...priorities);
+            const range = maxP - minP + 1;
+
+            // Step 1: Init count array
+            let count = new Array(range).fill(0);
+            let inputStates = arr.map(() => 'search-space');
+
+            steps.push({
+                type: 'init',
+                inputStates: inputStates,
+                countStates: count,
+                outputStates: new Array(n).fill('search-space'),
+                panel: `Priority range: <b>${minP}</b> to <b>${maxP}</b> (size <b>${range}</b>)`,
+                statusText: `Counting frequencies...`,
+                log: `minP = ${minP}, maxP = ${maxP}, range = ${range}`,
+                logColor: 'var(--text-dim)'
+            });
+
+            // Step 2: Count frequencies
+            let tempCount = [...count];
+            for (let i = 0; i < n; i++) {
+                const elem = arr[i];
+                const p = priorityMap[elem];
+                if (p === undefined) {
+                    // Skip or error, but for simplicity assume all present
+                    continue;
+                }
+                const idx = p - minP;
+                tempCount[idx]++;
+                let countStates = [...tempCount];
+                let inputStatesCopy = [...inputStates];
+                inputStatesCopy[i] = 'candidate';
+
+                steps.push({
+                    type: 'count',
+                    inputStates: inputStatesCopy,
+                    countStates: countStates,
+                    outputStates: new Array(n).fill('search-space'),
+                    panel: `Count <b>${elem}</b> (priority <b>${p}</b>) → count[${idx}] = <b>${tempCount[idx]}</b>`,
+                    statusText: `Incremented count for ${elem}`,
+                    log: `Element ${elem} → priority ${p} → index ${idx}`,
+                    logColor: 'var(--accent-orange)'
+                });
+            }
+            count = tempCount;
+
+            // Step 3: Compute prefix sums
+            let prefixCount = [...count];
+            for (let i = 1; i < range; i++) {
+                prefixCount[i] += prefixCount[i - 1];
+                let countStates = [...prefixCount];
+                steps.push({
+                    type: 'prefix',
+                    inputStates: arr.map(() => 'search-space'),
+                    countStates: countStates,
+                    outputStates: new Array(n).fill('search-space'),
+                    panel: `Prefix sum: count[${i}] = <b>${prefixCount[i]}</b>`,
+                    statusText: `Building prefix sums`,
+                    log: `count[${i}] += count[${i-1}]`,
+                    logColor: 'var(--accent-purple)'
+                });
+            }
+
+            // Step 4: Build output (reverse iteration for stability)
+            let output = new Array(n).fill(null);
+            let outputStates = new Array(n).fill('search-space');
+            for (let i = n - 1; i >= 0; i--) {
+                const elem = arr[i];
+                const p = priorityMap[elem];
+                if (p === undefined) continue;
+                const idx = p - minP;
+                const outPos = prefixCount[idx] - 1;
+                output[outPos] = elem;
+                outputStates[outPos] = 'winning';
+                prefixCount[idx]--;
+
+                steps.push({
+                    type: 'place',
+                    inputStates: arr.map(() => 'search-space'),
+                    countStates: [...prefixCount],
+                    outputStates: [...outputStates],
+                    panel: `Place <b>${elem}</b> at output position <b>${outPos}</b>`,
+                    statusText: `Placed ${elem}`,
+                    log: `Element ${elem} placed at index ${outPos}`,
+                    logColor: 'var(--accent-green)'
+                });
+            }
+
+            // FINAL
+            steps.push({
+                type: 'final',
+                inputStates: arr.map(() => 'eliminated'),
+                countStates: new Array(range).fill(0),
+                outputStates: outputStates,
+                panel: `<span style="color:var(--accent-green)">Sorted by custom priority!</span>`,
+                complete: true,
+                finalStr: JSON.stringify(output),
+                statusText: `Final sorted array`,
+                log: `Result: ${JSON.stringify(output)}`,
+                logColor: 'var(--accent-green)',
+                bold: true
+            });
+        }
+
+        function renderStep(idx) {
+            const step = steps[idx];
+            if (!step) return;
+
+            // Render input array
+            const inputCont = document.getElementById('input-container');
+            inputCont.innerHTML = '';
+            step.inputStates.forEach((state, i) => {
+                const unit = document.createElement('div');
+                unit.className = 'tile-unit';
+                const tile = document.createElement('div');
+                tile.className = `tile ${state}`;
+                tile.textContent = arr[i];
+                const idxLabel = document.createElement('div');
+                idxLabel.className = 'tile-index';
+                idxLabel.textContent = `[${i}]`;
+                unit.append(tile, idxLabel);
+                inputCont.appendChild(unit);
+            });
+
+            // Render count array
+            const countCont = document.getElementById('count-container');
+            countCont.innerHTML = '';
+            step.countStates.forEach((val, i) => {
+                const tile = document.createElement('div');
+                tile.className = 'count-tile';
+                tile.innerHTML = `${val}<div style="font-size:9px;margin-top:2px">idx ${i}</div>`;
+                countCont.appendChild(tile);
+            });
+
+            // Render output array
+            const outputCont = document.getElementById('output-container');
+            outputCont.innerHTML = '';
+            step.outputStates.forEach((state, i) => {
+                const unit = document.createElement('div');
+                unit.className = 'tile-unit';
+                const tile = document.createElement('div');
+                tile.className = `tile ${state}`;
+                tile.textContent = step.outputStates[i] === 'search-space' ? '?' : arr[arr.length - 1]; // placeholder, better to use output if available
+                // Use actual output value if available
+                const actualVal = (step.outputStates && step.outputStates.length > i) ? (step.outputStates[i] === 'winning' ? step.finalStr ? JSON.parse(step.finalStr)[i] : '?' : '?') : '?';
+                tile.textContent = actualVal === '?' ? '?' : actualVal;
+                const idxLabel = document.createElement('div');
+                idxLabel.className = 'tile-index';
+                idxLabel.textContent = `[${i}]`;
+                unit.append(tile, idxLabel);
+                outputCont.appendChild(unit);
+            });
+
+            // Main panel
+            document.getElementById('main-panel').innerHTML = step.panel;
+
+            // Info
+            document.getElementById('val-minp').innerText = step.minP !== undefined ? step.minP : '—';
+            document.getElementById('val-maxp').innerText = step.maxP !== undefined ? step.maxP : '—';
+            document.getElementById('val-range').innerText = step.range !== undefined ? step.range : '—';
+
+            // Result
+            const resultBar = document.getElementById('result-bar');
+            resultBar.innerHTML = '';
+            if (step.complete) {
+                const finalArr = JSON.parse(step.finalStr);
+                finalArr.forEach(val => {
+                    const t = document.createElement('div');
+                    t.className = 'tile winning';
+                    t.style.minWidth = '42px';
+                    t.style.height = '42px';
+                    t.style.fontSize = '15px';
+                    t.textContent = val;
+                    resultBar.appendChild(t);
+                });
+            }
+
+            // Status
+            document.getElementById('status-text').innerText = step.statusText;
+
+            // Log
+            const logPanel = document.getElementById('log');
+            logPanel.innerHTML = '';
+            for (let k = 0; k <= idx; k++) {
+                if (steps[k].log) {
+                    const line = document.createElement('div');
+                    line.style.marginBottom = '4px';
+                    if (steps[k].logColor) line.style.color = steps[k].logColor;
+                    if (steps[k].bold) line.style.fontWeight = 'bold';
+                    line.innerText = steps[k].log;
+                    logPanel.appendChild(line);
+                }
+            }
+            logPanel.scrollTop = logPanel.scrollHeight;
+        }
+
+        function next() {
+            if (stepIndex < steps.length - 1) {
+                stepIndex++;
+                renderStep(stepIndex);
+            } else pause();
+        }
+
+        function back() {
+            if (stepIndex > 0) {
+                stepIndex--;
+                renderStep(stepIndex);
+            }
+        }
+
+        function reset() {
+            pause();
+            stepIndex = 0;
+            renderStep(0);
+        }
+
+        function togglePlay() {
+            const btn = document.getElementById('play-btn');
+            if (timer) pause();
+            else {
+                btn.innerText = 'Pause';
+                if (stepIndex >= steps.length - 1) stepIndex = 0;
+                timer = setInterval(next, delays[parseInt(document.getElementById('speed-slider').value)]);
+            }
+        }
+
+        function pause() {
+            clearInterval(timer);
+            timer = null;
+            document.getElementById('play-btn').innerText = 'Play';
+        }
+
+        window.onload = init;
+    </script>
+</body>
+</html>

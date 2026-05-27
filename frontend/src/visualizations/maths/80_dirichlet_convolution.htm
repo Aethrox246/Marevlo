@@ -1,0 +1,191 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dirichlet Convolution - Visualization</title>
+    <style>
+        :root{--bg-page:#0d1117;--bg-surface:#161b22;--bg-input:#0d1117;--border-main:#30363d;
+            --btn-bg:#21262d;--btn-hover:#2d333b;--text-main:#c9d1d9;--text-dim:#8b949e;
+            --accent-orange:#e3b341;--accent-blue:#388bfd;--accent-green:#3fb950;
+            --accent-red:#f85149;--accent-purple:#a371f7;}
+        *{box-sizing:border-box;}
+        body{background:var(--bg-page);color:var(--text-main);font-family:system-ui,sans-serif;
+            margin:0;display:flex;flex-direction:column;align-items:center;min-height:100vh;padding-bottom:40px;}
+        .input-bar{width:100%;background:var(--bg-surface);padding:12px 16px;display:flex;
+            justify-content:center;align-items:center;gap:8px;border-bottom:1px solid var(--border-main);flex-wrap:wrap;}
+        label.ui-label{font-family:monospace;font-size:13px;color:var(--text-dim);}
+        input[type="text"]{background:var(--bg-input);border:1px solid var(--border-main);color:var(--text-main);
+            height:32px;border-radius:6px;padding:0 10px;font-size:13px;width:180px;}
+        button{height:32px;padding:0 14px;background:var(--btn-bg);border:1px solid var(--border-main);
+            color:var(--text-main);border-radius:6px;cursor:pointer;font-size:13px;}
+        button:hover{background:var(--btn-hover);}
+        .visual-container{margin-top:28px;width:100%;text-align:center;}
+        .func-row{display:flex;gap:6px;flex-wrap:wrap;justify-content:center;margin-bottom:12px;}
+        .tile{min-width:54px;height:54px;display:flex;flex-direction:column;align-items:center;justify-content:center;
+            border-radius:8px;font-size:16px;font-weight:700;font-family:monospace;
+            border:2px solid var(--border-main);background:var(--btn-bg);transition:all 0.3s;}
+        .tile-idx{font-size:10px;color:var(--text-dim);}
+        .tile.f-active{background:#0d2244;border-color:var(--accent-blue);color:var(--accent-blue);}
+        .tile.g-active{background:#1a0d2a;border-color:var(--accent-purple);color:var(--accent-purple);}
+        .tile.h-active{background:#0f2a1a;border-color:var(--accent-green);color:var(--accent-green);}
+        .tile.computing{background:#2a1600;border-color:var(--accent-orange);color:var(--accent-orange);transform:scale(1.12);}
+        .sec-title{font-size:12px;color:var(--text-dim);font-family:monospace;text-transform:uppercase;margin:10px 0 6px;}
+        .formula-box{background:var(--bg-surface);border:1px solid var(--border-main);border-radius:8px;
+            padding:10px 22px;display:inline-block;font-family:monospace;font-size:14px;margin:8px 0;}
+        .info-panel{margin-top:12px;display:flex;gap:14px;flex-wrap:wrap;justify-content:center;}
+        .info-cell{background:var(--bg-surface);border:1px solid var(--border-main);border-radius:6px;
+            padding:8px 16px;min-width:110px;}
+        .info-label{font-size:11px;color:var(--text-dim);}
+        .info-value{font-family:monospace;font-size:16px;font-weight:700;}
+        .action-panel{margin-top:20px;background:var(--bg-surface);border:1px solid var(--border-main);
+            border-radius:6px;padding:14px 22px;width:820px;max-width:96%;min-height:90px;
+            font-family:monospace;font-size:14px;line-height:1.6;text-align:center;}
+        .controls{margin-top:20px;display:flex;align-items:center;gap:10px;}
+        .log-panel{margin-top:12px;background:var(--bg-page);border:1px solid var(--border-main);
+            border-radius:6px;padding:12px 16px;width:820px;max-width:96%;height:130px;overflow-y:auto;
+            font-family:monospace;font-size:13px;}
+    </style>
+</head>
+<body>
+<div class="input-bar">
+    <label class="ui-label">f(1..n):</label>
+    <input type="text" id="inp-f" value="1,1,1,1,1,1">
+    <label class="ui-label">g(1..n):</label>
+    <input type="text" id="inp-g" value="1,0,1,0,1,0">
+    <button onclick="loadCustom()">Compute</button>
+    <button onclick="loadExample(0)">Ex 1: f=1s, g=id</button>
+    <button onclick="loadExample(1)">Ex 2: μ*id</button>
+</div>
+
+<div class="visual-container">
+    <div class="formula-box">(f ★ g)(n) = Σ<sub>d|n</sub> f(d) · g(n/d)</div>
+    <div class="sec-title" style="color:var(--accent-blue)">f(1..n)</div>
+    <div class="func-row" id="f-row"></div>
+    <div class="sec-title" style="color:var(--accent-purple)">g(1..n)</div>
+    <div class="func-row" id="g-row"></div>
+    <div class="sec-title" style="color:var(--accent-green)">h = f ★ g  (Dirichlet Convolution)</div>
+    <div class="func-row" id="h-row"></div>
+    <div class="info-panel">
+        <div class="info-cell"><div class="info-label">Computing h(n)</div><div class="info-value" id="cur-n">—</div></div>
+        <div class="info-cell"><div class="info-label">Divisor d</div><div class="info-value" id="cur-d">—</div></div>
+        <div class="info-cell"><div class="info-label">f(d)·g(n/d)</div><div class="info-value" id="cur-term">—</div></div>
+        <div class="info-cell"><div class="info-label">h(n) so far</div><div class="info-value" id="cur-h" style="color:var(--accent-green)">—</div></div>
+    </div>
+</div>
+
+<div class="action-panel" id="main-panel">Click <b>▶ Play</b> or <b>Next</b> to start.</div>
+<div class="controls">
+    <button onclick="reset()">↺ Reset</button>
+    <button onclick="back()">← Back</button>
+    <button onclick="togglePlay()" id="play-btn">▶ Play</button>
+    <button onclick="next()">Next →</button>
+    <span class="ui-label">Speed</span>
+    <input type="range" id="speed-slider" min="0" max="2" value="1">
+</div>
+<div class="log-panel" id="log"></div>
+
+<script>
+    let steps=[], stepIdx=0, timer=null;
+    const delays=[1400,700,350];
+
+    function getDivisors(n){ const d=[]; for(let i=1;i*i<=n;i++) if(n%i===0){d.push(i);if(i!==n/i)d.push(n/i);} return d.sort((a,b)=>a-b); }
+
+    function generateSteps(f, g) {
+        steps=[];
+        const N=f.length;
+        const add=(panel,log,color,extra={})=>steps.push({panel,log,logColor:color,...extra});
+        const h=new Array(N).fill(null);
+
+        add(`<b>Dirichlet Convolution</b>: (f ★ g)(n) = Σ<sub>d|n</sub> f(d)·g(n/d)<br>f = [${f.join(', ')}]<br>g = [${g.join(', ')}]`,
+            `Start convolution of f and g`,'var(--text-dim)',{f,g,h:[...h],activeN:-1,activeD:-1,term:null,curH:null});
+
+        for(let n=1;n<=N;n++){
+            const divs=getDivisors(n);
+            let sum=0;
+            add(`<b>Computing h(${n})</b>: Find all divisors of ${n} = [${divs.join(',')}]`,
+                `h(${n}): divisors = [${divs.join(',')}]`,'var(--accent-blue)',
+                {f,g,h:[...h],activeN:n-1,activeD:-1,term:null,curH:sum});
+
+            for(const d of divs){
+                const fv=f[d-1]||0, gv=g[(n/d)-1]||0;
+                const term=fv*gv;
+                sum+=term;
+                add(`h(${n}) += f(${d})·g(${n/d}) = ${fv}·${gv} = <b>${term}</b>  →  running sum = ${sum}`,
+                    `f(${d})·g(${n/d}) = ${term}, sum=${sum}`,'var(--accent-orange)',
+                    {f,g,h:[...h],activeN:n-1,activeD:d-1,term,curH:sum});
+            }
+            h[n-1]=sum;
+            add(`h(${n}) = <b>${sum}</b> ✓`,`h(${n}) = ${sum}`,'var(--accent-green)',
+                {f,g,h:[...h],activeN:n-1,activeD:-1,term:null,curH:sum});
+        }
+        add(`<span style="color:var(--accent-green)">✅ Done! h = f ★ g = [${h.join(', ')}]</span>`,
+            `h = [${h.join(',')}]`,'var(--accent-green)',
+            {f,g,h:[...h],activeN:-1,activeD:-1,term:null,curH:null,done:true});
+    }
+
+    function renderRow(id, arr, activeIdx, cls) {
+        const row=document.getElementById(id);
+        row.innerHTML='';
+        arr.forEach((v,i)=>{
+            const t=document.createElement('div'); t.className='tile';
+            if(i===activeIdx) t.classList.add(cls);
+            t.innerHTML=`${v!==null?v:'?'}<span class="tile-idx">[${i+1}]</span>`;
+            row.appendChild(t);
+        });
+    }
+
+    function renderStep(idx) {
+        const s=steps[idx];
+        if(!s) return;
+        renderRow('f-row', s.f, s.activeD, 'f-active');
+        renderRow('g-row', s.g, s.activeD, 'g-active');
+        renderRow('h-row', s.h, s.activeN, 'h-active');
+        document.getElementById('cur-n').textContent = s.activeN>=0 ? s.activeN+1 : '—';
+        document.getElementById('cur-d').textContent = s.activeD>=0 ? s.activeD+1 : '—';
+        document.getElementById('cur-term').textContent = s.term!==null ? s.term : '—';
+        document.getElementById('cur-h').textContent = s.curH!==null ? s.curH : '—';
+        document.getElementById('main-panel').innerHTML=s.panel;
+        const log=document.getElementById('log');
+        log.innerHTML='';
+        for(let i=0;i<=idx;i++){
+            if(!steps[i].log) continue;
+            const line=document.createElement('div');
+            line.style.color=steps[i].logColor||'var(--text-main)';
+            line.textContent=steps[i].log;
+            log.appendChild(line);
+        }
+        log.scrollTop=log.scrollHeight;
+    }
+
+    function next(){if(stepIdx<steps.length-1){stepIdx++;renderStep(stepIdx);}else pause();}
+    function back(){if(stepIdx>0){stepIdx--;renderStep(stepIdx);}}
+    function reset(){pause();stepIdx=0;renderStep(0);}
+    function togglePlay(){
+        const btn=document.getElementById('play-btn');
+        if(timer) pause();
+        else{btn.textContent='⏸ Pause';if(stepIdx>=steps.length-1)stepIdx=0;
+            timer=setInterval(next,delays[parseInt(document.getElementById('speed-slider').value)]);}
+    }
+    function pause(){clearInterval(timer);timer=null;document.getElementById('play-btn').textContent='▶ Play';}
+    function parseArr(s){return s.split(',').map(v=>parseInt(v.trim())).filter(v=>!isNaN(v));}
+    function loadCustom(){
+        const f=parseArr(document.getElementById('inp-f').value);
+        const g=parseArr(document.getElementById('inp-g').value);
+        if(!f.length||!g.length){alert('Enter valid comma-separated integers');return;}
+        const n=Math.min(f.length,g.length);
+        generateSteps(f.slice(0,n),g.slice(0,n));reset();
+    }
+    function loadExample(i){
+        const ex=[
+            ['1,1,1,1,1,1','1,2,3,4,5,6'],
+            ['1,-1,0,0,1,-1','1,2,3,4,5,6']
+        ][i];
+        document.getElementById('inp-f').value=ex[0];
+        document.getElementById('inp-g').value=ex[1];
+        loadCustom();
+    }
+    window.onload=()=>loadExample(0);
+</script>
+</body>
+</html>

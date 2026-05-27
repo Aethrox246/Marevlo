@@ -1,0 +1,1577 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Module 5.3 (Part 2) — Sigmoid &amp; Decision Boundaries | Quantum Neural Analytics OS</title>
+<style>
+:root {
+  --bg-deep: #03040a;
+  --bg-navy: #060818;
+  --bg-panel: rgba(10, 15, 35, 0.55);
+  --neon-cyan: #00f0ff;
+  --neon-purple: #b14dff;
+  --neon-magenta: #ff2bd6;
+  --neon-amber: #ffb547;
+  --neon-green: #00ffaa;
+  --neon-red: #ff4d6d;
+  --text-primary: #e6f4ff;
+  --text-soft: #d8e6ff;
+  --text-dim: #7a8bbf;
+  --border-glow: rgba(0, 240, 255, 0.25);
+  --glass-blur: blur(18px);
+  --mono: 'JetBrains Mono', 'Fira Code', 'Consolas', monospace;
+}
+* { margin: 0; padding: 0; box-sizing: border-box; }
+html { scroll-behavior: smooth; }
+body {
+  background: var(--bg-deep);
+  color: var(--text-soft);
+  font-family: 'Inter', 'Segoe UI', system-ui, sans-serif;
+  overflow-x: hidden;
+  line-height: 1.65;
+  min-height: 100vh;
+  position: relative;
+}
+body::before {
+  content: '';
+  position: fixed; inset: 0;
+  background-image:
+    linear-gradient(rgba(0, 240, 255, 0.04) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(0, 240, 255, 0.04) 1px, transparent 1px);
+  background-size: 60px 60px;
+  pointer-events: none; z-index: 0;
+  animation: gridShift 30s linear infinite;
+}
+body::after {
+  content: '';
+  position: fixed; inset: 0;
+  background:
+    radial-gradient(circle at 18% 22%, rgba(0, 240, 255, 0.12), transparent 42%),
+    radial-gradient(circle at 82% 65%, rgba(177, 77, 255, 0.13), transparent 45%),
+    radial-gradient(circle at 50% 95%, rgba(255, 43, 214, 0.08), transparent 40%);
+  pointer-events: none; z-index: 0;
+}
+@keyframes gridShift { 0% { background-position: 0 0,0 0; } 100% { background-position: 60px 60px,60px 60px; } }
+#particle-canvas { position: fixed; inset: 0; z-index: 1; pointer-events: none; }
+.container { position: relative; z-index: 10; max-width: 1280px; margin: 0 auto; padding: 32px 24px 120px; }
+.hud { display: flex; justify-content: space-between; align-items: center; padding: 14px 22px; background: var(--bg-panel); backdrop-filter: var(--glass-blur); border: 1px solid var(--border-glow); border-radius: 14px; font-family: var(--mono); font-size: 11px; letter-spacing: 1.8px; margin-bottom: 50px; box-shadow: 0 0 30px rgba(0,240,255,0.1); flex-wrap: wrap; gap: 10px; }
+.hud-left { color: var(--neon-cyan); }
+.hud-center { color: var(--text-soft); }
+.hud-right { color: var(--neon-purple); display: flex; align-items: center; gap: 8px; }
+.hud-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--neon-cyan); box-shadow: 0 0 12px var(--neon-cyan); animation: pulse 1.6s ease-in-out infinite; }
+@keyframes pulse { 0%,100% { opacity: 1; transform: scale(1); } 50% { opacity: 0.4; transform: scale(1.3); } }
+.hero { position: relative; text-align: center; padding: 90px 24px 60px; margin-bottom: 80px; border: 1px solid var(--border-glow); border-radius: 28px; background: linear-gradient(135deg, rgba(10,15,40,0.6), rgba(20,5,40,0.4)); backdrop-filter: var(--glass-blur); overflow: hidden; box-shadow: 0 0 60px rgba(0,240,255,0.1), inset 0 0 80px rgba(177,77,255,0.06); }
+.hero-bg-svg { position: absolute; inset: 0; width: 100%; height: 100%; opacity: 0.45; pointer-events: none; }
+.hero-tag { display: inline-block; font-family: var(--mono); font-size: 11px; letter-spacing: 3px; color: var(--neon-cyan); padding: 6px 18px; border: 1px solid var(--neon-cyan); border-radius: 999px; margin-bottom: 26px; background: rgba(0,240,255,0.05); box-shadow: 0 0 20px rgba(0,240,255,0.2); position: relative; z-index: 2; }
+.hero h1 { font-family: 'Inter','Segoe UI',system-ui,sans-serif; font-size: clamp(2.2rem, 5.5vw, 4.4rem); font-weight: 900; line-height: 1.05; letter-spacing: -2px; background: linear-gradient(135deg, #ffffff 0%, var(--neon-cyan) 40%, var(--neon-purple) 80%, var(--neon-magenta) 100%); background-size: 200% 200%; -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent; animation: gradientShift 8s ease infinite; margin: 0 auto 18px; text-shadow: 0 0 80px rgba(177,77,255,0.2); text-align: center; position: relative; z-index: 2; }
+@keyframes gradientShift { 0%,100% { background-position: 0% 50%; } 50% { background-position: 100% 50%; } }
+.hero .subtitle { font-size: 1.15rem; color: var(--text-soft); max-width: 800px; margin: 0 auto 26px; position: relative; z-index: 2; }
+.hero .overview { font-size: 0.95rem; color: var(--text-dim); max-width: 860px; margin: 0 auto 30px; position: relative; z-index: 2; font-style: italic; }
+.hero-meta { display: flex; justify-content: center; flex-wrap: wrap; gap: 12px; position: relative; z-index: 2; margin-top: 20px; }
+.meta-chip { display: inline-flex; align-items: center; gap: 10px; padding: 10px 18px; background: rgba(10,15,35,0.6); border: 1px solid var(--border-glow); border-radius: 10px; font-family: var(--mono); font-size: 11px; letter-spacing: 1.5px; transition: all 0.3s; }
+.meta-chip:hover { border-color: var(--neon-cyan); box-shadow: 0 0 18px rgba(0,240,255,0.2); transform: translateY(-2px); }
+.meta-chip .label { color: var(--text-dim); }
+.meta-chip .value { color: var(--neon-cyan); font-weight: 700; }
+.section { margin-bottom: 90px; position: relative; }
+.section-header { display: flex; align-items: center; gap: 18px; margin-bottom: 36px; }
+.section-num { font-family: var(--mono); font-size: 13px; color: var(--neon-cyan); padding: 8px 14px; border: 1px solid var(--neon-cyan); border-radius: 8px; background: rgba(0,240,255,0.06); letter-spacing: 2px; white-space: nowrap; }
+.section-title { font-size: clamp(1.5rem, 3vw, 2.1rem); font-weight: 700; background: linear-gradient(90deg, #fff, var(--neon-cyan)); -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent; }
+.section-line { flex: 1; height: 1px; background: linear-gradient(90deg, var(--neon-cyan), transparent); margin-left: 8px; }
+.sub-section-marker { font-family: var(--mono); font-size: 11px; color: var(--neon-purple); letter-spacing: 3px; margin-bottom: 14px; padding: 6px 12px; display: inline-block; border: 1px solid var(--neon-purple); border-radius: 6px; background: rgba(177,77,255,0.05); }
+.concept-block { background: var(--bg-panel); backdrop-filter: var(--glass-blur); border: 1px solid var(--border-glow); border-radius: 20px; padding: 32px; margin-bottom: 24px; position: relative; overflow: hidden; }
+.concept-block::after { content: ''; position: absolute; bottom: -50%; right: -10%; width: 320px; height: 320px; background: radial-gradient(circle, rgba(0,240,255,0.08), transparent 70%); pointer-events: none; }
+.concept-block h3 { font-size: 1.35rem; color: var(--neon-cyan); margin-bottom: 14px; display: flex; align-items: center; gap: 12px; }
+.concept-block h3::before { content: '◆'; color: var(--neon-purple); font-size: 1rem; }
+.concept-block h4 { font-size: 1.05rem; color: var(--neon-magenta); margin-top: 18px; margin-bottom: 10px; }
+.concept-block p { color: var(--text-soft); margin-bottom: 14px; font-size: 1rem; }
+.concept-block strong { color: #fff; }
+.concept-block em { color: var(--neon-magenta); font-style: normal; }
+.concept-block ul { list-style: none; padding-left: 0; }
+.concept-block ul li { padding: 6px 0 6px 22px; position: relative; color: var(--text-soft); }
+.concept-block ul li::before { content: '▸'; position: absolute; left: 0; color: var(--neon-cyan); }
+.highlight-box { background: linear-gradient(135deg, rgba(0,240,255,0.07), rgba(177,77,255,0.06)); border-left: 3px solid var(--neon-cyan); padding: 16px 22px; border-radius: 10px; margin: 18px 0; font-size: 0.95rem; }
+.success-box { background: linear-gradient(135deg, rgba(0,255,170,0.06), rgba(0,240,255,0.05)); border-left: 3px solid var(--neon-green); padding: 16px 22px; border-radius: 10px; margin: 18px 0; font-size: 0.95rem; }
+.warning-box { background: linear-gradient(135deg, rgba(255,77,109,0.08), rgba(255,181,71,0.06)); border-left: 3px solid var(--neon-red); padding: 16px 22px; border-radius: 10px; margin: 18px 0; font-size: 0.95rem; }
+.warning-box strong { color: var(--neon-red); }
+.viz-wrap { background: var(--bg-panel); backdrop-filter: var(--glass-blur); border: 1px solid var(--border-glow); border-radius: 22px; padding: 30px; margin-bottom: 28px; position: relative; }
+.viz-title { font-size: 1.15rem; color: var(--neon-cyan); margin-bottom: 8px; font-family: var(--mono); letter-spacing: 1px; }
+.viz-desc { font-size: 0.92rem; color: var(--text-soft); margin-bottom: 22px; }
+.viz-canvas { width: 100%; background: rgba(0,0,0,0.35); border-radius: 12px; border: 1px solid rgba(0,240,255,0.2); display: block; }
+input[type="range"] { width: 100%; -webkit-appearance: none; appearance: none; background: transparent; height: 24px; }
+input[type="range"]::-webkit-slider-runnable-track { height: 4px; background: linear-gradient(90deg, var(--neon-cyan), var(--neon-purple)); border-radius: 4px; }
+input[type="range"]::-moz-range-track { height: 4px; background: linear-gradient(90deg, var(--neon-cyan), var(--neon-purple)); border-radius: 4px; }
+input[type="range"]::-webkit-slider-thumb { -webkit-appearance: none; appearance: none; width: 18px; height: 18px; border-radius: 50%; background: #fff; margin-top: -7px; cursor: pointer; box-shadow: 0 0 12px rgba(0,240,255,0.8); }
+input[type="range"]::-moz-range-thumb { width: 18px; height: 18px; border-radius: 50%; background: #fff; border: 0; cursor: pointer; box-shadow: 0 0 12px rgba(0,240,255,0.8); }
+.slider-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 20px; margin-bottom: 18px; }
+.slider-cell { background: rgba(0,0,0,0.25); border: 1px solid var(--border-glow); border-radius: 12px; padding: 16px; }
+.slider-label { display: flex; justify-content: space-between; font-family: var(--mono); font-size: 11px; letter-spacing: 1.5px; color: var(--text-dim); margin-bottom: 10px; }
+.slider-label span:last-child { color: var(--neon-cyan); font-size: 14px; font-weight: 700; }
+.stat-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px; margin-top: 14px; }
+.stat-box { background: rgba(0,240,255,0.05); border: 1px solid var(--border-glow); border-radius: 10px; padding: 14px; text-align: center; }
+.stat-label { font-family: var(--mono); font-size: 10px; color: var(--text-dim); letter-spacing: 1.5px; margin-bottom: 6px; }
+.stat-value { font-size: 1.4rem; font-weight: 700; color: var(--neon-cyan); font-family: var(--mono); }
+.stat-value.purple { color: var(--neon-purple); }
+.stat-value.magenta { color: var(--neon-magenta); }
+.stat-value.amber { color: var(--neon-amber); }
+.stat-value.green { color: var(--neon-green); }
+.stat-value.red { color: var(--neon-red); }
+.btn-row { display: flex; flex-wrap: wrap; gap: 12px; margin-bottom: 20px; }
+.btn { background: rgba(0,240,255,0.06); border: 1px solid var(--border-glow); color: var(--neon-cyan); padding: 10px 20px; border-radius: 10px; font-family: var(--mono); font-size: 12px; letter-spacing: 1.5px; cursor: pointer; transition: all 0.25s; }
+.btn:hover { background: rgba(0,240,255,0.15); box-shadow: 0 0 22px rgba(0,240,255,0.3); transform: translateY(-2px); }
+.btn.purple { border-color: rgba(177,77,255,0.4); color: var(--neon-purple); }
+.btn.purple:hover { background: rgba(177,77,255,0.15); box-shadow: 0 0 22px rgba(177,77,255,0.3); }
+.btn.magenta { border-color: rgba(255,43,214,0.4); color: var(--neon-magenta); }
+.btn.magenta:hover { background: rgba(255,43,214,0.15); box-shadow: 0 0 22px rgba(255,43,214,0.3); }
+.btn.green { border-color: rgba(0,255,170,0.4); color: var(--neon-green); }
+.btn.green:hover { background: rgba(0,255,170,0.15); box-shadow: 0 0 22px rgba(0,255,170,0.3); }
+.btn.amber { border-color: rgba(255,181,71,0.4); color: var(--neon-amber); }
+.btn.amber:hover { background: rgba(255,181,71,0.15); box-shadow: 0 0 22px rgba(255,181,71,0.3); }
+.btn.active { background: linear-gradient(135deg, rgba(0,240,255,0.3), rgba(177,77,255,0.2)); border-color: var(--neon-cyan); color: #fff; box-shadow: 0 0 18px rgba(0,240,255,0.4); }
+.formula-card { background: linear-gradient(135deg, rgba(10,15,40,0.85), rgba(30,10,50,0.75)); border: 1px solid var(--border-glow); border-radius: 16px; padding: 28px; margin-bottom: 22px; position: relative; overflow: hidden; }
+.formula-card::before { content: ''; position: absolute; top: 0; left: 0; width: 4px; height: 100%; background: linear-gradient(180deg, var(--neon-cyan), var(--neon-purple), var(--neon-magenta)); }
+.formula-label { font-family: var(--mono); font-size: 11px; color: var(--neon-cyan); letter-spacing: 2px; margin-bottom: 14px; }
+.formula { font-family: var(--mono); font-size: 1.18rem; color: #fff; text-align: center; padding: 18px 12px; background: rgba(0,0,0,0.35); border-radius: 10px; margin: 14px 0; letter-spacing: 1px; overflow-x: auto; }
+.formula-explain { color: var(--text-soft); font-size: 0.95rem; margin-top: 12px; }
+.var-list { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 10px; margin-top: 14px; }
+.var-item { background: rgba(0,0,0,0.3); border: 1px solid rgba(0,240,255,0.15); border-radius: 8px; padding: 10px 14px; font-size: 0.88rem; }
+.var-item code { font-family: var(--mono); color: var(--neon-cyan); font-weight: 700; }
+.dual-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 18px; margin-top: 16px; }
+.dual-cell { background: rgba(0,0,0,0.25); border: 1px solid var(--border-glow); border-radius: 12px; padding: 20px; }
+.dual-cell h4 { font-family: var(--mono); font-size: 12px; color: var(--neon-cyan); letter-spacing: 2px; margin-bottom: 12px; }
+.dual-cell.purple h4 { color: var(--neon-purple); }
+.dual-cell.magenta h4 { color: var(--neon-magenta); }
+.dual-cell.green h4 { color: var(--neon-green); }
+.dual-cell.amber h4 { color: var(--neon-amber); }
+.dual-cell ul { list-style: none; padding-left: 0; }
+.dual-cell li { padding: 6px 0 6px 18px; color: var(--text-soft); font-size: 0.92rem; border-bottom: 1px dashed rgba(0,240,255,0.08); position: relative; }
+.dual-cell li:last-child { border-bottom: 0; }
+.dual-cell li::before { content: '▸'; position: absolute; left: 0; color: var(--neon-cyan); }
+.deep-dive { background: linear-gradient(135deg, rgba(10,15,35,0.7), rgba(20,5,40,0.55)); border: 1px solid var(--border-glow); border-radius: 18px; padding: 26px; margin: 18px 0; }
+.deep-dive .dd-label { font-family: var(--mono); font-size: 11px; color: var(--neon-magenta); letter-spacing: 2px; margin-bottom: 10px; padding: 4px 10px; display: inline-block; border: 1px solid var(--neon-magenta); border-radius: 6px; background: rgba(255,43,214,0.05); }
+.deep-dive h4 { font-size: 1.1rem; color: #fff; margin-bottom: 10px; }
+.deep-dive p { color: var(--text-soft); font-size: 0.95rem; margin-bottom: 12px; }
+.deep-dive ul { list-style: none; padding-left: 0; }
+.deep-dive li { padding: 5px 0 5px 20px; color: var(--text-soft); font-size: 0.95rem; position: relative; }
+.deep-dive li::before { content: '▸'; position: absolute; left: 0; color: var(--neon-magenta); }
+.part-nav { display: flex; justify-content: space-between; flex-wrap: wrap; gap: 14px; margin-top: 50px; padding: 22px; background: var(--bg-panel); backdrop-filter: var(--glass-blur); border: 1px solid var(--border-glow); border-radius: 16px; }
+.part-nav-item { flex: 1; min-width: 200px; padding: 14px 18px; background: rgba(0,240,255,0.04); border: 1px solid rgba(0,240,255,0.15); border-radius: 10px; }
+.part-nav-item.current { background: linear-gradient(135deg, rgba(0,240,255,0.15), rgba(177,77,255,0.12)); border-color: var(--neon-cyan); box-shadow: 0 0 18px rgba(0,240,255,0.2); }
+.part-nav-item.done { background: rgba(0,255,170,0.04); border-color: rgba(0,255,170,0.3); }
+.part-nav-label { font-family: var(--mono); font-size: 10px; letter-spacing: 2px; color: var(--text-dim); margin-bottom: 6px; }
+.part-nav-item.current .part-nav-label { color: var(--neon-cyan); }
+.part-nav-item.done .part-nav-label { color: var(--neon-green); }
+.part-nav-title { font-size: 0.92rem; color: #fff; font-weight: 600; }
+.quiz-card { background: var(--bg-panel); backdrop-filter: var(--glass-blur); border: 1px solid var(--border-glow); border-radius: 18px; padding: 28px; margin-bottom: 22px; }
+.quiz-q { font-size: 1.05rem; color: #fff; margin-bottom: 18px; font-weight: 500; }
+.quiz-q .qnum { font-family: var(--mono); color: var(--neon-cyan); margin-right: 10px; }
+.quiz-q .qlevel { font-family: var(--mono); font-size: 10px; letter-spacing: 1.5px; padding: 3px 10px; border-radius: 5px; margin-left: 8px; font-weight: 700; }
+.quiz-q .qfrom { font-family: var(--mono); font-size: 9.5px; letter-spacing: 1.5px; padding: 3px 9px; border-radius: 5px; margin-left: 8px; font-weight: 700; background: rgba(177,77,255,0.1); color: var(--neon-purple); border: 1px solid rgba(177,77,255,0.4); }
+.qlevel.easy { background: rgba(0,255,170,0.12); color: var(--neon-green); border: 1px solid rgba(0,255,170,0.4); }
+.qlevel.mod { background: rgba(255,181,71,0.12); color: var(--neon-amber); border: 1px solid rgba(255,181,71,0.4); }
+.qlevel.hard { background: rgba(255,77,109,0.12); color: var(--neon-red); border: 1px solid rgba(255,77,109,0.4); }
+.quiz-options { display: grid; gap: 10px; }
+.quiz-opt { padding: 14px 18px; background: rgba(0,240,255,0.04); border: 1px solid var(--border-glow); border-radius: 10px; cursor: pointer; color: var(--text-soft); transition: all 0.25s; font-size: 0.95rem; }
+.quiz-opt:hover { background: rgba(0,240,255,0.12); border-color: var(--neon-cyan); color: #fff; transform: translateX(4px); }
+.quiz-opt.correct { background: rgba(0,255,170,0.15); border-color: var(--neon-green); color: var(--neon-green); box-shadow: 0 0 18px rgba(0,255,170,0.3); }
+.quiz-opt.wrong { background: rgba(255,77,109,0.15); border-color: var(--neon-red); color: var(--neon-red); }
+.quiz-feedback { margin-top: 14px; padding: 12px 16px; border-radius: 10px; font-size: 0.9rem; display: none; }
+.quiz-feedback.show { display: block; }
+.quiz-feedback.ok { background: rgba(0,255,170,0.08); border: 1px solid rgba(0,255,170,0.4); color: var(--neon-green); }
+.quiz-feedback.no { background: rgba(255,77,109,0.08); border: 1px solid rgba(255,77,109,0.4); color: #ff7e9d; }
+.ai-panel { position: relative; background: linear-gradient(135deg, rgba(0,240,255,0.06), rgba(177,77,255,0.06)); border: 1px solid var(--border-glow); border-radius: 24px; padding: 38px 30px; backdrop-filter: var(--glass-blur); overflow: hidden; }
+.ai-head { display: flex; align-items: center; gap: 16px; margin-bottom: 26px; }
+.ai-avatar { width: 54px; height: 54px; border-radius: 50%; background: linear-gradient(135deg, var(--neon-cyan), var(--neon-purple)); display: flex; align-items: center; justify-content: center; font-family: var(--mono); font-weight: 800; color: var(--bg-deep); font-size: 18px; box-shadow: 0 0 24px rgba(0,240,255,0.5); animation: aiPulse 2.4s ease-in-out infinite; }
+@keyframes aiPulse { 0%,100% { box-shadow: 0 0 24px rgba(0,240,255,0.5); } 50% { box-shadow: 0 0 40px rgba(177,77,255,0.6); } }
+.ai-meta .ai-name { font-size: 1.05rem; color: #fff; font-weight: 600; }
+.ai-meta .ai-role { font-family: var(--mono); font-size: 11px; color: var(--neon-cyan); letter-spacing: 2px; }
+.takeaway { display: flex; gap: 14px; align-items: flex-start; padding: 14px 0; border-bottom: 1px dashed rgba(0,240,255,0.15); }
+.takeaway:last-child { border-bottom: 0; }
+.takeaway-num { font-family: var(--mono); font-size: 13px; color: var(--neon-cyan); background: rgba(0,240,255,0.08); border: 1px solid var(--border-glow); padding: 4px 10px; border-radius: 6px; flex-shrink: 0; font-weight: 600; }
+.takeaway-text { color: var(--text-soft); font-size: 0.95rem; }
+.takeaway-text strong { color: #fff; }
+.module-footer { margin-top: 60px; padding: 26px; text-align: center; font-family: var(--mono); font-size: 11px; color: var(--text-dim); letter-spacing: 2px; border-top: 1px solid var(--border-glow); }
+.real-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 18px; margin-top: 14px; }
+.real-card { background: rgba(10,15,35,0.6); border: 1px solid var(--border-glow); border-radius: 14px; padding: 20px; transition: all 0.3s; }
+.real-card:hover { transform: translateY(-4px); border-color: var(--neon-purple); box-shadow: 0 8px 24px rgba(177,77,255,0.2); }
+.real-card h4 { color: var(--neon-magenta); margin-bottom: 8px; font-size: 1rem; }
+.real-card p { color: var(--text-soft); font-size: 0.9rem; }
+.step-list { counter-reset: stepc; list-style: none; padding: 0; margin-top: 14px; }
+.step-list li { counter-increment: stepc; position: relative; padding: 14px 16px 14px 60px; background: rgba(0,0,0,0.28); border: 1px solid var(--border-glow); border-radius: 10px; margin-bottom: 10px; color: var(--text-soft); font-size: 0.95rem; }
+.step-list li::before { content: counter(stepc, decimal-leading-zero); position: absolute; left: 14px; top: 14px; font-family: var(--mono); font-size: 12px; color: var(--neon-cyan); background: rgba(0,240,255,0.08); border: 1px solid var(--neon-cyan); padding: 4px 8px; border-radius: 6px; font-weight: 700; }
+.step-list li strong { color: #fff; }
+.calc-table { width: 100%; border-collapse: collapse; margin-top: 14px; font-family: var(--mono); font-size: 0.88rem; }
+.calc-table th, .calc-table td { padding: 10px 12px; border: 1px solid rgba(0,240,255,0.15); text-align: center; color: var(--text-soft); }
+.calc-table th { background: rgba(0,240,255,0.08); color: var(--neon-cyan); font-weight: 700; letter-spacing: 1px; font-size: 0.78rem; }
+.calc-table tr.total { background: rgba(177,77,255,0.08); }
+.calc-table tr.total td { color: var(--neon-purple); font-weight: 700; }
+.written-eval { background: linear-gradient(135deg, rgba(255,43,214,0.06), rgba(177,77,255,0.06)); border: 1px solid rgba(255,43,214,0.35); border-radius: 22px; padding: 32px; margin-bottom: 24px; }
+.we-label { font-family: var(--mono); font-size: 11px; color: var(--neon-magenta); letter-spacing: 3px; margin-bottom: 14px; padding: 6px 12px; display: inline-block; border: 1px solid var(--neon-magenta); border-radius: 6px; background: rgba(255,43,214,0.05); }
+.write-q { margin: 22px 0; }
+.write-q .qhead { display: flex; align-items: baseline; gap: 10px; margin-bottom: 10px; flex-wrap: wrap; }
+.write-q .qhead .qnum { font-family: var(--mono); color: var(--neon-magenta); font-weight: 700; font-size: 0.95rem; }
+.write-q .qhead .qfrom { font-family: var(--mono); font-size: 9.5px; letter-spacing: 1.5px; padding: 3px 9px; border-radius: 5px; font-weight: 700; background: rgba(0,240,255,0.1); color: var(--neon-cyan); border: 1px solid rgba(0,240,255,0.4); }
+textarea.ans-area { width: 100%; min-height: 130px; background: rgba(0,0,0,0.38); border: 1px solid rgba(255,43,214,0.3); border-radius: 10px; padding: 14px; color: var(--text-soft); font-family: 'Inter','Segoe UI',system-ui,sans-serif; font-size: 0.95rem; line-height: 1.6; resize: vertical; outline: none; transition: all 0.25s; }
+textarea.ans-area:focus { border-color: var(--neon-magenta); box-shadow: 0 0 18px rgba(255,43,214,0.25); }
+.eval-out { display: none; margin-top: 20px; padding: 20px; background: rgba(0,0,0,0.4); border-radius: 14px; border: 1px solid var(--border-glow); }
+.eval-out.show { display: block; }
+.eval-out h4 { color: var(--neon-cyan); font-family: var(--mono); font-size: 12px; letter-spacing: 2px; margin-bottom: 14px; }
+.eval-q-result { margin: 18px 0; padding: 16px; background: rgba(10,15,40,0.6); border: 1px solid var(--border-glow); border-radius: 10px; }
+.eval-q-result .qhead2 { display: flex; justify-content: space-between; flex-wrap: wrap; gap: 8px; margin-bottom: 10px; align-items: baseline; }
+.eval-q-result .qhead2 strong { color: #fff; font-size: 0.95rem; }
+.eval-q-result .grade { font-family: var(--mono); font-size: 11px; letter-spacing: 1.5px; padding: 4px 10px; border-radius: 5px; font-weight: 700; }
+.eval-q-result .grade.high { background: rgba(0,255,170,0.12); color: var(--neon-green); border: 1px solid rgba(0,255,170,0.4); }
+.eval-q-result .grade.mid { background: rgba(255,181,71,0.12); color: var(--neon-amber); border: 1px solid rgba(255,181,71,0.4); }
+.eval-q-result .grade.low { background: rgba(255,77,109,0.12); color: var(--neon-red); border: 1px solid rgba(255,77,109,0.4); }
+.score-pill-row { display: flex; gap: 8px; flex-wrap: wrap; margin: 10px 0 14px; }
+.score-pill { background: rgba(0,0,0,0.4); padding: 6px 12px; border-radius: 20px; font-family: var(--mono); font-size: 10.5px; letter-spacing: 1.2px; border: 1px solid var(--border-glow); color: var(--text-soft); }
+.cov-list { font-size: 0.9rem; line-height: 1.7; color: var(--text-soft); margin: 8px 0; }
+.cov-list .covered { color: var(--neon-green); }
+.cov-list .missing { color: var(--neon-amber); }
+.cov-list strong { color: #fff; }
+.eval-q-result details { margin-top: 10px; }
+.eval-q-result summary { cursor: pointer; color: var(--neon-cyan); font-family: var(--mono); font-size: 11px; letter-spacing: 1.5px; font-weight: 700; padding: 6px 0; }
+.eval-q-result summary:hover { color: var(--neon-magenta); }
+.model-ans { margin-top: 10px; padding: 12px 14px; background: rgba(0,240,255,0.04); border-left: 2px solid var(--neon-cyan); border-radius: 0 8px 8px 0; font-size: 0.92rem; color: var(--text-soft); line-height: 1.65; }
+.overall-msg { margin-top: 22px; padding: 16px 18px; background: linear-gradient(135deg, rgba(0,240,255,0.05), rgba(177,77,255,0.05)); border-left: 3px solid var(--neon-cyan); border-radius: 0 10px 10px 0; font-size: 0.95rem; color: var(--text-soft); line-height: 1.65; }
+.overall-msg strong { color: #fff; }
+@media (max-width: 720px) {
+  .container { padding: 20px 14px 80px; }
+  .hero { padding: 60px 18px 50px; }
+  .section { margin-bottom: 60px; }
+  .concept-block, .viz-wrap, .ai-panel, .quiz-card, .written-eval { padding: 22px 18px; }
+  .formula { font-size: 0.92rem; padding: 14px 8px; }
+  .calc-table { font-size: 0.78rem; }
+  .calc-table th, .calc-table td { padding: 6px 4px; }
+}
+
+  /* ─ SCROLL REVEAL ─ */
+  .reveal {
+    opacity: 0;
+    transform: translateY(30px);
+    transition: all 0.8s cubic-bezier(0.16, 1, 0.3, 1);
+  }
+  .reveal.visible { opacity: 1; transform: translateY(0); }
+
+  /* ─ GRID DRIFT ─ */
+  @keyframes gridDrift {
+    0%   { background-position: 0 0, 0 0; }
+    100% { background-position: 60px 60px, 60px 60px; }
+  }
+
+  /* ─ SLIDE IN (quiz feedback) ─ */
+  @keyframes slideIn {
+    from { opacity: 0; transform: translateY(8px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+  .quiz-feedback.show { animation: slideIn 0.4s; }
+
+  /* ─ AI PANEL ROTATE ─ */
+  @keyframes rotate { to { transform: rotate(360deg); } }
+  .ai-panel { overflow: hidden; }
+  .ai-panel::before {
+    content: ''; position: absolute; top: -50%; left: -50%;
+    width: 200%; height: 200%;
+    background: conic-gradient(from 0deg, transparent, rgba(0,240,255,0.05), transparent, rgba(177,77,255,0.05), transparent);
+    animation: rotate 20s linear infinite;
+    pointer-events: none; z-index: 0;
+  }
+  .ai-panel > * { position: relative; z-index: 1; }
+
+  /* ─ SCANLINES ─ */
+  .scanlines {
+    position: fixed; inset: 0;
+    background: repeating-linear-gradient(0deg,
+      rgba(0,240,255,0.012) 0px, rgba(0,240,255,0.012) 1px,
+      transparent 1px, transparent 4px);
+    pointer-events: none; z-index: 999; mix-blend-mode: screen;
+  }
+</style>
+</head>
+<body>
+<div class="scanlines"></div>
+
+<canvas id="particle-canvas"></canvas>
+
+<div class="container">
+
+  <div class="hud">
+    <div class="hud-left">⟁ QNA-OS v4.7 // Module 5.3 — Part 2</div>
+    <div class="hud-center">Sigmoid Function · Decision Boundaries</div>
+    <div class="hud-right"><span class="hud-dot"></span>Boundary Engine Online</div>
+  </div>
+
+  <section class="hero">
+    <svg class="hero-bg-svg" viewBox="0 0 1200 400" preserveAspectRatio="none">
+      <defs>
+        <linearGradient id="sigGrad" x1="0" y1="0" x2="1" y2="0">
+          <stop offset="0%" stop-color="#00f0ff" stop-opacity="0.85"/>
+          <stop offset="50%" stop-color="#b14dff" stop-opacity="0.85"/>
+          <stop offset="100%" stop-color="#ff2bd6" stop-opacity="0.85"/>
+        </linearGradient>
+      </defs>
+      <g transform="translate(100,60)">
+        <path d="M 0 0 L 0 280 L 240 280 L 460 0 Z" fill="rgba(0,240,255,0.07)"/>
+        <path d="M 240 280 L 460 0 L 460 280 Z" fill="rgba(255,43,214,0.07)"/>
+        <g fill="#00f0ff" opacity="0.85">
+          <circle cx="40" cy="240" r="4"/>
+          <circle cx="80" cy="200" r="4"/>
+          <circle cx="120" cy="180" r="4"/>
+          <circle cx="60" cy="160" r="4"/>
+          <circle cx="160" cy="220" r="4"/>
+          <circle cx="100" cy="240" r="4"/>
+          <circle cx="180" cy="160" r="4"/>
+          <circle cx="200" cy="190" r="4"/>
+        </g>
+        <g fill="#ff2bd6" opacity="0.85">
+          <circle cx="320" cy="60" r="4"/>
+          <circle cx="360" cy="100" r="4"/>
+          <circle cx="400" cy="60" r="4"/>
+          <circle cx="380" cy="40" r="4"/>
+          <circle cx="430" cy="120" r="4"/>
+          <circle cx="340" cy="40" r="4"/>
+          <circle cx="290" cy="80" r="4"/>
+          <circle cx="410" cy="160" r="4"/>
+        </g>
+        <line x1="240" y1="280" x2="460" y2="0" stroke="url(#sigGrad)" stroke-width="3" opacity="0.95"/>
+        <text x="280" y="100" fill="#b14dff" font-family="JetBrains Mono" font-size="13" font-weight="700">Decision Boundary</text>
+        <text x="280" y="120" fill="#7a8bbf" font-family="JetBrains Mono" font-size="10">P(y=1) = 0.5</text>
+        <line x1="0" y1="280" x2="460" y2="280" stroke="#7a8bbf" opacity="0.5"/>
+        <line x1="0" y1="0" x2="0" y2="280" stroke="#7a8bbf" opacity="0.5"/>
+        <text x="230" y="305" fill="#7a8bbf" font-family="JetBrains Mono" font-size="11" text-anchor="middle">Predictor x₁</text>
+        <text x="-50" y="140" fill="#7a8bbf" font-family="JetBrains Mono" font-size="11" text-anchor="middle" transform="rotate(-90 -50 140)">Predictor x₂</text>
+      </g>
+      <g transform="translate(720,80)">
+        <path d="M 10 220 C 80 220, 110 30, 240 30" stroke="url(#sigGrad)" stroke-width="3" fill="none"/>
+        <line x1="0" y1="125" x2="250" y2="125" stroke="#ffb547" stroke-width="1.5" stroke-dasharray="4,3" opacity="0.6"/>
+        <text x="260" y="129" fill="#ffb547" font-family="JetBrains Mono" font-size="10">0.5</text>
+        <text x="125" y="0" fill="#00f0ff" font-family="JetBrains Mono" font-size="13" text-anchor="middle" font-weight="700">Sigmoid  σ(z)</text>
+        <text x="125" y="248" fill="#7a8bbf" font-family="JetBrains Mono" font-size="10" text-anchor="middle">Log-Odds  z</text>
+      </g>
+      <rect x="290" y="365" width="620" height="30" rx="8" fill="rgba(10,15,40,0.6)" stroke="#00f0ff" stroke-opacity="0.5"/>
+      <text x="600" y="385" fill="#fff" font-family="JetBrains Mono" font-size="13" text-anchor="middle" font-weight="700">P(y=1 | x)  =  σ(β₀ + β₁x₁ + β₂x₂)  =  1 / (1 + e^−z)</text>
+    </svg>
+    <div class="hero-tag">◉ Module 5.3 — Part 2 of 2</div>
+    <h1>Sigmoid Function &amp; Decision Boundaries</h1>
+    <p class="subtitle">The S-curve that turns log-odds into probabilities, and the line that separates "no" from "yes." With these two ideas, logistic regression becomes a complete classification machine.</p>
+    <p class="overview">Part 2 closes Module 5.3. First, the <strong>sigmoid function</strong> — the famous S-shaped curve that maps any real number to a probability between 0 and 1. It is the bridge between the linear formula on the inside and the probability on the outside of a logistic regression. Second, <strong>decision boundaries</strong> — the line (or curve, or surface) where the classifier flips its verdict from "no" to "yes." We will see why the boundary in logistic regression is always linear in the predictor space, what the threshold does, and how to read a 2D boundary plot. At the end you will take a multiple-choice quiz on both parts of Module 5.3, plus an AI-graded written challenge with 5 open-response questions.</p>
+    <div class="hero-meta">
+      <div class="meta-chip"><span class="label">Duration:</span><span class="value">60 Min</span></div>
+      <div class="meta-chip"><span class="label">Level:</span><span class="value">Intermediate</span></div>
+      <div class="meta-chip"><span class="label">Topics:</span><span class="value">04 / 04</span></div>
+      <div class="meta-chip"><span class="label">Formulas:</span><span class="value">03</span></div>
+      <div class="meta-chip"><span class="label">Practice:</span><span class="value">6 Mcq + 5 Written</span></div>
+      <div class="meta-chip"><span class="label">Prereq:</span><span class="value">M-5.3 Part 1</span></div>
+    </div>
+  </section>
+
+  <div class="part-nav">
+    <div class="part-nav-item done">
+      <div class="part-nav-label">✓ Part 1 —Complete</div>
+      <div class="part-nav-title">Binary Classification · Odds &amp; Log-Odds</div>
+    </div>
+    <div class="part-nav-item current">
+      <div class="part-nav-label">⟁ Part 2 —Now</div>
+      <div class="part-nav-title">Sigmoid · Decision Boundaries</div>
+    </div>
+  </div>
+
+  <section class="section reveal">
+    <div class="section-header">
+      <div class="section-num">⟁ Objectives</div>
+      <h2 class="section-title">What You'll Learn in Part 2</h2>
+      <div class="section-line"></div>
+    </div>
+    <div class="dual-grid">
+      <div class="dual-cell">
+        <h4>📈 Sigmoid Function</h4>
+        <ul>
+          <li>The S-curve mapping log-odds → probability</li>
+          <li>Why it bends and where it's steepest</li>
+          <li>How β₀ shifts and β₁ steepens it</li>
+          <li>Why it appears in every neural network</li>
+        </ul>
+      </div>
+      <div class="dual-cell purple">
+        <h4>🎯 Decision Boundaries</h4>
+        <ul>
+          <li>What a decision boundary is</li>
+          <li>Why logistic regression's boundary is linear</li>
+          <li>What the 0.5 threshold means visually</li>
+          <li>How threshold changes shift the boundary</li>
+        </ul>
+      </div>
+      <div class="dual-cell magenta">
+        <h4>🌍 Where It Lives</h4>
+        <ul>
+          <li>Neural network activation functions</li>
+          <li>Image / text classification</li>
+          <li>Medical diagnostic thresholds</li>
+          <li>Spam / fraud cutoffs</li>
+        </ul>
+      </div>
+      <div class="dual-cell green">
+        <h4>🧮 Practice &amp; Eval</h4>
+        <ul>
+          <li>Shape the sigmoid with sliders</li>
+          <li>Move a 2D decision boundary live</li>
+          <li>6 MCQ + 5 AI-graded written answers</li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <section class="section reveal">
+    <div class="section-header">
+      <div class="section-num">Topic 3</div>
+      <h2 class="section-title">The Sigmoid Function</h2>
+      <div class="section-line"></div>
+    </div>
+
+    <div class="concept-block">
+      <div class="sub-section-marker">What it is</div>
+      <h3>What is the Sigmoid Function?</h3>
+      <p>In Part 1 we converted probabilities into log-odds — a value that can be any real number. That worked beautifully for the model's interior: the log-odds form a clean linear equation.</p>
+      <p>But when the model needs to <strong>output</strong> a prediction, we want a probability back, not a log-odds value. The function that takes any real number and squeezes it into a probability between 0 and 1 is called the <strong>sigmoid function</strong>:</p>
+      <div class="formula">σ(z) = 1 / (1 + e^(−z))</div>
+      <p>It is the exact inverse of the logit. The logit takes p (in [0, 1]) and returns z (anywhere in ℝ). The sigmoid takes z (anywhere in ℝ) and returns p (in [0, 1]). They are two directions of the same translation.</p>
+      <div class="highlight-box">
+        <strong>Simple meaning:</strong> The sigmoid is an S-shaped curve. Feed it a very negative number, you get out a probability near 0. Feed it a very positive number, you get out a probability near 1. Feed it 0, you get exactly 0.5.
+      </div>
+      <h4>Three key values to memorise</h4>
+      <ul>
+        <li><strong>σ(0) = 0.5</strong> — at log-odds = 0, the model is exactly 50/50</li>
+        <li><strong>σ(+∞) → 1</strong> — very confident yes</li>
+        <li><strong>σ(−∞) → 0</strong> — very confident no</li>
+        <li><strong>σ(2) ≈ 0.88, σ(−2) ≈ 0.12</strong> — useful checkpoints either side of zero</li>
+      </ul>
+      <h4>Shape facts</h4>
+      <ul>
+        <li>The curve is symmetric around the point (0, 0.5).</li>
+        <li>It is steepest at z = 0 and flattens at both ends.</li>
+        <li>It is monotonically increasing — bigger z always gives bigger σ(z).</li>
+        <li>It never quite touches 0 or 1, just approaches them.</li>
+      </ul>
+    </div>
+
+    <div class="concept-block">
+      <div class="sub-section-marker">Why we need it</div>
+      <h3>Why the Sigmoid Solves the Classification Problem</h3>
+      <p>Three reasons it's the standard choice:</p>
+      <div class="dual-grid">
+        <div class="dual-cell">
+          <h4>1. Range match</h4>
+          <ul>
+            <li>Linear input z can be any real number</li>
+            <li>Probability output must be in [0, 1]</li>
+            <li>The sigmoid maps ℝ → [0, 1] exactly</li>
+            <li>No predictions out of range</li>
+          </ul>
+        </div>
+        <div class="dual-cell purple">
+          <h4>2. Smooth transitions</h4>
+          <ul>
+            <li>The S-shape changes gradually</li>
+            <li>Near the boundary, a small change in z = noticeable change in probability</li>
+            <li>Far from the boundary, the curve flattens — confidence saturates</li>
+            <li>Natural calibration</li>
+          </ul>
+        </div>
+        <div class="dual-cell magenta">
+          <h4>3. Easy gradient</h4>
+          <ul>
+            <li>Its derivative is σ(z) × (1 − σ(z))</li>
+            <li>Beautiful for training algorithms</li>
+            <li>This is why it became the original neural-network activation</li>
+            <li>Gradient descent works smoothly</li>
+          </ul>
+        </div>
+      </div>
+      <div class="success-box">
+        <strong>Big idea:</strong> The sigmoid is the mathematical "translator." It turns the unbounded linear score (log-odds) into a bounded probability — without losing the rank order of cases. Whoever has the highest log-odds also has the highest probability of being class 1.
+      </div>
+    </div>
+
+    <div class="concept-block">
+      <div class="sub-section-marker">Why it's everywhere</div>
+      <h3>The Sigmoid Outside Logistic Regression</h3>
+      <p>The sigmoid is one of the most reused functions in all of machine learning:</p>
+      <ul>
+        <li><strong>Neural networks (historically):</strong> the sigmoid was the original activation function. Every neuron applied σ(z) to its weighted input. Modern networks often prefer ReLU for hidden layers, but the sigmoid still rules the output of binary classifiers.</li>
+        <li><strong>Population growth models:</strong> bacterial growth, market saturation, and viral spread all follow S-shaped curves that are basically sigmoids.</li>
+        <li><strong>Psychology &amp; psychophysics:</strong> human response to stimulus intensity often follows a sigmoid — sometimes called the "psychometric function."</li>
+        <li><strong>Reinforcement learning:</strong> policies that output a probability of taking an action use sigmoids for binary choices.</li>
+        <li><strong>Recommendation systems:</strong> click-through rates and engagement scores are often produced by sigmoids at the final layer of large models.</li>
+      </ul>
+    </div>
+
+    <div class="concept-block">
+      <div class="sub-section-marker">How the shape responds to β</div>
+      <h3>How β₀ and β₁ Reshape the Sigmoid</h3>
+      <p>In a one-predictor logistic regression, the full curve becomes:</p>
+      <div class="formula">P(y=1 | x) = σ(β₀ + β₁ · x) = 1 / (1 + e^−(β₀ + β₁x))</div>
+      <p>Two parameters, two visible effects on the curve:</p>
+      <div class="dual-grid">
+        <div class="dual-cell">
+          <h4>β₀ — Intercept</h4>
+          <ul>
+            <li>Shifts the curve left or right</li>
+            <li>Specifically: the "midpoint" of the curve (where P = 0.5) sits at x = −β₀ / β₁</li>
+            <li>More negative β₀ → midpoint shifts right (need bigger x to reach P = 0.5)</li>
+            <li>More positive β₀ → midpoint shifts left</li>
+          </ul>
+        </div>
+        <div class="dual-cell purple">
+          <h4>β₁ — Slope on the log-odds scale</h4>
+          <ul>
+            <li>Controls steepness of the curve</li>
+            <li>Large positive β₁ → very sharp transition near the midpoint</li>
+            <li>Small positive β₁ → gentle, gradual transition</li>
+            <li>Negative β₁ → the curve flips (more x → lower probability)</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+
+    <div class="viz-wrap">
+      <div class="viz-title">⟁ Interactive — Shape the Sigmoid With β₀ and β₁</div>
+      <div class="viz-desc">Drag the two sliders. β₀ shifts the curve left or right (changing where the midpoint sits). β₁ controls how sharp or gradual the transition is. Negative β₁ flips the curve — higher x then produces lower probability. The midpoint (P = 0.5) is marked with an orange dashed line.</div>
+      <div class="slider-row">
+        <div class="slider-cell">
+          <div class="slider-label"><span>Intercept β₀</span><span id="t3B0Val">-3.0</span></div>
+          <input type="range" id="t3B0" min="-8" max="8" value="-3" step="0.1">
+        </div>
+        <div class="slider-cell">
+          <div class="slider-label"><span>Slope β₁</span><span id="t3B1Val">0.6</span></div>
+          <input type="range" id="t3B1" min="-2" max="2" value="0.6" step="0.05">
+        </div>
+      </div>
+      <canvas id="t3Canvas" class="viz-canvas" width="900" height="400"></canvas>
+      <div class="stat-grid">
+        <div class="stat-box"><div class="stat-label">Midpoint (P=0.5) at x =</div><div class="stat-value" id="t3Mid">—</div></div>
+        <div class="stat-box"><div class="stat-label">σ(β₀ + β₁ · 5)</div><div class="stat-value purple" id="t3P5">—</div></div>
+        <div class="stat-box"><div class="stat-label">σ(β₀ + β₁ · 10)</div><div class="stat-value magenta" id="t3P10">—</div></div>
+        <div class="stat-box"><div class="stat-label">Curve direction</div><div class="stat-value green" id="t3Dir">—</div></div>
+      </div>
+      <div class="highlight-box" style="margin-top:18px;" id="t3Insight">
+        Adjust the sliders. Watch the midpoint shift and the transition steepen or flip.
+      </div>
+    </div>
+
+    <div class="formula-card">
+      <div class="formula-label">⟁ The Sigmoid in Detail</div>
+      <div class="formula">σ(z) = 1 / (1 + e^(−z))</div>
+      <p class="formula-explain"><strong>What each symbol means:</strong></p>
+      <div class="var-list">
+        <div class="var-item"><code>σ</code> — Greek letter sigma (lowercase), standard name for the sigmoid function</div>
+        <div class="var-item"><code>z</code> — any real number (the log-odds output of the linear part)</div>
+        <div class="var-item"><code>e</code> — Euler's number, ≈ 2.71828</div>
+        <div class="var-item"><code>e^(−z)</code> — e raised to the power negative z</div>
+        <div class="var-item"><code>σ(z)</code> — the output probability, between 0 and 1</div>
+      </div>
+      <p class="formula-explain"><strong>How to read it:</strong> "Take z, negate it, exponentiate it, add 1, then divide 1 by that result." When z is very large positive, e^(−z) is tiny, so σ(z) ≈ 1/(1+0) = 1. When z is very large negative, e^(−z) is huge, so σ(z) ≈ 1/(huge) = 0. When z = 0, e^0 = 1, so σ(0) = 1/2.</p>
+      <p class="formula-explain"><strong>Worked numbers:</strong></p>
+      <ul style="list-style:none; padding:0;">
+        <li style="padding: 4px 0;"><code>σ(0)</code> = 1/(1+1) = <strong>0.500</strong></li>
+        <li style="padding: 4px 0;"><code>σ(1)</code> = 1/(1+e^−1) ≈ 1/(1+0.368) = <strong>0.731</strong></li>
+        <li style="padding: 4px 0;"><code>σ(2)</code> = 1/(1+e^−2) ≈ 1/(1+0.135) = <strong>0.881</strong></li>
+        <li style="padding: 4px 0;"><code>σ(−1)</code> ≈ <strong>0.269</strong> &nbsp; ·  &nbsp; <code>σ(−2)</code> ≈ <strong>0.119</strong></li>
+        <li style="padding: 4px 0;"><code>σ(4)</code> ≈ <strong>0.982</strong> &nbsp; ·  &nbsp; <code>σ(−4)</code> ≈ <strong>0.018</strong></li>
+      </ul>
+      <p class="formula-explain"><strong>Useful property:</strong> σ(−z) = 1 − σ(z). The sigmoid is point-symmetric around (0, 0.5). This matches our intuition: if z is the log-odds of "yes," then −z is the log-odds of "no," and the two probabilities must add to 1.</p>
+    </div>
+
+    <div class="deep-dive">
+      <div class="dd-label">⟁ Worked Example</div>
+      <h4>Example: Loan Approval Sigmoid</h4>
+      <p>A bank's logistic regression for loan approval uses one predictor: a credit score on a 300-900 scale. The fitted equation is:</p>
+      <div class="formula">log-odds(approve) = −18 + 0.025 · credit_score</div>
+      <p>So the probability of approval is σ(−18 + 0.025 · credit_score).</p>
+      <p><strong>Apply it to three applicants:</strong></p>
+      <table class="calc-table">
+        <thead><tr><th>Applicant</th><th>Credit Score</th><th>Log-odds z</th><th>σ(z) = P(approve)</th></tr></thead>
+        <tbody>
+          <tr><td>Low</td><td>500</td><td>−18 + 0.025·500 = −5.5</td><td>σ(−5.5) ≈ 0.004 (almost no chance)</td></tr>
+          <tr><td>Borderline</td><td>720</td><td>−18 + 0.025·720 = 0</td><td>σ(0) = 0.500 (exactly 50/50 — the midpoint)</td></tr>
+          <tr><td>High</td><td>820</td><td>−18 + 0.025·820 = 2.5</td><td>σ(2.5) ≈ 0.924 (very likely approved)</td></tr>
+        </tbody>
+      </table>
+      <p style="margin-top:14px;"><strong>What the midpoint tells us:</strong> at credit score 720, the model is exactly 50/50. That score is the "boundary" applicants need to cross to be more likely approved than rejected. It comes directly from solving −18 + 0.025 · x = 0, giving x = 720.</p>
+      <div class="success-box">
+        <strong>The lesson:</strong> The sigmoid converts a continuous "score" into a probability. The midpoint where P = 0.5 is the natural threshold for binary decisions and is determined entirely by the fitted coefficients.
+      </div>
+    </div>
+
+    <div class="concept-block">
+      <div class="sub-section-marker">When to use it</div>
+      <h3>When Sigmoid is the Right Choice</h3>
+      <ul>
+        <li>You need to output a <strong>single probability</strong> in [0, 1] for a binary outcome.</li>
+        <li>You want <strong>smooth, calibrated</strong> probabilities, not just hard labels.</li>
+        <li>You're building the <strong>output layer of a binary classification</strong> model (logistic regression, neural network's final layer for binary tasks).</li>
+        <li>You want the <strong>monotonic mapping</strong> from a linear score to a probability — same ranking, same direction.</li>
+      </ul>
+      <div class="warning-box">
+        <strong>When sigmoid is NOT the right choice:</strong> for multi-class problems (cat / dog / bird), use the softmax function instead — a multi-output generalisation. For hidden layers of modern deep networks, ReLU and its cousins outperform sigmoid because they avoid the "vanishing gradient" issue at the saturated extremes.
+      </div>
+    </div>
+
+    <div class="concept-block">
+      <div class="sub-section-marker">Real-life examples</div>
+      <h3>Where Sigmoid Curves Appear in Daily Tech</h3>
+      <div class="real-grid">
+        <div class="real-card">
+          <h4>🧠 Neural Network Outputs</h4>
+          <p>Every binary-classification neural network ends with a sigmoid in the last layer to produce the probability of the positive class.</p>
+        </div>
+        <div class="real-card">
+          <h4>📱 App Recommendation</h4>
+          <p>"Probability you'll install this app" — sigmoids produce the score that app stores rank suggestions by.</p>
+        </div>
+        <div class="real-card">
+          <h4>🛒 Cart-Abandonment Models</h4>
+          <p>E-commerce sites model P(customer completes checkout) with sigmoids and trigger nudges below a threshold.</p>
+        </div>
+        <div class="real-card">
+          <h4>🦠 Epidemic Models</h4>
+          <p>The S-shaped logistic growth curve of an epidemic is mathematically the same as the sigmoid — saturation is a natural feature.</p>
+        </div>
+        <div class="real-card">
+          <h4>🏏 Win Probability Models</h4>
+          <p>Live win probability charts in cricket and football turn a "lead" or "form" score into a sigmoid-shaped probability curve.</p>
+        </div>
+        <div class="real-card">
+          <h4>🎯 Ad Click Prediction</h4>
+          <p>Modern online ad bidding outputs CTR estimates through a final sigmoid layer over a deep score.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="section reveal">
+    <div class="section-header">
+      <div class="section-num">Topic 4</div>
+      <h2 class="section-title">Decision Boundaries</h2>
+      <div class="section-line"></div>
+    </div>
+
+    <div class="concept-block">
+      <div class="sub-section-marker">What it is</div>
+      <h3>What is a Decision Boundary?</h3>
+      <p>So far the model outputs a probability for every case. But practical systems must make <strong>hard choices</strong> — approve the loan, or don't. Flag the email as spam, or send it to the inbox. To go from probability to decision, we pick a <strong>threshold</strong> (commonly 0.5) and split cases into two groups.</p>
+      <p>The <strong>decision boundary</strong> is the set of predictor values where the classifier is exactly at the threshold — the line in input space that separates "predicted yes" from "predicted no." Cross the boundary, and the verdict flips.</p>
+      <div class="highlight-box">
+        <strong>Simple meaning:</strong> The decision boundary is the dividing line between the two classes in the predictor space. On one side, the model says "yes." On the other, it says "no." On the boundary, the model is exactly 50/50.
+      </div>
+      <h4>Why the boundary is linear in logistic regression</h4>
+      <p>For the threshold P = 0.5, the sigmoid output equals 0.5 exactly when its input z equals 0. So the boundary in input space is:</p>
+      <div class="formula">β₀ + β₁ · x₁ + β₂ · x₂ + … + βₚ · xₚ = 0</div>
+      <p>That is a linear equation in the predictors — a line if there are two predictors, a plane if there are three, a hyperplane in general. <strong>Logistic regression always produces a linear boundary</strong> in the original predictor space, regardless of how curved the sigmoid looks in 1D.</p>
+    </div>
+
+    <div class="concept-block">
+      <div class="sub-section-marker">Why we need it</div>
+      <h3>Why a Boundary Matters in Practice</h3>
+      <p>Three reasons every classifier eventually faces a boundary decision:</p>
+      <div class="dual-grid">
+        <div class="dual-cell">
+          <h4>1. Real decisions are discrete</h4>
+          <ul>
+            <li>Banks must accept or reject a loan</li>
+            <li>Email must be sent to inbox or spam</li>
+            <li>Doctors must order more tests or not</li>
+            <li>"Probability" alone doesn't act</li>
+          </ul>
+        </div>
+        <div class="dual-cell purple">
+          <h4>2. Threshold encodes cost</h4>
+          <ul>
+            <li>The default 0.5 treats both kinds of mistakes equally</li>
+            <li>If false negatives cost more (missing fraud), lower the threshold</li>
+            <li>If false positives cost more (annoying inbox), raise it</li>
+            <li>Threshold = business decision</li>
+          </ul>
+        </div>
+        <div class="dual-cell magenta">
+          <h4>3. Boundary reveals model shape</h4>
+          <ul>
+            <li>Linear classifiers produce straight boundaries</li>
+            <li>If the true boundary is curved, a linear model will under-fit</li>
+            <li>This motivates non-linear features or different models</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+
+    <div class="concept-block">
+      <div class="sub-section-marker">How it works</div>
+      <h3>How to Read a 2D Decision Boundary</h3>
+      <p>The simplest case: two predictors x₁ and x₂. Plot the data with x₁ on one axis and x₂ on the other; colour each point by its class. The fitted boundary is a straight line drawn through this plane. Points on one side are predicted "no"; points on the other side are predicted "yes."</p>
+      <h4>Reading the equation visually</h4>
+      <p>If β₀ + β₁·x₁ + β₂·x₂ = 0 is the boundary, then we can rewrite it as:</p>
+      <div class="formula">x₂ = − (β₀ / β₂) − (β₁ / β₂) · x₁</div>
+      <p>That is the familiar "intercept + slope · x" form. The line on the 2D plot has:</p>
+      <ul>
+        <li><strong>Intercept</strong>: −β₀ / β₂ (where the line crosses the x₂ axis)</li>
+        <li><strong>Slope</strong>: −β₁ / β₂ (how steep the line is)</li>
+      </ul>
+      <h4>What changing the threshold does</h4>
+      <p>The boundary at P = 0.5 corresponds to z = 0. If we change the threshold to P = 0.7, we need z = ln(0.7/0.3) ≈ 0.847. The boundary equation becomes:</p>
+      <div class="formula">β₀ + β₁·x₁ + β₂·x₂ = 0.847</div>
+      <p>That's the same line, just shifted. Threshold changes shift the boundary parallel to itself — they don't tilt it. The model still produces the same probabilities; we're just choosing a different cut-off.</p>
+    </div>
+
+    <div class="viz-wrap">
+      <div class="viz-title">⟁ Interactive — Move the Decision Boundary</div>
+      <div class="viz-desc">Cyan dots are class 0, magenta dots are class 1. The orange line is the current decision boundary. Drag the threshold slider — the boundary slides across the plane. Watch how the count of false positives (cyan dots classed as "yes") and false negatives (magenta dots classed as "no") trade off as you move the threshold up or down.</div>
+      <div class="slider-row">
+        <div class="slider-cell">
+          <div class="slider-label"><span>Decision threshold P</span><span id="t4ThrVal">0.50</span></div>
+          <input type="range" id="t4Thr" min="0.05" max="0.95" value="0.50" step="0.01">
+        </div>
+      </div>
+      <canvas id="t4Canvas" class="viz-canvas" width="900" height="440"></canvas>
+      <div class="stat-grid">
+        <div class="stat-box"><div class="stat-label">True positives</div><div class="stat-value green" id="t4TP">—</div></div>
+        <div class="stat-box"><div class="stat-label">True negatives</div><div class="stat-value" id="t4TN">—</div></div>
+        <div class="stat-box"><div class="stat-label">False positives</div><div class="stat-value amber" id="t4FP">—</div></div>
+        <div class="stat-box"><div class="stat-label">False negatives</div><div class="stat-value red" id="t4FN">—</div></div>
+      </div>
+      <div class="stat-grid" style="margin-top:8px;">
+        <div class="stat-box"><div class="stat-label">Accuracy</div><div class="stat-value magenta" id="t4Acc">—</div></div>
+        <div class="stat-box"><div class="stat-label">Precision</div><div class="stat-value purple" id="t4Prec">—</div></div>
+        <div class="stat-box"><div class="stat-label">Recall (Sensitivity)</div><div class="stat-value" id="t4Rec">—</div></div>
+      </div>
+      <div class="highlight-box" style="margin-top:18px;" id="t4Insight">
+        Slide the threshold. Lower threshold → boundary sweeps left → more "yes" predictions, more false positives. Higher threshold → boundary sweeps right → more "no," more false negatives.
+      </div>
+    </div>
+
+    <div class="concept-block">
+      <div class="sub-section-marker">How to use it</div>
+      <h3>How to Choose a Threshold in Practice</h3>
+      <p>Setting the threshold isn't a math problem — it's a business problem. Different mistakes cost different amounts, and the right threshold depends on those costs.</p>
+      <ol class="step-list">
+        <li><strong>List the four outcomes:</strong> true positives (correctly flagged yes), false positives (wrongly flagged yes), true negatives (correctly classed as no), false negatives (missed yeses).</li>
+        <li><strong>Assign cost / benefit to each.</strong> What does a false positive cost the user? What does a false negative cost the business?</li>
+        <li><strong>Plot the ROC curve.</strong> Sweep the threshold from 0 to 1 and plot true positive rate vs false positive rate. This shows the tradeoff visually.</li>
+        <li><strong>Pick the threshold that minimises expected total cost.</strong> This is sometimes called the "operating point" of the classifier.</li>
+        <li><strong>Re-evaluate periodically.</strong> Class proportions, costs, and the model itself drift over time. Thresholds need refreshing.</li>
+      </ol>
+      <div class="warning-box">
+        <strong>Common mistake:</strong> "Default 0.5 threshold" sounds safe but is often wrong. If only 1% of cases are positive, predicting "no" for everyone gets 99% accuracy and is useless. Calibrate threshold to context, not to the default.
+      </div>
+    </div>
+
+    <div class="deep-dive">
+      <div class="dd-label">⟁ Worked Example</div>
+      <h4>Example: Fraud Detection Threshold</h4>
+      <p>A payment network builds a logistic regression for credit-card fraud detection. The model outputs P(fraud | transaction). At default threshold 0.5, the model flags 100 transactions per day. Of these:</p>
+      <ul>
+        <li>30 are genuine fraud (true positives)</li>
+        <li>70 are honest customers triggered for review (false positives)</li>
+      </ul>
+      <p>But the model is missing fraud too — there are 20 fraud cases per day below the 0.5 threshold (false negatives). Each missed fraud costs the bank ₹50,000. Each false positive costs only ₹50 in customer-service review time.</p>
+      <p><strong>Cost analysis at threshold 0.5:</strong></p>
+      <ul>
+        <li>False positive cost: 70 × ₹50 = ₹3,500/day</li>
+        <li>False negative cost: 20 × ₹50,000 = ₹10,00,000/day</li>
+        <li><strong>Total cost = ₹10,03,500/day</strong></li>
+      </ul>
+      <p>The bank lowers the threshold to 0.2 — more transactions flagged. Now:</p>
+      <ul>
+        <li>True positives: 45 (was 30) — caught more fraud</li>
+        <li>False positives: 220 (was 70) — many more reviews</li>
+        <li>False negatives: 5 (was 20) — much less missed fraud</li>
+      </ul>
+      <p><strong>Cost at threshold 0.2:</strong></p>
+      <ul>
+        <li>FP cost: 220 × ₹50 = ₹11,000/day</li>
+        <li>FN cost: 5 × ₹50,000 = ₹2,50,000/day</li>
+        <li><strong>Total cost = ₹2,61,000/day</strong></li>
+      </ul>
+      <div class="success-box">
+        <strong>The lesson:</strong> Threshold tuning saved the bank ₹7.4 lakh per day. The default 0.5 was almost four times more expensive than the cost-optimal 0.2. Threshold choice is one of the highest-leverage decisions in deploying a classifier.
+      </div>
+    </div>
+
+    <div class="concept-block">
+      <div class="sub-section-marker">When boundaries get interesting</div>
+      <h3>Linear vs Non-linear Boundaries</h3>
+      <p>Logistic regression always produces a linear boundary. That's fine when the two classes can be separated by a straight line. But what if they can't?</p>
+      <div class="dual-grid">
+        <div class="dual-cell green">
+          <h4>✔ Linear works when</h4>
+          <ul>
+            <li>Classes can be separated by a single straight cut</li>
+            <li>Predictors have additive effects</li>
+            <li>Most real tabular datasets — surprisingly often</li>
+          </ul>
+        </div>
+        <div class="dual-cell magenta">
+          <h4>✘ Linear struggles when</h4>
+          <ul>
+            <li>The yes-region looks like a ring around the no-region</li>
+            <li>Classes form spirals or interlocking shapes</li>
+            <li>Image and text data with raw pixels/tokens</li>
+            <li>Fix: feature engineering (x², x₁·x₂) or non-linear models (trees, neural networks)</li>
+          </ul>
+        </div>
+      </div>
+      <p style="margin-top:18px;">A common technique: add transformed predictors (like x₁², x₁·x₂) to a logistic regression. The boundary in the original space becomes curved, even though the math is still "linear in the coefficients." This trick — called <strong>basis expansion</strong> — connects logistic regression to more advanced methods like polynomial regression and kernel SVMs.</p>
+    </div>
+
+    <div class="concept-block">
+      <div class="sub-section-marker">Real-life examples</div>
+      <h3>Where Decision Boundaries Drive Daily Outcomes</h3>
+      <div class="real-grid">
+        <div class="real-card">
+          <h4>📧 Spam Threshold</h4>
+          <p>Gmail's spam folder uses a tuned threshold below 0.5 because users hate missing legitimate mail in their spam folder more than they dislike a little spam in their inbox.</p>
+        </div>
+        <div class="real-card">
+          <h4>🏥 Medical Screening</h4>
+          <p>Mammogram AI systems use very low thresholds because missing cancer is far more costly than over-referral to a radiologist.</p>
+        </div>
+        <div class="real-card">
+          <h4>💳 Card Fraud</h4>
+          <p>Banks tune thresholds based on transaction size — large transactions get a stricter "yes-it-is-fraud" cut-off than small ones.</p>
+        </div>
+        <div class="real-card">
+          <h4>🚪 Building Access</h4>
+          <p>Face-recognition entry systems use very high thresholds (P > 0.95) because the cost of letting in the wrong person is much greater than a brief inconvenience.</p>
+        </div>
+        <div class="real-card">
+          <h4>📰 Content Moderation</h4>
+          <p>Social platforms use different thresholds for "flag for review" (low) vs "auto-remove" (high). Boundary choice is a policy decision.</p>
+        </div>
+        <div class="real-card">
+          <h4>🚗 Self-Driving Brake</h4>
+          <p>Autonomous-vehicle obstacle detectors use very low thresholds for braking — a false brake is a comfort issue, but a missed obstacle is a safety event.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="section reveal">
+    <div class="section-header">
+      <div class="section-num">Quiz — Mcq</div>
+      <h2 class="section-title">Multiple-Choice — Parts 1 &amp; 2</h2>
+      <div class="section-line"></div>
+    </div>
+
+    <div class="quiz-card">
+      <div class="quiz-q"><span class="qnum">Q1</span>What does the sigmoid function output for an input of z = 0?<span class="qlevel easy">Easy</span></div>
+      <div class="quiz-options">
+        <div class="quiz-opt" onclick="checkQ(this,false)">0</div>
+        <div class="quiz-opt" onclick="checkQ(this,true)">Exactly 0.5</div>
+        <div class="quiz-opt" onclick="checkQ(this,false)">1</div>
+        <div class="quiz-opt" onclick="checkQ(this,false)">It is undefined</div>
+      </div>
+      <div class="quiz-feedback"></div>
+    </div>
+
+    <div class="quiz-card">
+      <div class="quiz-q"><span class="qnum">Q2</span>In a logistic regression, why is the predictor space boundary at the 0.5 threshold a linear line (not a curve)?<span class="qlevel mod">Moderate</span></div>
+      <div class="quiz-options">
+        <div class="quiz-opt" onclick="checkQ(this,false)">Because the sigmoid is linear at 0.5</div>
+        <div class="quiz-opt" onclick="checkQ(this,true)">Because σ(z) = 0.5 happens exactly when z = β₀ + Σβⱼxⱼ = 0, which is a linear equation in the predictors</div>
+        <div class="quiz-opt" onclick="checkQ(this,false)">Because all decision boundaries must be straight</div>
+        <div class="quiz-opt" onclick="checkQ(this,false)">Because the model is non-linear so the boundary is non-linear too</div>
+      </div>
+      <div class="quiz-feedback"></div>
+    </div>
+
+    <div class="quiz-card">
+      <div class="quiz-q"><span class="qnum">Q3</span>If you lower the classification threshold from 0.5 to 0.3, what typically happens?<span class="qlevel mod">Moderate</span></div>
+      <div class="quiz-options">
+        <div class="quiz-opt" onclick="checkQ(this,false)">Both false positives and false negatives drop</div>
+        <div class="quiz-opt" onclick="checkQ(this,true)">More cases are predicted "yes" — true positives and false positives both rise; false negatives fall</div>
+        <div class="quiz-opt" onclick="checkQ(this,false)">The model coefficients change</div>
+        <div class="quiz-opt" onclick="checkQ(this,false)">The sigmoid function changes shape</div>
+      </div>
+      <div class="quiz-feedback"></div>
+    </div>
+
+    <div class="quiz-card">
+      <div class="quiz-q"><span class="qnum">Q4</span>If the probability of an event is p = 0.25, what is its log-odds (logit)?<span class="qlevel mod">Moderate</span></div>
+      <div class="quiz-options">
+        <div class="quiz-opt" onclick="checkQ(this,false)">+1.10</div>
+        <div class="quiz-opt" onclick="checkQ(this,true)">−1.10 (because ln(0.25/0.75) = ln(1/3) ≈ −1.10)</div>
+        <div class="quiz-opt" onclick="checkQ(this,false)">+0.25</div>
+        <div class="quiz-opt" onclick="checkQ(this,false)">0</div>
+      </div>
+      <div class="quiz-feedback"></div>
+    </div>
+
+    <div class="quiz-card">
+      <div class="quiz-q"><span class="qnum">Q5</span>A logistic regression has β₁ = 0.7 for predictor x₁. What is the odds ratio?<span class="qlevel hard">Hard</span></div>
+      <div class="quiz-options">
+        <div class="quiz-opt" onclick="checkQ(this,false)">0.7</div>
+        <div class="quiz-opt" onclick="checkQ(this,false)">e^0.7 ≈ 2.01 — and that means the probability doubles per unit of x₁</div>
+        <div class="quiz-opt" onclick="checkQ(this,true)">e^0.7 ≈ 2.01 — and that means the odds (not probability) of y=1 multiply by ≈ 2.01 per 1-unit increase in x₁</div>
+        <div class="quiz-opt" onclick="checkQ(this,false)">0.7 × 100 = 70%</div>
+      </div>
+      <div class="quiz-feedback"></div>
+    </div>
+
+    <div class="quiz-card">
+      <div class="quiz-q"><span class="qnum">Q6</span>A medical screening team is choosing a threshold for a disease classifier. False negatives (missing a real disease case) cost far more than false positives. What threshold direction is appropriate?<span class="qlevel hard">Hard</span></div>
+      <div class="quiz-options">
+        <div class="quiz-opt" onclick="checkQ(this,false)">Raise the threshold well above 0.5 so we are very confident before flagging</div>
+        <div class="quiz-opt" onclick="checkQ(this,true)">Lower the threshold below 0.5 so the model is more likely to flag — accepting more false positives to catch more true positives</div>
+        <div class="quiz-opt" onclick="checkQ(this,false)">Keep it at the default 0.5 — that's always the best</div>
+        <div class="quiz-opt" onclick="checkQ(this,false)">Threshold has no effect on this trade-off</div>
+      </div>
+      <div class="quiz-feedback"></div>
+    </div>
+  </section>
+
+  <section class="section reveal">
+    <div class="section-header">
+      <div class="section-num">Ai Eval</div>
+      <h2 class="section-title">Written Answer Challenge — Parts 1 &amp; 2</h2>
+      <div class="section-line"></div>
+    </div>
+
+    <div class="written-eval">
+      <div class="we-label">▲ AI Written Evaluation</div>
+      <p style="color:var(--text-soft); margin-top:6px; margin-bottom:18px;">Five open-response questions covering all four topics of Module 5.3. Write each answer in your own words — the AI evaluator checks which key concepts you covered, flags any gaps, scores your coverage, and reveals a model answer. Exact wording is not required; the evaluator looks for the underlying ideas.</p>
+
+      <div class="write-q" data-q="1">
+        <div class="qhead">
+          <span class="qnum">Q1</span>
+          <span class="qfrom">From Part 1 · Binary Classification</span>
+        </div>
+        <p style="color:#fff; font-size:1rem; margin-bottom:10px;">Explain what binary classification is and give two concrete examples. Why does plain linear regression fail when the outcome is 0/1? Mention at least two specific issues.</p>
+        <textarea class="ans-area" id="ans1" placeholder="Type your answer here..."></textarea>
+      </div>
+
+      <div class="write-q" data-q="2">
+        <div class="qhead">
+          <span class="qnum">Q2</span>
+          <span class="qfrom">From Part 1 · Odds &amp; Log-Odds</span>
+        </div>
+        <p style="color:#fff; font-size:1rem; margin-bottom:10px;">Define probability, odds, and log-odds in your own words. Show how each value transforms when probability changes from 0.5 to 0.9. Why is log-odds the natural scale on which to apply a linear formula?</p>
+        <textarea class="ans-area" id="ans2" placeholder="Type your answer here..."></textarea>
+      </div>
+
+      <div class="write-q" data-q="3">
+        <div class="qhead">
+          <span class="qnum">Q3</span>
+          <span class="qfrom">From Part 2 · Sigmoid Function</span>
+        </div>
+        <p style="color:#fff; font-size:1rem; margin-bottom:10px;">Describe the sigmoid function in plain language. What is its formula and what does it do to its input? Mention at least two key properties (e.g. its range, midpoint, monotonicity) and explain why it pairs naturally with logistic regression.</p>
+        <textarea class="ans-area" id="ans3" placeholder="Type your answer here..."></textarea>
+      </div>
+
+      <div class="write-q" data-q="4">
+        <div class="qhead">
+          <span class="qnum">Q4</span>
+          <span class="qfrom">From Part 2 · Decision Boundaries</span>
+        </div>
+        <p style="color:#fff; font-size:1rem; margin-bottom:10px;">What is a decision boundary? Why is the boundary of a logistic regression always linear in the predictor space? Explain what happens to the boundary when you change the classification threshold from 0.5 to 0.3.</p>
+        <textarea class="ans-area" id="ans4" placeholder="Type your answer here..."></textarea>
+      </div>
+
+      <div class="write-q" data-q="5">
+        <div class="qhead">
+          <span class="qnum">Q5</span>
+          <span class="qfrom">Cross-module · Building a Classifier</span>
+        </div>
+        <p style="color:#fff; font-size:1rem; margin-bottom:10px;">A bank wants to build a fraud-detection classifier. Walk through how a logistic regression would handle this end-to-end: how the linear part produces log-odds, how the sigmoid converts that into a probability, how the threshold turns probability into a final decision, and how the bank would choose that threshold when false negatives cost far more than false positives.</p>
+        <textarea class="ans-area" id="ans5" placeholder="Type your answer here..."></textarea>
+      </div>
+
+      <div class="btn-row" style="margin-top:24px;">
+        <button class="btn magenta" id="submitWritten">▲ Submit for AI Evaluation</button>
+        <button class="btn purple" id="resetWritten">Reset Answers</button>
+      </div>
+
+      <div class="eval-out" id="evalOut">
+        <h4>⟁ Evaluation Report</h4>
+        <div id="evalBody"></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="section reveal">
+    <div class="section-header">
+      <div class="section-num">Module Recap</div>
+      <h2 class="section-title">AI Synthesis — Full Module 5.3</h2>
+      <div class="section-line"></div>
+    </div>
+    <div class="ai-panel">
+      <div class="ai-head">
+        <div class="ai-avatar">Ξ</div>
+        <div class="ai-meta">
+          <div class="ai-name">QNA-Σ // Synthesis Core</div>
+          <div class="ai-role">Logistic Classifier — Complete</div>
+        </div>
+      </div>
+      <div>
+        <div class="takeaway">
+          <div class="takeaway-num">01</div>
+          <div class="takeaway-text"><strong>Binary classification</strong> predicts a two-valued outcome (0 / 1, yes / no). The model output is a probability P(y=1 | x), not just a label.</div>
+        </div>
+        <div class="takeaway">
+          <div class="takeaway-num">02</div>
+          <div class="takeaway-text"><strong>Linear regression fails on 0/1 data:</strong> its predictions escape [0, 1], the LINE assumptions break, and the S-shaped truth cannot be captured by a straight line.</div>
+        </div>
+        <div class="takeaway">
+          <div class="takeaway-num">03</div>
+          <div class="takeaway-text"><strong>Odds = p / (1−p)</strong> — how many times more likely "yes" is than "no." Bounded in (0, ∞). Native to betting, medicine, and risk modelling.</div>
+        </div>
+        <div class="takeaway">
+          <div class="takeaway-num">04</div>
+          <div class="takeaway-text"><strong>Log-odds = ln(odds)</strong> — stretches [0, 1] onto the entire real line, matching what a linear combination β₀ + β₁x can produce.</div>
+        </div>
+        <div class="takeaway">
+          <div class="takeaway-num">05</div>
+          <div class="takeaway-text"><strong>Coefficient interpretation:</strong> e^β is the odds ratio. e^β = 2 means each unit of x doubles the odds of y = 1.</div>
+        </div>
+        <div class="takeaway">
+          <div class="takeaway-num">06</div>
+          <div class="takeaway-text"><strong>The sigmoid σ(z) = 1 / (1 + e^−z)</strong> is the inverse of the logit. It converts log-odds back into probabilities, producing the classic S-curve.</div>
+        </div>
+        <div class="takeaway">
+          <div class="takeaway-num">07</div>
+          <div class="takeaway-text"><strong>Sigmoid properties:</strong> σ(0) = 0.5, range (0, 1), monotonically increasing, point-symmetric around (0, 0.5), steepest at zero.</div>
+        </div>
+        <div class="takeaway">
+          <div class="takeaway-num">08</div>
+          <div class="takeaway-text"><strong>The full model:</strong> P(y=1 | x) = σ(β₀ + β₁x₁ + … + βₚxₚ). Linear formula on the inside, probability on the outside.</div>
+        </div>
+        <div class="takeaway">
+          <div class="takeaway-num">09</div>
+          <div class="takeaway-text"><strong>Decision boundary</strong> = the set of predictor values where the model is at the threshold (usually P = 0.5). For logistic regression, the boundary is always linear in the predictor space.</div>
+        </div>
+        <div class="takeaway">
+          <div class="takeaway-num">10</div>
+          <div class="takeaway-text"><strong>Threshold tuning is a business decision:</strong> lower threshold catches more positives but creates more false positives. Costs of each mistake drive the optimal choice.</div>
+        </div>
+        <div class="takeaway">
+          <div class="takeaway-num">11</div>
+          <div class="takeaway-text"><strong>Coming next (Module 5.4):</strong> the unified theory behind both linear and logistic regression — <em>likelihood inference</em>. Why "least squares" and "logistic loss" are actually special cases of the same maximum-likelihood principle.</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <div class="part-nav">
+    <div class="part-nav-item done">
+      <div class="part-nav-label">✓ Module 5.3 — Complete</div>
+      <div class="part-nav-title">Logistic Regression: Binary Outcomes</div>
+    </div>
+    <div class="part-nav-item current">
+      <div class="part-nav-label">⟁ Module 5.4 — Up Next</div>
+      <div class="part-nav-title">Likelihood Inference: The Unified Theory</div>
+    </div>
+  </div>
+
+  <div class="module-footer">⟁ End of Module 5.3 // Sigmoid &amp; decision boundary engines fully calibrated. Continue → Module 5.4: Likelihood Inference ⟁</div>
+</div>
+
+<script>
+/* PARTICLE BACKGROUND */
+const canvas = document.getElementById('particle-canvas');
+const ctx = canvas.getContext('2d');
+let particles = [];
+function sizeCanvas() { canvas.width = window.innerWidth; canvas.height = window.innerHeight; }
+sizeCanvas();
+window.addEventListener('resize', sizeCanvas);
+function initParticles() {
+  particles = [];
+  const count = Math.min(60, Math.floor(window.innerWidth / 25));
+  for (let i = 0; i < count; i++) {
+    particles.push({ x: Math.random()*canvas.width, y: Math.random()*canvas.height, vx: (Math.random()-0.5)*0.4, vy: (Math.random()-0.5)*0.4, r: Math.random()*1.6+0.5, hue: Math.random()<0.5?'0,240,255':'177,77,255' });
+  }
+}
+initParticles();
+window.addEventListener('resize', initParticles);
+function drawParticles() {
+  ctx.clearRect(0,0,canvas.width,canvas.height);
+  particles.forEach(p => {
+    p.x += p.vx; p.y += p.vy;
+    if (p.x<0||p.x>canvas.width) p.vx*=-1;
+    if (p.y<0||p.y>canvas.height) p.vy*=-1;
+    ctx.beginPath();
+    ctx.fillStyle = `rgba(${p.hue},0.7)`;
+    ctx.shadowColor = `rgba(${p.hue},1)`;
+    ctx.shadowBlur = 12;
+    ctx.arc(p.x,p.y,p.r,0,Math.PI*2);
+    ctx.fill();
+  });
+  ctx.shadowBlur = 0;
+  for (let i=0;i<particles.length;i++) {
+    for (let j=i+1;j<particles.length;j++) {
+      const dx = particles[i].x-particles[j].x;
+      const dy = particles[i].y-particles[j].y;
+      const d = Math.sqrt(dx*dx+dy*dy);
+      if (d<130) {
+        ctx.strokeStyle = `rgba(0,240,255,${0.12*(1-d/130)})`;
+        ctx.lineWidth = 0.5;
+        ctx.beginPath();
+        ctx.moveTo(particles[i].x,particles[i].y);
+        ctx.lineTo(particles[j].x,particles[j].y);
+        ctx.stroke();
+      }
+    }
+  }
+  requestAnimationFrame(drawParticles);
+}
+drawParticles();
+
+function sigmoid(z) { return 1 / (1 + Math.exp(-z)); }
+function gaussRand() {
+  let u = 0, v = 0;
+  while (u === 0) u = Math.random();
+  while (v === 0) v = Math.random();
+  return Math.sqrt(-2*Math.log(u)) * Math.cos(2*Math.PI*v);
+}
+
+/* ═══════════════ TOPIC 3 — SIGMOID SHAPER ═══════════════ */
+const t3Canvas = document.getElementById('t3Canvas');
+const t3Ctx = t3Canvas.getContext('2d');
+
+function t3Draw() {
+  const b0 = parseFloat(document.getElementById('t3B0').value);
+  const b1 = parseFloat(document.getElementById('t3B1').value);
+  document.getElementById('t3B0Val').textContent = b0.toFixed(2);
+  document.getElementById('t3B1Val').textContent = b1.toFixed(2);
+
+  const w = t3Canvas.width, h = t3Canvas.height;
+  t3Ctx.clearRect(0,0,w,h);
+  const padL = 70, padR = 30, padT = 30, padB = 60;
+  const plotW = w - padL - padR;
+  const plotH = h - padT - padB;
+  const xLo = -2, xHi = 22, yLo = -0.05, yHi = 1.10;
+  const xToPx = v => padL + (v-xLo)/(xHi-xLo)*plotW;
+  const yToPx = v => padT + plotH - (v-yLo)/(yHi-yLo)*plotH;
+
+  // grid
+  t3Ctx.strokeStyle = 'rgba(0,240,255,0.06)'; t3Ctx.lineWidth = 1;
+  for (let gx=0; gx<=20; gx+=4) {
+    t3Ctx.beginPath(); t3Ctx.moveTo(xToPx(gx), padT); t3Ctx.lineTo(xToPx(gx), padT+plotH); t3Ctx.stroke();
+  }
+  for (let gy=0; gy<=1; gy+=0.25) {
+    t3Ctx.beginPath(); t3Ctx.moveTo(padL, yToPx(gy)); t3Ctx.lineTo(padL+plotW, yToPx(gy)); t3Ctx.stroke();
+  }
+
+  // P=0.5 horizontal line
+  t3Ctx.strokeStyle = 'rgba(255,181,71,0.5)'; t3Ctx.setLineDash([5,4]); t3Ctx.lineWidth = 1.5;
+  t3Ctx.beginPath();
+  t3Ctx.moveTo(padL, yToPx(0.5)); t3Ctx.lineTo(padL+plotW, yToPx(0.5));
+  t3Ctx.stroke();
+  t3Ctx.setLineDash([]);
+  t3Ctx.fillStyle = '#ffb547'; t3Ctx.font = 'bold 11px JetBrains Mono'; t3Ctx.textAlign = 'left';
+  t3Ctx.fillText('P = 0.5', padL+plotW-50, yToPx(0.5)-6);
+
+  // bands at 0 and 1
+  t3Ctx.strokeStyle = 'rgba(125,140,180,0.25)';
+  t3Ctx.beginPath(); t3Ctx.moveTo(padL, yToPx(0)); t3Ctx.lineTo(padL+plotW, yToPx(0)); t3Ctx.stroke();
+  t3Ctx.beginPath(); t3Ctx.moveTo(padL, yToPx(1)); t3Ctx.lineTo(padL+plotW, yToPx(1)); t3Ctx.stroke();
+
+  // axes
+  t3Ctx.strokeStyle = '#9fb4d6'; t3Ctx.lineWidth = 1.5;
+  t3Ctx.beginPath();
+  t3Ctx.moveTo(padL, padT); t3Ctx.lineTo(padL, padT+plotH); t3Ctx.lineTo(padL+plotW, padT+plotH);
+  t3Ctx.stroke();
+  t3Ctx.fillStyle = '#9fb4d6'; t3Ctx.font = '11px JetBrains Mono'; t3Ctx.textAlign = 'center';
+  for (let v=0; v<=20; v+=4) t3Ctx.fillText(v, xToPx(v), padT+plotH+18);
+  t3Ctx.textAlign = 'right';
+  [0, 0.25, 0.5, 0.75, 1].forEach(v => t3Ctx.fillText(v.toFixed(2), padL-8, yToPx(v)+4));
+  t3Ctx.fillStyle = '#00f0ff'; t3Ctx.font = 'bold 12px JetBrains Mono'; t3Ctx.textAlign = 'center';
+  t3Ctx.fillText('Predictor  x', padL+plotW/2, padT+plotH+38);
+  t3Ctx.save();
+  t3Ctx.translate(22, padT+plotH/2);
+  t3Ctx.rotate(-Math.PI/2);
+  t3Ctx.fillText('P(y=1) = σ(β₀ + β₁x)', 0, 0);
+  t3Ctx.restore();
+
+  // sigmoid
+  t3Ctx.strokeStyle = '#ff2bd6'; t3Ctx.lineWidth = 3;
+  t3Ctx.shadowColor = '#ff2bd6'; t3Ctx.shadowBlur = 10;
+  t3Ctx.beginPath();
+  for (let px=padL; px<=padL+plotW; px++) {
+    const x = xLo + (px-padL)/plotW * (xHi-xLo);
+    const z = b0 + b1*x;
+    const p = sigmoid(z);
+    if (px===padL) t3Ctx.moveTo(px, yToPx(p));
+    else t3Ctx.lineTo(px, yToPx(p));
+  }
+  t3Ctx.stroke();
+  t3Ctx.shadowBlur = 0;
+
+  // midpoint marker (where P=0.5, x = -b0/b1)
+  let mid = null;
+  if (Math.abs(b1) > 0.001) {
+    mid = -b0 / b1;
+    if (mid > xLo && mid < xHi) {
+      t3Ctx.strokeStyle = '#ffb547'; t3Ctx.setLineDash([3,3]); t3Ctx.lineWidth = 1.5;
+      t3Ctx.beginPath();
+      t3Ctx.moveTo(xToPx(mid), padT); t3Ctx.lineTo(xToPx(mid), padT+plotH);
+      t3Ctx.stroke();
+      t3Ctx.setLineDash([]);
+      t3Ctx.fillStyle = '#ffb547';
+      t3Ctx.shadowColor = '#ffb547'; t3Ctx.shadowBlur = 12;
+      t3Ctx.beginPath();
+      t3Ctx.arc(xToPx(mid), yToPx(0.5), 7, 0, Math.PI*2);
+      t3Ctx.fill();
+      t3Ctx.shadowBlur = 0;
+      t3Ctx.fillStyle = '#ffb547'; t3Ctx.font = 'bold 11px JetBrains Mono'; t3Ctx.textAlign = 'center';
+      t3Ctx.fillText('Midpoint', xToPx(mid), padT+plotH-10);
+    }
+  }
+
+  document.getElementById('t3Mid').textContent = mid !== null ? mid.toFixed(2) : '∞';
+  document.getElementById('t3P5').textContent = sigmoid(b0 + b1*5).toFixed(3);
+  document.getElementById('t3P10').textContent = sigmoid(b0 + b1*10).toFixed(3);
+  const dirEl = document.getElementById('t3Dir');
+  if (b1 > 0.02) dirEl.textContent = 'Increasing ↗';
+  else if (b1 < -0.02) dirEl.textContent = 'Decreasing ↘';
+  else dirEl.textContent = 'Flat —';
+
+  const ins = document.getElementById('t3Insight');
+  if (Math.abs(b1) < 0.05) {
+    ins.innerHTML = `<strong>Almost flat curve.</strong> Slope β₁ ≈ 0 makes the sigmoid nearly horizontal — the predictor barely influences the probability. The model essentially returns σ(β₀) for every input.`;
+  } else if (b1 > 0) {
+    ins.innerHTML = `<strong>Standard rising sigmoid.</strong> The curve transitions from 0 to 1 as x grows. Midpoint at x = ${mid !== null ? mid.toFixed(2) : '?'}. Steeper slope β₁ = ${b1.toFixed(2)} ⟹ sharper transition.`;
+  } else {
+    ins.innerHTML = `<strong>Flipped sigmoid.</strong> Negative β₁ = ${b1.toFixed(2)} means higher x ⟹ lower probability. The curve drops from 1 to 0. Midpoint at x = ${mid !== null ? mid.toFixed(2) : '?'}.`;
+  }
+}
+document.getElementById('t3B0').addEventListener('input', t3Draw);
+document.getElementById('t3B1').addEventListener('input', t3Draw);
+t3Draw();
+
+/* ═══════════════ TOPIC 4 — 2D DECISION BOUNDARY ═══════════════ */
+const t4Canvas = document.getElementById('t4Canvas');
+const t4Ctx = t4Canvas.getContext('2d');
+
+// Generate a 2D dataset with two classes
+const t4Data = (function(){
+  const arr = [];
+  // class 0 centred at (3, 3) with spread
+  for (let i=0; i<55; i++) {
+    arr.push({ x1: 3 + gaussRand()*1.4, x2: 3 + gaussRand()*1.4, y: 0 });
+  }
+  // class 1 centred at (7, 7) with spread
+  for (let i=0; i<55; i++) {
+    arr.push({ x1: 7 + gaussRand()*1.4, x2: 7 + gaussRand()*1.4, y: 1 });
+  }
+  return arr;
+})();
+
+// Fit a tiny logistic regression via gradient ascent
+function fitLogistic(data) {
+  let b0=0, b1=0, b2=0;
+  const lr = 0.05;
+  for (let iter=0; iter<400; iter++) {
+    let g0=0, g1=0, g2=0;
+    data.forEach(d => {
+      const z = b0 + b1*d.x1 + b2*d.x2;
+      const p = sigmoid(z);
+      g0 += d.y - p;
+      g1 += (d.y - p)*d.x1;
+      g2 += (d.y - p)*d.x2;
+    });
+    b0 += lr * g0 / data.length;
+    b1 += lr * g1 / data.length;
+    b2 += lr * g2 / data.length;
+  }
+  return {b0, b1, b2};
+}
+const t4Fit = fitLogistic(t4Data);
+
+function t4Draw() {
+  const thr = parseFloat(document.getElementById('t4Thr').value);
+  document.getElementById('t4ThrVal').textContent = thr.toFixed(2);
+
+  // boundary at P = thr means z = ln(thr/(1-thr))
+  const zThr = Math.log(thr / (1 - thr));
+
+  const w = t4Canvas.width, h = t4Canvas.height;
+  t4Ctx.clearRect(0,0,w,h);
+  const padL = 70, padR = 30, padT = 40, padB = 60;
+  const plotW = w - padL - padR;
+  const plotH = h - padT - padB;
+  const xLo = 0, xHi = 11;
+  const xToPx = v => padL + (v-xLo)/(xHi-xLo)*plotW;
+  const yToPx = v => padT + plotH - (v-xLo)/(xHi-xLo)*plotH;
+
+  // fill regions based on classifier verdict
+  const step = 12;
+  for (let py=padT; py<padT+plotH; py+=step) {
+    for (let px=padL; px<padL+plotW; px+=step) {
+      const x1 = xLo + (px-padL)/plotW * (xHi-xLo);
+      const x2 = xLo + (padT+plotH-py)/plotH * (xHi-xLo);
+      const z = t4Fit.b0 + t4Fit.b1*x1 + t4Fit.b2*x2;
+      const p = sigmoid(z);
+      if (p >= thr) {
+        t4Ctx.fillStyle = 'rgba(255,43,214,0.07)';
+      } else {
+        t4Ctx.fillStyle = 'rgba(0,240,255,0.05)';
+      }
+      t4Ctx.fillRect(px, py, step+1, step+1);
+    }
+  }
+
+  // grid lines
+  t4Ctx.strokeStyle = 'rgba(0,240,255,0.07)'; t4Ctx.lineWidth = 1;
+  for (let g=0; g<=10; g+=2) {
+    t4Ctx.beginPath(); t4Ctx.moveTo(xToPx(g), padT); t4Ctx.lineTo(xToPx(g), padT+plotH); t4Ctx.stroke();
+    t4Ctx.beginPath(); t4Ctx.moveTo(padL, yToPx(g)); t4Ctx.lineTo(padL+plotW, yToPx(g)); t4Ctx.stroke();
+  }
+
+  // axes
+  t4Ctx.strokeStyle = '#9fb4d6'; t4Ctx.lineWidth = 1.5;
+  t4Ctx.beginPath();
+  t4Ctx.moveTo(padL, padT); t4Ctx.lineTo(padL, padT+plotH); t4Ctx.lineTo(padL+plotW, padT+plotH);
+  t4Ctx.stroke();
+  t4Ctx.fillStyle = '#9fb4d6'; t4Ctx.font = '11px JetBrains Mono'; t4Ctx.textAlign = 'center';
+  for (let v=0; v<=10; v+=2) t4Ctx.fillText(v, xToPx(v), padT+plotH+18);
+  t4Ctx.textAlign = 'right';
+  for (let v=0; v<=10; v+=2) t4Ctx.fillText(v, padL-8, yToPx(v)+4);
+  t4Ctx.fillStyle = '#00f0ff'; t4Ctx.font = 'bold 12px JetBrains Mono'; t4Ctx.textAlign = 'center';
+  t4Ctx.fillText('Predictor x₁', padL+plotW/2, padT+plotH+38);
+  t4Ctx.save();
+  t4Ctx.translate(22, padT+plotH/2);
+  t4Ctx.rotate(-Math.PI/2);
+  t4Ctx.fillText('Predictor x₂', 0, 0);
+  t4Ctx.restore();
+
+  // boundary line: b0 + b1*x1 + b2*x2 = zThr → x2 = (zThr - b0 - b1*x1) / b2
+  if (Math.abs(t4Fit.b2) > 0.001) {
+    const bx1 = xLo, bx2 = (zThr - t4Fit.b0 - t4Fit.b1*bx1) / t4Fit.b2;
+    const ex1 = xHi, ex2 = (zThr - t4Fit.b0 - t4Fit.b1*ex1) / t4Fit.b2;
+    t4Ctx.strokeStyle = '#ffb547'; t4Ctx.lineWidth = 3.5;
+    t4Ctx.shadowColor = '#ffb547'; t4Ctx.shadowBlur = 12;
+    t4Ctx.beginPath();
+    t4Ctx.moveTo(xToPx(bx1), yToPx(bx2));
+    t4Ctx.lineTo(xToPx(ex1), yToPx(ex2));
+    t4Ctx.stroke();
+    t4Ctx.shadowBlur = 0;
+  }
+
+  // points
+  let TP=0, TN=0, FP=0, FN=0;
+  t4Data.forEach(d => {
+    const z = t4Fit.b0 + t4Fit.b1*d.x1 + t4Fit.b2*d.x2;
+    const p = sigmoid(z);
+    const pred = p >= thr ? 1 : 0;
+    if (d.y === 1 && pred === 1) TP++;
+    else if (d.y === 0 && pred === 0) TN++;
+    else if (d.y === 0 && pred === 1) FP++;
+    else FN++;
+    const col = d.y === 1 ? '#ff2bd6' : '#00f0ff';
+    t4Ctx.fillStyle = col;
+    t4Ctx.shadowColor = col; t4Ctx.shadowBlur = 5;
+    t4Ctx.beginPath();
+    t4Ctx.arc(xToPx(d.x1), yToPx(d.x2), 4, 0, Math.PI*2);
+    t4Ctx.fill();
+    t4Ctx.shadowBlur = 0;
+  });
+
+  // labels
+  t4Ctx.fillStyle = '#00f0ff'; t4Ctx.font = 'bold 12px JetBrains Mono'; t4Ctx.textAlign = 'left';
+  t4Ctx.fillText('● Class 0 (actual)', padL+10, padT-15);
+  t4Ctx.fillStyle = '#ff2bd6';
+  t4Ctx.fillText('● Class 1 (actual)', padL+200, padT-15);
+  t4Ctx.fillStyle = '#ffb547';
+  t4Ctx.fillText(`━━ Boundary @ P = ${thr.toFixed(2)}`, padL+400, padT-15);
+
+  document.getElementById('t4TP').textContent = TP;
+  document.getElementById('t4TN').textContent = TN;
+  document.getElementById('t4FP').textContent = FP;
+  document.getElementById('t4FN').textContent = FN;
+  const total = TP + TN + FP + FN;
+  document.getElementById('t4Acc').textContent = ((TP+TN)/total*100).toFixed(1) + '%';
+  document.getElementById('t4Prec').textContent = (TP+FP)>0 ? (TP/(TP+FP)*100).toFixed(1) + '%' : '—';
+  document.getElementById('t4Rec').textContent = (TP+FN)>0 ? (TP/(TP+FN)*100).toFixed(1) + '%' : '—';
+
+  const ins = document.getElementById('t4Insight');
+  if (thr < 0.3) ins.innerHTML = `<strong>Low threshold (${thr.toFixed(2)}).</strong> The boundary sweeps far into the "no" cluster — many cases predicted "yes." Recall is high (catching most positives), but false positives surge.`;
+  else if (thr > 0.7) ins.innerHTML = `<strong>High threshold (${thr.toFixed(2)}).</strong> The boundary moves into the "yes" cluster — only very confident cases are flagged. Precision is high but recall (catching real positives) drops.`;
+  else ins.innerHTML = `<strong>Balanced threshold (${thr.toFixed(2)}).</strong> Decision boundary sits in the middle. Accuracy = ${((TP+TN)/total*100).toFixed(1)}%. Adjust threshold to optimise for the kind of mistake that costs more.`;
+}
+document.getElementById('t4Thr').addEventListener('input', t4Draw);
+t4Draw();
+
+/* ═══════════════ QUIZ MCQ ═══════════════ */
+function checkQ(el, correct) {
+  const opts = el.parentElement.querySelectorAll('.quiz-opt');
+  opts.forEach(o => o.classList.remove('correct','wrong'));
+  const fb = el.parentElement.parentElement.querySelector('.quiz-feedback');
+  if (correct) {
+    el.classList.add('correct');
+    fb.className = 'quiz-feedback show ok';
+    fb.textContent = '✓ Correct! Classifier reasoning confirmed.';
+  } else {
+    el.classList.add('wrong');
+    fb.className = 'quiz-feedback show no';
+    fb.textContent = '✗ Not quite — review the relevant section and try again.';
+  }
+}
+
+/* ═══════════════ AI WRITTEN EVALUATION ═══════════════ */
+const rubric = {
+  1: {
+    concepts: [
+      { name: 'Binary classification predicts a two-valued outcome (0/1, yes/no)', keys: ['binary','two','0','1','yes','no','class','two-value']},
+      { name: 'At least two concrete examples', keys: ['spam','fraud','loan','default','disease','churn','click','example','medical','email']},
+      { name: 'Linear regression escapes [0, 1] range', keys: ['range','escape','outside','below 0','above 1','bound','negative','greater than 1']},
+      { name: 'LINE assumptions break (residuals not normal, variance not equal)', keys: ['line','assumption','residual','normal','variance','homosced']},
+      { name: 'Linear shape wrong — real relationship is S-shaped', keys: ['s-shape','s shape','curve','non-linear','sigmoid','flat','saturate']}
+    ],
+    model: "Binary classification is the task of predicting a two-valued outcome — yes/no, 0/1, success/failure. Two examples: classifying an email as spam vs not spam, and predicting whether a loan applicant will default. Plain linear regression fails on 0/1 outcomes for several reasons. First, its predictions are unbounded — for large x it produces values above 1, and for very negative x it produces values below 0, which can't be valid probabilities. Second, the LINE assumptions (especially normality and equal variance of residuals) break when y is forced to be 0 or 1. Third, the true relationship between predictors and P(y=1) is typically S-shaped — flat near the boundaries and steep in the middle — and a straight line cannot capture this shape."
+  },
+  2: {
+    concepts: [
+      { name: 'Probability is bounded between 0 and 1', keys: ['probability','0 and 1','bounded','between']},
+      { name: 'Odds = p / (1−p), ranges (0, ∞)', keys: ['odds','ratio','p / (1-p)','p/(1-p)','infinity','positive']},
+      { name: 'Log-odds = ln(odds), spans all real numbers', keys: ['log','ln','natural log','logit','real','negative','positive infinity','-infinity']},
+      { name: 'Show the values for p=0.5 and p=0.9', keys: ['0.5','0.9','3','9','1.10','2.20','example']},
+      { name: 'Log-odds spans real line, matches linear formula range', keys: ['matches','linear','combination','beta','any value','unbounded','range']}
+    ],
+    model: "Probability p is a number between 0 and 1 — the chance an event happens. Odds is the ratio of 'yes is true' to 'no is true', defined as p/(1−p), and lives in the range (0, ∞). Log-odds (the logit) is ln(odds), and can take any real value from −∞ to +∞. As p changes from 0.5 to 0.9: probability rises from 0.5 to 0.9; odds rise from 1 (0.5/0.5) to 9 (0.9/0.1); log-odds rise from 0 to ln(9) ≈ 2.20. Log-odds is the natural scale for a linear formula because a linear combination β₀+β₁x can produce any real number — exactly matching the range of log-odds. Predicting probability directly with a linear formula would let predictions escape [0,1], but predicting log-odds gives a clean range match and lets us convert back to probability via the sigmoid."
+  },
+  3: {
+    concepts: [
+      { name: 'Sigmoid formula σ(z) = 1 / (1 + e^−z)', keys: ['1/(1+e','sigmoid','σ','exp','e^','formula']},
+      { name: 'It maps any real number to (0, 1)', keys: ['map','range','0 to 1','between','convert','any real']},
+      { name: 'σ(0) = 0.5 — midpoint', keys: ['0.5','half','midpoint','centre','center','symmetric']},
+      { name: 'Monotonic and S-shaped', keys: ['s-shape','monoton','always increases','smooth','curve']},
+      { name: 'Pairs naturally with logistic regression as inverse of logit', keys: ['inverse','logit','log-odds','convert back','probability','output']}
+    ],
+    model: "The sigmoid function takes any real number z and squeezes it into the range (0, 1). Its formula is σ(z) = 1 / (1 + e^−z). When z = 0, the denominator is 1+1 = 2, so σ(0) = 0.5 — the midpoint. For very large positive z, e^−z is near 0, so σ(z) approaches 1. For very negative z, e^−z is huge, so σ(z) approaches 0. The curve is smooth, monotonically increasing, and shaped like an S. It pairs naturally with logistic regression because it is the inverse of the logit (log-odds) function: the linear part of the model produces a log-odds value z, and the sigmoid converts that z back into a probability between 0 and 1. This makes outputs valid probabilities while keeping the model's interior linear and easy to interpret."
+  },
+  4: {
+    concepts: [
+      { name: 'Decision boundary = predictor values where verdict flips (P=threshold)', keys: ['boundary','threshold','flip','separate','divide','where','class','line']},
+      { name: 'For logistic regression, set z = β₀+β₁x₁+β₂x₂+...=0 (linear equation)', keys: ['linear','β','beta','equation','z = 0','straight','line','plane','hyperplane']},
+      { name: 'Sigmoid output = 0.5 exactly when z = 0', keys: ['σ(0)','sigmoid','0.5','half','equal']},
+      { name: 'Changing threshold shifts the boundary parallel', keys: ['shift','parallel','move','slide','sweep','translate']},
+      { name: 'Lowering threshold to 0.3 → more cases predicted yes, more false positives', keys: ['more yes','more positive','more flagged','false positive','recall','sensitivity']}
+    ],
+    model: "A decision boundary is the set of predictor values where the classifier's verdict flips between 'no' and 'yes' — typically where P(y=1|x) equals the chosen threshold. For logistic regression at threshold 0.5, the sigmoid equals 0.5 exactly when its input z = β₀+β₁x₁+...+βₚxₚ = 0. That's a linear equation in the predictors, so the boundary is a line in 2D, a plane in 3D, a hyperplane in higher dimensions. It's always linear, even though the sigmoid curve itself looks S-shaped in 1D. When the threshold changes from 0.5 to 0.3, the boundary stays the same shape but shifts parallel to itself — now corresponding to z = ln(0.3/0.7) ≈ −0.85. More cases now fall on the 'yes' side, so the model flags more positives — meaning more true positives caught but also more false positives, and fewer false negatives."
+  },
+  5: {
+    concepts: [
+      { name: 'Linear formula gives log-odds (or score)', keys: ['linear','β','log-odds','score','combination','sum','formula']},
+      { name: 'Sigmoid converts log-odds → probability of fraud', keys: ['sigmoid','σ','convert','probability','fraud','output']},
+      { name: 'Threshold turns probability into yes/no decision', keys: ['threshold','decision','flag','yes','no','cutoff','boundary']},
+      { name: 'Default 0.5 might not be optimal', keys: ['default','0.5','not optimal','tune','adjust','not best']},
+      { name: 'Lower threshold because false negatives cost more', keys: ['lower','below','reduce','cost','false negative','miss','catch','recall','sensitivity']}
+    ],
+    model: "A bank fraud-detection logistic regression works end-to-end as follows. First, the linear part combines transaction features (amount, location, time-of-day, merchant type, recent activity, etc.) into a score: z = β₀ + β₁·amount + β₂·time + ... This z is a log-odds value that can be any real number. Second, the sigmoid σ(z) converts this z into a probability of fraud between 0 and 1. Third, the bank chooses a threshold (often 0.5 by default) — transactions above the threshold are flagged for review or blocked, and the rest go through. Because false negatives (letting genuine fraud slip through) cost the bank far more than false positives (briefly inconveniencing an honest customer), the bank should lower the threshold below 0.5 — say to 0.1 or 0.2. This sweeps the boundary so that more transactions get flagged, accepting a higher false-positive count in exchange for catching far more fraud. The exact value is chosen by computing total expected cost across thresholds and picking the threshold that minimises it."
+  }
+};
+
+function evalAnswer(text, conceptList) {
+  const lower = text.toLowerCase();
+  const covered = [], missing = [];
+  conceptList.forEach(c => {
+    const hit = c.keys.some(k => lower.includes(k));
+    if (hit) covered.push(c.name); else missing.push(c.name);
+  });
+  return { covered, missing, score: covered.length / conceptList.length };
+}
+
+document.getElementById('submitWritten').addEventListener('click', () => {
+  const out = document.getElementById('evalBody');
+  const ans = [1,2,3,4,5].map(i => document.getElementById('ans'+i).value.trim());
+
+  if (ans.every(a => a.length === 0)) {
+    out.innerHTML = '<p style="color:#ff7e9d;">Please write at least one answer before submitting.</p>';
+    document.getElementById('evalOut').classList.add('show');
+    return;
+  }
+
+  let html = '';
+  let totalScore = 0, answered = 0, totalWords = 0;
+
+  ans.forEach((text, i) => {
+    const q = i + 1;
+    const rubricEntry = rubric[q];
+    if (text.length < 5) {
+      html += `<div class="eval-q-result">
+        <div class="qhead2"><strong>Question ${q}</strong>
+        <span class="grade low">No answer</span></div>
+        <p style="color:#fde68a; font-size:0.92rem; margin:0;">No substantial answer provided — skipping evaluation for this question.</p>
+      </div>`;
+      return;
+    }
+    const wordCount = text.split(/\s+/).filter(Boolean).length;
+    totalWords += wordCount;
+    const ev = evalAnswer(text, rubricEntry.concepts);
+    totalScore += ev.score;
+    answered++;
+    const pct = Math.round(ev.score * 100);
+    let grade, gradeClass;
+    if (pct >= 75) { grade = 'Strong'; gradeClass = 'high'; }
+    else if (pct >= 50) { grade = 'Solid'; gradeClass = 'mid'; }
+    else if (pct >= 25) { grade = 'Partial'; gradeClass = 'mid'; }
+    else { grade = 'Needs depth'; gradeClass = 'low'; }
+
+    html += `<div class="eval-q-result">
+      <div class="qhead2">
+        <strong>Question ${q}</strong>
+        <span class="grade ${gradeClass}">${grade} · ${pct}%</span>
+      </div>
+      <div class="score-pill-row">
+        <span class="score-pill">Concepts: ${ev.covered.length} / ${rubricEntry.concepts.length}</span>
+        <span class="score-pill">Words: ${wordCount}</span>
+      </div>`;
+
+    if (ev.covered.length) {
+      html += `<div class="cov-list"><strong class="covered">✓ Concepts you addressed:</strong><br>
+        ${ev.covered.map(c => '&nbsp;&nbsp;▸ ' + c).join('<br>')}
+      </div>`;
+    }
+    if (ev.missing.length) {
+      html += `<div class="cov-list"><strong class="missing">! Could strengthen by adding:</strong><br>
+        ${ev.missing.map(c => '&nbsp;&nbsp;▸ ' + c).join('<br>')}
+      </div>`;
+    }
+    html += `<details>
+      <summary>▸ Show model answer</summary>
+      <div class="model-ans">${rubricEntry.model}</div>
+    </details></div>`;
+  });
+
+  const avgPct = answered ? Math.round((totalScore / answered) * 100) : 0;
+  let overall;
+  if (totalWords < 100) {
+    overall = `Your answers are brief (${totalWords} words total across ${answered} questions). Try elaborating each point with a short example or by walking through the reasoning step by step. Overall concept coverage: ${avgPct}%.`;
+  } else if (totalWords < 350) {
+    overall = `Good level of detail (${totalWords} words across ${answered} questions). To go deeper, link each idea to a concrete example or to other topics from the module. Overall concept coverage: ${avgPct}%.`;
+  } else {
+    overall = `Thorough explanations — ${totalWords} words across ${answered} questions. Excellent depth. Make sure every concept is clearly explained rather than just mentioned. Overall concept coverage: ${avgPct}%.`;
+  }
+
+  html += `<div class="overall-msg"><strong>Overall feedback:</strong> ${overall}</div>`;
+
+  out.innerHTML = html;
+  document.getElementById('evalOut').classList.add('show');
+  document.getElementById('evalOut').scrollIntoView({ behavior: 'smooth', block: 'start' });
+});
+
+document.getElementById('resetWritten').addEventListener('click', () => {
+  [1,2,3,4,5].forEach(i => { document.getElementById('ans'+i).value = ''; });
+  document.getElementById('evalOut').classList.remove('show');
+  document.getElementById('evalBody').innerHTML = '';
+});
+
+/* ─ SCROLL REVEAL OBSERVER ─ */
+(function() {
+  const reveals = document.querySelectorAll('.reveal');
+  if (!reveals.length) return;
+  const obs = new IntersectionObserver((entries) => {
+    entries.forEach(e => { if (e.isIntersecting) { e.target.classList.add('visible'); obs.unobserve(e.target); } });
+  }, { threshold: 0, rootMargin: '0px 0px -40px 0px' });
+  reveals.forEach(r => obs.observe(r));
+})();
+</script>
+</body>
+</html>

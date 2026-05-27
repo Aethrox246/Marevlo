@@ -1,0 +1,704 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Word Break II - Visualization</title>
+    <style>
+        :root {
+            --bg-page: #0d1117;
+            --bg-surface: #161b22;
+            --bg-input: #0d1117;
+            --border-main: #30363d;
+            --btn-bg: #21262d;
+            --btn-hover: #2d333b;
+            --text-main: #c9d1d9;
+            --text-dim: #8b949e;
+            --text-log: #58a6ff;
+            --accent-orange: #e3b341;
+            --accent-blue: #388bfd;
+            --accent-green: #3fb950;
+            --accent-red: #f85149;
+            --accent-purple: #a371f7;
+        }
+
+        * { box-sizing: border-box; }
+        body {
+            background-color: var(--bg-page);
+            color: var(--text-main);
+            font-family: system-ui, -apple-system, sans-serif;
+            margin: 0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            min-height: 100vh;
+            padding-bottom: 40px;
+        }
+
+        /* ROW 1: INPUT BAR */
+        .input-bar {
+            width: 100%;
+            background-color: var(--bg-surface);
+            padding: 12px 16px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 8px;
+            border-bottom: 1px solid var(--border-main);
+            flex-wrap: wrap;
+        }
+        label.ui-label { font-family: 'Courier New', monospace; font-size: 13px; color: var(--text-dim); }
+        input[type="text"] {
+            background: var(--bg-input);
+            border: 1px solid var(--border-main);
+            color: var(--text-main);
+            height: 32px;
+            border-radius: 6px;
+            padding: 0 10px;
+            width: 280px;
+            font-size: 13px;
+        }
+        button {
+            height: 32px; border-radius: 6px; padding: 0 14px; background: var(--btn-bg);
+            border: 1px solid var(--border-main); color: var(--text-main); font-size: 13px; cursor: pointer;
+            transition: background 0.2s ease;
+        }
+        button:hover { background: var(--btn-hover); }
+
+        /* ROW 2: VISUALIZATION AREA */
+        .visual-container { 
+            margin-top: 30px; 
+            display: flex; 
+            align-items: flex-start; 
+            justify-content: center;
+            gap: 60px; 
+            width: 100%; 
+            max-width: 1100px;
+            flex-wrap: wrap;
+        }
+        
+        /* Call Stack Area */
+        .stack-area {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 10px;
+            width: 220px;
+        }
+        .stack-container {
+            display: flex;
+            flex-direction: column-reverse;
+            align-items: center;
+            gap: 6px;
+            width: 220px;
+            height: 340px;
+            border-bottom: 4px solid var(--border-main);
+            border-left: 2px dashed var(--border-main);
+            border-right: 2px dashed var(--border-main);
+            padding: 12px;
+            background: rgba(22, 27, 34, 0.5);
+            overflow-y: auto;
+            border-radius: 8px;
+        }
+        .stack-frame {
+            width: 100%;
+            padding: 10px 12px;
+            background: var(--btn-bg);
+            border: 1px solid var(--border-main);
+            border-radius: 6px;
+            font-family: monospace;
+            font-size: 13px;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.3);
+            white-space: pre-wrap;
+        }
+        .stack-frame.active {
+            background: #0d2244;
+            border-color: var(--accent-blue);
+            color: var(--accent-blue);
+            transform: scale(1.04);
+            box-shadow: 0 0 12px var(--accent-blue);
+            font-weight: bold;
+        }
+
+        /* Sentence Building Area */
+        .sentence-area {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 12px;
+            width: 420px;
+        }
+        .sentence-container {
+            width: 100%;
+            min-height: 180px;
+            background: var(--bg-surface);
+            border: 1px solid var(--border-main);
+            border-radius: 8px;
+            padding: 16px;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+        .current-path {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            min-height: 50px;
+            align-items: center;
+        }
+        .word-tile {
+            background: #0f2a1a;
+            border: 2px solid var(--accent-green);
+            color: var(--accent-green);
+            padding: 8px 14px;
+            border-radius: 6px;
+            font-family: monospace;
+            font-size: 15px;
+            font-weight: 600;
+            animation: popIn 0.4s ease forwards;
+        }
+        .results-list {
+            margin-top: 12px;
+            padding: 12px;
+            background: rgba(0,0,0,0.3);
+            border: 1px dashed var(--accent-purple);
+            border-radius: 6px;
+            min-height: 80px;
+            font-size: 14px;
+            line-height: 1.5;
+        }
+
+        @keyframes popIn {
+            0% { transform: scale(0.6); opacity: 0; }
+            100% { transform: scale(1); opacity: 1; }
+        }
+
+        /* ROW 3: ACTION PANEL */
+        .action-panel {
+            margin-top: 25px; 
+            background: var(--bg-surface); 
+            border: 1px solid var(--border-main);
+            border-radius: 8px; 
+            padding: 16px 24px; 
+            width: 920px; 
+            text-align: left; 
+            font-family: monospace; 
+            min-height: 110px;
+            font-size: 15px;
+            line-height: 1.6;
+        }
+
+        /* INFO PANEL */
+        .info-panel { 
+            margin-top: 15px; 
+            display: flex; 
+            gap: 12px; 
+            flex-wrap: wrap; 
+            justify-content: center; 
+        }
+        .info-cell {
+            background: var(--bg-surface); 
+            border: 1px solid var(--border-main); 
+            border-radius: 6px;
+            padding: 10px 16px; 
+            display: flex; 
+            flex-direction: column; 
+            align-items: center; 
+            min-width: 130px; 
+            gap: 4px;
+        }
+        .info-label { font-size: 11px; color: var(--text-dim); }
+        .info-value { 
+            font-family: monospace; 
+            font-size: 17px; 
+            font-weight: 700; 
+            color: var(--accent-orange);
+        }
+
+        /* RESULT DISPLAY */
+        .result-display { 
+            margin-top: 15px; 
+            text-align: center;
+        }
+        #res-val { 
+            font-size: 21px; 
+            color: var(--accent-green); 
+            font-family: monospace; 
+            font-weight: bold;
+            white-space: pre-wrap;
+            max-width: 800px;
+        }
+
+        /* STATUS BAR */
+        .status-bar { 
+            margin-top: 10px; 
+            font-size: 13px; 
+            color: var(--text-dim); 
+            height: 1.4em; 
+            text-align: center; 
+            width: 800px;
+        }
+
+        /* CONTROLS */
+        .controls { 
+            margin-top: 28px; 
+            display: flex; 
+            align-items: center; 
+            gap: 10px; 
+            flex-wrap: wrap;
+            justify-content: center;
+        }
+        input[type="range"] { 
+            accent-color: var(--accent-blue); 
+            width: 140px; 
+            cursor: pointer; 
+        }
+
+        /* LEGEND */
+        .legend { 
+            margin-top: 18px; 
+            display: flex; 
+            gap: 20px; 
+            flex-wrap: wrap; 
+            justify-content: center; 
+            max-width: 900px; 
+            font-size: 12.5px;
+        }
+        .legend-item { 
+            display: flex; 
+            align-items: center; 
+            color: var(--text-dim); 
+        }
+        .dot { 
+            width: 12px; 
+            height: 12px; 
+            border-radius: 3px; 
+            margin-right: 7px; 
+            display: inline-block; 
+        }
+
+        /* LOG PANEL */
+        .log-panel {
+            margin-top: 20px; 
+            background: var(--bg-page); 
+            border: 1px solid var(--border-main);
+            border-radius: 8px; 
+            padding: 14px 18px; 
+            width: 920px; 
+            max-width: 95%; 
+            height: 160px;
+            overflow-y: auto; 
+            font-family: 'Courier New', monospace; 
+            font-size: 13.2px;
+            line-height: 1.45;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="input-bar">
+        <label class="ui-label">s =</label>
+        <input type="text" id="s-input" value="catsanddog" style="width:220px;">
+        <label class="ui-label">dict =</label>
+        <input type="text" id="dict-input" value="cat,cats,and,sand,dog" style="width:320px;">
+        <button onclick="loadCustom()">Load</button>
+        <button onclick="loadExample(0)">Ex 1 (catsanddog)</button>
+        <button onclick="loadExample(1)">Ex 2 (pineapplepenapple)</button>
+    </div>
+
+    <div class="visual-container">
+        <!-- Call Stack -->
+        <div class="stack-area">
+            <div class="ui-label" style="font-weight: bold; color: var(--accent-blue);">Recursion Stack (start index)</div>
+            <div class="stack-container" id="stack-container"></div>
+        </div>
+
+        <!-- Sentence Building -->
+        <div class="sentence-area">
+            <div class="ui-label" style="font-weight: bold; color: var(--accent-green);">Current Path</div>
+            <div class="sentence-container">
+                <div class="current-path" id="current-path"></div>
+                
+                <div style="margin-top:12px; font-size:12px; color:var(--text-dim);">Valid Sentences Found:</div>
+                <div class="results-list" id="results-list"></div>
+            </div>
+        </div>
+    </div>
+
+    <div class="action-panel" id="main-panel">
+        Click <strong>Play</strong> or <strong>Next</strong> to start visualizing Word Break II backtracking.
+    </div>
+
+    <div class="info-panel">
+        <div class="info-cell">
+            <span class="info-label">Current Start Index</span>
+            <span class="info-value" id="val-start" style="color: var(--accent-orange);">—</span>
+        </div>
+        <div class="info-cell">
+            <span class="info-label">Current Word</span>
+            <span class="info-value" id="val-word" style="color: var(--accent-green);">—</span>
+        </div>
+    </div>
+
+    <div class="result-display">
+        <span class="ui-label" style="margin-bottom: 6px;">All Possible Sentences</span>
+        <div id="res-val">—</div>
+    </div>
+
+    <div class="status-bar" id="status-text">Ready. Choose an example or enter custom input.</div>
+
+    <div class="controls">
+        <button onclick="reset()">↺ Reset</button>
+        <button onclick="back()">← Back</button>
+        <button onclick="togglePlay()" id="play-btn">Play</button>
+        <button onclick="next()">Next →</button>
+        <div style="display:flex; align-items:center; gap:6px;">
+            <span class="ui-label" style="font-size:11px">Speed</span>
+            <input type="range" id="speed-slider" min="0" max="2" value="1">
+        </div>
+    </div>
+
+    <div class="legend">
+        <div class="legend-item"><span class="dot" style="background:var(--accent-blue)"></span> Active Recursive Call (start index)</div>
+        <div class="legend-item"><span class="dot" style="background:var(--accent-green)"></span> Valid Word Added to Path</div>
+        <div class="legend-item"><span class="dot" style="background:var(--accent-purple)"></span> Complete Sentence Found</div>
+    </div>
+
+    <div class="log-panel" id="log"></div>
+
+    <script>
+        let s = "catsanddog";
+        let wordDict = ["cat","cats","and","sand","dog"];
+        let wordSet = new Set(wordDict);
+        
+        let steps = [];
+        let stepIndex = 0;
+        let timer = null;
+        const delays = [1600, 800, 400];
+
+        let currentResults = [];
+
+        function init() {
+            loadExample(0);
+        }
+
+        function loadExample(ex) {
+            if (ex === 0) {
+                s = "catsanddog";
+                wordDict = ["cat","cats","and","sand","dog"];
+            } else if (ex === 1) {
+                s = "pineapplepenapple";
+                wordDict = ["apple","pen","applepen","pine","pineapple"];
+            }
+            document.getElementById('s-input').value = s;
+            document.getElementById('dict-input').value = wordDict.join(',');
+            wordSet = new Set(wordDict);
+            generateSteps();
+            reset();
+        }
+
+        function loadCustom() {
+            const sVal = document.getElementById('s-input').value.trim();
+            const dictStr = document.getElementById('dict-input').value.trim();
+            
+            if (!sVal) {
+                alert("Please enter a string s");
+                return;
+            }
+            
+            s = sVal;
+            wordDict = dictStr ? dictStr.split(',').map(w => w.trim()).filter(w => w) : [];
+            wordSet = new Set(wordDict);
+            
+            generateSteps();
+            reset();
+        }
+
+        function generateSteps() {
+            steps = [];
+            currentResults = [];
+            let callStack = [];
+            let path = [];
+            let results = [];
+
+            // STEP 0: INIT
+            steps.push({
+                type: 'init',
+                start: 0,
+                word: '—',
+                stack: [],
+                path: [],
+                results: [],
+                panel: `Word Break II Visualization<br><strong>Input:</strong> s = "<span style="color:var(--accent-orange)">${s}</span>"<br>wordDict = [${wordDict.map(w => `"${w}"`).join(', ')}]<br><br>We will explore all ways to break the string into dictionary words using backtracking.`,
+                statusText: `Starting backtracking from index 0`,
+                log: `Start WordBreakII(s="${s}", dict=[${wordDict.join(', ')}])`,
+                logColor: 'var(--text-dim)'
+            });
+
+            function backtrack(start, currentPath) {
+                // Push current call to stack
+                callStack.push(start);
+
+                steps.push({
+                    type: 'call',
+                    start: start,
+                    word: '—',
+                    stack: [...callStack],
+                    path: [...currentPath],
+                    results: [...results],
+                    panel: `Recursive call: <code>backtrack(start=${start})</code><br>Current path: <span style="color:var(--accent-green)">${currentPath.length ? currentPath.join(' ') : 'empty'}</span>`,
+                    statusText: `Exploring from index ${start}`,
+                    log: `  backtrack(${start})`,
+                    logColor: 'var(--text-main)'
+                });
+
+                // Base case
+                if (start === s.length) {
+                    const sentence = currentPath.join(' ');
+                    results.push(sentence);
+                    currentResults.push(sentence);
+
+                    steps.push({
+                        type: 'complete',
+                        start: start,
+                        word: '—',
+                        stack: [...callStack],
+                        path: [...currentPath],
+                        results: [...results],
+                        panel: `<span style="color:var(--accent-purple)">Complete sentence found!</span><br><strong>"${sentence}"</strong><br>Added to results.`,
+                        statusText: `Found valid sentence: "${sentence}"`,
+                        log: `    → Complete: "${sentence}"`,
+                        logColor: 'var(--accent-purple)'
+                    });
+
+                    callStack.pop();
+                    return;
+                }
+
+                // Try all possible end positions
+                for (let end = start + 1; end <= s.length; end++) {
+                    const word = s.substring(start, end);
+                    
+                    if (wordSet.has(word)) {
+                        // Valid word found
+                        currentPath.push(word);
+
+                        steps.push({
+                            type: 'print',
+                            start: start,
+                            word: word,
+                            stack: [...callStack],
+                            path: [...currentPath],
+                            results: [...results],
+                            panel: `Found valid word: <span style="color:var(--accent-green)"><strong>"${word}"</strong></span> (s[${start}:${end}])<br>Adding to path and recursing to index ${end}`,
+                            statusText: `Using word "${word}" → recurse to ${end}`,
+                            log: `    Word "${word}" valid → recurse(${end})`,
+                            logColor: 'var(--accent-green)'
+                        });
+
+                        // Recursive call
+                        steps.push({
+                            type: 'recurse',
+                            start: end,
+                            word: word,
+                            stack: [...callStack],
+                            path: [...currentPath],
+                            results: [...results],
+                            panel: `Making recursive call for remaining suffix starting at index <strong>${end}</strong>`,
+                            statusText: `Recursing with start=${end}`,
+                            log: `      → backtrack(${end})`,
+                            logColor: 'var(--accent-blue)'
+                        });
+
+                        backtrack(end, currentPath);
+
+                        // Backtrack
+                        currentPath.pop();
+
+                        steps.push({
+                            type: 'unwind',
+                            start: start,
+                            word: word,
+                            stack: [...callStack],
+                            path: [...currentPath],
+                            results: [...results],
+                            panel: `Backtracked from "${word}". Removed from path.<br>Continuing to check other possible words from index ${start}.`,
+                            statusText: `Backtracked after "${word}"`,
+                            log: `    Backtrack: pop "${word}"`,
+                            logColor: 'var(--text-dim)'
+                        });
+                    }
+                }
+
+                // After trying all possibilities from this start
+                callStack.pop();
+                
+                if (callStack.length > 0) {
+                    steps.push({
+                        type: 'unwind',
+                        start: start,
+                        word: '—',
+                        stack: [...callStack],
+                        path: [...currentPath],
+                        results: [...results],
+                        panel: `Finished exploring all words from start=${start}. Returning to previous call.`,
+                        statusText: `Unwinding from start=${start}`,
+                        log: `  Return from backtrack(${start})`,
+                        logColor: 'var(--text-dim)'
+                    });
+                }
+            }
+
+            // Start the recursion
+            backtrack(0, []);
+
+            // Final step
+            steps.push({
+                type: 'final',
+                start: s.length,
+                word: '—',
+                stack: [],
+                path: [],
+                results: [...results],
+                panel: `Backtracking complete.<br><strong>All possible sentences:</strong><br>${results.length ? results.map(r => `<span style="color:var(--accent-green)">• ${r}</span>`).join('<br>') : 'No valid sentences found.'}`,
+                complete: true,
+                finalStr: results.length ? results.join('\n') : 'No valid break',
+                statusText: `Done. Found ${results.length} possible sentence(s).`,
+                log: `Final Results (${results.length} sentences):\n${results.join('\n') || 'None'}`,
+                logColor: 'var(--accent-green)',
+                bold: true
+            });
+        }
+
+        function renderStep(idx) {
+            const step = steps[idx];
+            if (!step) return;
+
+            // Render Stack (showing start indices)
+            const stackContainer = document.getElementById('stack-container');
+            stackContainer.innerHTML = '';
+            
+            if (step.stack && step.stack.length > 0) {
+                step.stack.forEach((st, i) => {
+                    const frame = document.createElement('div');
+                    const isTop = (i === step.stack.length - 1);
+                    frame.className = `stack-frame ${isTop ? 'active' : ''}`;
+                    frame.innerHTML = `backtrack(start=<span style="color:var(--accent-orange)">${st}</span>)`;
+                    stackContainer.appendChild(frame);
+                });
+            }
+
+            // Render Current Path
+            const pathContainer = document.getElementById('current-path');
+            pathContainer.innerHTML = '';
+            if (step.path && step.path.length > 0) {
+                step.path.forEach(word => {
+                    const tile = document.createElement('div');
+                    tile.className = 'word-tile';
+                    tile.innerText = word;
+                    pathContainer.appendChild(tile);
+                });
+            } else {
+                const emptyMsg = document.createElement('div');
+                emptyMsg.style.color = 'var(--text-dim)';
+                emptyMsg.style.fontStyle = 'italic';
+                emptyMsg.innerText = '(empty path)';
+                pathContainer.appendChild(emptyMsg);
+            }
+
+            // Render Results Found So Far
+            const resultsList = document.getElementById('results-list');
+            resultsList.innerHTML = '';
+            if (step.results && step.results.length > 0) {
+                step.results.forEach(sent => {
+                    const line = document.createElement('div');
+                    line.style.marginBottom = '4px';
+                    line.style.color = 'var(--accent-purple)';
+                    line.innerText = '✓ ' + sent;
+                    resultsList.appendChild(line);
+                });
+            } else {
+                const empty = document.createElement('div');
+                empty.style.color = 'var(--text-dim)';
+                empty.style.fontStyle = 'italic';
+                empty.innerText = '(no sentences yet)';
+                resultsList.appendChild(empty);
+            }
+
+            // Update Panels
+            document.getElementById('main-panel').innerHTML = step.panel || '—';
+            document.getElementById('val-start').innerText = step.start !== undefined ? step.start : '—';
+            document.getElementById('val-word').innerText = step.word || '—';
+
+            const resVal = document.getElementById('res-val');
+            if (step.complete) {
+                resVal.innerHTML = step.finalStr.replace(/\n/g, '<br>');
+                resVal.classList.add('pop');
+            } else {
+                resVal.innerText = '—';
+                resVal.classList.remove('pop');
+            }
+
+            document.getElementById('status-text').innerText = step.statusText || '';
+
+            // Update Log (cumulative)
+            const logPanel = document.getElementById('log');
+            logPanel.innerHTML = '';
+            for (let k = 0; k <= idx; k++) {
+                if (steps[k].log) {
+                    const line = document.createElement('div');
+                    line.style.marginBottom = '3px';
+                    line.style.whiteSpace = 'pre-wrap';
+                    if (steps[k].logColor) line.style.color = steps[k].logColor;
+                    if (steps[k].bold) line.style.fontWeight = 'bold';
+                    line.innerText = steps[k].log;
+                    logPanel.appendChild(line);
+                }
+            }
+            logPanel.scrollTop = logPanel.scrollHeight;
+        }
+
+        function next() {
+            if (stepIndex < steps.length - 1) {
+                stepIndex++;
+                renderStep(stepIndex);
+            } else {
+                pause();
+            }
+        }
+
+        function back() {
+            if (stepIndex > 0) {
+                stepIndex--;
+                renderStep(stepIndex);
+            }
+        }
+
+        function reset() {
+            pause();
+            stepIndex = 0;
+            renderStep(0);
+        }
+
+        function togglePlay() {
+            const btn = document.getElementById('play-btn');
+            if (timer) {
+                pause();
+            } else {
+                btn.innerText = 'Pause';
+                if (stepIndex >= steps.length - 1) stepIndex = 0;
+                timer = setInterval(next, delays[parseInt(document.getElementById('speed-slider').value)]);
+            }
+        }
+
+        function pause() {
+            if (timer) clearInterval(timer);
+            timer = null;
+            document.getElementById('play-btn').innerText = 'Play';
+        }
+
+        window.onload = init;
+    </script>
+</body>
+</html>

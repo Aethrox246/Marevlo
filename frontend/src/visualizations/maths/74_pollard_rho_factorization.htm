@@ -1,0 +1,405 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pollard Rho Factorization - Visualization</title>
+    <style>
+        :root {
+            --bg-page: #0d1117;
+            --bg-surface: #161b22;
+            --bg-input: #0d1117;
+            --border-main: #30363d;
+            --btn-bg: #21262d;
+            --btn-hover: #2d333b;
+            --text-main: #c9d1d9;
+            --text-dim: #8b949e;
+            --accent-orange: #e3b341;
+            --accent-blue: #388bfd;
+            --accent-green: #3fb950;
+            --accent-red: #f85149;
+            --accent-purple: #a371f7;
+        }
+
+        * { box-sizing: border-box; }
+        body {
+            background-color: var(--bg-page);
+            color: var(--text-main);
+            font-family: system-ui, -apple-system, sans-serif;
+            margin: 0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            min-height: 100vh;
+            padding-bottom: 40px;
+        }
+
+        /* INPUT BAR */
+        .input-bar {
+            width: 100%;
+            background-color: var(--bg-surface);
+            padding: 12px 16px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 8px;
+            border-bottom: 1px solid var(--border-main);
+            flex-wrap: wrap;
+        }
+        label.ui-label { font-family: 'Courier New', monospace; font-size: 13px; color: var(--text-dim); }
+        input[type="number"] {
+            background: var(--bg-input);
+            border: 1px solid var(--border-main);
+            color: var(--text-main);
+            height: 32px;
+            border-radius: 6px;
+            padding: 0 10px;
+            width: 160px;
+            font-size: 13px;
+        }
+
+        button {
+            height: 32px; border-radius: 6px; padding: 0 14px; background: var(--btn-bg);
+            border: 1px solid var(--border-main); color: var(--text-main); font-size: 13px; cursor: pointer;
+            transition: background 0.2s ease;
+        }
+        button:hover { background: var(--btn-hover); }
+
+        /* VISUALIZATION */
+        .visual-container { margin-top: 30px; display: flex; flex-direction: column; align-items: center; gap: 20px; width: 100%; }
+        .tiles-wrapper { 
+            display: flex; gap: 14px; flex-wrap: wrap; justify-content: center; 
+            max-width: 900px; min-height: 100px; position: relative;
+        }
+        
+        .tile-unit { display: flex; flex-direction: column; align-items: center; gap: 5px; position: relative; }
+        .tile {
+            min-width: 60px; height: 60px; display: flex; align-items: center; justify-content: center;
+            border-radius: 8px; font-size: 22px; font-weight: 600; font-family: 'Courier New', monospace;
+            transition: all 0.3s ease; border: 2px solid var(--border-main); background: #21262d;
+            color: var(--text-main);
+        }
+        .tile-index { font-size: 11px; color: var(--text-dim); font-family: monospace; }
+
+        /* Highlight States */
+        .tile.candidate { background: #2a1600; border-color: var(--accent-orange); color: var(--accent-orange); transform: scale(1.15); box-shadow: 0 0 14px rgba(227,179,65,0.5); z-index: 2; }
+        .tile.winning { background: #0f2a1a; border-color: var(--accent-green); color: var(--accent-green); transform: scale(1.1); box-shadow: 0 0 12px var(--accent-green); z-index: 3; }
+        .tile.done { opacity: 0.5; background: #161b22; border-color: var(--border-main); color: var(--text-dim); }
+        .tile.idle { opacity: 0.9; }
+
+        /* PANEL */
+        .action-panel {
+            margin-top: 40px; background: var(--bg-surface); border: 1px solid var(--border-main);
+            border-radius: 6px; padding: 14px 24px; width: 740px; text-align: center; 
+            font-family: monospace; min-height: 95px; display: flex; flex-direction: column; 
+            justify-content: center; font-size: 15px; line-height: 1.55;
+        }
+
+        /* INFO PANEL */
+        .info-panel { margin-top: 14px; display: flex; gap: 14px; flex-wrap: wrap; justify-content: center; }
+        .info-cell {
+            background: var(--bg-surface); border: 1px solid var(--border-main); border-radius: 6px;
+            padding: 10px 18px; display: flex; flex-direction: column; align-items: center; 
+            min-width: 130px; gap: 5px;
+        }
+        .info-label { font-size: 11px; color: var(--text-dim); }
+        .info-value { font-family: monospace; font-size: 17px; font-weight: 700; }
+
+        /* RESULT */
+        .result-display { margin-top: 14px; display: flex; flex-direction: column; align-items: center; }
+        #res-val { font-size: 23px; color: var(--text-dim); font-family: monospace; transition: all 0.3s; font-weight: bold; }
+        .pop { animation: popAnim 420ms ease; color: var(--accent-green) !important; font-size: 29px !important; text-shadow: 0 0 16px var(--accent-green); }
+
+        @keyframes popAnim { 0%{transform:scale(1)} 50%{transform:scale(1.2)} 100%{transform:scale(1)} }
+
+        .status-bar { margin-top: 10px; font-size: 13px; color: var(--text-dim); height: 1.4em; text-align: center; width: 700px; }
+
+        /* CONTROLS */
+        .controls { margin-top: 28px; display: flex; align-items: center; gap: 10px; }
+        input[type="range"] { accent-color: var(--accent-blue); width: 120px; cursor: pointer; }
+
+        /* LEGEND */
+        .legend { margin-top: 16px; display: flex; gap: 20px; flex-wrap: wrap; justify-content: center; max-width: 900px; }
+        .legend-item { display: flex; align-items: center; font-size: 12.5px; color: var(--text-dim); }
+        .dot { width: 12px; height: 12px; border-radius: 3px; margin-right: 8px; display: inline-block; }
+
+        /* LOG */
+        .log-panel {
+            margin-top: 16px; background: var(--bg-page); border: 1px solid var(--border-main);
+            border-radius: 6px; padding: 14px 20px; width: 760px; max-width: 95%; height: 145px;
+            overflow-y: auto; font-family: 'Courier New', monospace; font-size: 13px; line-height: 1.45;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="input-bar">
+        <label class="ui-label">n =</label>
+        <input type="number" id="num-input" value="84" min="2">
+        <button onclick="loadCustom()">Load</button>
+        <button onclick="loadExample(84)">Ex 1 (84)</button>
+        <button onclick="loadExample(101)">Ex 2 (101)</button>
+    </div>
+
+    <div class="visual-container">
+        <div class="ui-label">Current n being factored</div>
+        <div class="tiles-wrapper" id="tiles-container"></div>
+    </div>
+
+    <div class="action-panel" id="main-panel">—</div>
+
+    <div class="info-panel">
+        <div class="info-cell">
+            <span class="info-label">Current Divisor</span>
+            <span class="info-value" id="val-divisor" style="color: var(--accent-orange);">—</span>
+        </div>
+        <div class="info-cell">
+            <span class="info-label">Remaining n</span>
+            <span class="info-value" id="val-remaining" style="color: var(--accent-blue);">—</span>
+        </div>
+        <div class="info-cell">
+            <span class="info-label">Factors Found</span>
+            <span class="info-value" id="val-factors" style="color: var(--accent-green);">—</span>
+        </div>
+    </div>
+
+    <div class="result-display">
+        <span class="ui-label" style="margin-bottom: 6px;">Prime Factors =</span>
+        <span id="res-val">—</span>
+    </div>
+
+    <div class="status-bar" id="status-text"></div>
+
+    <div class="controls">
+        <button onclick="reset()">↺ Reset</button>
+        <button onclick="back()">← Back</button>
+        <button onclick="togglePlay()" id="play-btn">Play</button>
+        <button onclick="next()">Next →</button>
+        <div class="controls" style="margin-top:0">
+            <span class="ui-label" style="margin-right:5px; font-size:11px">Speed</span>
+            <input type="range" id="speed-slider" min="0" max="2" value="1">
+        </div>
+    </div>
+
+    <div class="legend">
+        <div class="legend-item"><span class="dot" style="background:var(--bg-surface); border:1px solid var(--accent-orange)"></span> Testing Divisor</div>
+        <div class="legend-item"><span class="dot" style="background:var(--accent-green); border:1px solid var(--accent-green)"></span> Factor Found</div>
+        <div class="legend-item"><span class="dot" style="background:var(--accent-red); border:1px solid var(--accent-red)"></span> Not Divisible</div>
+    </div>
+
+    <div class="log-panel" id="log"></div>
+
+    <script>
+        let inputN = 84;
+        let steps = [];
+        let stepIndex = 0;
+        let timer = null;
+        const delays = [1600, 800, 400];
+
+        function init() { loadExample(84); }
+
+        function loadExample(newN) {
+            inputN = parseInt(newN);
+            document.getElementById('num-input').value = inputN;
+            generateSteps();
+            reset();
+        }
+
+        function loadCustom() {
+            const val = parseInt(document.getElementById('num-input').value);
+            if (!isNaN(val) && val >= 2) {
+                loadExample(val);
+            } else {
+                alert("Please enter a valid integer ≥ 2");
+            }
+        }
+
+        function generateSteps() {
+            steps = [];
+            let n = inputN;
+            let factors = [];
+            let currentN = n;
+
+            // INIT
+            steps.push({
+                type: 'init',
+                panel: `Factorizing <b>${inputN}</b> using Trial Division<br>Check divisors from 2 up to √n`,
+                statusText: `Starting factorization of ${inputN}`,
+                log: `n = ${inputN}\nFactors = []\nStarting trial division...`,
+                logColor: 'var(--text-dim)',
+                divisor: '—',
+                remaining: currentN,
+                factorsStr: '[]'
+            });
+
+            // Handle factor 2
+            while (n % 2 === 0) {
+                factors.push(2);
+                steps.push({
+                    type: 'divide',
+                    panel: `Divisible by <b>2</b><br>Add 2 to factors, n = ${n} // 2 = ${n/2}`,
+                    statusText: `Dividing by 2`,
+                    log: `n % 2 == 0 → add 2, n = ${n} // 2`,
+                    logColor: 'var(--accent-green)',
+                    divisor: 2,
+                    remaining: n / 2,
+                    factorsStr: '[' + factors.join(', ') + ']'
+                });
+                n = n / 2;
+            }
+
+            // Odd factors
+            let i = 3;
+            while (i * i <= n) {
+                while (n % i === 0) {
+                    factors.push(i);
+                    steps.push({
+                        type: 'divide',
+                        panel: `Divisible by <b>${i}</b><br>Add ${i} to factors, n = ${n} // ${i} = ${n/i}`,
+                        statusText: `Dividing by ${i}`,
+                        log: `n % ${i} == 0 → add ${i}, n = ${n} // ${i}`,
+                        logColor: 'var(--accent-green)',
+                        divisor: i,
+                        remaining: n / i,
+                        factorsStr: '[' + factors.join(', ') + ']'
+                    });
+                    n = n / i;
+                }
+                i += 2;
+                if (i * i > n) break;
+
+                steps.push({
+                    type: 'test',
+                    panel: `Testing divisor <b>${i}</b> (not divisible)`,
+                    statusText: `Testing ${i}`,
+                    log: `${i} does not divide current n`,
+                    logColor: 'var(--accent-red)',
+                    divisor: i,
+                    remaining: n,
+                    factorsStr: '[' + factors.join(', ') + ']'
+                });
+            }
+
+            // If n is still > 1, it's a prime factor
+            if (n > 1) {
+                factors.push(n);
+                steps.push({
+                    type: 'final-prime',
+                    panel: `Remaining n = <b>${n}</b> is prime<br>Add ${n} to factors`,
+                    statusText: `Last prime factor: ${n}`,
+                    log: `n = ${n} > 1 → add prime factor ${n}`,
+                    logColor: 'var(--accent-green)',
+                    divisor: n,
+                    remaining: 1,
+                    factorsStr: '[' + factors.join(', ') + ']'
+                });
+            }
+
+            // FINAL
+            steps.push({
+                type: 'final',
+                panel: `Factorization complete!<br>Prime factors of ${inputN}: <b>[${factors.join(', ')}]</b>`,
+                statusText: `Done. Factors: [${factors.join(', ')}]`,
+                log: `Final prime factors: [${factors.join(', ')}]`,
+                logColor: 'var(--accent-green)',
+                bold: true,
+                divisor: '—',
+                remaining: 1,
+                factorsStr: '[' + factors.join(', ') + ']'
+            });
+        }
+
+        function renderStep(idx) {
+            const step = steps[idx];
+            if (!step) return;
+
+            const container = document.getElementById('tiles-container');
+            container.innerHTML = '';
+
+            // Show current remaining number as main tile
+            const wrapper = document.createElement('div');
+            wrapper.className = 'tile-unit';
+
+            const tile = document.createElement('div');
+            tile.className = `tile ${step.type.includes('final') || step.type === 'final-prime' ? 'winning' : (step.type === 'divide' ? 'winning' : 'candidate')}`;
+            tile.innerText = step.remaining || inputN;
+
+            const idxLabel = document.createElement('div');
+            idxLabel.className = 'tile-index';
+            idxLabel.innerText = `n = ${step.remaining || inputN}`;
+
+            wrapper.append(tile, idxLabel);
+            container.appendChild(wrapper);
+
+            document.getElementById('main-panel').innerHTML = step.panel;
+            document.getElementById('val-divisor').innerText = step.divisor;
+            document.getElementById('val-remaining').innerText = step.remaining;
+            document.getElementById('val-factors').innerText = step.factorsStr;
+
+            const resVal = document.getElementById('res-val');
+            resVal.innerText = step.factorsStr;
+            if (step.type === 'final') {
+                resVal.className = 'pop';
+            } else {
+                resVal.className = '';
+            }
+
+            document.getElementById('status-text').innerText = step.statusText || '';
+
+            // Log
+            const logPanel = document.getElementById('log');
+            logPanel.innerHTML = '';
+            for (let k = 0; k <= idx; k++) {
+                if (steps[k].log) {
+                    const line = document.createElement('div');
+                    line.style.marginBottom = '4px';
+                    line.style.whiteSpace = 'pre-wrap';
+                    if (steps[k].logColor) line.style.color = steps[k].logColor;
+                    if (steps[k].bold) line.style.fontWeight = 'bold';
+                    line.innerText = steps[k].log;
+                    logPanel.appendChild(line);
+                }
+            }
+            logPanel.scrollTop = logPanel.scrollHeight;
+        }
+
+        function next() {
+            if (stepIndex < steps.length - 1) {
+                stepIndex++;
+                renderStep(stepIndex);
+            } else pause();
+        }
+
+        function back() {
+            if (stepIndex > 0) {
+                stepIndex--;
+                renderStep(stepIndex);
+            }
+        }
+
+        function reset() {
+            pause();
+            stepIndex = 0;
+            renderStep(0);
+        }
+
+        function togglePlay() {
+            const btn = document.getElementById('play-btn');
+            if (timer) pause();
+            else {
+                btn.innerText = 'Pause';
+                if (stepIndex >= steps.length - 1) stepIndex = 0;
+                timer = setInterval(next, delays[document.getElementById('speed-slider').value]);
+            }
+        }
+
+        function pause() {
+            clearInterval(timer);
+            timer = null;
+            document.getElementById('play-btn').innerText = 'Play';
+        }
+
+        window.onload = init;
+    </script>
+</body>
+</html>
