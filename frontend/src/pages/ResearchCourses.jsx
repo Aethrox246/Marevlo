@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import React from 'react';
+import { useNavigate, useLocation } from 'react-router-dom';
 import {
     ArrowUpRight, ArrowLeft, Search, Brain, BookOpen, Layers,
     Database, GitBranch, Network, Cpu, FlaskConical, Zap,
@@ -111,8 +111,13 @@ const LEVEL_COLORS = {
 
 export default function ResearchCourses() {
     const navigate = useNavigate();
-    const [expandedCourse, setExpandedCourse] = useState(null);
-    const selectedCourse = RESEARCH_COURSES.find((course) => course.id === expandedCourse);
+    const location = useLocation();
+    const courseIdFromUrl = React.useMemo(() => {
+        const segments = location.pathname.split('/').filter(Boolean);
+        if (segments[0] !== 'research' || segments[1] !== 'courses' || segments.length < 3) return null;
+        return segments[2];
+    }, [location.pathname]);
+    const selectedCourse = RESEARCH_COURSES.find((course) => course.id === courseIdFromUrl) || null;
     const SelectedIcon = selectedCourse?.icon;
 
     return (
@@ -232,7 +237,7 @@ export default function ResearchCourses() {
                     {selectedCourse ? (
                         <>
                             <button
-                                onClick={() => setExpandedCourse(null)}
+                                onClick={() => navigate('/research/courses')}
                                 style={{
                                     display: 'flex', alignItems: 'center', gap: '8px',
                                     marginBottom: '36px', padding: '10px 18px',
@@ -489,7 +494,7 @@ export default function ResearchCourses() {
                                                 if (course.id === 'recommender-system') {
                                                     navigate('/research/track/recommender-system');
                                                 } else {
-                                                    setExpandedCourse(course.id);
+                                                    navigate(`/research/courses/${course.id}`);
                                                 }
                                             }}
                                             style={{

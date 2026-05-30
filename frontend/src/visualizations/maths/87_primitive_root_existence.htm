@@ -1,0 +1,451 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Primitive Root Existence - Visualization</title>
+    <style>
+        :root {
+            --bg-page: #0d1117;
+            --bg-surface: #161b22;
+            --bg-input: #0d1117;
+            --border-main: #30363d;
+            --btn-bg: #21262d;
+            --btn-hover: #2d333b;
+            --text-main: #c9d1d9;
+            --text-dim: #8b949e;
+            --accent-orange: #e3b341;
+            --accent-blue: #388bfd;
+            --accent-green: #3fb950;
+            --accent-red: #f85149;
+            --accent-purple: #a371f7;
+        }
+
+        * { box-sizing: border-box; }
+        body {
+            background-color: var(--bg-page);
+            color: var(--text-main);
+            font-family: system-ui, -apple-system, sans-serif;
+            margin: 0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            min-height: 100vh;
+            padding-bottom: 40px;
+        }
+
+        /* INPUT BAR */
+        .input-bar {
+            width: 100%;
+            background-color: var(--bg-surface);
+            padding: 12px 16px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 8px;
+            border-bottom: 1px solid var(--border-main);
+            flex-wrap: wrap;
+        }
+        label.ui-label { font-family: 'Courier New', monospace; font-size: 13px; color: var(--text-dim); }
+        input[type="number"] {
+            background: var(--bg-input);
+            border: 1px solid var(--border-main);
+            color: var(--text-main);
+            height: 32px;
+            border-radius: 6px;
+            padding: 0 10px;
+            font-size: 13px;
+            width: 120px;
+        }
+
+        button {
+            height: 32px; border-radius: 6px; padding: 0 14px; background: var(--btn-bg);
+            border: 1px solid var(--border-main); color: var(--text-main); font-size: 13px; cursor: pointer;
+            transition: background 0.2s ease;
+        }
+        button:hover { background: var(--btn-hover); }
+
+        /* VISUALIZATION */
+        .visual-container { margin-top: 30px; display: flex; flex-direction: column; align-items: center; gap: 20px; width: 100%; }
+        .tiles-wrapper { 
+            display: flex; gap: 10px; flex-wrap: wrap; justify-content: center; 
+            max-width: 900px; min-height: 130px; position: relative; 
+        }
+        
+        .tile-unit { display: flex; flex-direction: column; align-items: center; gap: 4px; position: relative; }
+        .tile {
+            min-width: 52px; height: 52px; display: flex; align-items: center; justify-content: center;
+            border-radius: 8px; font-size: 19px; font-weight: 600; font-family: 'Courier New', monospace;
+            transition: all 0.3s ease; border: 2px solid var(--border-main); background: #21262d;
+            color: var(--text-main);
+        }
+        .tile-index { font-size: 11px; color: var(--text-dim); font-family: monospace; }
+
+        /* Highlight States */
+        .tile.candidate { background: #2a1600; border-color: var(--accent-orange); color: var(--accent-orange); transform: scale(1.15); box-shadow: 0 0 12px rgba(227,179,65,0.4); }
+        .tile.evaluating { background: #0d2244; border-color: var(--accent-blue); color: var(--accent-blue); }
+        .tile.winning { background: #0f2a1a; border-color: var(--accent-green); color: var(--accent-green); transform: scale(1.18); box-shadow: 0 0 15px var(--accent-green); }
+        .tile.failed { background: #2a0d0d; border-color: var(--accent-red); color: var(--accent-red); }
+        .tile.past { opacity: 0.35; background: #161b22; border-color: var(--border-main); }
+
+        /* PANEL */
+        .action-panel {
+            margin-top: 20px; background: var(--bg-surface); border: 1px solid var(--border-main);
+            border-radius: 6px; padding: 14px 20px; width: 720px; text-align: center; 
+            font-family: monospace; min-height: 90px; font-size: 15px; line-height: 1.5;
+        }
+
+        /* INFO PANEL */
+        .info-panel { margin-top: 10px; display: flex; gap: 10px; flex-wrap: wrap; justify-content: center; }
+        .info-cell {
+            background: var(--bg-surface); border: 1px solid var(--border-main); border-radius: 6px;
+            padding: 8px 14px; display: flex; flex-direction: column; align-items: center; min-width: 110px; gap: 4px;
+        }
+        .info-label { font-size: 11px; color: var(--text-dim); }
+        .info-value { font-family: monospace; font-size: 16px; font-weight: 700; }
+
+        /* RESULT */
+        .result-display { margin-top: 15px; display: flex; flex-direction: column; align-items: center; }
+        #res-val { font-size: 24px; color: var(--text-dim); font-family: monospace; font-weight: bold; transition: all 0.4s; }
+        .pop { animation: popAnim 400ms ease; color: var(--accent-green) !important; font-size: 30px !important; text-shadow: 0 0 15px var(--accent-green); }
+        .pop-false { animation: popAnim 400ms ease; color: var(--accent-red) !important; font-size: 30px !important; text-shadow: 0 0 15px var(--accent-red); }
+
+        @keyframes popAnim { 0%{transform:scale(1)} 50%{transform:scale(1.18)} 100%{transform:scale(1)} }
+
+        /* STATUS & CONTROLS */
+        .status-bar { margin-top: 8px; font-size: 13px; color: var(--text-dim); height: 1.3em; text-align: center; width: 700px;}
+        .controls { margin-top: 25px; display: flex; align-items: center; gap: 10px; flex-wrap: wrap; justify-content: center; }
+        input[type="range"] { accent-color: var(--accent-blue); width: 120px; }
+
+        /* LEGEND */
+        .legend { margin-top: 15px; display: flex; gap: 18px; flex-wrap: wrap; justify-content: center; max-width: 900px; }
+        .legend-item { display: flex; align-items: center; font-size: 12px; color: var(--text-dim); }
+        .dot { width: 11px; height: 11px; border-radius: 3px; margin-right: 7px; display: inline-block; }
+
+        /* LOG */
+        .log-panel {
+            margin-top: 15px; background: var(--bg-page); border: 1px solid var(--border-main);
+            border-radius: 6px; padding: 12px 16px; width: 720px; max-width: 95%; height: 130px;
+            overflow-y: auto; font-family: 'Courier New', monospace; font-size: 13px; line-height: 1.4;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="input-bar">
+        <label class="ui-label">n =</label>
+        <input type="number" id="n-input" value="7" style="width:120px">
+        <button onclick="loadCustom()">Load</button>
+        <button onclick="loadExample(0)">Ex 1 (n=7)</button>
+        <button onclick="loadExample(1)">Ex 2 (n=8)</button>
+    </div>
+
+    <div class="visual-container">
+        <div class="ui-label">Current candidate g = <span id="current-g" style="color:var(--accent-orange)">—</span></div>
+        <div class="tiles-wrapper" id="tiles-container"></div>
+    </div>
+
+    <div class="action-panel" id="main-panel">—</div>
+
+    <div class="info-panel">
+        <div class="info-cell">
+            <span class="info-label">Candidate g</span>
+            <span class="info-value" id="val-g" style="color: var(--accent-orange);">—</span>
+        </div>
+        <div class="info-cell">
+            <span class="info-label">φ(n)</span>
+            <span class="info-value" id="val-phi" style="color: var(--accent-purple);">—</span>
+        </div>
+        <div class="info-cell">
+            <span class="info-label">Powers generated</span>
+            <span class="info-value" id="val-powers" style="color: var(--accent-blue);">—</span>
+        </div>
+        <div class="info-cell">
+            <span class="info-label">Unique coprimes</span>
+            <span class="info-value" id="val-unique" style="color: var(--text-main);">—</span>
+        </div>
+    </div>
+
+    <div class="result-display">
+        <span class="ui-label" style="margin-bottom: 6px;">Primitive root exists? =</span>
+        <span id="res-val">—</span>
+    </div>
+
+    <div class="status-bar" id="status-text"></div>
+
+    <div class="controls">
+        <button onclick="reset()">↺ Reset</button>
+        <button onclick="back()">← Back</button>
+        <button onclick="togglePlay()" id="play-btn">Play</button>
+        <button onclick="next()">Next →</button>
+        <div style="display:flex; align-items:center; gap:6px;">
+            <span class="ui-label" style="font-size:11px">Speed</span>
+            <input type="range" id="speed-slider" min="0" max="2" value="1">
+        </div>
+    </div>
+
+    <div class="legend">
+        <div class="legend-item"><span class="dot" style="background:var(--bg-surface); border:1px solid var(--accent-orange)"></span> Candidate g</div>
+        <div class="legend-item"><span class="dot" style="background:var(--accent-green); border:1px solid var(--accent-green)"></span> Primitive Root Found</div>
+        <div class="legend-item"><span class="dot" style="background:var(--accent-red); border:1px solid var(--accent-red)"></span> Not a Primitive Root</div>
+    </div>
+
+    <div class="log-panel" id="log"></div>
+
+    <script>
+        let n = 7;
+        let steps = [];
+        let stepIndex = 0;
+        let timer = null;
+        const delays = [1400, 700, 350];
+
+        function init() {
+            loadExample(0);
+        }
+
+        function loadExample(ex) {
+            if (ex === 0) {
+                n = 7;
+                document.getElementById('n-input').value = "7";
+            } else {
+                n = 8;
+                document.getElementById('n-input').value = "8";
+            }
+            generateSteps();
+            reset();
+        }
+
+        function loadCustom() {
+            n = parseInt(document.getElementById('n-input').value) || 7;
+            if (n < 1) n = 7;
+            generateSteps();
+            reset();
+        }
+
+        function gcd(a, b) {
+            while (b !== 0) {
+                let temp = b;
+                b = a % b;
+                a = temp;
+            }
+            return a;
+        }
+
+        function eulerTotient(n) {
+            if (n <= 0) return 0;
+            let result = n;
+            let p = 2;
+            while (p * p <= n) {
+                if (n % p === 0) {
+                    while (n % p === 0) n /= p;
+                    result -= result / p;
+                }
+                p++;
+            }
+            if (n > 1) result -= result / n;
+            return result;
+        }
+
+        function modPow(base, exp, mod) {
+            let result = 1;
+            base %= mod;
+            while (exp > 0) {
+                if (exp % 2 === 1) result = (result * base) % mod;
+                base = (base * base) % mod;
+                exp = Math.floor(exp / 2);
+            }
+            return result;
+        }
+
+        function isPrimitiveRoot(g, n) {
+            if (gcd(g, n) !== 1) return false;
+            const phi = eulerTotient(n);
+            const seen = new Set();
+            let current = 1;
+            for (let k = 1; k <= phi; k++) {
+                current = (current * g) % n;
+                if (seen.has(current)) return false;
+                seen.add(current);
+            }
+            return seen.size === phi;
+        }
+
+        function generateSteps() {
+            steps = [];
+            if (n <= 1) {
+                steps.push({
+                    type: 'final',
+                    g: '—',
+                    phi: 0,
+                    powers: 0,
+                    unique: 0,
+                    panel: `n = ${n} ≤ 1. No primitive root exists.`,
+                    status: `No primitive root for n ≤ 1`,
+                    log: `n = ${n} ≤ 1 → False`,
+                    logColor: 'var(--accent-red)',
+                    complete: true,
+                    result: false
+                });
+                return;
+            }
+
+            const phi = eulerTotient(n);
+
+            steps.push({
+                type: 'init',
+                g: '—',
+                phi: phi,
+                powers: '—',
+                unique: '—',
+                panel: `Checking if primitive root exists modulo n = ${n}<br>φ(n) = ${phi}`,
+                status: `φ(${n}) = ${phi}. Testing candidates g = 1 to ${n-1}`,
+                log: `n = ${n}\nφ(n) = ${phi}\nTesting g from 1 to ${n-1}...`,
+                logColor: 'var(--text-dim)'
+            });
+
+            let found = false;
+            for (let g = 1; g < n; g++) {
+                steps.push({
+                    type: 'candidate',
+                    g: g,
+                    phi: phi,
+                    powers: '—',
+                    unique: '—',
+                    panel: `Testing candidate g = <b>${g}</b>`,
+                    status: `g = ${g}`,
+                    log: `Testing g = ${g}`,
+                    logColor: 'var(--accent-orange)'
+                });
+
+                const isRoot = isPrimitiveRoot(g, n);
+
+                steps.push({
+                    type: isRoot ? 'winning' : 'failed',
+                    g: g,
+                    phi: phi,
+                    powers: isRoot ? phi : '—',
+                    unique: isRoot ? phi : '—',
+                    panel: `g = ${g}: ${isRoot ? '<span style="color:var(--accent-green)">YES - Primitive Root Found!</span>' : '<span style="color:var(--accent-red)">No</span>'}`,
+                    status: `g = ${g} → ${isRoot ? 'Primitive Root' : 'Not'}`,
+                    log: `g = ${g} → ${isRoot ? 'Primitive Root ✓' : 'Not primitive root ✗'}`,
+                    logColor: isRoot ? 'var(--accent-green)' : 'var(--accent-red)'
+                });
+
+                if (isRoot) {
+                    found = true;
+                    break;
+                }
+            }
+
+            steps.push({
+                type: 'final',
+                g: found ? 'Found' : 'None',
+                phi: phi,
+                powers: found ? phi : '—',
+                unique: found ? phi : '—',
+                panel: `Search complete.<br>Primitive root exists modulo ${n}: <b>${found ? 'True' : 'False'}</b>`,
+                status: `Result: ${found ? 'True' : 'False'}`,
+                log: `Final: Primitive root exists = ${found}`,
+                logColor: found ? 'var(--accent-green)' : 'var(--accent-red)',
+                complete: true,
+                result: found
+            });
+        }
+
+        function renderStep(idx) {
+            const step = steps[idx];
+            if (!step) return;
+
+            const container = document.getElementById('tiles-container');
+            container.innerHTML = '';
+
+            if (step.g !== '—' && step.g !== 'Found' && step.g !== 'None') {
+                const wrapper = document.createElement('div');
+                wrapper.className = 'tile-unit';
+                const tile = document.createElement('div');
+                let cls = 'idle';
+                if (step.type === 'candidate') cls = 'candidate';
+                if (step.type === 'winning') cls = 'winning';
+                if (step.type === 'failed') cls = 'failed';
+                tile.className = `tile ${cls}`;
+                tile.innerText = step.g;
+                const idxLabel = document.createElement('div');
+                idxLabel.className = 'tile-index';
+                idxLabel.innerText = 'g';
+                wrapper.append(tile, idxLabel);
+                container.appendChild(wrapper);
+            }
+
+            document.getElementById('main-panel').innerHTML = step.panel || '—';
+            document.getElementById('val-g').innerText = step.g;
+            document.getElementById('val-phi').innerText = step.phi;
+            document.getElementById('val-powers').innerText = step.powers;
+            document.getElementById('val-unique').innerText = step.unique;
+
+            const resVal = document.getElementById('res-val');
+            if (step.complete) {
+                resVal.innerText = step.result ? "True" : "False";
+                resVal.className = step.result ? 'pop' : 'pop-false';
+            } else {
+                resVal.innerText = '—';
+                resVal.className = '';
+            }
+
+            document.getElementById('status-text').innerText = step.status || '';
+            document.getElementById('current-g').innerText = step.g;
+
+            const logPanel = document.getElementById('log');
+            logPanel.innerHTML = '';
+            for (let k = 0; k <= idx; k++) {
+                if (steps[k].log) {
+                    const line = document.createElement('div');
+                    line.style.marginBottom = '3px';
+                    line.style.whiteSpace = 'pre-wrap';
+                    if (steps[k].logColor) line.style.color = steps[k].logColor;
+                    line.innerText = steps[k].log;
+                    logPanel.appendChild(line);
+                }
+            }
+            logPanel.scrollTop = logPanel.scrollHeight;
+        }
+
+        function next() {
+            if (stepIndex < steps.length - 1) {
+                stepIndex++;
+                renderStep(stepIndex);
+            } else pause();
+        }
+
+        function back() {
+            if (stepIndex > 0) {
+                stepIndex--;
+                renderStep(stepIndex);
+            }
+        }
+
+        function reset() {
+            pause();
+            stepIndex = 0;
+            renderStep(0);
+        }
+
+        function togglePlay() {
+            const btn = document.getElementById('play-btn');
+            if (timer) pause();
+            else {
+                btn.innerText = 'Pause';
+                if (stepIndex >= steps.length - 1) stepIndex = 0;
+                timer = setInterval(next, delays[document.getElementById('speed-slider').value]);
+            }
+        }
+
+        function pause() {
+            clearInterval(timer);
+            timer = null;
+            document.getElementById('play-btn').innerText = 'Play';
+        }
+
+        window.onload = init;
+    </script>
+</body>
+</html>

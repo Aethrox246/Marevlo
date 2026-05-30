@@ -142,7 +142,7 @@ export function MiraChat({ onSendingChange }) {
             aria-label="Send message"
           >
             <span>{sending ? "Sending" : "Send"}</span>
-            <span className={styles.sendBtnIcon} aria-hidden="true">></span>
+            <span className={styles.sendBtnIcon} aria-hidden="true">{'>'}</span>
           </button>
         </div>
 

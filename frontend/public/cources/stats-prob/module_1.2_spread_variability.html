@@ -1,0 +1,2324 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Module 1.2 — Measures of Spread & Variability | Quantum Neural Analytics OS</title>
+<style>
+  :root {
+    --bg-deep: #03040a;
+    --bg-navy: #060818;
+    --bg-panel: rgba(10, 15, 35, 0.55);
+    --neon-cyan: #00f0ff;
+    --neon-purple: #b14dff;
+    --neon-magenta: #ff2bd6;
+    --neon-amber: #ffb547;
+    --neon-green: #00ffaa;
+    --neon-red: #ff4d6d;
+    --text-soft: #d8e6ff;
+    --text-dim: #7a8bbf;
+    --border-glow: rgba(0, 240, 255, 0.25);
+    --grid-line: rgba(120, 80, 255, 0.07);
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html { scroll-behavior: smooth; }
+
+  body {
+    font-family: 'Inter', 'Segoe UI', system-ui, sans-serif;
+    background: var(--bg-deep);
+    color: var(--text-soft);
+    overflow-x: hidden;
+    line-height: 1.7;
+    min-height: 100vh;
+    position: relative;
+    writing-mode: horizontal-tb;
+    direction: ltr;
+  }
+
+  p, li, td, th, span, div, a, label, textarea, input, button {
+    writing-mode: horizontal-tb;
+    direction: ltr;
+  }
+  p { text-align: left; }
+
+  h1.module-heading, h2.module-heading, h3.module-heading {
+    text-align: center;
+  }
+
+  body::before {
+    content: '';
+    position: fixed; inset: 0;
+    background:
+      radial-gradient(circle at 15% 20%, rgba(177, 77, 255, 0.18), transparent 45%),
+      radial-gradient(circle at 85% 75%, rgba(0, 240, 255, 0.15), transparent 50%),
+      radial-gradient(circle at 50% 50%, rgba(255, 43, 214, 0.06), transparent 60%),
+      linear-gradient(180deg, #03040a 0%, #060818 100%);
+    z-index: -3;
+  }
+  body::after {
+    content: '';
+    position: fixed; inset: 0;
+    background-image:
+      linear-gradient(var(--grid-line) 1px, transparent 1px),
+      linear-gradient(90deg, var(--grid-line) 1px, transparent 1px);
+    background-size: 60px 60px;
+    z-index: -2;
+    animation: gridDrift 40s linear infinite;
+  }
+  @keyframes gridDrift {
+    0% { background-position: 0 0, 0 0; }
+    100% { background-position: 60px 60px, 60px 60px; }
+  }
+
+  #particle-canvas { position: fixed; inset: 0; z-index: -1; pointer-events: none; }
+  .scanlines {
+    position: fixed; inset: 0;
+    background: repeating-linear-gradient(0deg,
+      rgba(0, 240, 255, 0.015) 0px, rgba(0, 240, 255, 0.015) 1px,
+      transparent 1px, transparent 4px);
+    pointer-events: none; z-index: 1000; mix-blend-mode: screen;
+  }
+
+  .hud-bar {
+    position: fixed; top: 0; left: 0; right: 0; height: 48px;
+    background: rgba(3, 5, 15, 0.7);
+    backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px);
+    border-bottom: 1px solid var(--border-glow);
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 0 24px; z-index: 100;
+    font-family: 'JetBrains Mono', 'Courier New', monospace;
+    font-size: 11px; letter-spacing: 2px; text-transform: uppercase;
+  }
+  .hud-left, .hud-right { display: flex; gap: 24px; align-items: center; }
+  .hud-dot {
+    width: 8px; height: 8px; border-radius: 50%;
+    background: var(--neon-cyan); box-shadow: 0 0 12px var(--neon-cyan);
+    animation: pulse 1.5s ease-in-out infinite;
+  }
+  @keyframes pulse {
+    0%, 100% { opacity: 1; transform: scale(1); }
+    50% { opacity: 0.5; transform: scale(1.3); }
+  }
+  .hud-id { color: var(--neon-cyan); }
+  .hud-status { color: var(--text-dim); }
+  .hud-status span { color: var(--neon-magenta); }
+
+  .container {
+    max-width: 1280px; margin: 0 auto;
+    padding: 80px 32px 80px; position: relative;
+  }
+
+  .hero {
+    min-height: 88vh;
+    display: flex; flex-direction: column;
+    justify-content: center; align-items: center;
+    position: relative; padding: 60px 0 40px;
+    text-align: center;
+  }
+  .hero-tag {
+    display: inline-flex; align-items: center; gap: 10px;
+    padding: 6px 14px; border: 1px solid var(--border-glow);
+    border-radius: 100px; background: rgba(0, 240, 255, 0.05);
+    font-family: 'JetBrains Mono', monospace; font-size: 11px;
+    letter-spacing: 3px; color: var(--neon-cyan);
+    text-transform: uppercase; width: fit-content;
+    margin: 0 auto 32px; backdrop-filter: blur(10px);
+  }
+  .hero-tag::before {
+    content: ''; width: 6px; height: 6px; background: var(--neon-cyan);
+    border-radius: 50%; box-shadow: 0 0 10px var(--neon-cyan);
+    animation: pulse 2s infinite;
+  }
+  .hero-title {
+    font-size: clamp(2.4rem, 6vw, 4.8rem);
+    font-weight: 900; line-height: 1.05; letter-spacing: -2px;
+    background: linear-gradient(135deg, #ffffff 0%, var(--neon-cyan) 40%, var(--neon-purple) 80%, var(--neon-magenta) 100%);
+    background-size: 200% 200%;
+    -webkit-background-clip: text; background-clip: text;
+    -webkit-text-fill-color: transparent;
+    animation: gradientShift 8s ease infinite;
+    margin: 0 auto 24px;
+    text-shadow: 0 0 80px rgba(177, 77, 255, 0.2);
+    text-align: center;
+  }
+  @keyframes gradientShift {
+    0%, 100% { background-position: 0% 50%; }
+    50% { background-position: 100% 50%; }
+  }
+  .hero-subtitle {
+    font-size: clamp(1rem, 1.65vw, 1.2rem);
+    color: var(--text-soft); max-width: 820px;
+    margin: 0 auto 30px; font-weight: 300; line-height: 1.7;
+    text-align: center;
+  }
+  .hero-subtitle strong { color: var(--neon-cyan); font-weight: 500; }
+  .neural-bg {
+    position: absolute; top: 0; right: 0;
+    width: 50%; height: 100%; pointer-events: none;
+    opacity: 0.4; z-index: -1;
+  }
+  .hero-meta {
+    display: flex; flex-wrap: wrap; gap: 14px; margin-top: 30px;
+    justify-content: center;
+  }
+  .meta-chip {
+    padding: 12px 20px; background: rgba(10, 15, 35, 0.6);
+    border: 1px solid rgba(0, 240, 255, 0.15); border-radius: 8px;
+    backdrop-filter: blur(15px); font-family: 'JetBrains Mono', monospace;
+    font-size: 12px; letter-spacing: 1px;
+    display: flex; align-items: center; gap: 10px; transition: all 0.3s;
+  }
+  .meta-chip:hover {
+    border-color: var(--neon-cyan);
+    box-shadow: 0 0 30px rgba(0, 240, 255, 0.2);
+    transform: translateY(-2px);
+  }
+  .meta-chip .label { color: var(--text-dim); }
+  .meta-chip .value { color: var(--neon-cyan); font-weight: 600; }
+
+  .section { margin: 100px 0; position: relative; }
+  .section-header {
+    display: flex; flex-direction: column; align-items: center;
+    gap: 14px; margin-bottom: 40px;
+  }
+  .section-number {
+    font-family: 'JetBrains Mono', monospace; font-size: 13px;
+    color: var(--neon-magenta); border: 1px solid var(--neon-magenta);
+    padding: 4px 12px; border-radius: 4px;
+    background: rgba(255, 43, 214, 0.08);
+    box-shadow: 0 0 20px rgba(255, 43, 214, 0.2);
+    letter-spacing: 2px;
+  }
+  .section-title {
+    font-size: clamp(1.8rem, 3.5vw, 2.6rem); font-weight: 700;
+    background: linear-gradient(90deg, #fff, var(--neon-cyan));
+    -webkit-background-clip: text; background-clip: text;
+    -webkit-text-fill-color: transparent; letter-spacing: -0.5px;
+    text-align: center;
+  }
+  .section-divider {
+    width: 200px; height: 1px;
+    background: linear-gradient(90deg, transparent, var(--neon-cyan), transparent);
+    margin: 0 auto;
+  }
+
+  .objectives-grid {
+    display: grid; gap: 20px;
+    grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  }
+  .objective-card {
+    background: rgba(10, 15, 35, 0.5); backdrop-filter: blur(15px);
+    border: 1px solid rgba(0, 240, 255, 0.15); border-radius: 14px;
+    padding: 26px; position: relative; cursor: pointer;
+    transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1); overflow: hidden;
+    text-align: left;
+  }
+  .objective-card::after {
+    content: ''; position: absolute; top: -50%; left: -50%;
+    width: 200%; height: 200%;
+    background: radial-gradient(circle, rgba(0, 240, 255, 0.2), transparent 50%);
+    opacity: 0; transition: opacity 0.4s; pointer-events: none;
+  }
+  .objective-card:hover {
+    border-color: var(--neon-cyan); transform: translateY(-6px);
+    box-shadow: 0 20px 50px rgba(0, 240, 255, 0.15), 0 0 30px rgba(0, 240, 255, 0.1);
+  }
+  .objective-card:hover::after { opacity: 1; }
+  .obj-icon {
+    width: 44px; height: 44px; border-radius: 12px;
+    background: linear-gradient(135deg, rgba(0, 240, 255, 0.15), rgba(177, 77, 255, 0.15));
+    border: 1px solid var(--border-glow);
+    display: flex; align-items: center; justify-content: center;
+    margin-bottom: 16px; font-size: 20px;
+  }
+  .obj-num {
+    position: absolute; top: 22px; right: 22px;
+    font-family: 'JetBrains Mono', monospace; color: var(--neon-purple);
+    font-size: 11px; letter-spacing: 2px; opacity: 0.7;
+  }
+  .obj-title { font-size: 1rem; font-weight: 600; margin-bottom: 8px; color: #fff; text-align: left; }
+  .obj-desc { font-size: 0.88rem; color: var(--text-dim); line-height: 1.65; text-align: left; }
+  .obj-indicator {
+    margin-top: 16px; height: 3px; border-radius: 2px;
+    background: rgba(0, 240, 255, 0.1); position: relative; overflow: hidden;
+  }
+  .obj-indicator::before {
+    content: ''; position: absolute; inset: 0;
+    background: linear-gradient(90deg, var(--neon-cyan), var(--neon-purple));
+    width: 0; transition: width 1.5s cubic-bezier(0.16, 1, 0.3, 1);
+  }
+  .objective-card.activated .obj-indicator::before { width: 100%; }
+
+  .deep-panel {
+    background: var(--bg-panel); backdrop-filter: blur(20px);
+    border: 1px solid var(--border-glow); border-radius: 18px;
+    padding: 40px; position: relative; overflow: hidden;
+    margin-bottom: 28px;
+    text-align: left;
+  }
+  .deep-panel .corner {
+    position: absolute; width: 28px; height: 28px;
+    border: 1px solid var(--neon-cyan);
+  }
+  .deep-panel .corner.tl { top: 12px; left: 12px; border-right: none; border-bottom: none; }
+  .deep-panel .corner.tr { top: 12px; right: 12px; border-left: none; border-bottom: none; }
+  .deep-panel .corner.bl { bottom: 12px; left: 12px; border-right: none; border-top: none; }
+  .deep-panel .corner.br { bottom: 12px; right: 12px; border-left: none; border-top: none; }
+
+  .deep-tag {
+    font-family: 'JetBrains Mono', monospace; font-size: 11px;
+    letter-spacing: 3px; color: var(--neon-magenta);
+    margin-bottom: 14px; text-transform: uppercase;
+    display: flex; align-items: center; gap: 10px;
+  }
+  .deep-tag::before {
+    content: ''; width: 6px; height: 6px; border-radius: 50%;
+    background: var(--neon-magenta); box-shadow: 0 0 8px var(--neon-magenta);
+  }
+  .deep-h {
+    font-size: 1.7rem; font-weight: 700; color: #fff;
+    margin-bottom: 20px; letter-spacing: -0.3px;
+    line-height: 1.3;
+  }
+  .deep-sub-h {
+    font-size: 1.15rem; font-weight: 600; color: var(--neon-cyan);
+    margin: 28px 0 14px; display: flex; align-items: center; gap: 10px;
+  }
+  .deep-sub-h::before {
+    content: ''; width: 4px; height: 20px;
+    background: linear-gradient(180deg, var(--neon-cyan), var(--neon-purple));
+    border-radius: 2px; flex-shrink: 0;
+  }
+  .deep-p {
+    color: var(--text-soft); font-size: 0.98rem; margin-bottom: 16px;
+    line-height: 1.85; text-align: left;
+  }
+  .deep-p strong { color: var(--neon-cyan); font-weight: 600; }
+  .deep-p .mag { color: var(--neon-magenta); }
+  .deep-p .amber { color: var(--neon-amber); }
+  .deep-p .green { color: var(--neon-green); }
+  .deep-p em { color: var(--text-soft); font-style: italic; opacity: 0.92; }
+
+  .deep-list {
+    list-style: none; padding: 0; margin: 16px 0;
+  }
+  .deep-list li {
+    padding: 10px 0 10px 30px; position: relative;
+    color: var(--text-soft); font-size: 0.95rem; line-height: 1.75;
+    border-bottom: 1px solid rgba(0, 240, 255, 0.05);
+    text-align: left;
+  }
+  .deep-list li:last-child { border-bottom: none; }
+  .deep-list li::before {
+    content: '▸'; position: absolute; left: 6px; top: 10px;
+    color: var(--neon-cyan); font-size: 14px;
+  }
+  .deep-list li strong { color: var(--neon-cyan); }
+
+  .callout {
+    background: rgba(0, 0, 0, 0.4); border-left: 3px solid var(--neon-cyan);
+    border-radius: 8px; padding: 18px 22px; margin: 22px 0;
+    position: relative; text-align: left;
+  }
+  .callout.info { border-left-color: var(--neon-cyan); background: rgba(0, 240, 255, 0.04); }
+  .callout.warn { border-left-color: var(--neon-magenta); background: rgba(255, 43, 214, 0.05); }
+  .callout.tip { border-left-color: var(--neon-green); background: rgba(0, 255, 170, 0.04); }
+  .callout.story { border-left-color: var(--neon-amber); background: rgba(255, 181, 71, 0.04); }
+  .callout-label {
+    font-family: 'JetBrains Mono', monospace; font-size: 10px;
+    letter-spacing: 2px; margin-bottom: 8px; text-transform: uppercase;
+    display: flex; align-items: center; gap: 8px;
+  }
+  .callout.info .callout-label { color: var(--neon-cyan); }
+  .callout.warn .callout-label { color: var(--neon-magenta); }
+  .callout.tip .callout-label { color: var(--neon-green); }
+  .callout.story .callout-label { color: var(--neon-amber); }
+  .callout p {
+    color: var(--text-soft); font-size: 0.93rem; line-height: 1.75; margin: 6px 0;
+    text-align: left;
+  }
+  .callout p strong { color: #fff; }
+
+  .formula-card {
+    background: var(--bg-panel); backdrop-filter: blur(20px);
+    border: 1px solid var(--border-glow); border-radius: 14px;
+    padding: 28px; position: relative; margin: 22px 0;
+    text-align: left;
+  }
+  .formula-label {
+    font-family: 'JetBrains Mono', monospace; font-size: 10px;
+    color: var(--neon-purple); letter-spacing: 3px; margin-bottom: 14px;
+  }
+  .formula-display {
+    font-family: 'JetBrains Mono', 'Courier New', monospace;
+    font-size: 1.25rem; color: var(--neon-cyan); text-align: center;
+    padding: 22px; background: rgba(0, 0, 0, 0.45);
+    border-radius: 10px; border: 1px solid rgba(0, 240, 255, 0.2);
+    margin: 14px 0; text-shadow: 0 0 12px rgba(0, 240, 255, 0.4);
+    letter-spacing: 1px; line-height: 1.9;
+  }
+  .formula-display .v { color: #fff; }
+  .formula-display .op { color: var(--neon-magenta); }
+  .formula-display .em { color: var(--neon-amber); }
+  .formula-desc {
+    color: var(--text-soft); font-size: 0.93rem; line-height: 1.75;
+    text-align: left;
+  }
+  .formula-vars {
+    display: grid; gap: 10px;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    margin-top: 14px;
+  }
+  .var-tile {
+    background: rgba(0, 0, 0, 0.4); border-radius: 8px;
+    padding: 12px 14px; border: 1px solid rgba(0, 240, 255, 0.1);
+    font-size: 0.88rem; text-align: left;
+  }
+  .var-tile .vn {
+    font-family: 'JetBrains Mono', monospace; color: var(--neon-cyan);
+    font-weight: 700; font-size: 1rem; margin-right: 8px;
+  }
+  .var-tile .vd { color: var(--text-dim); }
+
+  .worked-card {
+    background: rgba(0, 0, 0, 0.45);
+    border: 1px solid rgba(0, 255, 170, 0.2);
+    border-radius: 14px; padding: 24px;
+    margin: 22px 0; text-align: left;
+  }
+  .worked-label {
+    font-family: 'JetBrains Mono', monospace; font-size: 10px;
+    color: var(--neon-green); letter-spacing: 3px; margin-bottom: 14px;
+    display: flex; align-items: center; gap: 10px;
+  }
+  .worked-label::before {
+    content: ''; width: 6px; height: 6px; background: var(--neon-green);
+    border-radius: 50%; box-shadow: 0 0 8px var(--neon-green);
+  }
+  .worked-step {
+    padding: 10px 0; color: var(--text-soft); font-size: 0.95rem;
+    line-height: 1.75; border-bottom: 1px solid rgba(0, 255, 170, 0.08);
+    text-align: left;
+  }
+  .worked-step:last-of-type { border-bottom: none; }
+  .worked-step strong { color: var(--neon-green); }
+  .worked-step .val {
+    color: var(--neon-cyan); font-family: 'JetBrains Mono', monospace;
+    font-weight: 700; padding: 2px 8px;
+    background: rgba(0, 240, 255, 0.08);
+    border-radius: 4px; border: 1px solid rgba(0, 240, 255, 0.2);
+  }
+  .worked-result {
+    margin-top: 12px; padding: 12px 14px;
+    background: rgba(0, 255, 170, 0.08);
+    border-left: 3px solid var(--neon-green);
+    border-radius: 6px; color: #fff;
+    font-size: 0.92rem; line-height: 1.7;
+  }
+
+  /* CALC TABLE for variance steps */
+  .calc-table {
+    width: 100%; border-collapse: collapse;
+    background: rgba(0, 0, 0, 0.4); border-radius: 10px;
+    overflow: hidden; margin: 14px 0; font-size: 0.9rem;
+    font-family: 'JetBrains Mono', monospace;
+  }
+  .calc-table th {
+    background: rgba(0, 240, 255, 0.08);
+    padding: 10px 14px; text-align: center; color: var(--neon-cyan);
+    font-size: 11px; letter-spacing: 1.5px;
+    border-bottom: 1px solid rgba(0, 240, 255, 0.2);
+  }
+  .calc-table td {
+    padding: 9px 14px; text-align: center; color: var(--text-soft);
+    border-bottom: 1px solid rgba(0, 240, 255, 0.05);
+  }
+  .calc-table tr:last-child td { border-bottom: none; }
+  .calc-table tfoot td {
+    background: rgba(0, 255, 170, 0.06);
+    color: var(--neon-green); font-weight: 700;
+  }
+
+  /* LAB / CANVAS */
+  .lab-panel {
+    background: var(--bg-panel); backdrop-filter: blur(20px);
+    border: 1px solid var(--border-glow); border-radius: 18px;
+    padding: 32px; position: relative; overflow: hidden;
+    margin: 22px 0;
+  }
+  .lab-header {
+    display: flex; justify-content: space-between; align-items: center;
+    margin-bottom: 24px; flex-wrap: wrap; gap: 12px;
+  }
+  .lab-title {
+    display: flex; align-items: center; gap: 12px;
+    font-size: 1.15rem; font-weight: 600; color: #fff;
+  }
+  .lab-title .dot {
+    width: 10px; height: 10px; border-radius: 50%;
+    background: var(--neon-cyan); box-shadow: 0 0 15px var(--neon-cyan);
+    animation: pulse 1.5s infinite;
+  }
+  .lab-readout {
+    display: flex; gap: 10px; flex-wrap: wrap;
+    font-family: 'JetBrains Mono', monospace; font-size: 11px;
+  }
+  .readout-cell {
+    padding: 8px 14px; background: rgba(0, 0, 0, 0.4);
+    border: 1px solid rgba(0, 240, 255, 0.15); border-radius: 6px;
+  }
+  .readout-cell .lab { color: var(--text-dim); margin-right: 8px; letter-spacing: 1px; }
+  .readout-cell .val { font-weight: 600; }
+  .readout-cell .val.range { color: var(--neon-amber); }
+  .readout-cell .val.std   { color: var(--neon-cyan); }
+  .readout-cell .val.iqr   { color: var(--neon-magenta); }
+
+  #spread-canvas, #boxplot-canvas {
+    width: 100%; height: 280px; display: block;
+    background: rgba(0, 0, 0, 0.55);
+    border: 1px solid rgba(0, 240, 255, 0.1);
+    border-radius: 12px;
+  }
+  #boxplot-canvas { height: 220px; }
+
+  .lab-controls {
+    margin-top: 18px; display: flex; flex-wrap: wrap;
+    gap: 12px; align-items: center;
+  }
+  .ctrl-group {
+    flex: 1; min-width: 220px;
+    background: rgba(0, 0, 0, 0.3);
+    padding: 12px 16px; border-radius: 10px;
+    border: 1px solid rgba(0, 240, 255, 0.1);
+  }
+  .ctrl-label {
+    font-family: 'JetBrains Mono', monospace; font-size: 10px;
+    color: var(--text-dim); letter-spacing: 2px;
+    margin-bottom: 8px; display: flex; justify-content: space-between;
+  }
+  .ctrl-label .v { color: var(--neon-cyan); font-weight: 700; }
+  input[type=range] {
+    -webkit-appearance: none; appearance: none;
+    width: 100%; height: 4px;
+    background: rgba(0, 240, 255, 0.15);
+    border-radius: 4px; outline: none; cursor: pointer;
+  }
+  input[type=range]::-webkit-slider-thumb {
+    -webkit-appearance: none; appearance: none;
+    width: 16px; height: 16px;
+    background: var(--neon-cyan); border-radius: 50%;
+    box-shadow: 0 0 12px var(--neon-cyan); cursor: pointer;
+  }
+  input[type=range]::-moz-range-thumb {
+    width: 16px; height: 16px; background: var(--neon-cyan);
+    border-radius: 50%; border: none;
+    box-shadow: 0 0 12px var(--neon-cyan); cursor: pointer;
+  }
+
+  .btn {
+    padding: 11px 22px;
+    background: linear-gradient(135deg, rgba(0, 240, 255, 0.15), rgba(177, 77, 255, 0.15));
+    border: 1px solid var(--neon-cyan); border-radius: 8px;
+    color: #fff; font-family: 'JetBrains Mono', monospace;
+    font-size: 11px; letter-spacing: 2px; text-transform: uppercase;
+    cursor: pointer; transition: all 0.3s;
+  }
+  .btn:hover {
+    background: linear-gradient(135deg, rgba(0, 240, 255, 0.3), rgba(177, 77, 255, 0.3));
+    box-shadow: 0 0 30px rgba(0, 240, 255, 0.3); transform: translateY(-2px);
+  }
+  .btn.secondary { border-color: var(--neon-magenta); background: rgba(255, 43, 214, 0.1); }
+
+  /* TWO-CLASS COMPARISON */
+  .twin-grid {
+    display: grid; grid-template-columns: 1fr 1fr; gap: 22px; margin: 22px 0;
+  }
+  @media (max-width: 900px) { .twin-grid { grid-template-columns: 1fr; } }
+  .twin-card {
+    background: rgba(0, 0, 0, 0.45);
+    border-radius: 14px; padding: 24px; border: 1px solid;
+    text-align: left;
+  }
+  .twin-card.a { border-color: rgba(0, 240, 255, 0.3); }
+  .twin-card.b { border-color: rgba(255, 43, 214, 0.3); }
+  .twin-title {
+    font-size: 1.05rem; font-weight: 700; color: #fff; margin-bottom: 6px;
+  }
+  .twin-tag {
+    font-family: 'JetBrains Mono', monospace; font-size: 10px;
+    letter-spacing: 2px; margin-bottom: 14px;
+  }
+  .twin-card.a .twin-tag { color: var(--neon-cyan); }
+  .twin-card.b .twin-tag { color: var(--neon-magenta); }
+  .dots-row {
+    display: flex; align-items: center; gap: 8px;
+    height: 60px; padding: 10px;
+    background: rgba(0,0,0,0.4); border-radius: 8px;
+    margin: 10px 0;
+  }
+  .dot-pt {
+    width: 12px; height: 12px; border-radius: 50%;
+    box-shadow: 0 0 8px;
+  }
+  .twin-card.a .dot-pt { background: var(--neon-cyan); box-shadow-color: var(--neon-cyan); }
+  .twin-card.b .dot-pt { background: var(--neon-magenta); box-shadow-color: var(--neon-magenta); }
+  .twin-stats {
+    display: grid; grid-template-columns: repeat(3, 1fr);
+    gap: 8px; margin-top: 12px;
+  }
+  .mini-stat {
+    background: rgba(0,0,0,0.5); border-radius: 8px;
+    padding: 10px; text-align: center;
+  }
+  .mini-stat .ml {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 9px; color: var(--text-dim); letter-spacing: 1.5px;
+    margin-bottom: 4px;
+  }
+  .mini-stat .mv {
+    font-family: 'JetBrains Mono', monospace; font-size: 1rem;
+    color: #fff; font-weight: 700;
+  }
+
+  /* WHEN TABLE */
+  .when-table {
+    width: 100%; border-collapse: collapse;
+    background: rgba(0, 0, 0, 0.4); border-radius: 12px;
+    overflow: hidden; margin: 18px 0; font-size: 0.9rem;
+  }
+  .when-table thead {
+    background: linear-gradient(90deg, rgba(0,240,255,0.1), rgba(177,77,255,0.1));
+  }
+  .when-table th {
+    padding: 14px 16px; text-align: left;
+    color: var(--neon-cyan); font-family: 'JetBrains Mono', monospace;
+    font-size: 11px; letter-spacing: 2px;
+    border-bottom: 1px solid rgba(0, 240, 255, 0.2);
+  }
+  .when-table td {
+    padding: 14px 16px; color: var(--text-soft);
+    border-bottom: 1px solid rgba(0, 240, 255, 0.05);
+    line-height: 1.7; text-align: left;
+  }
+  .when-table tr:last-child td { border-bottom: none; }
+  .when-table tr:hover { background: rgba(0, 240, 255, 0.03); }
+  .when-table .m-name { font-weight: 700; }
+  .when-table .m-name.range { color: var(--neon-amber); }
+  .when-table .m-name.var   { color: var(--neon-cyan); }
+  .when-table .m-name.std   { color: var(--neon-green); }
+  .when-table .m-name.iqr   { color: var(--neon-magenta); }
+
+  /* APPS */
+  .apps-grid {
+    display: grid; gap: 18px;
+    grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  }
+  .app-tile {
+    background: var(--bg-panel); backdrop-filter: blur(15px);
+    border: 1px solid rgba(0, 240, 255, 0.15); border-radius: 14px;
+    padding: 24px; position: relative;
+    transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+    cursor: pointer; overflow: hidden; text-align: left;
+  }
+  .app-tile::before {
+    content: ''; position: absolute; top: 0; left: -100%;
+    width: 100%; height: 2px;
+    background: linear-gradient(90deg, transparent, var(--neon-cyan), transparent);
+    transition: left 0.6s;
+  }
+  .app-tile:hover {
+    transform: translateY(-6px); border-color: var(--neon-magenta);
+    box-shadow: 0 20px 40px rgba(255, 43, 214, 0.1);
+  }
+  .app-tile:hover::before { left: 100%; }
+  .app-icon { font-size: 28px; margin-bottom: 14px; display: block; }
+  .app-domain {
+    font-family: 'JetBrains Mono', monospace; font-size: 10px;
+    color: var(--neon-magenta); letter-spacing: 2px; margin-bottom: 6px;
+  }
+  .app-title { font-size: 1.05rem; color: #fff; font-weight: 600; margin-bottom: 10px; }
+  .app-desc { font-size: 0.88rem; color: var(--text-dim); line-height: 1.7; text-align: left; }
+  .app-desc strong { color: var(--neon-cyan); }
+
+  /* MISTAKES */
+  .mistakes-grid {
+    display: grid; gap: 14px;
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  }
+  .mistake-card {
+    background: rgba(255, 43, 214, 0.04);
+    border: 1px solid rgba(255, 43, 214, 0.2);
+    border-radius: 12px; padding: 22px; text-align: left;
+  }
+  .mistake-card .mtag {
+    font-family: 'JetBrains Mono', monospace; font-size: 10px;
+    color: var(--neon-magenta); letter-spacing: 2px; margin-bottom: 8px;
+  }
+  .mistake-card .mtitle { font-size: 1rem; color: #fff; font-weight: 600; margin-bottom: 10px; }
+  .mistake-card .mtext { font-size: 0.9rem; color: var(--text-soft); line-height: 1.7; text-align: left; }
+  .mistake-card .mfix {
+    margin-top: 12px; padding: 10px 14px; background: rgba(0, 255, 170, 0.06);
+    border-left: 2px solid var(--neon-green); border-radius: 4px;
+    font-size: 0.85rem; color: var(--text-soft); line-height: 1.6;
+    text-align: left;
+  }
+  .mistake-card .mfix strong { color: var(--neon-green); }
+
+  /* QUIZ */
+  .quiz-card {
+    background: var(--bg-panel); backdrop-filter: blur(20px);
+    border: 1px solid var(--border-glow); border-radius: 16px;
+    padding: 36px; position: relative; text-align: left;
+  }
+  .quiz-q {
+    font-size: 1.05rem; color: #fff; margin-bottom: 22px; font-weight: 500;
+    line-height: 1.7; text-align: left;
+  }
+  .quiz-q .qlabel {
+    display: block; font-family: 'JetBrains Mono', monospace;
+    font-size: 11px; color: var(--neon-cyan);
+    letter-spacing: 3px; margin-bottom: 10px;
+  }
+  .quiz-options { display: grid; gap: 12px; margin-bottom: 24px; }
+  .quiz-opt {
+    padding: 16px 20px; background: rgba(0, 0, 0, 0.3);
+    border: 1px solid rgba(0, 240, 255, 0.15); border-radius: 10px;
+    color: var(--text-soft); cursor: pointer; transition: all 0.3s;
+    font-size: 0.93rem; display: flex; align-items: center; gap: 14px;
+    text-align: left; line-height: 1.5;
+  }
+  .quiz-opt::before {
+    content: ''; width: 16px; height: 16px; border-radius: 50%;
+    border: 2px solid rgba(0, 240, 255, 0.3);
+    transition: all 0.3s; flex-shrink: 0;
+  }
+  .quiz-opt:hover {
+    border-color: var(--neon-cyan);
+    background: rgba(0, 240, 255, 0.05); transform: translateX(4px);
+  }
+  .quiz-opt.correct {
+    border-color: var(--neon-green);
+    background: rgba(0, 255, 170, 0.1);
+    box-shadow: 0 0 20px rgba(0, 255, 170, 0.2);
+  }
+  .quiz-opt.correct::before {
+    background: var(--neon-green); border-color: var(--neon-green);
+    box-shadow: 0 0 12px var(--neon-green);
+  }
+  .quiz-opt.wrong {
+    border-color: var(--neon-magenta);
+    background: rgba(255, 43, 214, 0.08);
+  }
+  .quiz-opt.wrong::before {
+    background: var(--neon-magenta); border-color: var(--neon-magenta);
+  }
+  .quiz-feedback {
+    margin-top: 18px; padding: 16px; border-radius: 10px;
+    font-size: 0.9rem; display: none; line-height: 1.7;
+    border-left: 3px solid var(--neon-cyan);
+    background: rgba(0, 240, 255, 0.05); text-align: left;
+  }
+  .quiz-feedback.show { display: block; animation: slideIn 0.4s; }
+  @keyframes slideIn {
+    from { opacity: 0; transform: translateY(8px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+  .quiz-progress { display: flex; gap: 8px; margin-bottom: 24px; }
+  .qp-dot {
+    flex: 1; height: 3px; background: rgba(0, 240, 255, 0.15);
+    border-radius: 2px; transition: all 0.4s;
+  }
+  .qp-dot.active {
+    background: linear-gradient(90deg, var(--neon-cyan), var(--neon-purple));
+    box-shadow: 0 0 10px var(--neon-cyan);
+  }
+
+  /* PRACTICE */
+  .practice-card {
+    background: var(--bg-panel); backdrop-filter: blur(20px);
+    border: 1px solid var(--border-glow); border-radius: 16px;
+    padding: 26px; margin-bottom: 18px; text-align: left;
+  }
+  .practice-tag {
+    font-family: 'JetBrains Mono', monospace; font-size: 10px;
+    color: var(--neon-amber); letter-spacing: 2px; margin-bottom: 12px;
+    display: flex; align-items: center; gap: 10px;
+  }
+  .practice-tag::before {
+    content: ''; width: 6px; height: 6px; border-radius: 50%;
+    background: var(--neon-amber); box-shadow: 0 0 8px var(--neon-amber);
+  }
+  .practice-q {
+    font-size: 1rem; color: #fff; margin-bottom: 14px; font-weight: 500;
+    line-height: 1.7; text-align: left;
+  }
+  .practice-q .difficulty {
+    display: inline-block; padding: 3px 8px;
+    font-family: 'JetBrains Mono', monospace; font-size: 9px;
+    letter-spacing: 1.5px; border-radius: 4px; margin-right: 8px;
+    vertical-align: middle;
+  }
+  .difficulty.easy { background: rgba(0,255,170,0.15); color: var(--neon-green); border: 1px solid var(--neon-green); }
+  .difficulty.medium { background: rgba(255,181,71,0.15); color: var(--neon-amber); border: 1px solid var(--neon-amber); }
+  .difficulty.hard { background: rgba(255,43,214,0.15); color: var(--neon-magenta); border: 1px solid var(--neon-magenta); }
+  textarea.answer-box {
+    width: 100%; min-height: 100px; padding: 14px 16px;
+    background: rgba(0, 0, 0, 0.4);
+    border: 1px solid rgba(0, 240, 255, 0.2); border-radius: 10px;
+    color: var(--text-soft); font-family: 'Inter', sans-serif;
+    font-size: 0.92rem; resize: vertical; line-height: 1.6;
+    outline: none; transition: all 0.3s;
+    text-align: left; writing-mode: horizontal-tb; direction: ltr;
+  }
+  textarea.answer-box:focus {
+    border-color: var(--neon-cyan); background: rgba(0, 240, 255, 0.03);
+    box-shadow: 0 0 24px rgba(0, 240, 255, 0.1);
+  }
+  textarea.answer-box::placeholder { color: var(--text-dim); }
+  .practice-actions {
+    display: flex; gap: 10px; margin-top: 14px; flex-wrap: wrap;
+  }
+  .ai-feedback {
+    margin-top: 14px; padding: 28px 18px 16px;
+    background: linear-gradient(135deg, rgba(0,240,255,0.06), rgba(177,77,255,0.06));
+    border: 1px solid rgba(0,240,255,0.2); border-radius: 10px;
+    min-height: 50px; color: var(--text-soft); font-size: 0.9rem;
+    line-height: 1.7; position: relative; text-align: left;
+  }
+  .ai-feedback::before {
+    content: '◉ AI EVALUATOR'; position: absolute; top: 8px; right: 14px;
+    font-family: 'JetBrains Mono', monospace; font-size: 9px;
+    color: var(--neon-cyan); letter-spacing: 2px;
+  }
+  .ai-feedback .placeholder { color: var(--text-dim); font-style: italic; }
+
+  .ai-panel {
+    background: linear-gradient(135deg, rgba(0, 240, 255, 0.05), rgba(177, 77, 255, 0.05));
+    backdrop-filter: blur(25px); border: 1px solid var(--border-glow);
+    border-radius: 20px; padding: 40px;
+    position: relative; overflow: hidden; text-align: left;
+  }
+  .ai-panel::before {
+    content: ''; position: absolute; top: -50%; left: -50%;
+    width: 200%; height: 200%;
+    background: conic-gradient(from 0deg, transparent, rgba(0, 240, 255, 0.05), transparent, rgba(177, 77, 255, 0.05), transparent);
+    animation: rotate 20s linear infinite;
+    pointer-events: none; z-index: 0;
+  }
+  @keyframes rotate { to { transform: rotate(360deg); } }
+  .ai-panel > * { position: relative; z-index: 1; }
+  .ai-header { display: flex; align-items: center; gap: 16px; margin-bottom: 24px; }
+  .ai-avatar {
+    width: 56px; height: 56px; border-radius: 16px;
+    background: linear-gradient(135deg, var(--neon-cyan), var(--neon-purple));
+    display: flex; align-items: center; justify-content: center;
+    font-size: 26px; box-shadow: 0 0 30px rgba(0, 240, 255, 0.4);
+    position: relative; flex-shrink: 0;
+  }
+  .ai-avatar::after {
+    content: ''; position: absolute; inset: -3px;
+    border: 1px solid var(--neon-cyan); border-radius: 18px;
+    animation: pulse 2s infinite;
+  }
+  .ai-name { font-size: 1.1rem; color: #fff; font-weight: 600; }
+  .ai-name .v {
+    color: var(--neon-cyan); font-family: 'JetBrains Mono', monospace;
+    font-size: 0.8rem; margin-left: 8px;
+  }
+  .ai-status {
+    font-family: 'JetBrains Mono', monospace; font-size: 11px;
+    color: var(--neon-cyan); letter-spacing: 2px;
+  }
+  .ai-summary {
+    font-size: 1rem; color: var(--text-soft);
+    line-height: 1.85; margin-bottom: 24px; text-align: left;
+  }
+  .ai-summary strong { color: var(--neon-cyan); }
+  .takeaways-grid {
+    display: grid; gap: 14px;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    margin-bottom: 24px;
+  }
+  .takeaway {
+    background: rgba(0, 0, 0, 0.3);
+    border: 1px solid rgba(0, 240, 255, 0.15); border-radius: 10px;
+    padding: 16px; position: relative; text-align: left;
+  }
+  .takeaway .tk-num {
+    font-family: 'JetBrains Mono', monospace; font-size: 10px;
+    color: var(--neon-magenta); letter-spacing: 2px; margin-bottom: 6px;
+  }
+  .takeaway .tk-title {
+    font-size: 0.92rem; color: #fff; font-weight: 600; margin-bottom: 4px;
+  }
+  .takeaway .tk-desc { font-size: 0.84rem; color: var(--text-dim); line-height: 1.6; text-align: left; }
+
+  .footer {
+    text-align: center; padding: 40px 0 20px;
+    font-family: 'JetBrains Mono', monospace; font-size: 11px;
+    color: var(--text-dim); letter-spacing: 2px;
+    border-top: 1px solid rgba(0, 240, 255, 0.1); margin-top: 80px;
+  }
+  .footer .glow { color: var(--neon-cyan); }
+
+  ::-webkit-scrollbar { width: 8px; height: 8px; }
+  ::-webkit-scrollbar-track { background: var(--bg-deep); }
+  ::-webkit-scrollbar-thumb {
+    background: linear-gradient(180deg, var(--neon-cyan), var(--neon-purple));
+    border-radius: 4px;
+  }
+
+  .reveal {
+    opacity: 0; transform: translateY(30px);
+    transition: all 0.8s cubic-bezier(0.16, 1, 0.3, 1);
+  }
+  .reveal.visible { opacity: 1; transform: translateY(0); }
+</style>
+</head>
+<body>
+
+<canvas id="particle-canvas"></canvas>
+<div class="scanlines"></div>
+
+<div class="hud-bar">
+  <div class="hud-left">
+    <div class="hud-dot"></div>
+    <span class="hud-id">QNA-OS // v4.7.2</span>
+    <span class="hud-status">SESSION <span>ACTIVE</span></span>
+  </div>
+  <div class="hud-right">
+    <span class="hud-status">MODULE <span>1.2</span></span>
+    <span class="hud-status">TRACK <span>1</span></span>
+    <span class="hud-status">DISPERSION ENGINE <span>ONLINE</span></span>
+  </div>
+</div>
+
+<div class="container">
+
+  <!-- HERO -->
+  <section class="hero">
+    <svg class="neural-bg" viewBox="0 0 500 500" preserveAspectRatio="xMidYMid slice">
+      <g id="neural-net"></g>
+    </svg>
+
+    <div class="hero-tag">TRACK 1 // MODULE 1.2 // DISPERSION</div>
+    <h1 class="hero-title module-heading">Measures of Spread<br>&amp; Variability</h1>
+    <p class="hero-subtitle">
+      Two groups can have the same average, but still behave very differently.
+
+In one group, values may stay close together and look stable. In another, values may be spread far apart and look very different.
+
+So the average alone cannot explain everything.
+
+To understand how data is spread and how much it changes, we use four important tools: <strong>Range, Variance, Standard Deviation, and IQR (Interquartile Range)</strong>.
+    </p>
+    <div class="hero-meta">
+      <div class="meta-chip"><span class="label">DURATION:</span><span class="value">65 MIN</span></div>
+      <div class="meta-chip"><span class="label">LEVEL:</span><span class="value">FOUNDATION</span></div>
+      <div class="meta-chip"><span class="label">CONCEPTS:</span><span class="value">04 CORE</span></div>
+      <div class="meta-chip"><span class="label">FORMULAS:</span><span class="value">07</span></div>
+      <div class="meta-chip"><span class="label">PRACTICE:</span><span class="value">06 TASKS</span></div>
+    </div>
+  </section>
+
+  <!-- OBJECTIVES -->
+  <section class="section reveal" id="objectives">
+    <div class="section-header">
+      <div class="section-number">// 01</div>
+      <h2 class="section-title module-heading">Learning Objectives</h2>
+      <div class="section-divider"></div>
+    </div>
+    <div class="objectives-grid">
+      <div class="objective-card" data-delay="0">
+        <div class="obj-icon">📏</div>
+        <div class="obj-num">// 001</div>
+        <div class="obj-title">Master the Range</div>
+        <div class="obj-desc">Learn the simplest measure of spread — the difference between the highest and lowest value — and understand why it is useful but does not always show the full picture.</div>
+        <div class="obj-indicator"></div>
+      </div>
+      <div class="objective-card" data-delay="150">
+        <div class="obj-icon">📐</div>
+        <div class="obj-num">// 002</div>
+        <div class="obj-title">Understand Variance</div>
+        <div class="obj-desc">Learn how far data values move away from the average. Variance helps measure how spread out the data is and shows how much variation exists in a dataset.</div>
+        <div class="obj-indicator"></div>
+      </div>
+      <div class="objective-card" data-delay="300">
+        <div class="obj-icon">📊</div>
+        <div class="obj-num">// 003</div>
+        <div class="obj-title">Master Standard Deviation</div>
+        <div class="obj-desc">The square root of variance — the most widely used spread measure in science, finance, engineering, and machine learning.</div>
+        <div class="obj-indicator"></div>
+      </div>
+      <div class="objective-card" data-delay="450">
+        <div class="obj-icon">📦</div>
+        <div class="obj-num">// 004</div>
+        <div class="obj-title">Master the IQR</div>
+        <div class="obj-desc">Learn the interquartile range — the robust, outlier-proof champion of spread measurement that powers every boxplot you'll ever see.</div>
+        <div class="obj-indicator"></div>
+      </div>
+      <div class="objective-card" data-delay="600">
+        <div class="obj-icon">🌊</div>
+        <div class="obj-num">// 005</div>
+        <div class="obj-title">Variability Intuition</div>
+        <div class="obj-desc">Develop the data-scientist's instinct for "spread" — knowing when high variance is dangerous, normal, or even desirable.</div>
+        <div class="obj-indicator"></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- WHY -->
+  <section class="section reveal" id="why">
+    <div class="section-header">
+      <div class="section-number">// 02</div>
+      <h2 class="section-title module-heading">Why We Need Measures of Spread</h2>
+      <div class="section-divider"></div>
+    </div>
+
+    <div class="deep-panel">
+      <div class="corner tl"></div><div class="corner tr"></div>
+      <div class="corner bl"></div><div class="corner br"></div>
+      <div class="deep-tag">// THE MEAN IS NOT ENOUGH</div>
+      <h3 class="deep-h">"Same Average. Completely Different Reality."</h3>
+
+      <p class="deep-p">
+        Consider two classes that took the same exam. Both have a class average of <strong>70 marks</strong>. From the average alone, they look identical. But look closer:
+      </p>
+
+      <div class="twin-grid">
+        <div class="twin-card a">
+          <div class="twin-title">Class A — Consistent</div>
+          <div class="twin-tag">// LOW SPREAD</div>
+          <p style="font-size:0.92rem; color:var(--text-soft); margin-bottom:8px;">Scores: 68, 69, 70, 70, 70, 71, 72</p>
+          <div class="dots-row" style="justify-content:center;">
+            <div class="dot-pt" style="margin-left: 30%;"></div>
+            <div class="dot-pt"></div>
+            <div class="dot-pt"></div>
+            <div class="dot-pt"></div>
+            <div class="dot-pt"></div>
+            <div class="dot-pt"></div>
+            <div class="dot-pt" style="margin-right: 30%;"></div>
+          </div>
+          <div class="twin-stats">
+            <div class="mini-stat"><div class="ml">MEAN</div><div class="mv">70</div></div>
+            <div class="mini-stat"><div class="ml">MIN</div><div class="mv">68</div></div>
+            <div class="mini-stat"><div class="ml">MAX</div><div class="mv">72</div></div>
+          </div>
+        </div>
+        <div class="twin-card b">
+          <div class="twin-title">Class B — Chaotic</div>
+          <div class="twin-tag">// HIGH SPREAD</div>
+          <p style="font-size:0.92rem; color:var(--text-soft); margin-bottom:8px;">Scores: 30, 40, 50, 70, 90, 100, 110*</p>
+          <div class="dots-row">
+            <div class="dot-pt"></div>
+            <div class="dot-pt" style="margin-left: 5%;"></div>
+            <div class="dot-pt" style="margin-left: 10%;"></div>
+            <div class="dot-pt" style="margin-left: 25%;"></div>
+            <div class="dot-pt" style="margin-left: 10%;"></div>
+            <div class="dot-pt" style="margin-left: 10%;"></div>
+            <div class="dot-pt" style="margin-left: 10%;"></div>
+          </div>
+          <div class="twin-stats">
+            <div class="mini-stat"><div class="ml">MEAN</div><div class="mv">70</div></div>
+            <div class="mini-stat"><div class="ml">MIN</div><div class="mv">30</div></div>
+            <div class="mini-stat"><div class="ml">MAX</div><div class="mv">110</div></div>
+          </div>
+        </div>
+      </div>
+
+      <p class="deep-p">
+        Same average. <strong class="mag">Completely different stories.</strong> Class A is a homogeneous group that almost all scored near 70. Class B is split — half failing, half excelling, with one outlier above 100. If you were a teacher deciding where to focus your effort next month, these two classes need radically different interventions. The mean alone hides this entirely.
+      </p>
+
+      <p class="deep-p">
+        This is the core idea of <strong>variability</strong>: <em>"How far do the values typically lie from the center?"</em> A measure of central tendency tells us where the data sits. A measure of spread tells us how wide it stretches. <strong class="amber">You need both</strong> to describe data honestly.
+      </p>
+
+      <div class="callout story">
+        <div class="callout-label">⚡ THE INVESTMENT LESSON</div>
+        <p>Two investment funds both report a 10% average annual return. Fund A's yearly returns are 9%, 10%, 11%, 10%, 10%. Fund B's are −30%, +50%, −20%, +40%, +10%. Same average — but Fund B is wildly volatile and could wipe you out before reaching that average. <strong>Professional investors don't just look at returns — they look at the spread (volatility) of those returns.</strong> Spread can matter more than the average for risk decisions.</p>
+      </div>
+
+      <h4 class="deep-sub-h">The Four Tools You'll Master</h4>
+      <ul class="deep-list">
+        <li><strong class="amber">Range</strong> — The simplest measure: highest value minus lowest value. It is easy to calculate and quickly shows how spread out the data is.</li>
+        <li><strong>Variance</strong> — Shows how far values move away from the average. It helps measure the amount of variation in data.</li>
+        <li><strong class="green">Standard Deviation</strong> — Based on variance and easier to understand because it uses the same units as the original data.</li>
+        <li><strong class="mag">Interquartile Range (IQR)</strong> — Looks at the middle 50% of the data and helps understand spread without being affected too much by extreme values (outliers).</li>
+      </ul>
+    </div>
+  </section>
+
+  <!-- RANGE -->
+  <section class="section reveal" id="range">
+    <div class="section-header">
+      <div class="section-number">// 03</div>
+      <h2 class="section-title module-heading">Range — The Simplest Spread</h2>
+      <div class="section-divider"></div>
+    </div>
+
+    <div class="deep-panel">
+      <div class="corner tl"></div><div class="corner tr"></div>
+      <div class="corner bl"></div><div class="corner br"></div>
+      <div class="deep-tag">// MEASURE 01 — MAX MINUS MIN</div>
+      <h3 class="deep-h">The Range — Quick, Easy, Fragile</h3>
+
+      <h4 class="deep-sub-h">What Is the Range?</h4>
+      <p class="deep-p">
+        The <strong>range</strong> is the simplest possible measure of spread. It is just <strong>the difference between the largest and the smallest value</strong> in the dataset. That's it. Two numbers, one subtraction, done.
+      </p>
+
+      <h4 class="deep-sub-h">Why Do We Need the Range?</h4>
+      <p class="deep-p">
+        Sometimes you just want a quick, rough idea of how stretched out the data is. The range gives you the total width of the dataset — the "from-to" span. Weather forecasters use it constantly: "Today's temperature will range from 22°C to 35°C." Stock tickers report it: "52-week high and low." A factory quality inspector glances at the range of measurements to see if anything seems off.
+      </p>
+
+      <div class="formula-card">
+        <div class="formula-label">// FORMULA — RANGE</div>
+        <div class="formula-display">
+          <span class="v">Range</span> <span class="op">=</span> <span class="em">Maximum</span> <span class="op">−</span> <span class="em">Minimum</span>
+        </div>
+        <p class="formula-desc">
+          Find the largest value. Find the smallest value. Subtract. The result is the full width of your data.
+        </p>
+        <div class="formula-vars">
+          <div class="var-tile"><span class="vn">Max</span><span class="vd">the highest value in the dataset</span></div>
+          <div class="var-tile"><span class="vn">Min</span><span class="vd">the lowest value in the dataset</span></div>
+          <div class="var-tile"><span class="vn">Range</span><span class="vd">the total span the data covers</span></div>
+        </div>
+      </div>
+
+      <div class="worked-card">
+        <div class="worked-label">WORKED EXAMPLE — DAILY TEMPERATURES</div>
+        <div class="worked-step"><strong>Step 1 — Data (°C across 7 days):</strong> 22, 25, 28, 30, 26, 24, 35</div>
+        <div class="worked-step"><strong>Step 2 — Find Max:</strong> <span class="val">35</span></div>
+        <div class="worked-step"><strong>Step 3 — Find Min:</strong> <span class="val">22</span></div>
+        <div class="worked-step"><strong>Step 4 — Subtract:</strong> 35 − 22 = <span class="val">13</span></div>
+        <div class="worked-result">→ <strong>Range = 13°C</strong>. Temperatures spanned a 13-degree window over the week.</div>
+      </div>
+
+      <h4 class="deep-sub-h">Real-Life Example — Stock Trading</h4>
+      <p class="deep-p">
+        A stock had a 52-week high of <strong>₹2,400</strong> and a 52-week low of <strong>₹1,800</strong>. The range is <strong class="amber">₹600</strong>. Traders use this to gauge volatility at a glance — a stock that ranges ₹600 in a year is much more volatile than one ranging ₹50.
+      </p>
+
+      <h4 class="deep-sub-h">How and When to Use the Range</h4>
+      <ul class="deep-list">
+        <li><strong>Use it when:</strong> You need a quick rough estimate of spread, or when the dataset is small and clean (no extreme outliers).</li>
+        <li><strong>Use it when:</strong> The maximum and minimum themselves carry meaning — weather, stock highs/lows, allowable tolerance ranges.</li>
+        <li><strong>Use it for:</strong> Rapid quality checks ("does anything look way off?"), initial data exploration, and visual summaries.</li>
+      </ul>
+
+      <h4 class="deep-sub-h">When the Range Fails</h4>
+      <p class="deep-p">
+        The range has one massive weakness: it uses <strong class="mag">only two values</strong> — the smallest and the largest. It completely ignores everything in between. This makes it <strong>extremely sensitive to outliers</strong>.
+      </p>
+
+      <div class="callout warn">
+        <div class="callout-label">⚠ THE FATAL FLAW</div>
+        <p>Compare two datasets:<br>
+        <strong>Dataset A:</strong> 50, 51, 52, 53, 54, 55 → Range = 5<br>
+        <strong>Dataset B:</strong> 50, 51, 52, 53, 54, 1000 → Range = 950<br><br>
+        The first five values are <em>identical</em> in both datasets. Yet the range jumps from 5 to 950 because of one outlier. <strong>The range tells you about the two extremes — not about typical spread.</strong></p>
+      </div>
+
+      <ul class="deep-list">
+        <li><strong>Avoid the range when:</strong> Outliers may be present.</li>
+        <li><strong>Avoid the range when:</strong> The dataset is large and you want a summary that reflects most of the data.</li>
+        <li><strong>Avoid the range when:</strong> You need a measure that combines well with other statistics (range doesn't feed into many formulas).</li>
+      </ul>
+    </div>
+  </section>
+
+  <!-- VARIANCE -->
+  <section class="section reveal" id="variance">
+    <div class="section-header">
+      <div class="section-number">// 04</div>
+      <h2 class="section-title module-heading">Variance — Understanding How Far Data Moves from the Average</h2>
+      <div class="section-divider"></div>
+    </div>
+
+    <div class="deep-panel">
+      <div class="corner tl"></div><div class="corner tr"></div>
+      <div class="corner bl"></div><div class="corner br"></div>
+      <div class="deep-tag">// MEASURE 02 — AVERAGE SQUARED DEVIATION</div>
+      <h3 class="deep-h">Variance — Spread Built From Deviations</h3>
+
+      <h4 class="deep-sub-h">What Is Variance?</h4>
+      <p class="deep-p">
+        <strong>Variance</strong> is the <em>average squared distance</em> of each data point from the mean. Variance measures how far the values are from the average (mean). It squares the distances so negative values do not cancel positive ones and larger differences get more importance.
+      </p>
+
+      <h4 class="deep-sub-h">Why Do We Need Variance? — Building It From Intuition</h4>
+      <p class="deep-p">
+        Imagine you want to measure "how spread out is this data from its mean?" Here is the natural thought process:
+      </p>
+      <ul class="deep-list">
+        <li><strong>Idea 1:</strong> For each value, find how far it is from the mean. So compute (xᵢ − x̄) for every data point. These are called <em>deviations</em>.</li>
+        <li><strong>Idea 2:</strong> Now average the deviations. <strong class="mag">PROBLEM:</strong> deviations have signs. Some are positive (above the mean), some negative (below). They always sum to zero — they cancel out! Average = 0 every single time. Useless.</li>
+        <li><strong>Fix — square them:</strong> Square each deviation: (xᵢ − x̄)². Now everything is positive (a squared number is always ≥ 0). And bigger gaps get extra weight (a deviation of 10 contributes 100, not just 10).</li>
+        <li><strong>Now average:</strong> Take the average of these squared deviations. That number is the <strong class="green">variance</strong>.</li>
+      </ul>
+
+      <p class="deep-p">
+        Variance fixes the problem where positive and negative differences cancel each other. It also gives more importance to values that are farther from the average. But variance has one small problem, which we will see next.
+      </p>
+
+      <div class="formula-card">
+        <div class="formula-label">// FORMULA — POPULATION VARIANCE</div>
+        <div class="formula-display">
+          <span class="v">σ²</span> <span class="op">=</span> ( <span class="em">1/n</span> ) <span class="op">·</span> <span class="em">Σ</span> ( <span class="v">xᵢ</span> <span class="op">−</span> <span class="v">μ</span> )<sup>2</sup>
+        </div>
+        <p class="formula-desc">
+          For each data point, Find the mean (average) of the data.
+Subtract the mean from each data value.
+Square each result.
+Add all the squared values together.
+Divide the total by n (total number of values).
+The result is called population variance and is used when the dataset contains the entire population (all values of interest).
+        </p>
+        <div class="formula-vars">
+          <div class="var-tile"><span class="vn">σ²</span><span class="vd">"sigma squared" — population variance</span></div>
+          <div class="var-tile"><span class="vn">xᵢ</span><span class="vd">each individual data value</span></div>
+          <div class="var-tile"><span class="vn">μ</span><span class="vd">population mean</span></div>
+          <div class="var-tile"><span class="vn">n</span><span class="vd">total number of values</span></div>
+        </div>
+      </div>
+
+      <div class="formula-card">
+        <div class="formula-label">// FORMULA — SAMPLE VARIANCE (BESSEL'S CORRECTION)</div>
+        <div class="formula-display">
+          <span class="v">s²</span> <span class="op">=</span> ( <span class="em">1</span> <span class="op">/</span> <span class="em">(n − 1)</span> ) <span class="op">·</span> <span class="em">Σ</span> ( <span class="v">xᵢ</span> <span class="op">−</span> <span class="v">x̄</span> )<sup>2</sup>
+        </div>
+        <p class="formula-desc">
+          When your data is a <strong>sample</strong> from a larger population, divide by (n − 1) instead of n. This is called <strong>Bessel's correction</strong>. The reason: using the sample mean (instead of the unknown true mean) slightly underestimates spread. Dividing by (n−1) compensates and gives an unbiased estimate.
+        </p>
+        <div class="formula-vars">
+          <div class="var-tile"><span class="vn">s²</span><span class="vd">sample variance (estimate of σ²)</span></div>
+          <div class="var-tile"><span class="vn">x̄</span><span class="vd">sample mean</span></div>
+          <div class="var-tile"><span class="vn">n−1</span><span class="vd">degrees of freedom</span></div>
+        </div>
+      </div>
+
+      
+
+      <div class="worked-card">
+        <div class="worked-label">WORKED EXAMPLE — STEP-BY-STEP VARIANCE</div>
+        <div class="worked-step"><strong>Step 1 — Data:</strong> 4, 8, 6, 5, 3</div>
+        <div class="worked-step"><strong>Step 2 — Find the mean:</strong> (4+8+6+5+3)/5 = 26/5 = <span class="val">5.2</span></div>
+        <div class="worked-step"><strong>Step 3 — Compute each deviation (xᵢ − x̄) and its square:</strong></div>
+
+        <table class="calc-table">
+          <thead><tr><th>xᵢ</th><th>xᵢ − x̄</th><th>(xᵢ − x̄)²</th></tr></thead>
+          <tbody>
+            <tr><td>4</td><td>−1.2</td><td>1.44</td></tr>
+            <tr><td>8</td><td>2.8</td><td>7.84</td></tr>
+            <tr><td>6</td><td>0.8</td><td>0.64</td></tr>
+            <tr><td>5</td><td>−0.2</td><td>0.04</td></tr>
+            <tr><td>3</td><td>−2.2</td><td>4.84</td></tr>
+          </tbody>
+          <tfoot><tr><td colspan="2">SUM of squared deviations</td><td>14.80</td></tr></tfoot>
+        </table>
+
+        <div class="worked-step"><strong>Step 4 — Divide by n (population variance):</strong> 14.80 / 5 = <span class="val">2.96</span></div>
+        <div class="worked-step"><strong>Step 4-alt — Divide by n−1 (sample variance):</strong> 14.80 / 4 = <span class="val">3.70</span></div>
+        <div class="worked-result">→ <strong>Variance (population) = 2.96 squared-units</strong>. The squared units feel weird — that's why we usually take the square root next, giving us the <strong>standard deviation</strong>.</div>
+      </div>
+
+      <h4 class="deep-sub-h">The One Annoying Quirk of Variance</h4>
+      <p class="deep-p">
+        Variance has one strange property: its <strong>units are squared</strong>. If your data is in <em>rupees</em>, variance is in <em>rupees squared</em>. If your data is in <em>centimeters</em>, variance is in <em>square centimeters</em>. This is weird — what is "₹100 squared" anyway? It doesn't directly mean anything useful in the real world.
+      </p>
+      <p class="deep-p">
+        This is exactly why statisticians take the <strong class="green">square root</strong> of variance — to bring the units back to the original scale. That square root is the <strong>standard deviation</strong>, which we'll meet next.
+      </p>
+
+      <h4 class="deep-sub-h">Where Variance Is Used</h4>
+      <ul class="deep-list">
+        <li><strong>Mathematics &amp; theory:</strong> Variance is the foundation for the Central Limit Theorem, hypothesis tests, regression, and almost all inferential statistics.</li>
+        <li><strong>Finance:</strong> Variance of returns = "volatility" — The key risk metric for portfolios.</li>
+        <li><strong>ML &amp; AI:</strong> Variance shows up in PCA, regularization, bias-variance tradeoff, and uncertainty quantification.</li>
+        <li><strong>Engineering:</strong> Variance in sensor measurements drives error analysis and quality control.</li>
+      </ul>
+
+      <h4 class="deep-sub-h">When Variance Fails</h4>
+      <ul class="deep-list">
+        <li><strong>Outliers amplify it dramatically</strong> — Because deviations are squared, a single far-away point contributes massively.</li>
+        <li><strong>Units are not intuitive</strong> — ₹² doesn't mean anything to a human reader.</li>
+        <li><strong>Hard to communicate</strong> — Laypeople understand "average distance from the mean" but not "average squared distance."</li>
+      </ul>
+    </div>
+  </section>
+
+  <!-- STANDARD DEVIATION -->
+  <section class="section reveal" id="std">
+    <div class="section-header">
+      <div class="section-number">// 05</div>
+      <h2 class="section-title module-heading">Standard Deviation — Making Variance Easier to Understand</h2>
+      <div class="section-divider"></div>
+    </div>
+
+    <div class="deep-panel">
+      <div class="corner tl"></div><div class="corner tr"></div>
+      <div class="corner bl"></div><div class="corner br"></div>
+      <div class="deep-tag">// MEASURE 03 — THE √ OF VARIANCE</div>
+      <h3 class="deep-h">Standard Deviation — Variance With Sensible Units</h3>
+
+      <h4 class="deep-sub-h">What Is Standard Deviation?</h4>
+      <p class="deep-p">
+        The <strong>standard deviation (SD)</strong> is the <strong>square root of the variance</strong>. That single operation fixes the variance's "squared-units" problem and produces the most-used measure of spread in the entire statistical universe.
+      </p>
+
+      <h4 class="deep-sub-h">Why Do We Need Standard Deviation?</h4>
+      <p class="deep-p">
+        Variance is mathematically perfect — but its units make no sense. Heights of people are in centimeters. Variance of heights is in <em>square centimeters</em> — meaningless to a human. So we take the square root: now we're back in centimeters, and the number means <strong>"a typical distance from the mean."</strong> If average height is 170 cm and SD is 8 cm, you can confidently say "most heights are within about 8 cm of the average" — and that statement now feels intuitive.
+      </p>
+
+      <div class="formula-card">
+        <div class="formula-label">// FORMULA — POPULATION STANDARD DEVIATION</div>
+        <div class="formula-display">
+          <span class="v">σ</span> <span class="op">=</span> <span class="em">√</span> ( <span class="v">σ²</span> ) <span class="op">=</span> <span class="em">√</span> ( ( <span class="em">1/n</span> ) <span class="op">·</span> <span class="em">Σ</span>(<span class="v">xᵢ</span><span class="op">−</span><span class="v">μ</span>)<sup>2</sup> )
+        </div>
+        <p class="formula-desc">
+          Standard deviation is simply the square root of variance. When using sample data, we divide by n−1 instead of n, just like sample variance.
+        </p>
+        <div class="formula-vars">
+          <div class="var-tile"><span class="vn">σ</span><span class="vd">"sigma" — population standard deviation</span></div>
+          <div class="var-tile"><span class="vn">s</span><span class="vd">sample standard deviation (estimate of σ)</span></div>
+          <div class="var-tile"><span class="vn">Units</span><span class="vd">same as the original data</span></div>
+          <div class="var-tile"><span class="vn">Intuition</span><span class="vd">"typical distance from the mean"</span></div>
+        </div>
+      </div>
+
+      <div class="worked-card">
+        <div class="worked-label">WORKED EXAMPLE — STANDARD DEVIATION FROM VARIANCE</div>
+        <div class="worked-step"><strong>Step 1 — From the variance example above:</strong> Variance σ² = 2.96</div>
+        <div class="worked-step"><strong>Step 2 — Take the square root:</strong> σ = √2.96 ≈ <span class="val">1.72</span></div>
+        <div class="worked-result">→ <strong>Standard Deviation = 1.72</strong>. In context: data values typically lie about 1.72 units away from the mean of 5.2. Most points fall within roughly one SD of the center.</div>
+      </div>
+
+      <h4 class="deep-sub-h">Real-Life Example — Exam Scores</h4>
+      <p class="deep-p">
+        Two classes both have a mean of 70 marks. Class A has SD = 3. Class B has SD = 20. Interpretation: in Class A, almost everyone scored between roughly 67 and 73 — very consistent learning. In Class B, scores spread widely — some students mastered the material, others barely passed. <strong>Two identical means hide two completely different teaching situations</strong>, and SD reveals it instantly.
+      </p>
+
+      <h4 class="deep-sub-h">The 68–95–99.7 Rule (For Normal Data)</h4>
+      <p class="deep-p">
+        For data that follows a bell-shaped (normal) distribution, the standard deviation has a beautiful interpretation:
+      </p>
+      <ul class="deep-list">
+        <li><strong>About 68%</strong> of values fall within <strong>1 SD</strong> of the mean.</li>
+        <li><strong>About 95%</strong> of values fall within <strong>2 SD</strong> of the mean.</li>
+        <li><strong>About 99.7%</strong> of values fall within <strong>3 SD</strong> of the mean.</li>
+      </ul>
+      <p class="deep-p">
+        Example: if adult male heights have mean 175 cm and SD 7 cm, then ~68% of men are between 168 and 182 cm. ~95% are between 161 and 189 cm. Anything beyond 196 cm (3 SD above) is rare — fewer than 0.15% of the population. This rule lets you interpret SD almost visually.
+      </p>
+
+      <h4 class="deep-sub-h">Where Standard Deviation Is Used</h4>
+      <ul class="deep-list">
+        <li><strong>Finance:</strong> "Volatility" of a stock is its SD of returns — the universal risk measure.</li>
+        <li><strong>ML / AI:</strong> Z-score normalization divides each feature by its SD before training models.</li>
+        <li><strong>Quality control:</strong> "Six Sigma" literally means processes with very tiny SD — high consistency.</li>
+        <li><strong>Polling &amp; surveys:</strong> Margin of error is built directly from the sample standard deviation.</li>
+        <li><strong>Sports analytics:</strong> A batter's run-scoring SD measures consistency.</li>
+        <li><strong>Medicine:</strong> Drug dosage ranges, lab reference intervals, IQ classifications.</li>
+      </ul>
+
+      <h4 class="deep-sub-h">How To Use Standard Deviation in Practice</h4>
+      <ul class="deep-list">
+        <li>Always report SD next to the mean: <em>"Average salary ₹35,000 (SD ₹6,000)"</em> tells a much fuller story.</li>
+        <li>Compare SDs across groups to decide which is more consistent.</li>
+        <li>Use SD as the scale for "how unusual is this value?" — a value 3 SDs from the mean is rare.</li>
+      </ul>
+
+      <h4 class="deep-sub-h">When Standard Deviation Fails</h4>
+      <ul class="deep-list">
+        <li><strong>Sensitive to outliers</strong> — Because variance squares deviations, one outlier can blow it up. Use IQR for outlier-prone data.</li>
+        <li><strong>Misleading on heavily skewed data</strong> — The symmetric "spread around mean" interpretation breaks down.</li>
+        <li><strong>The 68-95-99.7 rule only applies</strong> to normal-shaped data — not arbitrary distributions.</li>
+      </ul>
+    </div>
+  </section>
+
+  <!-- INTERACTIVE LAB -->
+  <section class="section reveal" id="lab">
+    <div class="section-header">
+      <div class="section-number">// 06</div>
+      <h2 class="section-title module-heading">Interactive Lab — Watch Spread Change Live</h2>
+      <div class="section-divider"></div>
+    </div>
+
+    <div class="lab-panel">
+      <div class="lab-header">
+        <div class="lab-title"><div class="dot"></div>Spread Simulator — Same Mean, Different Spreads</div>
+        <div class="lab-readout">
+          <div class="readout-cell"><span class="lab">RANGE:</span><span class="val range" id="ro-range">--</span></div>
+          <div class="readout-cell"><span class="lab">STD:</span><span class="val std" id="ro-std">--</span></div>
+          <div class="readout-cell"><span class="lab">VAR:</span><span class="val std" id="ro-var">--</span></div>
+          <div class="readout-cell"><span class="lab">IQR:</span><span class="val iqr" id="ro-iqr">--</span></div>
+        </div>
+      </div>
+      <canvas id="spread-canvas"></canvas>
+      <p style="margin-top:14px; font-size:0.88rem; color:var(--text-dim); line-height:1.7; text-align:justify;">
+        <strong style="color:var(--neon-cyan);">Drag the slider</strong> to widen the spread. The mean stays exactly at 50 — only the spread changes. Watch how range, standard deviation, variance and IQR all grow together but at different rates.
+      </p>
+      <div class="lab-controls">
+        <div class="ctrl-group">
+          <div class="ctrl-label">SPREAD INTENSITY <span class="v" id="spread-label">3.0</span></div>
+          <input type="range" id="spread-slider" min="2" max="200" value="30">
+        </div>
+        <button class="btn secondary" id="spread-resample">⟲ RESAMPLE 30 POINTS</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- IQR -->
+  <section class="section reveal" id="iqr">
+    <div class="section-header">
+      <div class="section-number">// 07</div>
+      <h2 class="section-title module-heading">Interquartile Range (IQR) — The Outlier-Proof Champion</h2>
+      <div class="section-divider"></div>
+    </div>
+
+    <div class="deep-panel">
+      <div class="corner tl"></div><div class="corner tr"></div>
+      <div class="corner bl"></div><div class="corner br"></div>
+      <div class="deep-tag">// MEASURE 04 — MIDDLE 50% SPREAD</div>
+      <h3 class="deep-h">IQR — The Robust Hero of Spread</h3>
+
+      <h4 class="deep-sub-h">What Is the IQR?</h4>
+      <p class="deep-p">
+       The <strong>Interquartile Range (IQR)</strong> measures the spread of the <strong>middle 50%</strong> of the data. It is found by subtracting the <strong>first quartile (Q1)</strong> from the <strong>third quartile (Q3)</strong>. Q1 marks the point below which <strong>25%</strong> of the data lies, and Q3 marks the point below which <strong>75%</strong> of the data lies.      </p>
+
+      <h4 class="deep-sub-h">First — What Are Quartiles?</h4>
+      <p class="deep-p">
+        Sort your data. Quartiles split it into four equal parts:
+      </p>
+      <ul class="deep-list">
+        <li><strong>Q1 (first quartile):</strong> the value at the 25% position. A quarter of the data is below Q1.</li>
+        <li><strong>Q2 (second quartile):</strong> the value at the 50% position. This is just the median.</li>
+        <li><strong>Q3 (third quartile):</strong> the value at the 75% position. Three-quarters of the data is below Q3.</li>
+      </ul>
+
+      <h4 class="deep-sub-h">Why Do We Need the IQR?</h4>
+      <p class="deep-p">
+Range and standard deviation can be <strong>strongly affected by outliers</strong>. A single extreme value can make them give a misleading picture of how spread out the data really is. The IQR avoids this problem by looking only at the <strong>middle 50%</strong> of the data and <strong class="green">ignoring extreme values at both ends</strong>. This makes it useful for <strong>skewed data</strong> and datasets with outliers.      </p>
+
+      <div class="formula-card">
+        <div class="formula-label">// FORMULA — INTERQUARTILE RANGE</div>
+        <div class="formula-display">
+          <span class="v">IQR</span> <span class="op">=</span> <span class="em">Q3</span> <span class="op">−</span> <span class="em">Q1</span>
+        </div>
+        <p class="formula-desc">
+          Subtract the first quartile from the third. The result is the width of the middle 50% of your data — the part that's least affected by extreme values.
+        </p>
+        <div class="formula-vars">
+          <div class="var-tile"><span class="vn">Q1</span><span class="vd">25th percentile — value at 1/4 position</span></div>
+          <div class="var-tile"><span class="vn">Q3</span><span class="vd">75th percentile — value at 3/4 position</span></div>
+          <div class="var-tile"><span class="vn">IQR</span><span class="vd">spread of central half of data</span></div>
+        </div>
+      </div>
+
+      <div class="worked-card">
+        <div class="worked-label">WORKED EXAMPLE — IQR STEP BY STEP</div>
+        <div class="worked-step"><strong>Step 1 — Data (already sorted):</strong> 2, 4, 5, 6, 7, 9, 10, 12, 15</div>
+        <div class="worked-step"><strong>Step 2 — Find the median (Q2):</strong> the middle value of 9 numbers is the 5th value → <span class="val">7</span></div>
+        <div class="worked-step"><strong>Step 3 — Find Q1:</strong> median of the lower half (2, 4, 5, 6) → (4+5)/2 = <span class="val">4.5</span></div>
+        <div class="worked-step"><strong>Step 4 — Find Q3:</strong> median of the upper half (9, 10, 12, 15) → (10+12)/2 = <span class="val">11</span></div>
+        <div class="worked-step"><strong>Step 5 — Compute IQR:</strong> Q3 − Q1 = 11 − 4.5 = <span class="val">6.5</span></div>
+        <div class="worked-result">→ <strong>IQR = 6.5</strong>. The middle 50% of the data spans a width of 6.5 units. Even if we replaced the 15 with 1500, the IQR would not change.</div>
+      </div>
+
+      <h4 class="deep-sub-h">Visualizing IQR — The Box Plot</h4>
+      <p class="deep-p">
+        The IQR is the heart of one of the most useful visualizations in all of statistics: the <strong>box plot</strong> (also called box-and-whisker plot). The box itself spans Q1 to Q3 — that's the IQR. The line inside the box is the median. The "whiskers" extend to the smallest and largest non-outlier values. Anything beyond is plotted individually as an outlier dot.
+      </p>
+
+      <div class="lab-panel">
+        <div class="lab-header">
+          <div class="lab-title"><div class="dot"></div>Live Box Plot — Hover Over the Anatomy</div>
+        </div>
+        <canvas id="boxplot-canvas"></canvas>
+        <p style="margin-top:14px; font-size:0.88rem; color:var(--text-dim); line-height:1.7; text-align:center;">
+          Box plot of the data: <strong>2, 4, 5, 6, 7, 9, 10, 12, 15, 28</strong>. The box = IQR (Q1 to Q3). The line = median. The whiskers stretch to non-outlier limits. The dot to the right = outlier (28 is more than 1.5×IQR above Q3).
+        </p>
+      </div>
+
+      <h4 class="deep-sub-h">The 1.5 × IQR Outlier Rule</h4>
+      <p class="deep-p">
+        A widely-used rule for spotting outliers: any value below <strong>Q1 − 1.5 × IQR</strong> or above <strong>Q3 + 1.5 × IQR</strong> is flagged as an outlier. This rule is what powers boxplots, anomaly detection in industry, and even some fraud-detection algorithms.
+      </p>
+
+      <h4 class="deep-sub-h">How and When to Use the IQR</h4>
+      <ul class="deep-list">
+        <li><strong>Use IQR when:</strong> Data is skewed (income, housing prices, response times).</li>
+        <li><strong>Use IQR when:</strong> You suspect or know there are outliers.</li>
+        <li><strong>Use IQR when:</strong> You want to combine it with the median for a complete "robust" summary.</li>
+        <li><strong>Use IQR when:</strong> You need to detect outliers via the 1.5×IQR rule.</li>
+      </ul>
+
+      <h4 class="deep-sub-h">Real-Life Example — Salary Reports</h4>
+      <p class="deep-p">
+        A company has 99 employees earning ₹40k–₹80k and 1 CEO earning ₹50 lakh. Standard deviation would be huge — completely useless for understanding what employees typically earn. The IQR, however, only looks at the middle 50% of the workforce: it might be ~₹20k, telling you "typical employees earn within a ₹20k window." That's the real story.
+      </p>
+
+      <h4 class="deep-sub-h">When the IQR Fails</h4>
+      <ul class="deep-list">
+        <li><strong>Ignores half the data</strong> — by design, IQR throws away the bottom 25% and top 25%. If the tails of your data carry important info (e.g., extreme risk events in finance), IQR misses them.</li>
+        <li><strong>Doesn't combine with means/variances directly</strong> in formulas — most theoretical statistics is built on variance and SD, not IQR.</li>
+        <li><strong>Less informative for small datasets</strong> — with just 5 or 6 data points, quartiles get fuzzy.</li>
+      </ul>
+    </div>
+  </section>
+
+  <!-- WHEN TO USE WHICH -->
+  <section class="section reveal" id="when">
+    <div class="section-header">
+      <div class="section-number">// 08</div>
+      <h2 class="section-title module-heading">When To Use Which Spread Measure</h2>
+      <div class="section-divider"></div>
+    </div>
+
+    <div class="deep-panel">
+      <div class="corner tl"></div><div class="corner tr"></div>
+      <div class="corner bl"></div><div class="corner br"></div>
+      <div class="deep-tag">// THE DECISION GUIDE</div>
+      <h3 class="deep-h">The Practitioner's Decision Framework</h3>
+
+      <table class="when-table">
+        <thead>
+          <tr>
+            <th>Measure</th>
+            <th>Best For</th>
+            <th>Weakness</th>
+            <th>Real Use Case</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td class="m-name range">Range</td>
+            <td>Quick rough estimate, clean small datasets, when extremes matter (weather, stock highs)</td>
+            <td>Uses only 2 points; destroyed by outliers</td>
+            <td>"52-week high–low," daily temperature range</td>
+          </tr>
+          <tr>
+            <td class="m-name var">Variance</td>
+            <td>Mathematical work, theory, ML algorithms, when you need to combine with other statistics</td>
+            <td>Units are squared (weird); sensitive to outliers</td>
+            <td>Portfolio risk modelling, PCA, regression internals</td>
+          </tr>
+          <tr>
+            <td class="m-name std">Standard Deviation</td>
+            <td>General-purpose spread reporting, normal data, z-scores, communicating with humans</td>
+            <td>Sensitive to outliers; assumes symmetric spread</td>
+            <td>Stock volatility, exam-score reports, IQ scoring</td>
+          </tr>
+          <tr>
+            <td class="m-name iqr">IQR</td>
+            <td>Skewed data, outlier presence, boxplots, robust summaries</td>
+            <td>Uses the middle 50% of the data and ignores extreme value</td>
+            <td>Income/salary reports, real estate prices, anomaly detection</td>
+          </tr>
+        </tbody>
+      </table>
+
+      <h4 class="deep-sub-h">The Senior Analyst's Mental Checklist</h4>
+      <ul class="deep-list">
+        <li><strong>Q1 — Are outliers possible?</strong> Yes → IQR. No → SD is fine.</li>
+        <li><strong>Q2 — Is the data symmetric?</strong> Yes → SD (with the 68-95-99.7 rule). No → IQR + median.</li>
+        <li><strong>Q3 — Do I need theoretical math (regression, hypothesis tests)?</strong> Yes → variance / SD.</li>
+        <li><strong>Q4 — Am I making a quick eyeball check?</strong> Range is OK.</li>
+        <li><strong>Q5 — Am I communicating with non-technical people?</strong> SD is the universal "typical distance from average."</li>
+      </ul>
+
+      <div class="callout tip">
+        <div class="callout-label">✓ THE GOLDEN PAIRING RULE</div>
+        <p>Always pair a measure of <strong>center</strong> with a matching measure of <strong>spread</strong>:</p>
+        <p><strong>Mean</strong> + <strong>Standard Deviation</strong> → for symmetric, outlier-free data.<br>
+        <strong>Median</strong> + <strong>IQR</strong> → for skewed or outlier-prone data.</p>
+        <p>Reporting one without the other is incomplete. Mixing across pairs (mean + IQR, median + SD) is uncommon — and usually a sign someone forgot the rule.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- REAL WORLD APPLICATIONS -->
+  <section class="section reveal" id="apps">
+    <div class="section-header">
+      <div class="section-number">// 09</div>
+      <h2 class="section-title module-heading">Real-World Applications</h2>
+      <div class="section-divider"></div>
+    </div>
+
+    <div class="apps-grid">
+      <div class="app-tile">
+        <span class="app-icon">📈</span>
+        <div class="app-domain">FINANCE</div>
+        <div class="app-title">Volatility = Standard Deviation</div>
+        <div class="app-desc">The volatility of a stock — the single most-quoted risk number on Wall Street — is just the <strong>standard deviation</strong> of daily returns. Two stocks with the same average return can have radically different risk profiles.</div>
+      </div>
+      <div class="app-tile">
+        <span class="app-icon">🏭</span>
+        <div class="app-domain">QUALITY CONTROL</div>
+        <div class="app-title">Six Sigma Manufacturing</div>
+        <div class="app-desc">Industrial processes are measured by their <strong>standard deviation</strong>. "Six Sigma" means the process is so tight that defects fall more than 6 SDs away — about 3.4 defects per million.</div>
+      </div>
+      <div class="app-tile">
+        <span class="app-icon">🤖</span>
+        <div class="app-domain">MACHINE LEARNING</div>
+        <div class="app-title">Z-Score Normalization</div>
+        <div class="app-desc">Before training most ML models, every feature is rescaled to <strong>(x − mean) / SD</strong>. This puts all features on a comparable scale so the model isn't dominated by features with bigger raw numbers.</div>
+      </div>
+      <div class="app-tile">
+        <span class="app-icon">📊</span>
+        <div class="app-domain">DATA SCIENCE</div>
+        <div class="app-title">Outlier Detection</div>
+        <div class="app-desc">The <strong>1.5 × IQR rule</strong> automatically flags values that lie outside [Q1 − 1.5·IQR, Q3 + 1.5·IQR]. Every boxplot and many anomaly detectors rely on this rule.</div>
+      </div>
+      <div class="app-tile">
+        <span class="app-icon">🏥</span>
+        <div class="app-domain">HEALTHCARE</div>
+        <div class="app-title">Clinical Reference Ranges</div>
+        <div class="app-desc">"Normal blood pressure," "healthy cholesterol" — these reference ranges are built using <strong>mean ± 2 SD</strong> (covers ~95% of healthy people). A value beyond that flags a doctor's attention.</div>
+      </div>
+      <div class="app-tile">
+        <span class="app-icon">🏠</span>
+        <div class="app-domain">REAL ESTATE</div>
+        <div class="app-title">Price Variability by Area</div>
+        <div class="app-desc">Real estate portals report median prices plus the <strong>IQR</strong>. Two cities with the same median can be radically different: a small IQR means homogeneous pricing, a huge IQR means a mix of slums and mansions.</div>
+      </div>
+      <div class="app-tile">
+        <span class="app-icon">🎓</span>
+        <div class="app-domain">EDUCATION</div>
+        <div class="app-title">Standardized Test Scoring</div>
+        <div class="app-desc">SAT, GRE, IIT-JEE percentile rankings all rely on knowing the <strong>mean and SD</strong> of all test-takers. Your score is interpreted relative to how many SDs you are from the average.</div>
+      </div>
+      <div class="app-tile">
+        <span class="app-icon">⚽</span>
+        <div class="app-domain">SPORTS ANALYTICS</div>
+        <div class="app-title">Consistency vs Brilliance</div>
+        <div class="app-desc">A cricket batter with <strong>low SD</strong> in their scores is reliable. A batter with high SD swings between centuries and ducks. Selectors weigh both average AND SD for tournament selection.</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- MISTAKES -->
+  <section class="section reveal" id="mistakes">
+    <div class="section-header">
+      <div class="section-number">// 10</div>
+      <h2 class="section-title module-heading">Common Mistakes &amp; Misconceptions</h2>
+      <div class="section-divider"></div>
+    </div>
+
+    <div class="mistakes-grid">
+      <div class="mistake-card">
+        <div class="mtag">// MISTAKE 01</div>
+        <div class="mtitle">"Only reporting the mean"</div>
+        <div class="mtext">Two datasets with the same mean can have radically different shapes. Skipping spread is one of the most common ways to mislead — accidentally or deliberately.</div>
+        <div class="mfix"><strong>FIX:</strong> Always pair the mean with the standard deviation, or the median with the IQR. Never report a center alone.</div>
+      </div>
+      <div class="mistake-card">
+        <div class="mtag">// MISTAKE 02</div>
+        <div class="mtitle">"Using range on outlier-heavy data"</div>
+        <div class="mtext">Reporting "income ranges from ₹15,000 to ₹5 crore" makes everyone in the dataset look the same width. The range doesn't capture typical spread.</div>
+        <div class="mfix"><strong>FIX:</strong> If outliers might be present, use IQR. The 1.5×IQR rule even helps you identify the outliers.</div>
+      </div>
+      <div class="mistake-card">
+        <div class="mtag">// MISTAKE 03</div>
+        <div class="mtitle">"Forgetting Bessel's correction (n−1)"</div>
+        <div class="mtext">Using n in the denominator when computing sample variance gives a slightly biased estimate that underestimates the true population spread.</div>
+        <div class="mfix"><strong>FIX:</strong> Use (n−1) for sample variance/SD. Use n only when you actually have the entire population's data.</div>
+      </div>
+      <div class="mistake-card">
+        <div class="mtag">// MISTAKE 04</div>
+        <div class="mtitle">"Interpreting variance directly"</div>
+        <div class="mtext">Saying "the variance is 196 rupees-squared" is technically true but meaningless to anyone. Squared units don't help intuition.</div>
+        <div class="mfix"><strong>FIX:</strong> Take the square root — report standard deviation instead. "SD is ₹14" is clear, "Var is ₹²196" is not.</div>
+      </div>
+      <div class="mistake-card">
+        <div class="mtag">// MISTAKE 05</div>
+        <div class="mtitle">"Applying 68-95-99.7 to non-normal data"</div>
+        <div class="mtext">The 68/95/99.7 percentages only hold for bell-shaped (normal-ish) distributions. Income, response times and many real-world variables are very skewed — these percentages mislead.</div>
+        <div class="mfix"><strong>FIX:</strong> Check the data's shape (histogram) before applying the rule. For skewed data, use percentile-based descriptions instead.</div>
+      </div>
+      <div class="mistake-card">
+        <div class="mtag">// MISTAKE 06</div>
+        <div class="mtitle">"Mixing the wrong pair"</div>
+        <div class="mtext">Reporting "median ± SD" or "mean ± IQR" is grammatically wrong statistics. The pair must match: mean with SD, median with IQR.</div>
+        <div class="mfix"><strong>FIX:</strong> Choose your center first based on data shape, then pair it with the matching spread measure.</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- PRACTICE -->
+  <section class="section reveal" id="practice">
+    <div class="section-header">
+      <div class="section-number">// 11</div>
+      <h2 class="section-title module-heading">Practice Lab — Test Your Spread Reasoning</h2>
+      <div class="section-divider"></div>
+    </div>
+
+    <div class="practice-card">
+      <div class="practice-tag">PRACTICE TASK // 01</div>
+      <div class="practice-q">
+        <span class="difficulty easy">EASY</span>
+        Daily temperatures (°C) recorded for a week: 28, 30, 29, 31, 27, 32, 26. Compute the range and explain in one sentence what it tells you.
+      </div>
+      <textarea class="answer-box" placeholder="Compute and interpret..."></textarea>
+      <div class="practice-actions">
+        <button class="btn submit-practice">▶ SUBMIT FOR AI EVALUATION</button>
+      </div>
+      <div class="ai-feedback"><span class="placeholder">AI feedback will appear here once you submit your answer.</span></div>
+    </div>
+
+    <div class="practice-card">
+      <div class="practice-tag">PRACTICE TASK // 02</div>
+      <div class="practice-q">
+        <span class="difficulty easy">EASY</span>
+        For the dataset 2, 4, 6, 8, 10, compute the mean, then the variance (use the population formula, divide by n), then the standard deviation. Show all intermediate steps.
+      </div>
+      <textarea class="answer-box" placeholder="Show all steps from mean → squared deviations → variance → SD..."></textarea>
+      <div class="practice-actions">
+        <button class="btn submit-practice">▶ SUBMIT FOR AI EVALUATION</button>
+      </div>
+      <div class="ai-feedback"><span class="placeholder">AI feedback will appear here once you submit your answer.</span></div>
+    </div>
+
+    <div class="practice-card">
+      <div class="practice-tag">PRACTICE TASK // 03</div>
+      <div class="practice-q">
+        <span class="difficulty medium">MEDIUM</span>
+        Sorted exam scores: 32, 40, 45, 50, 55, 60, 65, 70, 78, 88. Find Q1, Q3, and the IQR. Then identify any outliers using the 1.5 × IQR rule.
+      </div>
+      <textarea class="answer-box" placeholder="Compute Q1, Q3, IQR, and apply the 1.5 rule..."></textarea>
+      <div class="practice-actions">
+        <button class="btn submit-practice">▶ SUBMIT FOR AI EVALUATION</button>
+      </div>
+      <div class="ai-feedback"><span class="placeholder">AI feedback will appear here once you submit your answer.</span></div>
+    </div>
+
+    <div class="practice-card">
+      <div class="practice-tag">PRACTICE TASK // 04</div>
+      <div class="practice-q">
+        <span class="difficulty medium">MEDIUM</span>
+        Two investment funds report the same average annual return of 12%. Fund A's returns over 5 years: 11%, 13%, 12%, 12%, 12%. Fund B's returns: −15%, +45%, −10%, +30%, +10%. Compute the SD for each fund. Which one is "safer" and why?
+      </div>
+      <textarea class="answer-box" placeholder="Compute both SDs and compare risk..."></textarea>
+      <div class="practice-actions">
+        <button class="btn submit-practice">▶ SUBMIT FOR AI EVALUATION</button>
+      </div>
+      <div class="ai-feedback"><span class="placeholder">AI feedback will appear here once you submit your answer.</span></div>
+    </div>
+
+    <div class="practice-card">
+      <div class="practice-tag">PRACTICE TASK // 05</div>
+      <div class="practice-q">
+        <span class="difficulty hard">HARD</span>
+        Imagine a company's monthly salary data: most employees earn ₹30k–₹60k, the CEO earns ₹50 lakh. (a) Which spread measure — SD or IQR — would you choose for an internal HR report and why? (b) Why might the CEO want SD reported instead? (c) Construct a small numeric example (~8 numbers) that demonstrates the difference clearly.
+      </div>
+      <textarea class="answer-box" placeholder="Reason through each part with concrete numbers..."></textarea>
+      <div class="practice-actions">
+        <button class="btn submit-practice">▶ SUBMIT FOR AI EVALUATION</button>
+      </div>
+      <div class="ai-feedback"><span class="placeholder">AI feedback will appear here once you submit your answer.</span></div>
+    </div>
+
+    <div class="practice-card">
+      <div class="practice-tag">PRACTICE TASK // 06</div>
+      <div class="practice-q">
+        <span class="difficulty hard">HARD</span>
+        For a normal distribution with mean μ = 100 and standard deviation σ = 15 (like classical IQ scores): (a) Approximately what percentage of people score between 85 and 115? (b) Between 70 and 130? (c) A score of 145 — about what percentage of people are above this? Use the 68-95-99.7 rule.
+      </div>
+      <textarea class="answer-box" placeholder="Apply the 68-95-99.7 rule for each sub-question..."></textarea>
+      <div class="practice-actions">
+        <button class="btn submit-practice">▶ SUBMIT FOR AI EVALUATION</button>
+      </div>
+      <div class="ai-feedback"><span class="placeholder">AI feedback will appear here once you submit your answer.</span></div>
+    </div>
+  </section>
+
+  <!-- QUIZ -->
+  <section class="section reveal" id="quiz">
+    <div class="section-header">
+      <div class="section-number">// 12</div>
+      <h2 class="section-title module-heading">Neural Challenge — Concept Check</h2>
+      <div class="section-divider"></div>
+    </div>
+
+    <div class="quiz-card">
+      <div class="quiz-progress">
+        <div class="qp-dot active"></div>
+        <div class="qp-dot"></div>
+        <div class="qp-dot"></div>
+        <div class="qp-dot"></div>
+        <div class="qp-dot"></div>
+      </div>
+
+      <div class="quiz-q-block" data-q="0">
+        <div class="quiz-q"><span class="qlabel">QUERY 01 // EASY</span>What is the range of the dataset: 12, 15, 19, 22, 8, 17, 14?</div>
+        <div class="quiz-options">
+          <div class="quiz-opt" data-correct="false">22</div>
+          <div class="quiz-opt" data-correct="true">14</div>
+          <div class="quiz-opt" data-correct="false">8</div>
+          <div class="quiz-opt" data-correct="false">15.3</div>
+        </div>
+        <div class="quiz-feedback"></div>
+      </div>
+
+      <div class="quiz-q-block" data-q="1" style="display:none;">
+        <div class="quiz-q"><span class="qlabel">QUERY 02 // EASY</span>Why do statisticians SQUARE the deviations from the mean when computing variance?</div>
+        <div class="quiz-options">
+          <div class="quiz-opt" data-correct="false">To make the formula prettier</div>
+          <div class="quiz-opt" data-correct="true">Because raw deviations always sum to zero (positives and negatives cancel) — squaring makes them all positive and weights larger gaps more</div>
+          <div class="quiz-opt" data-correct="false">Because variance is defined in square units historically</div>
+          <div class="quiz-opt" data-correct="false">To avoid computing standard deviation separately</div>
+        </div>
+        <div class="quiz-feedback"></div>
+      </div>
+
+      <div class="quiz-q-block" data-q="2" style="display:none;">
+        <div class="quiz-q"><span class="qlabel">QUERY 03 // MEDIUM</span>Two datasets both have mean = 50. Dataset A has SD = 2. Dataset B has SD = 25. What does this tell you?</div>
+        <div class="quiz-options">
+          <div class="quiz-opt" data-correct="false">Dataset A has a larger total than Dataset B</div>
+          <div class="quiz-opt" data-correct="false">Dataset A and B are essentially the same — the means match</div>
+          <div class="quiz-opt" data-correct="true">Dataset A is tightly clustered around 50; Dataset B is spread widely with values far from 50</div>
+          <div class="quiz-opt" data-correct="false">Dataset A must have more data points than Dataset B</div>
+        </div>
+        <div class="quiz-feedback"></div>
+      </div>
+
+      <div class="quiz-q-block" data-q="3" style="display:none;">
+        <div class="quiz-q"><span class="qlabel">QUERY 04 // MEDIUM</span>You have heavily skewed income data with a few billionaire outliers. Which spread measure is most appropriate?</div>
+        <div class="quiz-options">
+          <div class="quiz-opt" data-correct="false">Range — it gives the simplest answer</div>
+          <div class="quiz-opt" data-correct="false">Standard deviation — it uses all the data</div>
+          <div class="quiz-opt" data-correct="true">IQR — it is resistant to outliers and works well with skewed data</div>
+          <div class="quiz-opt" data-correct="false">Variance — its squared units handle outliers well</div>
+        </div>
+        <div class="quiz-feedback"></div>
+      </div>
+
+      <div class="quiz-q-block" data-q="4" style="display:none;">
+        <div class="quiz-q"><span class="qlabel">QUERY 05 // HARD</span>For approximately normal data with mean 100 and SD 15, what percentage of values lie between 70 and 130?</div>
+        <div class="quiz-options">
+          <div class="quiz-opt" data-correct="false">About 68%</div>
+          <div class="quiz-opt" data-correct="true">About 95% (this range is ±2 SD from the mean)</div>
+          <div class="quiz-opt" data-correct="false">About 99.7%</div>
+          <div class="quiz-opt" data-correct="false">About 50%</div>
+        </div>
+        <div class="quiz-feedback"></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- AI SUMMARY -->
+  <section class="section reveal" id="summary">
+    <div class="section-header">
+      <div class="section-number">// 13</div>
+      <h2 class="section-title module-heading">QNA Assistant — Module Synthesis</h2>
+      <div class="section-divider"></div>
+    </div>
+
+    <div class="ai-panel">
+      <div class="ai-header">
+        <div class="ai-avatar">◉</div>
+        <div>
+          <div class="ai-name">QNA-CORE <span class="v">v4.7.2</span></div>
+          <div class="ai-status">// SPREAD MODULE COMPILED</div>
+        </div>
+      </div>
+
+      <div class="ai-summary">
+        This module installed the second half of your descriptive statistics toolkit. You now understand <strong>range</strong> as the quick max-minus-min spread, fragile to outliers but useful for fast checks. You've built up <strong>variance</strong> from first principles — the average squared deviation from the mean — with its weird squared units that demanded a fix. That fix was the <strong>standard deviation</strong>: the square root of variance, the most widely used spread measure in science and finance, paired beautifully with the mean and obeying the famous 68-95-99.7 rule for bell-shaped data. Finally you mastered the <strong>IQR</strong> — the middle 50%, outlier-proof, the perfect partner to the median for skewed real-world data. The deepest skill is the <strong>pairing rule</strong>: mean with SD, median with IQR — and knowing which pair fits your data.
+      </div>
+
+      <div class="takeaways-grid">
+        <div class="takeaway">
+          <div class="tk-num">KEY // 01</div>
+          <div class="tk-title">Range = Max − Min</div>
+          <div class="tk-desc">Quick, easy, but uses only two values. Destroyed by outliers.</div>
+        </div>
+        <div class="takeaway">
+          <div class="tk-num">KEY // 02</div>
+          <div class="tk-title">Variance = Avg Squared Deviation</div>
+          <div class="tk-desc">Powerful math, squared units. Population uses /n, sample uses /(n−1).</div>
+        </div>
+        <div class="takeaway">
+          <div class="tk-num">KEY // 03</div>
+          <div class="tk-title">SD = √Variance</div>
+          <div class="tk-desc">Same units as data. The universal "typical distance from mean."</div>
+        </div>
+        <div class="takeaway">
+          <div class="tk-num">KEY // 04</div>
+          <div class="tk-title">IQR = Q3 − Q1</div>
+          <div class="tk-desc">Middle 50% spread. Robust to outliers. Foundation of boxplots.</div>
+        </div>
+        <div class="takeaway">
+          <div class="tk-num">KEY // 05</div>
+          <div class="tk-title">The Pairing Rule</div>
+          <div class="tk-desc">Mean+SD for symmetric data. Median+IQR for skewed/outlier data.</div>
+        </div>
+      </div>
+
+      <div style="background:rgba(0,0,0,0.3); border:1px solid rgba(0,240,255,0.15); border-radius:12px; padding:20px; font-family:'JetBrains Mono', monospace; font-size:0.85rem;">
+        <div style="color:var(--neon-magenta); margin-bottom:10px; letter-spacing:2px;">// FORMULA RECAP</div>
+        <div style="color:var(--text-soft); line-height:2;">
+          <span style="color:var(--neon-amber);">RANGE:</span> &nbsp;&nbsp; Max − Min<br>
+          <span style="color:var(--neon-cyan);">VAR (POPULATION):</span> &nbsp;&nbsp; σ² = (1/n) · Σ(xᵢ − μ)²<br>
+          <span style="color:var(--neon-cyan);">VAR (SAMPLE):</span> &nbsp;&nbsp; s² = (1/(n−1)) · Σ(xᵢ − x̄)²<br>
+          <span style="color:var(--neon-green);">SD (POPULATION):</span> &nbsp;&nbsp; σ = √σ²<br>
+          <span style="color:var(--neon-green);">SD (SAMPLE):</span> &nbsp;&nbsp; s = √s²<br>
+          <span style="color:var(--neon-magenta);">IQR:</span> &nbsp;&nbsp; Q3 − Q1<br>
+          <span style="color:var(--neon-magenta);">OUTLIER RULE:</span> &nbsp;&nbsp; outside [Q1 − 1.5·IQR, &nbsp;Q3 + 1.5·IQR]
+        </div>
+        <div style="color:var(--neon-magenta); margin:14px 0 8px; letter-spacing:2px;">// PRACTITIONER'S CHECKLIST</div>
+        <div style="color:var(--text-soft); line-height:2;">
+          ① OUTLIERS PRESENT? &nbsp;<span style="color:var(--text-dim);">→ yes → IQR</span><br>
+          ② DATA SYMMETRIC? &nbsp;<span style="color:var(--text-dim);">→ yes → SD ok</span><br>
+          ③ NEED THEORY/MATH? &nbsp;<span style="color:var(--text-dim);">→ variance / SD</span><br>
+          ④ PAIR CORRECTLY &nbsp;<span style="color:var(--text-dim);">→ mean+SD or median+IQR</span><br>
+          ⑤ NEVER REPORT CENTER ALONE &nbsp;<span style="color:var(--text-dim);">→ always include spread</span>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <div class="footer">
+    <span class="glow">QUANTUM NEURAL ANALYTICS OS</span> &nbsp;//&nbsp; END OF MODULE 1.2 &nbsp;//&nbsp; <span class="glow">SPREAD &amp; VARIABILITY INSTALLED</span>
+  </div>
+
+</div>
+
+<script>
+/* PARTICLES */
+const pcanvas = document.getElementById('particle-canvas');
+const pctx = pcanvas.getContext('2d');
+let particles = [];
+function resizeCanvas() { pcanvas.width = window.innerWidth; pcanvas.height = window.innerHeight; }
+resizeCanvas();
+window.addEventListener('resize', resizeCanvas);
+
+class Particle {
+  constructor() { this.reset(); }
+  reset() {
+    this.x = Math.random() * pcanvas.width;
+    this.y = Math.random() * pcanvas.height;
+    this.vx = (Math.random() - 0.5) * 0.3;
+    this.vy = (Math.random() - 0.5) * 0.3;
+    this.size = Math.random() * 1.5 + 0.3;
+    this.opacity = Math.random() * 0.6 + 0.1;
+    this.hue = Math.random() > 0.5 ? '0, 240, 255' : '177, 77, 255';
+  }
+  update() {
+    this.x += this.vx; this.y += this.vy;
+    if (this.x < 0 || this.x > pcanvas.width) this.vx *= -1;
+    if (this.y < 0 || this.y > pcanvas.height) this.vy *= -1;
+  }
+  draw() {
+    pctx.beginPath();
+    pctx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
+    pctx.fillStyle = `rgba(${this.hue}, ${this.opacity})`;
+    pctx.shadowBlur = 8;
+    pctx.shadowColor = `rgba(${this.hue}, 1)`;
+    pctx.fill();
+  }
+}
+for (let i = 0; i < 60; i++) particles.push(new Particle());
+function animateParticles() {
+  pctx.clearRect(0, 0, pcanvas.width, pcanvas.height);
+  particles.forEach(p => { p.update(); p.draw(); });
+  pctx.shadowBlur = 0;
+  requestAnimationFrame(animateParticles);
+}
+animateParticles();
+
+/* NEURAL BG */
+(function() {
+  const svg = document.getElementById('neural-net');
+  if (!svg) return;
+  const nodes = []; const N = 14;
+  for (let i = 0; i < N; i++) nodes.push({ x: 50 + Math.random() * 400, y: 50 + Math.random() * 400, r: 2 + Math.random() * 3 });
+  for (let i = 0; i < N; i++) {
+    for (let j = i + 1; j < N; j++) {
+      const a = nodes[i], b = nodes[j];
+      const d = Math.hypot(a.x - b.x, a.y - b.y);
+      if (d < 160) {
+        const line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+        line.setAttribute('x1', a.x); line.setAttribute('y1', a.y);
+        line.setAttribute('x2', b.x); line.setAttribute('y2', b.y);
+        line.setAttribute('stroke', '#00f0ff'); line.setAttribute('stroke-width', '0.5');
+        line.setAttribute('opacity', (1 - d / 160) * 0.4);
+        svg.appendChild(line);
+      }
+    }
+  }
+  nodes.forEach((n, i) => {
+    const c = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+    c.setAttribute('cx', n.x); c.setAttribute('cy', n.y); c.setAttribute('r', n.r);
+    c.setAttribute('fill', '#00f0ff'); c.setAttribute('opacity', '0.8');
+    c.style.filter = 'drop-shadow(0 0 6px #00f0ff)';
+    c.innerHTML = `<animate attributeName="opacity" values="0.3;1;0.3" dur="${2 + i * 0.2}s" repeatCount="indefinite"/>`;
+    svg.appendChild(c);
+  });
+})();
+
+/* REVEAL */
+(function() {
+  const reveals = document.querySelectorAll('.reveal');
+  const observer = new IntersectionObserver((entries) => {
+    entries.forEach(entry => {
+      if (entry.isIntersecting) {
+        entry.target.classList.add('visible');
+      }
+    });
+  }, { threshold: 0.15 });
+  reveals.forEach(r => observer.observe(r));
+})();
+
+/* OBJECTIVES */
+(function() {
+  const cards = document.querySelectorAll('.objective-card');
+  const observer = new IntersectionObserver((entries) => {
+    entries.forEach(entry => {
+      if (entry.isIntersecting) {
+        const delay = parseInt(entry.target.dataset.delay || 0);
+        setTimeout(() => entry.target.classList.add('activated'), delay);
+      }
+    });
+  }, { threshold: 0.3 });
+  cards.forEach(c => observer.observe(c));
+})();
+
+/* ===== SPREAD LAB ===== */
+(function() {
+  const canvas = document.getElementById('spread-canvas');
+  if (!canvas) return;
+  const ctx = canvas.getContext('2d');
+  const slider = document.getElementById('spread-slider');
+  const spreadLabel = document.getElementById('spread-label');
+  const roRange = document.getElementById('ro-range');
+  const roStd = document.getElementById('ro-std');
+  const roVar = document.getElementById('ro-var');
+  const roIqr = document.getElementById('ro-iqr');
+  const resampleBtn = document.getElementById('spread-resample');
+
+  let baseSamples = [];
+  let spreadFactor = 3.0;
+
+  function gauss() {
+    let u = 0, v = 0;
+    while (u === 0) u = Math.random();
+    while (v === 0) v = Math.random();
+    return Math.sqrt(-2 * Math.log(u)) * Math.cos(2 * Math.PI * v);
+  }
+
+  function resample() {
+    baseSamples = [];
+    for (let i = 0; i < 30; i++) baseSamples.push(gauss());
+  }
+  resample();
+
+  function getData() {
+    return baseSamples.map(z => 50 + z * spreadFactor);
+  }
+
+  function stats(arr) {
+    const sorted = [...arr].sort((a, b) => a - b);
+    const n = sorted.length;
+    const mean = sorted.reduce((a, b) => a + b, 0) / n;
+    const variance = sorted.reduce((s, v) => s + (v - mean) ** 2, 0) / n;
+    const sd = Math.sqrt(variance);
+    const min = sorted[0], max = sorted[n - 1];
+    const range = max - min;
+    const q1 = sorted[Math.floor(n * 0.25)];
+    const q3 = sorted[Math.floor(n * 0.75)];
+    const iqr = q3 - q1;
+    return { mean, variance, sd, range, min, max, q1, q3, iqr };
+  }
+
+  function resize() {
+    const rect = canvas.getBoundingClientRect();
+    canvas.width = rect.width; canvas.height = rect.height;
+  }
+
+  function render() {
+    resize();
+    ctx.fillStyle = 'rgba(3, 5, 15, 0.95)';
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+    ctx.strokeStyle = 'rgba(0,240,255,0.06)';
+    ctx.lineWidth = 1;
+    for (let i = 0; i < canvas.width; i += 30) { ctx.beginPath(); ctx.moveTo(i, 0); ctx.lineTo(i, canvas.height); ctx.stroke(); }
+
+    const W = canvas.width, H = canvas.height;
+    const baseY = H - 70;
+    const pad = 50;
+    const data = getData();
+    const s = stats(data);
+
+    const min = 0, max = 100;
+
+    // x-axis
+    ctx.strokeStyle = 'rgba(0,240,255,0.4)';
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.moveTo(pad, baseY);
+    ctx.lineTo(W - pad, baseY);
+    ctx.stroke();
+
+    // ticks
+    ctx.fillStyle = '#7a8bbf';
+    ctx.font = '9px JetBrains Mono, monospace';
+    for (let v = 0; v <= 100; v += 10) {
+      const x = pad + (v / max) * (W - pad * 2);
+      ctx.beginPath();
+      ctx.moveTo(x, baseY); ctx.lineTo(x, baseY + 4);
+      ctx.stroke();
+      ctx.fillText(v, x - 6, baseY + 16);
+    }
+
+    // mean line
+    const mx = pad + (s.mean / max) * (W - pad * 2);
+    ctx.strokeStyle = '#ffb547';
+    ctx.lineWidth = 2;
+    ctx.setLineDash([4, 4]);
+    ctx.beginPath();
+    ctx.moveTo(mx, 30); ctx.lineTo(mx, baseY);
+    ctx.stroke();
+    ctx.setLineDash([]);
+    ctx.fillStyle = '#ffb547';
+    ctx.font = 'bold 11px JetBrains Mono, monospace';
+    ctx.fillText('MEAN', mx - 17, 22);
+
+    // SD bands ±1σ
+    const sdLeft = pad + ((s.mean - s.sd) / max) * (W - pad * 2);
+    const sdRight = pad + ((s.mean + s.sd) / max) * (W - pad * 2);
+    ctx.fillStyle = 'rgba(0,255,170,0.08)';
+    ctx.fillRect(sdLeft, baseY - 60, sdRight - sdLeft, 60);
+    ctx.strokeStyle = 'rgba(0,255,170,0.4)';
+    ctx.lineWidth = 1;
+    ctx.setLineDash([3, 3]);
+    ctx.beginPath();
+    ctx.moveTo(sdLeft, baseY - 60); ctx.lineTo(sdLeft, baseY);
+    ctx.moveTo(sdRight, baseY - 60); ctx.lineTo(sdRight, baseY);
+    ctx.stroke();
+    ctx.setLineDash([]);
+    ctx.fillStyle = '#00ffaa';
+    ctx.font = '9px JetBrains Mono, monospace';
+    ctx.fillText('±1 SD', mx - 16, baseY - 64);
+
+    // data points
+    data.forEach(v => {
+      const clamped = Math.max(0, Math.min(100, v));
+      const x = pad + (clamped / max) * (W - pad * 2);
+      ctx.beginPath();
+      ctx.arc(x, baseY - 24, 5, 0, Math.PI * 2);
+      ctx.fillStyle = '#00f0ff';
+      ctx.shadowBlur = 10;
+      ctx.shadowColor = '#00f0ff';
+      ctx.fill();
+    });
+    ctx.shadowBlur = 0;
+
+    // readouts
+    roRange.textContent = s.range.toFixed(1);
+    roStd.textContent = s.sd.toFixed(2);
+    roVar.textContent = s.variance.toFixed(2);
+    roIqr.textContent = s.iqr.toFixed(2);
+  }
+
+  slider.addEventListener('input', () => {
+    spreadFactor = parseInt(slider.value) / 10;
+    spreadLabel.textContent = spreadFactor.toFixed(1);
+    render();
+  });
+
+  resampleBtn.addEventListener('click', () => {
+    resample();
+    render();
+  });
+
+  window.addEventListener('resize', render);
+  setTimeout(render, 100);
+})();
+
+/* ===== BOXPLOT ===== */
+(function() {
+  const canvas = document.getElementById('boxplot-canvas');
+  if (!canvas) return;
+  const ctx = canvas.getContext('2d');
+
+  function resize() {
+    const rect = canvas.getBoundingClientRect();
+    canvas.width = rect.width; canvas.height = rect.height;
+  }
+
+  function render() {
+    resize();
+    ctx.fillStyle = 'rgba(3, 5, 15, 0.95)';
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    ctx.strokeStyle = 'rgba(0,240,255,0.06)';
+    ctx.lineWidth = 1;
+    for (let i = 0; i < canvas.width; i += 30) { ctx.beginPath(); ctx.moveTo(i, 0); ctx.lineTo(i, canvas.height); ctx.stroke(); }
+
+    const data = [2, 4, 5, 6, 7, 9, 10, 12, 15, 28];
+    const sorted = [...data].sort((a, b) => a - b);
+    const min = 2, max = 30;
+    const q1 = 5;
+    const median = 8;
+    const q3 = 12;
+    const iqr = q3 - q1;
+    const lowerFence = q1 - 1.5 * iqr;
+    const upperFence = q3 + 1.5 * iqr;
+    const nonOutliers = sorted.filter(v => v >= lowerFence && v <= upperFence);
+    const whiskerMin = Math.min(...nonOutliers);
+    const whiskerMax = Math.max(...nonOutliers);
+    const outliers = sorted.filter(v => v < lowerFence || v > upperFence);
+
+    const W = canvas.width, H = canvas.height;
+    const pad = 60;
+    const usableW = W - pad * 2;
+    const cy = H / 2;
+    const boxH = 60;
+
+    const toX = (v) => pad + ((v - min) / (max - min)) * usableW;
+
+    // baseline
+    ctx.strokeStyle = 'rgba(0,240,255,0.3)';
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.moveTo(pad, H - 30); ctx.lineTo(W - pad, H - 30);
+    ctx.stroke();
+
+    // ticks
+    ctx.fillStyle = '#7a8bbf';
+    ctx.font = '10px JetBrains Mono, monospace';
+    for (let v = 0; v <= max; v += 5) {
+      const x = toX(v);
+      ctx.beginPath();
+      ctx.moveTo(x, H - 30); ctx.lineTo(x, H - 25); ctx.stroke();
+      ctx.fillText(v, x - 5, H - 14);
+    }
+
+    // whiskers
+    ctx.strokeStyle = '#00f0ff';
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.moveTo(toX(whiskerMin), cy);
+    ctx.lineTo(toX(q1), cy);
+    ctx.moveTo(toX(q3), cy);
+    ctx.lineTo(toX(whiskerMax), cy);
+    // whisker caps
+    ctx.moveTo(toX(whiskerMin), cy - 10);
+    ctx.lineTo(toX(whiskerMin), cy + 10);
+    ctx.moveTo(toX(whiskerMax), cy - 10);
+    ctx.lineTo(toX(whiskerMax), cy + 10);
+    ctx.stroke();
+
+    // box (IQR)
+    ctx.fillStyle = 'rgba(0,240,255,0.15)';
+    ctx.fillRect(toX(q1), cy - boxH / 2, toX(q3) - toX(q1), boxH);
+    ctx.strokeStyle = '#00f0ff';
+    ctx.lineWidth = 2;
+    ctx.strokeRect(toX(q1), cy - boxH / 2, toX(q3) - toX(q1), boxH);
+
+    // median line
+    ctx.strokeStyle = '#ff2bd6';
+    ctx.lineWidth = 3;
+    ctx.beginPath();
+    ctx.moveTo(toX(median), cy - boxH / 2);
+    ctx.lineTo(toX(median), cy + boxH / 2);
+    ctx.stroke();
+
+    // outliers
+    outliers.forEach(v => {
+      ctx.beginPath();
+      ctx.arc(toX(v), cy, 6, 0, Math.PI * 2);
+      ctx.fillStyle = '#ffb547';
+      ctx.shadowBlur = 10;
+      ctx.shadowColor = '#ffb547';
+      ctx.fill();
+    });
+    ctx.shadowBlur = 0;
+
+    // labels
+    ctx.fillStyle = '#00f0ff';
+    ctx.font = 'bold 10px JetBrains Mono, monospace';
+    ctx.fillText('Q1=' + q1, toX(q1) - 12, cy - boxH / 2 - 8);
+    ctx.fillText('Q3=' + q3, toX(q3) - 12, cy - boxH / 2 - 8);
+    ctx.fillStyle = '#ff2bd6';
+    ctx.fillText('MEDIAN=' + median, toX(median) - 28, cy + boxH / 2 + 16);
+    ctx.fillStyle = '#ffb547';
+    ctx.fillText('OUTLIER', toX(28) - 22, cy - 14);
+    ctx.fillStyle = '#00f0ff';
+    ctx.font = '9px JetBrains Mono, monospace';
+    ctx.fillText('whisker', toX(whiskerMin) - 18, cy + 20);
+    ctx.fillText('whisker', toX(whiskerMax) - 18, cy + 20);
+  }
+
+  render();
+  window.addEventListener('resize', render);
+})();
+
+/* QUIZ */
+(function() {
+  const blocks = document.querySelectorAll('.quiz-q-block');
+  const dots = document.querySelectorAll('.qp-dot');
+  let current = 0;
+  const feedbacks = [
+    'Correct. Max = 22, Min = 8, Range = 22 − 8 = 14.',
+    'Correct. Raw deviations always sum to zero — positive ones cancel negative ones. Squaring fixes this AND gives extra weight to bigger gaps from the mean.',
+    'Correct. The mean only tells you the center; the SD tells you how tightly the values cluster around it. Dataset A is compact, Dataset B is widely scattered.',
+    'Correct. For skewed data with outliers, the IQR ignores the extreme top and bottom 25% — giving a much more honest picture of typical spread.',
+    'Correct. 70 to 130 is exactly ±2 SD from the mean of 100. The 68-95-99.7 rule says about 95% of values fall within 2 SD of the mean.'
+  ];
+
+  blocks.forEach((block, qIdx) => {
+    const opts = block.querySelectorAll('.quiz-opt');
+    const feedback = block.querySelector('.quiz-feedback');
+    opts.forEach(opt => {
+      opt.addEventListener('click', () => {
+        if (opt.classList.contains('correct') || opt.classList.contains('wrong')) return;
+        const isCorrect = opt.dataset.correct === 'true';
+        opts.forEach(o => {
+          if (o.dataset.correct === 'true') o.classList.add('correct');
+          else if (o === opt) o.classList.add('wrong');
+        });
+        feedback.textContent = isCorrect
+          ? '◉ ' + feedbacks[qIdx]
+          : '⚠ Reconsider — the correct answer is highlighted in green above. ' + feedbacks[qIdx];
+        feedback.classList.add('show');
+        setTimeout(() => {
+          if (current < blocks.length - 1) {
+            block.style.display = 'none';
+            current++;
+            blocks[current].style.display = 'block';
+            dots[current].classList.add('active');
+          }
+        }, 2400);
+      });
+    });
+  });
+})();
+
+/* PRACTICE */
+(function() {
+  document.querySelectorAll('.submit-practice').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const card = btn.closest('.practice-card');
+      const textarea = card.querySelector('textarea');
+      const feedback = card.querySelector('.ai-feedback');
+      const txt = textarea.value.trim();
+      if (!txt) {
+        feedback.innerHTML = '<span style="color:var(--neon-magenta);">⚠ EMPTY SUBMISSION.</span> Please write an answer before submitting for evaluation.';
+        return;
+      }
+      feedback.innerHTML = '<span style="color:var(--neon-cyan);">◉ TRANSMISSION RECEIVED.</span> Your answer (' + txt.length + ' characters) has been queued for evaluation by the QNA-OS AI Evaluator. Detailed feedback on your reasoning, completeness, and accuracy will be generated and displayed here.';
+    });
+  });
+})();
+</script>
+
+</body>
+</html>

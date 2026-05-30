@@ -32,4 +32,5 @@ class ActivityLog(Base):
     __table_args__ = (
         Index("idx_activity_logs_user_action", "user_id", "action"),
         Index("idx_activity_logs_user_created", "user_id", "created_at"),
+        Index("idx_activity_logs_user_action_created", "user_id", "action", "created_at"),
     )

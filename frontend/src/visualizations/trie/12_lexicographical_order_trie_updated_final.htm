@@ -1,0 +1,394 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Lexicographical Order Trie</title>
+    <style>
+        :root {
+            --bg: #0d1117;
+            --surface: #161b22;
+            --border: #30363d;
+            --text: #c9d1d9;
+            --muted: #8b949e;
+            --purple: #a371f7;
+            --blue: #58a6ff;
+            --green: #3fb950;
+            --orange: #e3b341;
+        }
+        * { box-sizing: border-box; }
+        body {
+            margin: 0;
+            padding: 20px;
+            background: var(--bg);
+            color: var(--text);
+            font-family: system-ui, sans-serif;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+        h1 { color: var(--purple); margin: 0 0 10px 0; }
+        .subtitle { color: var(--muted); margin-bottom: 20px; }
+        .controls {
+            display: flex;
+            gap: 12px;
+            flex-wrap: wrap;
+            justify-content: center;
+            margin: 15px 0;
+        }
+        button {
+            background: #21262d;
+            color: var(--text);
+            border: 1px solid var(--border);
+            padding: 10px 18px;
+            border-radius: 8px;
+            cursor: pointer;
+        }
+        button:hover { background: #30363d; }
+        .main {
+            display: flex;
+            gap: 40px;
+            flex-wrap: wrap;
+            justify-content: center;
+            width: 100%;
+            max-width: 1250px;
+        }
+        .panel {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 18px;
+        }
+        .words-panel {
+            width: 320px;
+        }
+        .trie-panel {
+            width: 620px;
+        }
+        .label {
+            color: var(--purple);
+            font-weight: bold;
+            margin-bottom: 10px;
+            text-align: center;
+        }
+        .words-list {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            padding: 12px;
+            background: #21262d;
+            border-radius: 10px;
+            min-height: 140px;
+        }
+        .tile {
+            padding: 8px 16px;
+            background: #30363d;
+            border: 2px solid var(--orange);
+            border-radius: 8px;
+            font-family: monospace;
+        }
+        .trie {
+            background: #21262d;
+            border: 3px solid var(--blue);
+            border-radius: 12px;
+            padding: 20px;
+            min-height: 460px;
+            overflow: auto;
+            font-family: monospace;
+        }
+        .trie-node {
+            display: inline-block;
+            background: #30363d;
+            border: 3px solid #58a6ff;
+            border-radius: 10px;
+            padding: 12px 18px;
+            margin: 12px 8px;
+            text-align: center;
+            position: relative;
+        }
+        .trie-node.current {
+            border-color: var(--orange);
+            box-shadow: 0 0 0 4px rgba(227,179,65,0.4);
+        }
+        .trie-node .end {
+            color: var(--green);
+            font-size: 13px;
+            margin-top: 4px;
+        }
+        .children {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            justify-content: center;
+            margin-top: 14px;
+        }
+        .output {
+            margin: 20px 0;
+            padding: 16px;
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            font-family: monospace;
+            min-height: 60px;
+        }
+        .action {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            padding: 16px;
+            width: 100%;
+            max-width: 1100px;
+            margin: 20px 0;
+            min-height: 110px;
+            font-family: monospace;
+        }
+        .log {
+            background: #0d1117;
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            padding: 14px;
+            width: 100%;
+            max-width: 1100px;
+            height: 240px;
+            overflow-y: auto;
+            font-family: 'Courier New', monospace;
+            font-size: 14px;
+        }
+    </style>
+</head>
+<body>
+    <h1>Lexicographical Order Trie</h1>
+    <p class="subtitle">Build Trie → DFS (a→z) → Collect Words in Sorted Order</p>
+
+    <div class="controls">
+        <button onclick="loadExample(0)">Example 1: cat/apple/banana/dog</button>
+        <button onclick="loadExample(1)">Example 2: zebra/ant/zoo/anteater</button>
+        <button onclick="resetViz()">Reset</button>
+    </div>
+
+    <div class="main">
+        <div class="panel words-panel">
+            <div class="label">Input Words</div>
+            <div class="words-list" id="words"></div>
+        </div>
+
+        <div class="panel trie-panel">
+            <div class="label">Trie (Current Path Highlighted)</div>
+            <div class="trie" id="trie"></div>
+        </div>
+    </div>
+
+    <div class="output">
+        <strong>Sorted Output:</strong> <span id="sorted-output" style="color:var(--green)"></span>
+    </div>
+
+    <div class="action" id="action">Click an example to start simulation</div>
+
+    <div class="controls">
+        <button onclick="prev()">← Prev</button>
+        <button onclick="togglePlay()" id="play">▶ Play</button>
+        <button onclick="next()">Next →</button>
+        <input type="range" id="speed" min="0" max="2" value="1" style="width:180px">
+    </div>
+
+    <div class="log" id="log"></div>
+
+    <script>
+        let root = null;
+        let steps = [];
+        let currentStep = 0;
+        let timer = null;
+        let playing = false;
+        let wordsList = [];
+
+        class TrieNode {
+            constructor() {
+                this.children = new Array(26).fill(null);
+                this.isEnd = false;
+            }
+        }
+
+        function createTrie() {
+            return new TrieNode();
+        }
+
+        function insert(word) {
+            let node = root;
+            const path = [];
+            for (let ch of word) {
+                const idx = ch.charCodeAt(0) - 97;
+                path.push(ch);
+                if (!node.children[idx]) node.children[idx] = new TrieNode();
+                node = node.children[idx];
+            }
+            node.isEnd = true;
+            return path;
+        }
+
+        function dfsCollect(node, path, result, stepsCollector, stepBase) {
+            if (!node) return;
+            const currentPath = path;
+            if (node.isEnd) {
+                result.push(currentPath);
+                stepsCollector.push({
+                    action: `Found word: ${currentPath}`,
+                    panel: `Output <span style="color:var(--green)">${currentPath}</span>`,
+                    log: `Word completed → ${currentPath}`,
+                    highlight: [...currentPath],
+                    output: [...result]
+                });
+            }
+            for (let i = 0; i < 26; i++) {
+                if (node.children[i]) {
+                    const ch = String.fromCharCode(97 + i);
+                    stepsCollector.push({
+                        action: `Visit child '${ch}'`,
+                        panel: `Traversing ${currentPath + ch}`,
+                        log: `→ ${ch}`,
+                        highlight: [...currentPath, ch],
+                        output: [...result]
+                    });
+                    dfsCollect(node.children[i], currentPath + ch, result, stepsCollector, stepBase);
+                }
+            }
+        }
+
+        function generateSteps(words) {
+            root = createTrie();
+            steps = [];
+            wordsList = [...words];
+
+            // Step 0: Init
+            steps.push({
+                action: "Initialize Trie",
+                panel: "Trie ready",
+                log: "Root created",
+                highlight: [],
+                output: []
+            });
+
+            // Insert all words
+            for (let word of words) {
+                const path = insert(word);
+                steps.push({
+                    action: `Insert "${word}"`,
+                    panel: `Inserted "${word}"`,
+                    log: `Path: ${path.join('')}`,
+                    highlight: path,
+                    output: []
+                });
+            }
+
+            // DFS Traversal
+            const result = [];
+            const traversalSteps = [];
+            dfsCollect(root, "", result, traversalSteps, steps.length);
+            steps = steps.concat(traversalSteps);
+
+            // Final step
+            steps.push({
+                action: "Traversal Complete",
+                panel: `Final Sorted: <span style="color:var(--green)">${result.join(', ')}</span>`,
+                log: "All words collected in lex order",
+                highlight: [],
+                output: result
+            });
+        }
+
+        function renderWords() {
+            const cont = document.getElementById('words');
+            cont.innerHTML = wordsList.map(w => `<div class="tile">"${w}"</div>`).join('');
+        }
+
+        function buildTrieHTML(node, prefix = "", highlight = []) {
+            if (!node) return '';
+            let html = `<div class="trie-node ${highlight.length && prefix.length <= highlight.length ? 'current' : ''}">`;
+            html += `<div>${prefix || 'ROOT'}</div>`;
+            if (node.isEnd) html += `<div class="end">END</div>`;
+
+            let childrenHTML = '<div class="children">';
+            let has = false;
+            for (let i = 0; i < 26; i++) {
+                if (node.children[i]) {
+                    has = true;
+                    const ch = String.fromCharCode(97 + i);
+                    childrenHTML += buildTrieHTML(node.children[i], prefix + ch, highlight);
+                }
+            }
+            childrenHTML += '</div>';
+            if (has) html += childrenHTML;
+            html += '</div>';
+            return html;
+        }
+
+        function renderTrie(highlight = []) {
+            const cont = document.getElementById('trie');
+            cont.innerHTML = buildTrieHTML(root, "", highlight);
+        }
+
+        function renderStep(idx) {
+            currentStep = Math.min(Math.max(0, idx), steps.length - 1);
+            const step = steps[currentStep];
+
+            document.getElementById('action').innerHTML = step.panel || step.action;
+            renderWords();
+            renderTrie(step.highlight || []);
+
+            const outEl = document.getElementById('sorted-output');
+            outEl.textContent = step.output ? step.output.join(' ') : '';
+
+            const logCont = document.getElementById('log');
+            logCont.innerHTML = steps.slice(0, currentStep + 1)
+                .map(s => `<div>${s.log}</div>`).join('');
+            logCont.scrollTop = logCont.scrollHeight;
+        }
+
+        function next() {
+            if (currentStep < steps.length - 1) renderStep(currentStep + 1);
+            else pause();
+        }
+
+        function prev() {
+            if (currentStep > 0) renderStep(currentStep - 1);
+        }
+
+        function togglePlay() {
+            const btn = document.getElementById('play');
+            if (playing) {
+                pause();
+            } else {
+                playing = true;
+                btn.textContent = '❚❚ Pause';
+                const speed = [1600, 900, 450][document.getElementById('speed').value];
+                timer = setInterval(() => {
+                    if (currentStep < steps.length - 1) next();
+                    else pause();
+                }, speed);
+            }
+        }
+
+        function pause() {
+            clearInterval(timer);
+            playing = false;
+            document.getElementById('play').textContent = '▶ Play';
+        }
+
+        function resetViz() {
+            pause();
+            currentStep = 0;
+            renderStep(0);
+        }
+
+        function loadExample(n) {
+            const ex = [
+                ["cat", "apple", "banana", "dog"],
+                ["zebra", "ant", "zoo", "anteater"]
+            ];
+            generateSteps(ex[n]);
+            resetViz();
+        }
+
+        window.onload = () => loadExample(0);
+    </script>
+</body>
+</html>

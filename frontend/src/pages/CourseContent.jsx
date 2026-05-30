@@ -1,3127 +1,792 @@
-import React, { useState, useEffect, useRef, useCallback, useMemo, memo } from "react";
+import React, {
+  useState, useEffect, useCallback, useRef, useMemo, memo,
+} from "react";
 import { useParams, useNavigate, useLocation } from "react-router-dom";
 import {
-  BookOpen,
-  ChevronLeft,
-  ChevronRight,
-  ChevronDown,
-  CheckCircle2,
-  Circle,
-  PlayCircle,
-  Clock,
-  Maximize2,
-  Minimize2,
-  Zap,
-  ArrowLeft,
-  Brain,
-  Award,
-  Menu,
-  Dot,
-  StickyNote,
-  Edit3,
-  Trash2,
-  X,
+  ArrowLeft, ChevronLeft, ChevronRight,
+  Maximize2, Minimize2, AlertTriangle,
+  LayoutGrid, X, Clock,
 } from "lucide-react";
+import { COURSE_HTML_MAP, formatTitle, getGroup, getGroupSiblings } from "../data/courseMap";
 
-import ReactDOM from 'react-dom';
-import parse, { domToReact } from 'html-react-parser';
-import InteractiveCodeBlock from '../components/InteractiveCodeBlock';
-import QuizModal from '../components/QuizModal';
-import CourseEngagement from '../components/CourseEngagement';
-/* Zoomable Image Component — rendered via Portal so it truly covers everything */
-const ZoomableImage = ({ src, alt }) => {
-  const [zoomed, setZoomed] = useState(false);
+// ─── Constants ────────────────────────────────────────────────────────────────
 
-  // Close on Escape key
-  useEffect(() => {
-    if (!zoomed) return;
-    const handler = (e) => { if (e.key === 'Escape') setZoomed(false); };
-    window.addEventListener('keydown', handler);
-    return () => window.removeEventListener('keydown', handler);
-  }, [zoomed]);
+const WORDS_PER_MINUTE  = 200;
+const FONT_SIZE_MIN     = 12;
+const FONT_SIZE_MAX     = 24;
+const FONT_SIZE_STEP    = 2;
+const FONT_SIZE_DEFAULT = 16;
+const TOPBAR_HEIGHT     = 52;
+const MAX_RECENT        = 10;
+const LS_RECENT_KEY     = "marevlo_recent";
+const IFRAME_DARK_ID    = "mv-theme";
+const IFRAME_FONT_ID    = "mv-font";
 
-  const isDark = document.documentElement.classList.contains('dark');
-  const imgFilter = isDark ? 'invert(1) hue-rotate(180deg)' : 'none';
 
-  const overlay = zoomed ? ReactDOM.createPortal(
-    <div
-      onClick={() => setZoomed(false)}
-      style={{
-        position: 'fixed',
-        inset: 0,
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        background: 'rgba(0,0,0,0.92)',
-        backdropFilter: 'blur(8px)',
-        zIndex: 2147483647,
-        cursor: 'zoom-out',
-        padding: '24px',
-      }}
-    >
-      <img
-        src={src}
-        alt={alt}
-        onClick={(e) => e.stopPropagation()}
-        style={{
-          maxWidth: '90vw',
-          maxHeight: '90vh',
-          objectFit: 'contain',
-          borderRadius: '12px',
-          boxShadow: '0 24px 80px rgba(0,0,0,0.6)',
-          filter: imgFilter,
-        }}
-      />
-      <div style={{
-        position: 'absolute',
-        top: '24px',
-        right: '32px',
-        color: 'rgba(255,255,255,0.6)',
-        fontSize: '13px',
-        fontWeight: 600,
-        letterSpacing: '0.08em',
-        textTransform: 'uppercase',
-      }}>
-        Press Esc or click to close
-      </div>
-    </div>,
-    document.body
-  ) : null;
+// ─── Shared style tokens ──────────────────────────────────────────────────────
 
-  return (
-    <>
-      <img
-        src={src}
-        alt={alt}
-        className="zoomable"
-        onClick={() => setZoomed(true)}
-      />
-      {overlay}
-    </>
-  );
-};
-
-/* Performance Optimization: Memoized HTML Content */
-const MemoizedProseContent = memo(({ html, innerRef }) => {
-  // Supported IDE tag names → language id
-  const IDE_TAGS = { python: 'python', sql: 'sql', code: 'code', javascript: 'javascript' };
-
-  const getText = (node) => {
-    if (node.type === 'text') return node.data;
-    if (node.children) return node.children.map(getText).join('');
-    return '';
-  };
-
-  const options = {
-    replace: (domNode) => {
-      // 1. Handle IDE Tags (matches actual <python> tags)
-      const lang = IDE_TAGS[domNode.name];
-      if (lang) {
-        const codeContent = (domNode.children || []).map(getText).join('').trim();
-        return <InteractiveCodeBlock initialCode={codeContent} language={lang} key={codeContent.slice(0, 20)} />;
-      }
-
-      // 2. Clear out raw marker strings that were converted to text (e.g. <python> or </python>)
-      // This often happens in mammoth conversion when using text-based markers.
-      if (domNode.type === 'tag' && domNode.name === 'p') {
-        const text = getText(domNode).trim().toLowerCase();
-        const isMarker = text === '<python>' || text === '</python>' ||
-                        text === '<code>' || text === '</code>' ||
-                        text === '<sql>' || text === '</sql>';
-        if (isMarker) return <></>; // Don't render marker-only paragraphs
-      }
-
-      // 3. Handle Zoomable Images
-      if (domNode.name === 'img') {
-        const { src, alt } = domNode.attribs;
-        return <ZoomableImage src={src} alt={alt || 'Course graphic'} key={src?.slice(0, 30)} />;
-      }
-    }
-  };
-
-  return (
-    <div
-      ref={innerRef}
-      className="prose-content prose-card selectable-text"
-    >
-      {parse(html, options)}
-    </div>
-  );
-});
-// Only re-render if the direct HTML string changes
-MemoizedProseContent.displayName = "MemoizedProseContent";
-
-/**
- * LESSONS data structure — backend-ready shape.
- * When you connect to the API, just replace this array with the API response.
- * Expected shape per lesson:
- * {
- *   id: number | string,          // unique lesson ID
- *   title: string,
- *   duration: string,
- *   type: "Theory" | "Practice" | "Project",
- *   completed: boolean,
- *   subTopics: [                   // optional — array of sub-sections in this lesson
- *     { id: string, title: string, completed: boolean }
- *   ]
- * }
- */
-/**
- * Map a courseId (built from category + index in Courses.jsx) to a
- * pre-converted HTML file sitting in /public/courses/.
- */
-const COURSE_HTML_MAP = {
-  "prompt-engineering-0": "/courses/Prompt_Engineering_Moduless.html",
-  "video-processing-0": "/courses/videoingestion.html",
-  "vectorless-rag": "/courses/videoingestion.html",
-  "rag-module-0": "/cources/generative-ai/RAG/rag_module_0.html",
-  "rag-module-1": "/cources/generative-ai/RAG/rag_module_1.html",
-  "rag-module-2": "/cources/generative-ai/RAG/rag_module_2.html",
-  "rag-module-3": "/cources/generative-ai/RAG/rag_module_3.html",
-  "rag-module-4": "/cources/generative-ai/RAG/rag_module_4.html",
-  "rag-module-5": "/cources/generative-ai/RAG/rag_module_5.html",
-  "rag-module-6a": "/cources/generative-ai/RAG/rag_module_6a.html",
-  "rag-module-6b": "/cources/generative-ai/RAG/rag_module_6b.html",
-  "rag-module-6c": "/cources/generative-ai/RAG/rag_module_6c.html",
-  "rag-module-7": "/cources/generative-ai/RAG/rag_module_7.html",
-  "rag-module-8": "/cources/generative-ai/RAG/rag_module_8.html",
-  "rag-module-9": "/cources/generative-ai/RAG/rag_module_9.html",
-  "rag-module-10": "/cources/generative-ai/RAG/rag_module_10.html",
-  "rag-module-11": "/cources/generative-ai/RAG/rag_module_11.html",
-  "rag-module-12": "/cources/generative-ai/RAG/rag_module_12.html",
-  "rag-module-13": "/cources/generative-ai/RAG/rag_module_13.html",
-  "rag-module-14": "/cources/generative-ai/RAG/rag_module_14.html",
-  "rag-ingestion": "/cources/generative-ai/RAG/rag_ingestion.html",
-  "rag-ingestion-ocr": "/cources/generative-ai/RAG/rag_ingestion_ocr.html",
-  "rag-ingestion-ocr-layout": "/cources/generative-ai/RAG/rag_ingestion_ocr_layout.html",
-  "dla-module-0": "/cources/generative-ai/RAG/Ingestion/OCR/document layout analysis/dla_m0.html",
-  "dla-module-1": "/cources/generative-ai/RAG/Ingestion/OCR/document layout analysis/dla_m1.html",
-  "dla-module-2": "/cources/generative-ai/RAG/Ingestion/OCR/document layout analysis/dla_m2.html",
-  "dla-module-3": "/cources/generative-ai/RAG/Ingestion/OCR/document layout analysis/dla_m3.html",
-  "dla-module-4": "/cources/generative-ai/RAG/Ingestion/OCR/document layout analysis/dla_m4.html",
-  "dla-module-5": "/cources/generative-ai/RAG/Ingestion/OCR/document layout analysis/dla_m5.html",
-  "dla-module-6": "/cources/generative-ai/RAG/Ingestion/OCR/document layout analysis/dla_m6.html",
-  "dla-module-7": "/cources/generative-ai/RAG/Ingestion/OCR/document layout analysis/dla_m7.html",
-  "dla-module-8": "/cources/generative-ai/RAG/Ingestion/OCR/document layout analysis/dla_m8.html",
-  "dla-module-9": "/cources/generative-ai/RAG/Ingestion/OCR/document layout analysis/dla_m9.html",
-  "dla-module-10": "/cources/generative-ai/RAG/Ingestion/OCR/document layout analysis/dla_m10.html",
-  "dla-module-11": "/cources/generative-ai/RAG/Ingestion/OCR/document layout analysis/dla_m11.html",
-  "dla-module-12": "/cources/generative-ai/RAG/Ingestion/OCR/document layout analysis/dla_m12.html",
-  "dla-module-13": "/cources/generative-ai/RAG/Ingestion/OCR/document layout analysis/dla_m13.html",
-  "dla-module-14": "/cources/generative-ai/RAG/Ingestion/OCR/document layout analysis/dla_m14.html",
-  "dla-module-15": "/cources/generative-ai/RAG/Ingestion/OCR/document layout analysis/dla_m15.html",
-  "dla-module-16": "/cources/generative-ai/RAG/Ingestion/OCR/document layout analysis/dla_m16.html",
-  "dla-module-17": "/cources/generative-ai/RAG/Ingestion/OCR/document layout analysis/dla_m17.html",
-  "ocr-text-module-0": "/cources/generative-ai/RAG/Ingestion/OCR/text/ocr_m0.html",
-  "ocr-text-module-1": "/cources/generative-ai/RAG/Ingestion/OCR/text/ocr_m1.html",
-  "ocr-text-module-2": "/cources/generative-ai/RAG/Ingestion/OCR/text/ocr_m2.html",
-  "ocr-text-module-3": "/cources/generative-ai/RAG/Ingestion/OCR/text/ocr_m3.html",
-  "ocr-text-module-4": "/cources/generative-ai/RAG/Ingestion/OCR/text/ocr_m4.html",
-  "ocr-text-module-5": "/cources/generative-ai/RAG/Ingestion/OCR/text/ocr_m5.html",
-  "ocr-text-module-6": "/cources/generative-ai/RAG/Ingestion/OCR/text/ocr_m6.html",
-  "ocr-text-module-7": "/cources/generative-ai/RAG/Ingestion/OCR/text/ocr_m7.html",
-  "ocr-text-module-8": "/cources/generative-ai/RAG/Ingestion/OCR/text/ocr_m8.html",
-  "ocr-text-module-9": "/cources/generative-ai/RAG/Ingestion/OCR/text/ocr_m9.html",
-  "ocr-text-module-10": "/cources/generative-ai/RAG/Ingestion/OCR/text/ocr_m10.html",
-  "ocr-text-module-11": "/cources/generative-ai/RAG/Ingestion/OCR/text/ocr_m11.html",
-  "ocr-text-module-12": "/cources/generative-ai/RAG/Ingestion/OCR/text/ocr_m12.html",
-  "ocr-text-module-13": "/cources/generative-ai/RAG/Ingestion/OCR/text/ocr_m13.html",
-  "rag-ingestion-ocr-text": "/cources/generative-ai/RAG/rag_ingestion_ocr_text.html",
-  "rag-ingestion-dit": "/cources/generative-ai/RAG/rag_ingestion_dit.html",
-  "rag-ingestion-msp": "/cources/generative-ai/RAG/rag_ingestion_msp.html",
-  "dit-module-0": "/cources/generative-ai/RAG/Ingestion/DIT/dit_m0.html",
-  "dit-module-1": "/cources/generative-ai/RAG/Ingestion/DIT/dit_m1.html",
-  "dit-module-2": "/cources/generative-ai/RAG/Ingestion/DIT/dit_m2.html",
-  "dit-module-3": "/cources/generative-ai/RAG/Ingestion/DIT/dit_m3.html",
-  "dit-module-4": "/cources/generative-ai/RAG/Ingestion/DIT/dit_m4.html",
-  "dit-module-5": "/cources/generative-ai/RAG/Ingestion/DIT/dit_m5.html",
-  "dit-module-6": "/cources/generative-ai/RAG/Ingestion/DIT/dit_m6.html",
-  "dit-module-7": "/cources/generative-ai/RAG/Ingestion/DIT/dit_m7.html",
-  "dit-module-8": "/cources/generative-ai/RAG/Ingestion/DIT/dit_m8.html",
-  "dit-module-9": "/cources/generative-ai/RAG/Ingestion/DIT/dit_m9.html",
-  "dit-module-10": "/cources/generative-ai/RAG/Ingestion/DIT/dit_m10.html",
-  "dit-module-11": "/cources/generative-ai/RAG/Ingestion/DIT/dit_m11.html",
-  "docformer-module-1": "/cources/generative-ai/RAG/Ingestion/Docformer/docformer_module_1.html",
-  "docformer-module-2": "/cources/generative-ai/RAG/Ingestion/Docformer/docformer_module_2.html",
-  "docformer-module-3": "/cources/generative-ai/RAG/Ingestion/Docformer/docformer_module_3.html",
-  "docformer-module-4": "/cources/generative-ai/RAG/Ingestion/Docformer/docformer_module_4.html",
-  "docformer-module-5": "/cources/generative-ai/RAG/Ingestion/Docformer/docformer_module_5.html",
-  "docformer-module-6": "/cources/generative-ai/RAG/Ingestion/Docformer/docformer_module_6.html",
-  "docformer-module-7": "/cources/generative-ai/RAG/Ingestion/Docformer/docformer_module_7.html",
-  "docformer-module-8": "/cources/generative-ai/RAG/Ingestion/Docformer/docformer_module_8.html",
-  "docformer-module-9": "/cources/generative-ai/RAG/Ingestion/Docformer/docformer_module_9.html",
-  "docformer-module-10": "/cources/generative-ai/RAG/Ingestion/Docformer/docformer_module_10.html",
-  "infonce-module-0": "/cources/generative-ai/RAG/Ingestion/Infonce/infonce_module_0.html",
-  "infonce-module-1": "/cources/generative-ai/RAG/Ingestion/Infonce/infonce_module_1.html",
-  "infonce-module-2": "/cources/generative-ai/RAG/Ingestion/Infonce/infonce_module_2.html",
-  "infonce-module-3": "/cources/generative-ai/RAG/Ingestion/Infonce/infonce_module_3.html",
-  "infonce-module-4": "/cources/generative-ai/RAG/Ingestion/Infonce/infonce_module_4.html",
-  "infonce-module-5": "/cources/generative-ai/RAG/Ingestion/Infonce/infonce_module_5.html",
-  "infonce-module-6": "/cources/generative-ai/RAG/Ingestion/Infonce/infonce_module_6.html",
-  "infonce-module-7": "/cources/generative-ai/RAG/Ingestion/Infonce/infonce_module_7.html",
-  "infonce-module-8": "/cources/generative-ai/RAG/Ingestion/Infonce/infonce_module_8.html",
-  "infonce-module-9": "/cources/generative-ai/RAG/Ingestion/Infonce/infonce_module_9.html",
-  "infonce-module-10": "/cources/generative-ai/RAG/Ingestion/Infonce/infonce_module_10.html",
-  "infonce-module-11": "/cources/generative-ai/RAG/Ingestion/Infonce/infonce_module_11.html",
-  "mfp-module-0": "/cources/generative-ai/RAG/Ingestion/MFP/mfp_m0.html",
-  "mfp-module-1": "/cources/generative-ai/RAG/Ingestion/MFP/mfp_m1.html",
-  "mfp-module-2": "/cources/generative-ai/RAG/Ingestion/MFP/mfp_m2.html",
-  "mfp-module-3": "/cources/generative-ai/RAG/Ingestion/MFP/mfp_m3.html",
-  "mfp-module-4": "/cources/generative-ai/RAG/Ingestion/MFP/mfp_m4.html",
-  "vmi-module-0": "/cources/generative-ai/RAG/Ingestion/VMI/vmi_m0.html",
-  "vmi-module-1": "/cources/generative-ai/RAG/Ingestion/VMI/vmi_m1.html",
-  "vmi-module-2": "/cources/generative-ai/RAG/Ingestion/VMI/vmi_m2.html",
-  "vmi-module-3": "/cources/generative-ai/RAG/Ingestion/VMI/vmi_m3.html",
-  "quant-module-0": "/cources/generative-ai/RAG/quantisation/quant_m0.html",
-  "quant-module-1": "/cources/generative-ai/RAG/quantisation/quant_m1.html",
-  "quant-module-2": "/cources/generative-ai/RAG/quantisation/quant_m2.html",
-  "quant-module-3": "/cources/generative-ai/RAG/quantisation/quant_m3.html",
-  "eval-module-0": "/cources/generative-ai/Multi-modal-rag/evaluation/eval_m0.html",
-  "eval-module-1": "/cources/generative-ai/Multi-modal-rag/evaluation/eval_m1.html",
-  "eval-module-2": "/cources/generative-ai/Multi-modal-rag/evaluation/eval_m2.html",
-  "eval-module-3": "/cources/generative-ai/Multi-modal-rag/evaluation/eval_m3.html",
-  "eval-module-4": "/cources/generative-ai/Multi-modal-rag/evaluation/eval_m4.html",
-  "eval-module-5": "/cources/generative-ai/Multi-modal-rag/evaluation/eval_m5.html",
-  "eval-module-6": "/cources/generative-ai/Multi-modal-rag/evaluation/eval_m6.html",
-  "eval-module-7": "/cources/generative-ai/Multi-modal-rag/evaluation/eval_m7.html",
-  "eval-module-8": "/cources/generative-ai/Multi-modal-rag/evaluation/eval_m8.html",
-  "eval-module-9": "/cources/generative-ai/Multi-modal-rag/evaluation/eval_m9.html",
-  "eval-module-10": "/cources/generative-ai/Multi-modal-rag/evaluation/eval_m10.html",
-  "eval-module-11": "/cources/generative-ai/Multi-modal-rag/evaluation/eval_m11.html",
-  "eval-module-12": "/cources/generative-ai/Multi-modal-rag/evaluation/eval_m12.html",
-  "eval-module-13": "/cources/generative-ai/Multi-modal-rag/evaluation/eval_m13.html",
-  "eval-module-14": "/cources/generative-ai/Multi-modal-rag/evaluation/eval_m14.html",
-  "eval-module-15": "/cources/generative-ai/Multi-modal-rag/evaluation/eval_m15.html",
-  "eval-genai-reference": "/cources/generative-ai/Multi-modal-rag/evaluation/genai_evaluation_reference.html",
-  "mcp": "/cources/generative-ai/mcp/MCP.html",
-  "ds-python": "/cources/Data_Science/python.html",
-  "module_1_1": "/cources/Data_Science/stats-prob/module_1_1.html",
-  "module_1_2": "/cources/Data_Science/stats-prob/module_1_2.html",
-  "module_1_3": "/cources/Data_Science/stats-prob/module_1_3.html",
-  "module_1_4": "/cources/Data_Science/stats-prob/module_1_4.html",
-  "module_1_5": "/cources/Data_Science/stats-prob/module_1_5.html",
-  "module_1_6": "/cources/Data_Science/stats-prob/module_1_6.html",
-  "module_1_7": "/cources/Data_Science/stats-prob/module_1_7.html",
-  "module_2_1": "/cources/Data_Science/stats-prob/module_2_1.html",
-  "module_2_2": "/cources/Data_Science/stats-prob/module_2_2.html",
-  "module_2_3": "/cources/Data_Science/stats-prob/module_2_3.html",
-  "module_2_4": "/cources/Data_Science/stats-prob/module_2_4.html",
-  "module_2_5": "/cources/Data_Science/stats-prob/module_2_5.html",
-  "module_2_6": "/cources/Data_Science/stats-prob/module_2_6.html",
-  "module_2_7": "/cources/Data_Science/stats-prob/module_2_7.html",
-  "module_3_1": "/cources/Data_Science/stats-prob/module_3_1.html",
-  "module_3_2": "/cources/Data_Science/stats-prob/module_3_2.html",
-  "module_3_3": "/cources/Data_Science/stats-prob/module_3_3.html",
-  "module_3_4": "/cources/Data_Science/stats-prob/module_3_4.html",
-  "module_3_5": "/cources/Data_Science/stats-prob/module_3_5.html",
-  "module_3_6": "/cources/Data_Science/stats-prob/module_3_6.html",
-  "module_3_7": "/cources/Data_Science/stats-prob/module_3_7.html",
-  "module_3_8": "/cources/Data_Science/stats-prob/module_3_8.html",
-  "module_4_1": "/cources/Data_Science/stats-prob/module_4_1.html",
-  "module_4_2": "/cources/Data_Science/stats-prob/module_4_2.html",
-  "module_4_3": "/cources/Data_Science/stats-prob/module_4_3.html",
-  "module_4_4": "/cources/Data_Science/stats-prob/module_4_4.html",
-  "module_4_5": "/cources/Data_Science/stats-prob/module_4_5.html",
-  "module_4_6": "/cources/Data_Science/stats-prob/module_4_6.html",
-  "module_4_7": "/cources/Data_Science/stats-prob/module_4_7.html",
-  "module_4_8": "/cources/Data_Science/stats-prob/module_4_8.html",
-  "module_5_1": "/cources/Data_Science/stats-prob/module_5_1.html",
-  "module_5_2": "/cources/Data_Science/stats-prob/module_5_2.html",
-  "module_5_3": "/cources/Data_Science/stats-prob/module_5_3.html",
-  "module_5_4": "/cources/Data_Science/stats-prob/module_5_4.html",
-  "module_5_5": "/cources/Data_Science/stats-prob/module_5_5.html",
-  "module_5_6": "/cources/Data_Science/stats-prob/module_5_6.html",
-  "module_6_1": "/cources/Data_Science/stats-prob/module_6_1.html",
-  "module_6_2": "/cources/Data_Science/stats-prob/module_6_2.html",
-  "module_6_3": "/cources/Data_Science/stats-prob/module_6_3.html",
-  "module_6_4": "/cources/Data_Science/stats-prob/module_6_4.html",
-  "module_6_5": "/cources/Data_Science/stats-prob/module_6_5.html",
-  "module_6_6": "/cources/Data_Science/stats-prob/module_6_6.html",
-  "ml-module-1": "/cources/Data_Science/machine-learning/module.1.html",
-  "ml-module-2": "/cources/Data_Science/machine-learning/module_2.html",
-  "ml-module-3": "/cources/Data_Science/machine-learning/Module_3.html",
-  "dl-attention-transformers": "/cources/Data_Science/DL/Attention_transformers_with_examples.html",
-  "dl-builder-guide": "/cources/Data_Science/DL/builderGuide_with_examples.html",
-  "dl-classification": "/cources/Data_Science/DL/Classification_with_examples.html",
-  "dl-cnn": "/cources/Data_Science/DL/CNN.html",
-  "dl-computational-performance": "/cources/Data_Science/DL/Computational_Performance.html",
-  "dl-gan": "/cources/Data_Science/DL/GAN.html",
-  "dl-gaussian-processes": "/cources/Data_Science/DL/GaussianProcesses.html",
-  "dl-linear-regression": "/cources/Data_Science/DL/Linear_regresssion_DL.html",
-  "dl-nlp": "/cources/Data_Science/DL/NLP.html",
-  "dl-optimization-technique": "/cources/Data_Science/DL/Optimization_technique.html",
-  "dl-perceptron-ff": "/cources/Data_Science/DL/perceptronFF.html",
-  "dl-preliminaries": "/cources/Data_Science/DL/Preliminaries.html",
-  "dl-rnn": "/cources/Data_Science/DL/RNN_.html",
-  "dl-module-0-1-why-deep-learning": "/cources/Data_Science/DL/module_0_1_why_deep_learning.html",
-  "dl-module-0-2-tensors": "/cources/Data_Science/DL/module_0_2_tensors.html",
-  "dl-module-0-3-calculus-autograd": "/cources/Data_Science/DL/module_0_3_calculus_autograd.html",
-  "dl-module-0-4-cinematch-setup": "/cources/Data_Science/DL/module_0_4_cinematch_setup.html",
-  "dl-module-1-1-linear-regression": "/cources/Data_Science/DL/module_1_1_linear_regression.html",
-  "dl-module-1-2-loss-landscapes": "/cources/Data_Science/DL/module_1_2_loss_landscapes.html",
-  "dl-module-1-3-classification": "/cources/Data_Science/DL/module_1_3_classification.html",
-  "dl-module-1-4-perceptron": "/cources/Data_Science/DL/module_1_4_perceptron.html",
-  "dl-module-2-1-mlp": "/cources/Data_Science/DL/module_2_1_mlp.html",
-  "dl-module-2-2-backprop": "/cources/Data_Science/DL/module_2_2_backprop.html",
-  "dl-module-2-3-pytorch-builder": "/cources/Data_Science/DL/module_2_3_pytorch_builder.html",
-  "dl-module-2-4-optimization-practice": "/cources/Data_Science/DL/module_2_4_optimization_practice.html",
-  "dl-module-2-5-optimization-theory": "/cources/Data_Science/DL/module_2_5_optimization_theory.html",
-  "dl-module-2-6-regularization": "/cources/Data_Science/DL/module_2_6_regularization.html",
-  "dl-module-2-7-computational-performance": "/cources/Data_Science/DL/module_2_7_computational_performance.html",
-  "dl-module-3-1-cnns": "/cources/Data_Science/DL/module_3_1_cnns.html",
-  "dl-module-3-2-cnn-architectures": "/cources/Data_Science/DL/module_3_2_cnn_architectures.html",
-  "dl-module-3-3-rnns": "/cources/Data_Science/DL/module_3_3_rnns.html",
-  "dl-module-3-4-lstm-gru": "/cources/Data_Science/DL/module_3_4_lstm_gru.html",
-  "dl-module-3-5-capstone": "/cources/Data_Science/DL/module_3_5_capstone.html",
-  "dl-module-4-1-attention": "/cources/Data_Science/DL/module_4_1_attention.html",
-  "dl-module-4-2-transformer": "/cources/Data_Science/DL/module_4_2_transformer.html",
-  "dl-module-4-3-word2vec": "/cources/Data_Science/DL/module_4_3_word2vec.html",
-  "dl-module-4-4-pretraining": "/cources/Data_Science/DL/module_4_4_pretraining.html",
-  "dl-module-4-5-gans": "/cources/Data_Science/DL/module_4_5_gans.html",
-  "dl-module-5-1-gaussian-processes": "/cources/Data_Science/DL/module_5_1_gaussian_processes.html",
-  "dl-module-5-2-bayesian-hpo": "/cources/Data_Science/DL/module_5_2_bayesian_hpo.html",
-  "dl-capstone-phase-1-linear": "/cources/Data_Science/DL/capstone_phase1_linear.html",
-  "dl-capstone-phase-2-mlp": "/cources/Data_Science/DL/capstone_phase2_mlp.html",
-  "pytorch-tensors": "/cources/Data_Science/pytorch/module1_tensors.html",
-  "pytorch-autograd": "/cources/Data_Science/pytorch/module2_autograd.html",
-  "pytorch-neural-network": "/cources/Data_Science/pytorch/module3_nn_module.html",
-  "pytorch-training-loop": "/cources/Data_Science/pytorch/module4_training_loop.html",
-  "pytorch-data-pipeline": "/cources/Data_Science/pytorch/module5_data_pipelines.html",
-  "pytorch-evaluation": "/cources/Data_Science/pytorch/module6_evaluation.html",
-  "pytorch-cnn": "/cources/Data_Science/pytorch/module7_cnns.html",
-  "pytorch-sequence-models": "/cources/Data_Science/pytorch/module8_sequence_models.html",
-  "pytorch-training-tricks": "/cources/Data_Science/pytorch/module9_training_tricks.html",
-  "pytorch-debugging": "/cources/Data_Science/pytorch/module10_debugging.html",
-  "pytorch-distributed": "/cources/Data_Science/pytorch/module11_distributed.html",
-  "pytorch-deployment": "/cources/Data_Science/pytorch/module12_deployment.html",
-  "clustering-module0": "/cources/clus/part 1/module_0.html",
-  "clustering-module1": "/cources/clus/part 1/module_1.html",
-  "clustering-module2": "/cources/clus/part 1/module_2.html",
-  "clustering-module3": "/cources/clus/part 1/module_3.html",
-  "clustering-module4": "/cources/clus/part 1/module_4.html",
-  "clustering-module5": "/cources/clus/part 1/module_5.html",
-  "clustering-module6": "/cources/clus/part 1/module_6.html",
-  "clustering-module7": "/cources/clus/part 1/module_7.html",
-  "clustering-module8": "/cources/clus/part 1/module_8.html",
-  "clustering-module9": "/cources/clus/part 1/module_9.html",
-  "clustering-module10": "/cources/clus/part 1/module_10.html",
-  "clustering-module11": "/cources/clus/part 1/module_11.html",
-  "clustering-module12": "/cources/clus/part 2/module_12.html",
-  "clustering-module13": "/cources/clus/part 2/module_13.html",
-  "clustering-module14": "/cources/clus/part 2/module_14.html",
-  "clustering-module15": "/cources/clus/part 2/module_15.html",
-  "clustering-module16": "/cources/clus/part 2/module_16.html",
-  "clustering-module17": "/cources/clus/part 2/module_17.html",
-  "clustering-module18": "/cources/clus/part 2/module_18.html",
-  "clustering-module19": "/cources/clus/part 2/module_19.html",
-  "clustering-module20": "/cources/clus/part 2/module_20.html",
-  "clustering-module21": "/cources/clus/part 2/module_21.html",
-  "mrag-module-1": "/cources/generative-ai/Multi-modal-rag/multimodal_module_1.html",
-  "mrag-module-2": "/cources/generative-ai/Multi-modal-rag/multimodal_module_2.html",
-  "mrag-module-3": "/cources/generative-ai/Multi-modal-rag/multimodal_module_3.html",
-  "mrag-module-4": "/cources/generative-ai/Multi-modal-rag/multimodal_module_4.html",
-  "mrag-module-5": "/cources/generative-ai/Multi-modal-rag/multimodal_module_5.html",
-  "mrag-module-6": "/cources/generative-ai/Multi-modal-rag/multimodal_module_6.html",
-  "mrag-module-7": "/cources/generative-ai/Multi-modal-rag/multimodal_module_7.html",
-  "mrag-module-8": "/cources/generative-ai/Multi-modal-rag/multimodal_module_8.html",
-  "mrag-module-9": "/cources/generative-ai/Multi-modal-rag/multimodal_module_9.html",
-  "mrag-module-10": "/cources/generative-ai/Multi-modal-rag/multimodal_module_10.html",
-  "mrag-module-11": "/cources/generative-ai/Multi-modal-rag/multimodal_module_11.html",
-  "mrag-module-12": "/cources/generative-ai/Multi-modal-rag/multimodal_module_12.html",
-  "mrag-module-13": "/cources/generative-ai/Multi-modal-rag/multimodal_module_13.html",
-  "mrag-agentic-ai-module-1": "/cources/generative-ai/Multi-modal-rag/Agentic Ai/module1_data_formats.html",
-  "mrag-agentic-ai-module-2": "/cources/generative-ai/Multi-modal-rag/Agentic Ai/module2_json_schema.html",
-  "mrag-agentic-ai-module-3": "/cources/generative-ai/Multi-modal-rag/Agentic Ai/module3_xml_markdown.html",
-  "mrag-agentic-ai-module-4": "/cources/generative-ai/Multi-modal-rag/Agentic Ai/module4_baml_pydantic.html",
-  "mrag-agentic-ai-module-5": "/cources/generative-ai/Multi-modal-rag/Agentic Ai/module5_jinja2.html",
-  "mrag-agentic-ai-module-6": "/cources/generative-ai/Multi-modal-rag/Agentic Ai/module6_cicd.html",
-  "mrag-multiagent-module-0": "/cources/generative-ai/Multi-modal-rag/Multiagent/t2_module_0.html",
-  "mrag-multiagent-module-1": "/cources/generative-ai/Multi-modal-rag/Multiagent/t2_module_1.html",
-  "mrag-multiagent-module-2": "/cources/generative-ai/Multi-modal-rag/Multiagent/t2_module_2 (1).html",
-  "mrag-multiagent-module-3": "/cources/generative-ai/Multi-modal-rag/Multiagent/t2_module_3.html",
-  "mrag-multiagent-module-4": "/cources/generative-ai/Multi-modal-rag/Multiagent/t2_module_4.html",
-  "mrag-multiagent-module-5": "/cources/generative-ai/Multi-modal-rag/Multiagent/t2_module_5.html",
-  "mrag-multiagent-module-6": "/cources/generative-ai/Multi-modal-rag/Multiagent/t2_module_6.html",
-  "mrag-multiagent-module-7": "/cources/generative-ai/Multi-modal-rag/Multiagent/t2_module_7.html",
-  "mrag-multiagent-module-9": "/cources/generative-ai/Multi-modal-rag/Multiagent/t2_module_9.html",
-  "mrag-multiagent-module-10": "/cources/generative-ai/Multi-modal-rag/Multiagent/t2_module_10.html",
-  "mrag-multiagent-module-11": "/cources/generative-ai/Multi-modal-rag/Multiagent/t2_module_11.html",
-  "mrag-multiagent-module-12": "/cources/generative-ai/Multi-modal-rag/Multiagent/t2_module_12.html",
-  "mrag-multiagent-module-13": "/cources/generative-ai/Multi-modal-rag/Multiagent/t2_module_13.html",
-  "langgraph-module-1": "/cources/LangGraph/module1.html",
-  "langgraph-module-2": "/cources/LangGraph/module2.html",
-  "langgraph-module-3": "/cources/LangGraph/module3.html",
-  "langgraph-module-4": "/cources/LangGraph/module4.html",
-  "langgraph-module-5": "/cources/LangGraph/module5.html",
-  "langgraph-module-6": "/cources/LangGraph/module6.html",
-  "langgraph-module-7": "/cources/LangGraph/module7.html",
-  "langgraph-module-8": "/cources/LangGraph/module8.html",
-  "transformer-0-1": "/cources/Data_Science/Transofmer/module_0_1_attention_refresher.html",
-  "transformer-0-2": "/cources/Data_Science/Transofmer/module_0_2_transformer_block.html",
-  "transformer-1-1": "/cources/Data_Science/Transofmer/module_1_1_bert.html",
-  "transformer-1-2": "/cources/Data_Science/Transofmer/module_1_2_roberta.html",
-  "transformer-1-3": "/cources/Data_Science/Transofmer/module_1_3_distilbert_albert.html",
-  "transformer-1-4": "/cources/Data_Science/Transofmer/module_1_4_deberta_electra.html",
-  "transformer-2-1": "/cources/Data_Science/Transofmer/module_2_1_gpt2.html",
-  "transformer-2-2": "/cources/Data_Science/Transofmer/module_2_2_gpt3_icl.html",
-  "transformer-2-3": "/cources/Data_Science/Transofmer/module_2_3_instructgpt_rlhf.html",
-  "transformer-2-4": "/cources/Data_Science/Transofmer/module_2_4_gpt4_scaling.html",
-  "transformer-3-1": "/cources/Data_Science/Transofmer/module_3_1_llama.html",
-  "transformer-3-2": "/cources/Data_Science/Transofmer/module_3_2_mistral_mixtral.html",
-  "transformer-3-3": "/cources/Data_Science/Transofmer/module_3_3_qwen.html",
-  "transformer-4-1": "/cources/Data_Science/Transofmer/module_4_1_t5_flan.html",
-  "transformer-4-2": "/cources/Data_Science/Transofmer/module_4_2_bart.html",
-  "transformer-5-1": "/cources/Data_Science/Transofmer/module_5_1_quadratic_bottleneck.html",
-  "transformer-5-2": "/cources/Data_Science/Transofmer/module_5_2_longformer_bigbird.html",
-  "transformer-5-3": "/cources/Data_Science/Transofmer/module_5_3_linear_attention.html",
-  "transformer-6-1": "/cources/Data_Science/Transofmer/module_6_1_vit_deit.html",
-  "transformer-6-2": "/cources/Data_Science/Transofmer/module_6_2_swin.html",
-  "transformer-6-3": "/cources/Data_Science/Transofmer/module_6_3_clip.html",
-  "transformer-6-4": "/cources/Data_Science/Transofmer/module_6_4_multimodal_llms.html",
-  "transformer-7-1": "/cources/Data_Science/Transofmer/module_7_1_moe.html",
-  "transformer-7-2": "/cources/Data_Science/Transofmer/module_7_2_ssm.html",
-  "transformer-7-3": "/cources/Data_Science/Transofmer/module_7_3_production_stack.html",
-};
-
-/**
- * Courses that should be rendered inside a full-page <iframe> rather than
- * being parsed / injected as HTML. Add any course id here whose HTML file
- * ships its own complete UI (styles, scripts, animations).
- */
-const IFRAME_COURSES = new Set([
-  "clustering-module0",
-  "clustering-module1",
-  "clustering-module2",
-  "clustering-module3",
-  "clustering-module4",
-  "clustering-module5",
-  "clustering-module6",
-  "clustering-module7",
-  "clustering-module8",
-  "clustering-module9",
-  "clustering-module10",
-  "clustering-module11",
-  "clustering-module12",
-  "clustering-module13",
-  "clustering-module14",
-  "clustering-module15",
-  "clustering-module16",
-  "clustering-module17",
-  "clustering-module18",
-  "clustering-module19",
-  "clustering-module20",
-  "clustering-module21",
-  "langgraph-module-1",
-  "langgraph-module-2",
-  "langgraph-module-3",
-  "langgraph-module-4",
-  "langgraph-module-5",
-  "langgraph-module-6",
-  "langgraph-module-7",
-  "langgraph-module-8",
-  "mrag-module-1",
-  "mrag-module-2",
-  "mrag-module-3",
-  "mrag-module-4",
-  "mrag-module-5",
-  "mrag-module-6",
-  "mrag-module-7",
-  "mrag-module-8",
-  "mrag-module-9",
-  "mrag-module-10",
-  "mrag-module-11",
-  "mrag-module-12",
-  "mrag-module-13",
-  "mrag-agentic-ai-module-1",
-  "mrag-agentic-ai-module-2",
-  "mrag-agentic-ai-module-3",
-  "mrag-agentic-ai-module-4",
-  "mrag-agentic-ai-module-5",
-  "mrag-agentic-ai-module-6",
-  "mrag-multiagent-module-0",
-  "mrag-multiagent-module-1",
-  "mrag-multiagent-module-2",
-  "mrag-multiagent-module-3",
-  "mrag-multiagent-module-4",
-  "mrag-multiagent-module-5",
-  "mrag-multiagent-module-6",
-  "mrag-multiagent-module-7",
-  "mrag-multiagent-module-9",
-  "mrag-multiagent-module-10",
-  "mrag-multiagent-module-11",
-  "mrag-multiagent-module-12",
-  "mrag-multiagent-module-13",
-  "dl-module-0-1-why-deep-learning",
-  "dl-module-0-2-tensors",
-  "dl-module-0-3-calculus-autograd",
-  "dl-module-0-4-cinematch-setup",
-  "dl-module-1-1-linear-regression",
-  "dl-module-1-2-loss-landscapes",
-  "dl-module-1-3-classification",
-  "dl-module-1-4-perceptron",
-  "dl-module-2-1-mlp",
-  "dl-module-2-2-backprop",
-  "dl-module-2-3-pytorch-builder",
-  "dl-module-2-4-optimization-practice",
-  "dl-module-2-5-optimization-theory",
-  "dl-module-2-6-regularization",
-  "dl-module-2-7-computational-performance",
-  "dl-module-3-1-cnns",
-  "dl-module-3-2-cnn-architectures",
-  "dl-module-3-3-rnns",
-  "dl-module-3-4-lstm-gru",
-  "dl-module-3-5-capstone",
-  "dl-module-4-1-attention",
-  "dl-module-4-2-transformer",
-  "dl-module-4-3-word2vec",
-  "dl-module-4-4-pretraining",
-  "dl-module-4-5-gans",
-  "dl-module-5-1-gaussian-processes",
-  "dl-module-5-2-bayesian-hpo",
-  "dl-capstone-phase-1-linear",
-  "dl-capstone-phase-2-mlp",
-  "rag-module-0",
-  "rag-module-1",
-  "rag-module-2",
-  "rag-module-3",
-  "rag-module-4",
-  "rag-module-5",
-  "rag-module-6a",
-  "rag-module-6b",
-  "rag-module-6c",
-  "rag-module-7",
-  "rag-module-8",
-  "rag-module-9",
-  "rag-module-10",
-  "rag-module-11",
-  "rag-module-12",
-  "rag-module-13",
-  "rag-module-14",
-  "rag-ingestion",
-  "rag-ingestion-ocr",
-  "rag-ingestion-ocr-layout",
-  "dla-module-0",
-  "dla-module-1",
-  "dla-module-2",
-  "dla-module-3",
-  "dla-module-4",
-  "dla-module-5",
-  "dla-module-6",
-  "dla-module-7",
-  "dla-module-8",
-  "dla-module-9",
-  "dla-module-10",
-  "dla-module-11",
-  "dla-module-12",
-  "dla-module-13",
-  "dla-module-14",
-  "dla-module-15",
-  "dla-module-16",
-  "dla-module-17",
-  "ocr-text-module-0",
-  "ocr-text-module-1",
-  "ocr-text-module-2",
-  "ocr-text-module-3",
-  "ocr-text-module-4",
-  "ocr-text-module-5",
-  "ocr-text-module-6",
-  "ocr-text-module-7",
-  "ocr-text-module-8",
-  "ocr-text-module-9",
-  "ocr-text-module-10",
-  "ocr-text-module-11",
-  "ocr-text-module-12",
-  "ocr-text-module-13",
-  "rag-ingestion-ocr-text",
-  "rag-ingestion-dit",
-  "rag-ingestion-msp",
-  "dit-module-0",
-  "dit-module-1",
-  "dit-module-2",
-  "dit-module-3",
-  "dit-module-4",
-  "dit-module-5",
-  "dit-module-6",
-  "dit-module-7",
-  "dit-module-8",
-  "dit-module-9",
-  "dit-module-10",
-  "dit-module-11",
-  "docformer-module-1",
-  "docformer-module-2",
-  "docformer-module-3",
-  "docformer-module-4",
-  "docformer-module-5",
-  "docformer-module-6",
-  "docformer-module-7",
-  "docformer-module-8",
-  "docformer-module-9",
-  "docformer-module-10",
-  "infonce-module-0",
-  "infonce-module-1",
-  "infonce-module-2",
-  "infonce-module-3",
-  "infonce-module-4",
-  "infonce-module-5",
-  "infonce-module-6",
-  "infonce-module-7",
-  "infonce-module-8",
-  "infonce-module-9",
-  "infonce-module-10",
-  "infonce-module-11",
-  "mfp-module-0",
-  "mfp-module-1",
-  "mfp-module-2",
-  "mfp-module-3",
-  "mfp-module-4",
-  "vmi-module-0",
-  "vmi-module-1",
-  "vmi-module-2",
-  "vmi-module-3",
-  "rag-ingestion-dit",
-  "rag-ingestion-msp",
-  "quant-module-0",
-  "quant-module-1",
-  "quant-module-2",
-  "quant-module-3",
-  "eval-module-0",
-  "eval-module-1",
-  "eval-module-2",
-  "eval-module-3",
-  "eval-module-4",
-  "eval-module-5",
-  "eval-module-6",
-  "eval-module-7",
-  "eval-module-8",
-  "eval-module-9",
-  "eval-module-10",
-  "eval-module-11",
-  "eval-module-12",
-  "eval-module-13",
-  "eval-module-14",
-  "eval-module-15",
-  "eval-genai-reference",
-  "module_1_1",
-  "module_1_2",
-  "module_1_3",
-  "module_1_4",
-  "module_1_5",
-  "module_1_6",
-  "module_1_7",
-  "module_2_1",
-  "module_2_2",
-  "module_2_3",
-  "module_2_4",
-  "module_2_5",
-  "module_2_6",
-  "module_2_7",
-  "module_3_1",
-  "module_3_2",
-  "module_3_3",
-  "module_3_4",
-  "module_3_5",
-  "module_3_6",
-  "module_3_7",
-  "module_3_8",
-  "module_4_1",
-  "module_4_2",
-  "module_4_3",
-  "module_4_4",
-  "module_4_5",
-  "module_4_6",
-  "module_4_7",
-  "module_4_8",
-  "module_5_1",
-  "module_5_2",
-  "module_5_3",
-  "module_5_4",
-  "module_5_5",
-  "module_5_6",
-  "module_6_1",
-  "module_6_2",
-  "module_6_3",
-  "module_6_4",
-  "module_6_5",
-  "module_6_6",
-  // PyTorch modules for iframe rendering
-  "pytorch-tensors",
-  "pytorch-autograd",
-  "pytorch-neural-network",
-  "pytorch-training-loop",
-  "pytorch-data-pipeline",
-  "pytorch-evaluation",
-  "pytorch-cnn",
-  "pytorch-sequence-models",
-  "pytorch-training-tricks",
-  "pytorch-debugging",
-  "pytorch-distributed",
-  "pytorch-deployment",
-  "transformer-0-1",
-  "transformer-0-2",
-  "transformer-1-1",
-  "transformer-1-2",
-  "transformer-1-3",
-  "transformer-1-4",
-  "transformer-2-1",
-  "transformer-2-2",
-  "transformer-2-3",
-  "transformer-2-4",
-  "transformer-3-1",
-  "transformer-3-2",
-  "transformer-3-3",
-  "transformer-4-1",
-  "transformer-4-2",
-  "transformer-5-1",
-  "transformer-5-2",
-  "transformer-5-3",
-  "transformer-6-1",
-  "transformer-6-2",
-  "transformer-6-3",
-  "transformer-6-4",
-  "transformer-7-1",
-  "transformer-7-2",
-  "transformer-7-3",
-]);
-
-/* COURSE_IPYNB_MAP: Notebook (depth) content paths for modules with interactive IPYNB files */
-const COURSE_IPYNB_MAP = {
-  "mrag-agentic-ai-module-1": "/cources/generative-ai/Multi-modal-rag/Agentic Ai/module1_data_formats.ipynb",
-  "mrag-agentic-ai-module-2": "/cources/generative-ai/Multi-modal-rag/Agentic Ai/module2_json_schema.ipynb",
-  "mrag-agentic-ai-module-3": "/cources/generative-ai/Multi-modal-rag/Agentic Ai/module3_xml_markdown.ipynb",
-  "mrag-agentic-ai-module-4": "/cources/generative-ai/Multi-modal-rag/Agentic Ai/module4_baml_pydantic.ipynb",
-  "mrag-agentic-ai-module-5": "/cources/generative-ai/Multi-modal-rag/Agentic Ai/module5_jinja2.ipynb",
-  "mrag-agentic-ai-module-6": "/cources/generative-ai/Multi-modal-rag/Agentic Ai/module6_cicd.ipynb",
-};
-
-/**
- * Per-course sidebar metadata for HTML-backed courses.
- * Add an entry here whenever you add a new .docx-based course.
- */
-const COURSE_CONFIGS = {
-  "prompt-engineering-0": {
-    category: "Prompt Engineering",
-    title: "Prompt Engineering Mastery",
-    icon: "Lightbulb",
-    lessons: [
-      {
-        id: 1,
-        title: "Introduction to Prompt Engineering",
-        duration: "15m",
-        type: "Theory",
-        completed: false,
-        subTopics: [
-          { id: "1.1", title: "What is Prompt Engineering?", completed: false },
-          { id: "1.2", title: "Why it Matters", completed: false },
-        ],
-      },
-      {
-        id: 2,
-        title: "Prompt Structure & Anatomy",
-        duration: "20m",
-        type: "Theory",
-        completed: false,
-        subTopics: [
-          { id: "2.1", title: "Instructions & Context", completed: false },
-          { id: "2.2", title: "Input & Output Format", completed: false },
-        ],
-      },
-      {
-        id: 3,
-        title: "Core Prompting Techniques",
-        duration: "25m",
-        type: "Theory",
-        completed: false,
-        subTopics: [
-          { id: "3.1", title: "Zero-Shot & Few-Shot", completed: false },
-          { id: "3.2", title: "Chain-of-Thought", completed: false },
-          { id: "3.3", title: "Role Prompting", completed: false },
-        ],
-      },
-      {
-        id: 4,
-        title: "Advanced Techniques",
-        duration: "30m",
-        type: "Practice",
-        completed: false,
-        subTopics: [
-          { id: "4.1", title: "Tree of Thoughts", completed: false },
-          { id: "4.2", title: "ReAct Prompting", completed: false },
-          { id: "4.3", title: "RAG & Retrieval Prompts", completed: false },
-        ],
-      },
-      {
-        id: 5,
-        title: "Prompt Evaluation & Iteration",
-        duration: "20m",
-        type: "Practice",
-        completed: false,
-        subTopics: [
-          { id: "5.1", title: "Testing Your Prompts", completed: false },
-          { id: "5.2", title: "Prompt Debugging", completed: false },
-        ],
-      },
-      {
-        id: 6,
-        title: "Real-World Applications",
-        duration: "35m",
-        type: "Project",
-        completed: false,
-        subTopics: [
-          { id: "6.1", title: "Content Generation", completed: false },
-          { id: "6.2", title: "Data Extraction", completed: false },
-          { id: "6.3", title: "Code Generation", completed: false },
-        ],
-      },
-    ],
-  },
-  "video-processing-0": {
-    category: "Video Processing",
-    title: "Video Ingestion Pipeline",
-    icon: "Play",
-    lessons: [
-      {
-        id: 1,
-        title: "Video Ingestion Complete Guide",
-        duration: "10h",
-        type: "Theory",
-        completed: false,
-        subTopics: [],
-      },
-    ],
-  },
-  "mcp": {
-    category: "Generative AI",
-    title: "Model Context Protocol (MCP)",
-    icon: "Cpu",
-    lessons: [],
-  },
-  "dl-module-0-1-why-deep-learning": {
-    category: "Deep Learning",
-    title: "Module 0.1 - Why Deep Learning",
-    icon: "Network",
-    lessons: [],
-  },
-  "dl-module-0-2-tensors": {
-    category: "Deep Learning",
-    title: "Module 0.2 - Tensors",
-    icon: "Network",
-    lessons: [],
-  },
-  "dl-module-0-3-calculus-autograd": {
-    category: "Deep Learning",
-    title: "Module 0.3 - Calculus & Autograd",
-    icon: "Network",
-    lessons: [],
-  },
-  "dl-module-0-4-cinematch-setup": {
-    category: "Deep Learning",
-    title: "Module 0.4 - Cinematch Setup",
-    icon: "Network",
-    lessons: [],
-  },
-  "dl-module-1-1-linear-regression": {
-    category: "Deep Learning",
-    title: "Module 1.1 - Linear Regression",
-    icon: "Network",
-    lessons: [],
-  },
-  "dl-module-1-2-loss-landscapes": {
-    category: "Deep Learning",
-    title: "Module 1.2 - Loss Landscapes",
-    icon: "Network",
-    lessons: [],
-  },
-  "dl-module-1-3-classification": {
-    category: "Deep Learning",
-    title: "Module 1.3 - Classification",
-    icon: "Network",
-    lessons: [],
-  },
-  "dl-module-1-4-perceptron": {
-    category: "Deep Learning",
-    title: "Module 1.4 - Perceptron",
-    icon: "Network",
-    lessons: [],
-  },
-  "dl-module-2-1-mlp": {
-    category: "Deep Learning",
-    title: "Module 2.1 - MLP",
-    icon: "Network",
-    lessons: [],
-  },
-  "dl-module-2-2-backprop": {
-    category: "Deep Learning",
-    title: "Module 2.2 - Backprop",
-    icon: "Network",
-    lessons: [],
-  },
-  "dl-module-2-3-pytorch-builder": {
-    category: "Deep Learning",
-    title: "Module 2.3 - PyTorch Builder",
-    icon: "Network",
-    lessons: [],
-  },
-  "dl-module-2-4-optimization-practice": {
-    category: "Deep Learning",
-    title: "Module 2.4 - Optimization Practice",
-    icon: "Network",
-    lessons: [],
-  },
-  "dl-module-2-5-optimization-theory": {
-    category: "Deep Learning",
-    title: "Module 2.5 - Optimization Theory",
-    icon: "Network",
-    lessons: [],
-  },
-  "dl-module-2-6-regularization": {
-    category: "Deep Learning",
-    title: "Module 2.6 - Regularization",
-    icon: "Network",
-    lessons: [],
-  },
-  "dl-module-2-7-computational-performance": {
-    category: "Deep Learning",
-    title: "Module 2.7 - Computational Performance",
-    icon: "Network",
-    lessons: [],
-  },
-  "dl-module-3-1-cnns": {
-    category: "Deep Learning",
-    title: "Module 3.1 - CNNs",
-    icon: "Network",
-    lessons: [],
-  },
-  "dl-module-3-2-cnn-architectures": {
-    category: "Deep Learning",
-    title: "Module 3.2 - CNN Architectures",
-    icon: "Network",
-    lessons: [],
-  },
-  "dl-module-3-3-rnns": {
-    category: "Deep Learning",
-    title: "Module 3.3 - RNNs",
-    icon: "Network",
-    lessons: [],
-  },
-  "dl-module-3-4-lstm-gru": {
-    category: "Deep Learning",
-    title: "Module 3.4 - LSTM & GRU",
-    icon: "Network",
-    lessons: [],
-  },
-  "dl-module-3-5-capstone": {
-    category: "Deep Learning",
-    title: "Module 3.5 - Capstone",
-    icon: "Network",
-    lessons: [],
-  },
-  "dl-module-4-1-attention": {
-    category: "Deep Learning",
-    title: "Module 4.1 - Attention",
-    icon: "Network",
-    lessons: [],
-  },
-  "dl-module-4-2-transformer": {
-    category: "Deep Learning",
-    title: "Module 4.2 - Transformer",
-    icon: "Network",
-    lessons: [],
-  },
-  "dl-module-4-3-word2vec": {
-    category: "Deep Learning",
-    title: "Module 4.3 - Word2Vec",
-    icon: "Network",
-    lessons: [],
-  },
-  "dl-module-4-4-pretraining": {
-    category: "Deep Learning",
-    title: "Module 4.4 - Pretraining",
-    icon: "Network",
-    lessons: [],
-  },
-  "dl-module-4-5-gans": {
-    category: "Deep Learning",
-    title: "Module 4.5 - GANs",
-    icon: "Network",
-    lessons: [],
-  },
-  "dl-module-5-1-gaussian-processes": {
-    category: "Deep Learning",
-    title: "Module 5.1 - Gaussian Processes",
-    icon: "Network",
-    lessons: [],
-  },
-  "dl-module-5-2-bayesian-hpo": {
-    category: "Deep Learning",
-    title: "Module 5.2 - Bayesian HPO",
-    icon: "Network",
-    lessons: [],
-  },
-  "dl-capstone-phase-1-linear": {
-    category: "Deep Learning",
-    title: "Capstone Phase 1 - Linear",
-    icon: "Network",
-    lessons: [],
-  },
-  "dl-capstone-phase-2-mlp": {
-    category: "Deep Learning",
-    title: "Capstone Phase 2 - MLP",
-    icon: "Network",
-    lessons: [],
-  },
-  "mrag-agentic-ai-module-1": {
-    category: "Multimodal RAG",
-    title: "Agentic AI - Module 1",
-    icon: "Cpu",
-    lessons: [],
-  },
-  "mrag-agentic-ai-module-2": {
-    category: "Multimodal RAG",
-    title: "Agentic AI - Module 2",
-    icon: "Cpu",
-    lessons: [],
-  },
-  "mrag-agentic-ai-module-3": {
-    category: "Multimodal RAG",
-    title: "Agentic AI - Module 3",
-    icon: "Cpu",
-    lessons: [],
-  },
-  "mrag-agentic-ai-module-4": {
-    category: "Multimodal RAG",
-    title: "Agentic AI - Module 4",
-    icon: "Cpu",
-    lessons: [],
-  },
-  "mrag-agentic-ai-module-5": {
-    category: "Multimodal RAG",
-    title: "Agentic AI - Module 5",
-    icon: "Cpu",
-    lessons: [],
-  },
-  "mrag-agentic-ai-module-6": {
-    category: "Multimodal RAG",
-    title: "Agentic AI - Module 6",
-    icon: "Cpu",
-    lessons: [],
-  },
-  "mrag-multiagent-module-0": {
-    category: "Multimodal RAG",
-    title: "Multiagent - Module 0",
-    icon: "GitBranch",
-    lessons: [],
-  },
-  "mrag-multiagent-module-1": {
-    category: "Multimodal RAG",
-    title: "Multiagent - Module 1",
-    icon: "GitBranch",
-    lessons: [],
-  },
-  "mrag-multiagent-module-2": {
-    category: "Multimodal RAG",
-    title: "Multiagent - Module 2",
-    icon: "GitBranch",
-    lessons: [],
-  },
-  "mrag-multiagent-module-3": {
-    category: "Multimodal RAG",
-    title: "Multiagent - Module 3",
-    icon: "GitBranch",
-    lessons: [],
-  },
-  "mrag-multiagent-module-4": {
-    category: "Multimodal RAG",
-    title: "Multiagent - Module 4",
-    icon: "GitBranch",
-    lessons: [],
-  },
-  "mrag-multiagent-module-5": {
-    category: "Multimodal RAG",
-    title: "Multiagent - Module 5",
-    icon: "GitBranch",
-    lessons: [],
-  },
-  "mrag-multiagent-module-6": {
-    category: "Multimodal RAG",
-    title: "Multiagent - Module 6",
-    icon: "GitBranch",
-    lessons: [],
-  },
-  "mrag-multiagent-module-7": {
-    category: "Multimodal RAG",
-    title: "Multiagent - Module 7",
-    icon: "GitBranch",
-    lessons: [],
-  },
-  "mrag-multiagent-module-9": {
-    category: "Multimodal RAG",
-    title: "Multiagent - Module 9",
-    icon: "GitBranch",
-    lessons: [],
-  },
-  "mrag-multiagent-module-10": {
-    category: "Multimodal RAG",
-    title: "Multiagent - Module 10",
-    icon: "GitBranch",
-    lessons: [],
-  },
-  "mrag-multiagent-module-11": {
-    category: "Multimodal RAG",
-    title: "Multiagent - Module 11",
-    icon: "GitBranch",
-    lessons: [],
-  },
-  "mrag-multiagent-module-12": {
-    category: "Multimodal RAG",
-    title: "Multiagent - Module 12",
-    icon: "GitBranch",
-    lessons: [],
-  },
-  "mrag-multiagent-module-13": {
-    category: "Multimodal RAG",
-    title: "Multiagent - Module 13",
-    icon: "GitBranch",
-    lessons: [],
-  },
-  "mrag-module-1": {
-    category: "Multimodal RAG",
-    title: "Introduction",
-    icon: "BookOpen",
-    lessons: [],
-  },
-  "mrag-module-2": {
-    category: "Multimodal RAG",
-    title: "Embedding Spaces",
-    icon: "Image",
-    lessons: [],
-  },
-  "mrag-module-3": {
-    category: "Multimodal RAG",
-    title: "Pretraining Signals to Vision-Language Models",
-    icon: "Layers",
-    lessons: [],
-  },
-  "mrag-module-4": {
-    category: "Multimodal RAG",
-    title: "Vision-Language Models",
-    icon: "Eye",
-    lessons: [],
-  },
-  "mrag-module-5": {
-    category: "Multimodal RAG",
-    title: "Storage, Chunking, metadata&retrival",
-    icon: "Database",
-    lessons: [],
-  },
-  "mrag-module-6": {
-    category: "Multimodal RAG",
-    title: "MRAG",
-    icon: "Search",
-    lessons: [],
-  },
-  "mrag-module-7": {
-    category: "Multimodal RAG",
-    title: "Evaluation & Debugging in Multimodal RAG",
-    icon: "FlaskConical",
-    lessons: [],
-  },
-  "mrag-module-8": {
-    category: "Multimodal RAG",
-    title: "Efficient Fine-Tuning & Preference Alignment",
-    icon: "Cpu",
-    lessons: [],
-  },
-  "mrag-module-9": {
-    category: "Multimodal RAG",
-    title: "Chatbots, AI Agents, and Multimodal Agents",
-    icon: "MessageSquare",
-    lessons: [],
-  },
-  "mrag-module-10": {
-    category: "Multimodal RAG",
-    title: "Single-Agent Paradigms Beyond ReAct",
-    icon: "Zap",
-    lessons: [],
-  },
-  "mrag-module-11": {
-    category: "Multimodal RAG",
-    title: "Agentic Retrieval-Augmented Generation",
-    icon: "GitBranch",
-    lessons: [],
-  },
-  "mrag-module-12": {
-    category: "Multimodal RAG",
-    title: "Multi-Agent Systems in Multimodal AI",
-    icon: "Lock",
-    lessons: [],
-  },
-  "mrag-module-13": {
-    category: "Multimodal RAG",
-    title: "Memory, Safety, Evaluation & Optimization",
-    icon: "Sparkles",
-    lessons: [],
-  },
-  "ml-module-1": {
-    category: "Machine Learning",
-    title: "Machine Learning - Module 1",
-    icon: "BookOpen",
-    lessons: [],
-  },
-  "ml-module-2": {
-    category: "Machine Learning",
-    title: "Machine Learning - Module 2",
-    icon: "Search",
-    lessons: [],
-  },
-  "ml-module-3": {
-    category: "Machine Learning",
-    title: "Machine Learning - Module 3",
-    icon: "Network",
-    lessons: [],
-  },
-  "clustering-module0": {
-    category: "Clustering",
-    title: "Module 0: Course Overview",
-    icon: "GitBranch",
-    lessons: [],
-  },
-  "clustering-module1": {
-    category: "Clustering",
-    title: "Module 1: Introduction to Clustering",
-    icon: "BookOpen",
-    lessons: [],
-  },
-  "clustering-module2": {
-    category: "Clustering",
-    title: "Module 2: K-Means & K-Medoids",
-    icon: "Cpu",
-    lessons: [],
-  },
-  "clustering-module3": {
-    category: "Clustering",
-    title: "Module 3: Hierarchical & Density-based",
-    icon: "Network",
-    lessons: [],
-  },
-  "clustering-module4": {
-    category: "Clustering",
-    title: "Module 4: Evaluation & Validation",
-    icon: "FlaskConical",
-    lessons: [],
-  },
-  "clustering-module5": {
-    category: "Clustering",
-    title: "Module 5: Gaussian Mixture Models",
-    icon: "Brain",
-    lessons: [],
-  },
-  "clustering-module6": {
-    category: "Clustering",
-    title: "Module 6: Spectral Clustering",
-    icon: "Network",
-    lessons: [],
-  },
-  "clustering-module7": {
-    category: "Clustering",
-    title: "Module 7: Dimensionality Reduction",
-    icon: "Sparkles",
-    lessons: [],
-  },
-  "clustering-module8": {
-    category: "Clustering",
-    title: "Module 8: Large-scale Algorithms",
-    icon: "ServerCog",
-    lessons: [],
-  },
-  "clustering-module9": {
-    category: "Clustering",
-    title: "Module 9: Time Series Clustering",
-    icon: "Clock",
-    lessons: [],
-  },
-  "clustering-module10": {
-    category: "Clustering",
-    title: "Module 10: Anomaly Detection",
-    icon: "Search",
-    lessons: [],
-  },
-  "clustering-module11": {
-    category: "Clustering",
-    title: "Module 11: Capstone Project",
-    icon: "Code2",
-    lessons: [],
-  },
-  "clustering-module12": {
-    category: "Clustering",
-    title: "Module 12",
-    icon: "Layers",
-    lessons: [],
-  },
-  "clustering-module13": {
-    category: "Clustering",
-    title: "Module 13",
-    icon: "BookOpen",
-    lessons: [],
-  },
-  "clustering-module14": {
-    category: "Clustering",
-    title: "Module 14",
-    icon: "Search",
-    lessons: [],
-  },
-  "clustering-module15": {
-    category: "Clustering",
-    title: "Module 15",
-    icon: "FlaskConical",
-    lessons: [],
-  },
-  "clustering-module16": {
-    category: "Clustering",
-    title: "Module 16",
-    icon: "Cpu",
-    lessons: [],
-  },
-  "clustering-module17": {
-    category: "Clustering",
-    title: "Module 17",
-    icon: "Network",
-    lessons: [],
-  },
-  "clustering-module18": {
-    category: "Clustering",
-    title: "Module 18",
-    icon: "Brain",
-    lessons: [],
-  },
-  "clustering-module19": {
-    category: "Clustering",
-    title: "Module 19",
-    icon: "Sparkles",
-    lessons: [],
-  },
-  "clustering-module20": {
-    category: "Clustering",
-    title: "Module 20",
-    icon: "ServerCog",
-    lessons: [],
-  },
-  "clustering-module21": {
-    category: "Clustering",
-    title: "Module 21",
-    icon: "Code2",
-    lessons: [],
-  },
-  "langgraph-module-1": {
-    category: "LangGraph",
-    title: "Module 1",
-    icon: "GitBranch",
-    lessons: [],
-  },
-  "langgraph-module-2": {
-    category: "LangGraph",
-    title: "Module 2",
-    icon: "GitBranch",
-    lessons: [],
-  },
-  "langgraph-module-3": {
-    category: "LangGraph",
-    title: "Module 3",
-    icon: "GitBranch",
-    lessons: [],
-  },
-  "langgraph-module-4": {
-    category: "LangGraph",
-    title: "Module 4",
-    icon: "GitBranch",
-    lessons: [],
-  },
-  "langgraph-module-5": {
-    category: "LangGraph",
-    title: "Module 5",
-    icon: "GitBranch",
-    lessons: [],
-  },
-  "langgraph-module-6": {
-    category: "LangGraph",
-    title: "Module 6",
-    icon: "GitBranch",
-    lessons: [],
-  },
-  "langgraph-module-7": {
-    category: "LangGraph",
-    title: "Module 7",
-    icon: "GitBranch",
-    lessons: [],
-  },
-  "langgraph-module-8": {
-    category: "LangGraph",
-    title: "Module 8",
-    icon: "GitBranch",
-    lessons: [],
+const S = {
+  primaryBtn: {
+    display: "flex", alignItems: "center", gap: "6px",
+    padding: "6px 14px", borderRadius: "8px",
+    background: "var(--color-primary-text)", color: "var(--color-app-bg)",
+    border: "none", cursor: "pointer", fontSize: "13px", fontWeight: 600,
+    flexShrink: 0,
+  },
+  outlineBtn: {
+    display: "flex", alignItems: "center", gap: "6px",
+    padding: "8px 16px", borderRadius: "8px",
+    border: "1px solid var(--color-border)", background: "transparent",
+    cursor: "pointer", color: "var(--color-primary-text)",
+    fontSize: "13px", fontWeight: 600,
+  },
+  iconBtn: {
+    display: "flex", alignItems: "center", justifyContent: "center",
+    width: "32px", height: "32px", borderRadius: "8px",
+    border: "1px solid var(--color-border)", background: "transparent",
+    cursor: "pointer", color: "var(--color-muted-text)",
+    flexShrink: 0,
+  },
+  compactBtn: {
+    display: "flex", alignItems: "center", gap: "3px",
+    padding: "5px 9px", borderRadius: "8px",
+    border: "1px solid var(--color-border)", background: "transparent",
+    cursor: "pointer", color: "var(--color-primary-text)",
+    fontSize: "11px", fontWeight: 600, flexShrink: 0,
   },
 };
 
-/**
- * HIGH-ACCURACY HTML parser for Google Docs / DOCX-converted HTML.
- *
- * Handles:
- *  - Real heading tags: h1, h2, h3, h4
- *  - Google Docs class-based pseudo-headings (e.g. class="heading-1", "c-title")
- *  - Nested styled spans inside headings (extracts clean innerText)
- *  - Stable slugified IDs (no duplicate IDs, no off-by-one errors)
- *  - Promotes h1 → main topic if no h2 exists in the document
- *  - Accurate chapter card index (1-based, matches visible numbering)
- */
-function processHtml(rawHtml) {
-  const parser = new DOMParser();
-  const doc = parser.parseFromString(rawHtml, "text/html");
+// ─── Pure utilities ───────────────────────────────────────────────────────────
 
-  // Step 1: Normalize Google Docs class-based headings into real <h2>/<h3>
-  // Google Docs exports sometimes use <p class="heading-1"> or <p class="c1 title">
-  const GCLASS_MAP = {
-    "heading-1": "h2", // treat Heading 1 from Docs as H2 (main topic)
-    "heading-2": "h3", // treat Heading 2 from Docs as H3 (sub-topic)
-    "heading-3": "h4",
-    "c-title": "h2",
-  };
-
-  doc.querySelectorAll("p, div").forEach((el) => {
-    const cls = el.className?.toLowerCase() ?? "";
-    for (const [gClass, tag] of Object.entries(GCLASS_MAP)) {
-      if (cls.includes(gClass)) {
-        const newEl = doc.createElement(tag);
-        newEl.innerHTML = el.innerHTML;
-        el.replaceWith(newEl);
-        break;
-      }
-    }
-  });
-
-  // Step 1.5: Fallback for poorly formatted docs (no headings, just bold paragraphs)
-  if (!doc.querySelector("h1, h2, h3, h4")) {
-    doc.querySelectorAll("p").forEach((el) => {
-      const strong = el.querySelector("strong, b");
-      if (strong) {
-        const pText = el.textContent.trim();
-        const sText = strong.textContent.trim();
-        // If the paragraph text exactly matches the bold text, it's acting as a heading!
-        if (pText === sText && pText.length > 2) {
-          const newEl = doc.createElement("h2");
-          newEl.innerHTML = el.innerHTML;
-          el.replaceWith(newEl);
-        }
-      }
-    });
-  }
-
-  // Step 2: Determine which heading tags are "main topic" vs "sub topic"
-  // Strategy: if doc has h2s → use h2=topic, h3/h4=sub. If only h1s → use h1=topic, h2=sub.
-  const hasH2 = doc.querySelector("h2") !== null;
-  const [TOPIC_TAG, SUB_TAG] = hasH2 ? ["h2", "h3,h4"] : ["h1", "h2,h3"];
-
-  // Step 3: Build a flat ordered list of all relevant headings
-  const allHeadings = doc.querySelectorAll(`${TOPIC_TAG}, ${SUB_TAG}`);
-
-  const extractedLessons = [];
-  const rawToc = [];
-  const usedSlugs = new Map(); // slug → count, for deduplication
-
-  let currentLesson = null;
-  let lessonCounter = 0; // 1-based after first topic found
-  let subTopicCounter = 0;
-
-  /** Slugify + deduplicate an ID */
-  const makeId = (prefix, rawText) => {
-    const base = `${prefix}-${rawText
-      .toLowerCase()
-      .replace(/[^\w\s-]/g, "")     // remove non-word chars
-      .trim()
-      .replace(/[\s_]+/g, "-")      // spaces → hyphens
-      .replace(/-+/g, "-")          // collapse multiple hyphens
-      .slice(0, 60)}`;              // cap length
-
-    const count = usedSlugs.get(base) ?? 0;
-    usedSlugs.set(base, count + 1);
-    return count === 0 ? base : `${base}-${count}`;
-  };
-
-  /** Extract human-readable text from a heading, stripping invisible chars */
-  const getTitle = (el) =>
-    (el.innerText ?? el.textContent ?? "")
-      .replace(/\u00A0/g, " ")  // non-breaking space → normal space
-      .replace(/\s+/g, " ")     // collapse whitespace
-      .trim();
-
-  allHeadings.forEach((h) => {
-    const tag = h.tagName.toLowerCase();
-    const title = getTitle(h);
-    if (!title) return; // skip empty headings
-
-    const isTopicTag = tag === TOPIC_TAG;
-
-    if (isTopicTag) {
-      lessonCounter++;
-      subTopicCounter = 0;
-
-      const id = h.id && !usedSlugs.has(h.id)
-        ? h.id                              // keep existing well-formed id
-        : makeId("section", title);
-
-      h.id = id;
-      usedSlugs.set(id, 1);
-
-      currentLesson = {
-        id,
-        title,
-        duration: "Read",
-        type: "Theory",
-        completed: false,
-        subTopics: [],
-      };
-      extractedLessons.push(currentLesson);
-
-      rawToc.push({ id, title, level: "h2", index: lessonCounter });
-
-    } else {
-      // Sub-topic heading (h3 / h4 / h2 in h1-mode)
-
-      // If an orphan sub-topic appears before the first main topic, create an implicit one
-      if (!currentLesson) {
-        lessonCounter++;
-        const implicitId = makeId("section", "Introduction");
-        currentLesson = {
-          id: implicitId,
-          title: "Introduction",
-          duration: "Read",
-          type: "Theory",
-          completed: false,
-          subTopics: [],
-        };
-        extractedLessons.push(currentLesson);
-        rawToc.push({ id: implicitId, title: "Introduction", level: "h2", index: lessonCounter });
-      }
-
-      subTopicCounter++;
-      const id = h.id && !usedSlugs.has(h.id)
-        ? h.id
-        : makeId(`sub-${lessonCounter}`, title);
-
-      h.id = id;
-      usedSlugs.set(id, 1);
-
-      currentLesson.subTopics.push({ id, title, completed: false });
-      rawToc.push({ id, title, level: "h3" });
-    }
-  });
-
-  // Step 4: Compute estimated read time (avg 200 wpm)
-  const words = (doc.body.textContent || "").trim().split(/\s+/).filter(Boolean).length;
-  const readTime = Math.max(1, Math.ceil(words / 200));
-
-  return { html: doc.body.innerHTML, toc: extractedLessons, rawToc, readTime };
+function getWordCount(html) {
+  return html
+    .replace(/<[^>]+>/g, " ")
+    .trim()
+    .split(/\s+/)
+    .filter(Boolean).length;
 }
 
-// These are hardcoded lessons for all courses other than the ones under Prompt Engineering and Video Processing.
-const LESSONS = [
-  {
-    id: 1,
-    title: "What is an AI Agent?",
-    duration: "10m",
-    type: "Theory",
-    completed: true,
-    subTopics: [
-      { id: "1.1", title: "The Problem Statement", completed: true },
-      { id: "1.2", title: "LLM vs Agent Comparison", completed: true },
-      { id: "1.3", title: "Real-world Examples", completed: false },
-    ],
-  },
-  {
-    id: 2,
-    title: "LLM vs AI Agents",
-    duration: "15m",
-    type: "Theory",
-    completed: false,
-    subTopics: [
-      { id: "2.1", title: "Architecture Differences", completed: false },
-      { id: "2.2", title: "When to Use Each", completed: false },
-    ],
-  },
-  {
-    id: 3,
-    title: "Core Components: Perception",
-    duration: "20m",
-    type: "Theory",
-    completed: false,
-    subTopics: [
-      { id: "3.1", title: "Input Modalities", completed: false },
-      { id: "3.2", title: "Parsing User Intent", completed: false },
-      { id: "3.3", title: "Environment Sensing", completed: false },
-    ],
-  },
-  {
-    id: 4,
-    title: "Core Components: Reasoning",
-    duration: "25m",
-    type: "Practice",
-    completed: false,
-    subTopics: [
-      { id: "4.1", title: "Chain-of-Thought", completed: false },
-      { id: "4.2", title: "ReAct Framework", completed: false },
-    ],
-  },
-  {
-    id: 5,
-    title: "Action & Tool Use",
-    duration: "30m",
-    type: "Practice",
-    completed: false,
-    subTopics: [
-      { id: "5.1", title: "Function Calling", completed: false },
-      { id: "5.2", title: "API Tool Integration", completed: false },
-      { id: "5.3", title: "Browser & Code Tools", completed: false },
-    ],
-  },
-  {
-    id: 6,
-    title: "Memory & Context",
-    duration: "15m",
-    type: "Theory",
-    completed: false,
-    subTopics: [
-      { id: "6.1", title: "Short-Term Memory", completed: false },
-      { id: "6.2", title: "Long-Term Memory Stores", completed: false },
-    ],
-  },
-  {
-    id: 7,
-    title: "Building your first Agent",
-    duration: "45m",
-    type: "Project",
-    completed: false,
-    subTopics: [
-      { id: "7.1", title: "Project Setup", completed: false },
-      { id: "7.2", title: "Implementing the Loop", completed: false },
-      { id: "7.3", title: "Testing & Evaluation", completed: false },
-      { id: "7.4", title: "Deployment", completed: false },
-    ],
-  },
-];
+function getBackgroundLuminance(doc) {
+  const parts =
+    window.getComputedStyle(doc.body).backgroundColor.match(/\d+/g) ??
+    ["255", "255", "255"];
+  const [r, g, b] = parts.map(Number);
+  return (0.299 * r + 0.587 * g + 0.114 * b) / 255;
+}
 
-const deriveCourseConfig = (id) => {
-  const m = /^stats-prob-(\d+)-(\d+)$/.exec(id || "");
-  if (!m) return null;
+function persistRecentlyViewed(id, group) {
+  try {
+    const prev  = JSON.parse(localStorage.getItem(LS_RECENT_KEY) ?? "[]");
+    const entry = { id, title: formatTitle(id), group: group.label, category: group.category, visitedAt: Date.now() };
+    const next  = [entry, ...prev.filter((r) => r.id !== id)].slice(0, MAX_RECENT);
+    localStorage.setItem(LS_RECENT_KEY, JSON.stringify(next));
+  } catch {
+    // localStorage unavailable — non-fatal
+  }
+}
 
-  return {
-    category: "Data Science",
-    title: `Statistics and Probability — Module ${m[1]}.${m[2]}`,
-    icon: "FlaskConical",
-    lessons: [],
-  };
-};
+function injectDarkMode(doc, isDark) {
+  doc.getElementById(IFRAME_DARK_ID)?.remove();
+  if (!isDark) return;
+  if (getBackgroundLuminance(doc) <= 0.5) return; // already dark
 
-const resolveCourseConfig = (id) => COURSE_CONFIGS[id] ?? deriveCourseConfig(id);
+  const style = doc.createElement("style");
+  style.id = IFRAME_DARK_ID;
+  style.textContent = [
+    "html { filter: invert(1) hue-rotate(180deg); }",
+    "img, video, canvas, svg image { filter: invert(1) hue-rotate(180deg); }",
+  ].join("\n");
+  doc.head.appendChild(style);
+}
 
-export default function CourseContent() {
-  const { id } = useParams();
-  const navigate = useNavigate();
-  const location = useLocation();
-  const fromPathIds = location.state?.fromPathIds || [];
-  const format = location.state?.format || 'conceptual'; // 'conceptual' (HTML) or 'depth' (IPYNB)
+function injectFontSize(doc, size) {
+  doc.getElementById(IFRAME_FONT_ID)?.remove();
+  if (size === FONT_SIZE_DEFAULT) return;
 
-  /* Resolve course-specific config (for HTML-backed courses) */
-  const courseConfig = resolveCourseConfig(id);
-  const activeLessons = courseConfig ? courseConfig.lessons : LESSONS;
+  const style = doc.createElement("style");
+  style.id = IFRAME_FONT_ID;
+  style.textContent = `html { font-size: ${size}px !important; }`;
+  doc.head.appendChild(style);
+}
 
-  const [lessons, setLessons] = useState(activeLessons);
-  const [currentLesson, setLesson] = useState(activeLessons[0]?.id ?? 1);
-  const [activeSubTopic, setSubTopic] = useState(null);
-  const [expandedLesson, setExpanded] = useState(activeLessons[0]?.id ?? 1);
-  const [sidebarOpen, setSidebar] = useState(false);
-  const [focusMode, setFocusMode] = useState(false);
+// ─── Custom hooks ─────────────────────────────────────────────────────────────
 
-  /* Reader enhancements */
-  const [tocItems, setTocItems] = useState([]); // nested toc items for sidebar
-  const [rawTocItems, setRawTocItems] = useState([]); // raw h2 items for chapter card
-  const [readTime, setReadTime] = useState(0);
-  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
-  const [chapterCard, setChapterCard] = useState({ visible: false, title: "", index: 0 });
-  const [toast, setToast] = useState({ visible: false, icon: "", msg: "" });
-  const scrollContainerRef = useRef(null);
-  const proseContentRef = useRef(null);
-  const progressBarRef = useRef(null);
-  const rafIdRef = useRef(null);
-  const milestoneShownRef = useRef(new Set());
-  const chapterTimerRef = useRef(null);
-  const toastTimerRef = useRef(null);
-  const sidebarTocRef = useRef(null);
-
-  /* Re-initialise lessons + reader state when route changes */
+function useTheme() {
+  const [isDark, setIsDark] = useState(
+    () => document.documentElement.classList.contains("dark")
+  );
   useEffect(() => {
-    const cfg = resolveCourseConfig(id);
-    const ls = cfg ? cfg.lessons : LESSONS;
-    setLessons(ls);
-    setLesson(ls[0]?.id ?? 1);
-    setExpanded(ls[0]?.id ?? 1);
-    setSubTopic(null);
-    const isHtmlCourse = !!(COURSE_HTML_MAP[id]);
-    setSidebarCollapsed(isHtmlCourse);
-    if (progressBarRef.current) progressBarRef.current.style.width = "0%";
-    setTocItems([]);
-    setRawTocItems([]);
-    setReadTime(0);
-    milestoneShownRef.current.clear();
-    setChapterCard({ visible: false, title: "", index: 0 });
-    setToast({ visible: false, icon: "", msg: "" });
-  }, [id]);
-
-  /* HTML-doc course support */
-  // Choose file based on format: conceptual (HTML) or depth (IPYNB)
-  const htmlFile = format === 'depth' && COURSE_IPYNB_MAP[id] 
-    ? COURSE_IPYNB_MAP[id] 
-    : COURSE_HTML_MAP[id] ?? null;
-  const isIframeCourse = !!htmlFile && IFRAME_COURSES.has(id);
-  const [docHtml, setDocHtml] = useState("");
-  const [docLoading, setDocLoading] = useState(false);
-  const [iframeLoaded, setIframeLoaded] = useState(false);
-  const [quizData, setQuizData] = useState(null);
-  const [quizModalOpen, setQuizModalOpen] = useState(false);
-
-  useEffect(() => {
-    setIframeLoaded(false);
-  }, [id, htmlFile]);
-
-  /* Interactive Highlights & Notes */
-  const [notesState, setNotesState] = useState(() => {
-    try { return JSON.parse(localStorage.getItem(`marevlo_notes_${id}`) || "[]"); }
-    catch { return []; }
-  });
-  const [selectionMenu, setSelectionMenu] = useState(null);
-  const [notesPanelOpen, setNotesPanelOpen] = useState(false);
-
-  // Save notes to localStorage
-  useEffect(() => {
-    if (id) {
-      localStorage.setItem(`marevlo_notes_${id}`, JSON.stringify(notesState));
-    }
-  }, [notesState, id]);
-
-  // Selection listener
-  useEffect(() => {
-    const handleSelection = () => {
-      const selection = window.getSelection();
-      if (!selection || selection.isCollapsed || !proseContentRef.current) {
-        setSelectionMenu(null);
-        return;
-      }
-      if (!proseContentRef.current.contains(selection.anchorNode)) return;
-
-      const text = selection.toString().trim();
-      if (text.length < 3) {
-        setSelectionMenu(null);
-        return;
-      }
-
-      const range = selection.getRangeAt(0);
-      const rect = range.getBoundingClientRect();
-
-      setSelectionMenu({
-        text,
-        rect: { top: rect.top, left: rect.left, width: rect.width }
-      });
-    };
-
-    document.addEventListener("selectionchange", handleSelection);
-    return () => document.removeEventListener("selectionchange", handleSelection);
-  }, []);
-
-  // Apply highlights when docHtml or notes change
-  useEffect(() => {
-    if (!proseContentRef.current || !docHtml) return;
-
-    const container = proseContentRef.current;
-
-    // 1. Un-wrap old highlights
-    const oldMarks = container.querySelectorAll("mark.custom-highlight");
-    oldMarks.forEach(m => {
-       const parent = m.parentNode;
-       while (m.firstChild) parent.insertBefore(m.firstChild, m);
-       parent.removeChild(m);
-    });
-
-    if (notesState.length === 0) return;
-
-    // 2. Apply new highlights using TreeWalker
-    notesState.forEach(note => {
-        const walker = document.createTreeWalker(container, NodeFilter.SHOW_TEXT, null, false);
-        let node;
-        let matchFound = false;
-
-        while ((node = walker.nextNode()) && !matchFound) {
-            const idx = node.nodeValue.indexOf(note.text);
-            if (idx !== -1) {
-               const matchNode = node.splitText(idx);
-               matchNode.splitText(note.text.length);
-
-               const mark = document.createElement("mark");
-               mark.className = `custom-highlight ${note.color} rounded px-0.5 cursor-pointer relative group transition-colors`;
-               if (note.note) mark.title = note.note;
-               mark.onclick = () => setNotesPanelOpen(true);
-
-               matchNode.parentNode.insertBefore(mark, matchNode);
-               mark.appendChild(matchNode);
-               matchFound = true;
-            }
-        }
-    });
-  }, [docHtml, notesState]);
-
-  const handleAddHighlight = (colorClass) => {
-    if (!selectionMenu) return;
-
-    // Find current lesson title for context
-    const currentLessonData = activeLessons.find(l => l.id === currentLesson);
-    const lessonTitle = currentLessonData?.title || "Course Content";
-
-    const newNote = {
-      id: "note_" + Date.now(),
-      text: selectionMenu.text,
-      color: colorClass,
-      note: "",
-      createdAt: new Date().toISOString(),
-      lessonId: currentLesson,
-      lessonTitle: lessonTitle,
-    };
-    setNotesState(prev => [newNote, ...prev]); // Newest first
-    window.getSelection()?.removeAllRanges();
-    setSelectionMenu(null);
-  };
-
-  useEffect(() => {
-    if (!htmlFile) {
-      setDocHtml("");
-      setTocItems([]);
-      setRawTocItems([]);
-      setReadTime(0);
-      setQuizData(null);
-      setDocLoading(false);
-      return;
-    }
-
-    if (isIframeCourse) {
-      // Avoid parsing/fetching iframe-based modules in the React reader pipeline.
-      setDocHtml("");
-      setTocItems([]);
-      setRawTocItems([]);
-      setReadTime(0);
-      setQuizData(null);
-      setDocLoading(false);
-      return;
-    }
-
-    setDocLoading(true);
-
-    const quizUrl = htmlFile.replace(/\.html$/, '_quiz.json');
-    fetch(quizUrl)
-      .then((r) => r.ok ? r.json() : null)
-      .then((data) => {
-        if (data && data.questions && data.questions.length > 0) {
-          setQuizData(data);
-        } else {
-          setQuizData(null);
-        }
-      })
-      .catch(() => setQuizData(null));
-
-    fetch(htmlFile)
-      .then((r) => r.text())
-      .then((raw) => {
-        const { html, toc, rawToc, readTime: rt } = processHtml(raw);
-        setDocHtml(html);
-        setTocItems(toc);     // Extracted dynamic lessons array
-        setRawTocItems(rawToc); // Raw list of headings
-        setReadTime(rt);
-        setLessons(toc); // Override lessons with the TOC dynamically extracted
-
-        // Auto-select first lesson
-        if (toc.length > 0) {
-          setLesson(toc[0].id);
-          setExpanded(toc[0].id);
-        }
-
-        setDocLoading(false);
-      })
-      .catch(() => { setDocHtml("<p>Failed to load content.</p>"); setDocLoading(false); });
-  }, [htmlFile, isIframeCourse]);
-
-  /* Auto-dismiss chapter card on Escape */
-  useEffect(() => {
-    const onKey = (e) => { if (e.key === "Escape") { setFocusMode(false); setChapterCard(c => ({ ...c, visible: false })); } };
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-  }, []);
-
-  /* Reading progress (direct DOM) + milestone celebrations (rAF throttled) */
-  const handleScroll = useCallback((e) => {
-    if (rafIdRef.current) return;
-    const el = e.currentTarget;
-    rafIdRef.current = requestAnimationFrame(() => {
-      rafIdRef.current = null;
-      const { scrollTop, scrollHeight, clientHeight } = el;
-      const max = scrollHeight - clientHeight;
-      const pct = max > 0 ? Math.min(100, Math.max(0, (scrollTop / max) * 100)) : 0;
-      if (progressBarRef.current) progressBarRef.current.style.width = `${pct}%`;
-
-      // Milestone toasts
-      const MILESTONES = [
-        { pct: 25, icon: "🎯", msg: "25% done — great start!" },
-        { pct: 50, icon: "🔥", msg: "Halfway there — you're on fire!" },
-        { pct: 75, icon: "⚡", msg: "75% — almost finished!" },
-        { pct: 100, icon: "🏆", msg: "Complete! Excellent work!" },
-      ];
-      MILESTONES.forEach(({ pct: target, icon, msg }) => {
-        if (pct >= target && !milestoneShownRef.current.has(target)) {
-          milestoneShownRef.current.add(target);
-          setToast({ visible: true, icon, msg });
-          clearTimeout(toastTimerRef.current);
-          toastTimerRef.current = setTimeout(
-            () => setToast(t => ({ ...t, visible: false })), 3500
-          );
-        }
-      });
-    });
-  }, []);
-
-  /* Mark HTML course sections as completed while scrolling */
-  useEffect(() => {
-    if (!htmlFile) return;
-
-    // Prevent reverse progress loops: only update if going forward
-    setLessons((prev) => {
-      let shouldUpdate = false;
-      const nextState = prev.map((l, lIdx) => {
-        const currIdx = prev.findIndex(x => x.id === currentLesson);
-        const isCompleted = lIdx <= currIdx;
-
-        let lChanged = l.completed !== isCompleted;
-
-        const newSubTopics = l.subTopics.map((sub, sIdx) => {
-          let subCompleted = false;
-          if (lIdx < currIdx) subCompleted = true;
-          else if (lIdx === currIdx) {
-            const activeSubIdx = l.subTopics.findIndex(x => x.id === activeSubTopic);
-            if (activeSubIdx !== -1 && sIdx <= activeSubIdx) subCompleted = true;
-          }
-          // Do not un-complete lessons if scrolling up
-          if (sub.completed) subCompleted = true;
-
-          if (sub.completed !== subCompleted) shouldUpdate = true;
-          return sub.completed !== subCompleted ? { ...sub, completed: subCompleted } : sub;
-        });
-
-        if (lChanged) shouldUpdate = true;
-
-        return (lChanged || shouldUpdate)
-          ? { ...l, completed: isCompleted || l.completed, subTopics: newSubTopics }
-          : l;
-      });
-      return shouldUpdate ? nextState : prev;
-    });
-  }, [currentLesson, activeSubTopic, htmlFile]);
-
-  /* Active section tracking and Cinematic chapter card */
-  useEffect(() => {
-    if (!docHtml || !proseContentRef.current) return;
-    const seenIds = new Set();
-    let scrollTimeout = null;
-
-    const observer = new IntersectionObserver(
-      (entries) => {
-        entries.forEach((entry) => {
-          if (entry.isIntersecting) {
-
-            // Chapter card logic (only for H2s) - FIRES IMMEDIATELY
-            if (!seenIds.has(entry.target.id) && entry.target.tagName.toLowerCase() === "h2") {
-              seenIds.add(entry.target.id);
-              const node = rawTocItems.find(t => t.id === entry.target.id);
-              if (node) {
-                const title = entry.target.textContent.trim().slice(0, 90);
-                setChapterCard({ visible: true, title, index: node.index });
-                clearTimeout(chapterTimerRef.current);
-                chapterTimerRef.current = setTimeout(
-                  () => setChapterCard(c => ({ ...c, visible: false })), 2200
-                );
-              }
-            }
-
-            // Sync sidebar active states based on visible header (DEBOUNCED)
-            if (scrollTimeout) clearTimeout(scrollTimeout);
-            scrollTimeout = setTimeout(() => {
-              const targetId = entry.target.id;
-
-              const matchedLesson = tocItems.find(l => l.id === targetId);
-              if (matchedLesson) {
-                setLesson(matchedLesson.id);
-                setExpanded(matchedLesson.id);
-                setSubTopic(null);
-              } else {
-                tocItems.forEach(l => {
-                  const matchedSub = l.subTopics.find(sub => sub.id === targetId);
-                  if (matchedSub) {
-                    setLesson(l.id);
-                    setExpanded(l.id); // Also expand its parent
-                    // React batches these internally so it only causes one re-render queue
-                    setSubTopic(matchedSub.id);
-                  }
-                });
-              }
-            }, 60); // 60ms debounce for buttery scrolling
-          }
-        });
-      },
-      { rootMargin: "-10% 0px -85% 0px", threshold: 0 }
+    const observer = new MutationObserver(() =>
+      setIsDark(document.documentElement.classList.contains("dark"))
     );
-    const headings = proseContentRef.current.querySelectorAll("h2, h3");
-    headings.forEach(h => observer.observe(h));
-    return () => {
-      observer.disconnect();
-      if (scrollTimeout) clearTimeout(scrollTimeout);
-    };
-  }, [docHtml, tocItems, rawTocItems]);
-
-  /* Auto-scroll sidebar TOC to keep active lesson visible */
-  useEffect(() => {
-    if (!sidebarTocRef.current || !currentLesson) return;
-
-    // Small delay to ensure DOM is fully rendered
-    const timeoutId = setTimeout(() => {
-      const container = sidebarTocRef.current;
-      if (!container) return;
-
-      // Find the active lesson button in the sidebar
-      const activeLessonBtn = container.querySelector(`[data-lesson-id="${currentLesson}"]`);
-      if (!activeLessonBtn) return;
-
-      // Get the lesson card div (parent of the button)
-      const lessonCard = activeLessonBtn.closest('[data-lesson-id]')?.parentElement;
-
-      if (lessonCard) {
-        // Use getBoundingClientRect for accurate positioning
-        const cardRect = lessonCard.getBoundingClientRect();
-        const containerRect = container.getBoundingClientRect();
-
-        // Calculate position of card relative to container
-        const cardTopRelativeToContainer = cardRect.top - containerRect.top + container.scrollTop;
-        const cardHeight = cardRect.height;
-        const containerHeight = containerRect.height;
-
-        // Calculate target scroll position to center the card
-        const targetScroll = cardTopRelativeToContainer - (containerHeight / 2) + (cardHeight / 2);
-
-        // Smooth scroll the container
-        container.scrollTo({
-          top: Math.max(0, targetScroll),
-          behavior: 'smooth'
-        });
-      }
-    }, 100);
-
-    return () => clearTimeout(timeoutId);
-  }, [currentLesson]);
-
-  /* Flat Structure mapping for unified progress & pagination */
-  const flatNodes = useMemo(() => {
-    const list = [];
-    lessons.forEach(l => {
-      // Push main topic
-      list.push({ isSub: false, parentId: null, ...l });
-      // Push all sub topics linearly
-      if (l.subTopics && l.subTopics.length > 0) {
-        l.subTopics.forEach(s => {
-          list.push({ isSub: true, parentId: l.id, ...s });
-        });
-      }
+    observer.observe(document.documentElement, {
+      attributes: true,
+      attributeFilter: ["class"],
     });
-    return list;
-  }, [lessons]);
+    return () => observer.disconnect();
+  }, []);
+  return isDark;
+}
 
-  const activeNodeId = activeSubTopic || currentLesson;
-  const currentIndex = flatNodes.findIndex(n => n.id === activeNodeId);
+function useLockBodyScroll() {
+  useEffect(() => {
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => { document.body.style.overflow = prev; };
+  }, []);
+}
 
-  // Progress computation directly mapped to flat linear progression
-  const completedCount = flatNodes.filter(n => n.completed).length;
-  // if no subtopics, length is same. In deep documents it combines h2+h3 count
-  const progress = flatNodes.length ? (completedCount / flatNodes.length) * 100 : 0;
+function useCourseData(htmlFile) {
+  const [status,   setStatus]   = useState("idle");
+  const [readTime, setReadTime] = useState(null);
 
-  const lesson = lessons.find((l) => l.id === currentLesson);
+  useEffect(() => {
+    if (!htmlFile) { setStatus("idle"); setReadTime(null); return; }
 
-  const goNext = () => {
-    const next = flatNodes[currentIndex + 1];
-    if (next) {
-      if (next.isSub) {
-        setLesson(next.parentId);
-        setExpanded(next.parentId);
-        setSubTopic(next.id);
-      } else {
-        setLesson(next.id);
-        setExpanded(next.id);
-        setSubTopic(null);
-      }
+    setStatus("loading");
+    setReadTime(null);
 
-      // Click-to-scroll to the heading if HTML course
-      if (htmlFile) {
-        document.getElementById(next.id)?.scrollIntoView({ behavior: "smooth" });
-      }
+    const controller = new AbortController();
+
+    fetch(htmlFile, { signal: controller.signal })
+      .then((res) => {
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        return res.text();
+      })
+      .then((html) => {
+        const minutes = Math.max(1, Math.round(getWordCount(html) / WORDS_PER_MINUTE));
+        setReadTime(minutes);
+        setStatus("ready");
+      })
+      .catch((err) => {
+        if (err.name === "AbortError") return;
+        setStatus("error");
+      });
+
+    return () => controller.abort();
+  }, [htmlFile]);
+
+  return { status, readTime };
+}
+
+function useIframeStyles(iframeRef, { isDark, fontSize, isLoaded }) {
+  const inject = useCallback(() => {
+    const iframe = iframeRef.current;
+    if (!iframe) return;
+    try {
+      const doc = iframe.contentDocument;
+      if (!doc?.head) return;
+      injectDarkMode(doc, isDark);
+      injectFontSize(doc, fontSize);
+    } catch {
+      // Cross-origin or document not ready — silently skip
     }
-  };
+  }, [iframeRef, isDark, fontSize]);
 
-  const goPrev = () => {
-    const prev = flatNodes[currentIndex - 1];
-    if (prev) {
-      if (prev.isSub) {
-        setLesson(prev.parentId);
-        setExpanded(prev.parentId);
-        setSubTopic(prev.id);
-      } else {
-        setLesson(prev.id);
-        setExpanded(prev.id);
-        setSubTopic(null);
-      }
+  useEffect(() => {
+    if (isLoaded) inject();
+  }, [isLoaded, inject]);
 
-      if (htmlFile) {
-        document.getElementById(prev.id)?.scrollIntoView({ behavior: "smooth" });
-      }
-    }
-  };
+  return inject;
+}
 
-  /* When a lesson row is clicked: select it + toggle its accordion */
-  const handleLessonClick = (l) => {
-    setLesson(l.id);
-    setSubTopic(null);
-    setExpanded((prev) => (prev === l.id ? null : l.id)); // toggle
-    setSidebar(false);
+function useKeyboardShortcuts({ onBack, onNext, onEscapeAll }) {
+  useEffect(() => {
+    const handle = (e) => {
+      if (e.key === "Escape") { onEscapeAll(); return; }
+      if (e.altKey && e.key === "ArrowLeft")  { e.preventDefault(); onBack(); return; }
+      if (e.altKey && e.key === "ArrowRight") { e.preventDefault(); onNext(); }
+    };
+    window.addEventListener("keydown", handle);
+    return () => window.removeEventListener("keydown", handle);
+  }, [onBack, onNext, onEscapeAll]);
+}
 
-    if (htmlFile) {
-      document.getElementById(l.id)?.scrollIntoView({ behavior: "smooth" });
-    }
-  };
+// ─── Sub-components ───────────────────────────────────────────────────────────
 
-  const handleSubTopicClick = (sub, e) => {
-    e.stopPropagation();
-    setSubTopic(sub.id);
+const Spinner = () => (
+  <div
+    aria-hidden="true"
+    style={{
+      width: "18px", height: "18px", flexShrink: 0,
+      border: "2px solid currentColor", borderTopColor: "transparent",
+      borderRadius: "50%", animation: "cc-spin 0.7s linear infinite",
+    }}
+  />
+);
 
-    if (htmlFile) {
-      document.getElementById(sub.id)?.scrollIntoView({ behavior: "smooth" });
-    }
-  };
+const LoadingOverlay = memo(({ topOffset }) => (
+  <div
+    role="status"
+    aria-label="Loading course content"
+    style={{
+      position: "absolute", inset: 0, top: topOffset, zIndex: 10,
+      display: "flex", alignItems: "center", justifyContent: "center",
+      background: "var(--color-app-bg)",
+    }}
+  >
+    <div style={{ display: "flex", alignItems: "center", gap: "10px", color: "var(--color-muted-text)", fontSize: "14px", fontWeight: 500 }}>
+      <Spinner />
+      Loading module…
+    </div>
+  </div>
+));
+LoadingOverlay.displayName = "LoadingOverlay";
 
-  /* Shared inline-style helpers */
-  const S = {
-    bg: { background: "var(--color-app-bg)", color: "var(--color-primary-text)" },
-    surface: { background: "var(--color-surface)", borderColor: "var(--color-border)" },
-    border: { borderColor: "var(--color-border)" },
-    muted: { color: "var(--color-muted-text)" },
-    primary: { color: "var(--color-primary-text)" },
-    inverted: { background: "var(--color-primary-text)", color: "var(--color-app-bg)" },
-  };
-  const hoverSurface = (e) => (e.currentTarget.style.background = "var(--color-surface-hover)");
-  const hoverClear = (e) => (e.currentTarget.style.background = "transparent");
-
-  return (
-    <div className="flex h-screen overflow-hidden" style={S.bg}>
-
-      {/* Floating "Exit Focus" pill */}
-      {focusMode && (
-        <button
-          onClick={() => setFocusMode(false)}
-          className="fixed top-4 right-4 z-50 flex items-center gap-2 px-4 py-2 rounded-full text-xs font-semibold shadow-xl transition-all hover:scale-105 active:scale-95"
-          style={S.inverted}
-          title="Exit Focus Mode (Esc)"
-        >
-          <Minimize2 size={13} /> Exit Focus
+const ErrorView = memo(({ id, onBack, onSkipNext }) => (
+  <div
+    role="alert"
+    style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: "12px", padding: "24px" }}
+  >
+    <AlertTriangle size={36} aria-hidden="true" style={{ color: "#f87171" }} />
+    <p style={{ fontSize: "15px", fontWeight: 700, color: "var(--color-primary-text)", margin: 0 }}>
+      Module not found
+    </p>
+    <p style={{ fontSize: "13px", color: "var(--color-muted-text)", margin: 0, textAlign: "center" }}>
+      The file for{" "}
+      <code style={{ background: "var(--color-surface-hover)", padding: "2px 6px", borderRadius: "4px" }}>
+        {id}
+      </code>{" "}
+      could not be loaded.
+    </p>
+    <div style={{ display: "flex", gap: "8px", marginTop: "4px" }}>
+      <button onClick={onBack} style={S.outlineBtn}>
+        <ArrowLeft size={13} aria-hidden="true" /> Back to Courses
+      </button>
+      {onSkipNext && (
+        <button onClick={onSkipNext} style={S.primaryBtn}>
+          Skip to Next <ChevronRight size={13} aria-hidden="true" />
         </button>
       )}
+    </div>
+  </div>
+));
+ErrorView.displayName = "ErrorView";
 
-      {/* SIDEBAR */}
-      {!focusMode && sidebarOpen && (
-        <div
-          className="fixed inset-0 z-30 bg-black/50 backdrop-blur-sm lg:hidden"
-          onClick={() => setSidebar(false)}
+const FullscreenPill = memo(({ onExit }) => (
+  <button
+    onClick={onExit}
+    aria-label="Exit fullscreen"
+    title="Exit fullscreen (Esc)"
+    style={{
+      position: "fixed", top: "14px", right: "16px", zIndex: 50,
+      display: "flex", alignItems: "center", gap: "6px",
+      padding: "6px 14px", borderRadius: "999px",
+      background: "rgba(0,0,0,0.65)", color: "#fff",
+      border: "1px solid rgba(255,255,255,0.15)",
+      backdropFilter: "blur(8px)",
+      cursor: "pointer", fontSize: "12px", fontWeight: 600,
+    }}
+  >
+    <Minimize2 size={13} aria-hidden="true" /> Exit Fullscreen
+  </button>
+));
+FullscreenPill.displayName = "FullscreenPill";
+
+const ModuleMapPanel = memo(({ group, siblings, currentId, onClose, onNavigate, siblingIndex }) => {
+  const progress = siblings.length > 1 ? (siblingIndex / (siblings.length - 1)) * 100 : 100;
+  return (
+    <>
+      <div
+        aria-hidden="true"
+        onClick={onClose}
+        className="cc-map-overlay"
+        style={{ position: "fixed", inset: 0, zIndex: 40, background: "rgba(0,0,0,0.5)", backdropFilter: "blur(6px)" }}
+      />
+      <aside
+        aria-label={`${group.label} module list`}
+        className="cc-map-panel"
+        style={{
+          position: "fixed", top: 0, right: 0, bottom: 0, width: "310px", zIndex: 50,
+          display: "flex", flexDirection: "column",
+          background: "var(--color-surface)",
+          borderLeft: "1px solid var(--color-border)",
+          boxShadow: "-24px 0 80px rgba(0,0,0,0.35)",
+        }}
+      >
+        {/* Panel header */}
+        <header style={{ padding: "18px 16px 0", flexShrink: 0 }}>
+          <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", marginBottom: "14px" }}>
+            <div style={{ minWidth: 0 }}>
+              <p style={{ fontSize: "15px", fontWeight: 700, color: "var(--color-primary-text)", margin: 0, letterSpacing: "-0.015em", lineHeight: 1.3 }}>
+                {group.label}
+              </p>
+              <div style={{ display: "flex", alignItems: "center", gap: "6px", marginTop: "5px" }}>
+                <span style={{
+                  display: "inline-flex", alignItems: "center",
+                  padding: "2px 8px", borderRadius: "999px",
+                  background: "rgba(99,102,241,0.12)", border: "1px solid rgba(99,102,241,0.25)",
+                  fontSize: "10px", fontWeight: 600, color: "#818cf8",
+                }}>
+                  {group.category}
+                </span>
+                <span style={{ fontSize: "11px", color: "var(--color-muted-text)" }}>
+                  {siblings.length} module{siblings.length !== 1 ? "s" : ""}
+                </span>
+              </div>
+            </div>
+            <button
+              onClick={onClose}
+              aria-label="Close module map"
+              className="cc-icon-btn"
+              style={{ ...S.iconBtn, flexShrink: 0, marginLeft: "8px" }}
+            >
+              <X size={14} aria-hidden="true" />
+            </button>
+          </div>
+
+          {/* Progress bar */}
+          <div style={{ marginBottom: "1px" }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "6px" }}>
+              <span style={{ fontSize: "10px", color: "var(--color-muted-text)", fontVariantNumeric: "tabular-nums" }}>
+                Module {siblingIndex + 1} of {siblings.length}
+              </span>
+              <span style={{ fontSize: "10px", fontWeight: 600, color: "#818cf8", fontVariantNumeric: "tabular-nums" }}>
+                {Math.round(progress)}%
+              </span>
+            </div>
+            <div style={{ height: "3px", borderRadius: "3px", background: "var(--color-surface-hover)", overflow: "hidden" }}>
+              <div style={{
+                height: "100%", borderRadius: "3px",
+                width: `${progress}%`,
+                background: "linear-gradient(90deg, #6366f1, #a78bfa)",
+                transition: "width 400ms cubic-bezier(0.4, 0, 0.2, 1)",
+              }} />
+            </div>
+          </div>
+
+          <div style={{ height: "1px", background: "var(--color-border)", margin: "14px -16px 0" }} />
+        </header>
+
+        {/* Module list */}
+        <nav
+          className="cc-map-scroll"
+          aria-label="Module navigation"
+          style={{ flex: 1, overflowY: "auto", padding: "8px 8px" }}
+        >
+          {siblings.map((sibId, idx) => {
+            const isActive = sibId === currentId;
+            return (
+              <button
+                key={sibId}
+                onClick={() => onNavigate(sibId)}
+                aria-current={isActive ? "page" : undefined}
+                className="cc-map-item"
+                style={{
+                  display: "flex", alignItems: "center", gap: "10px",
+                  width: "100%", padding: "9px 12px", borderRadius: "10px",
+                  border: isActive ? "1px solid rgba(99,102,241,0.35)" : "1px solid transparent",
+                  cursor: "pointer", textAlign: "left", marginBottom: "1px",
+                  background: isActive ? "linear-gradient(135deg, rgba(99,102,241,0.14), rgba(167,139,250,0.07))" : "transparent",
+                  outline: "none",
+                }}
+              >
+                <span style={{
+                  fontSize: "9px", fontWeight: 700, fontFamily: "monospace",
+                  color: isActive ? "#a78bfa" : "var(--color-muted-text)",
+                  minWidth: "20px", textAlign: "right", flexShrink: 0,
+                  fontVariantNumeric: "tabular-nums", letterSpacing: "0.03em",
+                }}>
+                  {String(idx + 1).padStart(2, "0")}
+                </span>
+                <span style={{
+                  fontSize: "12px", fontWeight: isActive ? 600 : 400,
+                  color: isActive ? "var(--color-primary-text)" : "var(--color-muted-text)",
+                  overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", flex: 1,
+                  lineHeight: 1.4,
+                }}>
+                  {formatTitle(sibId)}
+                </span>
+                {isActive && (
+                  <span aria-hidden="true" style={{
+                    width: "7px", height: "7px", borderRadius: "50%", flexShrink: 0,
+                    background: "#818cf8",
+                    boxShadow: "0 0 8px rgba(129,140,248,0.7)",
+                  }} />
+                )}
+              </button>
+            );
+          })}
+        </nav>
+
+        {/* Panel footer */}
+        <footer style={{
+          padding: "12px 16px", borderTop: "1px solid var(--color-border)", flexShrink: 0,
+          display: "flex", alignItems: "center", justifyContent: "center",
+          background: "var(--color-surface)",
+        }}>
+          <span style={{ fontSize: "11px", color: "var(--color-muted-text)", fontVariantNumeric: "tabular-nums" }}>
+            {siblingIndex + 1} / {siblings.length} &nbsp;·&nbsp; {group.label}
+          </span>
+        </footer>
+      </aside>
+    </>
+  );
+});
+ModuleMapPanel.displayName = "ModuleMapPanel";
+
+// ─── Main component ───────────────────────────────────────────────────────────
+
+export default function CourseContent() {
+  const { id }        = useParams();
+  const navigate      = useNavigate();
+  const location      = useLocation();
+  const fromPathIds   = location.state?.fromPathIds ?? [];
+  const iframeRef     = useRef(null);
+
+  const [isLoaded,    setIsLoaded]    = useState(false);
+  const [isFullscreen, setIsFullscreen] = useState(false);
+  const [mapOpen,     setMapOpen]     = useState(false);
+  const [fontSize,    setFontSize]    = useState(FONT_SIZE_DEFAULT);
+
+  const htmlFile = COURSE_HTML_MAP[id] ?? null;
+
+  // Fire-and-forget: records lesson progress without blocking navigation
+  const markLesson = useCallback((lessonId, courseId, lessonStatus) => {
+    const token = localStorage.getItem('access_token');
+    if (!token) return;
+    fetch(`${import.meta.env.VITE_API_URL}/learning/progress/${lessonId}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+      body: JSON.stringify({ course_id: courseId, status: lessonStatus }),
+    }).catch(() => {});
+  }, []);
+
+  // Derived navigation state — memoised to avoid recomputation on unrelated renders
+  const { prevId, nextId, group, siblings, siblingIndex } = useMemo(() => {
+    const sibs   = getGroupSiblings(id);
+    const sibIdx = sibs.indexOf(id);
+    return {
+      prevId:       sibIdx > 0 ? sibs[sibIdx - 1] : null,
+      nextId:       sibIdx < sibs.length - 1 ? sibs[sibIdx + 1] : null,
+      group:        getGroup(id),
+      siblings:     sibs,
+      siblingIndex: sibIdx,
+    };
+  }, [id]);
+
+  // Hooks
+  const isDark              = useTheme();
+  useLockBodyScroll();
+  const { status, readTime } = useCourseData(htmlFile);
+  const injectStyles        = useIframeStyles(iframeRef, { isDark, fontSize, isLoaded });
+
+  const isError = status === "error";
+
+  // Stable navigation callbacks
+  const goBack = useCallback(
+    () => navigate("/courses", { state: { pathIds: fromPathIds } }),
+    [navigate, fromPathIds]
+  );
+  const goPrev = useCallback(
+    () => prevId && navigate(`/course/${prevId}`, { state: { fromPathIds } }),
+    [prevId, navigate, fromPathIds]
+  );
+  const goNext = useCallback(() => {
+    if (!nextId) return;
+    markLesson(id, group.prefix, 'completed');
+    navigate(`/course/${nextId}`, { state: { fromPathIds } });
+  }, [nextId, id, group.prefix, markLesson, navigate, fromPathIds]);
+
+  useKeyboardShortcuts({
+    onBack:      goBack,
+    onNext:      goNext,
+    onEscapeAll: useCallback(() => { setIsFullscreen(false); setMapOpen(false); }, []),
+  });
+
+  // Persist recently-viewed entry once the file is confirmed accessible
+  useEffect(() => {
+    if (htmlFile && status === "ready") {
+      persistRecentlyViewed(id, group);
+    }
+  }, [id, htmlFile, status, group]);
+
+  // Reset loaded state when course changes
+  useEffect(() => { setIsLoaded(false); }, [id]);
+
+  const handleIframeLoad = useCallback(() => {
+    setIsLoaded(true);
+    // Small delay lets the iframe document settle before style injection
+    setTimeout(injectStyles, 60);
+  }, [injectStyles]);
+
+  const handleMapNavigate = useCallback((targetId) => {
+    navigate(`/course/${targetId}`, { state: { fromPathIds } });
+    setMapOpen(false);
+  }, [navigate, fromPathIds]);
+
+  // Mark lesson in_progress when content is ready
+  useEffect(() => {
+    if (status === 'ready') markLesson(id, group.prefix, 'in_progress');
+  }, [id, status, group.prefix, markLesson]);
+
+  const [markedDone, setMarkedDone] = useState(false);
+  const handleMarkDone = useCallback(() => {
+    markLesson(id, group.prefix, 'completed');
+    setMarkedDone(true);
+  }, [id, group.prefix, markLesson]);
+
+  // Reset done state when navigating to a new lesson
+  useEffect(() => { setMarkedDone(false); }, [id]);
+
+  const decreaseFontSize = useCallback(() => setFontSize((s) => Math.max(FONT_SIZE_MIN, s - FONT_SIZE_STEP)), []);
+  const increaseFontSize = useCallback(() => setFontSize((s) => Math.min(FONT_SIZE_MAX, s + FONT_SIZE_STEP)), []);
+
+  // ── Guard: no HTML file registered for this ID ──────────────────────────────
+  if (!htmlFile) {
+    return (
+      <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", height: "100vh", gap: "16px" }}>
+        <AlertTriangle size={32} aria-hidden="true" style={{ color: "var(--color-muted-text)" }} />
+        <p style={{ color: "var(--color-muted-text)", fontSize: "14px", margin: 0 }}>
+          No content registered for this course ID.
+        </p>
+        <button onClick={goBack} style={S.outlineBtn}>
+          <ArrowLeft size={14} aria-hidden="true" /> Back to Courses
+        </button>
+      </div>
+    );
+  }
+
+  // ── Render ───────────────────────────────────────────────────────────────────
+  return (
+    <div style={{ display: "flex", flexDirection: "column", height: "100vh", overflow: "hidden" }}>
+
+      {/* Top bar */}
+      {!isFullscreen && (
+        <header
+          style={{
+            display: "flex", alignItems: "center", justifyContent: "space-between",
+            padding: "0 16px", height: `${TOPBAR_HEIGHT}px`, flexShrink: 0,
+            borderBottom: "1px solid var(--color-border)",
+            background: "var(--color-surface)", gap: "8px",
+          }}
+        >
+          {/* Left — back + divider + breadcrumb */}
+          <div style={{ display: "flex", alignItems: "center", gap: "12px", minWidth: 0, overflow: "hidden" }}>
+            <button onClick={goBack} title="Back to courses (Alt+←)" className="cc-back-btn" style={S.primaryBtn}>
+              <ArrowLeft size={12} aria-hidden="true" /> Back
+            </button>
+
+            <div aria-hidden="true" style={{ width: "1px", height: "20px", background: "var(--color-border)", flexShrink: 0 }} />
+
+            <nav aria-label="Course breadcrumb" style={{ display: "flex", alignItems: "center", gap: "5px", minWidth: 0, overflow: "hidden" }}>
+              <span style={{ fontSize: "11px", color: "var(--color-muted-text)", whiteSpace: "nowrap" }}>
+                {group.category}
+              </span>
+              <ChevronRight size={9} aria-hidden="true" style={{ color: "var(--color-border)", flexShrink: 0 }} />
+              <span style={{ fontSize: "11px", color: "var(--color-muted-text)", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", maxWidth: "180px" }}>
+                {group.label}
+              </span>
+              <ChevronRight size={9} aria-hidden="true" style={{ color: "var(--color-border)", flexShrink: 0 }} />
+              <span
+                aria-current="page"
+                style={{
+                  fontSize: "10px", fontWeight: 700, whiteSpace: "nowrap", flexShrink: 0,
+                  color: "#818cf8",
+                  background: "rgba(99,102,241,0.12)",
+                  border: "1px solid rgba(99,102,241,0.28)",
+                  padding: "2px 9px", borderRadius: "999px",
+                  fontVariantNumeric: "tabular-nums",
+                }}
+              >
+                {siblingIndex + 1} / {siblings.length}
+              </span>
+            </nav>
+          </div>
+
+          {/* Right — controls */}
+          <div style={{ display: "flex", alignItems: "center", gap: "5px", flexShrink: 0 }}>
+
+            {/* Estimated read time */}
+            {readTime != null && (
+              <span style={{
+                display: "flex", alignItems: "center", gap: "4px",
+                fontSize: "10px", color: "var(--color-muted-text)",
+                padding: "4px 9px", borderRadius: "7px",
+                background: "var(--color-surface-hover)",
+                whiteSpace: "nowrap",
+              }}>
+                <Clock size={10} aria-hidden="true" /> ~{readTime} min
+              </span>
+            )}
+
+            <div aria-hidden="true" style={{ width: "1px", height: "18px", background: "var(--color-border)" }} />
+
+            {/* Font size controls */}
+            <div role="group" aria-label="Font size" style={{ display: "flex", alignItems: "center", gap: "1px" }}>
+              <button
+                onClick={decreaseFontSize}
+                disabled={fontSize <= FONT_SIZE_MIN}
+                aria-label="Decrease font size"
+                className="cc-compact-btn"
+                style={{ ...S.compactBtn, opacity: fontSize <= FONT_SIZE_MIN ? 0.3 : 1, padding: "5px 8px" }}
+              >
+                A−
+              </button>
+              <span
+                aria-live="polite"
+                style={{
+                  fontSize: "10px", color: "var(--color-muted-text)",
+                  minWidth: "30px", textAlign: "center",
+                  fontVariantNumeric: "tabular-nums",
+                }}
+              >
+                {fontSize}px
+              </span>
+              <button
+                onClick={increaseFontSize}
+                disabled={fontSize >= FONT_SIZE_MAX}
+                aria-label="Increase font size"
+                className="cc-compact-btn"
+                style={{ ...S.compactBtn, opacity: fontSize >= FONT_SIZE_MAX ? 0.3 : 1, padding: "5px 8px" }}
+              >
+                A+
+              </button>
+            </div>
+
+            <div aria-hidden="true" style={{ width: "1px", height: "18px", background: "var(--color-border)" }} />
+
+            {/* Prev / Next */}
+            <div style={{ display: "flex", alignItems: "center", gap: "3px" }}>
+              <button
+                onClick={goPrev}
+                disabled={!prevId}
+                title={prevId ? `Previous: ${formatTitle(prevId)}` : undefined}
+                aria-label={prevId ? `Previous module: ${formatTitle(prevId)}` : "No previous module"}
+                className="cc-compact-btn"
+                style={{ ...S.compactBtn, opacity: prevId ? 1 : 0.28, cursor: prevId ? "pointer" : "default" }}
+              >
+                <ChevronLeft size={12} aria-hidden="true" /> Prev
+              </button>
+              {nextId ? (
+                <button
+                  onClick={goNext}
+                  title={`Next: ${formatTitle(nextId)}`}
+                  aria-label={`Next module: ${formatTitle(nextId)}`}
+                  className="cc-compact-btn"
+                  style={S.compactBtn}
+                >
+                  Next <ChevronRight size={12} aria-hidden="true" />
+                </button>
+              ) : (
+                <button
+                  onClick={handleMarkDone}
+                  disabled={markedDone}
+                  aria-label="Mark this module as complete"
+                  className="cc-compact-btn"
+                  style={{
+                    ...S.compactBtn,
+                    background: markedDone ? 'rgba(34,197,94,0.12)' : 'transparent',
+                    borderColor: markedDone ? 'rgba(34,197,94,0.4)' : 'var(--color-border)',
+                    color: markedDone ? '#22c55e' : 'var(--color-primary-text)',
+                    opacity: markedDone ? 0.7 : 1,
+                  }}
+                >
+                  {markedDone ? '✓ Done' : 'Mark Done'}
+                </button>
+              )}
+            </div>
+
+            <div aria-hidden="true" style={{ width: "1px", height: "18px", background: "var(--color-border)" }} />
+
+            {/* Module map toggle */}
+            <button
+              onClick={() => setMapOpen((v) => !v)}
+              aria-expanded={mapOpen}
+              aria-label="Toggle module map"
+              title="Module map"
+              className="cc-icon-btn"
+              style={{ ...S.iconBtn, background: mapOpen ? "rgba(99,102,241,0.12)" : "transparent", borderColor: mapOpen ? "rgba(99,102,241,0.35)" : "var(--color-border)" }}
+            >
+              <LayoutGrid size={14} aria-hidden="true" style={{ color: mapOpen ? "#818cf8" : "inherit" }} />
+            </button>
+
+            {/* Fullscreen */}
+            <button
+              onClick={() => setIsFullscreen(true)}
+              aria-label="Enter fullscreen"
+              title="Fullscreen (Esc to exit)"
+              className="cc-icon-btn"
+              style={S.iconBtn}
+            >
+              <Maximize2 size={14} aria-hidden="true" />
+            </button>
+          </div>
+        </header>
+      )}
+
+      {/* Fullscreen exit pill */}
+      {isFullscreen && <FullscreenPill onExit={() => setIsFullscreen(false)} />}
+
+      {/* Module map panel */}
+      {mapOpen && (
+        <ModuleMapPanel
+          group={group}
+          siblings={siblings}
+          currentId={id}
+          siblingIndex={siblingIndex}
+          onClose={() => setMapOpen(false)}
+          onNavigate={handleMapNavigate}
         />
       )}
 
-      <aside
-        className={[
-          "fixed inset-y-0 left-0 z-40 flex flex-col border-r",
-          "transition-all duration-300 ease-in-out",
-          "lg:static lg:z-auto lg:flex-shrink-0",
-          focusMode || sidebarCollapsed
-            ? "w-72 -translate-x-full lg:w-0 lg:min-w-0 lg:overflow-hidden lg:border-0"
-            : "w-72 " + (sidebarOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0"),
-        ].join(" ")}
-        style={{ background: "var(--color-surface)", borderColor: "var(--color-border)" }}
-      >
-        {/* Sidebar header */}
-        <div className="px-5 pt-6 pb-5 border-b flex-shrink-0" style={S.border}>
-          <button
-            onClick={() => navigate("/courses", { state: { pathIds: fromPathIds } })}
-            className="flex items-center gap-2 text-sm font-medium mb-5 group transition-colors"
-            style={S.muted}
-            onMouseEnter={(e) => (e.currentTarget.style.color = "var(--color-primary-text)")}
-            onMouseLeave={(e) => (e.currentTarget.style.color = "var(--color-muted-text)")}
-          >
-            <ArrowLeft size={14} className="group-hover:-translate-x-1 transition-transform duration-200" />
-            Back to Courses
-          </button>
-
-          <div className="flex items-start gap-3 mb-5">
-            <div
-              className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 shadow-sm"
-              style={S.inverted}
-            >
-              <Brain size={18} />
-            </div>
-            <div>
-              <p className="text-xs font-medium mb-0.5" style={S.muted}>
-                {courseConfig ? courseConfig.category : "Generative AI"}
-              </p>
-              <h2 className="text-sm font-bold leading-snug">
-                {courseConfig ? courseConfig.title : "AI Mastery Course"}
-              </h2>
-            </div>
-          </div>
-
-          {/* Progress */}
-          <div>
-            <div className="flex justify-between mb-2">
-              <span className="text-xs" style={S.muted}>{completedCount}/{flatNodes.length} sections</span>
-              <span className="text-xs font-bold" style={{ color: "var(--color-primary-text)" }}>{Math.round(progress)}%</span>
-            </div>
-            <div className="h-1.5 rounded-full overflow-hidden" style={{ background: "var(--color-border)" }}>
-              <div
-                className="h-full rounded-full transition-all duration-700 ease-out bg-gradient-to-r from-blue-500 via-indigo-500 to-purple-500 bg-[length:200%_auto] animate-[gradient_3s_ease_infinite]"
-                style={{
-                  width: `${progress}%`,
-                  boxShadow: progress > 0 ? "0 0 10px rgba(99,102,241,0.5)" : "none"
-                }}
-              />
-            </div>
-          </div>
-        </div>
-
-        {/* Glassmorphic lesson cards */}
-        <div ref={sidebarTocRef} className="flex-1 overflow-y-auto py-5 px-4 custom-scrollbar space-y-3">
-          {lessons.map((l, index) => {
-            const isActive = l.id === currentLesson;
-            const isExpanded = l.id === expandedLesson;
-            const hasSubTopics = l.subTopics && l.subTopics.length > 0;
-
-            // Calculate progress for the SVG ring
-            let progressPct = 0;
-            if (hasSubTopics) {
-              const completedSubs = l.subTopics.filter(s => s.completed).length;
-              progressPct = (completedSubs / l.subTopics.length) * 100;
-            } else if (l.completed) {
-              progressPct = 100;
-            }
-
-            return (
-              <div
-                key={l.id}
-                className="relative rounded-2xl border overflow-hidden transition-all duration-300 group"
-                style={{
-                  background: isActive ? "var(--color-surface-hover)" : "rgba(255,255,255,0.015)",
-                  borderColor: isActive ? "rgba(99,102,241,0.5)" : "var(--color-border)",
-                  boxShadow: isActive ? "0 4px 20px rgba(99,102,241,0.15)" : "0 2px 10px rgba(0,0,0,0.02)",
-                  transform: isActive ? "scale(1.01)" : "scale(1)",
-                  opacity: l.completed || isActive ? 1 : 0.75
-                }}
-                onMouseEnter={(e) => { if (!isActive) e.currentTarget.style.background = "var(--color-surface-hover)"; }}
-                onMouseLeave={(e) => { if (!isActive) e.currentTarget.style.background = "rgba(255,255,255,0.015)"; }}
-              >
-                {/* Main Module Header */}
-                <button
-                  data-lesson-id={l.id}
-                  onClick={() => handleLessonClick(l)}
-                  className="w-full flex items-center gap-3 p-4 text-left transition-colors relative z-10 w-full hover:bg-transparent"
-                >
-                  <div className="w-5 text-[10px] font-black tracking-widest opacity-30 mt-0.5 text-right flex-shrink-0" style={S.primary}>
-                    {(index + 1).toString().padStart(2, '0')}
-                  </div>
-                  {/* Completion Ring */}
-                  <div className="relative flex-shrink-0 flex items-center justify-center w-8 h-8 ml-1">
-                    {progressPct === 100 ? (
-                      <CheckCircle2 size={18} className="text-emerald-500 shadow-emerald-500/20 drop-shadow-md" />
-                    ) : (
-                      <>
-                        <svg className="absolute inset-0 w-full h-full -rotate-90">
-                          <circle cx="16" cy="16" r="14" stroke="var(--color-border)" strokeWidth="2.5" fill="none" />
-                          <circle
-                            cx="16" cy="16" r="14" stroke="currentColor" strokeWidth="2.5" fill="none"
-                            strokeDasharray="88" strokeDashoffset={88 - (88 * progressPct) / 100}
-                            className="transition-all duration-700 ease-out"
-                            style={{ color: "var(--color-primary-text)" }}
-                          />
-                        </svg>
-                        {isActive ? (
-                          <div className="w-2.5 h-2.5 rounded-full animate-pulse shadow-[0_0_8px_rgba(99,102,241,0.8)]" style={{ background: "var(--color-primary-text)" }} />
-                        ) : (
-                          <div className="w-2 h-2 rounded-full opacity-20" style={{ background: "var(--color-muted-text)" }} />
-                        )}
-                      </>
-                    )}
-                  </div>
-
-                  {/* Title + Meta */}
-                  <span className="flex-1 min-w-0 pl-1">
-                    <span
-                      className="block text-sm font-bold truncate transition-colors duration-200"
-                      style={{ color: isActive ? "var(--color-primary-text)" : "var(--color-muted-text)" }}
-                    >
-                      {l.title}
-                    </span>
-                    <span className="flex items-center gap-1.5 mt-1 text-[10px] font-semibold tracking-wide uppercase opacity-70" style={S.muted}>
-                      <Clock size={10} /> {l.duration} {l.type ? `· ${l.type}` : ""}
-                    </span>
-                  </span>
-
-                  {/* Chevron Toggle */}
-                  {hasSubTopics && (
-                    <div
-                      className="w-6 h-6 rounded-full flex items-center justify-center transition-all duration-300 opacity-60 group-hover:opacity-100"
-                      style={{
-                        background: isExpanded ? "var(--color-primary-text)" : "transparent",
-                        color: isExpanded ? "var(--color-app-bg)" : "var(--color-primary-text)",
-                        transform: isExpanded ? "rotate(180deg)" : "rotate(0deg)"
-                      }}
-                    >
-                      <ChevronDown size={14} />
-                    </div>
-                  )}
-                </button>
-
-                {/* Sub-topics Spring Accordion */}
-                {hasSubTopics && (
-                  <div
-                    className="overflow-hidden transition-all duration-500 ease-in-out relative z-0"
-                    style={{
-                      maxHeight: isExpanded ? `${l.subTopics.length * 60}px` : "0px",
-                      opacity: isExpanded ? 1 : 0
-                    }}
-                  >
-                    <div className="pb-3 px-3 space-y-1">
-                      {l.subTopics.map((sub) => {
-                        const subActive = activeSubTopic === sub.id;
-                        return (
-                          <button
-                            key={sub.id}
-                            onClick={(e) => handleSubTopicClick(sub, e)}
-                            className="relative w-full flex items-center gap-3 pl-12 pr-4 py-2.5 rounded-xl text-left transition-all duration-200 group overflow-hidden"
-                            style={{
-                              background: subActive ? "var(--color-surface)" : "transparent",
-                              boxShadow: subActive ? "0 2px 10px rgba(0,0,0,0.03)" : "none"
-                            }}
-                          >
-                            {/* Neon active indicator line */}
-                            {subActive && (
-                              <div className="absolute left-2 top-0 bottom-0 w-[3px] my-2 bg-gradient-to-b from-[#6366f1] to-[#8b5cf6] rounded-full shadow-[0_0_8px_rgba(99,102,241,0.6)]" />
-                            )}
-
-                            {/* Subtopic Status Icon */}
-                            <div className="flex-shrink-0 flex items-center justify-center w-5 h-5">
-                              {sub.completed
-                                ? <CheckCircle2 size={13} style={{ color: "var(--color-primary-text)" }} />
-                                : <Dot size={20} className="transition-transform group-hover:scale-150" style={S.muted} />}
-                            </div>
-
-                            {/* Subtopic Title */}
-                            <span
-                              className="text-xs truncate transition-all duration-200"
-                              style={{
-                                fontWeight: subActive ? 700 : 500,
-                                color: subActive ? "var(--color-primary-text)" : "var(--color-muted-text)",
-                                transform: subActive ? "translateX(4px)" : "none"
-                              }}
-                            >
-                              {sub.title}
-                            </span>
-                          </button>
-                        );
-                      })}
-                    </div>
-                  </div>
-                )}
-              </div>
-            );
-          })}
-        </div>33333
-
-        {/* Sidebar footer */}
-        <div className="p-4 border-t flex-shrink-0 space-y-4" style={S.border}>
-          {quizData && (
-            <div
-              className="relative overflow-hidden rounded-2xl p-5 border group cursor-pointer transition-all duration-300"
-              style={{ background: "rgba(99,102,241,0.08)", borderColor: "rgba(99,102,241,0.3)" }}
-              onClick={() => setQuizModalOpen(true)}
-              onMouseEnter={(e) => { e.currentTarget.style.background = "rgba(99,102,241,0.15)"; e.currentTarget.style.borderColor = "rgba(99,102,241,0.6)"; e.currentTarget.style.boxShadow = "0 8px 32px rgba(99,102,241,0.2)"; }}
-              onMouseLeave={(e) => { e.currentTarget.style.background = "rgba(99,102,241,0.08)"; e.currentTarget.style.borderColor = "rgba(99,102,241,0.3)"; e.currentTarget.style.boxShadow = "none"; }}
-            >
-              <div className="absolute -top-10 -right-10 w-32 h-32 bg-indigo-500/20 blur-2xl rounded-full pointer-events-none group-hover:bg-indigo-500/40 transition-colors duration-500" />
-              <div className="flex items-start gap-3 relative z-10 w-full">
-                <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center shrink-0 shadow-lg shadow-indigo-500/30">
-                  <Brain size={20} color="#fff" />
-                </div>
-                <div className="flex-1 w-full mt-0.5">
-                  <h3 className="font-bold text-sm text-indigo-400 mb-0.5 tracking-tight group-hover:text-indigo-300 transition-colors">Knowledge Check</h3>
-                  <p className="text-xs text-indigo-200/60 leading-relaxed mb-3">Test what you've learned.</p>
-                  <button className="w-full flex justify-center items-center gap-1.5 text-xs font-bold text-white bg-indigo-500/20 hover:bg-indigo-500/40 px-3 py-2 rounded-lg transition-colors border border-indigo-500/30">
-                    Take Quiz <ChevronRight size={12} />
-                  </button>
-                </div>
-              </div>
-            </div>
-          )}
-
-          <div
-            className="flex items-start gap-3 p-4 rounded-2xl border"
-            style={{ background: "var(--color-surface-hover)", borderColor: "var(--color-border)" }}
-          >
-            <Award size={17} className="flex-shrink-0 mt-0.5" />
-            <div>
-              <p className="text-xs font-bold mb-0.5">Earn a Certificate</p>
-              <p className="text-xs" style={S.muted}>
-                Finish all lessons to unlock your certificate + 500 XP
-              </p>
-            </div>
-          </div>
-        </div>
-      </aside>
-
-      {/* MAIN PANEL */}
-      <main className="flex-1 flex flex-col min-w-0 overflow-hidden">
-
-        {/* Reading progress bar (HTML courses only) */}
-        {htmlFile && (
-          <div ref={progressBarRef} className="reading-progress-bar" style={{ width: "0%" }} />
-        )}
-
-        {/* Cinematic Chapter Card */}
-        {htmlFile && chapterCard.visible && (
-          <div
-            className="chapter-card-overlay"
-            onClick={() => setChapterCard(c => ({ ...c, visible: false }))}
-          >
-            <div className="chapter-card-content" onClick={e => e.stopPropagation()}>
-              <span className="chapter-card-label">Section {chapterCard.index}</span>
-              <h2 className="chapter-card-title">{chapterCard.title}</h2>
-              <div className="chapter-card-line" />
-            </div>
-          </div>
-        )}
-
-        {/* Milestone Toast */}
-        {htmlFile && toast.visible && (
-          <div className="milestone-toast" onClick={() => setToast(t => ({ ...t, visible: false }))}>
-            <span className="milestone-toast-icon">{toast.icon}</span>
-            <span className="milestone-toast-msg">{toast.msg}</span>
-          </div>
-        )}
-
-        {/* Top bar */}
-        {!focusMode && (
-          <header
-            className="flex-shrink-0 h-14 flex items-center justify-between px-4 sm:px-6 border-b gap-4"
-            style={{ background: "var(--color-surface)", borderColor: "var(--color-border)" }}
-          >
-            <div className="flex items-center gap-3 min-w-0">
-              {/* Universal Back Button */}
-              <button
-                onClick={() => navigate("/courses", { state: { pathIds: fromPathIds } })}
-                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold shadow-sm transition-all hover:-translate-x-0.5"
-                style={{ background: "var(--color-primary-text)", color: "var(--color-app-bg)" }}
-              >
-                <ArrowLeft size={13} /> Back
-              </button>
-
-              <button
-                className="lg:hidden p-1.5 rounded-lg transition-colors flex-shrink-0"
-                onClick={() => setSidebar(true)}
-                style={S.muted}
-                onMouseEnter={hoverSurface}
-                onMouseLeave={hoverClear}
-              >
-                <Menu size={18} />
-              </button>
-              {/* Desktop sidebar toggle for HTML courses */}
-              {htmlFile && (
-                <button
-                  className="hidden lg:flex p-1.5 rounded-lg transition-colors flex-shrink-0 bg-opacity-50"
-                  onClick={() => setSidebarCollapsed(v => !v)}
-                  style={sidebarCollapsed ? { background: "var(--color-surface-hover)" } : S.muted}
-                  title={sidebarCollapsed ? "Show course outline" : "Hide course outline"}
-                  onMouseEnter={hoverSurface}
-                  onMouseLeave={hoverClear}
-                >
-                  <Menu size={18} />
-                </button>
-              )}
-              <div className="hidden md:flex items-center gap-1.5 text-xs min-w-0 px-2 border-l ml-1" style={{ borderColor: 'var(--color-border)', ...S.muted }}>
-                <span className="truncate">Generative AI</span>
-                <ChevronRight size={12} className="flex-shrink-0" />
-                <span className="font-semibold truncate" style={S.primary}>
-                  {lesson?.title || 'Loading...'}
-                  {activeSubTopic && (
-                    <span style={S.muted}> › {lesson?.subTopics?.find(s => s.id === activeSubTopic)?.title}</span>
-                  )}
-                </span>
-              </div>
-            </div>
-
-            <div className="flex items-center gap-2 flex-shrink-0">
-              <button
-                onClick={() => setNotesPanelOpen(true)}
-                className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold bg-indigo-500/10 text-indigo-400 hover:bg-indigo-500/20 transition-colors border border-indigo-500/20 shadow-[0_0_12px_rgba(99,102,241,0.15)]"
-                title="View Notes & Highlights"
-              >
-                <StickyNote size={13} /> {notesState.length > 0 ? notesState.length : "Notes"}
-              </button>
-
-              <button
-                onClick={() => setFocusMode(true)}
-                className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-medium border transition-colors"
-                style={{ borderColor: "var(--color-border)", ...S.muted, background: "transparent" }}
-                onMouseEnter={hoverSurface}
-                onMouseLeave={hoverClear}
-                title="Enter Focus Mode"
-              >
-                <Maximize2 size={13} /> Focus Mode
-              </button>
-
-              <div className="flex items-center gap-0.5 pl-3" style={{ borderLeft: "1px solid var(--color-border)" }}>
-                <button
-                  disabled={currentIndex === 0}
-                  onClick={goPrev}
-                  className="p-1.5 rounded-xl transition-colors disabled:opacity-30"
-                  style={S.muted}
-                  onMouseEnter={hoverSurface}
-                  onMouseLeave={hoverClear}
-                >
-                  <ChevronLeft size={17} />
-                </button>
-                <span className="text-xs font-mono px-1.5" style={S.muted}>
-                  {currentIndex + 1}/{flatNodes.length}
-                </span>
-                <button
-                  disabled={currentIndex === flatNodes.length - 1}
-                  onClick={goNext}
-                  className="p-1.5 rounded-xl transition-colors disabled:opacity-30"
-                  style={S.muted}
-                  onMouseEnter={hoverSurface}
-                  onMouseLeave={hoverClear}
-                >
-                  <ChevronRight size={17} />
-                </button>
-              </div>
-            </div>
-          </header>
-        )}
-
-        {/* Scrollable lesson content */}
-        <div ref={scrollContainerRef} className="flex-1 overflow-y-auto custom-scrollbar" onScroll={htmlFile && !IFRAME_COURSES.has(id) ? handleScroll : undefined}>
-          {htmlFile ? (
-            isIframeCourse ? (
-              /* Full-page iframe for self-contained HTML courses (clustering) */
-              <div style={{ display: 'flex', flexDirection: 'column', minHeight: 'calc(100vh - 56px)', position: 'relative' }}>
-                {!iframeLoaded && (
-                  <div
-                    style={{
-                      position: 'absolute',
-                      inset: 0,
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      background: '#0a0a0f',
-                      color: 'rgba(255,255,255,0.72)',
-                      zIndex: 1,
-                    }}
-                  >
-                    <div className="flex items-center gap-3 text-sm font-medium">
-                      <div className="w-5 h-5 rounded-full border-2 border-current border-t-transparent animate-spin" />
-                      Loading module...
-                    </div>
-                  </div>
-                )}
-                <iframe
-                  key={id}
-                  src={htmlFile}
-                  title="Course Content"
-                  onLoad={() => setIframeLoaded(true)}
-                  style={{
-                    width: '100%',
-                    flex: '1 0 auto',
-                    minHeight: 'calc(100vh - 56px)',
-                    border: 'none',
-                    display: 'block',
-                    background: '#0a0a0f',
-                    opacity: iframeLoaded ? 1 : 0,
-                    transition: 'opacity 220ms ease',
-                  }}
-                  allowFullScreen
-                />
-                <CourseEngagement courseId={id} />
-              </div>
-            ) : (
-            /* Immersive full-screen HTML reader */
-            <div>
-
-              {/* Hero Banner */}
-              {!focusMode && courseConfig && (
-                <div className="course-hero-banner">
-                  <div className="hero-orb hero-orb-1" />
-                  <div className="hero-orb hero-orb-2" />
-                  <div className="hero-orb hero-orb-3" />
-                  <div className="relative z-10 max-w-5xl mx-auto px-6 sm:px-12 pt-14 pb-12">
-                    <div className="flex items-center gap-2 mb-4">
-                      <span className="hero-category-pill">✦ {courseConfig.category}</span>
-                    </div>
-                    <h1 className="hero-course-title">{courseConfig.title}</h1>
-                    <p className="hero-course-subtitle">
-                      {courseConfig.subtitle || "An expertly crafted document course — read at your own pace and master every concept."}
-                    </p>
-                    <div className="flex flex-wrap gap-3 mt-6">
-                      {[
-                        { icon: "📚", label: `${courseConfig.lessons.length} Section${courseConfig.lessons.length !== 1 ? "s" : ""}` },
-                        { icon: "⏱️", label: readTime > 0 ? `~${readTime} min read` : "Calculating…" },
-                        { icon: "📖", label: "Full Document" },
-                        { icon: "🏆", label: "Certificate Included" },
-                      ].map((s) => (
-                        <span key={s.label} className="hero-stat-chip">{s.icon} {s.label}</span>
-                      ))}
-                    </div>
-                    <button
-                      className="start-reading-btn"
-                      onClick={() => {
-                        const scrollEl = scrollContainerRef.current;
-                        const banner = scrollEl?.querySelector(".course-hero-banner");
-                        const offset = banner ? banner.offsetHeight : 300;
-                        scrollEl?.scrollTo({ top: offset, behavior: "smooth" });
-                      }}
-                    >
-                      Start Reading ↓
-                    </button>
-                  </div>
-                </div>
-              )}
-
-              {/* Two-column: content + sticky TOC */}
-              <div className="reader-layout">
-                {/* Article */}
-                <div className="reader-content-col">
-                  {docLoading ? (
-                    <div className="flex items-center justify-center py-24" style={S.muted}>
-                      <div className="flex flex-col items-center gap-3">
-                        <div className="w-8 h-8 rounded-full border-2 border-current border-t-transparent animate-spin" />
-                        <span className="text-sm font-medium">Loading course content…</span>
-                      </div>
-                    </div>
-                  ) : (
-                    <MemoizedProseContent html={docHtml} innerRef={proseContentRef} />
-                  )}
-                  <CourseEngagement courseId={id} />
-                </div>
-
-              </div>
-            </div>
-            )
-
-          ) : (
-            /* Default hardcoded lesson content */
-            <div className="max-w-2xl mx-auto px-4 sm:px-8 py-10 pb-28">
-
-              {/* Tags */}
-              <div className="flex flex-wrap items-center gap-2 mb-7">
-                <span
-                  className="inline-flex items-center gap-1.5 text-xs font-semibold px-2.5 py-1 rounded-full border"
-                  style={{ background: "var(--color-surface-hover)", borderColor: "var(--color-border)", ...S.muted }}
-                >
-                  <BookOpen size={11} /> Foundations
-                </span>
-                {lesson?.type && (
-                  <span
-                    className="inline-flex items-center text-xs font-semibold px-2.5 py-1 rounded-full"
-                    style={
-                      lesson.type === "Practice"
-                        ? S.inverted
-                        : { background: "var(--color-surface-hover)", border: "1px solid var(--color-border)", ...S.muted }
-                    }
-                  >
-                    {lesson.type}
-                  </span>
-                )}
-                <span className="flex items-center gap-1 text-xs" style={S.muted}>
-                  <Clock size={11} /> {lesson?.duration}
-                </span>
-              </div>
-
-              {/* Title */}
-              <h1 className="text-3xl sm:text-4xl font-extrabold tracking-tight mb-3 leading-tight">
-                Start with the Problem
-              </h1>
-              <p className="text-[15px] leading-relaxed mb-10" style={S.muted}>
-                To understand AI Agents, imagine you give a single instruction:{" "}
-                <em className="font-semibold not-italic" style={S.primary}>
-                  "Book a flight to Delhi for tomorrow."
-                </em>
-              </p>
-
-              {/* Comparison cards */}
-              <div className="grid sm:grid-cols-2 gap-4 mb-10">
-                <div
-                  className="p-6 rounded-2xl border"
-                  style={{ background: "var(--color-surface)", borderColor: "var(--color-border)" }}
-                >
-                  <div
-                    className="w-9 h-9 rounded-xl flex items-center justify-center mb-4 border"
-                    style={{ background: "var(--color-surface-hover)", borderColor: "var(--color-border)" }}
-                  >
-                    <BookOpen size={16} style={S.muted} />
-                  </div>
-                  <h3 className="font-bold mb-1.5 text-sm">Standard LLM</h3>
-                  <p className="text-sm leading-relaxed mb-4" style={S.muted}>
-                    "Here's how to book a flight: go to Expedia, choose your date…"
-                  </p>
-                  <span
-                    className="inline-block text-xs font-semibold px-2.5 py-1 rounded-full border"
-                    style={{ borderColor: "var(--color-border)", ...S.muted }}
-                  >
-                    Talks, but doesn't act
-                  </span>
-                </div>
-
-                <div className="p-6 rounded-2xl" style={S.inverted}>
-                  <div
-                    className="w-9 h-9 rounded-xl flex items-center justify-center mb-4"
-                    style={{ background: "rgba(128,128,128,0.25)" }}
-                  >
-                    <Zap size={16} />
-                  </div>
-                  <h3 className="font-bold mb-1.5 text-sm">AI Agent</h3>
-                  <p className="text-sm leading-relaxed mb-4 opacity-70">
-                    Opens browser, searches flights, picks the best option, fills details, confirms booking.
-                  </p>
-                  <span
-                    className="inline-flex items-center gap-1.5 text-xs font-semibold px-2.5 py-1 rounded-full"
-                    style={{ background: "rgba(128,128,128,0.25)" }}
-                  >
-                    <Zap size={11} fill="currentColor" /> Thinks, acts & finishes
-                  </span>
-                </div>
-              </div>
-
-              {/* Divider */}
-              <div className="flex items-center gap-3 mb-7" style={S.muted}>
-                <div className="h-px flex-1" style={{ background: "var(--color-border)" }} />
-                <span className="text-[10px] font-semibold uppercase tracking-widest">Core Distinction</span>
-                <div className="h-px flex-1" style={{ background: "var(--color-border)" }} />
-              </div>
-
-              {/* Distinction items */}
-              <div className="space-y-3 mb-10">
-                {[
-                  { tag: "LLM", label: "Knowledge Engine", desc: "Knows things, explains things — but stops there." },
-                  { tag: "AGENT", label: "Action Engine", desc: "Knows, plans, and executes tasks autonomously." },
-                ].map((item) => (
-                  <div
-                    key={item.tag}
-                    className="flex items-start gap-4 p-5 rounded-2xl border"
-                    style={{ background: "var(--color-surface)", borderColor: "var(--color-border)" }}
-                  >
-                    <code
-                      className="flex-shrink-0 text-[11px] font-bold px-2 py-0.5 rounded mt-0.5 border"
-                      style={{ background: "var(--color-surface-hover)", borderColor: "var(--color-border)", ...S.primary }}
-                    >
-                      {item.tag}
-                    </code>
-                    <div>
-                      <p className="font-bold text-sm mb-0.5">{item.label}</p>
-                      <p className="text-sm" style={S.muted}>{item.desc}</p>
-                    </div>
-                  </div>
-                ))}
-              </div>
-
-              {/* Key components */}
-              <div className="rounded-2xl border overflow-hidden" style={{ borderColor: "var(--color-border)" }}>
-                <div
-                  className="px-6 py-4 border-b"
-                  style={{ background: "var(--color-surface-hover)", borderColor: "var(--color-border)" }}
-                >
-                  <h3 className="text-sm font-bold">Key Components of an AI Agent</h3>
-                </div>
-                <div style={{ background: "var(--color-surface)" }}>
-                  {[
-                    { n: "01", title: "Perception", desc: "Understanding the user's intent and environment signals." },
-                    { n: "02", title: "Reasoning", desc: "Planning a multi-step strategy to achieve the goal." },
-                    { n: "03", title: "Action", desc: "Executing tasks using tools — APIs, browsers, databases." },
-                    { n: "04", title: "Memory", desc: "Maintaining state and context across long interactions." },
-                    { n: "05", title: "Learning", desc: "Improving continuously from feedback and outcomes." },
-                  ].map((c, i, arr) => (
-                    <div
-                      key={c.n}
-                      className="flex items-start gap-4 px-6 py-4"
-                      style={i < arr.length - 1 ? { borderBottom: "1px solid var(--color-border)" } : {}}
-                    >
-                      <span className="text-xs font-mono font-bold flex-shrink-0 w-6 mt-0.5" style={S.muted}>{c.n}</span>
-                      <div>
-                        <p className="text-sm font-bold">{c.title}</p>
-                        <p className="text-sm mt-0.5" style={S.muted}>{c.desc}</p>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-
-              <CourseEngagement courseId={id} />
-            </div>
-          )}
-        </div>
-
-        {/* Bottom navigation */}
-        {!focusMode && (
-          <div
-            className="flex-shrink-0 border-t px-5 py-4 flex items-center justify-between gap-4"
-            style={{ background: "var(--color-surface)", borderColor: "var(--color-border)" }}
-          >
-            <button
-              disabled={currentIndex === 0}
-              onClick={goPrev}
-              className="flex items-center gap-2 px-5 py-2.5 rounded-xl border text-sm font-semibold transition-all disabled:opacity-30"
-              style={{ borderColor: "var(--color-border)", ...S.primary, background: "transparent" }}
-              onMouseEnter={hoverSurface}
-              onMouseLeave={hoverClear}
-            >
-              <ChevronLeft size={16} /> Previous
-            </button>
-
-            {/* Pill indicators */}
-            <div className="hidden sm:flex items-center gap-1.5">
-              {flatNodes.map((n) => (
-                <button
-                  key={n.id}
-                  onClick={() => {
-                    if (n.isSub) {
-                      setLesson(n.parentId); setExpanded(n.parentId); setSubTopic(n.id);
-                    } else {
-                      setLesson(n.id); setExpanded(n.id); setSubTopic(null);
-                    }
-                    if (htmlFile) document.getElementById(n.id)?.scrollIntoView({ behavior: "smooth" });
-                  }}
-                  className="rounded-full transition-all duration-200"
-                  style={{
-                    width: n.id === activeNodeId ? "18px" : "7px",
-                    height: "7px",
-                    background: n.id === activeNodeId
-                      ? "var(--color-primary-text)"
-                      : n.completed
-                        ? "var(--color-muted-text)"
-                        : "var(--color-border)",
-                  }}
-                  aria-label={`Section ${n.id}`}
-                />
-              ))}
-            </div>
-
-            <button
-              disabled={currentIndex === flatNodes.length - 1}
-              onClick={goNext}
-              className="flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-semibold transition-all disabled:opacity-30"
-              style={S.inverted}
-              onMouseEnter={(e) => (e.currentTarget.style.opacity = "0.85")}
-              onMouseLeave={(e) => (e.currentTarget.style.opacity = "1")}
-            >
-              Next <ChevronRight size={16} />
-            </button>
-          </div>
-        )}
-      </main>
-
-      {/* Quiz Modal Popup */}
-      {quizModalOpen && quizData && (
-        <QuizModal quiz={quizData} onClose={() => setQuizModalOpen(false)} />
+      {/* Loading overlay */}
+      {!isLoaded && !isError && (
+        <LoadingOverlay topOffset={isFullscreen ? 0 : TOPBAR_HEIGHT} />
       )}
 
-      {/* Floating Selection Menu */}
-      {selectionMenu && (
-        <div
-          className="fixed z-[99999] flex items-center gap-2 p-2 rounded-2xl bg-[#0d1117]/80 backdrop-blur-xl border border-white/10 shadow-[0_20px_60px_-15px_rgba(0,0,0,0.5)] animate-in zoom-in-95 duration-200"
+      {/* Error state */}
+      {isError && (
+        <ErrorView
+          id={id}
+          onBack={goBack}
+          onSkipNext={nextId ? goNext : null}
+        />
+      )}
+
+      {/* Course iframe */}
+      {!isError && (
+        <iframe
+          key={id}
+          ref={iframeRef}
+          src={htmlFile}
+          title={formatTitle(id)}
+          onLoad={handleIframeLoad}
+          allowFullScreen
           style={{
-             top: Math.max(10, selectionMenu.rect.top - 65),
-             left: selectionMenu.rect.left + (selectionMenu.rect.width / 2) - 110
+            flex: 1, border: "none", display: "block",
+            opacity: isLoaded ? 1 : 0,
+            transition: "opacity 220ms ease",
           }}
-        >
-          <div className="flex bg-black/20 rounded-xl p-1 border border-white/5 backdrop-blur-md">
-             {[
-               { color: "bg-yellow-400", shadow: "rgba(250,204,21,0.5)", class: "bg-yellow-500/30 text-yellow-200" },
-               { color: "bg-emerald-400", shadow: "rgba(52,211,153,0.5)", class: "bg-emerald-500/30 text-emerald-200" },
-               { color: "bg-purple-400", shadow: "rgba(192,132,252,0.5)", class: "bg-purple-500/30 text-purple-200" }
-             ].map((c, i) => (
-               <button
-                 key={i}
-                 onClick={() => handleAddHighlight(c.class)}
-                 className="w-8 h-8 rounded-lg hover:bg-white/10 flex items-center justify-center group transition-all active:scale-90"
-               >
-                 <div
-                   className={`w-3.5 h-3.5 rounded-full ${c.color} shadow-[0_0_12px_${c.shadow}] group-hover:scale-125 transition-transform`}
-                 />
-               </button>
-             ))}
-          </div>
-          <div className="w-px h-6 bg-white/10 mx-0.5" />
-          <button
-             onClick={() => { handleAddHighlight("bg-indigo-500/30 text-indigo-200"); setNotesPanelOpen(true); }}
-             className="flex items-center gap-2 px-4 py-2 text-xs font-bold text-white bg-indigo-500 hover:bg-indigo-400 rounded-xl transition-all shadow-lg shadow-indigo-500/30 active:scale-95 group"
-          >
-             <Edit3 size={12} className="group-hover:rotate-12 transition-transform" />
-             <span>ADD NOTE</span>
-          </button>
-        </div>
+        />
       )}
 
-      {/* Slide-out Notes Panel */}
-      {notesPanelOpen && (
-        <>
-          <div
-            className="fixed inset-0 z-[100000] bg-black/60 backdrop-blur-md animate-in fade-in duration-300 pointer-events-auto"
-            onClick={() => setSelectionMenu(null) || setNotesPanelOpen(false)}
-          />
-          <div
-            className="fixed top-0 right-0 bottom-0 w-[420px] max-w-[100vw] z-[100001] backdrop-blur-2xl border-l transition-all duration-500 flex flex-col shadow-[-20px_0_80px_rgba(0,0,0,0.4)] animate-in slide-in-from-right"
-            style={{
-               backgroundColor: isDark ? 'rgba(13, 17, 23, 0.85)' : 'rgba(255, 255, 255, 0.95)',
-               borderColor: isDark ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.08)',
-            }}
-          >
-            {/* Sidebar Header */}
-            <div
-              className="px-7 py-6 border-b flex items-center justify-between"
-              style={{
-                 backgroundColor: isDark ? 'rgba(255, 255, 255, 0.03)' : 'rgba(0, 0, 0, 0.02)',
-                 borderColor: isDark ? 'rgba(255, 255, 255, 0.05)' : 'rgba(0, 0, 0, 0.05)',
-              }}
-            >
-              <div className="flex items-center gap-4">
-                <div className="w-10 h-10 rounded-xl bg-indigo-500 text-white flex items-center justify-center shadow-lg shadow-indigo-500/20">
-                  <StickyNote size={20} />
-                </div>
-                <div>
-                  <h2 className="text-lg font-black text-white tracking-tight leading-tight">Your Notebook</h2>
-                  <p className="text-[10px] font-bold text-white/30 tracking-widest uppercase">Course Insights & Highlights</p>
-                </div>
-              </div>
-              <button
-                onClick={() => setNotesPanelOpen(false)}
-                className="w-10 h-10 rounded-full hover:bg-white/10 text-white/40 hover:text-white transition-all flex items-center justify-center active:scale-90"
-              >
-                <X size={20} />
-              </button>
-            </div>
+      <style>{`
+        @keyframes cc-spin    { to { transform: rotate(360deg); } }
+        @keyframes cc-slide-in { from { transform: translateX(100%); } to { transform: translateX(0); } }
+        @keyframes cc-fade-in  { from { opacity: 0; } to { opacity: 1; } }
 
-            {/* Notes List */}
-            <div className="flex-1 overflow-y-auto p-6 space-y-6 custom-scrollbar-premium">
-              {notesState.length === 0 ? (
-                <div className="h-full flex flex-col items-center justify-center text-center px-6">
-                  <div className="w-24 h-24 rounded-3xl bg-white/[0.02] border border-white/5 flex items-center justify-center mb-6 overflow-hidden relative group">
-                    <div className="absolute inset-0 bg-indigo-500/10 opacity-0 group-hover:opacity-100 transition-opacity blur-xl" />
-                    <Brain size={40} className="text-white/10 group-hover:text-indigo-400 group-hover:scale-110 transition-all duration-500" />
-                  </div>
-                  <h3 className="text-base font-bold text-white/60">No insights saved yet</h3>
-                  <p className="text-sm text-white/30 mt-2 leading-relaxed">
-                    Highlight interesting parts of the course to save them here and add your thoughts.
-                  </p>
-                </div>
-              ) : (
-                notesState.map((note) => (
-                  <div
-                    key={note.id}
-                    className="rounded-2xl border overflow-hidden transition-all duration-300 hover:shadow-xl group"
-                    style={{
-                       backgroundColor: isDark ? 'rgba(22, 27, 34, 0.6)' : 'rgba(255, 255, 255, 0.5)',
-                       borderColor: isDark ? 'rgba(255, 255, 255, 0.05)' : 'rgba(0, 0, 0, 0.05)',
-                    }}
-                  >
-                    {/* Highlighted Quote Section */}
-                    <div
-                      className="p-5 border-l-4"
-                      style={{
-                         borderColor: `${note.color.includes('indigo') ? '#6366f1' : note.color.includes('yellow') ? '#fbbf24' : note.color.includes('emerald') ? '#10b981' : '#a855f7'}88`,
-                         backgroundColor: isDark ? 'rgba(99, 102, 241, 0.03)' : 'rgba(99, 102, 241, 0.02)',
-                      }}
-                    >
-                      <div className="flex justify-between items-start gap-3 mb-2">
-                        <span className="text-[10px] font-black tracking-widest uppercase opacity-60" style={{ color: note.color.includes('indigo') ? '#818cf8' : note.color.includes('yellow') ? '#fcd34d' : note.color.includes('emerald') ? '#34d399' : '#c084fc' }}>Highlight</span>
-                        <div className="flex items-center gap-2">
-                          <span className="text-[10px] font-medium opacity-20" style={{ color: isDark ? '#fff' : '#000' }}>
-                            {new Date(note.createdAt).toLocaleDateString(undefined, { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
-                          </span>
-                        </div>
-                      </div>
-                      <p className="text-[13px] leading-relaxed font-medium italic" style={{ color: isDark ? 'rgba(255,255,255,0.8)' : 'rgba(0,0,0,0.7)' }}>
-                        "{note.text}"
-                      </p>
-                    </div>
+        .cc-back-btn    { transition: filter 140ms ease, transform 100ms ease; }
+        .cc-back-btn:hover  { filter: brightness(1.14); }
+        .cc-back-btn:active { transform: scale(0.97); }
 
-                    {/* Note Input Section */}
-                    <div className="p-5 flex flex-col gap-4">
-                      <div className="relative">
-                        <textarea
-                          value={note.note}
-                          onChange={(e) => setNotesState(prev => prev.map(n => n.id === note.id ? {...n, note: e.target.value} : n))}
-                          placeholder="What did you learn from this? Add a note..."
-                          className="w-full transition-all outline-none rounded-xl p-4 text-xs resize-none min-h-[100px] leading-relaxed custom-scrollbar shadow-inner"
-                          style={{
-                             backgroundColor: isDark ? 'rgba(0, 0, 0, 0.3)' : 'rgba(0, 0, 0, 0.03)',
-                             border: `1px solid ${isDark ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.1)'}`,
-                             color: isDark ? '#fff' : '#000',
-                          }}
-                        />
-                      </div>
+        .cc-icon-btn { transition: background 140ms ease, border-color 140ms ease, color 140ms ease; }
+        .cc-icon-btn:hover { background: var(--color-surface-hover) !important; color: var(--color-primary-text) !important; }
 
-                      <div className="flex justify-between items-center pt-1">
-                        <div className="flex items-center gap-1.5 opacity-40 group-hover:opacity-100 transition-opacity">
-                          <div className="w-1.5 h-1.5 rounded-full bg-indigo-500" />
-                          <span className="text-[10px] font-bold tracking-tight uppercase" style={{ color: isDark ? 'rgba(255,255,255,0.4)' : 'rgba(0,0,0,0.5)' }}>
-                             {note.lessonTitle || 'Section Content'}
-                          </span>
-                        </div>
-                        <button
-                          onClick={() => setNotesState(prev => prev.filter(n => n.id !== note.id))}
-                          className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg hover:bg-red-500/10 transition-all text-[10px] font-black uppercase tracking-wider"
-                          style={{ color: 'rgba(239, 68, 68, 0.5)' }}
-                        >
-                          <Trash2 size={12} /> Delete
-                        </button>
-                      </div>
-                    </div>
-                  </div>
-                ))
-              )}
-            </div>
+        .cc-compact-btn { transition: background 140ms ease, border-color 140ms ease; }
+        .cc-compact-btn:hover:not(:disabled) { background: var(--color-surface-hover) !important; border-color: rgba(99,102,241,0.4) !important; }
 
-            {/* Footer Summary */}
-            {notesState.length > 0 && (
-              <div className="px-7 py-4 bg-white/[0.02] border-t border-white/5 flex items-center justify-between">
-                <span className="text-[11px] font-bold text-white/30 uppercase tracking-widest">
-                  Total of {notesState.length} insights
-                </span>
-                <div className="flex -space-x-1.5 overflow-hidden">
-                   {[1, 2, 3].map(i => (
-                     <div key={i} className="w-5 h-5 rounded-full bg-indigo-500/20 border border-[#0d1117]" />
-                   ))}
-                </div>
-              </div>
-            )}
-          </div>
-        </>
-      )}
+        .cc-map-overlay { animation: cc-fade-in 180ms ease; }
+        .cc-map-panel   { animation: cc-slide-in 260ms cubic-bezier(0.22, 1, 0.36, 1); }
+
+        .cc-map-item { transition: background 120ms ease; }
+        .cc-map-item:hover { background: var(--color-surface-hover) !important; }
+
+        .cc-map-scroll::-webkit-scrollbar       { width: 3px; }
+        .cc-map-scroll::-webkit-scrollbar-track { background: transparent; }
+        .cc-map-scroll::-webkit-scrollbar-thumb { background: var(--color-border); border-radius: 3px; }
+        .cc-map-scroll::-webkit-scrollbar-thumb:hover { background: var(--color-muted-text); }
+      `}</style>
     </div>
   );
 }

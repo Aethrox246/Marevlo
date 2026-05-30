@@ -14,6 +14,7 @@ from typing import List, Optional, Tuple
 
 from sqlalchemy import and_, func, or_, select
 from sqlalchemy.orm import Session, aliased, selectinload
+from sqlalchemy.orm.attributes import set_committed_value
 
 from app.auth.models.user import User, UserSession
 from app.chat.models.chat import Chat, Follow, Message, MessageRead, MessageReaction
@@ -113,6 +114,7 @@ class ChatService:
             )
             .where(Message.chat_id.in_(chat_ids))
             .where(Message.sender_id != current_user_id)
+            .where(Message.is_deleted.is_(False))
             .where(read_alias.id.is_(None))
             .group_by(Message.chat_id)
         )
@@ -124,6 +126,8 @@ class ChatService:
             u2 = users_by_id.get(c.user_2_id)
             if not u1 or not u2:
                 continue
+            # Identify the other participant so the router doesn't need a DB round-trip.
+            other_u = u2 if c.user_1_id == current_user_id else u1
             last = latest_by_chat.get(c.id)
             out.append(
                 {
@@ -136,6 +140,7 @@ class ChatService:
                     "last_message_preview": (
                         None if not last
                         else "[deleted]" if last.is_deleted
+                        else None if (last.deleted_for_sender and last.sender_id == current_user_id)
                         else last.content[:100]
                     ),
                     "last_message_at": (
@@ -143,6 +148,10 @@ class ChatService:
                     ),
                     "unread_count": unread_counts.get(c.id, 0),
                     "created_at": c.created_at.strftime("%Y-%m-%d"),
+                    # Pre-computed so the router needs zero extra DB queries per item.
+                    "other_user_last_seen_at": (
+                        other_u.last_seen_at.isoformat() if other_u.last_seen_at else None
+                    ),
                 }
             )
         return out, total
@@ -249,8 +258,16 @@ class ChatService:
         db.flush()
 
         # Validate reply_to_id belongs to the same chat
+        parent = None
         if reply_to_id is not None:
-            parent = db.get(Message, reply_to_id)
+            parent = (
+                db.execute(
+                    select(Message)
+                    .where(Message.id == reply_to_id)
+                    .options(selectinload(Message.sender))
+                )
+                .scalar_one_or_none()
+            )
             if not parent or parent.chat_id != chat_id:
                 raise NotFound("Replied-to message not found in this chat")
 
@@ -265,7 +282,11 @@ class ChatService:
         db.add(msg)
         chat.last_message_at = datetime.now(timezone.utc)
         db.commit()
+
         db.refresh(msg)
+        if parent is not None:
+            set_committed_value(msg, "reply_to_msg", parent)
+        set_committed_value(msg, "reactions", [])
 
         return msg, recipient
 
@@ -319,7 +340,14 @@ class ChatService:
         msg.content = content
         msg.is_edited = True
         db.commit()
-        db.refresh(msg)
+        msg = db.execute(
+            select(Message)
+            .where(Message.id == msg.id)
+            .options(
+                selectinload(Message.reply_to_msg).selectinload(Message.sender),
+                selectinload(Message.reactions),
+            )
+        ).scalar_one()
         return msg, recipient
 
     def delete_message(

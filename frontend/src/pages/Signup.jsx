@@ -54,10 +54,25 @@ export default function Signup({ onLogin, onSignupSuccess }) {
         };
 
         try {
+            // Ensure username meets backend requirements: 3-50 chars, letters/numbers/underscore
+            const rawUsername = formData.name || (formData.email ? formData.email.split('@')[0] : '');
+            const username = rawUsername
+                .trim()
+                .replace(/\s+/g, '_')
+                .replace(/[^A-Za-z0-9_]/g, '');
+
+            if (username.length < 3) {
+                throw new Error('Choose a username (3+ chars, letters/numbers/_).');
+            }
+
             const response = await fetch(`${API}/auth/signup`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(payload),
+                body: JSON.stringify({
+                    email: formData.email,
+                    username,
+                    password: formData.password,
+                }),
             });
 
             if (!response.ok) {

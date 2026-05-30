@@ -1,0 +1,391 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Celebrity Problem (Stack) - Visualization</title>
+    <style>
+        :root {
+            --bg-page: #0d1117;
+            --bg-surface: #161b22;
+            --bg-input: #0d1117;
+            --border-main: #30363d;
+            --btn-bg: #21262d;
+            --btn-hover: #2d333b;
+            --text-main: #c9d1d9;
+            --text-dim: #8b949e;
+            --accent-orange: #e3b341;
+            --accent-blue: #388bfd;
+            --accent-green: #3fb950;
+            --accent-red: #f85149;
+            --accent-purple: #a371f7;
+        }
+
+        * { box-sizing: border-box; }
+        body {
+            background-color: var(--bg-page);
+            color: var(--text-main);
+            font-family: system-ui, -apple-system, sans-serif;
+            margin: 0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            min-height: 100vh;
+            padding-bottom: 40px;
+        }
+
+        .input-bar {
+            width: 100%;
+            background-color: var(--bg-surface);
+            padding: 12px 16px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 12px;
+            border-bottom: 1px solid var(--border-main);
+            flex-wrap: wrap;
+        }
+        label.ui-label { font-family: 'Courier New', monospace; font-size: 13px; color: var(--text-dim); }
+        input[type="text"] {
+            background: var(--bg-input);
+            border: 1px solid var(--border-main);
+            color: var(--text-main);
+            height: 32px;
+            border-radius: 6px;
+            padding: 0 12px;
+            width: 420px;
+            font-size: 14px;
+        }
+
+        button {
+            height: 32px; border-radius: 6px; padding: 0 14px; background: var(--btn-bg);
+            border: 1px solid var(--border-main); color: var(--text-main); font-size: 13px; cursor: pointer;
+        }
+        button:hover { background: var(--btn-hover); }
+
+        .visual-container { 
+            margin-top: 30px; 
+            display: flex; 
+            flex-direction: column; 
+            align-items: center; 
+            gap: 30px; 
+            width: 100%; 
+            max-width: 1100px; 
+        }
+
+        .people-container {
+            display: flex;
+            gap: 12px;
+            padding: 20px;
+            background: #161b22;
+            border: 3px solid var(--accent-blue);
+            border-radius: 12px;
+            flex-wrap: wrap;
+            justify-content: center;
+        }
+        .person {
+            width: 68px; height: 68px; display: flex; align-items: center; justify-content: center;
+            border-radius: 50%; font-size: 22px; font-weight: 700; font-family: monospace;
+            border: 3px solid var(--border-main); background: #21262d; color: var(--text-main);
+            position: relative;
+        }
+        .person.candidate { border-color: var(--accent-green); background: #0f2a1a; }
+        .person.eliminated { opacity: 0.4; border-color: var(--accent-red); }
+
+        .stack-container {
+            background: #161b22;
+            border: 3px solid var(--accent-purple);
+            border-radius: 12px;
+            padding: 20px;
+            width: 420px;
+        }
+        .stack-label { color: var(--accent-purple); font-weight: bold; text-align: center; margin-bottom: 12px; }
+        .stack-box {
+            background: #21262d;
+            border: 2px solid var(--border-main);
+            border-radius: 10px;
+            padding: 16px;
+            min-height: 260px;
+            display: flex;
+            flex-direction: column-reverse;
+            gap: 10px;
+            align-items: center;
+        }
+        .stack-tile {
+            width: 62px; height: 62px; display: flex; align-items: center; justify-content: center;
+            border-radius: 50%; font-size: 24px; font-weight: 700; font-family: monospace;
+            border: 3px solid var(--accent-purple); background: #1a1f2e; color: var(--accent-purple);
+        }
+
+        .candidate-display {
+            font-size: 36px;
+            font-weight: 700;
+            color: var(--accent-green);
+            background: #161b22;
+            border: 4px solid var(--accent-green);
+            border-radius: 16px;
+            padding: 20px 60px;
+            text-align: center;
+            min-width: 240px;
+        }
+
+        .action-panel {
+            margin-top: 20px; background: var(--bg-surface); border: 1px solid var(--border-main);
+            border-radius: 8px; padding: 20px 28px; width: 820px; min-height: 160px;
+            font-family: monospace; font-size: 15px; line-height: 1.7;
+        }
+
+        .controls { margin-top: 20px; display: flex; align-items: center; gap: 14px; flex-wrap: wrap; justify-content: center; }
+        input[type="range"] { accent-color: var(--accent-blue); width: 180px; }
+
+        .log-panel {
+            margin-top: 20px; background: var(--bg-page); border: 1px solid var(--border-main);
+            border-radius: 8px; padding: 16px 20px; width: 820px; height: 210px;
+            overflow-y: auto; font-family: 'Courier New', monospace; font-size: 13.5px; line-height: 1.55;
+        }
+
+        @keyframes pulse { 0%,100% { transform: scale(1); } 50% { transform: scale(1.12); } }
+    </style>
+</head>
+<body>
+
+    <div class="input-bar">
+        <label class="ui-label">n + knows (JSON):</label>
+        <input type="text" id="input-data" value='{"n":3,"knows":[[1,1,0],[0,1,0],[0,1,1]]}' style="width:420px;">
+        <button onclick="loadCustom()">Load</button>
+        <button onclick="loadExample(0)">Ex 1</button>
+        <button onclick="loadExample(1)">Ex 2</button>
+    </div>
+
+    <div class="visual-container">
+        <div>
+            <div class="ui-label">People (0 to n-1)</div>
+            <div class="people-container" id="people"></div>
+        </div>
+
+        <div class="stack-container">
+            <div class="stack-label">Stack (Elimination)</div>
+            <div class="stack-box" id="stack-box"></div>
+        </div>
+
+        <div class="candidate-display" id="candidate-display">Candidate: —</div>
+    </div>
+
+    <div class="action-panel" id="main-panel">—</div>
+
+    <div class="controls">
+        <button onclick="reset()">↺ Reset</button>
+        <button onclick="back()">← Back</button>
+        <button onclick="togglePlay()" id="play-btn">▶ Play</button>
+        <button onclick="next()">Next →</button>
+        <div>
+            <span class="ui-label" style="margin-right:6px;font-size:12px">Speed</span>
+            <input type="range" id="speed-slider" min="0" max="2" value="1">
+        </div>
+    </div>
+
+    <div class="log-panel" id="log"></div>
+
+    <script>
+        let n = 0;
+        let knows = [];
+        let steps = [];
+        let stepIndex = 0;
+        let timer = null;
+        const delays = [1650, 900, 420];
+
+        const examples = [
+            { n: 3, knows: [[1,1,0],[0,1,0],[0,1,1]] },
+            { n: 4, knows: [[1,0,1,1],[1,1,1,1],[0,0,1,0],[0,0,1,1]] }
+        ];
+
+        function generateSteps(data) {
+            n = data.n;
+            knows = data.knows;
+            steps = [];
+
+            let stack = [];
+            for (let i = 0; i < n; i++) stack.push(i);
+
+            steps.push({
+                type: 'init',
+                stack: [...stack],
+                candidate: null,
+                panel: `<b>Celebrity Problem (Stack Elimination)</b><br>n = ${n}`,
+                statusText: `Initialized stack with 0..${n-1}`,
+                log: `Start: stack = [${stack.join(', ')}]`,
+                logColor: 'var(--text-dim)'
+            });
+
+            while (stack.length > 1) {
+                const a = stack.pop();
+                const b = stack.pop();
+
+                steps.push({
+                    type: 'compare',
+                    stack: [...stack, b, a],
+                    a: a,
+                    b: b,
+                    panel: `Compare <b>${a}</b> and <b>${b}</b>`,
+                    statusText: `Compare ${a} ↔ ${b}`,
+                    log: `  Pop ${a}, ${b}`,
+                    logColor: 'var(--accent-orange)'
+                });
+
+                const knowsAB = knows[a][b];
+                let survivor;
+                if (knowsAB) {
+                    survivor = b; // a knows b → eliminate a
+                } else {
+                    survivor = a; // a doesn't know b → eliminate b
+                }
+
+                stack.push(survivor);
+
+                steps.push({
+                    type: 'eliminate',
+                    stack: [...stack],
+                    eliminated: knowsAB ? a : b,
+                    survivor: survivor,
+                    panel: `knows(${a},${b}) = ${knowsAB} → keep <b>${survivor}</b>`,
+                    statusText: `Keep ${survivor}`,
+                    log: `    ${knowsAB ? a+' knows '+b : a+' does not know '+b} → keep ${survivor}`,
+                    logColor: knowsAB ? 'var(--accent-red)' : 'var(--accent-green)'
+                });
+            }
+
+            const candidate = stack[0];
+
+            steps.push({
+                type: 'candidate',
+                stack: [candidate],
+                candidate: candidate,
+                panel: `Final candidate: <b>${candidate}</b>`,
+                statusText: `Candidate = ${candidate}`,
+                log: `\nCandidate = ${candidate}`,
+                logColor: 'var(--accent-purple)'
+            });
+
+            // Verification
+            let isValid = true;
+            for (let i = 0; i < n; i++) {
+                if (i === candidate) continue;
+                if (knows[candidate][i] || !knows[i][candidate]) {
+                    isValid = false;
+                    break;
+                }
+            }
+
+            steps.push({
+                type: 'verify',
+                stack: [candidate],
+                candidate: candidate,
+                isValid: isValid,
+                panel: isValid ? 
+                    `<b style="color:var(--accent-green)">Verified Celebrity: ${candidate}</b>` : 
+                    `<b style="color:var(--accent-red)">Not a valid celebrity → -1</b>`,
+                statusText: isValid ? `Celebrity ${candidate}` : `No celebrity`,
+                log: `\nVerification: ${isValid ? 'PASS' : 'FAIL'} → ${isValid ? candidate : -1}`,
+                logColor: isValid ? 'var(--accent-green)' : 'var(--accent-red)',
+                bold: true
+            });
+        }
+
+        function renderPeople(candidate, eliminated = new Set()) {
+            const container = document.getElementById('people');
+            container.innerHTML = '';
+            for (let i = 0; i < n; i++) {
+                const p = document.createElement('div');
+                p.className = `person ${i === candidate ? 'candidate' : ''}`;
+                if (eliminated.has(i)) p.classList.add('eliminated');
+                p.textContent = i;
+                container.appendChild(p);
+            }
+        }
+
+        function renderStack(currentStack) {
+            const container = document.getElementById('stack-box');
+            container.innerHTML = '';
+            for (let i = currentStack.length - 1; i >= 0; i--) {
+                const tile = document.createElement('div');
+                tile.className = 'stack-tile';
+                tile.textContent = currentStack[i];
+                container.appendChild(tile);
+            }
+        }
+
+        function renderStep(idx) {
+            const step = steps[idx];
+            if (!step) return;
+
+            renderPeople(step.candidate || null);
+            renderStack(step.stack || []);
+
+            document.getElementById('candidate-display').innerHTML = 
+                step.candidate !== undefined ? 
+                `Candidate: <b>${step.candidate}</b>` : '—';
+
+            document.getElementById('main-panel').innerHTML = step.panel || '—';
+
+            const logPanel = document.getElementById('log');
+            logPanel.innerHTML = '';
+            for (let k = 0; k <= idx; k++) {
+                const s = steps[k];
+                if (s.log) {
+                    const line = document.createElement('div');
+                    line.style.marginBottom = '5px';
+                    line.style.whiteSpace = 'pre-wrap';
+                    if (s.logColor) line.style.color = s.logColor;
+                    if (s.bold) line.style.fontWeight = 'bold';
+                    line.innerText = s.log;
+                    logPanel.appendChild(line);
+                }
+            }
+            logPanel.scrollTop = logPanel.scrollHeight;
+        }
+
+        function next() { if (stepIndex < steps.length - 1) { stepIndex++; renderStep(stepIndex); } else pause(); }
+        function back() { if (stepIndex > 0) { stepIndex--; renderStep(stepIndex); } }
+        function reset() { pause(); stepIndex = 0; renderStep(0); }
+
+        function togglePlay() {
+            const btn = document.getElementById('play-btn');
+            if (timer) {
+                pause();
+            } else {
+                btn.innerText = 'Pause';
+                if (stepIndex >= steps.length - 1) stepIndex = 0;
+                timer = setInterval(next, delays[document.getElementById('speed-slider').value]);
+            }
+        }
+
+        function pause() {
+            clearInterval(timer);
+            timer = null;
+            document.getElementById('play-btn').innerText = '▶ Play';
+        }
+
+        function loadCustom() {
+            try {
+                const val = JSON.parse(document.getElementById('input-data').value);
+                generateSteps(val);
+                reset();
+            } catch(e) {
+                alert("Invalid JSON. Use format: {\"n\":3,\"knows\":[[1,1,0],[0,1,0],[0,1,1]]}");
+            }
+        }
+
+        function loadExample(idx) {
+            document.getElementById('input-data').value = JSON.stringify(examples[idx]);
+            generateSteps(examples[idx]);
+            reset();
+        }
+
+        function init() {
+            loadExample(0);
+        }
+
+        window.onload = init;
+    </script>
+</body>
+</html>

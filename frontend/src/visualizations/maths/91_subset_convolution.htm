@@ -1,0 +1,378 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Subset Convolution - Visualization</title>
+    <style>
+        :root {
+            --bg-page: #0d1117;
+            --bg-surface: #161b22;
+            --bg-input: #0d1117;
+            --border-main: #30363d;
+            --btn-bg: #21262d;
+            --btn-hover: #2d333b;
+            --text-main: #c9d1d9;
+            --text-dim: #8b949e;
+            --accent-orange: #e3b341;
+            --accent-blue: #388bfd;
+            --accent-green: #3fb950;
+            --accent-red: #f85149;
+            --accent-purple: #a371f7;
+        }
+
+        * { box-sizing: border-box; }
+        body {
+            background-color: var(--bg-page);
+            color: var(--text-main);
+            font-family: system-ui, -apple-system, sans-serif;
+            margin: 0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            min-height: 100vh;
+            padding-bottom: 40px;
+        }
+
+        .input-bar {
+            width: 100%; background-color: var(--bg-surface); padding: 12px 16px;
+            display: flex; justify-content: center; align-items: center; gap: 8px;
+            border-bottom: 1px solid var(--border-main); flex-wrap: wrap;
+        }
+        label.ui-label { font-family: 'Courier New', monospace; font-size: 13px; color: var(--text-dim); }
+        input[type="text"] {
+            background: var(--bg-input); border: 1px solid var(--border-main);
+            color: var(--text-main); height: 32px; border-radius: 6px;
+            padding: 0 10px; font-size: 13px; width: 240px;
+        }
+        button {
+            height: 32px; border-radius: 6px; padding: 0 14px; background: var(--btn-bg);
+            border: 1px solid var(--border-main); color: var(--text-main); font-size: 13px;
+            cursor: pointer; transition: background 0.2s ease;
+        }
+        button:hover { background: var(--btn-hover); }
+
+        .visual-container { margin-top: 30px; display: flex; flex-direction: column; align-items: center; gap: 20px; width: 100%; }
+        .tiles-wrapper { 
+            display: flex; gap: 12px; flex-wrap: wrap; justify-content: center; 
+            max-width: 900px; min-height: 130px; 
+        }
+        .tile-unit { display: flex; flex-direction: column; align-items: center; gap: 4px; }
+        .tile {
+            min-width: 54px; height: 54px; display: flex; align-items: center; justify-content: center;
+            border-radius: 8px; font-size: 20px; font-weight: 600; font-family: 'Courier New', monospace;
+            transition: all 0.3s ease; border: 2px solid var(--border-main); background: #21262d;
+            color: var(--text-main);
+        }
+        .tile-index { font-size: 11px; color: var(--text-dim); font-family: monospace; }
+
+        .tile.candidate { background: #2a1600; border-color: var(--accent-orange); color: var(--accent-orange); transform: scale(1.15); }
+        .tile.winning { background: #0f2a1a; border-color: var(--accent-green); color: var(--accent-green); transform: scale(1.18); box-shadow: 0 0 15px var(--accent-green); }
+        .tile.past { opacity: 0.4; }
+
+        .action-panel {
+            margin-top: 20px; background: var(--bg-surface); border: 1px solid var(--border-main);
+            border-radius: 6px; padding: 14px 20px; width: 720px; text-align: center; 
+            font-family: monospace; min-height: 90px; font-size: 15px; line-height: 1.5;
+        }
+
+        .info-panel { margin-top: 10px; display: flex; gap: 10px; flex-wrap: wrap; justify-content: center; }
+        .info-cell {
+            background: var(--bg-surface); border: 1px solid var(--border-main); border-radius: 6px;
+            padding: 8px 14px; display: flex; flex-direction: column; align-items: center; min-width: 110px; gap: 4px;
+        }
+        .info-label { font-size: 11px; color: var(--text-dim); }
+        .info-value { font-family: monospace; font-size: 16px; font-weight: 700; }
+
+        .result-display { margin-top: 15px; display: flex; flex-direction: column; align-items: center; }
+        #res-val { font-size: 22px; color: var(--text-dim); font-family: monospace; font-weight: bold; transition: all 0.4s; }
+        .pop { animation: popAnim 400ms ease; color: var(--accent-green) !important; font-size: 28px !important; text-shadow: 0 0 15px var(--accent-green); }
+
+        @keyframes popAnim { 0%{transform:scale(1)} 50%{transform:scale(1.18)} 100%{transform:scale(1)} }
+
+        .status-bar { margin-top: 8px; font-size: 13px; color: var(--text-dim); height: 1.3em; text-align: center; width: 700px;}
+        .controls { margin-top: 25px; display: flex; align-items: center; gap: 10px; flex-wrap: wrap; justify-content: center; }
+        input[type="range"] { accent-color: var(--accent-blue); width: 120px; }
+
+        .legend { margin-top: 15px; display: flex; gap: 18px; flex-wrap: wrap; justify-content: center; max-width: 900px; }
+        .legend-item { display: flex; align-items: center; font-size: 12px; color: var(--text-dim); }
+        .dot { width: 11px; height: 11px; border-radius: 3px; margin-right: 7px; display: inline-block; }
+
+        .log-panel {
+            margin-top: 15px; background: var(--bg-page); border: 1px solid var(--border-main);
+            border-radius: 6px; padding: 12px 16px; width: 720px; max-width: 95%; height: 130px;
+            overflow-y: auto; font-family: 'Courier New', monospace; font-size: 13px; line-height: 1.4;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="input-bar">
+        <label class="ui-label">n =</label>
+        <input type="text" id="n-input" value="2">
+        <button onclick="loadCustom()">Load</button>
+        <button onclick="loadExample(0)">Ex 1 (n=2)</button>
+        <button onclick="loadExample(1)">Ex 2 (n=1)</button>
+    </div>
+
+    <div class="visual-container">
+        <div class="ui-label">Current S = <span id="current-s" style="color:var(--accent-orange)">—</span> | A = <span id="current-a" style="color:var(--accent-blue)">—</span></div>
+        <div class="tiles-wrapper" id="tiles-container"></div>
+    </div>
+
+    <div class="action-panel" id="main-panel">—</div>
+
+    <div class="info-panel">
+        <div class="info-cell">
+            <span class="info-label">S (bitmask)</span>
+            <span class="info-value" id="val-s" style="color: var(--accent-orange);">—</span>
+        </div>
+        <div class="info-cell">
+            <span class="info-label">A</span>
+            <span class="info-value" id="val-a" style="color: var(--accent-blue);">—</span>
+        </div>
+        <div class="info-cell">
+            <span class="info-label">B = S^A</span>
+            <span class="info-value" id="val-b" style="color: var(--accent-purple);">—</span>
+        </div>
+        <div class="info-cell">
+            <span class="info-label">f[A] * g[B]</span>
+            <span class="info-value" id="val-product" style="color: var(--accent-green);">—</span>
+        </div>
+    </div>
+
+    <div class="result-display">
+        <span class="ui-label" style="margin-bottom: 6px;">Result Array (h[S])</span>
+        <span id="res-val">—</span>
+    </div>
+
+    <div class="status-bar" id="status-text"></div>
+
+    <div class="controls">
+        <button onclick="reset()">↺ Reset</button>
+        <button onclick="back()">← Back</button>
+        <button onclick="togglePlay()" id="play-btn">Play</button>
+        <button onclick="next()">Next →</button>
+        <div style="display:flex; align-items:center; gap:6px;">
+            <span class="ui-label" style="font-size:11px">Speed</span>
+            <input type="range" id="speed-slider" min="0" max="2" value="1">
+        </div>
+    </div>
+
+    <div class="legend">
+        <div class="legend-item"><span class="dot" style="background:var(--accent-orange); border:1px solid var(--accent-orange)"></span> Current S</div>
+        <div class="legend-item"><span class="dot" style="background:var(--accent-blue); border:1px solid var(--accent-blue)"></span> Current A</div>
+    </div>
+
+    <div class="log-panel" id="log"></div>
+
+    <script>
+        let n = 2;
+        let f = [1,2,3,4];
+        let g = [5,6,7,8];
+        let steps = [];
+        let stepIndex = 0;
+        let timer = null;
+        const delays = [1400, 700, 350];
+
+        function init() {
+            loadExample(0);
+        }
+
+        function loadExample(ex) {
+            if (ex === 0) {
+                n = 2;
+                f = [1,2,3,4];
+                g = [5,6,7,8];
+                document.getElementById('n-input').value = "2";
+            } else {
+                n = 1;
+                f = [2,3];
+                g = [4,5];
+                document.getElementById('n-input').value = "1";
+            }
+            generateSteps();
+            reset();
+        }
+
+        function loadCustom() {
+            alert("Custom input limited in demo. Use example buttons.");
+        }
+
+        function generateSteps() {
+            steps = [];
+            let result = new Array(1 << n).fill(0);
+
+            steps.push({
+                type: 'init',
+                s: '—',
+                a: '—',
+                b: '—',
+                product: '—',
+                panel: `Subset Convolution (n=${n})<br>f = ${f}<br>g = ${g}`,
+                status: `Computing h[S] = Σ f[A]·g[B] for A∪B=S, A∩B=∅`,
+                log: `Subset Convolution\nn = ${n}\nf = ${f}\ng = ${g}\nStarting enumeration...`,
+                logColor: 'var(--text-dim)'
+            });
+
+            for (let s = 0; s < (1 << n); s++) {
+                let a = s;
+                while (true) {
+                    let b = s ^ a;
+                    let prod = f[a] * g[b];
+                    result[s] += prod;
+
+                    steps.push({
+                        type: 'candidate',
+                        s: s,
+                        a: a,
+                        b: b,
+                        product: prod,
+                        panel: `S = ${s} (binary ${s.toString(2).padStart(n,'0')})<br>A = ${a} (${a.toString(2).padStart(n,'0')})<br>B = ${b} (${b.toString(2).padStart(n,'0')})<br>f[A]*g[B] = ${f[a]} * ${g[b]} = ${prod}`,
+                        status: `S=${s} | A=${a} | B=${b} | contrib = ${prod}`,
+                        log: `S=${s} A=${a} B=${b} → ${f[a]} * ${g[b]} = ${prod}`,
+                        logColor: 'var(--accent-blue)'
+                    });
+
+                    if (a === 0) break;
+                    a = (a - 1) & s;
+                }
+
+                // Show accumulated result for this S
+                steps.push({
+                    type: 'winning',
+                    s: s,
+                    a: '—',
+                    b: '—',
+                    product: result[s],
+                    panel: `Finished S = ${s}<br>h[${s}] = ${result[s]}`,
+                    status: `h[${s}] = ${result[s]}`,
+                    log: `Completed S=${s} → h[S] = ${result[s]}`,
+                    logColor: 'var(--accent-green)'
+                });
+            }
+
+            steps.push({
+                type: 'final',
+                s: '—',
+                a: '—',
+                b: '—',
+                product: '—',
+                panel: `Subset Convolution Complete<br>Result: [${result.join(', ')}]`,
+                status: `Final result array: [${result.join(', ')}]`,
+                log: `Final Result:\n[${result.join(', ')}]`,
+                logColor: 'var(--accent-green)',
+                complete: true,
+                result: result
+            });
+        }
+
+        function renderStep(idx) {
+            const step = steps[idx];
+            if (!step) return;
+
+            const container = document.getElementById('tiles-container');
+            container.innerHTML = '';
+
+            // Tile for S
+            if (step.s !== '—') {
+                const ws = document.createElement('div');
+                ws.className = 'tile-unit';
+                const ts = document.createElement('div');
+                ts.className = `tile ${step.type === 'winning' ? 'winning' : 'candidate'}`;
+                ts.innerText = step.s;
+                const ls = document.createElement('div');
+                ls.className = 'tile-index';
+                ls.innerText = 'S';
+                ws.append(ts, ls);
+                container.appendChild(ws);
+            }
+
+            // Tile for A
+            if (step.a !== '—') {
+                const wa = document.createElement('div');
+                wa.className = 'tile-unit';
+                const ta = document.createElement('div');
+                ta.className = `tile ${step.type === 'winning' ? 'winning' : 'candidate'}`;
+                ta.innerText = step.a;
+                const la = document.createElement('div');
+                la.className = 'tile-index';
+                la.innerText = 'A';
+                wa.append(ta, la);
+                container.appendChild(wa);
+            }
+
+            document.getElementById('main-panel').innerHTML = step.panel || '—';
+            document.getElementById('val-s').innerText = step.s !== '—' ? step.s : '—';
+            document.getElementById('val-a').innerText = step.a !== '—' ? step.a : '—';
+            document.getElementById('val-b').innerText = step.b !== '—' ? step.b : '—';
+            document.getElementById('val-product').innerText = step.product !== '—' ? step.product : '—';
+
+            const resVal = document.getElementById('res-val');
+            if (step.complete) {
+                resVal.innerText = `[${step.result.join(', ')}]`;
+                resVal.className = 'pop';
+            } else {
+                resVal.innerText = '—';
+                resVal.className = '';
+            }
+
+            document.getElementById('status-text').innerText = step.status || '';
+            document.getElementById('current-s').innerText = step.s !== '—' ? step.s : '—';
+            document.getElementById('current-a').innerText = step.a !== '—' ? step.a : '—';
+
+            const logPanel = document.getElementById('log');
+            logPanel.innerHTML = '';
+            for (let k = 0; k <= idx; k++) {
+                if (steps[k].log) {
+                    const line = document.createElement('div');
+                    line.style.marginBottom = '3px';
+                    line.style.whiteSpace = 'pre-wrap';
+                    if (steps[k].logColor) line.style.color = steps[k].logColor;
+                    line.innerText = steps[k].log;
+                    logPanel.appendChild(line);
+                }
+            }
+            logPanel.scrollTop = logPanel.scrollHeight;
+        }
+
+        function next() {
+            if (stepIndex < steps.length - 1) {
+                stepIndex++;
+                renderStep(stepIndex);
+            } else pause();
+        }
+
+        function back() {
+            if (stepIndex > 0) {
+                stepIndex--;
+                renderStep(stepIndex);
+            }
+        }
+
+        function reset() {
+            pause();
+            stepIndex = 0;
+            renderStep(0);
+        }
+
+        function togglePlay() {
+            const btn = document.getElementById('play-btn');
+            if (timer) pause();
+            else {
+                btn.innerText = 'Pause';
+                if (stepIndex >= steps.length - 1) stepIndex = 0;
+                timer = setInterval(next, delays[document.getElementById('speed-slider').value]);
+            }
+        }
+
+        function pause() {
+            clearInterval(timer);
+            timer = null;
+            document.getElementById('play-btn').innerText = 'Play';
+        }
+
+        window.onload = init;
+    </script>
+</body>
+</html>

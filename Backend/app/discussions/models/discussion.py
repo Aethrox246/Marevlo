@@ -69,6 +69,9 @@ class DiscussionPost(Base):
         Index("idx_disc_posts_problem_id", "problem_id"),
         Index("idx_disc_posts_user_id", "user_id"),
         Index("idx_disc_posts_created_at", "created_at"),
+        Index("idx_disc_posts_problem_created", "problem_id", "created_at"),
+        Index("idx_disc_posts_deleted_created", "deleted_at", "created_at"),
+        Index("idx_disc_posts_pinned_upvote", "is_pinned", "upvote_count"),
     )
 
 
@@ -133,6 +136,8 @@ class DiscussionReply(Base):
         Index("idx_disc_replies_post_id", "post_id"),
         Index("idx_disc_replies_user_id", "user_id"),
         Index("idx_disc_replies_created_at", "created_at"),
+        Index("idx_disc_replies_post_created", "post_id", "created_at"),
+        Index("idx_disc_replies_accepted_upvote", "is_accepted", "upvote_count"),
     )
 
 

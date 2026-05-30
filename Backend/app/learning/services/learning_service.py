@@ -247,6 +247,7 @@ class LearningService:
         # but only for the courses that have progress — bounded by # courses
         # the user has touched, typically ≤ 5.
         course_ids_with_progress = [r[0] for r in agg_rows]
+        agg_by_course = {row[0]: row for row in agg_rows}
         last_per_course: dict[str, tuple[str, Optional[str]]] = {}
         if course_ids_with_progress:
             # One query that picks (course, lesson_id, last_position) for the
@@ -270,7 +271,7 @@ class LearningService:
         # Surface every aggregated course PLUS any enrolled-but-untouched courses.
         all_course_ids = set(course_ids_with_progress) | enrolled_set
         for cid in sorted(all_course_ids):
-            agg = next((r for r in agg_rows if r[0] == cid), None)
+            agg = agg_by_course.get(cid)
             last = last_per_course.get(cid)
             summaries.append(
                 {

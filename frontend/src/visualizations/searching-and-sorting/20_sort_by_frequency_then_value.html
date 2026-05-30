@@ -1,0 +1,462 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sort by Frequency Then Value - Visualization</title>
+    <style>
+        :root {
+            --bg-page: #0d1117;
+            --bg-surface: #161b22;
+            --bg-input: #0d1117;
+            --border-main: #30363d;
+            --btn-bg: #21262d;
+            --btn-hover: #2d333b;
+            --text-main: #c9d1d9;
+            --text-dim: #8b949e;
+            --text-log: #58a6ff;
+            --accent-orange: #e3b341;
+            --accent-blue: #388bfd;
+            --accent-green: #3fb950;
+            --accent-red: #f85149;
+            --accent-purple: #a371f7;
+        }
+
+        * { box-sizing: border-box; }
+        body {
+            background-color: var(--bg-page);
+            color: var(--text-main);
+            font-family: system-ui, -apple-system, sans-serif;
+            margin: 0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            min-height: 100vh;
+            padding-bottom: 40px;
+        }
+
+        /* ROW 1: INPUT BAR */
+        .input-bar {
+            width: 100%;
+            background-color: var(--bg-surface);
+            padding: 12px 16px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 8px;
+            border-bottom: 1px solid var(--border-main);
+            flex-wrap: wrap;
+        }
+        label.ui-label { font-family: 'Courier New', monospace; font-size: 13px; color: var(--text-dim); }
+        input[type="text"] {
+            background: var(--bg-input);
+            border: 1px solid var(--border-main);
+            color: var(--text-main);
+            height: 32px;
+            border-radius: 6px;
+            padding: 0 10px;
+            font-size: 13px;
+        }
+        .arr-input { width: 380px; }
+
+        button {
+            height: 32px; border-radius: 6px; padding: 0 14px; background: var(--btn-bg);
+            border: 1px solid var(--border-main); color: var(--text-main); font-size: 13px; cursor: pointer;
+            transition: background 0.2s ease;
+        }
+        button:hover { background: var(--btn-hover); }
+
+        /* ROW 2: ARRAY TILES */
+        .visual-container { margin-top: 30px; display: flex; flex-direction: column; align-items: center; gap: 20px; width: 100%; }
+        .tiles-wrapper { display: flex; gap: 12px; flex-wrap: wrap; justify-content: center; max-width: 800px; min-height: 80px; position: relative;}
+        
+        .tile-unit { display: flex; flex-direction: column; align-items: center; gap: 4px; position: relative; }
+        .tile {
+            min-width: 48px; height: 48px; display: flex; flex-direction: column; align-items: center; justify-content: center;
+            border-radius: 6px; font-size: 16px; font-weight: 600; font-family: 'Courier New', monospace;
+            transition: all 0.3s ease; border: 2px solid var(--border-main); background: #21262d;
+            color: var(--text-main); padding: 0 8px;
+        }
+        .tile-index { font-size: 11px; color: var(--text-dim); font-family: monospace; }
+        
+        /* Highlight States */
+        .tile.search-space { background: #0d2244; border-color: var(--accent-blue); }
+        .tile.candidate { background: #2a1600; border-color: var(--accent-orange); color: var(--accent-orange); transform: scale(1.15); box-shadow: 0 0 12px rgba(227, 179, 65, 0.4); z-index: 2; }
+        .tile.temp-match { background: #0f2a1a; border-color: var(--accent-green); color: var(--accent-green); border-style: dashed; z-index: 2;}
+        .tile.winning { background: #0f2a1a; border-color: var(--accent-green); color: var(--accent-green); transform: scale(1.1); box-shadow: 0 0 8px var(--accent-green); z-index: 3;}
+        .tile.eliminated { opacity: 0.3; background: #161b22; border-color: var(--border-main); color: var(--text-dim); border-style: dotted; }
+
+        /* Pointers */
+        .ptr-container { display: flex; flex-direction: column; align-items: center; position: absolute; bottom: -50px; gap: 2px; font-size: 11px; font-family: monospace; font-weight: bold; transition: all 0.3s; }
+        .ptr-i { color: var(--accent-orange); }
+        .ptr-arrow { font-size: 16px; line-height: 10px; margin-bottom: 2px; color: var(--text-dim); }
+
+        /* ROW 3: PANEL */
+        .action-panel {
+            margin-top: 40px; background: var(--bg-surface); border: 1px solid var(--border-main);
+            border-radius: 6px; padding: 12px 20px; width: 680px; text-align: center; font-family: monospace; min-height: 70px;
+            display: flex; flex-direction: column; justify-content: center; font-size: 15px; line-height: 1.5;
+        }
+
+        /* ROW 4: INFO PANEL */
+        .info-panel { margin-top: 10px; display: flex; gap: 10px; flex-wrap: wrap; justify-content: center; max-width: 800px; }
+        .info-cell {
+            background: var(--bg-surface); border: 1px solid var(--border-main); border-radius: 6px;
+            padding: 8px 14px; display: flex; flex-direction: column; align-items: center; min-width: 90px; gap: 4px;
+        }
+        .info-label { font-size: 11px; color: var(--text-dim); text-align: center;}
+        .info-value { font-family: monospace; font-size: 15px; font-weight: 700; text-align: center; }
+
+        /* ROW 5: RESULT DISPLAY */
+        .result-display { margin-top: 10px; display: flex; flex-direction: column; align-items: center; }
+        #res-val { font-size: 18px; color: var(--text-dim); font-family: monospace; transition: all 0.3s; font-weight: bold; }
+        .pop { animation: popAnim 400ms ease; color: var(--accent-green) !important; font-size: 24px !important; text-shadow: 0 0 12px var(--accent-green); }
+
+        @keyframes popAnim { 0%{transform:scale(1)} 50%{transform:scale(1.15)} 100%{transform:scale(1)} }
+
+        /* ROW 6: STATUS BAR */
+        .status-bar { margin-top: 8px; font-size: 13px; color: var(--text-dim); height: 1.2em; text-align: center; width: 600px;}
+
+        /* ROW 7: CONTROLS */
+        .controls { margin-top: 24px; display: flex; align-items: center; gap: 8px; }
+        input[type="range"] { accent-color: var(--accent-blue); width: 100px; cursor: pointer; }
+
+        /* ROW 8: LEGEND */
+        .legend { margin-top: 12px; display: flex; gap: 16px; flex-wrap: wrap; justify-content: center; max-width: 800px; }
+        .legend-item { display: flex; align-items: center; font-size: 12px; color: var(--text-dim); }
+        .dot { width: 10px; height: 10px; border-radius: 2px; margin-right: 6px; display: inline-block; }
+
+        /* ROW 9: LOG PANEL */
+        .log-panel {
+            margin-top: 12px; background: var(--bg-page); border: 1px solid var(--border-main);
+            border-radius: 6px; padding: 12px 16px; width: 700px; max-width: 90%; height: 120px;
+            overflow-y: auto; font-family: 'Courier New', monospace; font-size: 13px;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="input-bar">
+        <label class="ui-label">arr =</label>
+        <input type="text" id="arr-input" class="arr-input" placeholder="4, 2, 2, 8, 3, 3, 1">
+        <button onclick="loadCustom()">Load</button>
+        <button onclick="loadExample([4, 2, 2, 8, 3, 3, 1])">Ex 1</button>
+        <button onclick="loadExample([5, 5, 5, 1, 1, 2, 2, 2])">Ex 2</button>
+    </div>
+
+    <div class="visual-container">
+        <div class="ui-label">Array:</div>
+        <div class="tiles-wrapper" id="tiles-container"></div>
+    </div>
+
+    <div class="action-panel" id="main-panel">—</div>
+
+    <div class="info-panel">
+        <div class="info-cell">
+            <span class="info-label">Phase</span>
+            <span class="info-value" id="val-phase" style="color: var(--accent-blue);">—</span>
+        </div>
+        <div class="info-cell">
+            <span class="info-label">Current Element</span>
+            <span class="info-value" id="val-curr" style="color: var(--accent-orange);">—</span>
+        </div>
+        <div class="info-cell" style="min-width: 250px;">
+            <span class="info-label">Frequency Map</span>
+            <span class="info-value" id="val-freq" style="color: var(--text-main); font-size: 13px; font-weight: normal;">{}</span>
+        </div>
+    </div>
+
+    <div class="result-display">
+        <span class="ui-label" style="margin-bottom: 4px;">status</span>
+        <span id="res-val">—</span>
+    </div>
+
+    <div class="status-bar" id="status-text"></div>
+
+    <div class="controls">
+        <button onclick="reset()">↺ Reset</button>
+        <button onclick="back()">← Back</button>
+        <button onclick="togglePlay()" id="play-btn">Play</button>
+        <button onclick="next()">Next →</button>
+        <div class="controls" style="margin-top:0">
+            <span class="ui-label" style="margin-right:4px; font-size:11px">Speed</span>
+            <input type="range" id="speed-slider" min="0" max="2" value="1">
+        </div>
+    </div>
+
+    <div class="legend">
+        <div class="legend-item"><span class="dot" style="background:var(--bg-surface); border:1px solid var(--accent-blue)"></span> Unprocessed Element</div>
+        <div class="legend-item"><span class="dot" style="background:var(--bg-surface); border:1px solid var(--accent-orange)"></span> Actively Processing</div>
+        <div class="legend-item"><span class="dot" style="background:var(--bg-surface); border:1px dashed var(--accent-green)"></span> Processed / Grouping</div>
+        <div class="legend-item"><span class="dot" style="background:var(--accent-green); border:1px solid var(--accent-green)"></span> Placed in Sorted Array</div>
+        <div class="legend-item"><span class="dot" style="background:var(--bg-surface); border:1px dotted var(--border-main); opacity:0.3"></span> Empty Spot</div>
+    </div>
+
+    <div class="log-panel" id="log"></div>
+
+    <script>
+        let arr = [4, 2, 2, 8, 3, 3, 1];
+        let steps = [];
+        let stepIndex = 0;
+        let timer = null;
+        const delays = [1800, 900, 450];
+
+        function init() { loadExample([4, 2, 2, 8, 3, 3, 1]); }
+
+        function loadExample(newArr) {
+            arr = [...newArr];
+            document.getElementById('arr-input').value = arr.join(', ');
+            generateSteps();
+            reset();
+        }
+
+        function loadCustom() {
+            const valStr = document.getElementById('arr-input').value;
+            const parsedArr = valStr.split(',').map(x => parseInt(x.trim())).filter(x => !isNaN(x));
+            
+            if (parsedArr.length > 0) {
+                loadExample(parsedArr.slice(0, 20)); // limit size for display
+            } else {
+                alert("Please enter a valid array of numbers separated by commas.");
+            }
+        }
+
+        function getMapStr(map) {
+            if (map.size === 0) return '{}';
+            const entries = Array.from(map.entries()).map(([k, v]) => `${k}:${v}`);
+            return `{ ${entries.join(', ')} }`;
+        }
+
+        function generateSteps() {
+            steps = [];
+            const n = arr.length;
+            if (n === 0) return;
+
+            let freq = new Map();
+            let curArr = [...arr];
+
+            // STEP 0: INIT
+            steps.push({
+                type: 'init', arr: [...curArr], phase: 'Initialize', i: '—', curr: '—', freqStr: '{}',
+                states: curArr.map(() => 'search-space'),
+                panel: `<b>Sort by Frequency then Value</b><br>We need to sort elements based on their occurrence frequency (descending) and then by their natural value (ascending).`,
+                statusText: `array=[${curArr.join(', ')}]. Click Play to begin.`,
+                log: `n=${n}. Starting Custom Sort (Frequency descending, Value ascending).\nPhase 1: Frequency Counting.`,
+                logColor: 'var(--text-dim)'
+            });
+
+            // PHASE 1: COUNT
+            for (let i = 0; i < n; i++) {
+                let val = curArr[i];
+                let prevCount = freq.get(val) || 0;
+                freq.set(val, prevCount + 1);
+
+                steps.push({
+                    type: 'count', arr: [...curArr], phase: '1. Counting', i: i, curr: val, freqStr: getMapStr(freq),
+                    states: curArr.map((_, idx) => {
+                        if (idx === i) return 'candidate';
+                        if (idx < i) return 'temp-match';
+                        return 'search-space';
+                    }),
+                    panel: `Reading element <code>arr[${i}] = </code><b>${val}</b>.<br>Update frequency map: <code>freq[${val}] = ${prevCount + 1}</code>.`,
+                    statusText: `Counting element at index ${i}...`,
+                    log: `  Read arr[${i}] = ${val}. freq[${val}] incremented to ${prevCount + 1}.`,
+                    logColor: 'var(--text-main)'
+                });
+            }
+
+            steps.push({
+                type: 'count-done', arr: [...curArr], phase: '1. Counting Complete', i: '—', curr: '—', freqStr: getMapStr(freq),
+                states: curArr.map(() => 'temp-match'),
+                panel: `<b>Phase 1 Complete</b><br>All elements counted. Frequency map is fully built.`,
+                statusText: `Frequency map generation complete.`,
+                log: `\nFrequency Map fully constructed: ${getMapStr(freq)}.\nMoving to Phase 2: Custom Sorting.`,
+                logColor: 'var(--accent-blue)'
+            });
+
+            // PHASE 2: SORT DISTINCT
+            let distinct = Array.from(freq.keys());
+            distinct.sort((a, b) => {
+                let fA = freq.get(a);
+                let fB = freq.get(b);
+                if (fA !== fB) return fB - fA; // Descending frequency
+                return a - b; // Ascending value
+            });
+
+            let sortedGroupsLog = distinct.map(val => `[val ${val}, freq ${freq.get(val)}]`).join(' → ');
+
+            steps.push({
+                type: 'sort-logic', arr: Array(n).fill(''), phase: '2. Sorting Map', i: '—', curr: '—', freqStr: getMapStr(freq),
+                states: Array(n).fill('eliminated'),
+                panel: `<b>Phase 2: Sort Unique Elements</b><br>We extract distinct values and sort them.<br>Primary constraint: <b>Frequency Descending</b>.<br>Secondary constraint: <b>Value Ascending</b>.`,
+                statusText: `Sorting unique elements by frequency and value.`,
+                log: `Extract distinct values and apply custom comparator:\n  Sorted order: ${sortedGroupsLog}`,
+                logColor: 'var(--accent-orange)'
+            });
+
+            // PHASE 3: RECONSTRUCT
+            let buildArr = Array(n).fill('');
+            let ptr = 0;
+
+            steps.push({
+                type: 'reconstruct-start', arr: [...buildArr], phase: '3. Reconstructing', i: '—', curr: '—', freqStr: getMapStr(freq),
+                states: Array(n).fill('eliminated'),
+                panel: `<b>Phase 3: Reconstruct Array</b><br>Now we rebuild the array by placing the sorted elements according to their frequency.`,
+                statusText: `Preparing to reconstruct array...`,
+                log: `\nPhase 3: Reconstructing array from sorted groups.`,
+                logColor: 'var(--text-dim)'
+            });
+
+            for (let val of distinct) {
+                let count = freq.get(val);
+                
+                steps.push({
+                    type: 'group-start', arr: [...buildArr], phase: '3. Reconstructing', i: ptr, curr: val, freqStr: getMapStr(freq),
+                    states: buildArr.map((v, idx) => idx < ptr ? 'winning' : 'eliminated'),
+                    panel: `Next sorted group: value <b>${val}</b>.<br>It has a frequency of <b>${count}</b>, so we will append it ${count} time(s).`,
+                    statusText: `Appending value ${val} (${count} times)...`,
+                    log: `  Group: value ${val}, frequency ${count}. Placing in array.`,
+                    logColor: 'var(--accent-blue)'
+                });
+
+                for (let c = 0; c < count; c++) {
+                    buildArr[ptr] = val;
+                    steps.push({
+                        type: 'place-item', arr: [...buildArr], phase: '3. Reconstructing', i: ptr, curr: val, freqStr: getMapStr(freq),
+                        states: buildArr.map((v, idx) => {
+                            if (idx === ptr) return 'candidate';
+                            if (idx < ptr) return 'winning';
+                            return 'eliminated';
+                        }),
+                        panel: `Placing value <b>${val}</b> at index <b>${ptr}</b>.`,
+                        statusText: `Placed ${val} at index ${ptr}.`,
+                        log: `    arr[${ptr}] = ${val}`,
+                        logColor: 'var(--text-main)'
+                    });
+                    ptr++;
+                }
+            }
+
+            // FINAL STEP
+            steps.push({
+                type: 'final', arr: [...buildArr], phase: 'Complete', i: '—', curr: '—', freqStr: getMapStr(freq),
+                states: buildArr.map(() => 'winning'),
+                panel: `<span style="color:var(--accent-green)">Reconstruction Complete!</span><br>The array is now sorted by frequency (descending) and then by value (ascending).`,
+                complete: true,
+                finalStr: 'Sorted',
+                statusText: `Sorting complete.`,
+                log: `\nReconstruction finished. Array fully sorted.\nFinal Result: [${buildArr.join(', ')}] ✓`,
+                logColor: 'var(--accent-green)', bold: true
+            });
+        }
+
+        function renderStep(idx) {
+            const step = steps[idx];
+            if (!step) return;
+
+            const container = document.getElementById('tiles-container');
+            container.innerHTML = '';
+            
+            step.states.forEach((state, i) => {
+                const wrapper = document.createElement('div');
+                wrapper.className = 'tile-unit';
+                
+                const tile = document.createElement('div');
+                tile.className = `tile ${state}`;
+                tile.innerText = step.arr[i] === '' ? ' ' : step.arr[i];
+                
+                const idxLabel = document.createElement('div');
+                idxLabel.className = 'tile-index';
+                idxLabel.innerText = `[${i}]`;
+                
+                wrapper.append(tile, idxLabel);
+
+                // Add Pointers
+                if (!step.complete && step.i === i) {
+                    const ptrContainer = document.createElement('div');
+                    ptrContainer.className = 'ptr-container';
+                    ptrContainer.innerHTML = `<div class="ptr-arrow">↑</div><div class="ptr-i">idx</div>`;
+                    wrapper.appendChild(ptrContainer);
+                }
+
+                container.appendChild(wrapper);
+            });
+
+            if (!step.complete) {
+                container.style.marginBottom = "45px";
+            } else {
+                container.style.marginBottom = "0px";
+            }
+
+            document.getElementById('main-panel').innerHTML = step.panel;
+            document.getElementById('val-phase').innerText = step.phase;
+            document.getElementById('val-curr').innerText = step.curr;
+            document.getElementById('val-freq').innerText = step.freqStr;
+
+            const resVal = document.getElementById('res-val');
+            resVal.innerText = step.complete ? step.finalStr : 'In Progress';
+            
+            if (step.complete) {
+                resVal.className = 'pop';
+            } else {
+                resVal.className = '';
+            }
+
+            document.getElementById('status-text').innerText = step.statusText;
+
+            const logPanel = document.getElementById('log');
+            logPanel.innerHTML = '';
+            for (let k = 0; k <= idx; k++) {
+                if (steps[k].log) {
+                    const line = document.createElement('div');
+                    line.style.marginBottom = '2px';
+                    line.style.whiteSpace = 'pre-wrap';
+                    if (steps[k].logColor) line.style.color = steps[k].logColor;
+                    if (steps[k].bold) line.style.fontWeight = 'bold';
+                    line.innerText = steps[k].log;
+                    logPanel.appendChild(line);
+                }
+            }
+            logPanel.scrollTop = logPanel.scrollHeight;
+        }
+
+        function next() {
+            if (stepIndex < steps.length - 1) {
+                stepIndex++;
+                renderStep(stepIndex);
+            } else pause();
+        }
+
+        function back() {
+            if (stepIndex > 0) {
+                stepIndex--;
+                renderStep(stepIndex);
+            }
+        }
+
+        function reset() {
+            pause();
+            stepIndex = 0;
+            renderStep(0);
+        }
+
+        function togglePlay() {
+            const btn = document.getElementById('play-btn');
+            if (timer) pause();
+            else {
+                btn.innerText = 'Pause';
+                if (stepIndex >= steps.length - 1) stepIndex = 0;
+                timer = setInterval(next, delays[document.getElementById('speed-slider').value]);
+            }
+        }
+
+        function pause() {
+            clearInterval(timer);
+            timer = null;
+            document.getElementById('play-btn').innerText = 'Play';
+        }
+
+        window.onload = init;
+    </script>
+</body>
+</html>

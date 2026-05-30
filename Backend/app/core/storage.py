@@ -195,6 +195,9 @@ class S3Storage:
     def delete_object(self, key: str) -> None:
         try:
             self._s3.delete_object(Bucket=self._bucket(), Key=key)
+            # Evict the presign cache so no caller gets a stale URL pointing
+            # at a now-deleted object.
+            self._cache.pop(key, None)
         except ClientError as exc:
             logger.warning("s3_delete_failed key=%s err=%s", key, exc)
 

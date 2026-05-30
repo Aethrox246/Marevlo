@@ -1,0 +1,435 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Advanced CRT - Visualization</title>
+    <style>
+        :root {
+            --bg-page: #0d1117;
+            --bg-surface: #161b22;
+            --bg-input: #0d1117;
+            --border-main: #30363d;
+            --btn-bg: #21262d;
+            --btn-hover: #2d333b;
+            --text-main: #c9d1d9;
+            --text-dim: #8b949e;
+            --accent-orange: #e3b341;
+            --accent-blue: #388bfd;
+            --accent-green: #3fb950;
+            --accent-red: #f85149;
+            --accent-purple: #a371f7;
+        }
+
+        * { box-sizing: border-box; }
+        body {
+            background-color: var(--bg-page);
+            color: var(--text-main);
+            font-family: system-ui, -apple-system, sans-serif;
+            margin: 0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            min-height: 100vh;
+            padding-bottom: 40px;
+        }
+
+        /* INPUT BAR */
+        .input-bar {
+            width: 100%;
+            background-color: var(--bg-surface);
+            padding: 12px 16px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 8px;
+            border-bottom: 1px solid var(--border-main);
+            flex-wrap: wrap;
+        }
+        label.ui-label { font-family: 'Courier New', monospace; font-size: 13px; color: var(--text-dim); }
+        input[type="text"] {
+            background: var(--bg-input);
+            border: 1px solid var(--border-main);
+            color: var(--text-main);
+            height: 32px;
+            border-radius: 6px;
+            padding: 0 10px;
+            width: 280px;
+            font-size: 13px;
+        }
+
+        button {
+            height: 32px; border-radius: 6px; padding: 0 14px; background: var(--btn-bg);
+            border: 1px solid var(--border-main); color: var(--text-main); font-size: 13px; cursor: pointer;
+            transition: background 0.2s ease;
+        }
+        button:hover { background: var(--btn-hover); }
+
+        /* VISUALIZATION */
+        .visual-container { margin-top: 30px; display: flex; flex-direction: column; align-items: center; gap: 20px; width: 100%; }
+        .tiles-wrapper { 
+            display: flex; gap: 14px; flex-wrap: wrap; justify-content: center; 
+            max-width: 920px; min-height: 110px; position: relative;
+        }
+        
+        .tile-unit { display: flex; flex-direction: column; align-items: center; gap: 5px; position: relative; }
+        .tile {
+            min-width: 58px; height: 58px; display: flex; align-items: center; justify-content: center;
+            border-radius: 8px; font-size: 21px; font-weight: 600; font-family: 'Courier New', monospace;
+            transition: all 0.3s ease; border: 2px solid var(--border-main); background: #21262d;
+            color: var(--text-main);
+        }
+        .tile-index { font-size: 11px; color: var(--text-dim); font-family: monospace; }
+
+        /* Highlight States */
+        .tile.candidate { background: #2a1600; border-color: var(--accent-orange); color: var(--accent-orange); transform: scale(1.12); box-shadow: 0 0 14px rgba(227,179,65,0.5); z-index: 2; }
+        .tile.winning { background: #0f2a1a; border-color: var(--accent-green); color: var(--accent-green); transform: scale(1.1); box-shadow: 0 0 12px var(--accent-green); z-index: 3; }
+        .tile.failed { background: #2a0d0d; border-color: var(--accent-red); color: var(--accent-red); transform: scale(1.15); box-shadow: 0 0 12px var(--accent-red); }
+        .tile.done { opacity: 0.55; background: #161b22; border-color: var(--border-main); color: var(--text-dim); }
+
+        /* PANEL */
+        .action-panel {
+            margin-top: 40px; background: var(--bg-surface); border: 1px solid var(--border-main);
+            border-radius: 6px; padding: 14px 24px; width: 740px; text-align: center; 
+            font-family: monospace; min-height: 95px; line-height: 1.55;
+        }
+
+        /* INFO PANEL */
+        .info-panel { margin-top: 14px; display: flex; gap: 14px; flex-wrap: wrap; justify-content: center; }
+        .info-cell {
+            background: var(--bg-surface); border: 1px solid var(--border-main); border-radius: 6px;
+            padding: 10px 18px; display: flex; flex-direction: column; align-items: center; 
+            min-width: 130px; gap: 5px;
+        }
+        .info-label { font-size: 11px; color: var(--text-dim); }
+        .info-value { font-family: monospace; font-size: 17px; font-weight: 700; }
+
+        /* RESULT */
+        .result-display { margin-top: 14px; display: flex; flex-direction: column; align-items: center; }
+        #res-val { font-size: 23px; color: var(--text-dim); font-family: monospace; transition: all 0.3s; font-weight: bold; }
+        .pop { animation: popAnim 420ms ease; color: var(--accent-green) !important; font-size: 29px !important; text-shadow: 0 0 16px var(--accent-green); }
+        .pop-false { animation: popAnim 420ms ease; color: var(--accent-red) !important; font-size: 29px !important; text-shadow: 0 0 16px var(--accent-red); }
+
+        @keyframes popAnim { 0%{transform:scale(1)} 50%{transform:scale(1.2)} 100%{transform:scale(1)} }
+
+        .status-bar { margin-top: 10px; font-size: 13px; color: var(--text-dim); height: 1.4em; text-align: center; width: 700px; }
+
+        /* CONTROLS */
+        .controls { margin-top: 28px; display: flex; align-items: center; gap: 10px; }
+        input[type="range"] { accent-color: var(--accent-blue); width: 120px; cursor: pointer; }
+
+        /* LEGEND */
+        .legend { margin-top: 16px; display: flex; gap: 20px; flex-wrap: wrap; justify-content: center; max-width: 900px; }
+        .legend-item { display: flex; align-items: center; font-size: 12.5px; color: var(--text-dim); }
+        .dot { width: 12px; height: 12px; border-radius: 3px; margin-right: 8px; display: inline-block; }
+
+        /* LOG */
+        .log-panel {
+            margin-top: 16px; background: var(--bg-page); border: 1px solid var(--border-main);
+            border-radius: 6px; padding: 14px 20px; width: 760px; max-width: 95%; height: 145px;
+            overflow-y: auto; font-family: 'Courier New', monospace; font-size: 13px; line-height: 1.45;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="input-bar">
+        <label class="ui-label">Congruences =</label>
+        <input type="text" id="num-input" value="[[2,3],[3,4],[1,5]]">
+        <button onclick="loadCustom()">Load</button>
+        <button onclick="loadExample('[[2,3],[3,4],[1,5]]')">Ex 1</button>
+        <button onclick="loadExample('[[1,2],[2,4]]')">Ex 2</button>
+    </div>
+
+    <div class="visual-container">
+        <div class="ui-label">Current Candidate x</div>
+        <div class="tiles-wrapper" id="tiles-container"></div>
+    </div>
+
+    <div class="action-panel" id="main-panel">—</div>
+
+    <div class="info-panel">
+        <div class="info-cell">
+            <span class="info-label">Current x</span>
+            <span class="info-value" id="val-x" style="color: var(--accent-orange);">—</span>
+        </div>
+        <div class="info-cell">
+            <span class="info-label">LCM Bound</span>
+            <span class="info-value" id="val-lcm" style="color: var(--accent-blue);">—</span>
+        </div>
+        <div class="info-cell">
+            <span class="info-label">Matches So Far</span>
+            <span class="info-value" id="val-matches" style="color: var(--accent-green);">—</span>
+        </div>
+    </div>
+
+    <div class="result-display">
+        <span class="ui-label" style="margin-bottom: 6px;">Solution x =</span>
+        <span id="res-val">—</span>
+    </div>
+
+    <div class="status-bar" id="status-text"></div>
+
+    <div class="controls">
+        <button onclick="reset()">↺ Reset</button>
+        <button onclick="back()">← Back</button>
+        <button onclick="togglePlay()" id="play-btn">Play</button>
+        <button onclick="next()">Next →</button>
+        <div class="controls" style="margin-top:0">
+            <span class="ui-label" style="margin-right:5px; font-size:11px">Speed</span>
+            <input type="range" id="speed-slider" min="0" max="2" value="1">
+        </div>
+    </div>
+
+    <div class="legend">
+        <div class="legend-item"><span class="dot" style="background:var(--bg-surface); border:1px solid var(--accent-orange)"></span> Testing x</div>
+        <div class="legend-item"><span class="dot" style="background:var(--accent-green); border:1px solid var(--accent-green)"></span> All Congruences Match</div>
+        <div class="legend-item"><span class="dot" style="background:var(--accent-red); border:1px solid var(--accent-red)"></span> Mismatch</div>
+    </div>
+
+    <div class="log-panel" id="log"></div>
+
+    <script>
+        let congruences = [[2,3],[3,4],[1,5]]; // [[a1,m1], [a2,m2], ...]
+        let steps = [];
+        let stepIndex = 0;
+        let timer = null;
+        const delays = [1400, 700, 350];
+
+        function init() { loadExample('[[2,3],[3,4],[1,5]]'); }
+
+        function parseCongruences(str) {
+            try {
+                return JSON.parse(str.replace(/'/g, '"'));
+            } catch(e) {
+                return [[2,3],[3,4],[1,5]];
+            }
+        }
+
+        function loadExample(exampleStr) {
+            document.getElementById('num-input').value = exampleStr;
+            congruences = parseCongruences(exampleStr);
+            generateSteps();
+            reset();
+        }
+
+        function loadCustom() {
+            const val = document.getElementById('num-input').value.trim();
+            if (val) {
+                congruences = parseCongruences(val);
+                generateSteps();
+                reset();
+            } else {
+                alert("Please enter congruences like [[2,3],[3,4],[1,5]]");
+            }
+        }
+
+        function gcd(a, b) {
+            a = Math.abs(a); b = Math.abs(b);
+            while (b) { [a, b] = [b, a % b]; }
+            return a;
+        }
+
+        function lcm(a, b) {
+            return a / gcd(a, b) * b;
+        }
+
+        function computeLCM(nums) {
+            let res = 1;
+            for (let num of nums) {
+                if (num === 0) return 0;
+                res = lcm(res, num);
+            }
+            return res;
+        }
+
+        function generateSteps() {
+            steps = [];
+            if (congruences.length === 0) return;
+
+            const moduli = congruences.map(c => c[1]);
+            const LCM = computeLCM(moduli);
+
+            steps.push({
+                type: 'init',
+                panel: `Advanced CRT<br>Congruences: <b>${JSON.stringify(congruences)}</b><br>LCM of moduli = <b>${LCM}</b>`,
+                statusText: `Computing solution modulo LCM = ${LCM}`,
+                log: `Congruences: ${JSON.stringify(congruences)}\nLCM = ${LCM}\nIterating x from 0 to ${LCM-1}`,
+                logColor: 'var(--text-dim)',
+                currentX: '—',
+                lcm: LCM,
+                matches: '0/' + congruences.length
+            });
+
+            let found = false;
+            let solution = -1;
+
+            for (let x = 0; x < LCM; x++) {
+                let matchCount = 0;
+                let allMatch = true;
+
+                steps.push({
+                    type: 'test',
+                    panel: `Testing candidate x = <b>${x}</b>`,
+                    statusText: `x = ${x}`,
+                    log: `x = ${x}`,
+                    logColor: 'var(--accent-orange)',
+                    currentX: x,
+                    lcm: LCM,
+                    matches: matchCount + '/' + congruences.length
+                });
+
+                for (let [a, m] of congruences) {
+                    if (x % m !== a) {
+                        allMatch = false;
+                        break;
+                    }
+                    matchCount++;
+                }
+
+                if (allMatch) {
+                    found = true;
+                    solution = x;
+                    steps.push({
+                        type: 'success',
+                        panel: `<span style="color:var(--accent-green)">Found solution x = <b>${x}</b></span><br>All congruences satisfied.`,
+                        statusText: `Solution found: ${x}`,
+                        log: `✓ x = ${x} satisfies all congruences`,
+                        logColor: 'var(--accent-green)',
+                        bold: true,
+                        currentX: x,
+                        lcm: LCM,
+                        matches: congruences.length + '/' + congruences.length
+                    });
+                    break;
+                } else {
+                    steps.push({
+                        type: 'fail',
+                        panel: `x = ${x} does not satisfy all congruences`,
+                        statusText: `Mismatch at x=${x}`,
+                        log: `✗ x = ${x} fails`,
+                        logColor: 'var(--accent-red)',
+                        currentX: x,
+                        lcm: LCM,
+                        matches: matchCount + '/' + congruences.length
+                    });
+                }
+            }
+
+            if (!found) {
+                steps.push({
+                    type: 'final',
+                    panel: `<span style="color:var(--accent-red)">No solution found in 0 to ${LCM-1}</span>`,
+                    statusText: `No solution`,
+                    log: `No x satisfies all congruences → Return -1`,
+                    logColor: 'var(--accent-red)',
+                    bold: true,
+                    currentX: '—',
+                    lcm: LCM,
+                    matches: '0/' + congruences.length
+                });
+            } else {
+                steps.push({
+                    type: 'final',
+                    panel: `<span style="color:var(--accent-green)">Solution found: x = <b>${solution}</b></span>`,
+                    statusText: `Solution: ${solution}`,
+                    log: `Final solution x = ${solution}`,
+                    logColor: 'var(--accent-green)',
+                    bold: true,
+                    currentX: solution,
+                    lcm: LCM,
+                    matches: congruences.length + '/' + congruences.length
+                });
+            }
+        }
+
+        function renderStep(idx) {
+            const step = steps[idx];
+            if (!step) return;
+
+            const container = document.getElementById('tiles-container');
+            container.innerHTML = '';
+
+            // Show current x as main tile
+            const wrapper = document.createElement('div');
+            wrapper.className = 'tile-unit';
+
+            const tile = document.createElement('div');
+            tile.className = `tile ${step.type === 'success' || (step.type === 'final' && step.logColor.includes('green')) ? 'winning' : (step.type === 'fail' || (step.type === 'final' && step.logColor.includes('red')) ? 'failed' : 'candidate')}`;
+            tile.innerText = step.currentX !== undefined ? step.currentX : '?';
+
+            const idxLabel = document.createElement('div');
+            idxLabel.className = 'tile-index';
+            idxLabel.innerText = `x = ${step.currentX !== undefined ? step.currentX : '?'}`;
+
+            wrapper.append(tile, idxLabel);
+            container.appendChild(wrapper);
+
+            document.getElementById('main-panel').innerHTML = step.panel;
+            document.getElementById('val-x').innerText = step.currentX !== undefined ? step.currentX : '—';
+            document.getElementById('val-lcm').innerText = step.lcm || '—';
+            document.getElementById('val-matches').innerText = step.matches || '—';
+
+            const resVal = document.getElementById('res-val');
+            resVal.innerText = step.type === 'final' ? (step.logColor.includes('green') ? step.currentX : '-1') : '—';
+            resVal.className = step.type === 'final' ? (step.logColor.includes('green') ? 'pop' : 'pop-false') : '';
+
+            document.getElementById('status-text').innerText = step.statusText || '';
+
+            // Log
+            const logPanel = document.getElementById('log');
+            logPanel.innerHTML = '';
+            for (let k = 0; k <= idx; k++) {
+                if (steps[k].log) {
+                    const line = document.createElement('div');
+                    line.style.marginBottom = '4px';
+                    line.style.whiteSpace = 'pre-wrap';
+                    if (steps[k].logColor) line.style.color = steps[k].logColor;
+                    if (steps[k].bold) line.style.fontWeight = 'bold';
+                    line.innerText = steps[k].log;
+                    logPanel.appendChild(line);
+                }
+            }
+            logPanel.scrollTop = logPanel.scrollHeight;
+        }
+
+        function next() {
+            if (stepIndex < steps.length - 1) {
+                stepIndex++;
+                renderStep(stepIndex);
+            } else pause();
+        }
+
+        function back() {
+            if (stepIndex > 0) {
+                stepIndex--;
+                renderStep(stepIndex);
+            }
+        }
+
+        function reset() {
+            pause();
+            stepIndex = 0;
+            renderStep(0);
+        }
+
+        function togglePlay() {
+            const btn = document.getElementById('play-btn');
+            if (timer) pause();
+            else {
+                btn.innerText = 'Pause';
+                if (stepIndex >= steps.length - 1) stepIndex = 0;
+                timer = setInterval(next, delays[document.getElementById('speed-slider').value]);
+            }
+        }
+
+        function pause() {
+            clearInterval(timer);
+            timer = null;
+            document.getElementById('play-btn').innerText = 'Play';
+        }
+
+        window.onload = init;
+    </script>
+</body>
+</html>

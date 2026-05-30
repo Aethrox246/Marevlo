@@ -1,0 +1,1510 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Module 7.3 — The Production LLM Stack · Marevlo Transformer Track</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;500&family=Syne:wght@500;700;800&family=Inter+Tight:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg-0: #05070d;
+    --bg-1: #080b14;
+    --bg-2: #0d1220;
+    --bg-card: #0a0f1c;
+    --bg-code: #06090f;
+    --line: rgba(120, 200, 255, 0.18);
+    --line-strong: rgba(120, 200, 255, 0.55);
+    --glow: #5fd4ff;
+    --glow-soft: #7af0ff;
+    --accent: #ff4d8a;
+    --accent-2: #b48cff;
+    --accent-yellow: #f0c674;
+    --green: #7fc28a;
+    --red: #e26a6a;
+    --text: #e6f1ff;
+    --muted: #7a8aa3;
+    --text-dim: #aebbd1;
+    --text-faint: #6a7a93;
+    --mono: 'JetBrains Mono', ui-monospace, monospace;
+    --display: 'Syne', sans-serif;
+    --body: 'Inter Tight', sans-serif;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  html { scroll-behavior: smooth; }
+  html, body {
+    background: var(--bg-0);
+    color: var(--text);
+    font-family: var(--body);
+    font-size: 16px;
+    line-height: 1.7;
+    overflow-x: hidden;
+    min-height: 100vh;
+  }
+
+  /* ---------- Background neural circuit ---------- */
+  .circuit-bg {
+    position: fixed;
+    inset: 0;
+    z-index: 0;
+    pointer-events: none;
+    background:
+      radial-gradient(ellipse 80% 60% at 20% 10%, rgba(95, 212, 255, 0.08), transparent 60%),
+      radial-gradient(ellipse 70% 50% at 85% 90%, rgba(180, 140, 255, 0.07), transparent 60%),
+      radial-gradient(ellipse 60% 40% at 50% 50%, rgba(255, 77, 138, 0.04), transparent 70%),
+      var(--bg-0);
+  }
+  .circuit-bg svg {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    opacity: 0.95;
+  }
+  .circuit-bg::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background-image:
+      linear-gradient(rgba(120,200,255,0.03) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(120,200,255,0.03) 1px, transparent 1px);
+    background-size: 60px 60px;
+    mask-image: radial-gradient(ellipse at center, black 30%, transparent 80%);
+    -webkit-mask-image: radial-gradient(ellipse at center, black 30%, transparent 80%);
+  }
+
+  .grain {
+    position: fixed;
+    inset: 0;
+    z-index: 1;
+    pointer-events: none;
+    opacity: 0.04;
+    mix-blend-mode: overlay;
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='3'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  }
+
+  /* ---------- Layout ---------- */
+  .wrap {
+    position: relative;
+    z-index: 2;
+    max-width: 1280px;
+    margin: 0 auto;
+    padding: 48px 56px 96px;
+  }
+
+  /* ---------- Top bar ---------- */
+  .topbar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-family: var(--mono);
+    font-size: 11px;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    color: var(--muted);
+    padding-bottom: 24px;
+    border-bottom: 1px solid var(--line);
+  }
+  .topbar .left { display: flex; gap: 28px; align-items: center; }
+  .topbar .dot {
+    width: 6px; height: 6px; border-radius: 50%;
+    background: var(--glow);
+    box-shadow: 0 0 10px var(--glow), 0 0 20px var(--glow);
+    animation: pulse 2s ease-in-out infinite;
+  }
+  @keyframes pulse {
+    0%, 100% { opacity: 1; transform: scale(1); }
+    50% { opacity: 0.5; transform: scale(0.85); }
+  }
+
+  /* ---------- Hero ---------- */
+  .hero {
+    margin-top: 72px;
+    display: grid;
+    grid-template-columns: 1.3fr 1fr;
+    gap: 80px;
+    align-items: end;
+  }
+  .module-tag {
+    font-family: var(--mono);
+    font-size: 12px;
+    letter-spacing: 0.3em;
+    text-transform: uppercase;
+    color: var(--glow);
+    margin-bottom: 24px;
+    display: inline-flex;
+    align-items: center;
+    gap: 14px;
+  }
+  .module-tag::before {
+    content: '';
+    width: 28px; height: 1px;
+    background: var(--glow);
+    box-shadow: 0 0 6px var(--glow);
+  }
+  h1.title {
+    font-family: var(--display);
+    font-weight: 800;
+    font-size: clamp(44px, 6.5vw, 84px);
+    line-height: 0.95;
+    letter-spacing: -0.03em;
+    color: var(--text);
+  }
+  h1.title .accent {
+    background: linear-gradient(120deg, var(--glow), var(--accent-2) 60%, var(--accent));
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+    font-style: italic;
+    font-weight: 700;
+  }
+  h1.title .line2 { display: block; opacity: 0.92; }
+  .lede {
+    font-size: 16.5px;
+    line-height: 1.65;
+    color: var(--text-dim);
+    max-width: 460px;
+    border-left: 1px solid var(--line);
+    padding-left: 24px;
+  }
+  .lede strong { color: var(--text); font-weight: 500; }
+  .lede em { color: var(--glow-soft); font-style: italic; }
+
+  /* ---------- Meta strip ---------- */
+  .meta-strip {
+    margin-top: 64px;
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 1px;
+    background: var(--line);
+    border-top: 1px solid var(--line);
+    border-bottom: 1px solid var(--line);
+  }
+  .meta-cell { background: var(--bg-0); padding: 22px 24px; }
+  .meta-cell .label {
+    font-family: var(--mono);
+    font-size: 10px;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin-bottom: 10px;
+  }
+  .meta-cell .value {
+    font-family: var(--display);
+    font-size: 20px;
+    font-weight: 700;
+    color: var(--text);
+    letter-spacing: -0.01em;
+  }
+  .meta-cell .value span.unit {
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--glow);
+    margin-left: 6px;
+    font-weight: 400;
+  }
+
+  /* ---------- Body grid ---------- */
+  .body-grid {
+    margin-top: 88px;
+    display: grid;
+    grid-template-columns: 240px 1fr;
+    gap: 64px;
+  }
+  .sidebar {
+    font-family: var(--mono);
+    font-size: 11px;
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    color: var(--muted);
+    position: sticky;
+    top: 40px;
+    align-self: start;
+  }
+  .sidebar h4 { color: var(--glow); font-weight: 400; margin-bottom: 18px; }
+  .sidebar ul { list-style: none; }
+  .sidebar li {
+    padding: 10px 0;
+    border-top: 1px solid var(--line);
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    cursor: pointer;
+    transition: color 0.2s ease;
+  }
+  .sidebar li:last-child { border-bottom: 1px solid var(--line); }
+  .sidebar li .num { color: var(--glow); }
+  .sidebar li:hover { color: var(--text); }
+  .sidebar li.active { color: var(--text); }
+
+  /* ---------- Content sections ---------- */
+  .content section { margin-bottom: 80px; }
+  .content h2 {
+    font-family: var(--display);
+    font-weight: 700;
+    font-size: 32px;
+    letter-spacing: -0.015em;
+    line-height: 1.15;
+    margin-bottom: 24px;
+    padding-top: 20px;
+    position: relative;
+    color: var(--text);
+  }
+  .content h2::before {
+    content: attr(data-num);
+    position: absolute;
+    top: -2px;
+    left: 0;
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--glow);
+    letter-spacing: 0.2em;
+    font-weight: 400;
+  }
+  .content h3 {
+    font-family: var(--display);
+    font-size: 22px;
+    font-weight: 700;
+    letter-spacing: -0.01em;
+    margin: 40px 0 18px;
+    color: var(--text);
+  }
+  .content h4 {
+    font-family: var(--display);
+    font-size: 17px;
+    font-weight: 700;
+    margin: 28px 0 12px;
+    color: var(--text);
+  }
+  .content p {
+    font-size: 15.5px;
+    line-height: 1.75;
+    color: var(--text-dim);
+    margin-bottom: 18px;
+    max-width: 68ch;
+  }
+  .content p strong { color: var(--glow-soft); font-weight: 600; }
+  .content p em { color: var(--text); font-style: italic; }
+
+  /* ---------- Equation block ---------- */
+  .eq {
+    margin: 28px 0;
+    padding: 28px 32px;
+    background: linear-gradient(180deg, rgba(120,200,255,0.04), rgba(120,200,255,0.01));
+    border: 1px solid var(--line);
+    font-family: var(--body);
+    font-size: 19px;
+    font-style: italic;
+    text-align: center;
+    color: var(--text);
+    line-height: 1.6;
+    position: relative;
+  }
+  .eq::before {
+    content: '';
+    position: absolute;
+    top: -1px; left: -1px;
+    width: 14px; height: 14px;
+    border-top: 1px solid var(--glow);
+    border-left: 1px solid var(--glow);
+  }
+  .eq::after {
+    content: '';
+    position: absolute;
+    bottom: -1px; right: -1px;
+    width: 14px; height: 14px;
+    border-bottom: 1px solid var(--glow);
+    border-right: 1px solid var(--glow);
+  }
+  .eq .num {
+    position: absolute;
+    right: 18px;
+    top: 50%;
+    transform: translateY(-50%);
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--text-faint);
+    font-style: normal;
+  }
+
+  /* ---------- Calc box ---------- */
+  .calcbox {
+    background: var(--bg-card);
+    border: 1px solid var(--line);
+    border-left: 2px solid var(--accent-yellow);
+    padding: 28px 32px;
+    margin: 32px 0;
+    position: relative;
+  }
+  .calcbox .ch {
+    font-family: var(--mono);
+    font-size: 11px;
+    font-weight: 500;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    color: var(--accent-yellow);
+    margin-bottom: 18px;
+  }
+  .calcbox .step {
+    padding: 12px 0 12px 40px;
+    border-bottom: 1px solid var(--line);
+    position: relative;
+    font-family: var(--body);
+    font-size: 14.5px;
+    color: var(--text);
+    line-height: 1.65;
+  }
+  .calcbox .step:last-child { border-bottom: none; }
+  .calcbox .step::before {
+    content: attr(data-s);
+    position: absolute;
+    left: 0;
+    top: 12px;
+    font-family: var(--mono);
+    font-size: 12px;
+    color: var(--accent-yellow);
+    font-weight: 500;
+  }
+  .calcbox .step .val {
+    display: block;
+    font-family: var(--mono);
+    font-size: 12.5px;
+    color: var(--muted);
+    margin-top: 6px;
+    line-height: 1.6;
+  }
+  .calcbox .step strong { color: var(--glow-soft); font-weight: 600; }
+
+  /* ---------- Insight box ---------- */
+  .insight {
+    background: linear-gradient(180deg, rgba(120,200,255,0.04), transparent);
+    border: 1px solid var(--line);
+    padding: 28px 32px;
+    margin: 32px 0;
+    font-family: var(--body);
+    position: relative;
+  }
+  .insight::before {
+    content: '';
+    position: absolute;
+    top: -1px; left: -1px;
+    width: 14px; height: 14px;
+    border-top: 1px solid var(--glow);
+    border-left: 1px solid var(--glow);
+  }
+  .insight .key {
+    font-family: var(--mono);
+    font-size: 10px;
+    letter-spacing: 0.28em;
+    text-transform: uppercase;
+    font-weight: 500;
+    margin-bottom: 12px;
+    color: var(--glow);
+  }
+  .insight p { font-size: 16px; line-height: 1.6; color: var(--text); font-weight: 400; margin: 0; max-width: none; }
+
+  /* ---------- Pitfall ---------- */
+  .pitfall {
+    background: linear-gradient(135deg, rgba(226,106,106,0.06), transparent);
+    border: 1px solid rgba(226,106,106,0.28);
+    border-left: 3px solid var(--red);
+    padding: 26px 32px;
+    margin: 32px 0;
+  }
+  .pitfall .lbl {
+    font-family: var(--mono);
+    font-size: 10px;
+    letter-spacing: 0.25em;
+    text-transform: uppercase;
+    font-weight: 500;
+    color: var(--red);
+    margin-bottom: 10px;
+  }
+  .pitfall h4 { margin: 0 0 10px; font-size: 17px; color: var(--text); }
+  .pitfall p { font-size: 14.5px; color: var(--text-dim); margin: 0; max-width: none; }
+
+  /* ---------- CineMatch ---------- */
+  .cinematch {
+    background: linear-gradient(135deg, rgba(255,77,138,0.08), transparent 80%);
+    border: 1px solid rgba(255,77,138,0.30);
+    border-left: 3px solid var(--accent);
+    padding: 32px 36px;
+    margin: 40px 0;
+    position: relative;
+  }
+  .cinematch .tag {
+    position: absolute;
+    top: -10px;
+    left: 24px;
+    background: var(--bg-0);
+    color: var(--accent);
+    font-family: var(--mono);
+    font-size: 10px;
+    font-weight: 500;
+    letter-spacing: 0.25em;
+    padding: 0 12px;
+    text-transform: uppercase;
+  }
+  .cinematch h4 { font-family: var(--display); font-size: 20px; font-weight: 700; margin-bottom: 14px; color: var(--text); }
+  .cinematch p { color: var(--text-dim); margin-bottom: 12px; font-size: 15px; max-width: none; }
+  .cinematch p:last-child { margin-bottom: 0; }
+  .cinematch p strong { color: var(--accent); }
+
+  /* ---------- Historical ---------- */
+  .historical {
+    background: linear-gradient(135deg, rgba(180,140,255,0.06), transparent);
+    border: 1px solid rgba(180,140,255,0.30);
+    border-left: 3px solid var(--accent-2);
+    padding: 32px 36px;
+    margin: 40px 0;
+    position: relative;
+  }
+  .historical .tag {
+    position: absolute;
+    top: -10px;
+    left: 24px;
+    background: var(--bg-0);
+    color: var(--accent-2);
+    font-family: var(--mono);
+    font-size: 10px;
+    font-weight: 500;
+    letter-spacing: 0.25em;
+    padding: 0 12px;
+    text-transform: uppercase;
+  }
+  .historical h4 { font-family: var(--display); font-size: 20px; font-weight: 700; margin-bottom: 14px; color: var(--text); }
+  .historical p { color: var(--text-dim); margin-bottom: 12px; font-size: 15px; max-width: none; }
+  .historical p:last-child { margin-bottom: 0; }
+
+  /* ---------- Phase done ---------- */
+  .phase-done {
+    background: linear-gradient(135deg, rgba(127,194,138,0.08), transparent);
+    border: 1px solid rgba(127,194,138,0.30);
+    border-left: 3px solid var(--green);
+    padding: 36px 40px;
+    margin: 56px 0;
+    position: relative;
+  }
+  .phase-done .tag {
+    position: absolute;
+    top: -10px;
+    left: 24px;
+    background: var(--bg-0);
+    color: var(--green);
+    font-family: var(--mono);
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 0.30em;
+    padding: 0 14px;
+    text-transform: uppercase;
+  }
+  .phase-done h4 { font-family: var(--display); font-size: 22px; font-weight: 700; margin-bottom: 18px; color: var(--text); }
+  .phase-done p { color: var(--text-dim); font-size: 15px; margin-bottom: 14px; line-height: 1.7; max-width: none; }
+  .phase-done p:last-child { margin-bottom: 0; }
+  .phase-done strong { color: var(--green); }
+
+  /* ---------- Diagrams ---------- */
+  .diagram-wrap { margin: 48px 0; }
+  .diagram-wrap svg {
+    width: 100%;
+    height: auto;
+    display: block;
+    background: linear-gradient(180deg, rgba(120,200,255,0.025), rgba(120,200,255,0.005));
+    border: 1px solid var(--line);
+    padding: 24px;
+  }
+  .caption {
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--muted);
+    margin-top: 14px;
+    text-align: center;
+    letter-spacing: 0.05em;
+    line-height: 1.6;
+  }
+  .caption b { color: var(--glow); font-weight: 500; }
+
+  /* ---------- Table ---------- */
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 28px 0;
+    font-family: var(--mono);
+    font-size: 13.5px;
+    background: var(--bg-card);
+    border: 1px solid var(--line);
+  }
+  th, td {
+    padding: 14px 18px;
+    text-align: left;
+    border-bottom: 1px solid var(--line);
+  }
+  th {
+    font-family: var(--mono);
+    font-weight: 500;
+    font-size: 10px;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    color: var(--glow);
+    background: rgba(120,200,255,0.04);
+  }
+  td { color: var(--text); }
+  td strong { color: var(--glow-soft); font-weight: 600; }
+  td.win { color: var(--green); font-weight: 600; }
+  tr:last-child td { border-bottom: none; }
+
+  /* ---------- MCQ ---------- */
+  .mcq {
+    background: linear-gradient(180deg, rgba(120,200,255,0.03), transparent);
+    border: 1px solid var(--line);
+    border-left: 3px solid var(--accent-yellow);
+    padding: 28px 32px;
+    margin: 36px 0;
+    position: relative;
+  }
+  .mcq .mh {
+    font-family: var(--mono);
+    font-size: 10px;
+    letter-spacing: 0.25em;
+    text-transform: uppercase;
+    font-weight: 500;
+    color: var(--accent-yellow);
+    margin-bottom: 16px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+  .mcq .mh .qnum {
+    font-family: var(--mono);
+    color: var(--text-faint);
+    font-size: 11px;
+    letter-spacing: 0.1em;
+    font-weight: 400;
+  }
+  .mcq .mq {
+    font-family: var(--display);
+    font-size: 18px;
+    font-weight: 500;
+    color: var(--text);
+    line-height: 1.5;
+    margin-bottom: 22px;
+    letter-spacing: -0.005em;
+  }
+  .mcq .mq code {
+    font-family: var(--mono);
+    font-size: 15px;
+    background: var(--bg-code);
+    padding: 2px 8px;
+    color: var(--glow);
+    border: 1px solid var(--line);
+    font-weight: 400;
+  }
+  .mcq .opts { display: flex; flex-direction: column; gap: 10px; }
+  .mcq .opt {
+    background: var(--bg-card);
+    border: 1px solid var(--line);
+    padding: 14px 18px;
+    cursor: pointer;
+    font-family: var(--body);
+    font-size: 14.5px;
+    color: var(--text-dim);
+    transition: all 0.18s;
+    display: flex;
+    align-items: flex-start;
+    gap: 14px;
+    line-height: 1.55;
+  }
+  .mcq .opt:hover {
+    border-color: var(--line-strong);
+    background: rgba(120,200,255,0.04);
+    color: var(--text);
+  }
+  .mcq .opt .key {
+    font-family: var(--mono);
+    font-size: 12px;
+    color: var(--muted);
+    font-weight: 500;
+    min-width: 18px;
+    margin-top: 2px;
+  }
+  .mcq .opt .text { flex: 1; }
+  .mcq .opt code {
+    font-family: var(--mono);
+    font-size: 13px;
+    background: var(--bg-code);
+    padding: 1px 6px;
+    color: var(--glow);
+    border: 1px solid var(--line);
+  }
+  .mcq .opt.correct {
+    border-color: var(--green);
+    background: linear-gradient(90deg, rgba(127,194,138,0.10), transparent);
+    color: var(--text);
+  }
+  .mcq .opt.correct .key { color: var(--green); }
+  .mcq .opt.wrong {
+    border-color: var(--red);
+    background: linear-gradient(90deg, rgba(226,106,106,0.10), transparent);
+    color: var(--text);
+  }
+  .mcq .opt.wrong .key { color: var(--red); }
+  .mcq .opt.disabled { cursor: default; }
+  .mcq .opt.disabled:hover {
+    border-color: var(--line);
+    background: var(--bg-card);
+  }
+  .mcq .opt.correct.disabled:hover {
+    border-color: var(--green);
+    background: linear-gradient(90deg, rgba(127,194,138,0.10), transparent);
+  }
+  .mcq .opt.wrong.disabled:hover {
+    border-color: var(--red);
+    background: linear-gradient(90deg, rgba(226,106,106,0.10), transparent);
+  }
+  .mcq .feedback {
+    margin-top: 20px;
+    padding: 20px 24px;
+    background: var(--bg-code);
+    border-left: 2px solid var(--glow);
+    font-family: var(--body);
+    font-size: 14.5px;
+    line-height: 1.7;
+    color: var(--text-dim);
+    display: none;
+  }
+  .mcq .feedback.show { display: block; }
+  .mcq .feedback .verdict {
+    font-family: var(--mono);
+    font-size: 10px;
+    letter-spacing: 0.28em;
+    text-transform: uppercase;
+    font-weight: 500;
+    margin-bottom: 10px;
+    display: block;
+  }
+  .mcq .feedback.right .verdict { color: var(--green); }
+  .mcq .feedback.wrong .verdict { color: var(--red); }
+  .mcq .feedback strong { color: var(--text); font-weight: 600; }
+  .mcq .feedback code {
+    font-family: var(--mono);
+    font-size: 13px;
+    background: rgba(120,200,255,0.05);
+    padding: 1px 6px;
+    color: var(--glow);
+    border: 1px solid var(--line);
+  }
+
+  /* ---------- Checkpoint ---------- */
+  .checkpoint {
+    background: linear-gradient(180deg, rgba(120,200,255,0.04), transparent);
+    border: 1px solid var(--line-strong);
+    padding: 36px;
+    margin: 56px 0;
+    position: relative;
+  }
+  .checkpoint::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 2px;
+    background: linear-gradient(90deg, var(--glow), var(--accent-2), var(--accent));
+  }
+  .checkpoint h4 {
+    font-family: var(--mono);
+    font-size: 11px;
+    letter-spacing: 0.28em;
+    text-transform: uppercase;
+    color: var(--glow);
+    font-weight: 500;
+    margin-bottom: 24px;
+  }
+  .checkpoint ol { list-style: none; counter-reset: item; }
+  .checkpoint li {
+    counter-increment: item;
+    padding: 14px 0 14px 48px;
+    border-bottom: 1px solid var(--line);
+    position: relative;
+    font-family: var(--body);
+    font-size: 15px;
+    color: var(--text);
+    line-height: 1.55;
+  }
+  .checkpoint li:last-child { border-bottom: none; }
+  .checkpoint li::before {
+    content: counter(item, decimal-leading-zero);
+    position: absolute;
+    left: 0;
+    top: 14px;
+    font-family: var(--mono);
+    font-size: 12px;
+    color: var(--glow);
+    font-weight: 400;
+  }
+  /* ---------- Learn resources ---------- */
+  .learn-intro {
+    color: var(--text-dim);
+    max-width: 62ch;
+    margin-bottom: 34px;
+  }
+  .resource-stack {
+    display: grid;
+    gap: 18px;
+    margin: 34px 0 10px;
+  }
+  .resource-card {
+    background: linear-gradient(135deg, rgba(120,200,255,0.055), rgba(180,140,255,0.035) 55%, rgba(255,77,138,0.025));
+    border: 1px solid var(--line);
+    padding: 26px 28px;
+    position: relative;
+    overflow: hidden;
+  }
+  .resource-card::before {
+    content: '';
+    position: absolute;
+    inset: -1px;
+    border: 1px solid transparent;
+    pointer-events: none;
+    background: linear-gradient(120deg, rgba(95,212,255,0.65), transparent 42%, rgba(255,77,138,0.45)) border-box;
+    mask: linear-gradient(#000 0 0) padding-box, linear-gradient(#000 0 0);
+    -webkit-mask: linear-gradient(#000 0 0) padding-box, linear-gradient(#000 0 0);
+    mask-composite: exclude;
+    -webkit-mask-composite: xor;
+  }
+  .resource-head {
+    display: grid;
+    grid-template-columns: 42px 1fr;
+    gap: 16px;
+    align-items: center;
+    margin-bottom: 18px;
+  }
+  .resource-icon {
+    width: 34px;
+    height: 34px;
+    display: grid;
+    place-items: center;
+    border: 1px solid rgba(95,212,255,0.55);
+    background: rgba(95,212,255,0.07);
+    color: var(--glow);
+    font-family: var(--mono);
+    font-size: 16px;
+    line-height: 1;
+  }
+  .resource-card.canonical .resource-icon {
+    border-color: rgba(180,140,255,0.65);
+    background: rgba(180,140,255,0.08);
+    color: var(--accent-2);
+  }
+  .resource-card.repo .resource-icon {
+    border-color: rgba(255,77,138,0.62);
+    background: rgba(255,77,138,0.07);
+    color: var(--accent);
+  }
+  .resource-kicker {
+    font-family: var(--mono);
+    font-size: 10px;
+    letter-spacing: 0.24em;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin-bottom: 3px;
+  }
+  .resource-card h3 {
+    margin: 0;
+    font-size: 21px;
+    line-height: 1.15;
+  }
+  .resource-title {
+    display: block;
+    font-family: var(--display);
+    font-size: 18px;
+    font-weight: 700;
+    line-height: 1.35;
+    color: var(--glow-soft);
+    margin-bottom: 8px;
+    text-decoration: none;
+  }
+  .resource-card.canonical .resource-title { color: var(--accent-2); }
+  .resource-card.repo .resource-title { color: var(--accent); }
+  .resource-card p {
+    max-width: none;
+    margin-bottom: 18px;
+    font-size: 14.5px;
+    color: var(--text-dim);
+  }
+  .resource-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px;
+  }
+  .resource-link {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 42px;
+    padding: 0 18px;
+    border: 1px solid rgba(95,212,255,0.65);
+    color: var(--glow);
+    background: rgba(95,212,255,0.04);
+    font-family: var(--mono);
+    font-size: 11px;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    text-decoration: none;
+    transition: border-color 0.18s ease, background 0.18s ease, color 0.18s ease;
+  }
+  .resource-link:hover {
+    border-color: var(--glow);
+    background: rgba(95,212,255,0.10);
+    color: var(--text);
+  }
+  .resource-card.canonical .resource-link {
+    border-color: rgba(180,140,255,0.70);
+    color: var(--accent-2);
+    background: rgba(180,140,255,0.04);
+  }
+  .resource-card.canonical .resource-link:hover {
+    border-color: var(--accent-2);
+    background: rgba(180,140,255,0.10);
+    color: var(--text);
+  }
+  .resource-card.repo .resource-link {
+    border-color: rgba(255,77,138,0.72);
+    color: var(--accent);
+    background: rgba(255,77,138,0.04);
+  }
+  .resource-card.repo .resource-link:hover {
+    border-color: var(--accent);
+    background: rgba(255,77,138,0.10);
+    color: var(--text);
+  }
+
+  /* ---------- Interactive box ---------- */
+  .ibox {
+    background: var(--bg-card);
+    border: 1px solid var(--line-strong);
+    padding: 32px;
+    margin: 40px 0;
+    position: relative;
+    overflow: hidden;
+  }
+  .ibox::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 2px;
+    background: linear-gradient(90deg, var(--accent), var(--accent-2), var(--glow));
+  }
+  .ibox .ilbl {
+    font-family: var(--mono);
+    font-size: 10px;
+    letter-spacing: 0.28em;
+    text-transform: uppercase;
+    color: var(--glow);
+    font-weight: 500;
+    margin-bottom: 16px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  .ibox .ilbl .dot {
+    display: inline-block;
+    width: 6px; height: 6px;
+    background: var(--glow);
+    border-radius: 50%;
+    box-shadow: 0 0 8px var(--glow);
+    animation: pulse 2s infinite;
+  }
+  .ibox .idesc {
+    font-family: var(--body);
+    font-size: 14.5px;
+    color: var(--text-dim);
+    margin-bottom: 22px;
+    line-height: 1.65;
+  }
+
+  /* ---------- Inline code ---------- */
+  code.inline {
+    font-family: var(--mono);
+    font-size: 14px;
+    background: var(--bg-code);
+    padding: 2px 8px;
+    color: var(--glow);
+    border: 1px solid var(--line);
+  }
+
+  /* ---------- Code block ---------- */
+  pre {
+    background: var(--bg-code);
+    border: 1px solid var(--line);
+    border-left: 2px solid var(--glow);
+    padding: 24px 28px;
+    margin: 28px 0;
+    overflow-x: auto;
+    font-family: var(--mono);
+    font-size: 13.5px;
+    line-height: 1.65;
+    position: relative;
+  }
+  pre::before {
+    content: 'PYTHON';
+    position: absolute;
+    top: 8px;
+    right: 14px;
+    font-family: var(--mono);
+    font-size: 9px;
+    letter-spacing: 0.2em;
+    color: var(--text-faint);
+    font-weight: 500;
+  }
+  pre code { color: #d8e2f0; }
+  .k { color: #ff4d8a; font-weight: 500; }
+  .s { color: #b9d8a8; }
+  .n { color: #f0c674; }
+  .c { color: #6a7a93; font-style: italic; }
+  .f { color: #5fd4ff; }
+  .v { color: #b48cff; }
+
+  /* ---------- Footer ---------- */
+  .footer-bar {
+    margin-top: 72px;
+    padding-top: 24px;
+    border-top: 1px solid var(--line);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-family: var(--mono);
+    font-size: 11px;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    color: var(--muted);
+  }
+  .footer-bar .prev-link, .footer-bar .next-link {
+    text-decoration: none;
+    color: var(--muted);
+    display: inline-flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+  .footer-bar .next-link { align-items: flex-end; }
+  .footer-bar .lbl {
+    font-family: var(--mono);
+    font-size: 10px;
+    letter-spacing: 0.25em;
+    color: var(--text-faint);
+  }
+  .footer-bar .ttl {
+    font-family: var(--display);
+    font-size: 16px;
+    color: var(--text);
+    font-weight: 700;
+    text-transform: none;
+    letter-spacing: -0.01em;
+  }
+  .footer-bar .next-link .ttl { color: var(--glow); }
+  .footer-bar .next-link .ttl::after { content: ' →'; }
+  .footer-bar .prev-link .ttl::before { content: '← '; }
+
+  /* ---------- Entrance animations ---------- */
+  .fade-in { opacity: 0; transform: translateY(14px); animation: fadeIn 0.9s ease forwards; }
+  .d1 { animation-delay: 0.1s; }
+  .d2 { animation-delay: 0.25s; }
+  .d3 { animation-delay: 0.4s; }
+  .d4 { animation-delay: 0.55s; }
+  .d5 { animation-delay: 0.7s; }
+  .d6 { animation-delay: 0.85s; }
+  @keyframes fadeIn { to { opacity: 1; transform: translateY(0); } }
+
+  .draw-path {
+    stroke-dasharray: 800;
+    stroke-dashoffset: 800;
+    animation: draw 6s ease-out forwards;
+  }
+  @keyframes draw { to { stroke-dashoffset: 0; } }
+
+  .node-pulse { animation: nodePulse 3s ease-in-out infinite; transform-origin: center; transform-box: fill-box; }
+  @keyframes nodePulse {
+    0%, 100% { opacity: 0.6; r: 2.5; }
+    50% { opacity: 1; r: 3.8; }
+  }
+
+  @media (max-width: 960px) {
+    .wrap { padding: 32px 24px 64px; }
+    .hero { grid-template-columns: 1fr; gap: 40px; }
+    .meta-strip { grid-template-columns: repeat(2, 1fr); }
+    .body-grid { grid-template-columns: 1fr; gap: 32px; }
+    .sidebar { position: static; }
+    .content h2 { font-size: 26px; }
+    .calcbox, .insight, .pitfall, .cinematch, .historical, .mcq, .ibox, .checkpoint, .resource-card { padding: 22px 20px; }
+    .resource-head { grid-template-columns: 1fr; gap: 12px; }
+  }
+
+  /* ---------- Readability + sidebar anchors ---------- */
+  .content section { scroll-margin-top: 36px; }
+  .sidebar a {
+    color: inherit;
+    text-decoration: none;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    width: 100%;
+  }
+  .sidebar a:focus-visible {
+    outline: 1px solid var(--glow);
+    outline-offset: 4px;
+  }
+  .eq,
+  .calcbox,
+  .insight,
+  .pitfall,
+  .cinematch,
+  .historical,
+  .mcq,
+  .checkpoint,
+  .ibox,
+  .resource-card,
+  .phase-done,
+  .diagram-wrap svg,
+  table,
+  pre {
+    background-color: #090f1d;
+  }
+  .eq { background: linear-gradient(180deg, rgba(120,200,255,0.10), rgba(120,200,255,0.04)), #090f1d; }
+  .calcbox { background: linear-gradient(180deg, rgba(240,198,116,0.07), rgba(120,200,255,0.03)), #090f1d; }
+  .insight { background: linear-gradient(180deg, rgba(120,200,255,0.10), rgba(120,200,255,0.035)), #090f1d; }
+  .pitfall { background: linear-gradient(135deg, rgba(226,106,106,0.12), rgba(120,200,255,0.025)), #090f1d; }
+  .cinematch { background: linear-gradient(135deg, rgba(255,77,138,0.13), rgba(120,200,255,0.025)), #090f1d; }
+  .historical { background: linear-gradient(135deg, rgba(180,140,255,0.13), rgba(120,200,255,0.025)), #090f1d; }
+  .mcq { background: linear-gradient(180deg, rgba(120,200,255,0.085), rgba(120,200,255,0.025)), #090f1d; }
+  .mcq .opt { background: #0b1221; }
+  .mcq .feedback { background: #070b14; }
+  .checkpoint { background: linear-gradient(180deg, rgba(120,200,255,0.09), rgba(120,200,255,0.025)), #090f1d; }
+  .ibox { background: #090f1d; }
+  .resource-card { background: linear-gradient(135deg, rgba(120,200,255,0.10), rgba(180,140,255,0.075) 55%, rgba(255,77,138,0.055)), #090f1d; }
+  .phase-done { background: linear-gradient(135deg, rgba(120,200,255,0.10), rgba(255,77,138,0.055)), #090f1d; }
+  .diagram-wrap svg { background: linear-gradient(180deg, rgba(120,200,255,0.07), rgba(120,200,255,0.025)), #090f1d; }
+  table { background: #090f1d; }
+  th { background: rgba(120,200,255,0.10); }
+  pre { background: #070b14; }
+</style>
+</head>
+<body>
+
+<!-- Neural circuit background -->
+<div class="circuit-bg">
+  <svg viewBox="0 0 1600 1000" preserveAspectRatio="xMidYMid slice" xmlns="http://www.w3.org/2000/svg">
+    <defs>
+      <filter id="bgglow" x="-50%" y="-50%" width="200%" height="200%">
+        <feGaussianBlur stdDeviation="2" result="b"/>
+        <feMerge>
+          <feMergeNode in="b"/>
+          <feMergeNode in="SourceGraphic"/>
+        </feMerge>
+      </filter>
+      <linearGradient id="lineGrad" x1="0" y1="0" x2="1" y2="1">
+        <stop offset="0%" stop-color="#5fd4ff" stop-opacity="0.7"/>
+        <stop offset="100%" stop-color="#b48cff" stop-opacity="0.2"/>
+      </linearGradient>
+      <radialGradient id="nodeGlow">
+        <stop offset="0%" stop-color="#7af0ff" stop-opacity="1"/>
+        <stop offset="100%" stop-color="#5fd4ff" stop-opacity="0"/>
+      </radialGradient>
+    </defs>
+
+    <g stroke="url(#lineGrad)" fill="none" stroke-width="1" filter="url(#bgglow)">
+      <path class="draw-path" d="M 50 120 L 280 120 L 280 240 L 520 240 L 520 180 L 760 180"/>
+      <path class="draw-path" d="M 760 180 L 760 320 L 1020 320 L 1020 260 L 1280 260 L 1280 400 L 1540 400" style="animation-delay:0.4s"/>
+      <path class="draw-path" d="M 80 480 L 240 480 L 240 620 L 480 620 L 480 540 L 720 540 L 720 680" style="animation-delay:0.8s"/>
+      <path class="draw-path" d="M 720 680 L 960 680 L 960 780 L 1200 780 L 1200 700 L 1500 700" style="animation-delay:1.2s"/>
+      <path class="draw-path" d="M 50 820 L 320 820 L 320 900 L 600 900 L 600 860 L 880 860" style="animation-delay:1.6s"/>
+      <path class="draw-path" d="M 880 860 L 880 940 L 1180 940 L 1180 880 L 1500 880" style="animation-delay:2s"/>
+      <path class="draw-path" d="M 1100 40 L 1100 180 L 1360 180 L 1360 80 L 1560 80" style="animation-delay:2.4s"/>
+      <path class="draw-path" d="M 380 40 L 380 160 L 620 160 L 620 60 L 880 60" style="animation-delay:2.8s"/>
+      <path class="draw-path" d="M 200 320 L 200 420 L 80 420" style="animation-delay:1.5s"/>
+      <path class="draw-path" d="M 1380 540 L 1380 640 L 1240 640" style="animation-delay:1.8s"/>
+      <path class="draw-path" d="M 540 720 L 540 800 L 360 800" style="animation-delay:2.2s"/>
+    </g>
+
+    <g stroke="rgba(120,200,255,0.08)" fill="none" stroke-width="0.6">
+      <path d="M 0 60 L 200 60 L 200 200 L 400 200"/>
+      <path d="M 600 400 L 800 400 L 800 460 L 1000 460"/>
+      <path d="M 1200 100 L 1400 100 L 1400 220"/>
+      <path d="M 100 700 L 300 700 L 300 580"/>
+      <path d="M 900 200 L 900 100 L 1100 100"/>
+      <path d="M 1300 800 L 1500 800 L 1500 920"/>
+    </g>
+
+    <g fill="#5fd4ff" filter="url(#bgglow)">
+      <circle class="node-pulse" cx="280" cy="120" r="3"/>
+      <circle class="node-pulse" cx="520" cy="240" r="3" style="animation-delay:0.3s"/>
+      <circle class="node-pulse" cx="760" cy="180" r="3" style="animation-delay:0.6s"/>
+      <circle class="node-pulse" cx="1020" cy="320" r="3" style="animation-delay:0.9s"/>
+      <circle class="node-pulse" cx="1280" cy="260" r="3" style="animation-delay:1.2s"/>
+      <circle class="node-pulse" cx="240" cy="620" r="3" style="animation-delay:0.4s"/>
+      <circle class="node-pulse" cx="720" cy="540" r="3" style="animation-delay:0.7s"/>
+      <circle class="node-pulse" cx="960" cy="680" r="3" style="animation-delay:1s"/>
+      <circle class="node-pulse" cx="1200" cy="780" r="3" style="animation-delay:1.3s"/>
+      <circle class="node-pulse" cx="320" cy="820" r="3" style="animation-delay:0.5s"/>
+      <circle class="node-pulse" cx="880" cy="860" r="3" style="animation-delay:0.8s"/>
+      <circle class="node-pulse" cx="1100" cy="180" r="3" style="animation-delay:1.1s"/>
+      <circle class="node-pulse" cx="380" cy="160" r="3" style="animation-delay:1.4s"/>
+      <circle class="node-pulse" cx="200" cy="420" r="3" style="animation-delay:0.6s"/>
+    </g>
+
+    <g>
+      <circle cx="760" cy="180" r="18" fill="url(#nodeGlow)" opacity="0.6"/>
+      <circle cx="960" cy="680" r="18" fill="url(#nodeGlow)" opacity="0.6"/>
+      <circle cx="1100" cy="180" r="14" fill="url(#nodeGlow)" opacity="0.4"/>
+    </g>
+  </svg>
+</div>
+
+<div class="grain"></div>
+
+<div class="wrap">
+
+  <!-- Top bar -->
+  <div class="topbar fade-in d1">
+    <div class="left">
+      <span class="dot"></span>
+      <span>Marevlo · Transformer Architectures</span>
+      <span>·</span>
+      <span>Phase 7 — Frontiers</span>
+    </div>
+    <div class="right">
+      <span>Module 7.3 · Final</span>
+    </div>
+  </div>
+
+  <!-- Hero -->
+  <div class="hero">
+    <div>
+      <div class="module-tag fade-in d2">Phase 7 — Frontiers · Module 7.3</div>
+      <h1 class="title fade-in d2">
+        The production
+        <span class="line2"><span class="accent">LLM stack</span>.</span>
+      </h1>
+    </div>
+    <p class="lede fade-in d3">
+      You've spent 24 modules learning architectures — BERT, GPT, LLaMA, T5, ViT, CLIP, Mamba. This final module is about <em>deployment</em>: the complete stack from trained model to production API. Serving infrastructure (vLLM, TGI), quantization (INT4/INT8), evaluation (benchmarks vs vibes), monitoring (latency, quality drift, cost), and the CineMatch architecture decision document that ties the entire track together. This is the bridge from "I understand transformers" to "I can deploy them."
+    </p>
+  </div>
+
+  <!-- Meta strip -->
+  <div class="meta-strip fade-in d4">
+    <div class="meta-cell">
+      <div class="label">Phase</div>
+      <div class="value">7 <span class="unit">Frontiers</span></div>
+    </div>
+    <div class="meta-cell">
+      <div class="label">Module</div>
+      <div class="value">7.3 <span class="unit">Final</span></div>
+    </div>
+    <div class="meta-cell">
+      <div class="label">Time</div>
+      <div class="value">35 <span class="unit">min</span></div>
+    </div>
+    <div class="meta-cell">
+      <div class="label">Key Idea</div>
+      <div class="value">Architecture &rarr; Deployment</div>
+    </div>
+  </div>
+
+  <!-- Body -->
+  <div class="body-grid">
+
+    <aside class="sidebar fade-in d5">
+      <h4>// In This Module</h4>
+      <ul>
+        <li class="active"><a href="#section-01"><span class="num">01</span> Serving Stack</a></li>
+        <li><a href="#section-02"><span class="num">02</span> Quantization</a></li>
+        <li><a href="#section-03"><span class="num">03</span> Evaluation</a></li>
+        <li><a href="#section-04"><span class="num">04</span> Monitoring</a></li>
+        <li><a href="#section-05"><span class="num">05</span> CineMatch Stack</a></li>
+        <li><a href="#section-06"><span class="num">06</span> Decision Checklist</a></li>
+        <li><a href="#section-07"><span class="num">07</span> Track Complete</a></li>
+        <li><a href="#section-08"><span class="num">08</span> Learn More</a></li>
+      </ul>
+    </aside>
+
+    <div class="content">
+
+<section id="section-01">
+  <h2 data-num="01 / 08">The serving stack — vLLM, TGI, and continuous batching.</h2>
+
+  <p>A trained model is a file of weights. Serving it at scale requires an inference engine that handles: concurrent requests, efficient memory management, batching, and streaming responses. The two dominant open-source engines:</p>
+
+  <table>
+    <thead><tr><th>Feature</th><th>vLLM</th><th>TGI (Text Generation Inference)</th></tr></thead>
+    <tbody>
+      <tr><td>Developer</td><td>UC Berkeley</td><td>Hugging Face</td></tr>
+      <tr><td class="win">Continuous batching</td><td class="win">Yes (PagedAttention)</td><td class="win">Yes</td></tr>
+      <tr><td>KV cache management</td><td class="win">PagedAttention (virtual memory for KV cache)</td><td>Static allocation</td></tr>
+      <tr><td>Throughput (tokens/sec)</td><td class="win">~2-4&times; higher than naive</td><td>~1.5-2&times; higher</td></tr>
+      <tr><td>Model support</td><td class="win">LLaMA, Mistral, Mixtral, Qwen, etc.</td><td class="win">Same broad support</td></tr>
+      <tr><td>Quantization</td><td>AWQ, GPTQ, BitsAndBytes</td><td>AWQ, GPTQ, BitsAndBytes</td></tr>
+    </tbody>
+  </table>
+
+  <div class="insight">
+    <div class="key">PagedAttention — virtual memory for the KV cache</div>
+    <p>The KV cache grows dynamically as tokens are generated, but GPU memory must be pre-allocated in contiguous blocks. Without PagedAttention: pre-allocate max_length &times; d per sequence — wasting memory on sequences that end early. With PagedAttention: allocate small KV "pages" on demand (like virtual memory in OS design). A 100-token response only uses memory for 100 tokens, not max_length. This reduces KV cache memory waste by ~60-80%, allowing 2-4&times; more concurrent sequences on the same GPU.</p>
+  </div>
+
+  <div class="mcq" data-correct="b">
+    <div class="mh"><span>Serving</span><span class="qnum">Question 01 / 07</span></div>
+    <div class="mq">CineMatch's chatbot handles 50 concurrent conversations. Without continuous batching, how are these served?</div>
+    <div class="opts">
+      <div class="opt" data-key="a"><span class="key">A</span><span class="text">All 50 are processed simultaneously in one batch.</span></div>
+      <div class="opt" data-key="b"><span class="key">B</span><span class="text">Without continuous batching: static batching groups requests that arrive within a time window (e.g., 100ms). If 8 arrive together, they're batched. The remaining 42 wait in queue. Problem: generation lengths vary — a 20-token response finishes in 200ms, a 500-token response takes 5 seconds. With static batching, all 8 sequences must finish before the batch slot is freed. The 20-token response sits idle for 4.8 seconds waiting for the longest response. With continuous batching (vLLM): finished sequences immediately free their slot for new requests. GPU utilization stays near 100% instead of degrading as short sequences finish.</span></div>
+      <div class="opt" data-key="c"><span class="key">C</span><span class="text">Each conversation gets its own GPU.</span></div>
+      <div class="opt" data-key="d"><span class="key">D</span><span class="text">Conversations are processed one at a time.</span></div>
+    </div>
+    <div class="feedback" data-right="<strong>Right.</strong> Continuous batching is the key serving optimization: it dynamically inserts new sequences into the batch as old ones finish, maximizing GPU utilization. Without it, batch slots are wasted on completed sequences. vLLM's PagedAttention enables this by managing KV cache at the page level — completed sequences free their KV pages, which are immediately reused by new sequences." data-wrong="<strong>Not quite.</strong> Static batching wastes GPU time on completed sequences (short responses wait for long ones). Continuous batching (vLLM, TGI) dynamically replaces completed sequences with new ones, keeping GPU utilization near 100%. This is the difference between 50-token/sec throughput (static) and 200-token/sec (continuous)."></div>
+  </div>
+</section>
+
+<section id="section-02">
+  <h2 data-num="02 / 08">Quantization — trading precision for speed and memory.</h2>
+
+  <p>Model weights are trained in BF16 (2 bytes per parameter). <strong>Quantization</strong> reduces precision to INT8 (1 byte) or INT4 (0.5 bytes), cutting memory and increasing throughput:</p>
+
+  <div class="calcbox">
+    <div class="ch">Quantization impact on LLaMA-3 8B</div>
+    <div class="step" data-s="1."><strong>BF16 (baseline):</strong> 8B &times; 2 bytes = 16 GB. Fits on A10G (24 GB) with room for KV cache.<span class="val">Full precision. No quality loss. Standard training format.</span></div>
+    <div class="step" data-s="2."><strong>INT8 (8-bit):</strong> 8B &times; 1 byte = 8 GB. Fits on any 16 GB GPU with ample KV cache room.<span class="val">Quality loss: ~0.1-0.3% on benchmarks. Negligible in practice. 2&times; memory savings.</span></div>
+    <div class="step" data-s="3."><strong>INT4 (4-bit, GPTQ/AWQ):</strong> 8B &times; 0.5 bytes = 4 GB. Fits on consumer GPUs (RTX 3090, 4090).<span class="val">Quality loss: ~0.5-1.5% on benchmarks. Noticeable on hard reasoning tasks. Excellent for chatbots.</span></div>
+    <div class="step" data-s="4."><strong>Speed impact:</strong> INT4 is ~1.5-2&times; faster than BF16 because: (1) smaller weights = less memory bandwidth needed (autoregressive generation is memory-bound), (2) more sequences fit in the same GPU = better batching.<span class="val">CineMatch uses INT4 (AWQ) for the chatbot. Quality is imperceptible in conversation; speed doubles.</span></div>
+  </div>
+
+  <div class="mcq" data-correct="d">
+    <div class="mh"><span>Quantization</span><span class="qnum">Question 02 / 07</span></div>
+    <div class="mq">CineMatch quantizes LLaMA-3 8B from BF16 (16 GB) to INT4 (4 GB). Which tasks are most affected by the quality loss?</div>
+    <div class="opts">
+      <div class="opt" data-key="a"><span class="key">A</span><span class="text">All tasks are equally affected.</span></div>
+      <div class="opt" data-key="b"><span class="key">B</span><span class="text">Only generation tasks — classification is unaffected.</span></div>
+      <div class="opt" data-key="c"><span class="key">C</span><span class="text">Only classification — generation is robust to quantization.</span></div>
+      <div class="opt" data-key="d"><span class="key">D</span><span class="text">Hard reasoning and math are most affected; conversation and simple generation are least affected. Quantization introduces small errors in every weight. These errors accumulate through multi-step reasoning chains — each step amplifies the previous step's error. A 10-step math derivation accumulates 10 layers of quantization error. A casual conversation ("recommend a good thriller") rarely requires multi-step precise reasoning, so quantization errors don't compound. CineMatch's chatbot (casual recommendations) tolerates INT4 well. A math tutoring system would need BF16 or INT8.</span></div>
+    </div>
+    <div class="feedback" data-right="<strong>Right.</strong> Quantization error is non-uniform across tasks. Tasks requiring precise multi-step reasoning (math, logic, code) amplify quantization errors through their reasoning chains. Tasks requiring pattern matching and fluent generation (chat, summarization, classification) are robust because individual small errors don't cascade. This is why INT4 works for chatbots but not for math solvers." data-wrong="<strong>Not quite.</strong> Quantization affects tasks differently based on reasoning depth. Multi-step reasoning (math, logic) amplifies quantization errors across steps. Single-step tasks (classification, simple generation) are robust to small weight errors. Match quantization level to task sensitivity."></div>
+  </div>
+</section>
+
+<section id="section-03">
+  <h2 data-num="03 / 08">Evaluation — benchmarks vs production quality.</h2>
+
+  <p>Academic benchmarks (MMLU, HumanEval, HellaSwag) measure specific capabilities on standardized tests. Production quality is measured by <strong>user satisfaction, task completion rate, and business metrics</strong>. These often diverge:</p>
+
+  <div class="pitfall">
+    <div class="lbl">A model that scores 5 MMLU points higher can be worse in production</div>
+    <h4>MMLU measures knowledge recall. Production quality measures helpfulness, tone, safety, latency, and domain accuracy — none of which MMLU captures.</h4>
+    <p>CineMatch's evaluation framework: (1) Automated metrics: latency p50/p95, error rate, cost per query. (2) Model-based evaluation: GPT-4-as-judge scores response quality on a 1-5 scale for helpfulness, accuracy, and safety. (3) Human evaluation: CineMatch's QA team rates 200 random responses/week on a rubric. (4) A/B tests: compare models on real user engagement (click-through, session length, return rate). The benchmark score is the least important signal.</p>
+  </div>
+
+  <div class="mcq" data-correct="c">
+    <div class="mh"><span>Evaluation</span><span class="qnum">Question 03 / 07</span></div>
+    <div class="mq">CineMatch compares two chatbot models: Model A (MMLU 66, great user reviews) and Model B (MMLU 74, mediocre user reviews). Which should they deploy?</div>
+    <div class="opts">
+      <div class="opt" data-key="a"><span class="key">A</span><span class="text">Model B — higher benchmark score always wins.</span></div>
+      <div class="opt" data-key="b"><span class="key">B</span><span class="text">Need more benchmark data to decide.</span></div>
+      <div class="opt" data-key="c"><span class="key">C</span><span class="text">Model A — user satisfaction is the ground truth. MMLU measures academic knowledge, not chatbot quality. Model A likely has: better tone/personality, more appropriate response length, better domain-specific knowledge (fine-tuned on CineMatch data), or better safety filtering. Model B might score higher on MMLU because it's larger or trained on more academic data — but that doesn't make it a better chatbot. Deploy Model A, use Model B's architecture as a starting point for fine-tuning, and re-evaluate.</span></div>
+      <div class="opt" data-key="d"><span class="key">D</span><span class="text">Neither — switch to GPT-4.</span></div>
+    </div>
+    <div class="feedback" data-right="<strong>Right.</strong> User satisfaction is the ultimate metric. Benchmarks are proxy signals — useful for initial model selection but not deterministic for production quality. A model can score lower on MMLU but higher on user satisfaction because it has better tone, domain expertise, safety, or response formatting. Always validate benchmark gains with user testing before deploying." data-wrong="<strong>Not quite.</strong> User reviews reflect production quality — what actually matters for the product. MMLU is a proxy that measures academic knowledge, not chatbot helpfulness. Deploy the model users prefer (Model A), then investigate why Model B underperforms despite higher MMLU (possibly worse tone, formatting, or domain adaptation)."></div>
+  </div>
+</section>
+
+<section id="section-04">
+  <h2 data-num="04 / 08">Monitoring — keeping production models healthy.</h2>
+
+  <div class="calcbox">
+    <div class="ch">CineMatch's production monitoring dashboard</div>
+    <div class="step" data-s="1."><strong>Latency:</strong> p50 (median response time), p95, p99. Alert if p95 &gt; 2 seconds. Track per-model (DeBERTa ~5ms, LLaMA chatbot ~500ms, BART summarizer ~200ms).<span class="val">Latency spikes usually indicate: GPU memory pressure, batch queue backup, or model serving issues.</span></div>
+    <div class="step" data-s="2."><strong>Throughput:</strong> queries/second per model. Alert if throughput drops below expected capacity. Track GPU utilization (target: 70-90%).<span class="val">Under 70%: over-provisioned (wasting money). Over 90%: at risk of latency spikes under load.</span></div>
+    <div class="step" data-s="3."><strong>Quality drift:</strong> weekly GPT-4-as-judge evaluation on 200 random responses. Track average score over time. Alert if score drops &gt;0.3 points in a week.<span class="val">Quality drift causes: data distribution shift (new movie genres, new slang), model degradation (shouldn't happen with frozen weights), or prompt template issues.</span></div>
+    <div class="step" data-s="4."><strong>Cost:</strong> GPU cost per 1000 queries, broken down by model. Track monthly trends. Alert if cost/query increases &gt;20%.<span class="val">Common cause: context length creep (users sending longer messages) increases KV cache and attention cost.</span></div>
+    <div class="step" data-s="5."><strong>Safety:</strong> % of responses flagged by safety classifier. Track false positive rate (good responses flagged) and false negative rate (bad responses not flagged). Weekly audit of 50 flagged responses.<span class="val">Safety monitoring is continuous, not a one-time check. Distribution shifts can expose new failure modes.</span></div>
+  </div>
+
+  <div class="mcq" data-correct="a">
+    <div class="mh"><span>Monitoring</span><span class="qnum">Question 04 / 07</span></div>
+    <div class="mq">CineMatch's chatbot quality score drops from 4.2/5 to 3.8/5 over 3 weeks. Model weights haven't changed. What's happening?</div>
+    <div class="opts">
+      <div class="opt" data-key="a"><span class="key">A</span><span class="text">Data distribution shift. The model hasn't changed, but user behavior has. Possible causes: (1) New movie releases create queries about films the model wasn't fine-tuned on. (2) Seasonal trends — holiday period brings different query patterns. (3) User base growth — new users have different expectations than early adopters. (4) Prompt template degradation — upstream changes to the RAG pipeline or system prompt. Diagnosis: compare query distributions (topic, length, complexity) between the high-quality and low-quality periods. Fix: update RAG database with new movies, add examples of new query patterns to the fine-tuning set, or adjust system prompts.</span></div>
+      <div class="opt" data-key="b"><span class="key">B</span><span class="text">GPU hardware degradation.</span></div>
+      <div class="opt" data-key="c"><span class="key">C</span><span class="text">The model is "forgetting" knowledge over time.</span></div>
+      <div class="opt" data-key="d"><span class="key">D</span><span class="text">The evaluation rubric changed.</span></div>
+    </div>
+    <div class="feedback" data-right="<strong>Right.</strong> When model weights are frozen, quality changes come from input distribution changes. This is the most common production issue: the world changes (new movies, new slang, new user demographics) but the model stays static. The fix is either updating the model (periodic fine-tuning refresh) or updating the context (RAG database, system prompts). Monitoring detects the drift; root cause analysis determines the fix." data-wrong="<strong>Not quite.</strong> Frozen weights don't degrade over time — the model outputs the exact same response for the exact same input forever. Quality drops with frozen weights indicate input distribution shift: new topics, new user patterns, or upstream changes to prompts/RAG. Diagnosis requires comparing query distributions between high-quality and low-quality periods."></div>
+  </div>
+</section>
+
+<section id="section-05">
+  <h2 data-num="05 / 08">The complete CineMatch architecture — all 25 modules in one system.</h2>
+
+  <div class="cinematch">
+    <div class="tag">CineMatch Integration — Final Architecture</div>
+    <h4>The complete ML stack, powered by every architecture in this track.</h4>
+    <p><strong>Understanding layer (encoders, Phase 1):</strong> DeBERTa-v3-base for classification (sentiment, topic, helpfulness, spoiler detection). Sentence-BERT for embedding generation (review similarity, user-movie matching). DistilBERT for CPU-based content moderation. Cost: ~$200/month.</p>
+    <p><strong>Generation layer (decoders, Phases 2-3):</strong> LLaMA-3 8B (INT4, vLLM) for the recommendation chatbot. Mistral 7B for real-time autocomplete. Qwen-2.5 7B for Hindi/Japanese market variants. Cost: ~$730/month per model instance.</p>
+    <p><strong>Structured generation (encoder-decoders, Phase 4):</strong> BART-large-CNN for review summarization. FLAN-T5-base for multi-task extraction (entities, genres, structured metadata). Cost: ~$150/month.</p>
+    <p><strong>Vision (Phase 6):</strong> CLIP for zero-shot poster classification and visual search. Swin-Tiny for scene analysis and object detection. LLaVA (ViT + LLaMA) for the multimodal chatbot. Cost: ~$500/month.</p>
+    <p><strong>Batch processing:</strong> Mixtral 8&times;7B for high-quality overnight review summarization and analysis. Cost: ~$300/month (shared GPU, overnight only).</p>
+    <p><strong>Total ML infrastructure cost: ~$2,600/month</strong> — serving millions of queries across classification, generation, summarization, search, and vision. Using GPT-4 API for everything: ~$40,000+/month.</p>
+  </div>
+
+  <div class="mcq" data-correct="d">
+    <div class="mh"><span>Architecture</span><span class="qnum">Question 05 / 07</span></div>
+    <div class="mq">CineMatch uses 8+ different models. A new VP of Engineering says: "This is too complex. Consolidate to one model." How do you respond?</div>
+    <div class="opts">
+      <div class="opt" data-key="a"><span class="key">A</span><span class="text">Agree — one model is always simpler.</span></div>
+      <div class="opt" data-key="b"><span class="key">B</span><span class="text">Disagree — more models is always better.</span></div>
+      <div class="opt" data-key="c"><span class="key">C</span><span class="text">Agree, but only if the VP funds a GPT-4 API budget.</span></div>
+      <div class="opt" data-key="d"><span class="key">D</span><span class="text">Present the trade-off with data. "One model (e.g., GPT-4 for everything) costs ~$40K/month vs our $2,600/month — a 15&times; cost increase. It also introduces: single-point-of-failure dependency on one API, higher latency for classification (5ms &rarr; 1500ms), and inability to process images without additional API calls. The multi-model stack is complex, but the complexity is managed (each model has clear ownership, monitoring, and deployment). Consolidation makes sense where models overlap — we could merge BART + FLAN-T5 into one FLAN-T5. But collapsing encoders + decoders + vision into one model is an economic and performance regression."</span></div>
+    </div>
+    <div class="feedback" data-right="<strong>Right.</strong> The response acknowledges the VP's concern (complexity) while providing data (15× cost increase, latency regression, vendor dependency). The counterproposal: consolidate where models overlap (merge similar models) without collapsing fundamentally different architectures (fast encoder classification ≠ slow decoder generation). Complexity is the cost of optimization — the same reason a car has a separate transmission, engine, and brakes rather than one 'driving unit.'" data-wrong="<strong>Not quite.</strong> Respond with data, not dogma. The multi-model stack costs $2,600/month; consolidation to one API costs $40K/month. Present specific trade-offs: latency (5ms→1500ms for classification), cost (15× increase), and vendor dependency. Offer targeted consolidation (merge overlapping models) without collapsing the entire stack."></div>
+  </div>
+</section>
+
+<section id="section-06">
+  <h2 data-num="06 / 08">The architecture decision checklist.</h2>
+
+  <div class="calcbox">
+    <div class="ch">How to choose a model for any new ML task</div>
+    <div class="step" data-s="1."><strong>What's the task type?</strong> Understanding (classification, NER, similarity) &rarr; encoder-only. Generation (chat, creative, reasoning) &rarr; decoder-only. Structured transformation (summary, translation, extraction) &rarr; encoder-decoder or decoder-only.<span class="val">This determines the architecture family.</span></div>
+    <div class="step" data-s="2."><strong>What's the volume?</strong> &lt; 1K queries/day &rarr; API (GPT-4, Claude). 1K-100K &rarr; self-hosted on 1-2 GPUs. &gt; 100K &rarr; self-hosted with batching and quantization. Cost scales linearly with volume — the crossover from API to self-hosted is typically at ~5K queries/day.<span class="val">This determines the deployment strategy.</span></div>
+    <div class="step" data-s="3."><strong>What's the latency requirement?</strong> Real-time (&lt; 100ms) &rarr; encoder-only or small decoder with INT4. Interactive (&lt; 2s) &rarr; 7-8B decoder with streaming. Batch (minutes OK) &rarr; any model, maximize quality.<span class="val">This determines the model size and quantization.</span></div>
+    <div class="step" data-s="4."><strong>What's the quality requirement?</strong> Must match GPT-4 &rarr; use GPT-4 API or fine-tune 70B+. Must beat GPT-3.5 &rarr; fine-tune 7-8B on domain data. Must be "good enough" for the task &rarr; smallest model that passes evaluation.<span class="val">This determines whether to fine-tune and how much data to collect.</span></div>
+    <div class="step" data-s="5."><strong>What language(s)?</strong> English only &rarr; LLaMA-3. Multilingual &rarr; Qwen-2.5. Code &rarr; Qwen-Coder or CodeLLaMA.<span class="val">This determines the model family.</span></div>
+    <div class="step" data-s="6."><strong>Does it need vision?</strong> Image classification &rarr; CLIP or ViT. Object detection &rarr; Swin. Image understanding + reasoning &rarr; multimodal LLM (LLaVA).<span class="val">This adds the vision component.</span></div>
+  </div>
+
+  <div class="mcq" data-correct="b">
+    <div class="mh"><span>Checklist</span><span class="qnum">Question 06 / 07</span></div>
+    <div class="mq">A CineMatch product manager asks: "We want to auto-generate 3-sentence movie descriptions from metadata (title, director, cast, genre, year). 10K movies, run once. Which model?"</div>
+    <div class="opts">
+      <div class="opt" data-key="a"><span class="key">A</span><span class="text">LLaMA-3 70B — highest quality generation.</span></div>
+      <div class="opt" data-key="b"><span class="key">B</span><span class="text">GPT-4 API. The task is: one-time batch of 10K structured-to-text generations. Volume: 10K total (not per day). Latency: doesn't matter (batch). Quality: must be publication-ready (visible to all users). Cost: 10K &times; 150 tokens &times; $15/M = $22.50 total. At $22.50 for a one-time job, the engineering effort of setting up self-hosted LLaMA is more expensive than the API cost. Use GPT-4 for one-time, low-volume, high-quality batch jobs. Self-host for recurring, high-volume tasks.</span></div>
+      <div class="opt" data-key="c"><span class="key">C</span><span class="text">FLAN-T5 — best for structured transformation.</span></div>
+      <div class="opt" data-key="d"><span class="key">D</span><span class="text">DeBERTa — it's the most efficient model.</span></div>
+    </div>
+    <div class="feedback" data-right="<strong>Right.</strong> The decision checklist: task = generation (decoder), volume = 10K one-time (API is fine), latency = batch (no constraint), quality = publication-ready (use the best model). Total API cost: $22.50. Self-hosting setup effort: hours of engineering. The ROI of self-hosting is negative for one-time jobs. Use API for one-shots, self-host for recurring high-volume." data-wrong="<strong>Not quite.</strong> For a one-time batch of 10K items, the API is almost certainly cheaper than self-hosting. Total cost: ~$22.50 for GPT-4 API. The engineering effort of provisioning a GPU, loading LLaMA, running inference, and debugging exceeds $22.50 in engineer-hours. Self-hosting is for recurring, high-volume tasks."></div>
+  </div>
+</section>
+
+<section id="section-07">
+  <h2 data-num="07 / 08">Track complete — 25 modules, one unified understanding.</h2>
+
+  <div class="mcq" data-correct="a">
+    <div class="mh"><span>Final synthesis</span><span class="qnum">Question 07 / 07</span></div>
+    <div class="mq">Across the entire 25-module track, what is the single most important lesson about transformer architectures?</div>
+    <div class="opts">
+      <div class="opt" data-key="a"><span class="key">A</span><span class="text">The transformer is a general-purpose computation framework, not a specific model. The same attention mechanism processes text (BERT, GPT), images (ViT), audio, video, and multimodal inputs. The architectural innovations that matter most — RoPE, GQA, SwiGLU, RMSNorm — are improvements to this shared framework. The differences between models are mostly data (what they're trained on), training recipe (how they're trained), and alignment (what behavior they're optimized for). Architecture is the foundation; data, training, and deployment are where the real work happens.</span></div>
+      <div class="opt" data-key="b"><span class="key">B</span><span class="text">Bigger models are always better.</span></div>
+      <div class="opt" data-key="c"><span class="key">C</span><span class="text">The specific architecture matters more than anything else.</span></div>
+      <div class="opt" data-key="d"><span class="key">D</span><span class="text">Open-source will replace closed-source models.</span></div>
+    </div>
+    <div class="feedback" data-right="<strong>Right.</strong> This is the through-line of the entire track: from BERT's bidirectional attention to Mamba's selective state, from GPT-2's 117M parameters to GPT-4's ~1.8T, from text-only to multimodal — the transformer framework adapts to every modality, every scale, and every task. Understanding this framework — attention, residuals, normalization, position encoding — is the foundation. Everything else is engineering: choosing the right model for the task, training it on the right data, aligning it to human preferences, and serving it efficiently. You now have that foundation." data-wrong="<strong>Not quite.</strong> The track's central lesson: the transformer is a general computation framework, not a specific model. The same primitives (attention, FFN, residuals) process any data that can be tokenized. Architecture matters, but data and training recipe matter more for quality. Deployment and economics determine which model to use. Understanding the framework is the foundation for all of these decisions."></div>
+  </div>
+
+  <div class="phase-done">
+    <div class="tag">Track Complete</div>
+    <h4>25 modules. 7 phases. One unified understanding of transformer architectures.</h4>
+    <p><strong>Phase 0 — Foundations:</strong> Attention mechanism, the transformer block. <strong>Phase 1 — Encoders:</strong> BERT, RoBERTa, DistilBERT, ALBERT, DeBERTa, ELECTRA. <strong>Phase 2 — GPT Decoders:</strong> GPT-2, GPT-3, InstructGPT/RLHF, GPT-4. <strong>Phase 3 — Open Decoders:</strong> LLaMA, Mistral/Mixtral, Qwen. <strong>Phase 4 — Encoder-Decoders:</strong> T5/FLAN-T5, BART. <strong>Phase 5 — Efficient Transformers:</strong> Quadratic bottleneck, Longformer/BigBird, Linear attention. <strong>Phase 6 — Vision &amp; Multimodal:</strong> ViT, Swin, CLIP, Multimodal LLMs. <strong>Phase 7 — Frontiers:</strong> MoE at scale, SSMs/Mamba, Production LLM stack.</p>
+    <p>From attention to deployment. From theory to CineMatch's production system. The transformer track is <strong>complete</strong>.</p>
+  </div>
+
+  <div class="checkpoint">
+    <h4>Module 7.3 — Final mastery checkpoint</h4>
+    <ol>
+      <li>Explain PagedAttention and continuous batching and why they're essential for LLM serving.</li>
+      <li>Choose the right quantization level (BF16/INT8/INT4) based on task sensitivity.</li>
+      <li>Design an evaluation pipeline: automated metrics + model-based evaluation + human review + A/B testing.</li>
+      <li>Set up production monitoring: latency, throughput, quality drift, cost, safety.</li>
+      <li>Apply the architecture decision checklist to select a model for any new task.</li>
+      <li>Design a complete multi-model ML stack for a production application.</li>
+    </ol>
+  </div>
+</section>
+
+<section id="section-08">
+  <h2 data-num="08 / 08">Learn &amp; Practice.</h2>
+
+  <p class="learn-intro">Use these resources in layers: start with the approachable explanation when the architecture feels fuzzy, read the original paper once the idea clicks, then inspect the reference implementation to connect the concept to code.</p>
+
+  <div class="resource-stack">
+    <article class="resource-card">
+      <div class="resource-head">
+        <div class="resource-icon">?</div>
+        <div>
+          <div class="resource-kicker">Progressive Article</div>
+          <h3>Stuck? Start here</h3>
+        </div>
+      </div>
+      <a class="resource-title" href="https://www.runpod.io/articles/guides/vllm-pagedattention-continuous-batching" target="_blank" rel="noopener noreferrer">vLLM Explained - Runpod</a>
+      <p>PagedAttention, continuous batching, quantization, and deployment walkthrough.</p>
+      <div class="resource-actions">
+        <a class="resource-link" href="https://www.runpod.io/articles/guides/vllm-pagedattention-continuous-batching" target="_blank" rel="noopener noreferrer">Read Article</a>
+      </div>
+    </article>
+
+    <article class="resource-card canonical">
+      <div class="resource-head">
+        <div class="resource-icon">A</div>
+        <div>
+          <div class="resource-kicker">Canonical Article</div>
+          <h3>Original research paper</h3>
+        </div>
+      </div>
+      <a class="resource-title" href="https://arxiv.org/abs/2309.06180" target="_blank" rel="noopener noreferrer">PagedAttention / vLLM - Kwon et al.</a>
+      <p>Efficient memory management for LLM serving.</p>
+      <a class="resource-title" href="https://www.usenix.org/conference/osdi22/presentation/yu" target="_blank" rel="noopener noreferrer">Orca - Yu et al.</a>
+      <p>Continuous batching for transformer serving.</p>
+      <div class="resource-actions">
+        <a class="resource-link" href="https://arxiv.org/abs/2309.06180" target="_blank" rel="noopener noreferrer">Read Paper</a>
+        <a class="resource-link" href="https://www.usenix.org/conference/osdi22/presentation/yu" target="_blank" rel="noopener noreferrer">Read Paper</a>
+      </div>
+    </article>
+
+    <article class="resource-card repo">
+      <div class="resource-head">
+        <div class="resource-icon">{ }</div>
+        <div>
+          <div class="resource-kicker">GitHub Repository</div>
+          <h3>Reference implementation</h3>
+        </div>
+      </div>
+      <a class="resource-title" href="https://github.com/vllm-project/vllm" target="_blank" rel="noopener noreferrer">vllm-project/vllm</a>
+      <p>High-throughput LLM serving engine.</p>
+      <a class="resource-title" href="https://github.com/huggingface/text-generation-inference" target="_blank" rel="noopener noreferrer">huggingface/text-generation-inference</a>
+      <p>HuggingFace production inference server.</p>
+      <div class="resource-actions">
+        <a class="resource-link" href="https://github.com/vllm-project/vllm" target="_blank" rel="noopener noreferrer">Explore Repo</a>
+        <a class="resource-link" href="https://github.com/huggingface/text-generation-inference" target="_blank" rel="noopener noreferrer">Explore Repo</a>
+      </div>
+    </article>
+  </div>
+</section>
+    </div>
+  </div>
+
+  <!-- Footer -->
+  <div class="footer-bar fade-in d6">
+    <a href="module_7_2_ssm.html" class="prev-link">
+      <span class="lbl">Previous Module</span>
+      <span class="ttl">7.2 — SSMs &amp; Mamba</span>
+    </a>
+    <a href="module_0_1_attention_refresher.html" class="next-link">
+      <span class="lbl">Back to the Beginning</span>
+      <span class="ttl">0.1 — Attention Refresher</span>
+    </a>
+  </div>
+
+</div>
+
+<script>
+  document.querySelectorAll('.mcq').forEach(mcq=>{const correct=mcq.dataset.correct;const opts=mcq.querySelectorAll('.opt');const fb=mcq.querySelector('.feedback');opts.forEach(opt=>{opt.addEventListener('click',()=>{if(opt.classList.contains('disabled'))return;const chosen=opt.dataset.key;const isRight=chosen===correct;opts.forEach(o=>{o.classList.add('disabled');if(o.dataset.key===correct)o.classList.add('correct');else if(o===opt&&!isRight)o.classList.add('wrong')});if(isRight){fb.classList.add('show','right');fb.innerHTML='<span class="verdict">Correct</span>'+fb.dataset.right}else{fb.classList.add('show','wrong');fb.innerHTML='<span class="verdict">Not quite</span>'+fb.dataset.wrong}})})});
+</script>
+</body>
+</html>

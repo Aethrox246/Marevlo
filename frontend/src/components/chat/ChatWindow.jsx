@@ -270,8 +270,7 @@ export default function ChatWindow({ chatId: chatIdProp, userId, onBack }) {
         return () => el.removeEventListener('scroll', onScroll);
     }, []);
 
-    // BUG-06: IntersectionObserver — mark each unread received message as read
-    // only after it actually enters the viewport (50% visible threshold).
+    // Mark unread received messages as read once they scroll into view (50% threshold).
     useEffect(() => {
         observerRef.current = new IntersectionObserver(
             (entries) => {
@@ -300,7 +299,7 @@ export default function ChatWindow({ chatId: chatIdProp, userId, onBack }) {
         return () => window.removeEventListener('ws_reconnected', handleReconnect);
     }, [userId, fetchChat]);
 
-    // BUG-03: debounced typing indicator — fires at most once per 2 s while typing
+    // Throttled typing indicator — at most one request per 2 s burst.
     const emitTyping = () => {
         const cid = chatIdRef.current;
         if (!cid) return;
@@ -317,7 +316,7 @@ export default function ChatWindow({ chatId: chatIdProp, userId, onBack }) {
     const handleSendMessage = async () => {
         if (!input.trim() || !userId) return;
 
-        const messageContent = input;
+        const messageContent = input.trim();
         setInput('');
         setReplyTo(null);
         setSending(true);
@@ -634,7 +633,15 @@ export default function ChatWindow({ chatId: chatIdProp, userId, onBack }) {
                     </div>
 
                     <div className="min-w-0">
-                        <h2 className="font-bold text-sm truncate leading-tight" style={{ color: 'var(--color-primary-text)' }}>
+                        <h2
+                            className="font-bold text-sm truncate leading-tight tracking-tight"
+                            style={{
+                                background: 'linear-gradient(135deg, var(--color-primary-text) 40%, #6366f1 100%)',
+                                WebkitBackgroundClip: 'text',
+                                WebkitTextFillColor: 'transparent',
+                                backgroundClip: 'text',
+                            }}
+                        >
                             {otherUser?.username || 'User'}
                         </h2>
                         <div className="flex items-center gap-1.5 mt-0.5 h-4 overflow-hidden">
@@ -673,8 +680,11 @@ export default function ChatWindow({ chatId: chatIdProp, userId, onBack }) {
                         <Info size={20} />
                     </button>
                     <button
+                        onPointerDown={(e) => { console.log('header more pointerdown'); e.stopPropagation(); }}
+                        onMouseDown={(e) => { console.log('header more mousedown'); e.stopPropagation(); }}
+                        onClick={(e) => { console.log('header more click'); e.stopPropagation(); setShowInfoPanel(p => !p); }}
                         className="p-2 rounded-full transition-all duration-200"
-                        style={{ color: 'var(--color-muted-text)' }}
+                        style={{ color: 'var(--color-muted-text)', zIndex: 60, pointerEvents: 'auto' }}
                         title="More options"
                         onMouseEnter={e => e.currentTarget.style.backgroundColor = 'var(--color-surface-hover)'}
                         onMouseLeave={e => e.currentTarget.style.backgroundColor = 'transparent'}
@@ -685,7 +695,16 @@ export default function ChatWindow({ chatId: chatIdProp, userId, onBack }) {
             </div>
 
             {/* Messages */}
-            <div ref={scrollContainerRef} className="flex-1 min-h-0 overflow-y-auto custom-scrollbar px-5 py-4" style={{ background: 'var(--color-app-bg)' }} onClick={() => { setActionMenuId(null); setEmojiPickerMsgId(null); setPendingDelete(null); }}>
+            <div
+                ref={scrollContainerRef}
+                className="flex-1 min-h-0 overflow-y-auto custom-scrollbar px-5 py-4"
+                style={{
+                    background: 'var(--color-app-bg)',
+                    backgroundImage: 'radial-gradient(circle, rgba(99,102,241,0.04) 1px, transparent 1px)',
+                    backgroundSize: '28px 28px',
+                }}
+                onClick={() => { setActionMenuId(null); setEmojiPickerMsgId(null); setPendingDelete(null); }}
+            >
                 {loading && !messages.length && (
                     <div className="flex flex-col gap-5 py-6 px-1">
                         {/* Skeleton bubbles — received */}
@@ -844,7 +863,6 @@ export default function ChatWindow({ chatId: chatIdProp, userId, onBack }) {
                                     id={`msg-${message.id}`}
                                     className={`flex ${isOwn ? 'justify-end' : 'justify-start'} ${isFirstInGroup ? 'mt-4' : 'mt-0.5'} relative`}
                                     style={{ animation: `msgIn 0.25s ease-out both`, touchAction: 'pan-y' }}
-                                    // BUG-06: attach IntersectionObserver for lazy read marking
                                     ref={el => {
                                         if (!el || message.is_read || isOwn || message._optimistic) return;
                                         if (observedMsgIds.current.has(message.id)) return;
@@ -852,10 +870,16 @@ export default function ChatWindow({ chatId: chatIdProp, userId, onBack }) {
                                         el.dataset.unreadMsgId = String(message.id);
                                         observerRef.current?.observe(el);
                                     }}
-                                    // BUG-07: unified pointer events handle both mouse (desktop) and touch (mobile)
                                     onPointerDown={(e) => {
                                         if (isDeleted || message._optimistic) return;
                                         if (e.pointerType === 'mouse' && e.button !== 0) return;
+                                        // If the pointerdown originated on an interactive control, don't capture
+                                        const tgt = e.target;
+                                        try {
+                                            if (tgt && tgt.closest && tgt.closest('button, a, input, textarea, [role="button"]')) return;
+                                        } catch (err) {
+                                            // ignore DOM errors
+                                        }
                                         e.currentTarget.setPointerCapture(e.pointerId);
                                         swipeRef.current = {
                                             startX: e.clientX,
@@ -1017,9 +1041,13 @@ export default function ChatWindow({ chatId: chatIdProp, userId, onBack }) {
                                         {/* Hover action button */}
                                         {canActOn && !isEditing && (
                                             <button
-                                                onClick={() => setActionMenuId(actionMenuId === message.id ? null : message.id)}
-                                                className="absolute top-1 -left-9 p-1.5 rounded-full opacity-0 group-hover:opacity-100 transition-all z-10"
+                                                onPointerDown={(e) => e.stopPropagation()}
+                                                onMouseDown={(e) => e.stopPropagation()}
+                                                onClick={(e) => { e.stopPropagation(); setActionMenuId(actionMenuId === message.id ? null : message.id); }}
+                                                className="absolute top-1 -left-9 p-1.5 rounded-full opacity-0 group-hover:opacity-100 transition-all"
                                                 style={{
+                                                    zIndex: 60,
+                                                    pointerEvents: 'auto',
                                                     backgroundColor: 'var(--color-surface)',
                                                     color: 'var(--color-muted-text)',
                                                     border: '1px solid var(--color-border)',
@@ -1034,8 +1062,13 @@ export default function ChatWindow({ chatId: chatIdProp, userId, onBack }) {
                                         {/* Dropdown */}
                                         {canActOn && actionMenuId === message.id && (
                                             <div
+                                                onPointerDown={(e) => e.stopPropagation()}
+                                                onMouseDown={(e) => e.stopPropagation()}
+                                                onClick={(e) => e.stopPropagation()}
                                                 className="absolute z-30 right-0 top-9 rounded-2xl shadow-2xl overflow-hidden"
                                                 style={{
+                                                    zIndex: 70,
+                                                    pointerEvents: 'auto',
                                                     backgroundColor: 'var(--color-surface)',
                                                     border: '1px solid var(--color-border)',
                                                     minWidth: '140px',
@@ -1279,8 +1312,11 @@ export default function ChatWindow({ chatId: chatIdProp, userId, onBack }) {
                                         {/* Floating emoji picker */}
                                         {!isDeleted && emojiPickerMsgId === message.id && (
                                             <div
+                                                onPointerDown={(e) => e.stopPropagation()}
+                                                onMouseDown={(e) => e.stopPropagation()}
+                                                onClick={(e) => e.stopPropagation()}
                                                 className={`absolute z-30 flex gap-1 p-2 rounded-2xl shadow-xl border bottom-full mb-1 ${isOwn ? 'right-0' : 'left-0'}`}
-                                                style={{ background: 'var(--color-surface)', borderColor: 'var(--color-border)' }}
+                                                style={{ background: 'var(--color-surface)', borderColor: 'var(--color-border)', zIndex: 70, pointerEvents: 'auto' }}
                                             >
                                                 {REACTION_EMOJIS.map(emoji => (
                                                     <button
@@ -1333,11 +1369,23 @@ export default function ChatWindow({ chatId: chatIdProp, userId, onBack }) {
                 <div ref={messagesEndRef} />
             </div>
 
-            {/* Input Dock — frosted card with focus glow */}
+            {/* Input Dock */}
             <div
-                className="flex-shrink-0 px-4 pb-4 pt-2"
-                style={{ background: 'var(--color-surface)', borderTop: '1px solid var(--color-border)' }}
+                className="flex-shrink-0 px-4 pb-4 pt-3 relative"
+                style={{
+                    background: 'var(--color-surface)',
+                    borderTop: '1px solid var(--color-border)',
+                    boxShadow: '0 -8px 24px -4px rgba(0,0,0,0.06)',
+                }}
             >
+                {/* Top gradient line when focused */}
+                {isInputFocused && (
+                    <span
+                        aria-hidden
+                        className="absolute top-0 left-8 right-8 h-px transition-opacity"
+                        style={{ background: 'linear-gradient(90deg, transparent, #6366f1 40%, #8b5cf6 60%, transparent)' }}
+                    />
+                )}
                 {/* Reply-to preview bar */}
                 {replyTo && (
                     <div
@@ -1353,8 +1401,8 @@ export default function ChatWindow({ chatId: chatIdProp, userId, onBack }) {
                             <p className="text-[10px] font-semibold leading-tight" style={{ color: '#6366f1' }}>
                                 {replyTo.sender_id === user?.id ? 'You' : otherUser?.username}
                             </p>
-                            <p className="text-xs truncate leading-snug" style={{ color: 'var(--color-muted-text)' }}>
-                                {replyTo.content}
+                            <p className="text-xs truncate leading-snug" style={{ color: 'var(--color-muted-text)', fontStyle: replyTo.is_deleted ? 'italic' : 'normal' }}>
+                                {replyTo.is_deleted ? '[deleted]' : replyTo.content}
                             </p>
                         </div>
                         <button
@@ -1374,9 +1422,12 @@ export default function ChatWindow({ chatId: chatIdProp, userId, onBack }) {
                 <div
                     className="rounded-2xl overflow-hidden transition-all duration-200"
                     style={{
-                        border: `1.5px solid ${isInputFocused ? '#6366f1' : 'var(--color-border)'}`,
-                        boxShadow: isInputFocused ? '0 0 0 3px rgba(99,102,241,0.12), 0 4px 16px rgba(99,102,241,0.1)' : '0 1px 4px rgba(0,0,0,0.06)',
-                        background: 'linear-gradient(180deg, rgba(255,255,255,0.02) 0%, rgba(255,255,255,0.01) 100%)',
+                        border: `1px solid ${isInputFocused ? 'rgba(99,102,241,0.5)' : 'var(--color-border)'}`,
+                        boxShadow: isInputFocused
+                            ? '0 0 0 3px rgba(99,102,241,0.1), 0 4px 20px rgba(99,102,241,0.12)'
+                            : '0 1px 3px rgba(0,0,0,0.06)',
+                        background: 'var(--color-surface-hover)',
+                        backdropFilter: 'blur(12px)',
                     }}
                 >
                     {/* Textarea */}
@@ -1429,14 +1480,14 @@ export default function ChatWindow({ chatId: chatIdProp, userId, onBack }) {
                         </div>
 
                         <div className="flex items-center gap-2">
-                            {input.length > 200 && (
+                            {input.length > 9000 && (
                                 <span
                                     className="text-[11px] font-medium tabular-nums transition-colors"
                                     style={{
-                                        color: input.length > 900 ? '#ef4444' : input.length > 600 ? '#f59e0b' : 'var(--color-muted-text)',
+                                        color: input.length > 9900 ? '#ef4444' : input.length > 9500 ? '#f59e0b' : 'var(--color-muted-text)',
                                     }}
                                 >
-                                    {1000 - input.length}
+                                    {10000 - input.length}
                                 </span>
                             )}
                             <button
@@ -1461,9 +1512,11 @@ export default function ChatWindow({ chatId: chatIdProp, userId, onBack }) {
                     </div>
                 </div>
 
-                <p className="text-[10px] mt-1.5 text-center" style={{ color: 'var(--color-muted-text)' }}>
-                    Enter to send · Shift+Enter for new line
-                </p>
+                <div className="flex items-center justify-center gap-3 mt-1.5">
+                    <span className="text-[10px]" style={{ color: 'var(--color-muted-text)', opacity: 0.6 }}>
+                        <kbd className="font-mono">Enter</kbd> send · <kbd className="font-mono">Shift+Enter</kbd> newline
+                    </span>
+                </div>
             </div>
 
             {/* Scroll-to-bottom FAB */}
@@ -1520,9 +1573,11 @@ export default function ChatWindow({ chatId: chatIdProp, userId, onBack }) {
                         />
                         {/* Close */}
                         <button
-                            onClick={() => setShowInfoPanel(false)}
+                            onPointerDown={(e) => { console.log('info close pointerdown'); e.stopPropagation(); }}
+                            onMouseDown={(e) => { console.log('info close mousedown'); e.stopPropagation(); }}
+                            onClick={(e) => { console.log('info close click'); e.stopPropagation(); setShowInfoPanel(false); }}
                             className="absolute top-3 right-3 w-7 h-7 rounded-full flex items-center justify-center transition-all"
-                            style={{ background: 'rgba(0,0,0,0.35)', color: '#fff' }}
+                            style={{ background: 'rgba(0,0,0,0.35)', color: '#fff', zIndex: 80, pointerEvents: 'auto' }}
                             onMouseEnter={e => { e.currentTarget.style.background = 'rgba(0,0,0,0.6)'; }}
                             onMouseLeave={e => { e.currentTarget.style.background = 'rgba(0,0,0,0.35)'; }}
                         >
@@ -1552,7 +1607,15 @@ export default function ChatWindow({ chatId: chatIdProp, userId, onBack }) {
 
                     {/* Name + status + CTA */}
                     <div className="pt-12 pb-6 px-6 text-center" style={{ borderBottom: '1px solid var(--color-border)' }}>
-                        <h3 className="font-bold text-lg mb-1" style={{ color: 'var(--color-primary-text)', letterSpacing: '-0.01em' }}>
+                        <h3
+                            className="font-bold text-lg mb-1 tracking-tight"
+                            style={{
+                                background: 'linear-gradient(135deg, var(--color-primary-text) 40%, #6366f1 100%)',
+                                WebkitBackgroundClip: 'text',
+                                WebkitTextFillColor: 'transparent',
+                                backgroundClip: 'text',
+                            }}
+                        >
                             {otherUser?.username}
                         </h3>
                         <div
@@ -1677,6 +1740,10 @@ export default function ChatWindow({ chatId: chatIdProp, userId, onBack }) {
                 @keyframes emptyAvatarPulse {
                     0%, 100% { transform: scale(1.35); opacity: 0.18; }
                     50%      { transform: scale(1.55); opacity: 0.08; }
+                }
+                @keyframes emptyPulse {
+                    0%, 100% { transform: scale(1);   opacity: 0.5; }
+                    50%       { transform: scale(1.12); opacity: 0.25; }
                 }
                 .typing-dot {
                     display: inline-block;

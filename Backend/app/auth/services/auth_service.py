@@ -12,7 +12,7 @@ from datetime import datetime, timedelta, timezone
 from typing import Optional, Tuple
 import re
 
-from sqlalchemy import func, select
+from sqlalchemy import and_, case, func, select
 from sqlalchemy.orm import Session
 
 from app.auth.models.user import EmailOTP, User, UserSession
@@ -109,23 +109,28 @@ class AuthService:
 
         Returns True if flagged. Caller is responsible for the email + audit.
         """
-        prior_count = db.execute(
-            select(func.count(UserSession.id))
+        prior_count, matching_count = db.execute(
+            select(
+                func.count(UserSession.id),
+                func.sum(
+                    case(
+                        (
+                            and_(
+                                UserSession.ip_address == new_session.ip_address,
+                                UserSession.device == new_session.device,
+                            ),
+                            1,
+                        ),
+                        else_=0,
+                    )
+                ),
+            )
             .where(UserSession.user_id == user.id)
             .where(UserSession.id != new_session.id)
-        ).scalar() or 0
-        if prior_count == 0:
+        ).one()
+        if int(prior_count or 0) == 0:
             return False  # first ever login, not suspicious
-
-        existing = db.execute(
-            select(UserSession.id)
-            .where(UserSession.user_id == user.id)
-            .where(UserSession.id != new_session.id)
-            .where(UserSession.ip_address == new_session.ip_address)
-            .where(UserSession.device == new_session.device)
-            .limit(1)
-        ).scalar_one_or_none()
-        return existing is None
+        return int(matching_count or 0) == 0
 
     def _notify_if_suspicious(
         self,
@@ -500,19 +505,26 @@ class AuthService:
         )
 
         user = self._get_user_by_email(db, email_norm)
-        if not user:
-            raise InvalidCredentials("Invalid OTP or email")
 
-        otp_entry = db.execute(
-            select(EmailOTP)
-            .where(EmailOTP.user_id == user.id)
-            .where(EmailOTP.used_at.is_(None))
-            .where(EmailOTP.expires_at > datetime.now(timezone.utc))
-            .order_by(EmailOTP.created_at.desc())
-            .limit(1)
-        ).scalar_one_or_none()
+        # Look up the OTP entry only when a real user exists.
+        otp_entry = None
+        if user is not None:
+            otp_entry = db.execute(
+                select(EmailOTP)
+                .where(EmailOTP.user_id == user.id)
+                .where(EmailOTP.used_at.is_(None))
+                .where(EmailOTP.expires_at > datetime.now(timezone.utc))
+                .order_by(EmailOTP.created_at.desc())
+                .limit(1)
+            ).scalar_one_or_none()
 
-        if not otp_entry or not verify_otp(otp, otp_entry.code_hash):
+        # Always run HMAC regardless of whether user/OTP was found — prevents
+        # email-enumeration via timing differences between the two code paths.
+        _sentinel = hash_otp("000000")
+        stored_hash = otp_entry.code_hash if otp_entry else _sentinel
+        otp_valid = verify_otp(otp, stored_hash)
+
+        if not user or not otp_entry or not otp_valid:
             raise InvalidCredentials("Invalid or expired OTP")
 
         now = datetime.now(timezone.utc)

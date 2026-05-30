@@ -1,0 +1,711 @@
+```html id="8m2rqp"
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+<title>Spell Checker using Trie</title>
+
+<style>
+
+:root{
+    --bg:#0d1117;
+    --surface:#161b22;
+    --border:#30363d;
+    --text:#c9d1d9;
+    --muted:#8b949e;
+    --purple:#a371f7;
+    --blue:#58a6ff;
+    --green:#3fb950;
+    --orange:#e3b341;
+}
+
+*{
+    box-sizing:border-box;
+}
+
+body{
+    margin:0;
+    padding:20px;
+    background:var(--bg);
+    color:var(--text);
+    font-family:Arial;
+}
+
+h1{
+    text-align:center;
+    color:var(--purple);
+}
+
+.subtitle{
+    text-align:center;
+    color:var(--muted);
+    margin-bottom:20px;
+}
+
+.controls{
+    display:flex;
+    justify-content:center;
+    gap:10px;
+    flex-wrap:wrap;
+    margin-bottom:20px;
+}
+
+button{
+    padding:10px 18px;
+    background:#21262d;
+    color:white;
+    border:none;
+    border-radius:8px;
+    cursor:pointer;
+}
+
+button:hover{
+    background:#30363d;
+}
+
+.panel{
+    background:var(--surface);
+    border:1px solid var(--border);
+    border-radius:12px;
+    padding:20px;
+    margin-bottom:20px;
+}
+
+.title{
+    color:var(--purple);
+    font-size:20px;
+    margin-bottom:10px;
+}
+
+.words{
+    display:flex;
+    gap:10px;
+    flex-wrap:wrap;
+}
+
+.word{
+    padding:8px 14px;
+    border:2px solid var(--orange);
+    border-radius:8px;
+    font-family:monospace;
+}
+
+.trie{
+    overflow:auto;
+}
+
+.node{
+    display:inline-block;
+    vertical-align:top;
+    margin:10px;
+    padding:12px;
+    border:2px solid var(--blue);
+    border-radius:10px;
+    background:#21262d;
+    min-width:90px;
+    text-align:center;
+}
+
+.children{
+    display:flex;
+    justify-content:center;
+    flex-wrap:wrap;
+    margin-top:10px;
+}
+
+.end{
+    color:var(--green);
+    margin-top:5px;
+    font-size:12px;
+}
+
+.result{
+    font-size:20px;
+    color:var(--green);
+}
+
+.log-line{
+    margin:6px 0;
+    font-family:monospace;
+}
+
+.step-box{
+    background:#21262d;
+    padding:15px;
+    border-radius:10px;
+}
+
+</style>
+</head>
+
+<body>
+
+<h1>Spell Checker using Trie</h1>
+
+<div class="subtitle">
+Trie + Levenshtein Distance
+</div>
+
+<div class="controls">
+
+    <button onclick="loadExample1()">
+        Example 1
+    </button>
+
+    <button onclick="loadExample2()">
+        Example 2
+    </button>
+
+</div>
+
+<div class="controls">
+
+    <button onclick="prevStep()">
+        ⬅ Prev
+    </button>
+
+    <button onclick="togglePlay()" id="playBtn">
+        ▶ Play
+    </button>
+
+    <button onclick="nextStep()">
+        Next ➡
+    </button>
+
+</div>
+
+<div class="panel">
+
+    <div class="title">
+        Current Step
+    </div>
+
+    <div id="stepInfo" class="step-box"></div>
+
+</div>
+
+<div class="panel">
+
+    <div class="title">
+        Dictionary Words
+    </div>
+
+    <div id="words" class="words"></div>
+
+</div>
+
+<div class="panel">
+
+    <div class="title">
+        Trie Structure
+    </div>
+
+    <div id="trie" class="trie"></div>
+
+</div>
+
+<div class="panel">
+
+    <div class="title">
+        Suggestions
+    </div>
+
+    <div id="result" class="result"></div>
+
+</div>
+
+<div class="panel">
+
+    <div class="title">
+        Execution Logs
+    </div>
+
+    <div id="logs"></div>
+
+</div>
+
+<script>
+
+class TrieNode{
+
+    constructor(){
+
+        this.children = {};
+        this.isEnd = false;
+    }
+}
+
+class Trie{
+
+    constructor(){
+
+        this.root = new TrieNode();
+    }
+
+    insert(word){
+
+        let node = this.root;
+
+        for(let ch of word){
+
+            if(!node.children[ch]){
+
+                node.children[ch] =
+                    new TrieNode();
+            }
+
+            node = node.children[ch];
+        }
+
+        node.isEnd = true;
+    }
+}
+
+function levenshtein(a, b){
+
+    const dp =
+        Array.from(
+            {length: a.length + 1},
+            () =>
+                Array(b.length + 1).fill(0)
+        );
+
+    for(let i = 0; i <= a.length; i++){
+
+        dp[i][0] = i;
+    }
+
+    for(let j = 0; j <= b.length; j++){
+
+        dp[0][j] = j;
+    }
+
+    for(let i = 1; i <= a.length; i++){
+
+        for(let j = 1; j <= b.length; j++){
+
+            if(a[i - 1] === b[j - 1]){
+
+                dp[i][j] =
+                    dp[i - 1][j - 1];
+            }
+            else{
+
+                dp[i][j] =
+                    1 + Math.min(
+
+                        dp[i - 1][j],
+
+                        dp[i][j - 1],
+
+                        dp[i - 1][j - 1]
+                    );
+            }
+        }
+    }
+
+    return dp[a.length][b.length];
+}
+
+let trie;
+
+let steps = [];
+
+let currentStep = 0;
+
+let timer = null;
+
+let isPlaying = false;
+
+function buildTrie(node, label){
+
+    let html =
+    `
+        <div class="node">
+
+            <div>
+                <strong>${label}</strong>
+            </div>
+
+            ${
+                node.isEnd
+                ? `<div class="end">END</div>`
+                : ``
+            }
+    `;
+
+    let keys =
+        Object.keys(node.children);
+
+    if(keys.length > 0){
+
+        html += `<div class="children">`;
+
+        for(let key of keys){
+
+            html += buildTrie(
+                node.children[key],
+                key
+            );
+        }
+
+        html += `</div>`;
+    }
+
+    html += `</div>`;
+
+    return html;
+}
+
+function renderStep(){
+
+    const step = steps[currentStep];
+
+    document.getElementById(
+        "stepInfo"
+    ).innerHTML = step.description;
+
+    document.getElementById(
+        "words"
+    ).innerHTML = step.wordsHTML;
+
+    document.getElementById(
+        "trie"
+    ).innerHTML = step.trieHTML;
+
+    document.getElementById(
+        "result"
+    ).innerHTML = step.result;
+
+    document.getElementById(
+        "logs"
+    ).innerHTML = step.logsHTML;
+}
+
+function nextStep(){
+
+    if(currentStep < steps.length - 1){
+
+        currentStep++;
+
+        renderStep();
+    }
+    else{
+
+        pausePlay();
+    }
+}
+
+function prevStep(){
+
+    if(currentStep > 0){
+
+        currentStep--;
+
+        renderStep();
+    }
+}
+
+function togglePlay(){
+
+    if(isPlaying){
+
+        pausePlay();
+    }
+    else{
+
+        startPlay();
+    }
+}
+
+function startPlay(){
+
+    isPlaying = true;
+
+    document.getElementById(
+        "playBtn"
+    ).innerHTML = "⏸ Pause";
+
+    timer = setInterval(() => {
+
+        if(currentStep < steps.length - 1){
+
+            nextStep();
+        }
+        else{
+
+            pausePlay();
+        }
+
+    }, 1500);
+}
+
+function pausePlay(){
+
+    clearInterval(timer);
+
+    isPlaying = false;
+
+    document.getElementById(
+        "playBtn"
+    ).innerHTML = "▶ Play";
+}
+
+function createWordsHTML(words){
+
+    let html = "";
+
+    for(let word of words){
+
+        html +=
+        `
+            <div class="word">
+                ${word}
+            </div>
+        `;
+    }
+
+    return html;
+}
+
+function createLogsHTML(logs){
+
+    let html = "";
+
+    for(let log of logs){
+
+        html +=
+        `
+            <div class="log-line">
+                ${log}
+            </div>
+        `;
+    }
+
+    return html;
+}
+
+function clone(obj){
+
+    return JSON.parse(
+        JSON.stringify(obj)
+    );
+}
+
+function createSuggestions(
+    dictionary,
+    query,
+    maxDist
+){
+
+    const matches = [];
+
+    for(let word of dictionary){
+
+        const dist =
+            levenshtein(query, word);
+
+        if(dist <= maxDist){
+
+            matches.push({
+
+                word: word,
+
+                dist: dist
+            });
+        }
+    }
+
+    matches.sort((a, b) => {
+
+        if(a.dist !== b.dist){
+
+            return a.dist - b.dist;
+        }
+
+        return a.word.localeCompare(
+            b.word
+        );
+    });
+
+    return matches;
+}
+
+function loadExample1(){
+
+    pausePlay();
+
+    trie = new Trie();
+
+    steps = [];
+
+    const dictionary = [
+        "cat",
+        "bat",
+        "rat",
+        "car",
+        "bar"
+    ];
+
+    for(let word of dictionary){
+
+        trie.insert(word);
+
+        steps.push({
+
+            description:
+                `Inserted "${word}"`,
+
+            wordsHTML:
+                createWordsHTML(dictionary),
+
+            trieHTML:
+                buildTrie(
+                    clone(trie.root),
+                    "ROOT"
+                ),
+
+            result:
+                `"${word}" inserted`,
+
+            logsHTML:
+                createLogsHTML([
+                    `Insert "${word}"`
+                ])
+        });
+    }
+
+    const matches =
+        createSuggestions(
+            dictionary,
+            "ct",
+            2
+        );
+
+    steps.push({
+
+        description:
+            `Query = "ct", Max Distance = 2`,
+
+        wordsHTML:
+            createWordsHTML(dictionary),
+
+        trieHTML:
+            buildTrie(
+                clone(trie.root),
+                "ROOT"
+            ),
+
+        result:
+            matches
+                .map(m => m.word)
+                .join(", "),
+
+        logsHTML:
+            createLogsHTML(
+
+                matches.map(
+                    m =>
+                    `${m.word} → distance ${m.dist}`
+                )
+            )
+    });
+
+    currentStep = 0;
+
+    renderStep();
+}
+
+function loadExample2(){
+
+    pausePlay();
+
+    trie = new Trie();
+
+    steps = [];
+
+    const dictionary = [
+        "hello",
+        "help",
+        "shell",
+        "hill"
+    ];
+
+    for(let word of dictionary){
+
+        trie.insert(word);
+
+        steps.push({
+
+            description:
+                `Inserted "${word}"`,
+
+            wordsHTML:
+                createWordsHTML(dictionary),
+
+            trieHTML:
+                buildTrie(
+                    clone(trie.root),
+                    "ROOT"
+                ),
+
+            result:
+                `"${word}" inserted`,
+
+            logsHTML:
+                createLogsHTML([
+                    `Insert "${word}"`
+                ])
+        });
+    }
+
+    const matches =
+        createSuggestions(
+            dictionary,
+            "helo",
+            1
+        );
+
+    steps.push({
+
+        description:
+            `Query = "helo", Max Distance = 1`,
+
+        wordsHTML:
+            createWordsHTML(dictionary),
+
+        trieHTML:
+            buildTrie(
+                clone(trie.root),
+                "ROOT"
+            ),
+
+        result:
+            matches
+                .map(m => m.word)
+                .join(", "),
+
+        logsHTML:
+            createLogsHTML(
+
+                matches.map(
+                    m =>
+                    `${m.word} → distance ${m.dist}`
+                )
+            )
+    });
+
+    currentStep = 0;
+
+    renderStep();
+}
+
+loadExample1();
+
+</script>
+
+</body>
+</html>
+```

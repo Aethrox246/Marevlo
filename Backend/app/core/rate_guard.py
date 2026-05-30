@@ -33,17 +33,22 @@ class RateLimitGuard:
     def check(self, *, key: str, limit: int, window_seconds: int) -> None:
         try:
             client = redis_manager.sync
-            count = client.incr(key)
-            if count == 1:
-                # First hit — set TTL. EXPIRE returns 1 on success; we don't
-                # care if it fails because of a race, the next call will retry.
-                client.expire(key, window_seconds)
+            # Pipeline makes INCR + EXPIRE atomic: if the connection drops
+            # between the two commands the key cannot be left without a TTL,
+            # which would permanently lock out the user for that key.
+            # Using expire on every request (not just count==1) gives sliding-
+            # window semantics — stronger against burst-at-boundary attacks.
+            pipe = client.pipeline()
+            pipe.incr(key)
+            pipe.expire(key, window_seconds)
+            count, _ = pipe.execute()
             if count > limit:
-                # Logged at WARNING for security visibility.
-                logger.warning("rate_limit_exceeded key=%s count=%d limit=%d", key, count, limit)
-                raise RateLimited(
-                    f"Too many requests. Please wait and try again later."
+                logger.warning(
+                    "rate_limit_exceeded key=%s count=%d limit=%d", key, count, limit
                 )
+                raise RateLimited("Too many requests. Please wait and try again later.")
+        except RateLimited:
+            raise  # don't swallow our own exception
         except RedisError as exc:
             # Fail-open on Redis errors — slowapi's per-IP limit and the
             # password complexity check still defend in depth.

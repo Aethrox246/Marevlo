@@ -1,0 +1,471 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Median of Two Sorted Arrays - Binary Search Partition Visualization</title>
+    <style>
+        :root {
+            --bg-page: #0d1117;
+            --bg-surface: #161b22;
+            --bg-input: #0d1117;
+            --border-main: #30363d;
+            --btn-bg: #21262d;
+            --btn-hover: #2d333b;
+            --text-main: #c9d1d9;
+            --text-dim: #8b949e;
+            --accent-orange: #e3b341;
+            --accent-blue: #388bfd;
+            --accent-green: #3fb950;
+            --accent-red: #f85149;
+            --accent-purple: #a371f7;
+        }
+
+        * { box-sizing: border-box; }
+        body {
+            background-color: var(--bg-page);
+            color: var(--text-main);
+            font-family: system-ui, -apple-system, sans-serif;
+            margin: 0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            min-height: 100vh;
+            padding-bottom: 40px;
+        }
+
+        /* INPUT BAR */
+        .input-bar {
+            width: 100%;
+            background-color: var(--bg-surface);
+            padding: 12px 16px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 8px;
+            border-bottom: 1px solid var(--border-main);
+            flex-wrap: wrap;
+        }
+        label.ui-label { font-family: 'Courier New', monospace; font-size: 13px; color: var(--text-dim); }
+        input[type="text"] {
+            background: var(--bg-input);
+            border: 1px solid var(--border-main);
+            color: var(--text-main);
+            height: 32px;
+            border-radius: 6px;
+            padding: 0 10px;
+            font-size: 13px;
+        }
+        .nums-input { width: 220px; }
+
+        button {
+            height: 32px; border-radius: 6px; padding: 0 14px; background: var(--btn-bg);
+            border: 1px solid var(--border-main); color: var(--text-main); font-size: 13px; cursor: pointer;
+            transition: background 0.2s ease;
+        }
+        button:hover { background: var(--btn-hover); }
+
+        /* VISUAL CONTAINER */
+        .visual-container { margin-top: 30px; display: flex; flex-direction: column; align-items: center; gap: 20px; width: 100%; }
+        .array-wrapper {
+            display: grid;
+            gap: 6px;
+            padding: 10px;
+            background: var(--bg-surface);
+            border: 2px solid var(--border-main);
+            border-radius: 8px;
+            margin-bottom: 8px;
+        }
+        
+        .tile-unit { 
+            display: flex; 
+            flex-direction: column; 
+            align-items: center; 
+            gap: 2px; 
+            position: relative; 
+        }
+        .tile {
+            min-width: 52px; height: 52px; display: flex; align-items: center; justify-content: center;
+            border-radius: 8px; font-size: 18px; font-weight: 700; font-family: 'Courier New', monospace;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); border: 3px solid var(--border-main); background: #21262d;
+            color: var(--text-main);
+            box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+        }
+        .tile-index { font-size: 10px; color: var(--text-dim); font-family: monospace; margin-top: 2px; }
+        
+        /* STATES */
+        .tile.search-space { background: #0d2244; border-color: var(--accent-blue); }
+        .tile.candidate { background: #2a1600; border-color: var(--accent-orange); color: var(--accent-orange); transform: scale(1.12); box-shadow: 0 0 16px rgba(227, 179, 65, 0.6); }
+        .tile.winning { background: #0f2a1a; border-color: var(--accent-green); color: var(--accent-green); transform: scale(1.15); box-shadow: 0 0 18px var(--accent-green); }
+        .tile.eliminated { opacity: 0.25; background: #161b22; border-color: var(--border-main); color: var(--text-dim); }
+        .tile.current { animation: pulse 800ms infinite; border-color: var(--accent-purple); box-shadow: 0 0 20px var(--accent-purple); }
+        .tile.partition { border-color: var(--accent-red); box-shadow: 0 0 12px var(--accent-red); }
+
+        @keyframes pulse { 0%,100%{transform:scale(1)} 50%{transform:scale(1.08)} }
+
+        /* PARTITION LINE */
+        .partition-line {
+            position: absolute;
+            left: 50%;
+            top: -10px;
+            bottom: -10px;
+            width: 3px;
+            background: var(--accent-red);
+            box-shadow: 0 0 8px var(--accent-red);
+        }
+
+        /* PANELS */
+        .action-panel {
+            margin-top: 24px; background: var(--bg-surface); border: 1px solid var(--border-main);
+            border-radius: 6px; padding: 12px 20px; width: 720px; text-align: center; font-family: monospace; min-height: 78px;
+            display: flex; flex-direction: column; justify-content: center; font-size: 15px; line-height: 1.5;
+        }
+
+        .info-panel { margin-top: 10px; display: flex; gap: 12px; flex-wrap: wrap; justify-content: center; }
+        .info-cell {
+            background: var(--bg-surface); border: 1px solid var(--border-main); border-radius: 6px;
+            padding: 8px 16px; display: flex; flex-direction: column; align-items: center; min-width: 110px; gap: 4px;
+        }
+        .info-label { font-size: 11px; color: var(--text-dim); letter-spacing: 0.5px; }
+        .info-value { font-family: monospace; font-size: 17px; font-weight: 700; color: var(--accent-purple); }
+
+        /* RESULT */
+        .result-display { margin-top: 12px; display: flex; flex-direction: column; align-items: center; }
+        #res-val { font-size: 22px; color: var(--text-dim); font-family: monospace; transition: all 0.3s; font-weight: bold; }
+        .pop { animation: popAnim 400ms ease; color: var(--accent-green) !important; font-size: 28px !important; text-shadow: 0 0 18px var(--accent-green); }
+
+        @keyframes popAnim { 0%{transform:scale(0.9)} 50%{transform:scale(1.2)} 100%{transform:scale(1)} }
+
+        .status-bar { margin-top: 8px; font-size: 13px; color: var(--text-dim); height: 1.3em; text-align: center; width: 700px; }
+
+        /* CONTROLS */
+        .controls { margin-top: 28px; display: flex; align-items: center; gap: 10px; }
+        input[type="range"] { accent-color: var(--accent-blue); width: 110px; cursor: pointer; }
+
+        /* LEGEND */
+        .legend { margin-top: 14px; display: flex; gap: 18px; flex-wrap: wrap; justify-content: center; max-width: 820px; }
+        .legend-item { display: flex; align-items: center; font-size: 12.5px; color: var(--text-dim); }
+        .dot { width: 12px; height: 12px; border-radius: 3px; margin-right: 7px; display: inline-block; }
+
+        /* LOG */
+        .log-panel {
+            margin-top: 16px; background: var(--bg-page); border: 1px solid var(--border-main);
+            border-radius: 6px; padding: 14px 18px; width: 720px; max-width: 92%; height: 138px;
+            overflow-y: auto; font-family: 'Courier New', monospace; font-size: 13.2px; line-height: 1.45;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="input-bar">
+        <label class="ui-label">nums1 =</label>
+        <input type="text" id="nums1-input" class="nums-input" placeholder="[1,3]">
+        <label class="ui-label">nums2 =</label>
+        <input type="text" id="nums2-input" class="nums-input" placeholder="[2]">
+        <button onclick="loadCustom()">Load</button>
+        <button onclick="loadExample([1,3], [2])">Ex 1</button>
+        <button onclick="loadExample([1,2], [3,4])">Ex 2</button>
+    </div>
+
+    <div class="visual-container">
+        <div class="ui-label">nums1 (smaller array):</div>
+        <div class="array-wrapper" id="nums1-container"></div>
+        
+        <div class="ui-label">nums2:</div>
+        <div class="array-wrapper" id="nums2-container"></div>
+    </div>
+
+    <div class="action-panel" id="main-panel">—</div>
+
+    <div class="info-panel">
+        <div class="info-cell">
+            <span class="info-label">partitionX (nums1)</span>
+            <span class="info-value" id="val-partX" style="color: var(--accent-purple);">—</span>
+        </div>
+        <div class="info-cell">
+            <span class="info-label">partitionY (nums2)</span>
+            <span class="info-value" id="val-partY" style="color: var(--accent-orange);">—</span>
+        </div>
+        <div class="info-cell">
+            <span class="info-label">maxLeft</span>
+            <span class="info-value" id="val-maxLeft" style="color: var(--accent-green);">—</span>
+        </div>
+        <div class="info-cell">
+            <span class="info-label">minRight</span>
+            <span class="info-value" id="val-minRight" style="color: var(--accent-red);">—</span>
+        </div>
+    </div>
+
+    <div class="result-display">
+        <span class="ui-label" style="margin-bottom: 4px;">Median =</span>
+        <span id="res-val">—</span>
+    </div>
+
+    <div class="status-bar" id="status-text"></div>
+
+    <div class="controls">
+        <button onclick="reset()">↺ Reset</button>
+        <button onclick="back()">← Back</button>
+        <button onclick="togglePlay()" id="play-btn">Play</button>
+        <button onclick="next()">Next →</button>
+        <div style="margin-left:12px; display:flex; align-items:center; gap:6px;">
+            <span class="ui-label" style="font-size:11px">Speed</span>
+            <input type="range" id="speed-slider" min="0" max="2" value="1">
+        </div>
+    </div>
+
+    <div class="legend">
+        <div class="legend-item"><span class="dot" style="background:#0d2244; border:2px solid var(--accent-blue)"></span> Search space</div>
+        <div class="legend-item"><span class="dot" style="background:#2a1600; border:2px solid var(--accent-orange)"></span> Current partition</div>
+        <div class="legend-item"><span class="dot" style="background:#0f2a1a; border:2px solid var(--accent-green)"></span> Left partition</div>
+        <div class="legend-item"><span class="dot" style="background:#161b22; border:2px solid var(--border-main)"></span> Right partition</div>
+    </div>
+
+    <div class="log-panel" id="log"></div>
+
+    <script>
+        let nums1 = [1,3];
+        let nums2 = [2];
+        let steps = [];
+        let stepIndex = 0;
+        let timer = null;
+        const delays = [1600, 800, 400];
+
+        function init() {
+            loadExample([1,3], [2]);
+        }
+
+        function parseArray(str) {
+            try { return JSON.parse(str); } catch(e) { return [1,3]; }
+        }
+
+        function loadExample(newNums1, newNums2) {
+            nums1 = newNums1.map(v => v);
+            nums2 = newNums2.map(v => v);
+            document.getElementById('nums1-input').value = JSON.stringify(nums1);
+            document.getElementById('nums2-input').value = JSON.stringify(nums2);
+            generateSteps();
+            reset();
+        }
+
+        function loadCustom() {
+            const nums1Str = document.getElementById('nums1-input').value;
+            const nums2Str = document.getElementById('nums2-input').value;
+            const parsed1 = parseArray(nums1Str);
+            const parsed2 = parseArray(nums2Str);
+            if (parsed1 && parsed2) {
+                loadExample(parsed1, parsed2);
+            } else {
+                alert("Enter valid arrays like [1,3] and [2]");
+            }
+        }
+
+        function generateSteps() {
+            steps = [];
+            // Ensure nums1 is smaller
+            let A = nums1.length <= nums2.length ? nums1 : nums2;
+            let B = nums1.length <= nums2.length ? nums2 : nums1;
+            const m = A.length;
+            const n = B.length;
+            let total = m + n;
+            let low = 0;
+            let high = m;
+
+            // INIT
+            steps.push({
+                type: 'init',
+                AStates: Array(m).fill('search-space'),
+                BStates: Array(n).fill('search-space'),
+                partitionX: -1,
+                partitionY: -1,
+                panel: `nums1 (smaller): <b>[${A.join(', ')}]</b> • nums2: <b>[${B.join(', ')}]</b><br>Binary search on partitionX (0 to ${m})`,
+                statusText: `Binary search begins`,
+                log: `Total length = ${total}`,
+                logColor: 'var(--text-dim)'
+            });
+
+            while (low <= high) {
+                const partitionX = Math.floor((low + high) / 2);
+                const partitionY = Math.floor((total + 1) / 2) - partitionX;
+
+                let AStates = Array(m).fill('search-space');
+                let BStates = Array(n).fill('search-space');
+                for (let i = 0; i < partitionX; i++) AStates[i] = 'winning';
+                for (let i = partitionX; i < m; i++) AStates[i] = 'eliminated';
+                for (let i = 0; i < partitionY; i++) BStates[i] = 'winning';
+                for (let i = partitionY; i < n; i++) BStates[i] = 'eliminated';
+
+                const maxLeftA = partitionX === 0 ? Number.NEGATIVE_INFINITY : A[partitionX - 1];
+                const minRightA = partitionX === m ? Number.POSITIVE_INFINITY : A[partitionX];
+                const maxLeftB = partitionY === 0 ? Number.NEGATIVE_INFINITY : B[partitionY - 1];
+                const minRightB = partitionY === n ? Number.POSITIVE_INFINITY : B[partitionY];
+
+                steps.push({
+                    type: 'binary-search',
+                    AStates: [...AStates],
+                    BStates: [...BStates],
+                    partitionX: partitionX,
+                    partitionY: partitionY,
+                    panel: `partitionX = <b>${partitionX}</b>, partitionY = <b>${partitionY}</b><br>maxLeftA=${maxLeftA}, minRightA=${minRightA}<br>maxLeftB=${maxLeftB}, minRightB=${minRightB}`,
+                    statusText: `Checking partitionX=${partitionX}`,
+                    log: `maxLeftA=${maxLeftA} <= minRightB=${minRightB} ? ${maxLeftA <= minRightB} | maxLeftB=${maxLeftB} <= minRightA=${minRightA} ? ${maxLeftB <= minRightA}`,
+                    logColor: (maxLeftA <= minRightB && maxLeftB <= minRightA) ? 'var(--accent-green)' : 'var(--accent-red)'
+                });
+
+                if (maxLeftA <= minRightB && maxLeftB <= minRightA) {
+                    let median;
+                    if (total % 2 === 1) {
+                        median = Math.max(maxLeftA, maxLeftB);
+                    } else {
+                        median = (Math.max(maxLeftA, maxLeftB) + Math.min(minRightA, minRightB)) / 2;
+                    }
+                    steps.push({
+                        type: 'final',
+                        AStates: [...AStates],
+                        BStates: [...BStates],
+                        partitionX: partitionX,
+                        partitionY: partitionY,
+                        panel: `<span style="color:var(--accent-green)">Valid partition found!</span><br>Median = <b>${median}</b>`,
+                        complete: true,
+                        finalStr: median.toString(),
+                        statusText: `Median = ${median}`,
+                        log: `Median calculated: ${median}`,
+                        logColor: 'var(--accent-green)',
+                        bold: true
+                    });
+                    break;
+                } else if (maxLeftA > minRightB) {
+                    steps.push({
+                        type: 'not-feasible',
+                        AStates: [...AStates],
+                        BStates: [...BStates],
+                        partitionX: partitionX,
+                        partitionY: partitionY,
+                        panel: `<span style="color:var(--accent-red)">maxLeftA > minRightB → too many from A on left</span><br>high = <b>${partitionX - 1}</b>`,
+                        statusText: `Adjust high`,
+                        log: `→ high = ${partitionX - 1}`,
+                        logColor: 'var(--accent-red)'
+                    });
+                    high = partitionX - 1;
+                } else {
+                    steps.push({
+                        type: 'not-feasible',
+                        AStates: [...AStates],
+                        BStates: [...BStates],
+                        partitionX: partitionX,
+                        partitionY: partitionY,
+                        panel: `<span style="color:var(--accent-red)">maxLeftB > minRightA → too many from B on left</span><br>low = <b>${partitionX + 1}</b>`,
+                        statusText: `Adjust low`,
+                        log: `→ low = ${partitionX + 1}`,
+                        logColor: 'var(--accent-red)'
+                    });
+                    low = partitionX + 1;
+                }
+            }
+        }
+
+        function renderStep(idx) {
+            const step = steps[idx];
+            if (!step) return;
+
+            // Render nums1
+            const nums1Cont = document.getElementById('nums1-container');
+            nums1Cont.style.gridTemplateColumns = `repeat(${nums1.length}, auto)`;
+            nums1Cont.innerHTML = '';
+            step.AStates.forEach((state, i) => {
+                const wrapper = document.createElement('div');
+                wrapper.className = 'tile-unit';
+                const tile = document.createElement('div');
+                tile.className = `tile ${state}`;
+                tile.innerText = nums1[i];
+                const idxLabel = document.createElement('div');
+                idxLabel.className = 'tile-index';
+                idxLabel.innerText = `[${i}]`;
+                wrapper.append(tile, idxLabel);
+                nums1Cont.appendChild(wrapper);
+            });
+
+            // Render nums2
+            const nums2Cont = document.getElementById('nums2-container');
+            nums2Cont.style.gridTemplateColumns = `repeat(${nums2.length}, auto)`;
+            nums2Cont.innerHTML = '';
+            step.BStates.forEach((state, i) => {
+                const wrapper = document.createElement('div');
+                wrapper.className = 'tile-unit';
+                const tile = document.createElement('div');
+                tile.className = `tile ${state}`;
+                tile.innerText = nums2[i];
+                const idxLabel = document.createElement('div');
+                idxLabel.className = 'tile-index';
+                idxLabel.innerText = `[${i}]`;
+                wrapper.append(tile, idxLabel);
+                nums2Cont.appendChild(wrapper);
+            });
+
+            document.getElementById('main-panel').innerHTML = step.panel;
+            document.getElementById('val-partX').innerText = step.partitionX !== undefined ? step.partitionX : '—';
+            document.getElementById('val-partY').innerText = step.partitionY !== undefined ? step.partitionY : '—';
+            document.getElementById('val-maxLeft').innerText = step.maxLeft !== undefined ? step.maxLeft : '—';
+            document.getElementById('val-minRight').innerText = step.minRight !== undefined ? step.minRight : '—';
+
+            const resVal = document.getElementById('res-val');
+            resVal.innerText = step.complete ? step.finalStr : '—';
+            resVal.className = step.complete ? 'pop' : '';
+
+            document.getElementById('status-text').innerText = step.statusText;
+
+            const logPanel = document.getElementById('log');
+            logPanel.innerHTML = '';
+            for (let k = 0; k <= idx; k++) {
+                if (steps[k].log) {
+                    const line = document.createElement('div');
+                    line.style.marginBottom = '3px';
+                    if (steps[k].logColor) line.style.color = steps[k].logColor;
+                    if (steps[k].bold) line.style.fontWeight = 'bold';
+                    line.innerText = steps[k].log;
+                    logPanel.appendChild(line);
+                }
+            }
+            logPanel.scrollTop = logPanel.scrollHeight;
+        }
+
+        function next() {
+            if (stepIndex < steps.length - 1) {
+                stepIndex++;
+                renderStep(stepIndex);
+            } else pause();
+        }
+
+        function back() {
+            if (stepIndex > 0) {
+                stepIndex--;
+                renderStep(stepIndex);
+            }
+        }
+
+        function reset() {
+            pause();
+            stepIndex = 0;
+            renderStep(0);
+        }
+
+        function togglePlay() {
+            const btn = document.getElementById('play-btn');
+            if (timer) pause();
+            else {
+                btn.innerText = 'Pause';
+                if (stepIndex >= steps.length - 1) stepIndex = 0;
+                timer = setInterval(next, delays[parseInt(document.getElementById('speed-slider').value)]);
+            }
+        }
+
+        function pause() {
+            clearInterval(timer);
+            timer = null;
+            document.getElementById('play-btn').innerText = 'Play';
+        }
+
+        window.onload = init;
+    </script>
+</body>
+</html>

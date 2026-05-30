@@ -1,0 +1,423 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Balanced Parentheses - Stack Visualization</title>
+    <style>
+        :root {
+            --bg-page: #0d1117;
+            --bg-surface: #161b22;
+            --bg-input: #0d1117;
+            --border-main: #30363d;
+            --btn-bg: #21262d;
+            --btn-hover: #2d333b;
+            --text-main: #c9d1d9;
+            --text-dim: #8b949e;
+            --accent-orange: #e3b341;
+            --accent-blue: #388bfd;
+            --accent-green: #3fb950;
+            --accent-red: #f85149;
+            --accent-purple: #a371f7;
+        }
+
+        * { box-sizing: border-box; }
+        body {
+            background-color: var(--bg-page);
+            color: var(--text-main);
+            font-family: system-ui, -apple-system, sans-serif;
+            margin: 0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            min-height: 100vh;
+            padding-bottom: 40px;
+        }
+
+        .input-bar {
+            width: 100%;
+            background-color: var(--bg-surface);
+            padding: 12px 16px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 12px;
+            border-bottom: 1px solid var(--border-main);
+            flex-wrap: wrap;
+        }
+        label.ui-label { font-family: 'Courier New', monospace; font-size: 13px; color: var(--text-dim); }
+        input[type="text"] {
+            background: var(--bg-input);
+            border: 1px solid var(--border-main);
+            color: var(--text-main);
+            height: 32px;
+            border-radius: 6px;
+            padding: 0 12px;
+            width: 220px;
+            font-family: monospace;
+            font-size: 15px;
+        }
+
+        button {
+            height: 32px; border-radius: 6px; padding: 0 14px; background: var(--btn-bg);
+            border: 1px solid var(--border-main); color: var(--text-main); font-size: 13px; cursor: pointer;
+            transition: background 0.2s ease;
+        }
+        button:hover { background: var(--btn-hover); }
+
+        .visual-container { 
+            margin-top: 30px; 
+            display: flex; 
+            gap: 60px; 
+            width: 100%; 
+            max-width: 1100px;
+            justify-content: center;
+            align-items: flex-start;
+        }
+        
+        /* Stack Area */
+        .stack-area {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 12px;
+        }
+        .stack-container {
+            display: flex;
+            flex-direction: column-reverse;
+            align-items: center;
+            gap: 6px;
+            width: 160px;
+            height: 340px;
+            border: 3px solid var(--border-main);
+            border-radius: 12px;
+            background: rgba(22, 27, 34, 0.6);
+            padding: 12px;
+            overflow-y: auto;
+        }
+        .stack-frame {
+            width: 100%;
+            padding: 12px 0;
+            background: var(--btn-bg);
+            border: 2px solid var(--border-main);
+            border-radius: 6px;
+            text-align: center;
+            font-family: monospace;
+            font-size: 22px;
+            font-weight: bold;
+            transition: all 0.3s ease;
+        }
+        .stack-frame.active {
+            background: #0d2244;
+            border-color: var(--accent-blue);
+            color: var(--accent-blue);
+            transform: scale(1.08);
+            box-shadow: 0 0 15px var(--accent-blue);
+        }
+
+        /* String Progress */
+        .string-area {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 12px;
+            width: 380px;
+        }
+        .string-display {
+            font-family: monospace;
+            font-size: 28px;
+            letter-spacing: 4px;
+            background: var(--bg-surface);
+            padding: 16px 24px;
+            border-radius: 10px;
+            border: 2px solid var(--border-main);
+            min-height: 68px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: 100%;
+        }
+        .char-highlight {
+            background: var(--accent-orange);
+            color: black;
+            padding: 2px 6px;
+            border-radius: 4px;
+        }
+
+        .action-panel {
+            margin-top: 20px; background: var(--bg-surface); border: 1px solid var(--border-main);
+            border-radius: 8px; padding: 16px 24px; width: 780px; text-align: center; 
+            font-family: monospace; min-height: 92px; font-size: 15.5px; line-height: 1.6;
+        }
+
+        .info-panel { margin-top: 12px; display: flex; gap: 20px; flex-wrap: wrap; justify-content: center; }
+        .info-cell {
+            background: var(--bg-surface); border: 1px solid var(--border-main); border-radius: 6px;
+            padding: 10px 20px; min-width: 130px; text-align: center;
+        }
+        .info-label { font-size: 11px; color: var(--text-dim); }
+        .info-value { font-family: monospace; font-size: 19px; font-weight: 700; }
+
+        .status-bar { margin-top: 10px; font-size: 13.5px; color: var(--text-dim); text-align: center; width: 700px; }
+
+        .controls { margin-top: 26px; display: flex; align-items: center; gap: 12px; }
+        input[type="range"] { accent-color: var(--accent-blue); width: 160px; }
+
+        .legend { margin-top: 16px; display: flex; gap: 22px; flex-wrap: wrap; justify-content: center; font-size: 13px; }
+        .legend-item { display: flex; align-items: center; gap: 8px; color: var(--text-dim); }
+    </style>
+</head>
+<body>
+
+    <div class="input-bar">
+        <label class="ui-label">String =</label>
+        <input type="text" id="str-input" value="(()())" style="width:260px">
+        <button onclick="loadCustom()">Load</button>
+        <button onclick="loadExample(0)">Ex 1: ( () () )</button>
+        <button onclick="loadExample(1)">Ex 2: ( ()</button>
+    </div>
+
+    <div class="visual-container">
+        <!-- Stack -->
+        <div class="stack-area">
+            <div class="ui-label" style="font-weight: bold; color: var(--accent-blue);">STACK (Opening Parentheses)</div>
+            <div class="stack-container" id="stack-container"></div>
+        </div>
+
+        <!-- String Progress -->
+        <div class="string-area">
+            <div class="ui-label" style="font-weight: bold; color: var(--accent-green);">Input String</div>
+            <div class="string-display" id="string-display"></div>
+            <div class="info-panel">
+                <div class="info-cell">
+                    <span class="info-label">Current Char</span>
+                    <span class="info-value" id="val-char" style="color: var(--accent-orange); font-size:26px;">—</span>
+                </div>
+                <div class="info-cell">
+                    <span class="info-label">Stack Size</span>
+                    <span class="info-value" id="val-size" style="color: var(--accent-blue);">0</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="action-panel" id="main-panel">Click Play or Next to begin visualization</div>
+
+    <div class="status-bar" id="status-text">Ready — Using Stack to validate balanced parentheses</div>
+
+    <div class="controls">
+        <button onclick="reset()">↺ Reset</button>
+        <button onclick="back()">← Back</button>
+        <button onclick="togglePlay()" id="play-btn">Play</button>
+        <button onclick="next()">Next →</button>
+        <div>
+            <span class="ui-label" style="margin-right:4px; font-size:11px">Speed</span>
+            <input type="range" id="speed-slider" min="0" max="2" value="1">
+        </div>
+    </div>
+
+    <div class="legend">
+        <div class="legend-item"><span style="display:inline-block;width:18px;height:18px;background:#0d2244;border:2px solid var(--accent-blue);border-radius:6px;"></span> Opening on Stack</div>
+        <div class="legend-item"><span style="color:var(--accent-green)">Matched &amp; Popped</span></div>
+        <div class="legend-item"><span style="color:var(--accent-red)">Mismatch / Unbalanced</span></div>
+    </div>
+
+    <script>
+        let targetStr = "(()())";
+        let steps = [];
+        let stepIndex = 0;
+        let timer = null;
+        const delays = [1400, 750, 350];
+
+        function init() { loadExample(0); }
+
+        function loadExample(ex) {
+            targetStr = ex === 0 ? "(()())" : "(()";
+            document.getElementById('str-input').value = targetStr;
+            generateSteps();
+            reset();
+        }
+
+        function loadCustom() {
+            const val = document.getElementById('str-input').value.trim();
+            if (val.length > 0 && val.length <= 20) {
+                targetStr = val;
+                generateSteps();
+                reset();
+            } else {
+                alert("Enter a valid parentheses string (max 20 chars)");
+            }
+        }
+
+        function generateSteps() {
+            steps = [];
+            let stack = [];
+            let i = 0;
+
+            // Initial
+            steps.push({
+                type: 'init',
+                stack: [],
+                idx: -1,
+                panel: `Check if <b>"${targetStr}"</b> is balanced using Stack.<br>Process each character from left to right.`,
+                status: `Starting validation...`,
+                log: `Input: "${targetStr}"`,
+                result: null
+            });
+
+            for (i = 0; i < targetStr.length; i++) {
+                const ch = targetStr[i];
+                let action = '';
+
+                if (ch === '(' || ch === '{' || ch === '[') {
+                    stack.push(ch);
+                    action = `push '${ch}'`;
+                    steps.push({
+                        type: 'push',
+                        stack: [...stack],
+                        idx: i,
+                        panel: `Character <span class="char-highlight">${ch}</span> is opening → <b>Push</b> onto stack`,
+                        status: `Pushed ${ch}`,
+                        log: `→ ${ch} (push)`,
+                        result: null
+                    });
+                } else {
+                    // closing
+                    if (stack.length === 0) {
+                        steps.push({
+                            type: 'mismatch',
+                            stack: [...stack],
+                            idx: i,
+                            panel: `Character <span class="char-highlight">${ch}</span> is closing but <b>stack is empty</b> → <span style="color:var(--accent-red)">Unbalanced!</span>`,
+                            status: `Unbalanced - early closing`,
+                            log: `→ ${ch} (mismatch - empty)`,
+                            result: false
+                        });
+                        break;
+                    }
+                    const top = stack[stack.length - 1];
+                    const expected = {')':'(', '}':'{', ']':'['}[ch];
+                    if (top === expected) {
+                        stack.pop();
+                        steps.push({
+                            type: 'pop',
+                            stack: [...stack],
+                            idx: i,
+                            panel: `Character <span class="char-highlight">${ch}</span> matches top '${top}' → <b>Pop</b>`,
+                            status: `Matched & popped`,
+                            log: `→ ${ch} (pop)`,
+                            result: null
+                        });
+                    } else {
+                        steps.push({
+                            type: 'mismatch',
+                            stack: [...stack],
+                            idx: i,
+                            panel: `Mismatch! Expected '${expected}' but got <span class="char-highlight">${ch}</span>`,
+                            status: `Unbalanced - mismatch`,
+                            log: `→ ${ch} (mismatch)`,
+                            result: false
+                        });
+                        break;
+                    }
+                }
+            }
+
+            // Final check
+            const isBalanced = stack.length === 0 && steps[steps.length-1].type !== 'mismatch';
+            steps.push({
+                type: 'final',
+                stack: [...stack],
+                idx: targetStr.length,
+                panel: isBalanced ? 
+                    `Stack is empty → <span style="color:var(--accent-green)"><b>Balanced!</b></span>` :
+                    `Stack still has elements or mismatch occurred → <span style="color:var(--accent-red)"><b>Unbalanced</b></span>`,
+                status: isBalanced ? "✅ Valid" : "❌ Invalid",
+                log: isBalanced ? "Final: Balanced ✓" : "Final: Unbalanced ✗",
+                result: isBalanced
+            });
+        }
+
+        function renderStack(stk) {
+            const container = document.getElementById('stack-container');
+            container.innerHTML = '';
+            stk.forEach((ch, idx) => {
+                const frame = document.createElement('div');
+                frame.className = `stack-frame ${idx === stk.length-1 ? 'active' : ''}`;
+                frame.textContent = ch;
+                container.appendChild(frame);
+            });
+            if (stk.length === 0) {
+                const empty = document.createElement('div');
+                empty.style.color = '#555';
+                empty.style.fontSize = '14px';
+                empty.style.padding = '20px 0';
+                empty.textContent = '(empty)';
+                container.appendChild(empty);
+            }
+        }
+
+        function renderStep(idx) {
+            const step = steps[idx];
+            if (!step) return;
+
+            renderStack(step.stack);
+
+            // Highlight current char
+            const strDisplay = document.getElementById('string-display');
+            let html = '';
+            for (let i = 0; i < targetStr.length; i++) {
+                if (i === step.idx) {
+                    html += `<span class="char-highlight">${targetStr[i]}</span>`;
+                } else {
+                    html += targetStr[i];
+                }
+            }
+            strDisplay.innerHTML = html || targetStr;
+
+            document.getElementById('val-char').innerText = step.idx >= 0 ? targetStr[step.idx] : '—';
+            document.getElementById('val-size').innerText = step.stack.length;
+            document.getElementById('main-panel').innerHTML = step.panel;
+            document.getElementById('status-text').innerText = step.status;
+        }
+
+        function next() {
+            if (stepIndex < steps.length - 1) {
+                stepIndex++;
+                renderStep(stepIndex);
+            } else pause();
+        }
+
+        function back() {
+            if (stepIndex > 0) {
+                stepIndex--;
+                renderStep(stepIndex);
+            }
+        }
+
+        function reset() {
+            pause();
+            stepIndex = 0;
+            renderStep(0);
+        }
+
+        function togglePlay() {
+            const btn = document.getElementById('play-btn');
+            if (timer) pause();
+            else {
+                btn.innerText = 'Pause';
+                if (stepIndex >= steps.length - 1) stepIndex = 0;
+                timer = setInterval(next, delays[document.getElementById('speed-slider').value]);
+            }
+        }
+
+        function pause() {
+            clearInterval(timer);
+            timer = null;
+            document.getElementById('play-btn').innerText = 'Play';
+        }
+
+        window.onload = init;
+    </script>
+</body>
+</html>

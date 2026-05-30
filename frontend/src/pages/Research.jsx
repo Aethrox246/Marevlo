@@ -10,7 +10,7 @@ export default function Research() {
     return (
         <>
             <div className="overflow-y-auto h-full" style={{ backgroundColor: 'var(--color-app-bg)', color: 'var(--color-primary-text)' }}>
-                <div style={{ maxWidth: '1160px', margin: '0 auto', padding: '64px 24px 96px' }}>
+                <div style={{ width: '70%', margin: '0 auto', padding: '64px 0 96px' }}>
 
                     {/* Page header */}
                     <div style={{ marginBottom: '60px' }}>

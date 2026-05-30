@@ -1,0 +1,351 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Longest Palindromic Substring in Streaming Chunks - Visualization</title>
+    <style>
+        :root {
+            --bg-page: #0d1117;
+            --bg-surface: #161b22;
+            --bg-input: #0d1117;
+            --border-main: #30363d;
+            --btn-bg: #21262d;
+            --btn-hover: #2d333b;
+            --text-main: #c9d1d9;
+            --text-dim: #8b949e;
+            --accent-purple: #a371f7;
+            --accent-green: #3fb950;
+            --accent-blue: #388bfd;
+            --accent-orange: #e3b341;
+        }
+
+        * { box-sizing: border-box; }
+        body {
+            background-color: var(--bg-page);
+            color: var(--text-main);
+            font-family: system-ui, -apple-system, sans-serif;
+            margin: 0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            min-height: 100vh;
+            padding-bottom: 40px;
+        }
+
+        .input-bar {
+            width: 100%; background-color: var(--bg-surface); padding: 12px 16px;
+            display: flex; justify-content: center; align-items: center; gap: 8px;
+            border-bottom: 1px solid var(--border-main); flex-wrap: wrap;
+        }
+        label.ui-label { font-family: 'Courier New', monospace; font-size: 13px; color: var(--text-dim); }
+        input[type="text"] {
+            background: var(--bg-input); border: 1px solid var(--border-main);
+            color: var(--text-main); height: 32px; border-radius: 6px;
+            padding: 0 10px; width: 280px; font-size: 14px;
+        }
+
+        button {
+            height: 32px; border-radius: 6px; padding: 0 14px; background: var(--btn-bg);
+            border: 1px solid var(--border-main); color: var(--text-main); font-size: 13px;
+            cursor: pointer; transition: background 0.2s ease;
+        }
+        button:hover { background: var(--btn-hover); }
+
+        .visual-container { margin-top: 30px; width: 100%; max-width: 920px; }
+        .string-display {
+            display: flex; gap: 5px; justify-content: center; padding: 18px;
+            background: var(--bg-surface); border-radius: 8px; border: 1px solid var(--border-main);
+            flex-wrap: wrap;
+        }
+        .tile {
+            width: 46px; height: 58px; display: flex; flex-direction: column;
+            align-items: center; justify-content: center; border-radius: 6px;
+            font-size: 19px; font-weight: 700; font-family: 'Courier New', monospace;
+            transition: all 0.25s ease; border: 2px solid var(--border-main);
+            background: #21262d;
+        }
+        .tile .index { font-size: 9px; color: var(--text-dim); margin-top: 2px; }
+        .tile.current { border-color: var(--accent-purple); background: #1e1030; transform: scale(1.08); }
+        .tile.pal { border-color: var(--accent-green); background: #0f2a1a; }
+
+        .chunk-info {
+            margin: 12px 0; text-align: center; font-size: 13px; color: var(--accent-orange);
+        }
+
+        .action-panel {
+            margin-top: 18px; background: var(--bg-surface); border: 1px solid var(--border-main);
+            border-radius: 6px; padding: 16px 24px; min-height: 92px; font-family: monospace;
+            font-size: 14.5px; line-height: 1.6; text-align: center;
+        }
+
+        .info-panel { margin-top: 14px; display: flex; gap: 16px; justify-content: center; flex-wrap: wrap; }
+        .info-cell {
+            background: var(--bg-surface); border: 1px solid var(--border-main); border-radius: 6px;
+            padding: 10px 20px; min-width: 140px; text-align: center;
+        }
+        .info-label { font-size: 11px; color: var(--text-dim); }
+        .info-value { font-size: 18px; font-weight: 700; font-family: monospace; }
+
+        .result-display { margin-top: 22px; font-size: 28px; font-family: monospace; color: var(--accent-green); letter-spacing: 2px; }
+
+        .controls { margin-top: 26px; display: flex; align-items: center; gap: 14px; }
+        input[type="range"] { accent-color: var(--accent-blue); width: 160px; }
+
+        .legend { margin-top: 20px; display: flex; gap: 22px; flex-wrap: wrap; justify-content: center; font-size: 13px; color: var(--text-dim); }
+        .legend-item { display: flex; align-items: center; gap: 7px; }
+
+        .log-panel {
+            margin-top: 24px; background: var(--bg-page); border: 1px solid var(--border-main);
+            border-radius: 6px; padding: 14px 22px; width: 780px; height: 168px;
+            overflow-y: auto; font-family: 'Courier New', monospace; font-size: 13.2px; line-height: 1.45;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="input-bar">
+        <label class="ui-label">Chunks (comma separated):</label>
+        <input type="text" id="str-input" value="ab,ba,c">
+        <button onclick="loadCustom()">Load</button>
+        <button onclick="loadExample(0)">Ex 1 (ab,ba,c)</button>
+        <button onclick="loadExample(1)">Ex 2 (a,b,c,b,a)</button>
+    </div>
+
+    <div class="visual-container">
+        <div class="ui-label">Streaming Chunks — Longest Palindromic Substring (Expand-Around-Center)</div>
+        
+        <div style="text-align:center; margin:8px 0; font-size:13px; color:var(--text-dim)" id="processed-label">Processed: —</div>
+        <div class="string-display" id="tiles-container"></div>
+
+        <div class="chunk-info" id="chunk-info">Current Chunk: —</div>
+
+        <div class="action-panel" id="main-panel">—</div>
+    </div>
+
+    <div class="info-panel">
+        <div class="info-cell">
+            <span class="info-label">Current Chunk</span>
+            <span class="info-value" id="val-chunk" style="color:var(--accent-orange)">—</span>
+        </div>
+        <div class="info-cell">
+            <span class="info-label">Longest So Far</span>
+            <span class="info-value" id="val-longest" style="color:var(--accent-green)">—</span>
+        </div>
+        <div class="info-cell">
+            <span class="info-label">Total Chunks</span>
+            <span class="info-value" id="val-progress" style="color:var(--accent-purple)">—</span>
+        </div>
+    </div>
+
+    <div class="result-display" id="res-val">—</div>
+
+    <div class="status-bar" id="status-text" style="margin-top:8px; font-size:13px; color:var(--text-dim); min-height:26px;"></div>
+
+    <div class="controls">
+        <button onclick="reset()">↺ Reset</button>
+        <button onclick="back()">← Back</button>
+        <button onclick="togglePlay()" id="play-btn">▶ Play</button>
+        <button onclick="next()">Next →</button>
+        <span class="ui-label" style="font-size:12px">Speed</span>
+        <input type="range" id="speed-slider" min="0" max="2" value="1">
+    </div>
+
+    <div class="legend">
+        <div class="legend-item"><span style="display:inline-block;width:16px;height:16px;background:var(--accent-purple);border-radius:4px"></span> Current Processing</div>
+        <div class="legend-item"><span style="display:inline-block;width:16px;height:16px;background:var(--accent-green);border-radius:4px"></span> Part of Longest Palindrome</div>
+    </div>
+
+    <div class="log-panel" id="log"></div>
+
+    <script>
+        let chunksList = ["ab", "ba", "c"];
+        let currentChunkIndex = 0;
+        let processed = "";
+        let longestPal = "";
+        let steps = [];
+        let stepIndex = 0;
+        let timer = null;
+        const delays = [1350, 680, 320];
+
+        function loadExample(ex) {
+            if (ex === 0) chunksList = ["ab", "ba", "c"];
+            else chunksList = ["a", "b", "c", "b", "a"];
+            document.getElementById('str-input').value = chunksList.join(",");
+            generateSteps();
+            reset();
+        }
+
+        function loadCustom() {
+            const input = document.getElementById('str-input').value.trim();
+            if (input) chunksList = input.split(",").map(c => c.trim()).filter(Boolean);
+            generateSteps();
+            reset();
+        }
+
+        function generateSteps() {
+            steps = [];
+            processed = "";
+            longestPal = "";
+            let totalProcessed = 0;
+
+            steps.push({
+                type: 'init',
+                processed: "",
+                chunk: "",
+                longest: "",
+                panel: `Waiting for chunks...`,
+                statusText: 'Streaming started',
+                log: 'Initialize processed = ""',
+                highlightStart: -1,
+                highlightEnd: -1
+            });
+
+            for (let ci = 0; ci < chunksList.length; ci++) {
+                const chunk = chunksList[ci];
+                const oldLen = processed.length;
+                processed += chunk;
+
+                steps.push({
+                    type: 'newchunk',
+                    processed: processed,
+                    chunk: chunk,
+                    longest: longestPal,
+                    panel: `New chunk: <b>"${chunk}"</b>`,
+                    statusText: `Chunk ${ci+1}/${chunksList.length}`,
+                    log: `Append chunk "${chunk}" → processed="${processed}"`,
+                    highlightStart: oldLen,
+                    highlightEnd: processed.length - 1
+                });
+
+                // Simulate expand around centers for new part
+                for (let c = 0; c < 2 * processed.length - 1; c++) {
+                    let left = c % 2 === 0 ? Math.floor(c / 2) : Math.floor((c - 1) / 2);
+                    let right = c % 2 === 0 ? left : left + 1;
+
+                    if (left < oldLen && right < oldLen) continue; // skip old fully processed
+
+                    let expanded = false;
+                    while (left >= 0 && right < processed.length && processed[left] === processed[right]) {
+                        const candidate = processed.slice(left, right + 1);
+                        if (candidate.length > longestPal.length) {
+                            longestPal = candidate;
+                            expanded = true;
+                        }
+                        left--;
+                        right++;
+                    }
+
+                    if (expanded) {
+                        steps.push({
+                            type: 'expand',
+                            processed: processed,
+                            chunk: chunk,
+                            longest: longestPal,
+                            panel: `Found longer palindrome: <b>"${longestPal}"</b>`,
+                            statusText: `Expanded from center ${c}`,
+                            log: `New longest: "${longestPal}" (len=${longestPal.length})`,
+                            highlightStart: left + 1,
+                            highlightEnd: right - 1
+                        });
+                    }
+                }
+            }
+
+            steps.push({
+                type: 'final',
+                processed: processed,
+                chunk: "",
+                longest: longestPal,
+                panel: `✅ Final longest palindrome: <b>"${longestPal}"</b>`,
+                statusText: 'All chunks processed',
+                log: `\nFinal result: "${longestPal}"`,
+                highlightStart: 0,
+                highlightEnd: processed.length - 1
+            });
+        }
+
+        function renderStep(idx) {
+            const step = steps[idx];
+            if (!step) return;
+
+            // Tiles for processed string
+            const container = document.getElementById('tiles-container');
+            container.innerHTML = '';
+            for (let k = 0; k < step.processed.length; k++) {
+                const tile = document.createElement('div');
+                tile.className = 'tile';
+                tile.innerHTML = `<span>${step.processed[k]}</span><span class="index">${k}</span>`;
+                if (step.highlightStart !== undefined && k >= step.highlightStart && k <= step.highlightEnd) {
+                    tile.classList.add('pal');
+                }
+                container.appendChild(tile);
+            }
+
+            document.getElementById('processed-label').innerText = `Processed: "${step.processed}"`;
+            document.getElementById('chunk-info').innerText = `Current Chunk: "${step.chunk}"`;
+            document.getElementById('main-panel').innerHTML = step.panel;
+            document.getElementById('val-chunk').innerText = step.chunk || '—';
+            document.getElementById('val-longest').innerText = step.longest || '—';
+            document.getElementById('val-progress').innerText = `${currentChunkIndex + 1}/${chunksList.length}`;
+
+            document.getElementById('res-val').innerText = step.longest || '—';
+
+            document.getElementById('status-text').innerText = step.statusText;
+
+            const logPanel = document.getElementById('log');
+            logPanel.innerHTML = '';
+            for (let k = 0; k <= idx; k++) {
+                const entry = document.createElement('div');
+                entry.style.marginBottom = '4px';
+                entry.innerText = steps[k].log || '';
+                logPanel.appendChild(entry);
+            }
+            logPanel.scrollTop = logPanel.scrollHeight;
+        }
+
+        function next() {
+            if (stepIndex < steps.length - 1) {
+                stepIndex++;
+                renderStep(stepIndex);
+            } else {
+                pause();
+            }
+        }
+
+        function back() {
+            if (stepIndex > 0) {
+                stepIndex--;
+                renderStep(stepIndex);
+            }
+        }
+
+        function reset() {
+            pause();
+            stepIndex = 0;
+            renderStep(0);
+        }
+
+        function togglePlay() {
+            const btn = document.getElementById('play-btn');
+            if (timer) {
+                pause();
+            } else {
+                btn.innerText = '⏸ Pause';
+                if (stepIndex >= steps.length - 1) stepIndex = 0;
+                timer = setInterval(next, delays[parseInt(document.getElementById('speed-slider').value)]);
+            }
+        }
+
+        function pause() {
+            if (timer) clearInterval(timer);
+            timer = null;
+            document.getElementById('play-btn').innerText = '▶ Play';
+        }
+
+        window.onload = () => {
+            loadExample(0);
+        };
+    </script>
+</body>
+</html>

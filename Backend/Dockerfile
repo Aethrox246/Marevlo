@@ -1,4 +1,3 @@
-# syntax=docker/dockerfile:1.7
 # ─────────────────────────────────────────────────────────────────────
 # Marevlo backend image (build context: ./Backend)
 #

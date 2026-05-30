@@ -1094,7 +1094,7 @@ export default function Project() {
             <div className={`border-b sticky top-0 z-50 px-6 py-3 backdrop-blur-xl ${
                 isDark ? 'bg-[#09090f]/80 border-white/[0.07]' : 'bg-white/90 border-black/[0.06]'
             }`}>
-                <div className="max-w-screen-xl mx-auto flex items-center gap-2.5 flex-wrap">
+                <div className="w-[70%] mx-auto flex items-center gap-2.5 flex-wrap">
                     {/* Filters toggle */}
                     <button
                         onClick={() => setShowFilters(f => !f)}
@@ -1136,7 +1136,7 @@ export default function Project() {
 
                 {/* Active filters panel */}
                 {showFilters && (
-                    <div className={`max-w-screen-xl mx-auto mt-2.5 px-4 py-3 rounded-2xl flex flex-wrap gap-2 items-center ${
+                    <div className={`w-[70%] mx-auto mt-2.5 px-4 py-3 rounded-2xl flex flex-wrap gap-2 items-center ${
                         isDark ? 'bg-white/[0.04] border border-white/[0.06]' : 'bg-black/[0.03] border border-black/[0.05]'
                     }`}>
                         <span className={`text-[0.72rem] font-bold mr-1 ${isDark ? 'text-white/40' : 'text-gray-400'}`}>Active filters:</span>
@@ -1155,7 +1155,7 @@ export default function Project() {
             </div>
 
             {/* Main Content */}
-            <div className="max-w-screen-xl mx-auto px-6 py-8 pb-16 grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_280px] gap-7">
+            <div className="w-[70%] mx-auto px-6 py-8 pb-16 grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_280px] gap-7">
                 {/* Left: projects grid */}
                 <div>
                     {/* Reset row */}

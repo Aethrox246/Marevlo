@@ -1,0 +1,1790 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Module 2.5 (Part 3) — Moments &amp; MGFs | Quantum Neural Analytics OS</title>
+<style>
+/* ═══════════════════════════════════════════════════════════
+   QUANTUM NEURAL ANALYTICS OS — CORE DESIGN SYSTEM
+   ═══════════════════════════════════════════════════════════ */
+:root {
+  --bg-deep: #03040a;
+  --bg-navy: #060818;
+  --bg-panel: rgba(10, 15, 35, 0.55);
+  --neon-cyan: #00f0ff;
+  --neon-purple: #b14dff;
+  --neon-magenta: #ff2bd6;
+  --neon-amber: #ffb547;
+  --neon-green: #00ffaa;
+  --neon-red: #ff4d6d;
+  --text-primary: #e6f4ff;
+  --text-soft: #d8e6ff;
+  --text-dim: #7a8bbf;
+  --border-glow: rgba(0, 240, 255, 0.25);
+  --glass-blur: blur(18px);
+  --mono: 'JetBrains Mono', 'Fira Code', 'Consolas', monospace;
+}
+* { margin: 0; padding: 0; box-sizing: border-box; }
+html { scroll-behavior: smooth; }
+body {
+  background: var(--bg-deep);
+  color: var(--text-soft);
+  font-family: 'Inter', 'Segoe UI', system-ui, sans-serif;
+  overflow-x: hidden;
+  line-height: 1.65;
+  min-height: 100vh;
+  position: relative;
+}
+body::before {
+  content: '';
+  position: fixed; inset: 0;
+  background-image:
+    linear-gradient(rgba(0, 240, 255, 0.04) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(0, 240, 255, 0.04) 1px, transparent 1px);
+  background-size: 60px 60px;
+  pointer-events: none; z-index: 0;
+  animation: gridShift 30s linear infinite;
+}
+body::after {
+  content: '';
+  position: fixed; inset: 0;
+  background:
+    radial-gradient(circle at 18% 22%, rgba(0, 240, 255, 0.12), transparent 42%),
+    radial-gradient(circle at 82% 65%, rgba(177, 77, 255, 0.13), transparent 45%),
+    radial-gradient(circle at 50% 95%, rgba(255, 43, 214, 0.08), transparent 40%);
+  pointer-events: none; z-index: 0;
+}
+@keyframes gridShift {
+  0% { background-position: 0 0, 0 0; }
+  100% { background-position: 60px 60px, 60px 60px; }
+}
+#particle-canvas { position: fixed; inset: 0; z-index: 1; pointer-events: none; }
+.container {
+  position: relative; z-index: 10;
+  max-width: 1280px;
+  margin: 0 auto;
+  padding: 32px 24px 120px;
+}
+
+/* ── HUD ── */
+.hud {
+  display: flex; justify-content: space-between; align-items: center;
+  padding: 14px 22px;
+  background: var(--bg-panel);
+  backdrop-filter: var(--glass-blur);
+  border: 1px solid var(--border-glow);
+  border-radius: 14px;
+  font-family: var(--mono);
+  font-size: 11px;
+  letter-spacing: 1.8px;
+  text-transform: uppercase;
+  margin-bottom: 50px;
+  box-shadow: 0 0 30px rgba(0, 240, 255, 0.1);
+  flex-wrap: wrap; gap: 10px;
+}
+.hud-left { color: var(--neon-cyan); }
+.hud-center { color: var(--text-soft); }
+.hud-right { color: var(--neon-purple); display: flex; align-items: center; gap: 8px; }
+.hud-dot {
+  width: 8px; height: 8px; border-radius: 50%;
+  background: var(--neon-cyan);
+  box-shadow: 0 0 12px var(--neon-cyan);
+  animation: pulse 1.6s ease-in-out infinite;
+}
+@keyframes pulse {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.4; transform: scale(1.3); }
+}
+
+/* ── HERO ── */
+.hero {
+  position: relative;
+  text-align: center;
+  padding: 90px 24px 60px;
+  margin-bottom: 80px;
+  border: 1px solid var(--border-glow);
+  border-radius: 28px;
+  background: linear-gradient(135deg, rgba(10, 15, 40, 0.6), rgba(20, 5, 40, 0.4));
+  backdrop-filter: var(--glass-blur);
+  overflow: hidden;
+  box-shadow: 0 0 60px rgba(0, 240, 255, 0.1), inset 0 0 80px rgba(177, 77, 255, 0.06);
+}
+.hero-bg-svg {
+  position: absolute; inset: 0;
+  width: 100%; height: 100%;
+  opacity: 0.45;
+  pointer-events: none;
+}
+.hero-tag {
+  display: inline-block;
+  font-family: var(--mono);
+  font-size: 11px;
+  letter-spacing: 3px;
+  color: var(--neon-cyan);
+  padding: 6px 18px;
+  border: 1px solid var(--neon-cyan);
+  border-radius: 999px;
+  margin-bottom: 26px;
+  text-transform: uppercase;
+  background: rgba(0, 240, 255, 0.05);
+  box-shadow: 0 0 20px rgba(0, 240, 255, 0.2);
+  position: relative; z-index: 2;
+}
+.hero h1 {
+  font-family: 'Inter', 'Segoe UI', system-ui, sans-serif;
+  font-size: clamp(2.4rem, 6vw, 4.8rem);
+  font-weight: 900;
+  line-height: 1.05;
+  letter-spacing: -2px;
+  background: linear-gradient(135deg, #ffffff 0%, var(--neon-cyan) 40%, var(--neon-purple) 80%, var(--neon-magenta) 100%);
+  background-size: 200% 200%;
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  animation: gradientShift 8s ease infinite;
+  margin: 0 auto 18px;
+  text-shadow: 0 0 80px rgba(177, 77, 255, 0.2);
+  text-align: center;
+  position: relative; z-index: 2;
+}
+@keyframes gradientShift {
+  0%, 100% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+}
+.hero .subtitle {
+  font-size: 1.15rem;
+  color: var(--text-soft);
+  max-width: 780px;
+  margin: 0 auto 26px;
+  position: relative; z-index: 2;
+}
+.hero .overview {
+  font-size: 0.95rem;
+  color: var(--text-dim);
+  max-width: 840px;
+  margin: 0 auto 30px;
+  position: relative; z-index: 2;
+  font-style: italic;
+}
+.hero-meta {
+  display: flex; justify-content: center; flex-wrap: wrap;
+  gap: 12px;
+  position: relative; z-index: 2;
+  margin-top: 20px;
+}
+.meta-chip {
+  display: inline-flex; align-items: center; gap: 10px;
+  padding: 10px 18px;
+  background: rgba(10, 15, 35, 0.6);
+  border: 1px solid var(--border-glow);
+  border-radius: 10px;
+  font-family: var(--mono);
+  font-size: 11px;
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+  transition: all 0.3s;
+}
+.meta-chip:hover {
+  border-color: var(--neon-cyan);
+  box-shadow: 0 0 18px rgba(0, 240, 255, 0.2);
+  transform: translateY(-2px);
+}
+.meta-chip .label { color: var(--text-dim); }
+.meta-chip .value { color: var(--neon-cyan); font-weight: 700; }
+
+/* ── Sections ── */
+.section { margin-bottom: 90px; position: relative; }
+.section-header {
+  display: flex; align-items: center; gap: 18px;
+  margin-bottom: 36px;
+}
+.section-num {
+  font-family: var(--mono);
+  font-size: 13px;
+  color: var(--neon-cyan);
+  padding: 8px 14px;
+  border: 1px solid var(--neon-cyan);
+  border-radius: 8px;
+  background: rgba(0, 240, 255, 0.06);
+  letter-spacing: 2px;
+  white-space: nowrap;
+}
+.section-title {
+  font-size: clamp(1.5rem, 3vw, 2.1rem);
+  font-weight: 700;
+  background: linear-gradient(90deg, #fff, var(--neon-cyan));
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+.section-line {
+  flex: 1;
+  height: 1px;
+  background: linear-gradient(90deg, var(--neon-cyan), transparent);
+  margin-left: 8px;
+}
+.sub-section-marker {
+  font-family: var(--mono);
+  font-size: 11px;
+  color: var(--neon-purple);
+  letter-spacing: 3px;
+  text-transform: uppercase;
+  margin-bottom: 14px;
+  padding: 6px 12px;
+  display: inline-block;
+  border: 1px solid var(--neon-purple);
+  border-radius: 6px;
+  background: rgba(177, 77, 255, 0.05);
+}
+
+/* ── Concept block ── */
+.concept-block {
+  background: var(--bg-panel);
+  backdrop-filter: var(--glass-blur);
+  border: 1px solid var(--border-glow);
+  border-radius: 20px;
+  padding: 32px;
+  margin-bottom: 24px;
+  position: relative;
+  overflow: hidden;
+}
+.concept-block::after {
+  content: '';
+  position: absolute; bottom: -50%; right: -10%;
+  width: 320px; height: 320px;
+  background: radial-gradient(circle, rgba(0, 240, 255, 0.08), transparent 70%);
+  pointer-events: none;
+}
+.concept-block h3 {
+  font-size: 1.35rem;
+  color: var(--neon-cyan);
+  margin-bottom: 14px;
+  display: flex; align-items: center; gap: 12px;
+}
+.concept-block h3::before { content: '◆'; color: var(--neon-purple); font-size: 1rem; }
+.concept-block h4 {
+  font-size: 1.05rem;
+  color: var(--neon-magenta);
+  margin-top: 18px;
+  margin-bottom: 10px;
+}
+.concept-block p { color: var(--text-soft); margin-bottom: 14px; font-size: 1rem; }
+.concept-block strong { color: #fff; }
+.concept-block em { color: var(--neon-magenta); font-style: normal; }
+.concept-block ul { list-style: none; padding-left: 0; }
+.concept-block ul li {
+  padding: 6px 0 6px 22px;
+  position: relative;
+  color: var(--text-soft);
+}
+.concept-block ul li::before {
+  content: '▸';
+  position: absolute; left: 0;
+  color: var(--neon-cyan);
+}
+.highlight-box {
+  background: linear-gradient(135deg, rgba(0, 240, 255, 0.07), rgba(177, 77, 255, 0.06));
+  border-left: 3px solid var(--neon-cyan);
+  padding: 16px 22px;
+  border-radius: 10px;
+  margin: 18px 0;
+  font-size: 0.95rem;
+}
+.warning-box {
+  background: linear-gradient(135deg, rgba(255, 77, 109, 0.08), rgba(255, 181, 71, 0.06));
+  border-left: 3px solid var(--neon-red);
+  padding: 16px 22px;
+  border-radius: 10px;
+  margin: 18px 0;
+  font-size: 0.95rem;
+}
+.warning-box strong { color: var(--neon-red); }
+.success-box {
+  background: linear-gradient(135deg, rgba(0, 255, 170, 0.06), rgba(0, 240, 255, 0.05));
+  border-left: 3px solid var(--neon-green);
+  padding: 16px 22px;
+  border-radius: 10px;
+  margin: 18px 0;
+  font-size: 0.95rem;
+}
+
+/* ── Viz wrap ── */
+.viz-wrap {
+  background: var(--bg-panel);
+  backdrop-filter: var(--glass-blur);
+  border: 1px solid var(--border-glow);
+  border-radius: 22px;
+  padding: 30px;
+  margin-bottom: 28px;
+  position: relative;
+}
+.viz-title {
+  font-size: 1.15rem;
+  color: var(--neon-cyan);
+  margin-bottom: 8px;
+  font-family: var(--mono);
+  letter-spacing: 1px;
+  text-transform: uppercase;
+}
+.viz-desc {
+  font-size: 0.92rem;
+  color: var(--text-soft);
+  margin-bottom: 22px;
+}
+
+/* ── Canvas ── */
+.viz-canvas {
+  width: 100%;
+  background: rgba(0, 0, 0, 0.35);
+  border-radius: 12px;
+  border: 1px solid rgba(0, 240, 255, 0.2);
+  display: block;
+}
+
+/* ── Sliders ── */
+input[type="range"] {
+  width: 100%; -webkit-appearance: none; appearance: none;
+  background: transparent; height: 24px;
+}
+input[type="range"]::-webkit-slider-runnable-track {
+  height: 4px;
+  background: linear-gradient(90deg, var(--neon-cyan), var(--neon-purple));
+  border-radius: 4px;
+}
+input[type="range"]::-moz-range-track {
+  height: 4px;
+  background: linear-gradient(90deg, var(--neon-cyan), var(--neon-purple));
+  border-radius: 4px;
+}
+input[type="range"]::-webkit-slider-thumb {
+  -webkit-appearance: none; appearance: none;
+  width: 18px; height: 18px; border-radius: 50%;
+  background: #fff; margin-top: -7px; cursor: pointer;
+  box-shadow: 0 0 12px rgba(0, 240, 255, 0.8);
+}
+input[type="range"]::-moz-range-thumb {
+  width: 18px; height: 18px; border-radius: 50%;
+  background: #fff; border: 0; cursor: pointer;
+  box-shadow: 0 0 12px rgba(0, 240, 255, 0.8);
+}
+.slider-row {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 20px;
+  margin-bottom: 18px;
+}
+.slider-cell {
+  background: rgba(0, 0, 0, 0.25);
+  border: 1px solid var(--border-glow);
+  border-radius: 12px;
+  padding: 16px;
+}
+.slider-label {
+  display: flex; justify-content: space-between;
+  font-family: var(--mono);
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 1.5px;
+  color: var(--text-dim);
+  margin-bottom: 10px;
+}
+.slider-label span:last-child { color: var(--neon-cyan); font-size: 14px; font-weight: 700; }
+
+/* ── Stat boxes ── */
+.stat-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 12px;
+  margin-top: 14px;
+}
+.stat-box {
+  background: rgba(0, 240, 255, 0.05);
+  border: 1px solid var(--border-glow);
+  border-radius: 10px;
+  padding: 14px;
+  text-align: center;
+}
+.stat-label {
+  font-family: var(--mono);
+  font-size: 10px;
+  color: var(--text-dim);
+  text-transform: uppercase;
+  letter-spacing: 1.5px;
+  margin-bottom: 6px;
+}
+.stat-value {
+  font-size: 1.4rem;
+  font-weight: 700;
+  color: var(--neon-cyan);
+  font-family: var(--mono);
+}
+.stat-value.purple { color: var(--neon-purple); }
+.stat-value.magenta { color: var(--neon-magenta); }
+.stat-value.amber { color: var(--neon-amber); }
+.stat-value.green { color: var(--neon-green); }
+.stat-value.red { color: var(--neon-red); }
+
+/* ── Buttons ── */
+.btn-row { display: flex; flex-wrap: wrap; gap: 12px; margin-bottom: 20px; }
+.btn {
+  background: rgba(0, 240, 255, 0.06);
+  border: 1px solid var(--border-glow);
+  color: var(--neon-cyan);
+  padding: 10px 20px;
+  border-radius: 10px;
+  font-family: var(--mono);
+  font-size: 12px;
+  letter-spacing: 1.5px;
+  cursor: pointer;
+  text-transform: uppercase;
+  transition: all 0.25s;
+}
+.btn:hover {
+  background: rgba(0, 240, 255, 0.15);
+  box-shadow: 0 0 22px rgba(0, 240, 255, 0.3);
+  transform: translateY(-2px);
+}
+.btn.purple { border-color: rgba(177, 77, 255, 0.4); color: var(--neon-purple); }
+.btn.purple:hover { background: rgba(177, 77, 255, 0.15); box-shadow: 0 0 22px rgba(177, 77, 255, 0.3); }
+.btn.magenta { border-color: rgba(255, 43, 214, 0.4); color: var(--neon-magenta); }
+.btn.magenta:hover { background: rgba(255, 43, 214, 0.15); box-shadow: 0 0 22px rgba(255, 43, 214, 0.3); }
+.btn.active {
+  background: linear-gradient(135deg, rgba(0, 240, 255, 0.2), rgba(177, 77, 255, 0.18));
+  color: #fff;
+  border-color: var(--neon-cyan);
+  box-shadow: 0 0 16px rgba(0, 240, 255, 0.3);
+}
+
+/* ── Formula card ── */
+.formula-card {
+  background: linear-gradient(135deg, rgba(10, 15, 40, 0.85), rgba(30, 10, 50, 0.75));
+  border: 1px solid var(--border-glow);
+  border-radius: 16px;
+  padding: 28px;
+  margin-bottom: 22px;
+  position: relative;
+  overflow: hidden;
+}
+.formula-card::before {
+  content: '';
+  position: absolute; top: 0; left: 0;
+  width: 4px; height: 100%;
+  background: linear-gradient(180deg, var(--neon-cyan), var(--neon-purple), var(--neon-magenta));
+}
+.formula-label {
+  font-family: var(--mono);
+  font-size: 11px;
+  color: var(--neon-cyan);
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  margin-bottom: 14px;
+}
+.formula {
+  font-family: var(--mono);
+  font-size: 1.3rem;
+  color: #fff;
+  text-align: center;
+  padding: 18px 12px;
+  background: rgba(0, 0, 0, 0.35);
+  border-radius: 10px;
+  margin: 14px 0;
+  letter-spacing: 1px;
+  overflow-x: auto;
+}
+.formula-explain {
+  color: var(--text-soft);
+  font-size: 0.95rem;
+  margin-top: 12px;
+}
+.var-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 10px;
+  margin-top: 14px;
+}
+.var-item {
+  background: rgba(0, 0, 0, 0.3);
+  border: 1px solid rgba(0, 240, 255, 0.15);
+  border-radius: 8px;
+  padding: 10px 14px;
+  font-size: 0.88rem;
+}
+.var-item code {
+  font-family: var(--mono);
+  color: var(--neon-cyan);
+  font-weight: 700;
+}
+
+/* ── Tabs/Examples ── */
+.example-tabs { display: flex; gap: 8px; margin-bottom: 14px; flex-wrap: wrap; }
+.tab {
+  padding: 8px 16px;
+  font-family: var(--mono);
+  font-size: 11px;
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+  border: 1px solid var(--border-glow);
+  background: rgba(0, 240, 255, 0.04);
+  color: var(--text-soft);
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.25s;
+}
+.tab.active {
+  background: linear-gradient(135deg, rgba(0, 240, 255, 0.2), rgba(177, 77, 255, 0.2));
+  border-color: var(--neon-cyan);
+  color: #fff;
+  box-shadow: 0 0 16px rgba(0, 240, 255, 0.3);
+}
+.example-body {
+  background: rgba(0, 0, 0, 0.3);
+  border-radius: 12px;
+  padding: 22px;
+  border: 1px solid rgba(0, 240, 255, 0.15);
+}
+.example-step {
+  padding: 10px 0;
+  border-bottom: 1px dashed rgba(0, 240, 255, 0.1);
+  color: var(--text-soft);
+}
+.example-step:last-child { border-bottom: 0; }
+.example-step strong { color: var(--neon-cyan); }
+
+/* ── Dual cells ── */
+.dual-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 18px;
+  margin-top: 16px;
+}
+.dual-cell {
+  background: rgba(0, 0, 0, 0.25);
+  border: 1px solid var(--border-glow);
+  border-radius: 12px;
+  padding: 20px;
+}
+.dual-cell h4 {
+  font-family: var(--mono);
+  font-size: 12px;
+  color: var(--neon-cyan);
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  margin-bottom: 12px;
+}
+.dual-cell.purple h4 { color: var(--neon-purple); }
+.dual-cell.red h4 { color: var(--neon-red); }
+.dual-cell.green h4 { color: var(--neon-green); }
+.dual-cell.magenta h4 { color: var(--neon-magenta); }
+.dual-cell.amber h4 { color: var(--neon-amber); }
+.dual-cell ul { list-style: none; padding-left: 0; }
+.dual-cell li {
+  padding: 6px 0 6px 18px;
+  color: var(--text-soft);
+  font-size: 0.92rem;
+  border-bottom: 1px dashed rgba(0, 240, 255, 0.08);
+  position: relative;
+}
+.dual-cell li:last-child { border-bottom: 0; }
+.dual-cell li::before {
+  content: '▸';
+  position: absolute; left: 0;
+  color: var(--neon-cyan);
+}
+
+/* ── Real grid ── */
+.real-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: 18px;
+  margin-top: 14px;
+}
+.real-card {
+  background: rgba(10, 15, 35, 0.6);
+  border: 1px solid var(--border-glow);
+  border-radius: 14px;
+  padding: 20px;
+  transition: all 0.3s;
+}
+.real-card:hover {
+  transform: translateY(-4px);
+  border-color: var(--neon-purple);
+  box-shadow: 0 8px 24px rgba(177, 77, 255, 0.2);
+}
+.real-card h4 { color: var(--neon-magenta); margin-bottom: 8px; font-size: 1rem; }
+.real-card p { color: var(--text-soft); font-size: 0.9rem; }
+
+/* ── Part Nav ── */
+.part-nav {
+  display: flex; justify-content: space-between; flex-wrap: wrap;
+  gap: 14px;
+  margin-top: 50px;
+  padding: 22px;
+  background: var(--bg-panel);
+  backdrop-filter: var(--glass-blur);
+  border: 1px solid var(--border-glow);
+  border-radius: 16px;
+}
+.part-nav-item {
+  flex: 1;
+  min-width: 200px;
+  padding: 14px 18px;
+  background: rgba(0, 240, 255, 0.04);
+  border: 1px solid rgba(0, 240, 255, 0.15);
+  border-radius: 10px;
+}
+.part-nav-item.current {
+  background: linear-gradient(135deg, rgba(0, 240, 255, 0.15), rgba(177, 77, 255, 0.12));
+  border-color: var(--neon-cyan);
+  box-shadow: 0 0 18px rgba(0, 240, 255, 0.2);
+}
+.part-nav-item.done {
+  background: rgba(0, 255, 170, 0.04);
+  border-color: rgba(0, 255, 170, 0.3);
+}
+.part-nav-label {
+  font-family: var(--mono);
+  font-size: 10px;
+  letter-spacing: 2px;
+  color: var(--text-dim);
+  text-transform: uppercase;
+  margin-bottom: 6px;
+}
+.part-nav-item.current .part-nav-label { color: var(--neon-cyan); }
+.part-nav-item.done .part-nav-label { color: var(--neon-green); }
+.part-nav-title { font-size: 0.92rem; color: #fff; font-weight: 600; }
+
+/* ── AI Panel ── */
+.ai-panel {
+  position: relative;
+  background: linear-gradient(135deg, rgba(0, 240, 255, 0.06), rgba(177, 77, 255, 0.06));
+  border: 1px solid var(--border-glow);
+  border-radius: 24px;
+  padding: 38px 30px;
+  backdrop-filter: var(--glass-blur);
+  overflow: hidden;
+}
+.ai-head { display: flex; align-items: center; gap: 16px; margin-bottom: 26px; }
+.ai-avatar {
+  width: 54px; height: 54px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, var(--neon-cyan), var(--neon-purple));
+  display: flex; align-items: center; justify-content: center;
+  font-family: var(--mono);
+  font-weight: 800;
+  color: var(--bg-deep);
+  font-size: 18px;
+  box-shadow: 0 0 24px rgba(0, 240, 255, 0.5);
+  animation: aiPulse 2.4s ease-in-out infinite;
+}
+@keyframes aiPulse {
+  0%,100% { box-shadow: 0 0 24px rgba(0, 240, 255, 0.5); }
+  50% { box-shadow: 0 0 40px rgba(177, 77, 255, 0.6); }
+}
+.ai-meta .ai-name { font-size: 1.05rem; color: #fff; font-weight: 600; }
+.ai-meta .ai-role {
+  font-family: var(--mono);
+  font-size: 11px;
+  color: var(--neon-cyan);
+  letter-spacing: 2px;
+  text-transform: uppercase;
+}
+.takeaway {
+  display: flex; gap: 14px; align-items: flex-start;
+  padding: 14px 0;
+  border-bottom: 1px dashed rgba(0, 240, 255, 0.15);
+}
+.takeaway:last-child { border-bottom: 0; }
+.takeaway-num {
+  font-family: var(--mono);
+  font-size: 13px;
+  color: var(--neon-cyan);
+  background: rgba(0, 240, 255, 0.08);
+  border: 1px solid var(--border-glow);
+  padding: 4px 10px;
+  border-radius: 6px;
+  flex-shrink: 0;
+  font-weight: 600;
+}
+.takeaway-text { color: var(--text-soft); font-size: 0.95rem; }
+.takeaway-text strong { color: #fff; }
+
+/* Master capstone bar */
+.capstone-bar {
+  margin-top: 50px;
+  padding: 32px;
+  background: linear-gradient(135deg, rgba(0, 255, 170, 0.08), rgba(0, 240, 255, 0.06));
+  border: 1px solid rgba(0, 255, 170, 0.3);
+  border-radius: 20px;
+  text-align: center;
+}
+.capstone-bar .label {
+  font-family: var(--mono);
+  font-size: 11px;
+  color: var(--neon-green);
+  letter-spacing: 3px;
+  margin-bottom: 12px;
+  text-transform: uppercase;
+}
+.capstone-bar .title { font-size: 1.5rem; color: #fff; font-weight: 800; letter-spacing: 0.5px; }
+.capstone-bar .sub { font-size: 0.95rem; color: var(--text-soft); margin-top: 10px; max-width: 720px; margin-left: auto; margin-right: auto; }
+
+.module-footer {
+  margin-top: 60px;
+  padding: 26px;
+  text-align: center;
+  font-family: var(--mono);
+  font-size: 11px;
+  color: var(--text-dim);
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  border-top: 1px solid var(--border-glow);
+}
+
+@media (max-width: 720px) {
+  .container { padding: 20px 14px 80px; }
+  .hero { padding: 60px 18px 50px; }
+  .section { margin-bottom: 60px; }
+  .concept-block, .viz-wrap, .ai-panel { padding: 22px 18px; }
+  .formula { font-size: 0.95rem; padding: 14px 8px; }
+}
+
+  /* ── SCROLL REVEAL ── */
+  .reveal {
+    opacity: 0;
+    transform: translateY(30px);
+    transition: all 0.8s cubic-bezier(0.16, 1, 0.3, 1);
+  }
+  .reveal.visible { opacity: 1; transform: translateY(0); }
+
+  /* ── SLIDE IN ── */
+  @keyframes slideIn {
+    from { opacity: 0; transform: translateY(8px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+
+  /* ── AI PANEL ROTATE ── */
+  @keyframes rotate { to { transform: rotate(360deg); } }
+  .ai-panel { overflow: hidden; }
+  .ai-panel::before {
+    content: ''; position: absolute; top: -50%; left: -50%;
+    width: 200%; height: 200%;
+    background: conic-gradient(from 0deg, transparent, rgba(0,240,255,0.05), transparent, rgba(177,77,255,0.05), transparent);
+    animation: rotate 20s linear infinite;
+    pointer-events: none; z-index: 0;
+  }
+  .ai-panel > * { position: relative; z-index: 1; }
+
+  /* ── SCANLINES ── */
+  .scanlines {
+    position: fixed; inset: 0;
+    background: repeating-linear-gradient(0deg,
+      rgba(0,240,255,0.012) 0px, rgba(0,240,255,0.012) 1px,
+      transparent 1px, transparent 4px);
+    pointer-events: none; z-index: 999; mix-blend-mode: screen;
+  }
+</style>
+</head>
+<body>
+<div class="scanlines"></div>
+
+<canvas id="particle-canvas"></canvas>
+
+<div class="container">
+
+  <!-- ═══════════════════ HUD ═══════════════════ -->
+  <div class="hud">
+    <div class="hud-left">⟁ QNA-OS v4.7 // Module 2.5 — Part 3 (Final)</div>
+    <div class="hud-center">Moments · Skewness · Kurtosis · MGFs</div>
+    <div class="hud-right"><span class="hud-dot"></span>SHAPE FINGERPRINT ENGINE ONLINE</div>
+  </div>
+
+  <!-- ═══════════════════ HERO ═══════════════════ -->
+  <section class="hero">
+    <svg class="hero-bg-svg" viewBox="0 0 1200 400" preserveAspectRatio="none">
+      <defs>
+        <linearGradient id="mGrad" x1="0" y1="0" x2="1" y2="0">
+          <stop offset="0%" stop-color="#00f0ff" stop-opacity="0.8"/>
+          <stop offset="50%" stop-color="#b14dff" stop-opacity="0.8"/>
+          <stop offset="100%" stop-color="#ff2bd6" stop-opacity="0.8"/>
+        </linearGradient>
+      </defs>
+      <!-- Right-skewed distribution -->
+      <path d="M 150 360 Q 200 350 250 320 Q 310 250 350 130 Q 400 90 450 130 Q 500 200 580 280 Q 700 340 900 360 L 900 360 L 150 360 Z"
+        fill="rgba(0,240,255,0.18)" stroke="#00f0ff" stroke-width="2" opacity="0.85"/>
+      <!-- Heavy-tailed comparison -->
+      <path d="M 150 360 Q 250 360 350 340 Q 450 250 550 130 Q 650 250 750 340 Q 900 360 1100 358 L 1100 360 L 150 360 Z"
+        fill="rgba(177,77,255,0.12)" stroke="#b14dff" stroke-width="2" opacity="0.6" stroke-dasharray="5 3"/>
+      <!-- mean line -->
+      <line x1="500" y1="60" x2="500" y2="360" stroke="rgba(255,43,214,0.5)" stroke-width="1.5" stroke-dasharray="6 6"/>
+      <text x="490" y="50" fill="#ff2bd6" font-family="JetBrains Mono" font-size="11" text-anchor="end" opacity="0.8">μ</text>
+      <!-- skew arrow -->
+      <path d="M 580 280 Q 750 320 900 350" fill="none" stroke="#ffb547" stroke-width="2" opacity="0.6" marker-end="url(#arr)"/>
+      <defs>
+        <marker id="arr" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto">
+          <path d="M 0 0 L 10 5 L 0 10 z" fill="#ffb547"/>
+        </marker>
+      </defs>
+      <text x="700" y="305" fill="#ffb547" font-family="JetBrains Mono" font-size="11" opacity="0.8">RIGHT SKEW (γ₁ > 0)</text>
+      <text x="60" y="200" fill="#00f0ff" font-family="JetBrains Mono" font-size="11" opacity="0.7">μ₁ → μ₂ → μ₃ → μ₄ → ...</text>
+      <text x="60" y="220" fill="#00f0ff" font-family="JetBrains Mono" font-size="11" opacity="0.7">MOMENTS</text>
+      <text x="900" y="80" fill="#b14dff" font-family="JetBrains Mono" font-size="11" opacity="0.8">M(t) = E[e^(tX)]</text>
+    </svg>
+    <div class="hero-tag">◉ MODULE 2.5 — PART 3 of 3 · FINAL</div>
+    <h1>Moments &amp; MGFs</h1>
+    <p class="subtitle">Beyond mean and variance — the shape fingerprints of a distribution. Skewness reveals asymmetry; kurtosis reveals tail risk; and Moment Generating Functions package <em>every</em> moment into one elegant function.</p>
+    <p class="overview">Part 3 completes the summarization toolkit. We meet the four moments that describe a distribution's full character: where it sits (1st), how spread out it is (2nd), how lopsided (3rd), and how heavy its tails are (4th). Then we discover Moment Generating Functions — a single mathematical object that encodes all moments simultaneously and is the secret engine behind the Central Limit Theorem, sums of independent variables, and most of statistical theory.</p>
+    <div class="hero-meta">
+      <div class="meta-chip"><span class="label">DURATION:</span><span class="value">70 MIN</span></div>
+      <div class="meta-chip"><span class="label">LEVEL:</span><span class="value">ADVANCED</span></div>
+      <div class="meta-chip"><span class="label">CONCEPTS:</span><span class="value">02 / 06</span></div>
+      <div class="meta-chip"><span class="label">FORMULAS:</span><span class="value">08</span></div>
+      <div class="meta-chip"><span class="label">PRACTICE:</span><span class="value">06 TASKS</span></div>
+      <div class="meta-chip"><span class="label">PREREQ:</span><span class="value">M-2.5 P1 &amp; P2</span></div>
+    </div>
+  </section>
+
+  <!-- ═══════════════════ PART NAV ═══════════════════ -->
+  <div class="part-nav">
+    <div class="part-nav-item done">
+      <div class="part-nav-label">✓ PART 1 — Complete</div>
+      <div class="part-nav-title">Expectation · Variance · Std Dev</div>
+    </div>
+    <div class="part-nav-item done">
+      <div class="part-nav-label">✓ PART 2 — Complete</div>
+      <div class="part-nav-title">Covariance · Correlation</div>
+    </div>
+    <div class="part-nav-item current">
+      <div class="part-nav-label">⟁ PART 3 — Now (Final)</div>
+      <div class="part-nav-title">Moments · MGFs · Master Recap</div>
+    </div>
+  </div>
+
+  <!-- ═══════════════════ SECTION 1 — WHY THIS PART EXISTS ═══════════════════ -->
+  <section class="section reveal">
+    <div class="section-header">
+      <div class="section-num">1</div>
+      <h2 class="section-title">Beyond Mean and Variance</h2>
+      <div class="section-line"></div>
+    </div>
+
+    <div class="concept-block">
+      <div class="sub-section-marker">When two summaries aren't enough</div>
+      <h3>Same Mean, Same Variance, Different Worlds</h3>
+      <p>By the end of Part 1, we knew mean and variance. By Part 2, we knew how pairs of variables move together. But there's still a gap. Consider two distributions:</p>
+      <div class="dual-grid">
+        <div class="dual-cell">
+          <h4>Distribution A — Symmetric Bell</h4>
+          <ul>
+            <li>Mean = 0, Variance = 1</li>
+            <li>Symmetric around the mean</li>
+            <li>Thin tails — outliers very rare</li>
+            <li>Example: classical Gaussian</li>
+          </ul>
+        </div>
+        <div class="dual-cell red">
+          <h4>Distribution B — Heavy-Tailed</h4>
+          <ul>
+            <li>Mean = 0, Variance = 1</li>
+            <li>Symmetric around the mean</li>
+            <li>Heavy tails — extreme events common</li>
+            <li>Example: Student-t with low degrees of freedom</li>
+          </ul>
+        </div>
+      </div>
+      <p>Both have the same mean and variance. Yet B's extreme outcomes (X &gt; 5) might occur thousands of times more often than A's. <strong>Mean and variance miss the tail behavior entirely.</strong> A risk manager who only knew (μ, σ) would treat these two as identical — and underestimate B's catastrophic risk.</p>
+      <div class="highlight-box">
+        <strong>The gap:</strong> Mean tells us location. Variance tells us spread. But what about <em>asymmetry</em>? <em>Tail weight</em>? These require higher-order summaries — and that's exactly what moments give us.
+      </div>
+    </div>
+
+    <div class="concept-block">
+      <div class="sub-section-marker">A four-number fingerprint</div>
+      <h3>What This Part Will Build</h3>
+      <p>We will assemble the full <strong>shape fingerprint</strong> of a distribution — four numbers, each capturing one aspect:</p>
+      <ul>
+        <li><strong>1st moment (mean μ)</strong> — where the distribution centers (covered in Part 1)</li>
+        <li><strong>2nd moment (variance σ²)</strong> — how spread out it is (Part 1)</li>
+        <li><strong>3rd standardized moment (skewness γ₁)</strong> — its asymmetry</li>
+        <li><strong>4th standardized moment (kurtosis γ₂)</strong> — how heavy its tails are</li>
+      </ul>
+      <p>Then we'll meet a single object — the <strong>Moment Generating Function (MGF)</strong> — that packages <em>all</em> moments into one mathematical entity. This is the deeper structure beneath the entire framework.</p>
+    </div>
+  </section>
+
+  <!-- ═══════════════════ SECTION 2 — MOMENTS ═══════════════════ -->
+  <section class="section reveal">
+    <div class="section-header">
+      <div class="section-num">2</div>
+      <h2 class="section-title">Moments of a Distribution</h2>
+      <div class="section-line"></div>
+    </div>
+
+    <div class="concept-block">
+      <div class="sub-section-marker">The general definition</div>
+      <h3>What Is a Moment?</h3>
+      <p>A <strong>moment</strong> is an expected value of a power of X (or of a centered version of X). Moments come in two flavors:</p>
+      <ul>
+        <li><strong>Raw moments</strong> μ'_k = E[X^k] — taken about the origin (zero).</li>
+        <li><strong>Central moments</strong> μ_k = E[(X − μ)^k] — taken about the mean.</li>
+      </ul>
+      <p>Central moments are usually what we want, because they describe the <em>shape around the center</em> — independent of where the center happens to be.</p>
+    </div>
+
+    <div class="formula-card">
+      <div class="formula-label">⟁ The k-th Central Moment</div>
+      <div class="formula">μ_k = E[(X − μ)^k]</div>
+      <p class="formula-explain">Take the deviation from the mean. Raise it to the k-th power. Take the expected value. The result is the k-th central moment. Different k values reveal different aspects of the distribution's shape.</p>
+      <div class="var-list">
+        <div class="var-item"><code>μ_1 = 0</code> — first central moment always zero by definition</div>
+        <div class="var-item"><code>μ_2 = Var(X)</code> — variance (the 2nd central moment)</div>
+        <div class="var-item"><code>μ_3</code> — captures asymmetry (skewness numerator)</div>
+        <div class="var-item"><code>μ_4</code> — captures tail weight (kurtosis numerator)</div>
+      </div>
+    </div>
+
+    <div class="concept-block">
+      <div class="sub-section-marker">Why standardize</div>
+      <h3>From Raw Moments to Standardized Ones</h3>
+      <p>Just like covariance had a scale problem (fixed by dividing by σ_X · σ_Y to get correlation), the 3rd and 4th central moments have scale problems too. A μ_3 of 100 in one dataset and 1 in another tells us nothing about which is "more skewed" — it depends on the scales.</p>
+      <p>The fix: divide by σ raised to the appropriate power. This is called <strong>standardization</strong>, and it gives us scale-free shape measures.</p>
+    </div>
+
+    <div class="formula-card">
+      <div class="formula-label">⟁ Standardized Moments — The Scale-Free Forms</div>
+      <div class="formula">Skewness  γ₁ = μ_3 / σ³ = E[(X − μ)³] / σ³</div>
+      <div class="formula">Kurtosis  γ₂ = μ_4 / σ⁴ = E[(X − μ)⁴] / σ⁴</div>
+      <p class="formula-explain"><strong>Skewness</strong> divides the 3rd central moment by σ³, making it dimensionless. <strong>Kurtosis</strong> divides the 4th by σ⁴. Both are pure, scale-free numbers — comparable across datasets just like correlation.</p>
+      <p class="formula-explain">A frequently used alternative is <strong>excess kurtosis</strong>: γ₂ − 3. Subtracting 3 makes a normal distribution's kurtosis equal to zero — a convenient reference point.</p>
+    </div>
+  </section>
+
+  <!-- ═══════════════════ SECTION 3 — SKEWNESS ═══════════════════ -->
+  <section class="section reveal">
+    <div class="section-header">
+      <div class="section-num">3</div>
+      <h2 class="section-title">Skewness — The Asymmetry Measure</h2>
+      <div class="section-line"></div>
+    </div>
+
+    <div class="concept-block">
+      <div class="sub-section-marker">What asymmetry looks like</div>
+      <h3>Three Possible Asymmetry Patterns</h3>
+      <p><strong>Skewness γ₁</strong> measures the asymmetry of a distribution. Its sign tells you which side has the long tail.</p>
+      <div class="dual-grid">
+        <div class="dual-cell green">
+          <h4>γ₁ &gt; 0 — Right-Skewed (Positive Skew)</h4>
+          <ul>
+            <li>Long tail extends to the right</li>
+            <li>Most mass on the left, a few large values on the right</li>
+            <li>Mean &gt; Median &gt; Mode (typically)</li>
+            <li>Examples: income, wait times, insurance claims, file sizes</li>
+          </ul>
+        </div>
+        <div class="dual-cell">
+          <h4>γ₁ ≈ 0 — Symmetric</h4>
+          <ul>
+            <li>Distribution is roughly mirror-image around the mean</li>
+            <li>Mean ≈ Median ≈ Mode</li>
+            <li>Examples: heights, test scores, measurement errors</li>
+            <li>The normal distribution has γ₁ = 0 exactly</li>
+          </ul>
+        </div>
+        <div class="dual-cell red">
+          <h4>γ₁ &lt; 0 — Left-Skewed (Negative Skew)</h4>
+          <ul>
+            <li>Long tail extends to the left</li>
+            <li>Most mass on the right, a few small values on the left</li>
+            <li>Mean &lt; Median &lt; Mode (typically)</li>
+            <li>Examples: age at death (mostly old, a few young), exam scores with a low ceiling</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+
+    <div class="concept-block">
+      <div class="sub-section-marker">Why the cube</div>
+      <h3>Why Skewness Uses the Third Power</h3>
+      <p>Why cube the deviations? Why not just take the absolute value or some other measure?</p>
+      <ul>
+        <li><strong>Cubing preserves sign.</strong> A deviation of +5 gives +125; a deviation of −5 gives −125. The two cancel symmetrically — exactly what we want for measuring asymmetry.</li>
+        <li><strong>Cubing amplifies large deviations.</strong> Big outliers in one direction (say +20) contribute 8,000 to the sum, dominating small balanced deviations. So one big right tail can produce significant positive skewness.</li>
+        <li><strong>It's the natural next moment.</strong> After variance (squaring), the next natural power is cubing. It's the simplest function that distinguishes left from right.</li>
+      </ul>
+      <div class="highlight-box">
+        <strong>Mental model:</strong> Imagine standing on the balance point (mean) of a seesaw. Variance asks "how much wiggle is there overall?" Skewness asks "is the wiggle balanced left and right, or does it lean?"
+      </div>
+    </div>
+
+    <div class="formula-card">
+      <div class="formula-label">⟁ Skewness — Rough Magnitudes</div>
+      <div class="formula">|γ₁| &lt; 0.5  →  nearly symmetric</div>
+      <div class="formula">0.5 ≤ |γ₁| &lt; 1  →  moderately skewed</div>
+      <div class="formula">|γ₁| ≥ 1  →  highly skewed</div>
+      <p class="formula-explain">These thresholds are rules of thumb — not formal rules. In finance, even γ₁ = 0.2 can be material for risk; in social sciences, γ₁ = 2 is common for income data. Always interpret in context.</p>
+    </div>
+
+    <div class="concept-block">
+      <div class="sub-section-marker">A real-world example</div>
+      <h3>Why Income Is the Textbook Right-Skewed Example</h3>
+      <p>Consider income in any country. Most people earn moderate amounts; a few earn millions; the very richest earn billions. The right tail extends arbitrarily far, while the left is bounded near zero. Result: strongly right-skewed.</p>
+      <p>Practical consequence: <strong>the mean overstates the typical person.</strong> If 99 people earn ₹50,000 and one person earns ₹100 million, the mean income is ₹1,050,000 — but only 1 person actually has anywhere near that. The median (₹50,000) is far more representative.</p>
+      <div class="warning-box">
+        <strong>Skewness warning:</strong> Whenever a distribution is heavily skewed, reporting only the mean is misleading. Always inspect the median, the standard deviation, and the skewness together. This is why median income (not mean) appears in policy reports.
+      </div>
+    </div>
+  </section>
+
+  <!-- ═══════════════════ SECTION 4 — KURTOSIS ═══════════════════ -->
+  <section class="section reveal">
+    <div class="section-header">
+      <div class="section-num">4</div>
+      <h2 class="section-title">Kurtosis — The Tail Risk Measure</h2>
+      <div class="section-line"></div>
+    </div>
+
+    <div class="concept-block">
+      <div class="sub-section-marker">What tail weight looks like</div>
+      <h3>Skinny Tails vs. Fat Tails</h3>
+      <p><strong>Kurtosis γ₂</strong> measures how heavy the tails of a distribution are — specifically, how frequently <em>extreme</em> deviations occur relative to typical ones.</p>
+      <p>For historical reasons, the reference point is the normal distribution, which has γ₂ = 3. By convention, we often report <strong>excess kurtosis</strong> = γ₂ − 3, so a normal distribution becomes the "zero" baseline.</p>
+      <div class="dual-grid">
+        <div class="dual-cell">
+          <h4>Mesokurtic (γ₂ ≈ 3, excess ≈ 0)</h4>
+          <ul>
+            <li>Same tail weight as a normal distribution</li>
+            <li>Extreme events are rare but possible</li>
+            <li>Example: heights, IQs (approximately)</li>
+          </ul>
+        </div>
+        <div class="dual-cell red">
+          <h4>Leptokurtic (γ₂ &gt; 3, excess &gt; 0) — Fat Tails</h4>
+          <ul>
+            <li>Higher peak, heavier tails</li>
+            <li>Extreme events <em>much</em> more frequent</li>
+            <li>Example: stock returns, earthquakes, internet traffic</li>
+            <li>The "black swan" world</li>
+          </ul>
+        </div>
+        <div class="dual-cell green">
+          <h4>Platykurtic (γ₂ &lt; 3, excess &lt; 0) — Thin Tails</h4>
+          <ul>
+            <li>Flatter peak, lighter tails</li>
+            <li>Extreme events very rare</li>
+            <li>Example: uniform distribution (γ₂ = 1.8)</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+
+    <div class="concept-block">
+      <div class="sub-section-marker">Why this matters in finance</div>
+      <h3>The 2008 Crisis Was a Kurtosis Story</h3>
+      <p>Pre-2008, many risk models assumed normal distributions for asset returns. Normal → γ₂ = 3 → extreme events extremely rare. Under that model, a 25%-in-a-day market drop should occur about once every 10²² years.</p>
+      <p>Real stock returns are <strong>strongly leptokurtic</strong>. Daily S&amp;P returns have excess kurtosis on the order of 5–15. Extreme moves happen <em>vastly</em> more often than the normal would predict — about once a decade rather than once in cosmic time.</p>
+      <p>The 2008 financial crisis was, in part, a failure to account for tail weight. Risk models calibrated to a normal world catastrophically underestimated tail events. Nassim Taleb's book <em>The Black Swan</em> is essentially a 300-page essay about kurtosis.</p>
+      <div class="warning-box">
+        <strong>The lesson:</strong> Variance alone can't tell you about catastrophic risk. Two assets can have identical variances but vastly different kurtosis. The one with higher kurtosis is the one that will surprise you.
+      </div>
+    </div>
+
+    <div class="formula-card">
+      <div class="formula-label">⟁ Kurtosis Reference Values</div>
+      <div class="formula">Normal distribution:  γ₂ = 3,  excess = 0</div>
+      <div class="formula">Uniform distribution:  γ₂ = 1.8,  excess = −1.2</div>
+      <div class="formula">Laplace distribution:  γ₂ = 6,  excess = 3</div>
+      <div class="formula">Student-t (df = 5):  γ₂ = 9,  excess = 6</div>
+      <p class="formula-explain">These reference values help calibrate intuition. Anything with positive excess kurtosis has tails heavier than normal — and tail risk that simple Gaussian models underestimate.</p>
+    </div>
+
+    <!-- INTERACTIVE SHAPE FINGERPRINT EXPLORER -->
+    <div class="viz-wrap">
+      <div class="viz-title">⟁ Shape Fingerprint Explorer — Mean, Variance, Skewness, Kurtosis</div>
+      <div class="viz-desc">Switch between four canonical distribution shapes. The display shows the PDF and computes the full four-number fingerprint: μ, σ², γ₁, γ₂. Compare how different shapes have identical means but radically different higher moments.</div>
+      <div class="btn-row">
+        <button class="btn active" onclick="setShape('normal')">Normal (Symmetric)</button>
+        <button class="btn purple" onclick="setShape('rightSkew')">Right-Skewed</button>
+        <button class="btn magenta" onclick="setShape('leftSkew')">Left-Skewed</button>
+        <button class="btn" onclick="setShape('heavy')">Heavy-Tailed</button>
+        <button class="btn purple" onclick="setShape('uniform')">Uniform (Light)</button>
+      </div>
+      <canvas id="shapeCanvas" class="viz-canvas" width="900" height="380"></canvas>
+      <div class="stat-grid">
+        <div class="stat-box">
+          <div class="stat-label">Mean μ</div>
+          <div class="stat-value" id="shapeMean">0.00</div>
+        </div>
+        <div class="stat-box">
+          <div class="stat-label">Variance σ²</div>
+          <div class="stat-value purple" id="shapeVar">1.00</div>
+        </div>
+        <div class="stat-box">
+          <div class="stat-label">Skewness γ₁</div>
+          <div class="stat-value magenta" id="shapeSkew">0.00</div>
+        </div>
+        <div class="stat-box">
+          <div class="stat-label">Excess Kurtosis γ₂−3</div>
+          <div class="stat-value amber" id="shapeKurt">0.00</div>
+        </div>
+      </div>
+      <div class="highlight-box" style="margin-top:18px;" id="shapeInsight">
+        <strong>Normal distribution:</strong> the gold standard — symmetric (γ₁ = 0) and mesokurtic (excess γ₂ = 0). This is what most introductory statistics assumes. Most real data does not look exactly like this.
+      </div>
+    </div>
+  </section>
+
+  <!-- ═══════════════════ SECTION 5 — MGFs ═══════════════════ -->
+  <section class="section reveal">
+    <div class="section-header">
+      <div class="section-num">5</div>
+      <h2 class="section-title">Moment Generating Functions (MGFs)</h2>
+      <div class="section-line"></div>
+    </div>
+
+    <div class="concept-block">
+      <div class="sub-section-marker">A single object that holds everything</div>
+      <h3>The Idea — Packaging All Moments into One Function</h3>
+      <p>So far we've computed moments one at a time: E[X], E[X²], E[X³], E[X⁴], and so on. Each moment is a number.</p>
+      <p>What if we could package <em>all of them</em> into a single object — one function from which any moment can be extracted by a simple operation? That object is the <strong>Moment Generating Function</strong> (MGF).</p>
+      <div class="highlight-box">
+        <strong>The trick:</strong> Multiply X by a dummy variable t inside an exponential, take the expectation, and the result is a function M(t). Taking k derivatives of M(t) and evaluating at t = 0 gives you the k-th raw moment of X. It's a moment factory.
+      </div>
+    </div>
+
+    <div class="formula-card">
+      <div class="formula-label">⟁ Moment Generating Function — Definition</div>
+      <div class="formula">M(t) = E[e^(tX)]</div>
+      <p class="formula-explain">The MGF is the expected value of e^(tX), treated as a function of t. For discrete X: M(t) = Σ e^(tx) · P(X = x). For continuous X: M(t) = ∫ e^(tx) · f(x) dx. The MGF exists wherever the expectation converges (a neighborhood around t = 0).</p>
+    </div>
+
+    <div class="formula-card">
+      <div class="formula-label">⟁ Extracting Moments — The Magic Step</div>
+      <div class="formula">E[X^k] = M^(k)(0) = d^k M(t) / dt^k  |_{t=0}</div>
+      <p class="formula-explain">Take the k-th derivative of M(t) with respect to t, then evaluate at t = 0. The result is the k-th raw moment of X. This is why M is called the <em>moment generating</em> function — each derivative pulls out one moment.</p>
+      <div class="var-list">
+        <div class="var-item"><code>M'(0) = E[X]</code> — first derivative gives the mean</div>
+        <div class="var-item"><code>M''(0) = E[X²]</code> — second gives the 2nd raw moment</div>
+        <div class="var-item"><code>M^(k)(0) = E[X^k]</code> — pattern continues for all k</div>
+      </div>
+    </div>
+
+    <div class="concept-block">
+      <div class="sub-section-marker">Why this works — the Taylor expansion view</div>
+      <h3>The Hidden Engine</h3>
+      <p>The trick becomes obvious once we expand e^(tX) as a Taylor series:</p>
+      <p>e^(tX) = 1 + tX + (tX)²/2! + (tX)³/3! + (tX)⁴/4! + ...</p>
+      <p>Taking the expectation of both sides (linearity!):</p>
+      <p>M(t) = E[e^(tX)] = 1 + t·E[X] + t²·E[X²]/2! + t³·E[X³]/3! + ...</p>
+      <p>The MGF is literally a power series whose coefficient of t^k/k! is E[X^k]. Differentiating k times and evaluating at zero strips out exactly the k-th coefficient. The "magic" is just calculus applied to a generating function.</p>
+    </div>
+
+    <div class="concept-block">
+      <div class="sub-section-marker">Two killer properties</div>
+      <h3>Why MGFs Are So Powerful</h3>
+      <div class="dual-grid">
+        <div class="dual-cell green">
+          <h4>Property 1 — Uniqueness</h4>
+          <ul>
+            <li>If two RVs have the same MGF (where they exist), they have the same distribution</li>
+            <li>An MGF uniquely fingerprints a distribution</li>
+            <li>Show two MGFs are equal → conclude two distributions are identical</li>
+          </ul>
+        </div>
+        <div class="dual-cell purple">
+          <h4>Property 2 — Sums Factor</h4>
+          <ul>
+            <li>If X ⊥ Y (independent), then M_{X+Y}(t) = M_X(t) · M_Y(t)</li>
+            <li>The MGF of a sum is the product of MGFs</li>
+            <li>This makes sums of independent RVs trivial to analyze</li>
+          </ul>
+        </div>
+      </div>
+      <div class="success-box">
+        <strong>Why this is huge:</strong> The Central Limit Theorem — the most important result in statistics — is proved using MGFs. So is the closed form for sums of independent normals, Poissons, gammas, and dozens of other families. MGFs are the algebraic backbone of probability theory.
+      </div>
+    </div>
+
+    <div class="formula-card">
+      <div class="formula-label">⟁ MGFs of Common Distributions</div>
+      <div class="formula">Bernoulli(p):  M(t) = (1−p) + p·e^t</div>
+      <div class="formula">Binomial(n, p):  M(t) = ((1−p) + p·e^t)^n</div>
+      <div class="formula">Poisson(λ):  M(t) = exp(λ(e^t − 1))</div>
+      <div class="formula">Normal(μ, σ²):  M(t) = exp(μt + σ²t²/2)</div>
+      <div class="formula">Exponential(λ):  M(t) = λ / (λ − t),  t &lt; λ</div>
+      <p class="formula-explain">Each named distribution has a known MGF. To compute moments, differentiate the MGF and evaluate at zero. Many textbook formulas (e.g., Var(Poisson) = λ) are derived in 30 seconds via MGF differentiation.</p>
+    </div>
+
+    <div class="concept-block">
+      <div class="sub-section-marker">A worked computation</div>
+      <h3>Using MGF to Get Mean and Variance of Poisson</h3>
+      <p>For X ~ Poisson(λ), the MGF is M(t) = exp(λ(e^t − 1)).</p>
+      <ul>
+        <li><strong>Step 1 — First derivative:</strong> M'(t) = exp(λ(e^t − 1)) · λe^t. (Chain rule.)</li>
+        <li><strong>Step 2 — Evaluate at t = 0:</strong> M'(0) = exp(0) · λ · 1 = λ. So E[X] = <strong style="color:var(--neon-cyan)">λ</strong>.</li>
+        <li><strong>Step 3 — Second derivative:</strong> M''(t) = exp(λ(e^t − 1))·(λe^t)² + exp(λ(e^t − 1))·λe^t = M(t)·λe^t·(λe^t + 1).</li>
+        <li><strong>Step 4 — Evaluate at t = 0:</strong> M''(0) = 1·λ·(λ + 1) = λ² + λ. So E[X²] = λ² + λ.</li>
+        <li><strong>Step 5 — Variance:</strong> Var(X) = E[X²] − μ² = (λ² + λ) − λ² = <strong style="color:var(--neon-cyan)">λ</strong>.</li>
+      </ul>
+      <p>That's the famous Poisson identity Mean = Variance = λ — derived cleanly from the MGF.</p>
+    </div>
+
+    <!-- WORKED MGF EXAMPLES -->
+    <div class="viz-wrap">
+      <div class="viz-title">⟁ Worked MGF Examples</div>
+      <div class="example-tabs">
+        <button class="tab active" onclick="showMGFEx(1)">Easy</button>
+        <button class="tab" onclick="showMGFEx(2)">Medium</button>
+        <button class="tab" onclick="showMGFEx(3)">Advanced</button>
+      </div>
+      <div class="example-body" id="mgfBody"></div>
+    </div>
+
+    <div class="concept-block">
+      <div class="sub-section-marker">A peek at the deeper view</div>
+      <h3>Beyond MGFs — Characteristic Functions</h3>
+      <p>MGFs have one limitation: they don't always exist. For distributions with very heavy tails (like the Cauchy), E[e^(tX)] diverges and the MGF is undefined.</p>
+      <p>The fix is the <strong>characteristic function</strong> φ(t) = E[e^(itX)] — same idea but using imaginary exponents. This always exists for any distribution. Characteristic functions are the "professional grade" tool used in advanced probability theory; MGFs are the friendlier introductory cousin that suffices for almost all practical cases.</p>
+    </div>
+
+    <div class="concept-block">
+      <div class="sub-section-marker">Real-world MGF usage</div>
+      <h3>Where MGFs Live in Practice</h3>
+      <div class="real-grid">
+        <div class="real-card">
+          <h4>🧠 Central Limit Theorem</h4>
+          <p>The proof that sums of independent variables approach the normal distribution uses MGFs — specifically, that the MGF of a properly scaled sum converges to the MGF of the normal.</p>
+        </div>
+        <div class="real-card">
+          <h4>📊 Queueing &amp; Reliability</h4>
+          <p>Sums of independent exponential service times have MGFs that multiply — yielding closed forms for total wait times and lifetimes in operations research.</p>
+        </div>
+        <div class="real-card">
+          <h4>💰 Finance — Cumulants</h4>
+          <p>The logarithm of the MGF is the cumulant generating function. Cumulants are how higher-moment risk (skew, kurt) is decomposed in option pricing models like SVI.</p>
+        </div>
+        <div class="real-card">
+          <h4>📡 Information Theory</h4>
+          <p>Large deviation theory — used in coding theory and rare-event simulation — is built entirely on MGF analysis (Chernoff bounds, Cramér's theorem).</p>
+        </div>
+        <div class="real-card">
+          <h4>🔬 Physics — Partition Functions</h4>
+          <p>In statistical mechanics, the partition function is essentially an MGF over energy states. Free energy and entropy are derived as MGF derivatives.</p>
+        </div>
+        <div class="real-card">
+          <h4>🤖 ML — Concentration Bounds</h4>
+          <p>Probabilistic guarantees on ML algorithms (Hoeffding, Bennett, Bernstein inequalities) all derive from MGF bounds on bounded random variables.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ═══════════════════ COMMON MISTAKES ═══════════════════ -->
+  <section class="section reveal">
+    <div class="section-header">
+      <div class="section-num">6</div>
+      <h2 class="section-title">Common Mistakes</h2>
+      <div class="section-line"></div>
+    </div>
+    <div class="warning-box">
+      <strong>Mistake 1 — Treating raw moments as final summaries.</strong> Raw moments depend on the origin and on scale. Always standardize (divide by σ^k) before comparing skewness or kurtosis across datasets.
+    </div>
+    <div class="warning-box">
+      <strong>Mistake 2 — Reading kurtosis = 3 as "high."</strong> Kurtosis = 3 is the <em>normal</em> baseline — the reference point, not "heavy." Heavy tails mean excess kurtosis &gt; 0 (i.e., γ₂ &gt; 3).
+    </div>
+    <div class="warning-box">
+      <strong>Mistake 3 — Confusing skewness with bias.</strong> Skewness measures distribution asymmetry. Bias in statistics means systematic estimator error. They are different concepts that share none of the same mathematics.
+    </div>
+    <div class="warning-box">
+      <strong>Mistake 4 — Trusting MGF in heavy-tailed worlds.</strong> Cauchy, Lévy, and other heavy-tailed distributions don't have MGFs. If your data is heavy-tailed, MGF-based methods (including CLT-derived confidence intervals) can fail spectacularly.
+    </div>
+    <div class="warning-box">
+      <strong>Mistake 5 — Assuming MGF factoring works for dependent sums.</strong> M_{X+Y}(t) = M_X(t) · M_Y(t) holds <em>only when X and Y are independent</em>. For dependent variables, you cannot factor the MGF.
+    </div>
+    <div class="warning-box">
+      <strong>Mistake 6 — Forgetting to evaluate at t = 0.</strong> The k-th derivative of the MGF gives a function of t. To extract the moment as a number, you <em>must</em> set t = 0 after differentiating. A common exam slip.
+    </div>
+    <div class="warning-box">
+      <strong>Mistake 7 — Using moments to fully characterize fat-tailed data.</strong> For some distributions (like the Cauchy), moments beyond the mean don't even exist. "Compute the variance" fails — the integral diverges. In such cases, use robust statistics (median, IQR, quantiles).
+    </div>
+  </section>
+
+  <!-- ═══════════════════ PART 3 RECAP ═══════════════════ -->
+  <section class="section reveal">
+    <div class="section-header">
+      <div class="section-num">PART 3 RECAP</div>
+      <h2 class="section-title">AI Synthesis Panel — Part 3</h2>
+      <div class="section-line"></div>
+    </div>
+    <div class="ai-panel">
+      <div class="ai-head">
+        <div class="ai-avatar">Ξ</div>
+        <div class="ai-meta">
+          <div class="ai-name">QNA-Σ // Synthesis Core</div>
+          <div class="ai-role">Moments &amp; MGFs Analyst — Stage 3</div>
+        </div>
+      </div>
+      <div>
+        <div class="takeaway">
+          <div class="takeaway-num">01</div>
+          <div class="takeaway-text"><strong>Moments</strong> are expected values of powers of X (raw) or of (X − μ) (central). Each captures a different aspect of the distribution's shape.</div>
+        </div>
+        <div class="takeaway">
+          <div class="takeaway-num">02</div>
+          <div class="takeaway-text"><strong>Standardized moments</strong> divide central moments by powers of σ, yielding scale-free shape measures comparable across datasets.</div>
+        </div>
+        <div class="takeaway">
+          <div class="takeaway-num">03</div>
+          <div class="takeaway-text"><strong>Skewness γ₁</strong> measures asymmetry. Positive = right tail (income, claims); negative = left tail; zero = symmetric.</div>
+        </div>
+        <div class="takeaway">
+          <div class="takeaway-num">04</div>
+          <div class="takeaway-text"><strong>Kurtosis γ₂</strong> measures tail weight. Normal has γ₂ = 3. Higher = heavier tails (more extreme events); lower = thinner tails.</div>
+        </div>
+        <div class="takeaway">
+          <div class="takeaway-num">05</div>
+          <div class="takeaway-text"><strong>The 2008 crisis</strong> was a kurtosis failure — normal models drastically underestimated tail risk.</div>
+        </div>
+        <div class="takeaway">
+          <div class="takeaway-num">06</div>
+          <div class="takeaway-text"><strong>MGF M(t) = E[e^(tX)]</strong> is a function that encodes every moment of X. Differentiate k times, evaluate at t = 0 → get E[X^k].</div>
+        </div>
+        <div class="takeaway">
+          <div class="takeaway-num">07</div>
+          <div class="takeaway-text"><strong>Uniqueness:</strong> Same MGF → same distribution. <strong>Independence:</strong> M_{X+Y}(t) = M_X(t) · M_Y(t).</div>
+        </div>
+        <div class="takeaway">
+          <div class="takeaway-num">08</div>
+          <div class="takeaway-text"><strong>MGFs power</strong> the Central Limit Theorem, sums of independent RVs, concentration bounds, and most of theoretical statistics.</div>
+        </div>
+        <div class="takeaway">
+          <div class="takeaway-num">09</div>
+          <div class="takeaway-text"><strong>Limitation:</strong> MGFs don't always exist (heavy tails). For full generality, characteristic functions φ(t) = E[e^(itX)] are used.</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ═══════════════════ MASTER RECAP — ENTIRE MODULE 2.5 ═══════════════════ -->
+  <section class="section reveal">
+    <div class="section-header">
+      <div class="section-num">MASTER RECAP</div>
+      <h2 class="section-title">Module 2.5 — Complete Synthesis</h2>
+      <div class="section-line"></div>
+    </div>
+
+    <div class="concept-block">
+      <div class="sub-section-marker">The full toolkit, now assembled</div>
+      <h3>Six Tools to Summarize Any Random System</h3>
+      <p>Across three parts, Module 2.5 has built the complete vocabulary for compressing random variables into meaningful numbers. Together, these six tools form the language of statistics, finance, ML, and quantitative science.</p>
+      <div class="dual-grid">
+        <div class="dual-cell">
+          <h4>From Part 1 — Single Variable</h4>
+          <ul>
+            <li><strong>E[X]</strong> — long-run average (center of mass)</li>
+            <li><strong>Var(X)</strong> — typical spread around the center</li>
+            <li><strong>σ = √Var(X)</strong> — same as variance but in original units</li>
+          </ul>
+        </div>
+        <div class="dual-cell purple">
+          <h4>From Part 2 — Two Variables</h4>
+          <ul>
+            <li><strong>Cov(X, Y)</strong> — joint motion (scale-dependent)</li>
+            <li><strong>ρ(X, Y)</strong> — scale-free linear association in [−1, +1]</li>
+          </ul>
+        </div>
+        <div class="dual-cell magenta">
+          <h4>From Part 3 — Shape Fingerprints</h4>
+          <ul>
+            <li><strong>γ₁ (skewness)</strong> — asymmetry direction</li>
+            <li><strong>γ₂ (kurtosis)</strong> — tail weight</li>
+            <li><strong>M(t)</strong> — MGF, the complete moment encyclopedia</li>
+          </ul>
+        </div>
+        <div class="dual-cell green">
+          <h4>The Hierarchy</h4>
+          <ul>
+            <li>1st moment → center</li>
+            <li>2nd moment → spread</li>
+            <li>3rd moment → asymmetry</li>
+            <li>4th moment → tail weight</li>
+            <li>All moments → MGF</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+
+    <div class="ai-panel">
+      <div class="ai-head">
+        <div class="ai-avatar">Ξ</div>
+        <div class="ai-meta">
+          <div class="ai-name">QNA-Σ // Master Synthesis</div>
+          <div class="ai-role">Module 2.5 — Complete</div>
+        </div>
+      </div>
+      <div>
+        <div class="takeaway">
+          <div class="takeaway-num">M-01</div>
+          <div class="takeaway-text"><strong>Distributions are too much information.</strong> The whole module exists to compress them down to a handful of meaningful numbers without losing what matters.</div>
+        </div>
+        <div class="takeaway">
+          <div class="takeaway-num">M-02</div>
+          <div class="takeaway-text"><strong>You need at least two numbers per variable.</strong> Mean alone hides spread; variance alone hides direction. Both are the minimum viable summary.</div>
+        </div>
+        <div class="takeaway">
+          <div class="takeaway-num">M-03</div>
+          <div class="takeaway-text"><strong>Linearity of expectation</strong> is the most powerful tool: E[X + Y] = E[X] + E[Y], <em>always</em> — even for dependent variables.</div>
+        </div>
+        <div class="takeaway">
+          <div class="takeaway-num">M-04</div>
+          <div class="takeaway-text"><strong>Variance doesn't add nicely.</strong> Var(X + Y) = Var(X) + Var(Y) + 2·Cov(X, Y). The covariance term is what makes diversification work.</div>
+        </div>
+        <div class="takeaway">
+          <div class="takeaway-num">M-05</div>
+          <div class="takeaway-text"><strong>Correlation is scale-free covariance.</strong> Always in [−1, +1]. Comparable across datasets. ρ = 0 means no linear association — not independence.</div>
+        </div>
+        <div class="takeaway">
+          <div class="takeaway-num">M-06</div>
+          <div class="takeaway-text"><strong>Correlation is not causation.</strong> The single most-violated rule. Establishing causation requires experiments, instruments, or causal graphs — not data alone.</div>
+        </div>
+        <div class="takeaway">
+          <div class="takeaway-num">M-07</div>
+          <div class="takeaway-text"><strong>Higher moments matter.</strong> Skewness reveals asymmetry; kurtosis reveals tail risk. Mean and variance miss both.</div>
+        </div>
+        <div class="takeaway">
+          <div class="takeaway-num">M-08</div>
+          <div class="takeaway-text"><strong>MGFs unify everything.</strong> One function, all moments. They are the algebraic engine behind sums of independent variables and the CLT.</div>
+        </div>
+        <div class="takeaway">
+          <div class="takeaway-num">M-09</div>
+          <div class="takeaway-text"><strong>Where this lives next:</strong> The Central Limit Theorem, sampling distributions, hypothesis testing, confidence intervals, ML loss landscapes, portfolio optimization, RL value functions — every quantitative discipline downstream of probability uses these six tools.</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="capstone-bar">
+      <div class="label">✓ MODULE 2.5 COMPLETE</div>
+      <div class="title">EXPECTATION · VARIANCE · COVARIANCE · CORRELATION · MOMENTS · MGFs</div>
+      <div class="sub">The complete summarization toolkit for random variables. You now have the full vocabulary of quantitative reasoning under uncertainty — the foundation on which every downstream module (sampling, inference, ML, causal analysis) will be built.</div>
+    </div>
+  </section>
+
+  <!-- ═══════════════════ PART NAV (BOTTOM) ═══════════════════ -->
+  <div class="part-nav">
+    <div class="part-nav-item done">
+      <div class="part-nav-label">✓ PART 1 — Complete</div>
+      <div class="part-nav-title">Expectation · Variance · Std Dev</div>
+    </div>
+    <div class="part-nav-item done">
+      <div class="part-nav-label">✓ PART 2 — Complete</div>
+      <div class="part-nav-title">Covariance · Correlation</div>
+    </div>
+    <div class="part-nav-item current">
+      <div class="part-nav-label">✓ PART 3 — Complete</div>
+      <div class="part-nav-title">Moments · MGFs · Master Recap</div>
+    </div>
+  </div>
+
+  <div class="module-footer">⟁ END OF MODULE 2.5 // Full summarization toolkit calibrated · Mean → Variance → Covariance → Correlation → Skewness → Kurtosis → MGFs ⟁</div>
+</div>
+
+<script>
+/* ═══════════════════════════════════════════════════════════
+   PARTICLE BACKGROUND
+   ═══════════════════════════════════════════════════════════ */
+const canvas = document.getElementById('particle-canvas');
+const ctx = canvas.getContext('2d');
+let particles = [];
+function sizeCanvas() {
+  canvas.width = window.innerWidth;
+  canvas.height = window.innerHeight;
+}
+sizeCanvas();
+window.addEventListener('resize', sizeCanvas);
+
+function initParticles() {
+  particles = [];
+  const count = Math.min(60, Math.floor(window.innerWidth / 25));
+  for (let i = 0; i < count; i++) {
+    particles.push({
+      x: Math.random() * canvas.width,
+      y: Math.random() * canvas.height,
+      vx: (Math.random() - 0.5) * 0.4,
+      vy: (Math.random() - 0.5) * 0.4,
+      r: Math.random() * 1.6 + 0.5,
+      hue: Math.random() < 0.5 ? '0,240,255' : '177,77,255'
+    });
+  }
+}
+initParticles();
+window.addEventListener('resize', initParticles);
+
+function drawParticles() {
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+  particles.forEach(p => {
+    p.x += p.vx; p.y += p.vy;
+    if (p.x < 0 || p.x > canvas.width) p.vx *= -1;
+    if (p.y < 0 || p.y > canvas.height) p.vy *= -1;
+    ctx.beginPath();
+    ctx.fillStyle = `rgba(${p.hue}, 0.7)`;
+    ctx.shadowColor = `rgba(${p.hue}, 1)`;
+    ctx.shadowBlur = 12;
+    ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2);
+    ctx.fill();
+  });
+  ctx.shadowBlur = 0;
+  for (let i = 0; i < particles.length; i++) {
+    for (let j = i + 1; j < particles.length; j++) {
+      const dx = particles[i].x - particles[j].x;
+      const dy = particles[i].y - particles[j].y;
+      const d = Math.sqrt(dx*dx + dy*dy);
+      if (d < 130) {
+        ctx.strokeStyle = `rgba(0, 240, 255, ${0.12 * (1 - d/130)})`;
+        ctx.lineWidth = 0.5;
+        ctx.beginPath();
+        ctx.moveTo(particles[i].x, particles[i].y);
+        ctx.lineTo(particles[j].x, particles[j].y);
+        ctx.stroke();
+      }
+    }
+  }
+  requestAnimationFrame(drawParticles);
+}
+drawParticles();
+
+/* ═══════════════════════════════════════════════════════════
+   SHAPE FINGERPRINT EXPLORER
+   ═══════════════════════════════════════════════════════════ */
+const shapeCanvas = document.getElementById('shapeCanvas');
+const sctx = shapeCanvas.getContext('2d');
+let currentShape = 'normal';
+
+// PDFs (each defined on x range [-5, 8] for consistent display)
+const shapes = {
+  normal: {
+    pdf: x => Math.exp(-0.5 * x * x) / Math.sqrt(2 * Math.PI),
+    label: 'NORMAL DISTRIBUTION',
+    stats: { mean: 0, variance: 1, skew: 0, exKurt: 0 },
+    insight: '<strong>Normal distribution:</strong> the gold standard — symmetric (γ₁ = 0) and mesokurtic (excess γ₂ = 0). This is what most introductory statistics assumes. Most real data does not look exactly like this.'
+  },
+  rightSkew: {
+    // Log-normal-like shape on x > 0, shifted
+    pdf: x => {
+      const z = x + 1;
+      if (z <= 0) return 0;
+      const m = 0.4, s = 0.6;
+      return (1 / (z * s * Math.sqrt(2 * Math.PI))) * Math.exp(-Math.pow(Math.log(z) - m, 2) / (2 * s * s));
+    },
+    label: 'RIGHT-SKEWED (e.g., INCOME)',
+    stats: { mean: 0.78, variance: 1.05, skew: 2.10, exKurt: 8.85 },
+    insight: '<strong>Right-skewed:</strong> long right tail, most mass on the left. γ₁ > 0. Classic example: income distributions, insurance claim sizes, internet file sizes. The mean overstates the typical observation.'
+  },
+  leftSkew: {
+    pdf: x => {
+      const z = -x + 1;
+      if (z <= 0) return 0;
+      const m = 0.4, s = 0.6;
+      return (1 / (z * s * Math.sqrt(2 * Math.PI))) * Math.exp(-Math.pow(Math.log(z) - m, 2) / (2 * s * s));
+    },
+    label: 'LEFT-SKEWED',
+    stats: { mean: -0.78, variance: 1.05, skew: -2.10, exKurt: 8.85 },
+    insight: '<strong>Left-skewed:</strong> long left tail, most mass on the right. γ₁ < 0. Examples: age at death in developed countries, exam scores with a low ceiling, time-to-failure in well-engineered components.'
+  },
+  heavy: {
+    // Laplace-like (double exponential)
+    pdf: x => 0.5 * Math.exp(-Math.abs(x)),
+    label: 'HEAVY-TAILED (LAPLACE)',
+    stats: { mean: 0, variance: 2, skew: 0, exKurt: 3 },
+    insight: '<strong>Heavy-tailed:</strong> symmetric like normal (γ₁ = 0) but with much heavier tails. Excess kurtosis = +3 means extreme events are far more frequent than normal would predict. Real-world examples: financial returns, network packet delays, earthquake magnitudes.'
+  },
+  uniform: {
+    pdf: x => (x >= -1.732 && x <= 1.732) ? 1 / (2 * 1.732) : 0,
+    label: 'UNIFORM (LIGHT-TAILED)',
+    stats: { mean: 0, variance: 1, skew: 0, exKurt: -1.2 },
+    insight: '<strong>Uniform:</strong> symmetric and platykurtic (excess γ₂ = −1.2). Tails are <em>thinner</em> than normal — extreme events are essentially impossible (bounded support). Rare in nature; common in engineered systems (rounding errors, discretization noise).'
+  }
+};
+
+function setShape(key) {
+  currentShape = key;
+  document.querySelectorAll('.viz-wrap .btn').forEach(b => b.classList.remove('active'));
+  const all = document.querySelectorAll('.btn-row .btn');
+  all.forEach(b => {
+    if (b.onclick && b.onclick.toString().includes(`'${key}'`)) {
+      b.classList.add('active');
+    }
+  });
+  drawShape();
+}
+
+function drawShape() {
+  const w = shapeCanvas.width, h = shapeCanvas.height;
+  sctx.clearRect(0, 0, w, h);
+  const padL = 60, padR = 30, padT = 50, padB = 50;
+  const plotW = w - padL - padR;
+  const plotH = h - padT - padB;
+
+  const data = shapes[currentShape];
+  const xLo = -5, xHi = 6;
+  const xToPx = x => padL + ((x - xLo) / (xHi - xLo)) * plotW;
+
+  // find ymax
+  let yMax = 0;
+  for (let i = 0; i <= 400; i++) {
+    const x = xLo + (i / 400) * (xHi - xLo);
+    const y = data.pdf(x);
+    if (y > yMax) yMax = y;
+  }
+  yMax *= 1.15;
+  const yToPx = y => padT + plotH - (y / yMax) * plotH;
+
+  // axes
+  sctx.strokeStyle = '#9fb4d6';
+  sctx.lineWidth = 1.2;
+  sctx.beginPath();
+  sctx.moveTo(padL, padT + plotH);
+  sctx.lineTo(padL + plotW, padT + plotH);
+  sctx.stroke();
+
+  // x ticks
+  sctx.fillStyle = '#9fb4d6';
+  sctx.font = '10px JetBrains Mono';
+  sctx.textAlign = 'center';
+  for (let v = -4; v <= 6; v += 2) {
+    sctx.fillText(v.toString(), xToPx(v), padT + plotH + 16);
+  }
+
+  // shaded area under curve
+  sctx.beginPath();
+  sctx.fillStyle = 'rgba(0, 240, 255, 0.15)';
+  sctx.moveTo(xToPx(xLo), yToPx(0));
+  for (let i = 0; i <= 400; i++) {
+    const x = xLo + (i / 400) * (xHi - xLo);
+    sctx.lineTo(xToPx(x), yToPx(data.pdf(x)));
+  }
+  sctx.lineTo(xToPx(xHi), yToPx(0));
+  sctx.closePath();
+  sctx.fill();
+
+  // PDF curve
+  sctx.beginPath();
+  sctx.strokeStyle = '#00f0ff';
+  sctx.lineWidth = 2.5;
+  sctx.shadowColor = '#00f0ff';
+  sctx.shadowBlur = 8;
+  for (let i = 0; i <= 400; i++) {
+    const x = xLo + (i / 400) * (xHi - xLo);
+    const y = data.pdf(x);
+    if (i === 0) sctx.moveTo(xToPx(x), yToPx(y));
+    else sctx.lineTo(xToPx(x), yToPx(y));
+  }
+  sctx.stroke();
+  sctx.shadowBlur = 0;
+
+  // Mean line
+  const meanX = data.stats.mean;
+  sctx.strokeStyle = '#ff2bd6';
+  sctx.lineWidth = 2;
+  sctx.setLineDash([6, 4]);
+  sctx.beginPath();
+  sctx.moveTo(xToPx(meanX), padT);
+  sctx.lineTo(xToPx(meanX), padT + plotH);
+  sctx.stroke();
+  sctx.setLineDash([]);
+  sctx.fillStyle = '#ff2bd6';
+  sctx.font = 'bold 12px JetBrains Mono';
+  sctx.textAlign = 'center';
+  sctx.fillText('μ = ' + meanX.toFixed(2), xToPx(meanX), padT - 8);
+
+  // Title
+  sctx.fillStyle = '#00f0ff';
+  sctx.font = 'bold 12px JetBrains Mono';
+  sctx.textAlign = 'left';
+  sctx.fillText(data.label, padL, padT - 28);
+
+  // Skew/kurt indicator markers — for skewed shapes, mark the tails
+  if (Math.abs(data.stats.skew) > 1) {
+    sctx.fillStyle = '#ffb547';
+    sctx.font = 'bold 11px JetBrains Mono';
+    if (data.stats.skew > 0) {
+      sctx.textAlign = 'left';
+      sctx.fillText('→ LONG RIGHT TAIL (γ₁ > 0)', xToPx(2.5), padT + 30);
+    } else {
+      sctx.textAlign = 'right';
+      sctx.fillText('LONG LEFT TAIL (γ₁ < 0) ←', xToPx(-2.5), padT + 30);
+    }
+  }
+  if (data.stats.exKurt > 1) {
+    sctx.fillStyle = '#ff4d6d';
+    sctx.font = 'bold 11px JetBrains Mono';
+    sctx.textAlign = 'left';
+    sctx.fillText('HEAVY TAILS (excess γ₂ > 0)', padL + 10, padT + plotH - 8);
+  }
+
+  // Update stats display
+  document.getElementById('shapeMean').textContent = data.stats.mean.toFixed(2);
+  document.getElementById('shapeVar').textContent = data.stats.variance.toFixed(2);
+  const skewEl = document.getElementById('shapeSkew');
+  skewEl.textContent = (data.stats.skew >= 0 ? '+' : '') + data.stats.skew.toFixed(2);
+  skewEl.style.color = data.stats.skew > 0.1 ? 'var(--neon-green)' :
+                       data.stats.skew < -0.1 ? 'var(--neon-red)' :
+                       'var(--neon-magenta)';
+  const kurtEl = document.getElementById('shapeKurt');
+  kurtEl.textContent = (data.stats.exKurt >= 0 ? '+' : '') + data.stats.exKurt.toFixed(2);
+  kurtEl.style.color = data.stats.exKurt > 0.5 ? 'var(--neon-red)' :
+                       data.stats.exKurt < -0.5 ? 'var(--neon-green)' :
+                       'var(--neon-amber)';
+
+  document.getElementById('shapeInsight').innerHTML = data.insight;
+}
+drawShape();
+
+/* ═══════════════════════════════════════════════════════════
+   WORKED EXAMPLES — MGFs
+   ═══════════════════════════════════════════════════════════ */
+const mgfEx = {
+  1: `
+    <div class="example-step"><strong>Problem:</strong> Let X ~ Bernoulli(p). Find the MGF and use it to compute E[X] and Var(X).</div>
+    <div class="example-step"><strong>Step 1 — Write the MGF directly:</strong> M(t) = E[e^(tX)] = e^(t·0)·(1−p) + e^(t·1)·p = (1−p) + p·e^t.</div>
+    <div class="example-step"><strong>Step 2 — First derivative:</strong> M'(t) = p·e^t. Evaluate at t = 0: M'(0) = p. So E[X] = <strong style="color:var(--neon-cyan)">p</strong>.</div>
+    <div class="example-step"><strong>Step 3 — Second derivative:</strong> M''(t) = p·e^t. Evaluate at t = 0: M''(0) = p. So E[X²] = p.</div>
+    <div class="example-step"><strong>Step 4 — Variance:</strong> Var(X) = E[X²] − (E[X])² = p − p² = <strong style="color:var(--neon-cyan)">p(1−p)</strong>.</div>
+    <div class="example-step"><strong>Confirmation:</strong> This matches the well-known Bernoulli formulas — but here we got them straight from the MGF in 4 lines.</div>
+  `,
+  2: `
+    <div class="example-step"><strong>Problem:</strong> X ~ Normal(μ, σ²). The MGF is M(t) = exp(μt + σ²t²/2). Use it to verify E[X] = μ and Var(X) = σ².</div>
+    <div class="example-step"><strong>Step 1 — First derivative:</strong> M'(t) = M(t) · (μ + σ²t). (Chain rule on the exponent.)</div>
+    <div class="example-step"><strong>Step 2 — Evaluate at t = 0:</strong> M(0) = e⁰ = 1. So M'(0) = 1 · (μ + 0) = μ. ✓ <strong style="color:var(--neon-cyan)">E[X] = μ</strong>.</div>
+    <div class="example-step"><strong>Step 3 — Second derivative:</strong> M''(t) = M'(t)·(μ + σ²t) + M(t)·σ² = M(t)·(μ + σ²t)² + M(t)·σ².</div>
+    <div class="example-step"><strong>Step 4 — Evaluate at t = 0:</strong> M''(0) = 1·(μ²) + 1·σ² = μ² + σ². So E[X²] = μ² + σ².</div>
+    <div class="example-step"><strong>Step 5 — Variance:</strong> Var(X) = E[X²] − μ² = (μ² + σ²) − μ² = <strong style="color:var(--neon-cyan)">σ²</strong>. ✓</div>
+    <div class="example-step"><strong>Interpretation:</strong> The MGF encodes the entire Normal distribution into one elegant exponential — and differentiating it twice recovers both parameters.</div>
+  `,
+  3: `
+    <div class="example-step"><strong>Problem:</strong> Let X₁, X₂, ..., Xₙ be independent Normal(μ, σ²) random variables. Use MGFs to find the distribution of the sum S = X₁ + X₂ + ... + Xₙ.</div>
+    <div class="example-step"><strong>Step 1 — Each Xᵢ has MGF:</strong> M_{Xᵢ}(t) = exp(μt + σ²t²/2).</div>
+    <div class="example-step"><strong>Step 2 — MGF of independent sum (factor property):</strong> M_S(t) = M_{X₁}(t) · M_{X₂}(t) · ... · M_{Xₙ}(t) = [exp(μt + σ²t²/2)]ⁿ.</div>
+    <div class="example-step"><strong>Step 3 — Simplify using exponent rules:</strong> M_S(t) = exp(n·(μt + σ²t²/2)) = exp(nμ·t + nσ²·t²/2).</div>
+    <div class="example-step"><strong>Step 4 — Recognize the form:</strong> This is the MGF of a Normal distribution with mean <strong style="color:var(--neon-cyan)">nμ</strong> and variance <strong style="color:var(--neon-cyan)">nσ²</strong>.</div>
+    <div class="example-step"><strong>Step 5 — Apply the uniqueness theorem:</strong> Same MGF → same distribution. Therefore S ~ Normal(nμ, nσ²).</div>
+    <div class="example-step"><strong>Conclusion:</strong> The sum of n independent Normal RVs is Normal — proved in 5 lines via MGFs. Without MGFs, this proof requires convolution integrals that take pages. <em>This is the kind of proof that makes the MGF machinery worth the abstraction.</em></div>
+  `
+};
+function showMGFEx(n) {
+  const tabs = document.querySelectorAll('.example-tabs')[0].querySelectorAll('.tab');
+  tabs.forEach((t, i) => t.classList.toggle('active', i === n - 1));
+  document.getElementById('mgfBody').innerHTML = mgfEx[n];
+}
+showMGFEx(1);
+
+/* ── SCROLL REVEAL OBSERVER ── */
+(function() {
+  const reveals = document.querySelectorAll('.reveal');
+  if (!reveals.length) return;
+  const obs = new IntersectionObserver((entries) => {
+    entries.forEach(e => { if (e.isIntersecting) { e.target.classList.add('visible'); obs.unobserve(e.target); } });
+  }, { threshold: 0, rootMargin: '0px 0px -40px 0px' });
+  reveals.forEach(r => obs.observe(r));
+})();
+</script>
+</body>
+</html>

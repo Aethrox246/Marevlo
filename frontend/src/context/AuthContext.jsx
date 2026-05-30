@@ -29,12 +29,13 @@ export function AuthProvider({ children }) {
         localStorage.removeItem('refresh_token');
     }, []);
 
-    /** Make an authenticated API call */
     const apiCall = useCallback(async (path, options = {}) => {
         let token = localStorage.getItem('access_token');
         const makeRequest = async (t) => {
+            // Don't set Content-Type for FormData — the browser must set it with the boundary
+            const isFormData = options.body instanceof FormData;
             const headers = {
-                'Content-Type': 'application/json',
+                ...(isFormData ? {} : { 'Content-Type': 'application/json' }),
                 ...(t ? { Authorization: `Bearer ${t}` } : {}),
                 ...options.headers,
             };
@@ -81,9 +82,7 @@ export function AuthProvider({ children }) {
         return text ? JSON.parse(text) : null;
     }, [logout]);
 
-    /** Refresh profile stats + achievements from backend.
-     *  Uses allSettled so one failing endpoint doesn't drop the others — e.g.
-     *  a broken /achievements shouldn't blank out the avatar. */
+    // allSettled so a broken /achievements doesn't wipe out the avatar URL
     const refreshStats = useCallback(async () => {
         const [statsR, achievR, profR] = await Promise.allSettled([
             apiCall('/profile/stats'),
@@ -120,14 +119,12 @@ export function AuthProvider({ children }) {
         setIsLoading(false);
     }, []);
 
-    // Fetch stats whenever user logs in
     useEffect(() => {
         if (user?.id) {
             refreshStats();
         }
     }, [user?.id, refreshStats]);
 
-    // Background refresh to keep access token alive
     useEffect(() => {
         if (!user) return;
         const interval = setInterval(async () => {
@@ -152,7 +149,6 @@ export function AuthProvider({ children }) {
         return () => clearInterval(interval);
     }, [user, logout]);
 
-    // Refresh profile (presigned avatar/resume URLs) when tab regains focus
     useEffect(() => {
         if (!user) return;
         const onVisible = () => { if (document.visibilityState === 'visible') refreshStats(); };
@@ -178,7 +174,6 @@ export function AuthProvider({ children }) {
         setProfileStats(prev => ({ ...prev, xp: prev.xp + points }));
     };
 
-    /** Update profile fields locally AND persist to backend */
     const updateUser = async (updates) => {
         // Local state update
         setUser(prev => {
@@ -207,18 +202,10 @@ export function AuthProvider({ children }) {
         }
     };
 
-    /** Upload resume file to backend, returns resume_url */
     const uploadResume = async (file) => {
-        const token = localStorage.getItem('access_token');
         const formData = new FormData();
         formData.append('file', file);
-        const resp = await fetch(`${API_BASE}/profile/resume`, {
-            method: 'POST',
-            headers: { Authorization: `Bearer ${token}` },
-            body: formData,
-        });
-        if (!resp.ok) throw new Error('Resume upload failed');
-        const data = await resp.json();
+        const data = await apiCall('/profile/resume', { method: 'POST', body: formData });
         setProfileData(prev => prev ? {
             ...prev,
             resume_url: data.resume_url,
@@ -227,13 +214,6 @@ export function AuthProvider({ children }) {
         return data;
     };
 
-    /**
-     * Upload avatar via 3-step presigned-PUT flow:
-     *   1. Ask backend for a presigned PUT URL.
-     *   2. PUT the file directly to S3.
-     *   3. Tell backend the upload finished so it links the object to the profile.
-     * Returns the updated profile (with `avatar_url` resolved to a presigned GET).
-     */
     const uploadAvatar = async (file) => {
         if (!file.type.startsWith('image/')) {
             throw new Error('Avatar must be an image');
@@ -242,13 +222,11 @@ export function AuthProvider({ children }) {
             throw new Error('Avatar must be 2 MB or smaller');
         }
 
-        // 1. Get presigned URL
         const { upload_url, object_key } = await apiCall('/profile/avatar/upload-url', {
             method: 'POST',
             body: JSON.stringify({ content_type: file.type, size: file.size }),
         });
 
-        // 2. PUT directly to S3 (no Authorization header — the URL itself is the auth)
         const putResp = await fetch(upload_url, {
             method: 'PUT',
             headers: { 'Content-Type': file.type },
@@ -258,7 +236,6 @@ export function AuthProvider({ children }) {
             throw new Error(`S3 upload failed (${putResp.status})`);
         }
 
-        // 3. Confirm — backend verifies object exists and links it
         const updated = await apiCall('/profile/avatar/confirm', {
             method: 'POST',
             body: JSON.stringify({ object_key }),
@@ -268,7 +245,6 @@ export function AuthProvider({ children }) {
         return updated;
     };
 
-    /** Clear the user's avatar (deletes from S3 and unsets the column). */
     const deleteAvatar = async () => {
         const updated = await apiCall('/profile/avatar', { method: 'DELETE' });
         setProfileData(updated);
@@ -276,11 +252,6 @@ export function AuthProvider({ children }) {
         return updated;
     };
 
-    /**
-     * Upload one feed-post image to S3 via the same presigned-PUT flow as avatars.
-     * Returns the S3 object key the caller should include in the post-create payload
-     * (under `image_object_keys`).
-     */
     const uploadFeedImage = async (file) => {
         if (!file.type.startsWith('image/')) {
             throw new Error('Image must be JPEG, PNG, or WebP');
