@@ -172,7 +172,7 @@ export default function TopicProblems() {
                                 return (
                                     <button
                                         key={problem.id}
-                                        onClick={() => navigate(`/ide/${problem.id}`)}
+                                        onClick={() => navigate(`/problems/${topicId}/${problem.id}`)}
                                         className="w-full grid items-center px-6 py-4 text-left group transition-all"
                                         style={{
                                             gridTemplateColumns: '48px 1fr 110px 60px',

@@ -1,5 +1,12 @@
-"""Bug report HTTP endpoints."""
+"""Bug report HTTP endpoints (minimal, fixed).
+
+This file had merge/format corruption; provide a minimal working endpoint
+that accepts a form `title` and `description`, creates a `BugReport` row,
+and returns the id and status. Screenshot/upload is omitted here.
+"""
 from __future__ import annotations
+
+import logging
 
 from fastapi import APIRouter, Depends, Form, HTTPException, Request
 from pydantic import BaseModel
