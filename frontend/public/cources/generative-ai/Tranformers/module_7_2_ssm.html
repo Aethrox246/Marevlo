@@ -1,0 +1,1526 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Module 7.2 — SSMs &amp; Mamba · Marevlo Transformer Track</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;500&family=Syne:wght@500;700;800&family=Inter+Tight:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg-0: #05070d;
+    --bg-1: #080b14;
+    --bg-2: #0d1220;
+    --bg-card: #0a0f1c;
+    --bg-code: #06090f;
+    --line: rgba(120, 200, 255, 0.18);
+    --line-strong: rgba(120, 200, 255, 0.55);
+    --glow: #5fd4ff;
+    --glow-soft: #7af0ff;
+    --accent: #ff4d8a;
+    --accent-2: #b48cff;
+    --accent-yellow: #f0c674;
+    --green: #7fc28a;
+    --red: #e26a6a;
+    --text: #e6f1ff;
+    --muted: #7a8aa3;
+    --text-dim: #aebbd1;
+    --text-faint: #6a7a93;
+    --mono: 'JetBrains Mono', ui-monospace, monospace;
+    --display: 'Syne', sans-serif;
+    --body: 'Inter Tight', sans-serif;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  html { scroll-behavior: smooth; }
+  html, body {
+    background: var(--bg-0);
+    color: var(--text);
+    font-family: var(--body);
+    font-size: 16px;
+    line-height: 1.7;
+    overflow-x: hidden;
+    min-height: 100vh;
+  }
+
+  /* ---------- Background neural circuit ---------- */
+  .circuit-bg {
+    position: fixed;
+    inset: 0;
+    z-index: 0;
+    pointer-events: none;
+    background:
+      radial-gradient(ellipse 80% 60% at 20% 10%, rgba(95, 212, 255, 0.08), transparent 60%),
+      radial-gradient(ellipse 70% 50% at 85% 90%, rgba(180, 140, 255, 0.07), transparent 60%),
+      radial-gradient(ellipse 60% 40% at 50% 50%, rgba(255, 77, 138, 0.04), transparent 70%),
+      var(--bg-0);
+  }
+  .circuit-bg svg {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    opacity: 0.95;
+  }
+  .circuit-bg::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background-image:
+      linear-gradient(rgba(120,200,255,0.03) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(120,200,255,0.03) 1px, transparent 1px);
+    background-size: 60px 60px;
+    mask-image: radial-gradient(ellipse at center, black 30%, transparent 80%);
+    -webkit-mask-image: radial-gradient(ellipse at center, black 30%, transparent 80%);
+  }
+
+  .grain {
+    position: fixed;
+    inset: 0;
+    z-index: 1;
+    pointer-events: none;
+    opacity: 0.04;
+    mix-blend-mode: overlay;
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='3'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  }
+
+  /* ---------- Layout ---------- */
+  .wrap {
+    position: relative;
+    z-index: 2;
+    max-width: 1280px;
+    margin: 0 auto;
+    padding: 48px 56px 96px;
+  }
+
+  /* ---------- Top bar ---------- */
+  .topbar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-family: var(--mono);
+    font-size: 11px;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    color: var(--muted);
+    padding-bottom: 24px;
+    border-bottom: 1px solid var(--line);
+  }
+  .topbar .left { display: flex; gap: 28px; align-items: center; }
+  .topbar .dot {
+    width: 6px; height: 6px; border-radius: 50%;
+    background: var(--glow);
+    box-shadow: 0 0 10px var(--glow), 0 0 20px var(--glow);
+    animation: pulse 2s ease-in-out infinite;
+  }
+  @keyframes pulse {
+    0%, 100% { opacity: 1; transform: scale(1); }
+    50% { opacity: 0.5; transform: scale(0.85); }
+  }
+
+  /* ---------- Hero ---------- */
+  .hero {
+    margin-top: 72px;
+    display: grid;
+    grid-template-columns: 1.3fr 1fr;
+    gap: 80px;
+    align-items: end;
+  }
+  .module-tag {
+    font-family: var(--mono);
+    font-size: 12px;
+    letter-spacing: 0.3em;
+    text-transform: uppercase;
+    color: var(--glow);
+    margin-bottom: 24px;
+    display: inline-flex;
+    align-items: center;
+    gap: 14px;
+  }
+  .module-tag::before {
+    content: '';
+    width: 28px; height: 1px;
+    background: var(--glow);
+    box-shadow: 0 0 6px var(--glow);
+  }
+  h1.title {
+    font-family: var(--display);
+    font-weight: 800;
+    font-size: clamp(44px, 6.5vw, 84px);
+    line-height: 0.95;
+    letter-spacing: -0.03em;
+    color: var(--text);
+  }
+  h1.title .accent {
+    background: linear-gradient(120deg, var(--glow), var(--accent-2) 60%, var(--accent));
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+    font-style: italic;
+    font-weight: 700;
+  }
+  h1.title .line2 { display: block; opacity: 0.92; }
+  .lede {
+    font-size: 16.5px;
+    line-height: 1.65;
+    color: var(--text-dim);
+    max-width: 460px;
+    border-left: 1px solid var(--line);
+    padding-left: 24px;
+  }
+  .lede strong { color: var(--text); font-weight: 500; }
+  .lede em { color: var(--glow-soft); font-style: italic; }
+
+  /* ---------- Meta strip ---------- */
+  .meta-strip {
+    margin-top: 64px;
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 1px;
+    background: var(--line);
+    border-top: 1px solid var(--line);
+    border-bottom: 1px solid var(--line);
+  }
+  .meta-cell { background: var(--bg-0); padding: 22px 24px; }
+  .meta-cell .label {
+    font-family: var(--mono);
+    font-size: 10px;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin-bottom: 10px;
+  }
+  .meta-cell .value {
+    font-family: var(--display);
+    font-size: 20px;
+    font-weight: 700;
+    color: var(--text);
+    letter-spacing: -0.01em;
+  }
+  .meta-cell .value span.unit {
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--glow);
+    margin-left: 6px;
+    font-weight: 400;
+  }
+
+  /* ---------- Body grid ---------- */
+  .body-grid {
+    margin-top: 88px;
+    display: grid;
+    grid-template-columns: 240px 1fr;
+    gap: 64px;
+  }
+  .sidebar {
+    font-family: var(--mono);
+    font-size: 11px;
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    color: var(--muted);
+    position: sticky;
+    top: 40px;
+    align-self: start;
+  }
+  .sidebar h4 { color: var(--glow); font-weight: 400; margin-bottom: 18px; }
+  .sidebar ul { list-style: none; }
+  .sidebar li {
+    padding: 10px 0;
+    border-top: 1px solid var(--line);
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    cursor: pointer;
+    transition: color 0.2s ease;
+  }
+  .sidebar li:last-child { border-bottom: 1px solid var(--line); }
+  .sidebar li .num { color: var(--glow); }
+  .sidebar li:hover { color: var(--text); }
+  .sidebar li.active { color: var(--text); }
+
+  /* ---------- Content sections ---------- */
+  .content section { margin-bottom: 80px; }
+  .content h2 {
+    font-family: var(--display);
+    font-weight: 700;
+    font-size: 32px;
+    letter-spacing: -0.015em;
+    line-height: 1.15;
+    margin-bottom: 24px;
+    padding-top: 20px;
+    position: relative;
+    color: var(--text);
+  }
+  .content h2::before {
+    content: attr(data-num);
+    position: absolute;
+    top: -2px;
+    left: 0;
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--glow);
+    letter-spacing: 0.2em;
+    font-weight: 400;
+  }
+  .content h3 {
+    font-family: var(--display);
+    font-size: 22px;
+    font-weight: 700;
+    letter-spacing: -0.01em;
+    margin: 40px 0 18px;
+    color: var(--text);
+  }
+  .content h4 {
+    font-family: var(--display);
+    font-size: 17px;
+    font-weight: 700;
+    margin: 28px 0 12px;
+    color: var(--text);
+  }
+  .content p {
+    font-size: 15.5px;
+    line-height: 1.75;
+    color: var(--text-dim);
+    margin-bottom: 18px;
+    max-width: 68ch;
+  }
+  .content p strong { color: var(--glow-soft); font-weight: 600; }
+  .content p em { color: var(--text); font-style: italic; }
+
+  /* ---------- Equation block ---------- */
+  .eq {
+    margin: 28px 0;
+    padding: 28px 32px;
+    background: linear-gradient(180deg, rgba(120,200,255,0.04), rgba(120,200,255,0.01));
+    border: 1px solid var(--line);
+    font-family: var(--body);
+    font-size: 19px;
+    font-style: italic;
+    text-align: center;
+    color: var(--text);
+    line-height: 1.6;
+    position: relative;
+  }
+  .eq::before {
+    content: '';
+    position: absolute;
+    top: -1px; left: -1px;
+    width: 14px; height: 14px;
+    border-top: 1px solid var(--glow);
+    border-left: 1px solid var(--glow);
+  }
+  .eq::after {
+    content: '';
+    position: absolute;
+    bottom: -1px; right: -1px;
+    width: 14px; height: 14px;
+    border-bottom: 1px solid var(--glow);
+    border-right: 1px solid var(--glow);
+  }
+  .eq .num {
+    position: absolute;
+    right: 18px;
+    top: 50%;
+    transform: translateY(-50%);
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--text-faint);
+    font-style: normal;
+  }
+
+  /* ---------- Calc box ---------- */
+  .calcbox {
+    background: var(--bg-card);
+    border: 1px solid var(--line);
+    border-left: 2px solid var(--accent-yellow);
+    padding: 28px 32px;
+    margin: 32px 0;
+    position: relative;
+  }
+  .calcbox .ch {
+    font-family: var(--mono);
+    font-size: 11px;
+    font-weight: 500;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    color: var(--accent-yellow);
+    margin-bottom: 18px;
+  }
+  .calcbox .step {
+    padding: 12px 0 12px 40px;
+    border-bottom: 1px solid var(--line);
+    position: relative;
+    font-family: var(--body);
+    font-size: 14.5px;
+    color: var(--text);
+    line-height: 1.65;
+  }
+  .calcbox .step:last-child { border-bottom: none; }
+  .calcbox .step::before {
+    content: attr(data-s);
+    position: absolute;
+    left: 0;
+    top: 12px;
+    font-family: var(--mono);
+    font-size: 12px;
+    color: var(--accent-yellow);
+    font-weight: 500;
+  }
+  .calcbox .step .val {
+    display: block;
+    font-family: var(--mono);
+    font-size: 12.5px;
+    color: var(--muted);
+    margin-top: 6px;
+    line-height: 1.6;
+  }
+  .calcbox .step strong { color: var(--glow-soft); font-weight: 600; }
+
+  /* ---------- Insight box ---------- */
+  .insight {
+    background: linear-gradient(180deg, rgba(120,200,255,0.04), transparent);
+    border: 1px solid var(--line);
+    padding: 28px 32px;
+    margin: 32px 0;
+    font-family: var(--body);
+    position: relative;
+  }
+  .insight::before {
+    content: '';
+    position: absolute;
+    top: -1px; left: -1px;
+    width: 14px; height: 14px;
+    border-top: 1px solid var(--glow);
+    border-left: 1px solid var(--glow);
+  }
+  .insight .key {
+    font-family: var(--mono);
+    font-size: 10px;
+    letter-spacing: 0.28em;
+    text-transform: uppercase;
+    font-weight: 500;
+    margin-bottom: 12px;
+    color: var(--glow);
+  }
+  .insight p { font-size: 16px; line-height: 1.6; color: var(--text); font-weight: 400; margin: 0; max-width: none; }
+
+  /* ---------- Pitfall ---------- */
+  .pitfall {
+    background: linear-gradient(135deg, rgba(226,106,106,0.06), transparent);
+    border: 1px solid rgba(226,106,106,0.28);
+    border-left: 3px solid var(--red);
+    padding: 26px 32px;
+    margin: 32px 0;
+  }
+  .pitfall .lbl {
+    font-family: var(--mono);
+    font-size: 10px;
+    letter-spacing: 0.25em;
+    text-transform: uppercase;
+    font-weight: 500;
+    color: var(--red);
+    margin-bottom: 10px;
+  }
+  .pitfall h4 { margin: 0 0 10px; font-size: 17px; color: var(--text); }
+  .pitfall p { font-size: 14.5px; color: var(--text-dim); margin: 0; max-width: none; }
+
+  /* ---------- CineMatch ---------- */
+  .cinematch {
+    background: linear-gradient(135deg, rgba(255,77,138,0.08), transparent 80%);
+    border: 1px solid rgba(255,77,138,0.30);
+    border-left: 3px solid var(--accent);
+    padding: 32px 36px;
+    margin: 40px 0;
+    position: relative;
+  }
+  .cinematch .tag {
+    position: absolute;
+    top: -10px;
+    left: 24px;
+    background: var(--bg-0);
+    color: var(--accent);
+    font-family: var(--mono);
+    font-size: 10px;
+    font-weight: 500;
+    letter-spacing: 0.25em;
+    padding: 0 12px;
+    text-transform: uppercase;
+  }
+  .cinematch h4 { font-family: var(--display); font-size: 20px; font-weight: 700; margin-bottom: 14px; color: var(--text); }
+  .cinematch p { color: var(--text-dim); margin-bottom: 12px; font-size: 15px; max-width: none; }
+  .cinematch p:last-child { margin-bottom: 0; }
+  .cinematch p strong { color: var(--accent); }
+
+  /* ---------- Historical ---------- */
+  .historical {
+    background: linear-gradient(135deg, rgba(180,140,255,0.06), transparent);
+    border: 1px solid rgba(180,140,255,0.30);
+    border-left: 3px solid var(--accent-2);
+    padding: 32px 36px;
+    margin: 40px 0;
+    position: relative;
+  }
+  .historical .tag {
+    position: absolute;
+    top: -10px;
+    left: 24px;
+    background: var(--bg-0);
+    color: var(--accent-2);
+    font-family: var(--mono);
+    font-size: 10px;
+    font-weight: 500;
+    letter-spacing: 0.25em;
+    padding: 0 12px;
+    text-transform: uppercase;
+  }
+  .historical h4 { font-family: var(--display); font-size: 20px; font-weight: 700; margin-bottom: 14px; color: var(--text); }
+  .historical p { color: var(--text-dim); margin-bottom: 12px; font-size: 15px; max-width: none; }
+  .historical p:last-child { margin-bottom: 0; }
+
+  /* ---------- Phase done ---------- */
+  .phase-done {
+    background: linear-gradient(135deg, rgba(127,194,138,0.08), transparent);
+    border: 1px solid rgba(127,194,138,0.30);
+    border-left: 3px solid var(--green);
+    padding: 36px 40px;
+    margin: 56px 0;
+    position: relative;
+  }
+  .phase-done .tag {
+    position: absolute;
+    top: -10px;
+    left: 24px;
+    background: var(--bg-0);
+    color: var(--green);
+    font-family: var(--mono);
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 0.30em;
+    padding: 0 14px;
+    text-transform: uppercase;
+  }
+  .phase-done h4 { font-family: var(--display); font-size: 22px; font-weight: 700; margin-bottom: 18px; color: var(--text); }
+  .phase-done p { color: var(--text-dim); font-size: 15px; margin-bottom: 14px; line-height: 1.7; max-width: none; }
+  .phase-done p:last-child { margin-bottom: 0; }
+  .phase-done strong { color: var(--green); }
+
+  /* ---------- Diagrams ---------- */
+  .diagram-wrap { margin: 48px 0; }
+  .diagram-wrap svg {
+    width: 100%;
+    height: auto;
+    display: block;
+    background: linear-gradient(180deg, rgba(120,200,255,0.025), rgba(120,200,255,0.005));
+    border: 1px solid var(--line);
+    padding: 24px;
+  }
+  .caption {
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--muted);
+    margin-top: 14px;
+    text-align: center;
+    letter-spacing: 0.05em;
+    line-height: 1.6;
+  }
+  .caption b { color: var(--glow); font-weight: 500; }
+
+  /* ---------- Table ---------- */
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 28px 0;
+    font-family: var(--mono);
+    font-size: 13.5px;
+    background: var(--bg-card);
+    border: 1px solid var(--line);
+  }
+  th, td {
+    padding: 14px 18px;
+    text-align: left;
+    border-bottom: 1px solid var(--line);
+  }
+  th {
+    font-family: var(--mono);
+    font-weight: 500;
+    font-size: 10px;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    color: var(--glow);
+    background: rgba(120,200,255,0.04);
+  }
+  td { color: var(--text); }
+  td strong { color: var(--glow-soft); font-weight: 600; }
+  td.win { color: var(--green); font-weight: 600; }
+  tr:last-child td { border-bottom: none; }
+
+  /* ---------- MCQ ---------- */
+  .mcq {
+    background: linear-gradient(180deg, rgba(120,200,255,0.03), transparent);
+    border: 1px solid var(--line);
+    border-left: 3px solid var(--accent-yellow);
+    padding: 28px 32px;
+    margin: 36px 0;
+    position: relative;
+  }
+  .mcq .mh {
+    font-family: var(--mono);
+    font-size: 10px;
+    letter-spacing: 0.25em;
+    text-transform: uppercase;
+    font-weight: 500;
+    color: var(--accent-yellow);
+    margin-bottom: 16px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+  .mcq .mh .qnum {
+    font-family: var(--mono);
+    color: var(--text-faint);
+    font-size: 11px;
+    letter-spacing: 0.1em;
+    font-weight: 400;
+  }
+  .mcq .mq {
+    font-family: var(--display);
+    font-size: 18px;
+    font-weight: 500;
+    color: var(--text);
+    line-height: 1.5;
+    margin-bottom: 22px;
+    letter-spacing: -0.005em;
+  }
+  .mcq .mq code {
+    font-family: var(--mono);
+    font-size: 15px;
+    background: var(--bg-code);
+    padding: 2px 8px;
+    color: var(--glow);
+    border: 1px solid var(--line);
+    font-weight: 400;
+  }
+  .mcq .opts { display: flex; flex-direction: column; gap: 10px; }
+  .mcq .opt {
+    background: var(--bg-card);
+    border: 1px solid var(--line);
+    padding: 14px 18px;
+    cursor: pointer;
+    font-family: var(--body);
+    font-size: 14.5px;
+    color: var(--text-dim);
+    transition: all 0.18s;
+    display: flex;
+    align-items: flex-start;
+    gap: 14px;
+    line-height: 1.55;
+  }
+  .mcq .opt:hover {
+    border-color: var(--line-strong);
+    background: rgba(120,200,255,0.04);
+    color: var(--text);
+  }
+  .mcq .opt .key {
+    font-family: var(--mono);
+    font-size: 12px;
+    color: var(--muted);
+    font-weight: 500;
+    min-width: 18px;
+    margin-top: 2px;
+  }
+  .mcq .opt .text { flex: 1; }
+  .mcq .opt code {
+    font-family: var(--mono);
+    font-size: 13px;
+    background: var(--bg-code);
+    padding: 1px 6px;
+    color: var(--glow);
+    border: 1px solid var(--line);
+  }
+  .mcq .opt.correct {
+    border-color: var(--green);
+    background: linear-gradient(90deg, rgba(127,194,138,0.10), transparent);
+    color: var(--text);
+  }
+  .mcq .opt.correct .key { color: var(--green); }
+  .mcq .opt.wrong {
+    border-color: var(--red);
+    background: linear-gradient(90deg, rgba(226,106,106,0.10), transparent);
+    color: var(--text);
+  }
+  .mcq .opt.wrong .key { color: var(--red); }
+  .mcq .opt.disabled { cursor: default; }
+  .mcq .opt.disabled:hover {
+    border-color: var(--line);
+    background: var(--bg-card);
+  }
+  .mcq .opt.correct.disabled:hover {
+    border-color: var(--green);
+    background: linear-gradient(90deg, rgba(127,194,138,0.10), transparent);
+  }
+  .mcq .opt.wrong.disabled:hover {
+    border-color: var(--red);
+    background: linear-gradient(90deg, rgba(226,106,106,0.10), transparent);
+  }
+  .mcq .feedback {
+    margin-top: 20px;
+    padding: 20px 24px;
+    background: var(--bg-code);
+    border-left: 2px solid var(--glow);
+    font-family: var(--body);
+    font-size: 14.5px;
+    line-height: 1.7;
+    color: var(--text-dim);
+    display: none;
+  }
+  .mcq .feedback.show { display: block; }
+  .mcq .feedback .verdict {
+    font-family: var(--mono);
+    font-size: 10px;
+    letter-spacing: 0.28em;
+    text-transform: uppercase;
+    font-weight: 500;
+    margin-bottom: 10px;
+    display: block;
+  }
+  .mcq .feedback.right .verdict { color: var(--green); }
+  .mcq .feedback.wrong .verdict { color: var(--red); }
+  .mcq .feedback strong { color: var(--text); font-weight: 600; }
+  .mcq .feedback code {
+    font-family: var(--mono);
+    font-size: 13px;
+    background: rgba(120,200,255,0.05);
+    padding: 1px 6px;
+    color: var(--glow);
+    border: 1px solid var(--line);
+  }
+
+  /* ---------- Checkpoint ---------- */
+  .checkpoint {
+    background: linear-gradient(180deg, rgba(120,200,255,0.04), transparent);
+    border: 1px solid var(--line-strong);
+    padding: 36px;
+    margin: 56px 0;
+    position: relative;
+  }
+  .checkpoint::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 2px;
+    background: linear-gradient(90deg, var(--glow), var(--accent-2), var(--accent));
+  }
+  .checkpoint h4 {
+    font-family: var(--mono);
+    font-size: 11px;
+    letter-spacing: 0.28em;
+    text-transform: uppercase;
+    color: var(--glow);
+    font-weight: 500;
+    margin-bottom: 24px;
+  }
+  .checkpoint ol { list-style: none; counter-reset: item; }
+  .checkpoint li {
+    counter-increment: item;
+    padding: 14px 0 14px 48px;
+    border-bottom: 1px solid var(--line);
+    position: relative;
+    font-family: var(--body);
+    font-size: 15px;
+    color: var(--text);
+    line-height: 1.55;
+  }
+  .checkpoint li:last-child { border-bottom: none; }
+  .checkpoint li::before {
+    content: counter(item, decimal-leading-zero);
+    position: absolute;
+    left: 0;
+    top: 14px;
+    font-family: var(--mono);
+    font-size: 12px;
+    color: var(--glow);
+    font-weight: 400;
+  }
+  /* ---------- Learn resources ---------- */
+  .learn-intro {
+    color: var(--text-dim);
+    max-width: 62ch;
+    margin-bottom: 34px;
+  }
+  .resource-stack {
+    display: grid;
+    gap: 18px;
+    margin: 34px 0 10px;
+  }
+  .resource-card {
+    background: linear-gradient(135deg, rgba(120,200,255,0.055), rgba(180,140,255,0.035) 55%, rgba(255,77,138,0.025));
+    border: 1px solid var(--line);
+    padding: 26px 28px;
+    position: relative;
+    overflow: hidden;
+  }
+  .resource-card::before {
+    content: '';
+    position: absolute;
+    inset: -1px;
+    border: 1px solid transparent;
+    pointer-events: none;
+    background: linear-gradient(120deg, rgba(95,212,255,0.65), transparent 42%, rgba(255,77,138,0.45)) border-box;
+    mask: linear-gradient(#000 0 0) padding-box, linear-gradient(#000 0 0);
+    -webkit-mask: linear-gradient(#000 0 0) padding-box, linear-gradient(#000 0 0);
+    mask-composite: exclude;
+    -webkit-mask-composite: xor;
+  }
+  .resource-head {
+    display: grid;
+    grid-template-columns: 42px 1fr;
+    gap: 16px;
+    align-items: center;
+    margin-bottom: 18px;
+  }
+  .resource-icon {
+    width: 34px;
+    height: 34px;
+    display: grid;
+    place-items: center;
+    border: 1px solid rgba(95,212,255,0.55);
+    background: rgba(95,212,255,0.07);
+    color: var(--glow);
+    font-family: var(--mono);
+    font-size: 16px;
+    line-height: 1;
+  }
+  .resource-card.canonical .resource-icon {
+    border-color: rgba(180,140,255,0.65);
+    background: rgba(180,140,255,0.08);
+    color: var(--accent-2);
+  }
+  .resource-card.repo .resource-icon {
+    border-color: rgba(255,77,138,0.62);
+    background: rgba(255,77,138,0.07);
+    color: var(--accent);
+  }
+  .resource-kicker {
+    font-family: var(--mono);
+    font-size: 10px;
+    letter-spacing: 0.24em;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin-bottom: 3px;
+  }
+  .resource-card h3 {
+    margin: 0;
+    font-size: 21px;
+    line-height: 1.15;
+  }
+  .resource-title {
+    display: block;
+    font-family: var(--display);
+    font-size: 18px;
+    font-weight: 700;
+    line-height: 1.35;
+    color: var(--glow-soft);
+    margin-bottom: 8px;
+    text-decoration: none;
+  }
+  .resource-card.canonical .resource-title { color: var(--accent-2); }
+  .resource-card.repo .resource-title { color: var(--accent); }
+  .resource-card p {
+    max-width: none;
+    margin-bottom: 18px;
+    font-size: 14.5px;
+    color: var(--text-dim);
+  }
+  .resource-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px;
+  }
+  .resource-link {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 42px;
+    padding: 0 18px;
+    border: 1px solid rgba(95,212,255,0.65);
+    color: var(--glow);
+    background: rgba(95,212,255,0.04);
+    font-family: var(--mono);
+    font-size: 11px;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    text-decoration: none;
+    transition: border-color 0.18s ease, background 0.18s ease, color 0.18s ease;
+  }
+  .resource-link:hover {
+    border-color: var(--glow);
+    background: rgba(95,212,255,0.10);
+    color: var(--text);
+  }
+  .resource-card.canonical .resource-link {
+    border-color: rgba(180,140,255,0.70);
+    color: var(--accent-2);
+    background: rgba(180,140,255,0.04);
+  }
+  .resource-card.canonical .resource-link:hover {
+    border-color: var(--accent-2);
+    background: rgba(180,140,255,0.10);
+    color: var(--text);
+  }
+  .resource-card.repo .resource-link {
+    border-color: rgba(255,77,138,0.72);
+    color: var(--accent);
+    background: rgba(255,77,138,0.04);
+  }
+  .resource-card.repo .resource-link:hover {
+    border-color: var(--accent);
+    background: rgba(255,77,138,0.10);
+    color: var(--text);
+  }
+
+  /* ---------- Interactive box ---------- */
+  .ibox {
+    background: var(--bg-card);
+    border: 1px solid var(--line-strong);
+    padding: 32px;
+    margin: 40px 0;
+    position: relative;
+    overflow: hidden;
+  }
+  .ibox::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 2px;
+    background: linear-gradient(90deg, var(--accent), var(--accent-2), var(--glow));
+  }
+  .ibox .ilbl {
+    font-family: var(--mono);
+    font-size: 10px;
+    letter-spacing: 0.28em;
+    text-transform: uppercase;
+    color: var(--glow);
+    font-weight: 500;
+    margin-bottom: 16px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  .ibox .ilbl .dot {
+    display: inline-block;
+    width: 6px; height: 6px;
+    background: var(--glow);
+    border-radius: 50%;
+    box-shadow: 0 0 8px var(--glow);
+    animation: pulse 2s infinite;
+  }
+  .ibox .idesc {
+    font-family: var(--body);
+    font-size: 14.5px;
+    color: var(--text-dim);
+    margin-bottom: 22px;
+    line-height: 1.65;
+  }
+
+  /* ---------- Inline code ---------- */
+  code.inline {
+    font-family: var(--mono);
+    font-size: 14px;
+    background: var(--bg-code);
+    padding: 2px 8px;
+    color: var(--glow);
+    border: 1px solid var(--line);
+  }
+
+  /* ---------- Code block ---------- */
+  pre {
+    background: var(--bg-code);
+    border: 1px solid var(--line);
+    border-left: 2px solid var(--glow);
+    padding: 24px 28px;
+    margin: 28px 0;
+    overflow-x: auto;
+    font-family: var(--mono);
+    font-size: 13.5px;
+    line-height: 1.65;
+    position: relative;
+  }
+  pre::before {
+    content: 'PYTHON';
+    position: absolute;
+    top: 8px;
+    right: 14px;
+    font-family: var(--mono);
+    font-size: 9px;
+    letter-spacing: 0.2em;
+    color: var(--text-faint);
+    font-weight: 500;
+  }
+  pre code { color: #d8e2f0; }
+  .k { color: #ff4d8a; font-weight: 500; }
+  .s { color: #b9d8a8; }
+  .n { color: #f0c674; }
+  .c { color: #6a7a93; font-style: italic; }
+  .f { color: #5fd4ff; }
+  .v { color: #b48cff; }
+
+  /* ---------- Footer ---------- */
+  .footer-bar {
+    margin-top: 72px;
+    padding-top: 24px;
+    border-top: 1px solid var(--line);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-family: var(--mono);
+    font-size: 11px;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    color: var(--muted);
+  }
+  .footer-bar .prev-link, .footer-bar .next-link {
+    text-decoration: none;
+    color: var(--muted);
+    display: inline-flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+  .footer-bar .next-link { align-items: flex-end; }
+  .footer-bar .lbl {
+    font-family: var(--mono);
+    font-size: 10px;
+    letter-spacing: 0.25em;
+    color: var(--text-faint);
+  }
+  .footer-bar .ttl {
+    font-family: var(--display);
+    font-size: 16px;
+    color: var(--text);
+    font-weight: 700;
+    text-transform: none;
+    letter-spacing: -0.01em;
+  }
+  .footer-bar .next-link .ttl { color: var(--glow); }
+  .footer-bar .next-link .ttl::after { content: ' →'; }
+  .footer-bar .prev-link .ttl::before { content: '← '; }
+
+  /* ---------- Entrance animations ---------- */
+  .fade-in { opacity: 0; transform: translateY(14px); animation: fadeIn 0.9s ease forwards; }
+  .d1 { animation-delay: 0.1s; }
+  .d2 { animation-delay: 0.25s; }
+  .d3 { animation-delay: 0.4s; }
+  .d4 { animation-delay: 0.55s; }
+  .d5 { animation-delay: 0.7s; }
+  .d6 { animation-delay: 0.85s; }
+  @keyframes fadeIn { to { opacity: 1; transform: translateY(0); } }
+
+  .draw-path {
+    stroke-dasharray: 800;
+    stroke-dashoffset: 800;
+    animation: draw 6s ease-out forwards;
+  }
+  @keyframes draw { to { stroke-dashoffset: 0; } }
+
+  .node-pulse { animation: nodePulse 3s ease-in-out infinite; transform-origin: center; transform-box: fill-box; }
+  @keyframes nodePulse {
+    0%, 100% { opacity: 0.6; r: 2.5; }
+    50% { opacity: 1; r: 3.8; }
+  }
+
+  @media (max-width: 960px) {
+    .wrap { padding: 32px 24px 64px; }
+    .hero { grid-template-columns: 1fr; gap: 40px; }
+    .meta-strip { grid-template-columns: repeat(2, 1fr); }
+    .body-grid { grid-template-columns: 1fr; gap: 32px; }
+    .sidebar { position: static; }
+    .content h2 { font-size: 26px; }
+    .calcbox, .insight, .pitfall, .cinematch, .historical, .mcq, .ibox, .checkpoint, .resource-card { padding: 22px 20px; }
+    .resource-head { grid-template-columns: 1fr; gap: 12px; }
+  }
+
+  /* ---------- Readability + sidebar anchors ---------- */
+  .content section { scroll-margin-top: 36px; }
+  .sidebar a {
+    color: inherit;
+    text-decoration: none;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    width: 100%;
+  }
+  .sidebar a:focus-visible {
+    outline: 1px solid var(--glow);
+    outline-offset: 4px;
+  }
+  .eq,
+  .calcbox,
+  .insight,
+  .pitfall,
+  .cinematch,
+  .historical,
+  .mcq,
+  .checkpoint,
+  .ibox,
+  .resource-card,
+  .phase-done,
+  .diagram-wrap svg,
+  table,
+  pre {
+    background-color: #090f1d;
+  }
+  .eq { background: linear-gradient(180deg, rgba(120,200,255,0.10), rgba(120,200,255,0.04)), #090f1d; }
+  .calcbox { background: linear-gradient(180deg, rgba(240,198,116,0.07), rgba(120,200,255,0.03)), #090f1d; }
+  .insight { background: linear-gradient(180deg, rgba(120,200,255,0.10), rgba(120,200,255,0.035)), #090f1d; }
+  .pitfall { background: linear-gradient(135deg, rgba(226,106,106,0.12), rgba(120,200,255,0.025)), #090f1d; }
+  .cinematch { background: linear-gradient(135deg, rgba(255,77,138,0.13), rgba(120,200,255,0.025)), #090f1d; }
+  .historical { background: linear-gradient(135deg, rgba(180,140,255,0.13), rgba(120,200,255,0.025)), #090f1d; }
+  .mcq { background: linear-gradient(180deg, rgba(120,200,255,0.085), rgba(120,200,255,0.025)), #090f1d; }
+  .mcq .opt { background: #0b1221; }
+  .mcq .feedback { background: #070b14; }
+  .checkpoint { background: linear-gradient(180deg, rgba(120,200,255,0.09), rgba(120,200,255,0.025)), #090f1d; }
+  .ibox { background: #090f1d; }
+  .resource-card { background: linear-gradient(135deg, rgba(120,200,255,0.10), rgba(180,140,255,0.075) 55%, rgba(255,77,138,0.055)), #090f1d; }
+  .phase-done { background: linear-gradient(135deg, rgba(120,200,255,0.10), rgba(255,77,138,0.055)), #090f1d; }
+  .diagram-wrap svg { background: linear-gradient(180deg, rgba(120,200,255,0.07), rgba(120,200,255,0.025)), #090f1d; }
+  table { background: #090f1d; }
+  th { background: rgba(120,200,255,0.10); }
+  pre { background: #070b14; }
+</style>
+</head>
+<body>
+
+<!-- Neural circuit background -->
+<div class="circuit-bg">
+  <svg viewBox="0 0 1600 1000" preserveAspectRatio="xMidYMid slice" xmlns="http://www.w3.org/2000/svg">
+    <defs>
+      <filter id="bgglow" x="-50%" y="-50%" width="200%" height="200%">
+        <feGaussianBlur stdDeviation="2" result="b"/>
+        <feMerge>
+          <feMergeNode in="b"/>
+          <feMergeNode in="SourceGraphic"/>
+        </feMerge>
+      </filter>
+      <linearGradient id="lineGrad" x1="0" y1="0" x2="1" y2="1">
+        <stop offset="0%" stop-color="#5fd4ff" stop-opacity="0.7"/>
+        <stop offset="100%" stop-color="#b48cff" stop-opacity="0.2"/>
+      </linearGradient>
+      <radialGradient id="nodeGlow">
+        <stop offset="0%" stop-color="#7af0ff" stop-opacity="1"/>
+        <stop offset="100%" stop-color="#5fd4ff" stop-opacity="0"/>
+      </radialGradient>
+    </defs>
+
+    <g stroke="url(#lineGrad)" fill="none" stroke-width="1" filter="url(#bgglow)">
+      <path class="draw-path" d="M 50 120 L 280 120 L 280 240 L 520 240 L 520 180 L 760 180"/>
+      <path class="draw-path" d="M 760 180 L 760 320 L 1020 320 L 1020 260 L 1280 260 L 1280 400 L 1540 400" style="animation-delay:0.4s"/>
+      <path class="draw-path" d="M 80 480 L 240 480 L 240 620 L 480 620 L 480 540 L 720 540 L 720 680" style="animation-delay:0.8s"/>
+      <path class="draw-path" d="M 720 680 L 960 680 L 960 780 L 1200 780 L 1200 700 L 1500 700" style="animation-delay:1.2s"/>
+      <path class="draw-path" d="M 50 820 L 320 820 L 320 900 L 600 900 L 600 860 L 880 860" style="animation-delay:1.6s"/>
+      <path class="draw-path" d="M 880 860 L 880 940 L 1180 940 L 1180 880 L 1500 880" style="animation-delay:2s"/>
+      <path class="draw-path" d="M 1100 40 L 1100 180 L 1360 180 L 1360 80 L 1560 80" style="animation-delay:2.4s"/>
+      <path class="draw-path" d="M 380 40 L 380 160 L 620 160 L 620 60 L 880 60" style="animation-delay:2.8s"/>
+      <path class="draw-path" d="M 200 320 L 200 420 L 80 420" style="animation-delay:1.5s"/>
+      <path class="draw-path" d="M 1380 540 L 1380 640 L 1240 640" style="animation-delay:1.8s"/>
+      <path class="draw-path" d="M 540 720 L 540 800 L 360 800" style="animation-delay:2.2s"/>
+    </g>
+
+    <g stroke="rgba(120,200,255,0.08)" fill="none" stroke-width="0.6">
+      <path d="M 0 60 L 200 60 L 200 200 L 400 200"/>
+      <path d="M 600 400 L 800 400 L 800 460 L 1000 460"/>
+      <path d="M 1200 100 L 1400 100 L 1400 220"/>
+      <path d="M 100 700 L 300 700 L 300 580"/>
+      <path d="M 900 200 L 900 100 L 1100 100"/>
+      <path d="M 1300 800 L 1500 800 L 1500 920"/>
+    </g>
+
+    <g fill="#5fd4ff" filter="url(#bgglow)">
+      <circle class="node-pulse" cx="280" cy="120" r="3"/>
+      <circle class="node-pulse" cx="520" cy="240" r="3" style="animation-delay:0.3s"/>
+      <circle class="node-pulse" cx="760" cy="180" r="3" style="animation-delay:0.6s"/>
+      <circle class="node-pulse" cx="1020" cy="320" r="3" style="animation-delay:0.9s"/>
+      <circle class="node-pulse" cx="1280" cy="260" r="3" style="animation-delay:1.2s"/>
+      <circle class="node-pulse" cx="240" cy="620" r="3" style="animation-delay:0.4s"/>
+      <circle class="node-pulse" cx="720" cy="540" r="3" style="animation-delay:0.7s"/>
+      <circle class="node-pulse" cx="960" cy="680" r="3" style="animation-delay:1s"/>
+      <circle class="node-pulse" cx="1200" cy="780" r="3" style="animation-delay:1.3s"/>
+      <circle class="node-pulse" cx="320" cy="820" r="3" style="animation-delay:0.5s"/>
+      <circle class="node-pulse" cx="880" cy="860" r="3" style="animation-delay:0.8s"/>
+      <circle class="node-pulse" cx="1100" cy="180" r="3" style="animation-delay:1.1s"/>
+      <circle class="node-pulse" cx="380" cy="160" r="3" style="animation-delay:1.4s"/>
+      <circle class="node-pulse" cx="200" cy="420" r="3" style="animation-delay:0.6s"/>
+    </g>
+
+    <g>
+      <circle cx="760" cy="180" r="18" fill="url(#nodeGlow)" opacity="0.6"/>
+      <circle cx="960" cy="680" r="18" fill="url(#nodeGlow)" opacity="0.6"/>
+      <circle cx="1100" cy="180" r="14" fill="url(#nodeGlow)" opacity="0.4"/>
+    </g>
+  </svg>
+</div>
+
+<div class="grain"></div>
+
+<div class="wrap">
+
+  <!-- Top bar -->
+  <div class="topbar fade-in d1">
+    <div class="left">
+      <span class="dot"></span>
+      <span>Marevlo · Transformer Architectures</span>
+      <span>·</span>
+      <span>Phase 7 — Frontiers</span>
+    </div>
+    <div class="right">
+      <span>Module 7.2</span>
+    </div>
+  </div>
+
+  <!-- Hero -->
+  <div class="hero">
+    <div>
+      <div class="module-tag fade-in d2">Phase 7 — Frontiers · Module 7.2</div>
+      <h1 class="title fade-in d2">
+        Mamba &amp;
+        <span class="line2">state-space</span>
+        <span class="line2"><span class="accent">models</span>.</span>
+      </h1>
+    </div>
+    <p class="lede fade-in d3">
+      Every model in this track uses attention — the O(T&sup2;) mechanism that computes pairwise token relationships. <em>State-space models</em> (SSMs) ask: what if we replace attention entirely? Mamba (Gu &amp; Dao, 2023) processes sequences in O(T) time and O(1) memory per step by maintaining a fixed-size hidden state — like an RNN, but with the parallelism of a convolution during training. Mamba matches transformer quality on language modeling at 1-3B scale with 5&times; higher throughput on long sequences. Is this the post-attention future? This module examines the evidence.
+    </p>
+  </div>
+
+  <!-- Meta strip -->
+  <div class="meta-strip fade-in d4">
+    <div class="meta-cell">
+      <div class="label">Phase</div>
+      <div class="value">7 <span class="unit">Frontiers</span></div>
+    </div>
+    <div class="meta-cell">
+      <div class="label">Module</div>
+      <div class="value">7.2</div>
+    </div>
+    <div class="meta-cell">
+      <div class="label">Time</div>
+      <div class="value">35 <span class="unit">min</span></div>
+    </div>
+    <div class="meta-cell">
+      <div class="label">Papers</div>
+      <div class="value">Gu &amp; Dao 2023 · Gu 2022</div>
+    </div>
+  </div>
+
+  <!-- Body -->
+  <div class="body-grid">
+
+    <aside class="sidebar fade-in d5">
+      <h4>// In This Module</h4>
+      <ul>
+        <li class="active"><a href="#section-01"><span class="num">01</span> Fixed-size State</a></li>
+        <li><a href="#section-02"><span class="num">02</span> Selective Mechanism</a></li>
+        <li><a href="#section-03"><span class="num">03</span> Parallel Scan</a></li>
+        <li><a href="#section-04"><span class="num">04</span> Mamba vs Transformer</a></li>
+        <li><a href="#section-05"><span class="num">05</span> Hybrid Architectures</a></li>
+        <li><a href="#section-06"><span class="num">06</span> CineMatch Fit</a></li>
+        <li><a href="#section-07"><span class="num">07</span> Where We Are</a></li>
+        <li><a href="#section-08"><span class="num">08</span> Learn More</a></li>
+      </ul>
+    </aside>
+
+    <div class="content">
+
+<section id="section-01">
+  <h2 data-num="01 / 08">The core idea — a fixed-size state replaces the KV cache.</h2>
+
+  <p>Attention stores the entire past context in the KV cache — which grows linearly with sequence length. SSMs compress the entire past into a <strong>fixed-size hidden state</strong> (typically d dimensions, same as the model dimension). Each new token updates the state; the state summarizes all previous tokens.</p>
+
+  <div class="eq">
+    Attention: context = [K&#8321;, V&#8321;, K&#8322;, V&#8322;, ..., K<sub>t</sub>, V<sub>t</sub>] — grows with t
+    <span class="num">(1.1)</span>
+  </div>
+  <div class="eq">
+    SSM: context = h<sub>t</sub> &isin; &#8477;<sup>d</sup> — fixed size, regardless of t
+    <span class="num">(1.2)</span>
+  </div>
+
+  <div class="calcbox">
+    <div class="ch">Memory comparison: attention KV cache vs SSM hidden state at inference</div>
+    <div class="step" data-s="1."><strong>Transformer (LLaMA-3 8B, 128K context):</strong> KV cache = 32 layers &times; 2 (K,V) &times; 8 KV heads &times; 128K &times; 128 d_head &times; 2 bytes = <strong>16.8 GB</strong><span class="val">Grows linearly with context length. At 256K context: 33.6 GB. At 1M: 134 GB. Eventually exceeds model weight size.</span></div>
+    <div class="step" data-s="2."><strong>Mamba (equivalent 8B):</strong> Hidden state = 32 layers &times; d_state &times; d_model &times; 2 bytes. With d_state=16, d_model=4096: 32 &times; 16 &times; 4096 &times; 2 = <strong>4 MB</strong><span class="val">FIXED. Same 4 MB whether context is 1K or 1M or 10M tokens. No growth with sequence length.</span></div>
+    <div class="step" data-s="3.">Memory ratio at 128K context: 16.8 GB / 4 MB = <strong>4,200&times;</strong> less memory for Mamba's state vs transformer's KV cache.<span class="val">At 1M context: 134 GB / 4 MB = 33,500&times; less. Mamba's advantage grows with context length.</span></div>
+  </div>
+
+  <div class="mcq" data-correct="c">
+    <div class="mh"><span>State vs cache</span><span class="qnum">Question 01 / 07</span></div>
+    <div class="mq">Mamba compresses all past context into a fixed-size state. Attention stores every past token in the KV cache. What does Mamba lose by compressing?</div>
+    <div class="opts">
+      <div class="opt" data-key="a"><span class="key">A</span><span class="text">Nothing — compression is lossless.</span></div>
+      <div class="opt" data-key="b"><span class="key">B</span><span class="text">All past information — only the last few tokens are remembered.</span></div>
+      <div class="opt" data-key="c"><span class="key">C</span><span class="text">The ability to do exact retrieval from the past. Attention can look up any specific past token (the KV cache preserves every position's exact representation). Mamba's fixed-size state is a lossy summary — it captures the general trend of past tokens but can't perfectly retrieve a specific fact from 10K tokens ago. This is the fundamental trade-off: O(1) memory at the cost of imperfect memory. For general language modeling (predicting the next token from overall context), SSM states work well. For precise retrieval ("what was the name mentioned in paragraph 3?"), attention's exact KV cache is superior.</span></div>
+      <div class="opt" data-key="d"><span class="key">D</span><span class="text">Speed — SSMs are always slower than attention.</span></div>
+    </div>
+    <div class="feedback" data-right="<strong>Right.</strong> The fixed-size state is a lossy compression of the past. Mamba learns to prioritize important information (via selective state updates — see Section 2), but it can't match attention's ability to directly index into any past position. This mirrors the brain's working memory: we maintain a compressed summary of what we've read, but we can't perfectly recall the exact words from page 3. For most language tasks, this compressed summary suffices. For precise retrieval, attention's exact cache is needed." data-wrong="<strong>Not quite.</strong> Mamba's fixed state is a lossy summary — it captures the gist of past context but can't perfectly retrieve specific facts from far back. This is the core trade-off: O(1) memory (constant, independent of sequence length) vs O(T) memory (exact, grows with sequence). Mamba works well for general understanding but struggles with precise long-range retrieval."></div>
+  </div>
+</section>
+
+<section id="section-02">
+  <h2 data-num="02 / 08">Mamba's selective state mechanism — the key innovation.</h2>
+
+  <p>Classic SSMs (S4) use fixed state transition dynamics — the same update rule regardless of the input. Mamba's innovation: <strong>input-dependent state transitions</strong>. The model decides, for each token, <em>how much to write into the state</em> and <em>how much to forget</em>:</p>
+
+  <div class="eq">
+    h<sub>t</sub> = A<sub>t</sub> &middot; h<sub>t-1</sub> + B<sub>t</sub> &middot; x<sub>t</sub> &nbsp;&nbsp; where A<sub>t</sub>, B<sub>t</sub> depend on input x<sub>t</sub>
+    <span class="num">(2.1)</span>
+  </div>
+
+  <p>A<sub>t</sub> (the "forget gate") controls how much of the previous state to retain. B<sub>t</sub> (the "write gate") controls how much of the current input to write into the state. Both are <em>functions of the current input</em> — the model can selectively remember important tokens and forget irrelevant ones.</p>
+
+  <pre><code><span class="c"># Simplified Mamba selective scan (conceptual)</span>
+<span class="k">def</span> <span class="f">selective_scan</span>(x, A_params, B_params, C_params, dt):
+    <span class="s">"""Process sequence with input-dependent state transitions."""</span>
+    B, T, d = x.shape
+    h = torch.zeros(B, d_state, d, device=x.device)
+
+    outputs = []
+    <span class="k">for</span> t <span class="k">in</span> <span class="f">range</span>(T):
+        <span class="c"># Input-dependent gating (Mamba's key innovation)</span>
+        dt_t = F.softplus(dt(x[:, t]))        <span class="c"># step size — how much to update</span>
+        A_t = torch.exp(-dt_t.unsqueeze(-<span class="n">1</span>) * A_params)  <span class="c"># forget factor</span>
+        B_t = dt_t.unsqueeze(-<span class="n">1</span>) * B_params(x[:, t])     <span class="c"># write factor</span>
+
+        <span class="c"># State update: forget some, write new</span>
+        h = A_t * h + B_t * x[:, t].unsqueeze(<span class="n">1</span>)
+
+        <span class="c"># Output: read from state</span>
+        y_t = (C_params(x[:, t]).unsqueeze(<span class="n">1</span>) * h).sum(dim=<span class="n">1</span>)
+        outputs.append(y_t)
+
+    <span class="k">return</span> torch.stack(outputs, dim=<span class="n">1</span>)</code></pre>
+
+  <div class="mcq" data-correct="a">
+    <div class="mh"><span>Selective</span><span class="qnum">Question 02 / 07</span></div>
+    <div class="mq">Mamba's A_t is input-dependent — the model decides how much to "forget" based on the current token. Why is this important?</div>
+    <div class="opts">
+      <div class="opt" data-key="a"><span class="key">A</span><span class="text">It allows content-aware memory management. When the model sees an important token (a name, a key fact), it can set A_t low (retain most of the state) and B_t high (write strongly). When it sees a filler token ("um," "the," articles), it can set A_t high (aggressively forget) and B_t low (don't write). This selective attention to input content is what gives Mamba its quality — without it (fixed A), the state treats every token equally, wasting capacity on filler. Input-dependent gating is Mamba's equivalent of attention's ability to selectively focus on important positions.</span></div>
+      <div class="opt" data-key="b"><span class="key">B</span><span class="text">It makes Mamba faster during training.</span></div>
+      <div class="opt" data-key="c"><span class="key">C</span><span class="text">It reduces the number of parameters.</span></div>
+      <div class="opt" data-key="d"><span class="key">D</span><span class="text">It allows Mamba to process images.</span></div>
+    </div>
+    <div class="feedback" data-right="<strong>Right.</strong> Selective state transitions are Mamba's core contribution. Fixed-A SSMs (S4) can't distinguish important from unimportant tokens — they apply the same forget/write dynamics to everything. Mamba's input-dependent A_t and B_t enable content-aware memory: retain important tokens, forget filler. This is why Mamba matches transformers on language modeling — it learns to selectively remember the information needed for next-token prediction." data-wrong="<strong>Not quite.</strong> Input-dependent gating (A_t, B_t as functions of x_t) enables content-aware memory management. Without it, every token is treated equally — the state can't prioritize important information over filler. Selective gating is what closes the quality gap between SSMs and transformers."></div>
+  </div>
+</section>
+
+<section id="section-03">
+  <h2 data-num="03 / 08">Training efficiency — the parallel scan trick.</h2>
+
+  <p>The sequential loop in the code above is O(T) but not parallelizable — each step depends on the previous state. For training (where the full sequence is available), Mamba uses a <strong>parallel scan</strong> algorithm that computes all T states simultaneously in O(T log T) work with O(log T) depth — fully parallelizable on GPUs.</p>
+
+  <p>At inference, the sequential recurrence is used: each new token updates the state in O(1) time and O(d_state &times; d) memory. This is the speed advantage — no KV cache growth, constant-time per token regardless of context length.</p>
+
+  <div class="mcq" data-correct="d">
+    <div class="mh"><span>Training</span><span class="qnum">Question 03 / 07</span></div>
+    <div class="mq">Mamba is sequential at inference (like an RNN) but parallel during training (like a CNN). How can the same operation be both?</div>
+    <div class="opts">
+      <div class="opt" data-key="a"><span class="key">A</span><span class="text">Mamba uses different architectures for training and inference.</span></div>
+      <div class="opt" data-key="b"><span class="key">B</span><span class="text">Training doesn't need to process tokens in order.</span></div>
+      <div class="opt" data-key="c"><span class="key">C</span><span class="text">GPUs can parallelize any sequential operation.</span></div>
+      <div class="opt" data-key="d"><span class="key">D</span><span class="text">The parallel scan algorithm. During training, all inputs x_1...x_T are known. The recurrence h_t = A_t&middot;h_{t-1} + B_t&middot;x_t can be rewritten as a prefix sum (cumulative operation), which has a well-known O(T log T) parallel algorithm. It's the same mathematical operation computed two different ways: sequentially for inference (when future tokens don't exist yet) and in parallel for training (when all tokens are available). This dual-mode execution is the key insight — RNN-like semantics with CNN-like training speed.</span></div>
+    </div>
+    <div class="feedback" data-right="<strong>Right.</strong> The parallel scan is the mathematical foundation of efficient SSM training. The recurrence h_t = A·h_{t-1} + B·x_t is a linear operation that can be decomposed into a prefix sum — parallelizable in O(log T) depth. At inference, when future tokens don't exist, the sequential recurrence is natural and efficient (O(1) per step). Same math, two execution modes: parallel for training, sequential for inference." data-wrong="<strong>Not quite.</strong> The same recurrence (h_t = A·h_{t-1} + B·x_t) has two execution modes: (1) sequential at inference (process one token at a time, update state), (2) parallel at training (parallel scan algorithm computes all states simultaneously using the prefix sum structure). Same operation, different execution strategy based on whether future tokens are available."></div>
+  </div>
+</section>
+
+<section id="section-04">
+  <h2 data-num="04 / 08">Mamba vs Transformer — the honest comparison.</h2>
+
+  <table>
+    <thead><tr><th>Dimension</th><th>Transformer</th><th>Mamba</th></tr></thead>
+    <tbody>
+      <tr><td>Inference memory</td><td>O(T) KV cache</td><td class="win">O(1) hidden state</td></tr>
+      <tr><td>Inference speed (per token)</td><td>O(T) attention over past</td><td class="win">O(1) state update</td></tr>
+      <tr><td>Training speed</td><td class="win">Fully parallel O(T&sup2;)</td><td>Parallel scan O(T log T)</td></tr>
+      <tr><td>Long-range retrieval</td><td class="win">Exact (KV cache)</td><td>Approximate (compressed state)</td></tr>
+      <tr><td>In-context learning</td><td class="win">Strong (attention can copy patterns)</td><td>Weaker (state can't precisely retrieve examples)</td></tr>
+      <tr><td>Scale (2026)</td><td class="win">Proven to 1T+ params</td><td>Proven to ~8B, emerging at larger scale</td></tr>
+      <tr><td>Ecosystem</td><td class="win">Massive (HuggingFace, vLLM, TensorRT)</td><td>Growing (limited tooling)</td></tr>
+    </tbody>
+  </table>
+
+  <div class="pitfall">
+    <div class="lbl">Mamba's quality gap on recall-intensive tasks</div>
+    <h4>On "needle in a haystack" tests (find a specific fact in a long document), Mamba's accuracy drops from 95% at 4K context to 60% at 32K. Transformers maintain 95%+ at all lengths.</h4>
+    <p>The fixed-size state can't store every fact from a long document — it prioritizes recent and repeated information. A specific fact mentioned once at position 500 may be overwritten by the time the model reaches position 30,000. Transformers don't have this problem because the KV cache preserves every position exactly. This is the fundamental quality trade-off: O(1) memory = lossy compression = degraded recall. For tasks requiring precise long-range retrieval, transformers are still superior.</p>
+  </div>
+
+  <div class="mcq" data-correct="c">
+    <div class="mh"><span>Comparison</span><span class="qnum">Question 04 / 07</span></div>
+    <div class="mq">Mamba matches transformer perplexity at 1-3B scale. Does this mean Mamba is a transformer replacement?</div>
+    <div class="opts">
+      <div class="opt" data-key="a"><span class="key">A</span><span class="text">Yes — matching perplexity means matching quality.</span></div>
+      <div class="opt" data-key="b"><span class="key">B</span><span class="text">Yes — Mamba is strictly better (same quality, faster).</span></div>
+      <div class="opt" data-key="c"><span class="key">C</span><span class="text">Not yet — for three reasons. (1) Perplexity measures average next-token prediction, not downstream task quality. Mamba matches perplexity but underperforms on retrieval-heavy tasks (QA from long documents, in-context learning with many examples). (2) Scale: Mamba is proven at 1-3B, not at 70B+. Transformer scaling laws are well-understood; SSM scaling laws are still being established. (3) Ecosystem: transformers have 7 years of optimization (FlashAttention, vLLM, quantization tooling). Mamba's ecosystem is nascent. Mamba is a compelling alternative for specific use cases, not a general replacement — yet.</span></div>
+      <div class="opt" data-key="d"><span class="key">D</span><span class="text">No — SSMs can never match transformers.</span></div>
+    </div>
+    <div class="feedback" data-right="<strong>Right.</strong> Matching perplexity is necessary but not sufficient. Mamba excels at: language modeling, long-sequence throughput, constant-memory inference. Transformers excel at: recall-intensive tasks, in-context learning, proven scaling to 1T+ params. The honest answer: Mamba is a transformer complement for specific use cases (long-context, high-throughput), not a drop-in replacement for all tasks. Hybrid architectures (Jamba = Mamba + attention layers) may capture the best of both." data-wrong="<strong>Not quite.</strong> Perplexity matching doesn't guarantee equivalent downstream quality. Mamba matches perplexity but underperforms on retrieval and in-context learning. It's also unproven at large scale (70B+) and has a nascent ecosystem. Mamba is promising for specific use cases (long-context, high-throughput) but not a general transformer replacement yet."></div>
+  </div>
+</section>
+
+<section id="section-05">
+  <h2 data-num="05 / 08">Hybrid architectures — the best of both worlds.</h2>
+
+  <p>The emerging pattern: combine Mamba layers (fast, memory-efficient) with attention layers (precise retrieval) in the same model. <strong>Jamba</strong> (AI21, 2024) interleaves Mamba blocks and attention blocks in a 52B MoE model — getting Mamba's throughput advantage for most layers and attention's retrieval precision for a few layers.</p>
+
+  <div class="calcbox">
+    <div class="ch">Hybrid architecture design patterns (2026)</div>
+    <div class="step" data-s="1."><strong>Pure transformer:</strong> All layers use attention. Maximum quality, highest memory. The default.<span class="val">LLaMA-3, GPT-4, Mistral. Proven at all scales.</span></div>
+    <div class="step" data-s="2."><strong>Pure Mamba:</strong> All layers use SSM. Fastest inference, lowest memory. Limited retrieval.<span class="val">Mamba-1, Mamba-2. Best for streaming, on-device, ultra-long context.</span></div>
+    <div class="step" data-s="3."><strong>Hybrid (Mamba + attention):</strong> Most layers are Mamba (fast), every 4th-8th layer is attention (precise). Gets 80% of Mamba's speed advantage and 95% of transformer's quality.<span class="val">Jamba (AI21), Zamba (Zyphra). The emerging sweet spot.</span></div>
+    <div class="step" data-s="4."><strong>Hybrid + MoE:</strong> Mamba layers + attention layers + MoE routing. Maximum flexibility at maximum complexity.<span class="val">Jamba-1.5 uses this pattern. Research frontier — not yet standard.</span></div>
+  </div>
+
+  <div class="mcq" data-correct="a">
+    <div class="mh"><span>Hybrid</span><span class="qnum">Question 05 / 07</span></div>
+    <div class="mq">A hybrid model has 28 Mamba layers and 4 attention layers (every 8th layer). Why not use attention for all 32 layers?</div>
+    <div class="opts">
+      <div class="opt" data-key="a"><span class="key">A</span><span class="text">Cost and speed. The 28 Mamba layers process tokens at O(1) per step with no KV cache growth. Only the 4 attention layers contribute O(T) KV cache and O(T) per-step cost. Total KV cache: 4/32 = 12.5% of a full transformer. Inference speed: ~3-4&times; faster than full attention at long context. Quality: the 4 attention layers provide enough "retrieval checkpoints" for the model to look up specific past information every 8 layers — sufficient for most tasks. 28 Mamba + 4 attention = near-transformer quality at near-Mamba speed.</span></div>
+      <div class="opt" data-key="b"><span class="key">B</span><span class="text">Mamba layers are better for language modeling.</span></div>
+      <div class="opt" data-key="c"><span class="key">C</span><span class="text">Attention layers are only needed at the output.</span></div>
+      <div class="opt" data-key="d"><span class="key">D</span><span class="text">32 attention layers would make the model too large.</span></div>
+    </div>
+    <div class="feedback" data-right="<strong>Right.</strong> The hybrid design treats attention as a precision tool, not the default: use it sparingly where exact retrieval matters, and use Mamba everywhere else for speed and memory efficiency. 4 attention layers out of 32 provides enough retrieval precision for most tasks while keeping 87.5% of the model running at Mamba speed. This architectural pattern is likely to become standard as SSM scaling matures." data-wrong="<strong>Not quite.</strong> Using attention everywhere is expensive: O(T) per step, growing KV cache. The hybrid uses Mamba (O(1) per step, no cache) for most layers and attention (precise retrieval) for a few layers. 4 attention layers out of 32 = 12.5% of KV cache, 3-4× faster inference, near-full quality."></div>
+  </div>
+</section>
+
+<section id="section-06">
+  <h2 data-num="06 / 08">CineMatch's SSM opportunity.</h2>
+
+  <div class="cinematch">
+    <div class="tag">CineMatch Integration</div>
+    <h4>Where Mamba fits in CineMatch's stack.</h4>
+    <p><strong>Streaming recommendation feed:</strong> CineMatch's "For You" page generates personalized blurbs as users scroll — a streaming generation task where each blurb depends on the user's session context (what they've scrolled past). Mamba's O(1) per-token inference with constant memory is ideal: the state accumulates user preferences as they browse, generating personalized text without growing a KV cache. A Mamba-based model generates ~3&times; more blurbs per second than an equivalent transformer.</p>
+    <p><strong>Not for the chatbot:</strong> CineMatch's chatbot needs precise recall ("earlier you mentioned you liked Inception — here's why you'd also like..."). Mamba's compressed state would lose the specific "Inception" mention from 2000 tokens ago. The chatbot stays on LLaMA-3 with attention.</p>
+    <p><strong>The hybrid future:</strong> When hybrid models (Mamba + attention) mature at 7B+ scale, CineMatch could replace both the streaming feed model AND the chatbot with a single hybrid — using Mamba layers for fast generation and attention layers for precise conversation recall.</p>
+  </div>
+
+  <div class="mcq" data-correct="d">
+    <div class="mh"><span>CineMatch</span><span class="qnum">Question 06 / 07</span></div>
+    <div class="mq">CineMatch's recommendation feed generates 100 personalized blurbs per second (across all users). Current transformer-based system costs $2,000/month in GPU. A Mamba-based system would cost $700/month (3&times; throughput). Should they switch?</div>
+    <div class="opts">
+      <div class="opt" data-key="a"><span class="key">A</span><span class="text">Yes — always take the cheaper option.</span></div>
+      <div class="opt" data-key="b"><span class="key">B</span><span class="text">No — Mamba quality is always worse.</span></div>
+      <div class="opt" data-key="c"><span class="key">C</span><span class="text">No — the ecosystem is too immature.</span></div>
+      <div class="opt" data-key="d"><span class="key">D</span><span class="text">Maybe — run an A/B test. The $1,300/month savings is significant, but only if quality is maintained. Generate 1000 blurbs with both systems, have CineMatch's QA team rate them blind, and measure user engagement metrics (click-through, time-on-page) in an A/B test. If Mamba blurbs are indistinguishable from transformer blurbs: switch. If users notice a quality drop: keep the transformer. Don't optimize cost at the expense of user experience without measuring the trade-off.</span></div>
+    </div>
+    <div class="feedback" data-right="<strong>Right.</strong> The engineering principle: never switch architectures based on theoretical advantages alone. Always A/B test with real users and real metrics. $1,300/month is meaningful for a startup, but not if it reduces engagement by 2% (which could cost far more in lost revenue). The correct process: prototype → blind evaluation → A/B test → decide based on data." data-wrong="<strong>Not quite.</strong> The decision should be data-driven, not architecture-driven. Run an A/B test: compare Mamba-generated blurbs vs transformer blurbs on user engagement metrics. If quality holds: switch and save $1,300/month. If quality drops: the savings aren't worth the user experience cost. Always measure before switching."></div>
+  </div>
+</section>
+
+<section id="section-07">
+  <h2 data-num="07 / 08">The attention vs SSM question — where we are in 2026.</h2>
+
+  <div class="mcq" data-correct="c">
+    <div class="mh"><span>Future</span><span class="qnum">Question 07 / 07</span></div>
+    <div class="mq">In 5 years (2031), will transformers or SSMs dominate language AI?</div>
+    <div class="opts">
+      <div class="opt" data-key="a"><span class="key">A</span><span class="text">Transformers — they're too established to replace.</span></div>
+      <div class="opt" data-key="b"><span class="key">B</span><span class="text">SSMs — they solve the fundamental bottleneck.</span></div>
+      <div class="opt" data-key="c"><span class="key">C</span><span class="text">Hybrids — and the distinction won't matter. The trend in 2026 already points toward hybrid architectures that combine Mamba's efficient sequence processing with attention's precise retrieval. By 2031, the "transformer vs SSM" framing will likely be as dated as "CNN vs RNN" — both mechanisms will be combined in models where the architecture adapts to the task. The real question isn't which mechanism wins, but how to best combine them. The transformer's legacy isn't attention itself — it's the insight that sequence processing can be done with learnable, composable building blocks.</span></div>
+      <div class="opt" data-key="d"><span class="key">D</span><span class="text">Something entirely new that we haven't invented yet.</span></div>
+    </div>
+    <div class="feedback" data-right="<strong>Right.</strong> The history of deep learning is convergence, not replacement. CNNs didn't kill MLPs — they were combined. Attention didn't kill convolutions — ViT uses both insights. SSMs won't kill attention — they'll be combined in hybrid architectures that use the right mechanism for each layer. The 'transformer vs SSM' debate is already evolving into 'how to best combine them.' The underlying insight — learnable, composable sequence processing blocks — is architecture-agnostic." data-wrong="<strong>Not quite.</strong> The most likely outcome is convergence, not replacement. Just as transformers incorporated ideas from CNNs (Swin's locality) and RNNs (sequential generation), future architectures will combine attention (precise retrieval) with SSMs (efficient streaming). Hybrid architectures are already emerging in 2026."></div>
+  </div>
+
+  <div class="checkpoint">
+    <h4>Module 7.2 — Mastery checkpoint</h4>
+    <ol>
+      <li>Compare transformer KV cache (O(T)) with SSM hidden state (O(1)) and explain the quality trade-off.</li>
+      <li>Explain Mamba's selective state mechanism: input-dependent A_t and B_t.</li>
+      <li>Explain the parallel scan trick: same recurrence, two execution modes (parallel training, sequential inference).</li>
+      <li>Explain why Mamba fails on needle-in-haystack retrieval tasks.</li>
+      <li>Design a hybrid architecture (Mamba + attention layers) and explain the layer allocation trade-off.</li>
+    </ol>
+  </div>
+</section>
+
+<section id="section-08">
+  <h2 data-num="08 / 08">Learn &amp; Practice.</h2>
+
+  <p class="learn-intro">Use these resources in layers: start with the approachable explanation when the architecture feels fuzzy, read the original paper once the idea clicks, then inspect the reference implementation to connect the concept to code.</p>
+
+  <div class="resource-stack">
+    <article class="resource-card">
+      <div class="resource-head">
+        <div class="resource-icon">?</div>
+        <div>
+          <div class="resource-kicker">Progressive Article</div>
+          <h3>Stuck? Start here</h3>
+        </div>
+      </div>
+      <a class="resource-title" href="https://medium.com/@chs.li.work/mamba-linear-time-sequence-modeling-with-selective-state-spaces-2978842ca461" target="_blank" rel="noopener noreferrer">Mamba: Linear-Time Sequence Modeling - Chunshui Li</a>
+      <p>Beginner mental model for selective state spaces.</p>
+      <div class="resource-actions">
+        <a class="resource-link" href="https://medium.com/@chs.li.work/mamba-linear-time-sequence-modeling-with-selective-state-spaces-2978842ca461" target="_blank" rel="noopener noreferrer">Read Article</a>
+      </div>
+    </article>
+
+    <article class="resource-card canonical">
+      <div class="resource-head">
+        <div class="resource-icon">A</div>
+        <div>
+          <div class="resource-kicker">Canonical Article</div>
+          <h3>Original research paper</h3>
+        </div>
+      </div>
+      <a class="resource-title" href="https://arxiv.org/abs/2312.00752" target="_blank" rel="noopener noreferrer">Mamba - Gu and Dao</a>
+      <p>Selective state spaces with linear-time sequence modeling.</p>
+      <a class="resource-title" href="https://srush.github.io/annotated-s4/" target="_blank" rel="noopener noreferrer">The Annotated S4 - Sasha Rush</a>
+      <p>S4-to-Mamba background and implementation notes.</p>
+      <div class="resource-actions">
+        <a class="resource-link" href="https://arxiv.org/abs/2312.00752" target="_blank" rel="noopener noreferrer">Read Paper</a>
+        <a class="resource-link" href="https://srush.github.io/annotated-s4/" target="_blank" rel="noopener noreferrer">Read Paper</a>
+      </div>
+    </article>
+
+    <article class="resource-card repo">
+      <div class="resource-head">
+        <div class="resource-icon">{ }</div>
+        <div>
+          <div class="resource-kicker">GitHub Repository</div>
+          <h3>Reference implementation</h3>
+        </div>
+      </div>
+      <a class="resource-title" href="https://github.com/state-spaces/mamba" target="_blank" rel="noopener noreferrer">state-spaces/mamba</a>
+      <p>Official Mamba repository.</p>
+      <a class="resource-title" href="https://github.com/state-spaces/s4" target="_blank" rel="noopener noreferrer">state-spaces/s4</a>
+      <p>Official S4 predecessor repository.</p>
+      <div class="resource-actions">
+        <a class="resource-link" href="https://github.com/state-spaces/mamba" target="_blank" rel="noopener noreferrer">Explore Repo</a>
+        <a class="resource-link" href="https://github.com/state-spaces/s4" target="_blank" rel="noopener noreferrer">Explore Repo</a>
+      </div>
+    </article>
+  </div>
+</section>
+    </div>
+  </div>
+
+  <!-- Footer -->
+  <div class="footer-bar fade-in d6">
+    <a href="module_7_1_moe.html" class="prev-link">
+      <span class="lbl">Previous Module</span>
+      <span class="ttl">7.1 — MoE at Scale</span>
+    </a>
+    <a href="module_7_3_production_stack.html" class="next-link">
+      <span class="lbl">Final Module</span>
+      <span class="ttl">7.3 — The Production LLM Stack</span>
+    </a>
+  </div>
+
+</div>
+
+<script>
+  document.querySelectorAll('.mcq').forEach(mcq=>{const correct=mcq.dataset.correct;const opts=mcq.querySelectorAll('.opt');const fb=mcq.querySelector('.feedback');opts.forEach(opt=>{opt.addEventListener('click',()=>{if(opt.classList.contains('disabled'))return;const chosen=opt.dataset.key;const isRight=chosen===correct;opts.forEach(o=>{o.classList.add('disabled');if(o.dataset.key===correct)o.classList.add('correct');else if(o===opt&&!isRight)o.classList.add('wrong')});if(isRight){fb.classList.add('show','right');fb.innerHTML='<span class="verdict">Correct</span>'+fb.dataset.right}else{fb.classList.add('show','wrong');fb.innerHTML='<span class="verdict">Not quite</span>'+fb.dataset.wrong}})})});
+</script>
+</body>
+</html>

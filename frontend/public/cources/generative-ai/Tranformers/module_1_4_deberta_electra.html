@@ -1,0 +1,1678 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Module 1.4 — DeBERTa &amp; ELECTRA · Marevlo Transformer Track</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;500&family=Syne:wght@500;700;800&family=Inter+Tight:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg-0: #05070d;
+    --bg-1: #080b14;
+    --bg-2: #0d1220;
+    --bg-card: #0a0f1c;
+    --bg-code: #06090f;
+    --line: rgba(120, 200, 255, 0.18);
+    --line-strong: rgba(120, 200, 255, 0.55);
+    --glow: #5fd4ff;
+    --glow-soft: #7af0ff;
+    --accent: #ff4d8a;
+    --accent-2: #b48cff;
+    --accent-yellow: #f0c674;
+    --green: #7fc28a;
+    --red: #e26a6a;
+    --text: #e6f1ff;
+    --muted: #7a8aa3;
+    --text-dim: #aebbd1;
+    --text-faint: #6a7a93;
+    --mono: 'JetBrains Mono', ui-monospace, monospace;
+    --display: 'Syne', sans-serif;
+    --body: 'Inter Tight', sans-serif;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  html { scroll-behavior: smooth; }
+  html, body {
+    background: var(--bg-0);
+    color: var(--text);
+    font-family: var(--body);
+    font-size: 16px;
+    line-height: 1.7;
+    overflow-x: hidden;
+    min-height: 100vh;
+  }
+
+  /* ---------- Background neural circuit ---------- */
+  .circuit-bg {
+    position: fixed;
+    inset: 0;
+    z-index: 0;
+    pointer-events: none;
+    background:
+      radial-gradient(ellipse 80% 60% at 20% 10%, rgba(95, 212, 255, 0.08), transparent 60%),
+      radial-gradient(ellipse 70% 50% at 85% 90%, rgba(180, 140, 255, 0.07), transparent 60%),
+      radial-gradient(ellipse 60% 40% at 50% 50%, rgba(255, 77, 138, 0.04), transparent 70%),
+      var(--bg-0);
+  }
+  .circuit-bg svg {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    opacity: 0.95;
+  }
+  .circuit-bg::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background-image:
+      linear-gradient(rgba(120,200,255,0.03) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(120,200,255,0.03) 1px, transparent 1px);
+    background-size: 60px 60px;
+    mask-image: radial-gradient(ellipse at center, black 30%, transparent 80%);
+    -webkit-mask-image: radial-gradient(ellipse at center, black 30%, transparent 80%);
+  }
+
+  .grain {
+    position: fixed;
+    inset: 0;
+    z-index: 1;
+    pointer-events: none;
+    opacity: 0.04;
+    mix-blend-mode: overlay;
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='3'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  }
+
+  /* ---------- Layout ---------- */
+  .wrap {
+    position: relative;
+    z-index: 2;
+    max-width: 1280px;
+    margin: 0 auto;
+    padding: 48px 56px 96px;
+  }
+
+  /* ---------- Top bar ---------- */
+  .topbar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-family: var(--mono);
+    font-size: 11px;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    color: var(--muted);
+    padding-bottom: 24px;
+    border-bottom: 1px solid var(--line);
+  }
+  .topbar .left { display: flex; gap: 28px; align-items: center; }
+  .topbar .dot {
+    width: 6px; height: 6px; border-radius: 50%;
+    background: var(--glow);
+    box-shadow: 0 0 10px var(--glow), 0 0 20px var(--glow);
+    animation: pulse 2s ease-in-out infinite;
+  }
+  @keyframes pulse {
+    0%, 100% { opacity: 1; transform: scale(1); }
+    50% { opacity: 0.5; transform: scale(0.85); }
+  }
+
+  /* ---------- Hero ---------- */
+  .hero {
+    margin-top: 72px;
+    display: grid;
+    grid-template-columns: 1.3fr 1fr;
+    gap: 80px;
+    align-items: end;
+  }
+  .module-tag {
+    font-family: var(--mono);
+    font-size: 12px;
+    letter-spacing: 0.3em;
+    text-transform: uppercase;
+    color: var(--glow);
+    margin-bottom: 24px;
+    display: inline-flex;
+    align-items: center;
+    gap: 14px;
+  }
+  .module-tag::before {
+    content: '';
+    width: 28px; height: 1px;
+    background: var(--glow);
+    box-shadow: 0 0 6px var(--glow);
+  }
+  h1.title {
+    font-family: var(--display);
+    font-weight: 800;
+    font-size: clamp(44px, 6.5vw, 84px);
+    line-height: 0.95;
+    letter-spacing: -0.03em;
+    color: var(--text);
+  }
+  h1.title .accent {
+    background: linear-gradient(120deg, var(--glow), var(--accent-2) 60%, var(--accent));
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+    font-style: italic;
+    font-weight: 700;
+  }
+  h1.title .line2 { display: block; opacity: 0.92; }
+  .lede {
+    font-size: 16.5px;
+    line-height: 1.65;
+    color: var(--text-dim);
+    max-width: 460px;
+    border-left: 1px solid var(--line);
+    padding-left: 24px;
+  }
+  .lede strong { color: var(--text); font-weight: 500; }
+  .lede em { color: var(--glow-soft); font-style: italic; }
+
+  /* ---------- Meta strip ---------- */
+  .meta-strip {
+    margin-top: 64px;
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 1px;
+    background: var(--line);
+    border-top: 1px solid var(--line);
+    border-bottom: 1px solid var(--line);
+  }
+  .meta-cell { background: var(--bg-0); padding: 22px 24px; }
+  .meta-cell .label {
+    font-family: var(--mono);
+    font-size: 10px;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin-bottom: 10px;
+  }
+  .meta-cell .value {
+    font-family: var(--display);
+    font-size: 20px;
+    font-weight: 700;
+    color: var(--text);
+    letter-spacing: -0.01em;
+  }
+  .meta-cell .value span.unit {
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--glow);
+    margin-left: 6px;
+    font-weight: 400;
+  }
+
+  /* ---------- Body grid ---------- */
+  .body-grid {
+    margin-top: 88px;
+    display: grid;
+    grid-template-columns: 240px 1fr;
+    gap: 64px;
+  }
+  .sidebar {
+    font-family: var(--mono);
+    font-size: 11px;
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    color: var(--muted);
+    position: sticky;
+    top: 40px;
+    align-self: start;
+  }
+  .sidebar h4 { color: var(--glow); font-weight: 400; margin-bottom: 18px; }
+  .sidebar ul { list-style: none; }
+  .sidebar li {
+    padding: 10px 0;
+    border-top: 1px solid var(--line);
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    cursor: pointer;
+    transition: color 0.2s ease;
+  }
+  .sidebar li:last-child { border-bottom: 1px solid var(--line); }
+  .sidebar li .num { color: var(--glow); }
+  .sidebar li:hover { color: var(--text); }
+  .sidebar li.active { color: var(--text); }
+
+  /* ---------- Content sections ---------- */
+  .content section { margin-bottom: 80px; }
+  .content h2 {
+    font-family: var(--display);
+    font-weight: 700;
+    font-size: 32px;
+    letter-spacing: -0.015em;
+    line-height: 1.15;
+    margin-bottom: 24px;
+    padding-top: 20px;
+    position: relative;
+    color: var(--text);
+  }
+  .content h2::before {
+    content: attr(data-num);
+    position: absolute;
+    top: -2px;
+    left: 0;
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--glow);
+    letter-spacing: 0.2em;
+    font-weight: 400;
+  }
+  .content h3 {
+    font-family: var(--display);
+    font-size: 22px;
+    font-weight: 700;
+    letter-spacing: -0.01em;
+    margin: 40px 0 18px;
+    color: var(--text);
+  }
+  .content h4 {
+    font-family: var(--display);
+    font-size: 17px;
+    font-weight: 700;
+    margin: 28px 0 12px;
+    color: var(--text);
+  }
+  .content p {
+    font-size: 15.5px;
+    line-height: 1.75;
+    color: var(--text-dim);
+    margin-bottom: 18px;
+    max-width: 68ch;
+  }
+  .content p strong { color: var(--glow-soft); font-weight: 600; }
+  .content p em { color: var(--text); font-style: italic; }
+
+  /* ---------- Equation block ---------- */
+  .eq {
+    margin: 28px 0;
+    padding: 28px 32px;
+    background: linear-gradient(180deg, rgba(120,200,255,0.04), rgba(120,200,255,0.01));
+    border: 1px solid var(--line);
+    font-family: var(--body);
+    font-size: 19px;
+    font-style: italic;
+    text-align: center;
+    color: var(--text);
+    line-height: 1.6;
+    position: relative;
+  }
+  .eq::before {
+    content: '';
+    position: absolute;
+    top: -1px; left: -1px;
+    width: 14px; height: 14px;
+    border-top: 1px solid var(--glow);
+    border-left: 1px solid var(--glow);
+  }
+  .eq::after {
+    content: '';
+    position: absolute;
+    bottom: -1px; right: -1px;
+    width: 14px; height: 14px;
+    border-bottom: 1px solid var(--glow);
+    border-right: 1px solid var(--glow);
+  }
+  .eq .num {
+    position: absolute;
+    right: 18px;
+    top: 50%;
+    transform: translateY(-50%);
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--text-faint);
+    font-style: normal;
+  }
+
+  /* ---------- Calc box ---------- */
+  .calcbox {
+    background: var(--bg-card);
+    border: 1px solid var(--line);
+    border-left: 2px solid var(--accent-yellow);
+    padding: 28px 32px;
+    margin: 32px 0;
+    position: relative;
+  }
+  .calcbox .ch {
+    font-family: var(--mono);
+    font-size: 11px;
+    font-weight: 500;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    color: var(--accent-yellow);
+    margin-bottom: 18px;
+  }
+  .calcbox .step {
+    padding: 12px 0 12px 40px;
+    border-bottom: 1px solid var(--line);
+    position: relative;
+    font-family: var(--body);
+    font-size: 14.5px;
+    color: var(--text);
+    line-height: 1.65;
+  }
+  .calcbox .step:last-child { border-bottom: none; }
+  .calcbox .step::before {
+    content: attr(data-s);
+    position: absolute;
+    left: 0;
+    top: 12px;
+    font-family: var(--mono);
+    font-size: 12px;
+    color: var(--accent-yellow);
+    font-weight: 500;
+  }
+  .calcbox .step .val {
+    display: block;
+    font-family: var(--mono);
+    font-size: 12.5px;
+    color: var(--muted);
+    margin-top: 6px;
+    line-height: 1.6;
+  }
+  .calcbox .step strong { color: var(--glow-soft); font-weight: 600; }
+
+  /* ---------- Insight box ---------- */
+  .insight {
+    background: linear-gradient(180deg, rgba(120,200,255,0.04), transparent);
+    border: 1px solid var(--line);
+    padding: 28px 32px;
+    margin: 32px 0;
+    font-family: var(--body);
+    position: relative;
+  }
+  .insight::before {
+    content: '';
+    position: absolute;
+    top: -1px; left: -1px;
+    width: 14px; height: 14px;
+    border-top: 1px solid var(--glow);
+    border-left: 1px solid var(--glow);
+  }
+  .insight .key {
+    font-family: var(--mono);
+    font-size: 10px;
+    letter-spacing: 0.28em;
+    text-transform: uppercase;
+    font-weight: 500;
+    margin-bottom: 12px;
+    color: var(--glow);
+  }
+  .insight p { font-size: 16px; line-height: 1.6; color: var(--text); font-weight: 400; margin: 0; max-width: none; }
+
+  /* ---------- Pitfall ---------- */
+  .pitfall {
+    background: linear-gradient(135deg, rgba(226,106,106,0.06), transparent);
+    border: 1px solid rgba(226,106,106,0.28);
+    border-left: 3px solid var(--red);
+    padding: 26px 32px;
+    margin: 32px 0;
+  }
+  .pitfall .lbl {
+    font-family: var(--mono);
+    font-size: 10px;
+    letter-spacing: 0.25em;
+    text-transform: uppercase;
+    font-weight: 500;
+    color: var(--red);
+    margin-bottom: 10px;
+  }
+  .pitfall h4 { margin: 0 0 10px; font-size: 17px; color: var(--text); }
+  .pitfall p { font-size: 14.5px; color: var(--text-dim); margin: 0; max-width: none; }
+
+  /* ---------- CineMatch ---------- */
+  .cinematch {
+    background: linear-gradient(135deg, rgba(255,77,138,0.08), transparent 80%);
+    border: 1px solid rgba(255,77,138,0.30);
+    border-left: 3px solid var(--accent);
+    padding: 32px 36px;
+    margin: 40px 0;
+    position: relative;
+  }
+  .cinematch .tag {
+    position: absolute;
+    top: -10px;
+    left: 24px;
+    background: var(--bg-0);
+    color: var(--accent);
+    font-family: var(--mono);
+    font-size: 10px;
+    font-weight: 500;
+    letter-spacing: 0.25em;
+    padding: 0 12px;
+    text-transform: uppercase;
+  }
+  .cinematch h4 { font-family: var(--display); font-size: 20px; font-weight: 700; margin-bottom: 14px; color: var(--text); }
+  .cinematch p { color: var(--text-dim); margin-bottom: 12px; font-size: 15px; max-width: none; }
+  .cinematch p:last-child { margin-bottom: 0; }
+  .cinematch p strong { color: var(--accent); }
+
+  /* ---------- Historical ---------- */
+  .historical {
+    background: linear-gradient(135deg, rgba(180,140,255,0.06), transparent);
+    border: 1px solid rgba(180,140,255,0.30);
+    border-left: 3px solid var(--accent-2);
+    padding: 32px 36px;
+    margin: 40px 0;
+    position: relative;
+  }
+  .historical .tag {
+    position: absolute;
+    top: -10px;
+    left: 24px;
+    background: var(--bg-0);
+    color: var(--accent-2);
+    font-family: var(--mono);
+    font-size: 10px;
+    font-weight: 500;
+    letter-spacing: 0.25em;
+    padding: 0 12px;
+    text-transform: uppercase;
+  }
+  .historical h4 { font-family: var(--display); font-size: 20px; font-weight: 700; margin-bottom: 14px; color: var(--text); }
+  .historical p { color: var(--text-dim); margin-bottom: 12px; font-size: 15px; max-width: none; }
+  .historical p:last-child { margin-bottom: 0; }
+
+  /* ---------- Phase Done (green completion box) ---------- */
+  .phase-done {
+    background: linear-gradient(135deg, rgba(127,194,138,0.08), transparent);
+    border: 1px solid rgba(127,194,138,0.30);
+    border-left: 3px solid var(--green);
+    padding: 36px 40px;
+    margin: 56px 0;
+    position: relative;
+  }
+  .phase-done .tag {
+    position: absolute;
+    top: -10px;
+    left: 24px;
+    background: var(--bg-0);
+    color: var(--green);
+    font-family: var(--mono);
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 0.3em;
+    padding: 0 14px;
+    text-transform: uppercase;
+  }
+  .phase-done h4 { font-family: var(--display); font-size: 22px; font-weight: 700; margin-bottom: 18px; color: var(--text); letter-spacing: -0.01em; }
+  .phase-done p { color: var(--text-dim); font-size: 15px; margin-bottom: 14px; line-height: 1.7; max-width: none; }
+  .phase-done p:last-child { margin-bottom: 0; }
+  .phase-done p strong { color: var(--green); }
+
+  /* ---------- Diagrams ---------- */
+  .diagram-wrap { margin: 48px 0; }
+  .diagram-wrap svg {
+    width: 100%;
+    height: auto;
+    display: block;
+    background: linear-gradient(180deg, rgba(120,200,255,0.025), rgba(120,200,255,0.005));
+    border: 1px solid var(--line);
+    padding: 24px;
+  }
+  .caption {
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--muted);
+    margin-top: 14px;
+    text-align: center;
+    letter-spacing: 0.05em;
+    line-height: 1.6;
+  }
+  .caption b { color: var(--glow); font-weight: 500; }
+
+  /* ---------- Table ---------- */
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 28px 0;
+    font-family: var(--mono);
+    font-size: 13.5px;
+    background: var(--bg-card);
+    border: 1px solid var(--line);
+  }
+  th, td {
+    padding: 14px 18px;
+    text-align: left;
+    border-bottom: 1px solid var(--line);
+  }
+  th {
+    font-family: var(--mono);
+    font-weight: 500;
+    font-size: 10px;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    color: var(--glow);
+    background: rgba(120,200,255,0.04);
+  }
+  td { color: var(--text); }
+  td strong { color: var(--glow-soft); font-weight: 600; }
+  td.win { color: var(--green); font-weight: 600; }
+  tr:last-child td { border-bottom: none; }
+
+  /* ---------- Code blocks ---------- */
+  pre {
+    background: var(--bg-code);
+    border: 1px solid var(--line);
+    border-left: 2px solid var(--glow);
+    padding: 24px 28px;
+    margin: 28px 0;
+    overflow-x: auto;
+    font-family: var(--mono);
+    font-size: 13.5px;
+    line-height: 1.65;
+    position: relative;
+  }
+  pre::before {
+    content: 'PYTHON';
+    position: absolute;
+    top: 8px;
+    right: 14px;
+    font-family: var(--mono);
+    font-size: 9px;
+    letter-spacing: 0.2em;
+    color: var(--text-faint);
+    font-weight: 500;
+  }
+  pre code { color: #d8e6f0; }
+  .k { color: #ff4d8a; font-weight: 500; }
+  .s { color: #b9d8a8; }
+  .n { color: #f0c674; }
+  .c { color: #6a7a93; font-style: italic; }
+  .f { color: #5fd4ff; }
+  .v { color: #b48cff; }
+
+  /* ---------- MCQ ---------- */
+  .mcq {
+    background: linear-gradient(180deg, rgba(120,200,255,0.03), transparent);
+    border: 1px solid var(--line);
+    border-left: 3px solid var(--accent-yellow);
+    padding: 28px 32px;
+    margin: 36px 0;
+    position: relative;
+  }
+  .mcq .mh {
+    font-family: var(--mono);
+    font-size: 10px;
+    letter-spacing: 0.25em;
+    text-transform: uppercase;
+    font-weight: 500;
+    color: var(--accent-yellow);
+    margin-bottom: 16px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+  .mcq .mh .qnum {
+    font-family: var(--mono);
+    color: var(--text-faint);
+    font-size: 11px;
+    letter-spacing: 0.1em;
+    font-weight: 400;
+  }
+  .mcq .mq {
+    font-family: var(--display);
+    font-size: 18px;
+    font-weight: 500;
+    color: var(--text);
+    line-height: 1.5;
+    margin-bottom: 22px;
+    letter-spacing: -0.005em;
+  }
+  .mcq .mq code {
+    font-family: var(--mono);
+    font-size: 15px;
+    background: var(--bg-code);
+    padding: 2px 8px;
+    color: var(--glow);
+    border: 1px solid var(--line);
+    font-weight: 400;
+  }
+  .mcq .opts { display: flex; flex-direction: column; gap: 10px; }
+  .mcq .opt {
+    background: var(--bg-card);
+    border: 1px solid var(--line);
+    padding: 14px 18px;
+    cursor: pointer;
+    font-family: var(--body);
+    font-size: 14.5px;
+    color: var(--text-dim);
+    transition: all 0.18s;
+    display: flex;
+    align-items: flex-start;
+    gap: 14px;
+    line-height: 1.55;
+  }
+  .mcq .opt:hover {
+    border-color: var(--line-strong);
+    background: rgba(120,200,255,0.04);
+    color: var(--text);
+  }
+  .mcq .opt .key {
+    font-family: var(--mono);
+    font-size: 12px;
+    color: var(--muted);
+    font-weight: 500;
+    min-width: 18px;
+    margin-top: 2px;
+  }
+  .mcq .opt .text { flex: 1; }
+  .mcq .opt code {
+    font-family: var(--mono);
+    font-size: 13px;
+    background: var(--bg-code);
+    padding: 1px 6px;
+    color: var(--glow);
+    border: 1px solid var(--line);
+  }
+  .mcq .opt.correct {
+    border-color: var(--green);
+    background: linear-gradient(90deg, rgba(127,194,138,0.10), transparent);
+    color: var(--text);
+  }
+  .mcq .opt.correct .key { color: var(--green); }
+  .mcq .opt.wrong {
+    border-color: var(--red);
+    background: linear-gradient(90deg, rgba(226,106,106,0.10), transparent);
+    color: var(--text);
+  }
+  .mcq .opt.wrong .key { color: var(--red); }
+  .mcq .opt.disabled { cursor: default; }
+  .mcq .opt.disabled:hover {
+    border-color: var(--line);
+    background: var(--bg-card);
+  }
+  .mcq .opt.correct.disabled:hover {
+    border-color: var(--green);
+    background: linear-gradient(90deg, rgba(127,194,138,0.10), transparent);
+  }
+  .mcq .opt.wrong.disabled:hover {
+    border-color: var(--red);
+    background: linear-gradient(90deg, rgba(226,106,106,0.10), transparent);
+  }
+  .mcq .feedback {
+    margin-top: 20px;
+    padding: 20px 24px;
+    background: var(--bg-code);
+    border-left: 2px solid var(--glow);
+    font-family: var(--body);
+    font-size: 14.5px;
+    line-height: 1.7;
+    color: var(--text-dim);
+    display: none;
+  }
+  .mcq .feedback.show { display: block; }
+  .mcq .feedback .verdict {
+    font-family: var(--mono);
+    font-size: 10px;
+    letter-spacing: 0.28em;
+    text-transform: uppercase;
+    font-weight: 500;
+    margin-bottom: 10px;
+    display: block;
+  }
+  .mcq .feedback.right .verdict { color: var(--green); }
+  .mcq .feedback.wrong .verdict { color: var(--red); }
+  .mcq .feedback strong { color: var(--text); font-weight: 600; }
+  .mcq .feedback code {
+    font-family: var(--mono);
+    font-size: 13px;
+    background: rgba(120,200,255,0.05);
+    padding: 1px 6px;
+    color: var(--glow);
+    border: 1px solid var(--line);
+  }
+
+  /* ---------- Checkpoint ---------- */
+  .checkpoint {
+    background: linear-gradient(180deg, rgba(120,200,255,0.04), transparent);
+    border: 1px solid var(--line-strong);
+    padding: 36px;
+    margin: 56px 0;
+    position: relative;
+  }
+  .checkpoint::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 2px;
+    background: linear-gradient(90deg, var(--glow), var(--accent-2), var(--accent));
+  }
+  .checkpoint h4 {
+    font-family: var(--mono);
+    font-size: 11px;
+    letter-spacing: 0.28em;
+    text-transform: uppercase;
+    color: var(--glow);
+    font-weight: 500;
+    margin-bottom: 24px;
+  }
+  .checkpoint ol { list-style: none; counter-reset: item; }
+  .checkpoint li {
+    counter-increment: item;
+    padding: 14px 0 14px 48px;
+    border-bottom: 1px solid var(--line);
+    position: relative;
+    font-family: var(--body);
+    font-size: 15px;
+    color: var(--text);
+    line-height: 1.55;
+  }
+  .checkpoint li:last-child { border-bottom: none; }
+  .checkpoint li::before {
+    content: counter(item, decimal-leading-zero);
+    position: absolute;
+    left: 0;
+    top: 14px;
+    font-family: var(--mono);
+    font-size: 12px;
+    color: var(--glow);
+    font-weight: 400;
+  }
+  /* ---------- Learn resources ---------- */
+  .learn-intro {
+    color: var(--text-dim);
+    max-width: 62ch;
+    margin-bottom: 34px;
+  }
+  .resource-stack {
+    display: grid;
+    gap: 18px;
+    margin: 34px 0 10px;
+  }
+  .resource-card {
+    background: linear-gradient(135deg, rgba(120,200,255,0.055), rgba(180,140,255,0.035) 55%, rgba(255,77,138,0.025));
+    border: 1px solid var(--line);
+    padding: 26px 28px;
+    position: relative;
+    overflow: hidden;
+  }
+  .resource-card::before {
+    content: '';
+    position: absolute;
+    inset: -1px;
+    border: 1px solid transparent;
+    pointer-events: none;
+    background: linear-gradient(120deg, rgba(95,212,255,0.65), transparent 42%, rgba(255,77,138,0.45)) border-box;
+    mask: linear-gradient(#000 0 0) padding-box, linear-gradient(#000 0 0);
+    -webkit-mask: linear-gradient(#000 0 0) padding-box, linear-gradient(#000 0 0);
+    mask-composite: exclude;
+    -webkit-mask-composite: xor;
+  }
+  .resource-head {
+    display: grid;
+    grid-template-columns: 42px 1fr;
+    gap: 16px;
+    align-items: center;
+    margin-bottom: 18px;
+  }
+  .resource-icon {
+    width: 34px;
+    height: 34px;
+    display: grid;
+    place-items: center;
+    border: 1px solid rgba(95,212,255,0.55);
+    background: rgba(95,212,255,0.07);
+    color: var(--glow);
+    font-family: var(--mono);
+    font-size: 16px;
+    line-height: 1;
+  }
+  .resource-card.canonical .resource-icon {
+    border-color: rgba(180,140,255,0.65);
+    background: rgba(180,140,255,0.08);
+    color: var(--accent-2);
+  }
+  .resource-card.repo .resource-icon {
+    border-color: rgba(255,77,138,0.62);
+    background: rgba(255,77,138,0.07);
+    color: var(--accent);
+  }
+  .resource-kicker {
+    font-family: var(--mono);
+    font-size: 10px;
+    letter-spacing: 0.24em;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin-bottom: 3px;
+  }
+  .resource-card h3 {
+    margin: 0;
+    font-size: 21px;
+    line-height: 1.15;
+  }
+  .resource-title {
+    display: block;
+    font-family: var(--display);
+    font-size: 18px;
+    font-weight: 700;
+    line-height: 1.35;
+    color: var(--glow-soft);
+    margin-bottom: 8px;
+    text-decoration: none;
+  }
+  .resource-card.canonical .resource-title { color: var(--accent-2); }
+  .resource-card.repo .resource-title { color: var(--accent); }
+  .resource-card p {
+    max-width: none;
+    margin-bottom: 18px;
+    font-size: 14.5px;
+    color: var(--text-dim);
+  }
+  .resource-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px;
+  }
+  .resource-link {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 42px;
+    padding: 0 18px;
+    border: 1px solid rgba(95,212,255,0.65);
+    color: var(--glow);
+    background: rgba(95,212,255,0.04);
+    font-family: var(--mono);
+    font-size: 11px;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    text-decoration: none;
+    transition: border-color 0.18s ease, background 0.18s ease, color 0.18s ease;
+  }
+  .resource-link:hover {
+    border-color: var(--glow);
+    background: rgba(95,212,255,0.10);
+    color: var(--text);
+  }
+  .resource-card.canonical .resource-link {
+    border-color: rgba(180,140,255,0.70);
+    color: var(--accent-2);
+    background: rgba(180,140,255,0.04);
+  }
+  .resource-card.canonical .resource-link:hover {
+    border-color: var(--accent-2);
+    background: rgba(180,140,255,0.10);
+    color: var(--text);
+  }
+  .resource-card.repo .resource-link {
+    border-color: rgba(255,77,138,0.72);
+    color: var(--accent);
+    background: rgba(255,77,138,0.04);
+  }
+  .resource-card.repo .resource-link:hover {
+    border-color: var(--accent);
+    background: rgba(255,77,138,0.10);
+    color: var(--text);
+  }
+
+  /* ---------- Interactive box ---------- */
+  .ibox {
+    background: var(--bg-card);
+    border: 1px solid var(--line-strong);
+    padding: 32px;
+    margin: 40px 0;
+    position: relative;
+    overflow: hidden;
+  }
+  .ibox::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 2px;
+    background: linear-gradient(90deg, var(--accent), var(--accent-2), var(--glow));
+  }
+  .ibox .ilbl {
+    font-family: var(--mono);
+    font-size: 10px;
+    letter-spacing: 0.28em;
+    text-transform: uppercase;
+    color: var(--glow);
+    font-weight: 500;
+    margin-bottom: 16px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  .ibox .ilbl .dot {
+    display: inline-block;
+    width: 6px; height: 6px;
+    background: var(--glow);
+    border-radius: 50%;
+    box-shadow: 0 0 8px var(--glow);
+    animation: pulse 2s infinite;
+  }
+  .ibox .idesc {
+    font-family: var(--body);
+    font-size: 14.5px;
+    color: var(--text-dim);
+    margin-bottom: 22px;
+    line-height: 1.65;
+  }
+
+  /* ---------- Inline code ---------- */
+  code.inline {
+    font-family: var(--mono);
+    font-size: 14px;
+    background: var(--bg-code);
+    padding: 2px 8px;
+    color: var(--glow);
+    border: 1px solid var(--line);
+  }
+
+  /* ---------- Footer ---------- */
+  .footer-bar {
+    margin-top: 72px;
+    padding-top: 24px;
+    border-top: 1px solid var(--line);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-family: var(--mono);
+    font-size: 11px;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    color: var(--muted);
+  }
+  .footer-bar .prev-link, .footer-bar .next-link {
+    text-decoration: none;
+    color: var(--muted);
+    display: inline-flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+  .footer-bar .next-link { align-items: flex-end; }
+  .footer-bar .lbl {
+    font-family: var(--mono);
+    font-size: 10px;
+    letter-spacing: 0.25em;
+    color: var(--text-faint);
+  }
+  .footer-bar .ttl {
+    font-family: var(--display);
+    font-size: 16px;
+    color: var(--text);
+    font-weight: 700;
+    text-transform: none;
+    letter-spacing: -0.01em;
+  }
+  .footer-bar .next-link .ttl { color: var(--glow); }
+  .footer-bar .next-link .ttl::after { content: ' →'; }
+  .footer-bar .prev-link .ttl::before { content: '← '; }
+
+  /* ---------- Entrance animations ---------- */
+  .fade-in { opacity: 0; transform: translateY(14px); animation: fadeIn 0.9s ease forwards; }
+  .d1 { animation-delay: 0.1s; }
+  .d2 { animation-delay: 0.25s; }
+  .d3 { animation-delay: 0.4s; }
+  .d4 { animation-delay: 0.55s; }
+  .d5 { animation-delay: 0.7s; }
+  .d6 { animation-delay: 0.85s; }
+  @keyframes fadeIn { to { opacity: 1; transform: translateY(0); } }
+
+  .draw-path {
+    stroke-dasharray: 800;
+    stroke-dashoffset: 800;
+    animation: draw 6s ease-out forwards;
+  }
+  @keyframes draw { to { stroke-dashoffset: 0; } }
+
+  .node-pulse { animation: nodePulse 3s ease-in-out infinite; transform-origin: center; transform-box: fill-box; }
+  @keyframes nodePulse {
+    0%, 100% { opacity: 0.6; r: 2.5; }
+    50% { opacity: 1; r: 3.8; }
+  }
+
+  @media (max-width: 960px) {
+    .wrap { padding: 32px 24px 64px; }
+    .hero { grid-template-columns: 1fr; gap: 40px; }
+    .meta-strip { grid-template-columns: repeat(2, 1fr); }
+    .body-grid { grid-template-columns: 1fr; gap: 32px; }
+    .sidebar { position: static; }
+    .content h2 { font-size: 26px; }
+    .calcbox, .insight, .pitfall, .cinematch, .historical, .mcq, .ibox, .checkpoint, .resource-card { padding: 22px 20px; }
+    .resource-head { grid-template-columns: 1fr; gap: 12px; }
+  }
+
+  /* ---------- Readability + sidebar anchors ---------- */
+  .content section { scroll-margin-top: 36px; }
+  .sidebar a {
+    color: inherit;
+    text-decoration: none;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    width: 100%;
+  }
+  .sidebar a:focus-visible {
+    outline: 1px solid var(--glow);
+    outline-offset: 4px;
+  }
+  .eq,
+  .calcbox,
+  .insight,
+  .pitfall,
+  .cinematch,
+  .historical,
+  .mcq,
+  .checkpoint,
+  .ibox,
+  .resource-card,
+  .phase-done,
+  .diagram-wrap svg,
+  table,
+  pre {
+    background-color: #090f1d;
+  }
+  .eq { background: linear-gradient(180deg, rgba(120,200,255,0.10), rgba(120,200,255,0.04)), #090f1d; }
+  .calcbox { background: linear-gradient(180deg, rgba(240,198,116,0.07), rgba(120,200,255,0.03)), #090f1d; }
+  .insight { background: linear-gradient(180deg, rgba(120,200,255,0.10), rgba(120,200,255,0.035)), #090f1d; }
+  .pitfall { background: linear-gradient(135deg, rgba(226,106,106,0.12), rgba(120,200,255,0.025)), #090f1d; }
+  .cinematch { background: linear-gradient(135deg, rgba(255,77,138,0.13), rgba(120,200,255,0.025)), #090f1d; }
+  .historical { background: linear-gradient(135deg, rgba(180,140,255,0.13), rgba(120,200,255,0.025)), #090f1d; }
+  .mcq { background: linear-gradient(180deg, rgba(120,200,255,0.085), rgba(120,200,255,0.025)), #090f1d; }
+  .mcq .opt { background: #0b1221; }
+  .mcq .feedback { background: #070b14; }
+  .checkpoint { background: linear-gradient(180deg, rgba(120,200,255,0.09), rgba(120,200,255,0.025)), #090f1d; }
+  .ibox { background: #090f1d; }
+  .resource-card { background: linear-gradient(135deg, rgba(120,200,255,0.10), rgba(180,140,255,0.075) 55%, rgba(255,77,138,0.055)), #090f1d; }
+  .phase-done { background: linear-gradient(135deg, rgba(120,200,255,0.10), rgba(255,77,138,0.055)), #090f1d; }
+  .diagram-wrap svg { background: linear-gradient(180deg, rgba(120,200,255,0.07), rgba(120,200,255,0.025)), #090f1d; }
+  table { background: #090f1d; }
+  th { background: rgba(120,200,255,0.10); }
+  pre { background: #070b14; }
+</style>
+</head>
+<body>
+
+<!-- Neural circuit background -->
+<div class="circuit-bg">
+  <svg viewBox="0 0 1600 1000" preserveAspectRatio="xMidYMid slice" xmlns="http://www.w3.org/2000/svg">
+    <defs>
+      <filter id="bgglow" x="-50%" y="-50%" width="200%" height="200%">
+        <feGaussianBlur stdDeviation="2" result="b"/>
+        <feMerge>
+          <feMergeNode in="b"/>
+          <feMergeNode in="SourceGraphic"/>
+        </feMerge>
+      </filter>
+      <linearGradient id="lineGrad" x1="0" y1="0" x2="1" y2="1">
+        <stop offset="0%" stop-color="#5fd4ff" stop-opacity="0.7"/>
+        <stop offset="100%" stop-color="#b48cff" stop-opacity="0.2"/>
+      </linearGradient>
+      <radialGradient id="nodeGlow">
+        <stop offset="0%" stop-color="#7af0ff" stop-opacity="1"/>
+        <stop offset="100%" stop-color="#5fd4ff" stop-opacity="0"/>
+      </radialGradient>
+    </defs>
+
+    <g stroke="url(#lineGrad)" fill="none" stroke-width="1" filter="url(#bgglow)">
+      <path class="draw-path" d="M 50 120 L 280 120 L 280 240 L 520 240 L 520 180 L 760 180"/>
+      <path class="draw-path" d="M 760 180 L 760 320 L 1020 320 L 1020 260 L 1280 260 L 1280 400 L 1540 400" style="animation-delay:0.4s"/>
+      <path class="draw-path" d="M 80 480 L 240 480 L 240 620 L 480 620 L 480 540 L 720 540 L 720 680" style="animation-delay:0.8s"/>
+      <path class="draw-path" d="M 720 680 L 960 680 L 960 780 L 1200 780 L 1200 700 L 1500 700" style="animation-delay:1.2s"/>
+      <path class="draw-path" d="M 50 820 L 320 820 L 320 900 L 600 900 L 600 860 L 880 860" style="animation-delay:1.6s"/>
+      <path class="draw-path" d="M 880 860 L 880 940 L 1180 940 L 1180 880 L 1500 880" style="animation-delay:2s"/>
+      <path class="draw-path" d="M 1100 40 L 1100 180 L 1360 180 L 1360 80 L 1560 80" style="animation-delay:2.4s"/>
+      <path class="draw-path" d="M 380 40 L 380 160 L 620 160 L 620 60 L 880 60" style="animation-delay:2.8s"/>
+      <path class="draw-path" d="M 200 320 L 200 420 L 80 420" style="animation-delay:1.5s"/>
+      <path class="draw-path" d="M 1380 540 L 1380 640 L 1240 640" style="animation-delay:1.8s"/>
+      <path class="draw-path" d="M 540 720 L 540 800 L 360 800" style="animation-delay:2.2s"/>
+    </g>
+
+    <g stroke="rgba(120,200,255,0.08)" fill="none" stroke-width="0.6">
+      <path d="M 0 60 L 200 60 L 200 200 L 400 200"/>
+      <path d="M 600 400 L 800 400 L 800 460 L 1000 460"/>
+      <path d="M 1200 100 L 1400 100 L 1400 220"/>
+      <path d="M 100 700 L 300 700 L 300 580"/>
+      <path d="M 900 200 L 900 100 L 1100 100"/>
+      <path d="M 1300 800 L 1500 800 L 1500 920"/>
+    </g>
+
+    <g fill="#5fd4ff" filter="url(#bgglow)">
+      <circle class="node-pulse" cx="280" cy="120" r="3"/>
+      <circle class="node-pulse" cx="520" cy="240" r="3" style="animation-delay:0.3s"/>
+      <circle class="node-pulse" cx="760" cy="180" r="3" style="animation-delay:0.6s"/>
+      <circle class="node-pulse" cx="1020" cy="320" r="3" style="animation-delay:0.9s"/>
+      <circle class="node-pulse" cx="1280" cy="260" r="3" style="animation-delay:1.2s"/>
+      <circle class="node-pulse" cx="240" cy="620" r="3" style="animation-delay:0.4s"/>
+      <circle class="node-pulse" cx="720" cy="540" r="3" style="animation-delay:0.7s"/>
+      <circle class="node-pulse" cx="960" cy="680" r="3" style="animation-delay:1s"/>
+      <circle class="node-pulse" cx="1200" cy="780" r="3" style="animation-delay:1.3s"/>
+      <circle class="node-pulse" cx="320" cy="820" r="3" style="animation-delay:0.5s"/>
+      <circle class="node-pulse" cx="880" cy="860" r="3" style="animation-delay:0.8s"/>
+      <circle class="node-pulse" cx="1100" cy="180" r="3" style="animation-delay:1.1s"/>
+      <circle class="node-pulse" cx="380" cy="160" r="3" style="animation-delay:1.4s"/>
+      <circle class="node-pulse" cx="200" cy="420" r="3" style="animation-delay:0.6s"/>
+    </g>
+
+    <g>
+      <circle cx="760" cy="180" r="18" fill="url(#nodeGlow)" opacity="0.6"/>
+      <circle cx="960" cy="680" r="18" fill="url(#nodeGlow)" opacity="0.6"/>
+      <circle cx="1100" cy="180" r="14" fill="url(#nodeGlow)" opacity="0.4"/>
+    </g>
+  </svg>
+</div>
+
+<div class="grain"></div>
+
+<div class="wrap">
+
+  <!-- Top bar -->
+  <div class="topbar fade-in d1">
+    <div class="left">
+      <span class="dot"></span>
+      <span>Marevlo · Transformer Architectures</span>
+      <span>·</span>
+      <span>Phase 1 — Encoders</span>
+    </div>
+    <div class="right">
+      <span>Module 1.4</span>
+    </div>
+  </div>
+
+  <!-- Hero -->
+  <div class="hero">
+    <div>
+      <div class="module-tag fade-in d2">Phase 1 — Encoder Models · Module 1.4</div>
+      <h1 class="title fade-in d2">
+        DeBERTa &amp;
+        <span class="accent">ELECTRA</span>.
+        <span class="line2">The encoders that won.</span>
+      </h1>
+    </div>
+    <p class="lede fade-in d3">
+      DeBERTa (He et al., 2021) and ELECTRA (Clark et al., 2020) are the two ideas that pushed encoder models past BERT and RoBERTa. DeBERTa redesigns attention itself — <em>disentangling</em> content and position into separate attention terms. ELECTRA redesigns the pretraining objective — replacing MLM's masked-and-predict with a <em>replaced token detection</em> task that trains on <em>every</em> token, not just the 15% that are masked. Together they define the production encoder frontier: DeBERTa-v3-large is the highest-scoring encoder on SuperGLUE as of 2026, and ELECTRA-small matches BERT-base quality at 1/4 the compute.
+    </p>
+  </div>
+
+  <!-- Meta strip -->
+  <div class="meta-strip fade-in d4">
+    <div class="meta-cell">
+      <div class="label">Phase</div>
+      <div class="value">1 <span class="unit">Encoders</span></div>
+    </div>
+    <div class="meta-cell">
+      <div class="label">Module</div>
+      <div class="value">1.4</div>
+    </div>
+    <div class="meta-cell">
+      <div class="label">Reading Time</div>
+      <div class="value">40 <span class="unit">min</span></div>
+    </div>
+    <div class="meta-cell">
+      <div class="label">Papers</div>
+      <div class="value">He '21 / Clark '20</div>
+    </div>
+  </div>
+
+  <!-- Body -->
+  <div class="body-grid">
+
+    <aside class="sidebar fade-in d5">
+      <h4>// In This Module</h4>
+      <ul>
+        <li class="active"><a href="#section-01"><span class="num">01</span> Disentangled Attention</a></li>
+        <li><a href="#section-02"><span class="num">02</span> Enhanced Mask Decoder</a></li>
+        <li><a href="#section-03"><span class="num">03</span> ELECTRA RTD</a></li>
+        <li><a href="#section-04"><span class="num">04</span> ELECTRA Training</a></li>
+        <li><a href="#section-05"><span class="num">05</span> Landscape</a></li>
+        <li><a href="#section-06"><span class="num">06</span> Decision Tree</a></li>
+        <li><a href="#section-07"><span class="num">07</span> Phase Synthesis</a></li>
+        <li><a href="#section-08"><span class="num">08</span> Learn More</a></li>
+      </ul>
+    </aside>
+
+    <div class="content">
+
+<section id="section-01">
+  <h2 data-num="01 / 08">DeBERTa — disentangled attention.</h2>
+
+  <p>BERT computes attention on a single vector per position: the <em>sum</em> of token embedding and position embedding. DeBERTa's key insight: content and position carry different types of information and should interact through <em>separate attention terms</em>.</p>
+
+  <p>In BERT, each position's representation is h<sub>i</sub> = E<sub>token</sub>(i) + E<sub>pos</sub>(i). The attention score between positions i and j is computed on these combined vectors. DeBERTa decomposes this into three explicit cross-terms:</p>
+
+  <div class="eq">
+    A<sub>ij</sub> = H<sub>i</sub><sup>c</sup> · H<sub>j</sub><sup>c⊤</sup> + H<sub>i</sub><sup>c</sup> · P<sub>ij</sub><sup>⊤</sup> + P<sub>ij</sub> · H<sub>j</sub><sup>c⊤</sup>
+    <span class="num">(1.1)</span>
+  </div>
+
+  <p>Where H<sup>c</sup> are content vectors (from token embeddings) and P<sub>ij</sub> are <em>relative</em> position encodings (depending on the distance i − j, not absolute positions i and j).</p>
+
+  <table>
+    <thead><tr><th>Term</th><th>What it computes</th><th>Example</th></tr></thead>
+    <tbody>
+      <tr><td>content-to-content (H<sup>c</sup>·H<sup>c</sup>)</td><td>Semantic similarity between tokens</td><td>"terrible" attends to "awful" regardless of position</td></tr>
+      <tr><td>content-to-position (H<sup>c</sup>·P)</td><td>Whether a token prefers nearby or distant context</td><td>Adjectives attend to the noun 1-2 positions away</td></tr>
+      <tr><td>position-to-content (P·H<sup>c</sup>)</td><td>Whether a relative distance prefers certain content</td><td>The word immediately before a verb is likely its subject</td></tr>
+    </tbody>
+  </table>
+
+  <div class="diagram-wrap">
+    <svg viewBox="0 0 700 280" xmlns="http://www.w3.org/2000/svg">
+      <text x="350" y="22" font-family="Syne" font-size="12" fill="#7a8aa3" text-anchor="middle" letter-spacing="3" font-weight="600">DISENTANGLED ATTENTION — THREE TERMS</text>
+
+      <!-- Term 1: content-to-content -->
+      <g>
+        <rect x="30" y="60" width="190" height="90" fill="#0a0f1c" stroke="#5fd4ff" rx="3">
+          <animate attributeName="opacity" values="0;1" dur="0.5s" fill="freeze"/>
+        </rect>
+        <text x="125" y="85" font-family="Syne" font-size="12" fill="#5fd4ff" text-anchor="middle" font-weight="600">Content × Content</text>
+        <text x="125" y="108" font-family="JetBrains Mono" font-size="10" fill="#7a8aa3" text-anchor="middle">H<tspan font-size="8" dy="2" fill="#5fd4ff">i</tspan><tspan dy="-2" font-size="8" fill="#7a8aa3">c</tspan> · H<tspan font-size="8" dy="2" fill="#5fd4ff">j</tspan><tspan dy="-2" font-size="8" fill="#7a8aa3">c⊤</tspan></text>
+        <text x="125" y="138" font-family="Inter Tight" font-size="10" fill="#7a8aa3" text-anchor="middle" font-style="italic">"what does this token mean?"</text>
+      </g>
+
+      <!-- Term 2: content-to-position -->
+      <g>
+        <rect x="255" y="60" width="190" height="90" fill="#0a0f1c" stroke="#f0c674" rx="3">
+          <animate attributeName="opacity" values="0;1" dur="0.5s" begin="0.2s" fill="freeze"/>
+        </rect>
+        <text x="350" y="85" font-family="Syne" font-size="12" fill="#f0c674" text-anchor="middle" font-weight="600">Content × Position</text>
+        <text x="350" y="108" font-family="JetBrains Mono" font-size="10" fill="#7a8aa3" text-anchor="middle">H<tspan font-size="8" dy="2" fill="#f0c674">i</tspan><tspan dy="-2" font-size="8" fill="#7a8aa3">c</tspan> · P<tspan font-size="8" dy="2" fill="#f0c674">ij</tspan><tspan dy="-2" font-size="8" fill="#7a8aa3">⊤</tspan></text>
+        <text x="350" y="138" font-family="Inter Tight" font-size="10" fill="#7a8aa3" text-anchor="middle" font-style="italic">"does this token prefer nearby words?"</text>
+      </g>
+
+      <!-- Term 3: position-to-content -->
+      <g>
+        <rect x="480" y="60" width="190" height="90" fill="#0a0f1c" stroke="#ff4d8a" rx="3">
+          <animate attributeName="opacity" values="0;1" dur="0.5s" begin="0.4s" fill="freeze"/>
+        </rect>
+        <text x="575" y="85" font-family="Syne" font-size="12" fill="#ff4d8a" text-anchor="middle" font-weight="600">Position × Content</text>
+        <text x="575" y="108" font-family="JetBrains Mono" font-size="10" fill="#7a8aa3" text-anchor="middle">P<tspan font-size="8" dy="2" fill="#ff4d8a">ij</tspan><tspan dy="-2"> · H</tspan><tspan font-size="8" dy="2" fill="#ff4d8a">j</tspan><tspan dy="-2" font-size="8" fill="#7a8aa3">c⊤</tspan></text>
+        <text x="575" y="138" font-family="Inter Tight" font-size="10" fill="#7a8aa3" text-anchor="middle" font-style="italic">"does this distance prefer certain words?"</text>
+      </g>
+
+      <!-- Sum -->
+      <text x="140" y="180" font-family="JetBrains Mono" font-size="22" fill="rgba(95,212,255,0.4)">+</text>
+      <text x="370" y="180" font-family="JetBrains Mono" font-size="22" fill="rgba(95,212,255,0.4)">+</text>
+      <line x1="50" y1="195" x2="650" y2="195" stroke="rgba(95,212,255,0.4)" stroke-width="1"/>
+
+      <!-- Result -->
+      <rect x="200" y="210" width="300" height="50" fill="#0a0f1c" stroke="#7fc28a" rx="3">
+        <animate attributeName="opacity" values="0;1" dur="0.4s" begin="0.7s" fill="freeze"/>
+      </rect>
+      <text x="350" y="235" font-family="Syne" font-size="13" fill="#7fc28a" text-anchor="middle" font-weight="500">A<tspan font-size="10" dy="2">ij</tspan><tspan dy="-2"> = disentangled attention score</tspan></text>
+      <text x="350" y="252" font-family="JetBrains Mono" font-size="9" fill="#7a8aa3" text-anchor="middle">→ softmax → weighted sum of values</text>
+    </svg>
+    <div class="caption"><b>DeBERTa's disentangled attention.</b> Three separate attention terms capture content-content similarity, content-position preference, and position-content preference. BERT combines all three into a single dot product; DeBERTa models them independently, giving the model more explicit control over how content and position interact.</div>
+  </div>
+
+  <div class="calcbox">
+    <div class="ch">Why disentangled attention helps — a concrete example</div>
+    <div class="step" data-s="1.">CineMatch review: "The acting was terrible but the plot was brilliant"<span class="val">Token "terrible" at position 4, "brilliant" at position 9</span></div>
+    <div class="step" data-s="2.">BERT attention: score("terrible", "brilliant") = (H_terrible + P_4) · (H_brilliant + P_9)<span class="val">Content similarity and position distance are entangled in a single dot product. The model can't separately control "how much do these words relate semantically?" vs "how much does position distance matter?"</span></div>
+    <div class="step" data-s="3.">DeBERTa: score = H_terrible·H_brilliant (content: both are intensity adjectives — high) + H_terrible·P_{4→9} (this content prefers nearby — low, distance=5) + P_{4→9}·H_brilliant (distance-5 position prefers nouns — medium)<span class="val">Three independent signals combined additively. The model can learn "these words are semantically related" without being confused by "but they're far apart."</span></div>
+    <div class="step" data-s="4.">Result: DeBERTa's disentangled scores are more precise, especially for long-range dependencies where content and position signals conflict. +1.5 points on SuperGLUE over RoBERTa.</div>
+  </div>
+
+  <div class="mcq" data-correct="b">
+    <div class="mh"><span>Disentangled attention</span><span class="qnum">Question 01 / 07</span></div>
+    <div class="mq">DeBERTa uses <em>relative</em> position encoding (P<sub>ij</sub> depends on i−j) instead of BERT's absolute encoding (P<sub>i</sub> depends on i). Why?</div>
+    <div class="opts">
+      <div class="opt" data-key="a"><span class="key">A</span><span class="text">Relative encoding uses fewer parameters.</span></div>
+      <div class="opt" data-key="b"><span class="key">B</span><span class="text">Relative encoding captures the linguistic insight that relationships between words depend on their <em>distance</em>, not their absolute position. "The acting was terrible" has the same structure whether it starts at position 0 or position 50 in the document. With absolute positions, the model must re-learn this invariance for every position pair; with relative positions, it's built in. This also enables length generalization — the model can handle sequences longer than those seen during training.</span></div>
+      <div class="opt" data-key="c"><span class="key">C</span><span class="text">Relative encoding is required for the disentangled attention formula to work.</span></div>
+      <div class="opt" data-key="d"><span class="key">D</span><span class="text">Relative encoding prevents attention from focusing on specific positions.</span></div>
+    </div>
+    <div class="feedback" data-right="<strong>Right.</strong> Language structure is largely position-invariant — 'the cat sat' has the same syntax at position 0 or position 200. Absolute positions force the model to learn this invariance (Det-Noun-Verb) for every absolute position range separately. Relative positions encode it naturally: 'the word 1 position before a verb is its subject' holds regardless of absolute position. DeBERTa uses a relative position embedding table with 2K entries (for distances −K to +K), shared across all positions." data-wrong="<strong>Not quite.</strong> Relative position encoding captures distance rather than absolute location. Language structure depends on word distances ('adjective before noun'), not absolute positions. Relative encoding bakes in this translation invariance, reducing what the model must learn and enabling generalization to longer sequences."></div>
+  </div>
+</section>
+
+<section id="section-02">
+  <h2 data-num="02 / 08">DeBERTa's enhanced mask decoder — position in the final layer.</h2>
+
+  <p>DeBERTa has a subtle second innovation. In the 12 encoder layers, only <em>content and relative position</em> are used — absolute position is omitted. Then, in the final prediction layer (the MLM head), absolute position embeddings are added back.</p>
+
+  <p>Why? Absolute position matters for the MLM prediction ("what word goes at position 4?") but distracts during the representation-building layers (where relative distance is more useful). By deferring absolute position to the end, DeBERTa gets the benefits of relative encoding in the deep layers while still conditioning the final prediction on absolute position when needed.</p>
+
+  <div class="mcq" data-correct="c">
+    <div class="mh"><span>Enhanced mask decoder</span><span class="qnum">Question 02 / 07</span></div>
+    <div class="mq">Why would absolute position matter for MLM prediction at all? (Isn't relative position enough?)</div>
+    <div class="opts">
+      <div class="opt" data-key="a"><span class="key">A</span><span class="text">It doesn't — DeBERTa includes it only for backward compatibility.</span></div>
+      <div class="opt" data-key="b"><span class="key">B</span><span class="text">Absolute position is needed for the tokenizer to work.</span></div>
+      <div class="opt" data-key="c"><span class="key">C</span><span class="text">Some predictions are position-dependent. "It is a [MASK] day" — if [MASK] is at position 4 in a sentence-initial clause, "beautiful" is likely. But in some document formats, specific positions have specific patterns: the first token of a paragraph is often capitalized, the last token is often a period, a word at position 0 is more likely to be a discourse marker ("However", "Meanwhile"). Absolute position provides this positional prior for the final prediction.</span></div>
+      <div class="opt" data-key="d"><span class="key">D</span><span class="text">Without absolute position, the softmax over the vocabulary wouldn't sum to 1.</span></div>
+    </div>
+    <div class="feedback" data-right="<strong>Right.</strong> While most linguistic structure is captured by relative position, some patterns do depend on absolute location: sentence-initial capitalization, document-level structure, and format-specific conventions. Adding absolute position only at the final prediction layer gives the model access to this signal without contaminating the deep representation layers (where relative distance is more useful). It's a separation-of-concerns design: deep layers handle language structure (relative), the prediction head handles format-specific position effects (absolute)." data-wrong="<strong>Not quite.</strong> Some predictions genuinely depend on absolute position — sentence-initial words, paragraph boundaries, and document-level formatting patterns. DeBERTa defers absolute position to the final prediction layer so the deep representation layers focus on relative distance (more useful for language understanding) while the prediction head can use absolute position for format-specific patterns."></div>
+  </div>
+</section>
+
+<section id="section-03">
+  <h2 data-num="03 / 08">ELECTRA — a completely different pretraining idea.</h2>
+
+  <p>BERT's MLM trains on 15% of tokens per sequence — the masked ones. The other 85% produce no learning signal. ELECTRA's insight: <em>train on every token</em> by converting the prediction task from "fill in the blank" to "detect which tokens have been replaced."</p>
+
+  <p>ELECTRA uses two models:</p>
+
+  <div class="diagram-wrap">
+    <svg viewBox="0 0 700 320" xmlns="http://www.w3.org/2000/svg">
+      <text x="350" y="22" font-family="Syne" font-size="12" fill="#7a8aa3" text-anchor="middle" letter-spacing="3" font-weight="600">ELECTRA — GENERATOR + DISCRIMINATOR</text>
+
+      <!-- Input -->
+      <g font-family="JetBrains Mono" font-size="10">
+        <text x="50" y="60" fill="#7a8aa3">Original:</text>
+        <text x="130" y="60" fill="#e6f1ff">the movie was absolutely terrible</text>
+      </g>
+
+      <!-- Masked input -->
+      <g font-family="JetBrains Mono" font-size="10">
+        <text x="50" y="90" fill="#7a8aa3">Masked:</text>
+        <text x="130" y="90" fill="#e6f1ff">the movie was <tspan fill="#ff4d8a">[MASK]</tspan> terrible</text>
+      </g>
+
+      <!-- Generator (small) -->
+      <rect x="40" y="110" width="260" height="70" fill="#0a0f1c" stroke="#f0c674" rx="3">
+        <animate attributeName="opacity" values="0;1" dur="0.4s" begin="0.3s" fill="freeze"/>
+      </rect>
+      <text x="170" y="138" font-family="Syne" font-size="12" fill="#f0c674" text-anchor="middle" font-weight="600">Generator (small BERT)</text>
+      <text x="170" y="158" font-family="JetBrains Mono" font-size="9" fill="#7a8aa3" text-anchor="middle">MLM: predict [MASK] → "really"</text>
+      <text x="170" y="172" font-family="JetBrains Mono" font-size="9" fill="#7a8aa3" text-anchor="middle">~1/4 size of discriminator</text>
+
+      <!-- Arrow from generator to replaced text -->
+      <line x1="300" y1="145" x2="350" y2="145" stroke="#f0c674" stroke-width="1.5">
+        <animate attributeName="opacity" values="0;1" dur="0.3s" begin="0.5s" fill="freeze"/>
+      </line>
+
+      <!-- Replaced text -->
+      <g font-family="JetBrains Mono" font-size="10">
+        <rect x="360" y="125" width="300" height="30" fill="#06090f" stroke="rgba(95,212,255,0.4)" rx="2"/>
+        <text x="510" y="145" fill="#e6f1ff" text-anchor="middle">the movie was <tspan fill="#f0c674">really</tspan> terrible</text>
+      </g>
+
+      <!-- Arrow down to discriminator -->
+      <line x1="510" y1="158" x2="510" y2="190" stroke="rgba(95,212,255,0.4)" stroke-width="1.5"/>
+
+      <!-- Discriminator (full size) -->
+      <rect x="360" y="195" width="300" height="70" fill="#0a0f1c" stroke="#5fd4ff" rx="3">
+        <animate attributeName="opacity" values="0;1" dur="0.4s" begin="0.7s" fill="freeze"/>
+      </rect>
+      <text x="510" y="223" font-family="Syne" font-size="12" fill="#5fd4ff" text-anchor="middle" font-weight="600">Discriminator (full-size encoder)</text>
+      <text x="510" y="243" font-family="JetBrains Mono" font-size="9" fill="#7a8aa3" text-anchor="middle">Binary: is each token original or replaced?</text>
+      <text x="510" y="256" font-family="JetBrains Mono" font-size="9" fill="#7a8aa3" text-anchor="middle">Trains on ALL tokens, not just 15%</text>
+
+      <!-- Output labels -->
+      <g font-family="JetBrains Mono" font-size="10">
+        <rect x="365" y="278" width="290" height="28" fill="#06090f" stroke="rgba(95,212,255,0.4)" rx="2"/>
+        <text x="380" y="296" fill="#7fc28a">orig</text>
+        <text x="420" y="296" fill="#7fc28a">orig</text>
+        <text x="460" y="296" fill="#7fc28a">orig</text>
+        <text x="500" y="296" fill="#e26a6a">REPLACED</text>
+        <text x="570" y="296" fill="#7fc28a">orig</text>
+      </g>
+
+      <!-- Key insight -->
+      <text x="170" y="230" font-family="Inter Tight" font-size="11" fill="#ff4d8a" text-anchor="middle" font-style="italic">Generator is discarded</text>
+      <text x="170" y="248" font-family="Inter Tight" font-size="11" fill="#ff4d8a" text-anchor="middle" font-style="italic">after pretraining!</text>
+      <text x="170" y="270" font-family="Inter Tight" font-size="11" fill="#5fd4ff" text-anchor="middle" font-style="italic">Only the discriminator</text>
+      <text x="170" y="288" font-family="Inter Tight" font-size="11" fill="#5fd4ff" text-anchor="middle" font-style="italic">is used for downstream.</text>
+    </svg>
+    <div class="caption"><b>ELECTRA's two-model pretraining.</b> A small generator fills in masked tokens (replacing [MASK] with plausible but possibly wrong words). The full-size discriminator classifies every token as original or replaced. The discriminator trains on all tokens — 6.7× more signal per sequence than BERT's 15% MLM.</div>
+  </div>
+
+  <div class="calcbox">
+    <div class="ch">ELECTRA's training signal efficiency vs BERT's MLM</div>
+    <div class="step" data-s="1.">BERT MLM: 512 tokens per sequence × 15% masked = ~77 tokens produce gradient per example<span class="val">The other 435 tokens are "free riders" — they contribute to the representation via attention but produce no direct learning signal</span></div>
+    <div class="step" data-s="2.">ELECTRA RTD: 512 tokens per sequence × 100% classified = <strong>512 tokens produce gradient</strong><span class="val">Every position gets a binary classification signal: "original" or "replaced." 6.7× more training signal per example.</span></div>
+    <div class="step" data-s="3.">To match BERT's total training signal: ELECTRA needs ~15% as many training steps<span class="val">In practice ELECTRA-base matches BERT-base quality at 25% of the compute budget. ELECTRA-small matches it at ~10% of compute.</span></div>
+    <div class="step" data-s="4.">The generator's cost: ~1/4 the discriminator's size → ~20% overhead per step. Net efficiency: 6.7× more signal / 1.2× more cost ≈ <strong>5.6× more sample-efficient</strong><span class="val">This is why ELECTRA-small (14M params) matches BERT-base (110M) on GLUE — it extracts far more learning per token.</span></div>
+  </div>
+
+  <div class="mcq" data-correct="d">
+    <div class="mh"><span>ELECTRA</span><span class="qnum">Question 03 / 07</span></div>
+    <div class="mq">Why does ELECTRA use a small generator (1/4 discriminator size) instead of a full-size one?</div>
+    <div class="opts">
+      <div class="opt" data-key="a"><span class="key">A</span><span class="text">A larger generator would be too slow to train.</span></div>
+      <div class="opt" data-key="b"><span class="key">B</span><span class="text">The generator's size doesn't matter.</span></div>
+      <div class="opt" data-key="c"><span class="key">C</span><span class="text">A full-size generator would produce perfect replacements, making the discriminator's task trivial.</span></div>
+      <div class="opt" data-key="d"><span class="key">D</span><span class="text">Calibrated difficulty. If the generator is too good, its replacements are indistinguishable from originals — the discriminator's task becomes impossibly hard (every position looks original). If the generator is too weak, replacements are obviously wrong — the discriminator's task is trivially easy (detect bad grammar). A 1/4-size generator produces replacements that are <em>plausible but imperfect</em> — "really terrible" instead of "absolutely terrible." This gives the discriminator a useful training signal: the kind of subtle errors that require deep understanding to detect.</span></div>
+    </div>
+    <div class="feedback" data-right="<strong>Right.</strong> The generator size controls the difficulty of the discriminator's task. The ablation in the paper shows a clear sweet spot: too small → trivial replacements, discriminator doesn't learn useful representations. Too large → perfect replacements, discriminator can't distinguish them. 1/4 size (or 1/3) produces the best downstream quality for the discriminator. The generator is discarded after pretraining — only the discriminator's representations are used for fine-tuning." data-wrong="<strong>Not quite.</strong> The generator's size controls task difficulty. A 1/4-size generator makes plausible but detectable replacements — the sweet spot for training the discriminator. Too weak: easy task, poor representations. Too strong: impossible task, no signal. The paper ablates this and finds 1/4-1/3 of discriminator size is optimal."></div>
+  </div>
+</section>
+
+<section id="section-04">
+  <h2 data-num="04 / 08">ELECTRA's training — the adversarial-like loop.</h2>
+
+  <p>Despite the generator-discriminator setup, ELECTRA is <em>not</em> a GAN. The generator is trained with standard MLM cross-entropy (not adversarial loss). Both models train jointly but with separate losses:</p>
+
+  <div class="eq">
+    L = L<sub>MLM</sub>(generator) + λ · L<sub>RTD</sub>(discriminator)
+    <span class="num">(4.1)</span>
+  </div>
+
+  <p>L<sub>MLM</sub> trains the generator to predict masked tokens (same as BERT). L<sub>RTD</sub> is binary cross-entropy at every position: "is this the original token?" The λ weight (typically 50) compensates for the RTD loss being applied to all 512 tokens vs MLM's ~77.</p>
+
+  <pre><code><span class="c"># ELECTRA training loop (simplified)</span>
+<span class="k">def</span> <span class="f">electra_step</span>(input_ids, generator, discriminator):
+    <span class="c"># 1. Mask 15% of tokens</span>
+    masked_ids, mask_positions = apply_mask(input_ids)
+
+    <span class="c"># 2. Generator fills in masks (standard MLM)</span>
+    gen_logits = generator(masked_ids).logits
+    gen_preds = gen_logits[mask_positions].argmax(dim=-<span class="n">1</span>)
+    L_mlm = F.cross_entropy(gen_logits[mask_positions], input_ids[mask_positions])
+
+    <span class="c"># 3. Create "corrupted" input (replace masks with generator predictions)</span>
+    corrupted_ids = input_ids.clone()
+    corrupted_ids[mask_positions] = gen_preds
+
+    <span class="c"># 4. Labels: 1 if token was replaced (and replacement differs), 0 if original</span>
+    is_replaced = (corrupted_ids != input_ids).float()
+
+    <span class="c"># 5. Discriminator classifies EVERY position</span>
+    disc_logits = discriminator(corrupted_ids).logits  <span class="c"># (B, T, 1)</span>
+    L_rtd = F.binary_cross_entropy_with_logits(disc_logits, is_replaced)
+
+    <span class="k">return</span> L_mlm + <span class="n">50</span> * L_rtd  <span class="c"># λ=50</span></code></pre>
+
+  <div class="pitfall">
+    <div class="lbl">ELECTRA is NOT a GAN</div>
+    <h4>The generator uses maximum likelihood, not adversarial loss.</h4>
+    <p>GANs train the generator to <em>fool</em> the discriminator (adversarial). ELECTRA's generator is trained with standard MLM loss — it tries to predict the right token, period. The generator and discriminator don't compete; they cooperate through a pipeline: the generator produces plausible replacements, the discriminator learns to detect them. This makes training stable (no mode collapse, no training oscillation — the well-known GAN failure modes). If asked "is ELECTRA a GAN?" in an interview, the answer is no.</p>
+  </div>
+
+  <div class="mcq" data-correct="a">
+    <div class="mh"><span>Training</span><span class="qnum">Question 04 / 07</span></div>
+    <div class="mq">After pretraining, ELECTRA discards the generator and only uses the discriminator for fine-tuning. Why not use the generator too?</div>
+    <div class="opts">
+      <div class="opt" data-key="a"><span class="key">A</span><span class="text">The discriminator has better representations. The generator is small (1/4 size) and trained for MLM — same as a small BERT. The discriminator is full-size and trained on a harder task (detect subtle replacements in every position). Its representations encode finer-grained understanding: it must distinguish "really terrible" from "absolutely terrible" — requiring nuanced semantic knowledge. The generator just predicts fill-in-the-blank. The discriminator's task is strictly harder and produces richer representations.</span></div>
+      <div class="opt" data-key="b"><span class="key">B</span><span class="text">The generator is too large to serve alongside the discriminator.</span></div>
+      <div class="opt" data-key="c"><span class="key">C</span><span class="text">The generator produces gibberish after training.</span></div>
+      <div class="opt" data-key="d"><span class="key">D</span><span class="text">Both are used — the generator handles text generation while the discriminator handles classification.</span></div>
+    </div>
+    <div class="feedback" data-right="<strong>Right.</strong> The generator is a small MLM model — essentially a tiny BERT. Its representations are adequate but not exceptional. The discriminator's replaced-token-detection task is harder and trains on every position, producing representations that encode finer distinctions. The generator is a training scaffold — it serves its purpose during pretraining and is discarded, just like scaffolding comes down after a building is complete." data-wrong="<strong>Not quite.</strong> The generator is small (1/4 size) and trained on easy MLM. The discriminator is full-size and trained on harder replaced-token detection at every position. The discriminator's representations are richer because its task requires finer-grained understanding. The generator is a training scaffold — discarded after pretraining."></div>
+  </div>
+</section>
+
+<section id="section-05">
+  <h2 data-num="05 / 08">DeBERTa vs ELECTRA vs RoBERTa — the full encoder landscape.</h2>
+
+  <table>
+    <thead><tr><th>Model</th><th>Innovation</th><th>Params</th><th>GLUE</th><th>SuperGLUE</th><th>Best for</th></tr></thead>
+    <tbody>
+      <tr><td>BERT-base</td><td>MLM + NSP</td><td>110M</td><td>79.6</td><td>69.0</td><td>Legacy, tutorials</td></tr>
+      <tr><td>RoBERTa-base</td><td>Better training recipe</td><td>125M</td><td>83.2</td><td>72.8</td><td>Baseline for new projects</td></tr>
+      <tr><td>ELECTRA-base</td><td>RTD (all-token signal)</td><td>110M</td><td>85.1</td><td>—</td><td class="win">Compute-constrained training</td></tr>
+      <tr><td>ELECTRA-small</td><td>RTD + tiny model</td><td>14M</td><td>79.9</td><td>—</td><td class="win">Edge deployment</td></tr>
+      <tr><td class="win">DeBERTa-v3-base</td><td>Disentangled attn + EMD + RTD</td><td>86M</td><td class="win">88.1</td><td class="win">78.7</td><td class="win">Best quality at base size</td></tr>
+      <tr><td class="win">DeBERTa-v3-large</td><td>Same, larger</td><td>304M</td><td class="win">91.4</td><td class="win">87.4</td><td class="win">Maximum quality</td></tr>
+    </tbody>
+  </table>
+
+  <p>Notice: <strong>DeBERTa-v3</strong> combines both innovations — disentangled attention from DeBERTa AND replaced-token-detection from ELECTRA. It's the current encoder king. The "v3" indicates the third iteration, which added the ELECTRA-style pretraining to the DeBERTa architecture.</p>
+
+  <div class="cinematch">
+    <div class="tag">CineMatch Integration</div>
+    <h4>DeBERTa-v3 replaces RoBERTa in CineMatch's production stack.</h4>
+    <p><strong>Review classification:</strong> DeBERTa-v3-base classifies review sentiment, topic, and helpfulness. At 86M params (vs RoBERTa's 125M), it's smaller AND more accurate — 88.1 vs 83.2 on GLUE. The disentangled attention is especially helpful for long reviews where content-position interactions matter ("the FIRST half was great but the ENDING was terrible" — position words carry meaning).</p>
+    <p><strong>Semantic search:</strong> DeBERTa-v3-base with Sentence-BERT fine-tuning produces the best embedding quality in CineMatch's vector index. The relative position encoding helps with variable-length queries ("action movies" vs "action movies with great choreography and minimal dialogue that came out after 2020").</p>
+    <p><strong>NER:</strong> Entity extraction ("Director: Christopher Nolan", "Genre: sci-fi thriller") benefits most from disentangled attention — named entities have strong position-dependent patterns (director names follow "directed by", genres follow "a ... film").</p>
+  </div>
+
+  <div class="mcq" data-correct="b">
+    <div class="mh"><span>Model selection</span><span class="qnum">Question 05 / 07</span></div>
+    <div class="mq">You have a limited compute budget (1 GPU, 2 days) to pretrain a domain-specific encoder for CineMatch's movie review domain. Which approach gives the best quality?</div>
+    <div class="opts">
+      <div class="opt" data-key="a"><span class="key">A</span><span class="text">Pretrain BERT from scratch on review data.</span></div>
+      <div class="opt" data-key="b"><span class="key">B</span><span class="text">Use ELECTRA's training scheme. With 1 GPU and 2 days, you can process ~500M tokens. ELECTRA extracts 5-6× more signal per token than MLM, so 500M tokens with ELECTRA ≈ 3B tokens with BERT. Additionally, start from a DeBERTa-v3-base checkpoint and continue pretraining with ELECTRA's RTD objective on review data — you get both the disentangled attention and the sample-efficient pretraining.</span></div>
+      <div class="opt" data-key="c"><span class="key">C</span><span class="text">Use GPT-4 to generate training data, then fine-tune BERT on it.</span></div>
+      <div class="opt" data-key="d"><span class="key">D</span><span class="text">Don't pretrain — just fine-tune an off-the-shelf model.</span></div>
+    </div>
+    <div class="feedback" data-right="<strong>Right.</strong> ELECTRA's sample efficiency is the key advantage under compute constraints. It extracts ~5.6× more signal per token, making your limited compute budget go much further. Starting from an existing DeBERTa checkpoint (domain-adaptive pretraining) is even better — you don't need to learn general language structure from scratch, only adapt to the review domain. Option D (just fine-tune) is the pragmatic baseline and often good enough; but if domain-specific pretraining is worth doing, ELECTRA's efficiency makes it feasible on limited hardware." data-wrong="<strong>Not quite.</strong> With limited compute, ELECTRA's 5.6× sample efficiency is decisive. 500M tokens processed with ELECTRA equals ~3B tokens with BERT's MLM. Starting from a pretrained DeBERTa checkpoint and continuing with ELECTRA's RTD objective gives both the best architecture and the most efficient pretraining. Standard BERT pretraining would waste most of the limited compute budget on the 85% of tokens that produce no MLM signal."></div>
+  </div>
+</section>
+
+<section id="section-06">
+  <h2 data-num="06 / 08">The encoder decision tree — which model to use in 2026.</h2>
+
+  <div class="calcbox">
+    <div class="ch">Production encoder selection in 2026</div>
+    <div class="step" data-s="1."><strong>Default choice:</strong> DeBERTa-v3-base (86M). Best quality-per-parameter. Use this unless you have a specific constraint.<span class="val">Fine-tune with HuggingFace: model = AutoModelForSequenceClassification.from_pretrained("microsoft/deberta-v3-base")</span></div>
+    <div class="step" data-s="2."><strong>Maximum quality:</strong> DeBERTa-v3-large (304M). When accuracy matters more than cost. Competition submissions, high-stakes classification.<span class="val">+3 points on SuperGLUE over base. Worth the 3.5× compute cost when errors have real consequences.</span></div>
+    <div class="step" data-s="3."><strong>CPU serving / low latency:</strong> DistilBERT or ELECTRA-small (14M). When you need sub-20ms inference on CPU.<span class="val">ELECTRA-small matches BERT-base quality at 1/8 the size. With ONNX optimization: ~15ms on CPU.</span></div>
+    <div class="step" data-s="4."><strong>Edge / mobile:</strong> ALBERT-base (12M) quantized to INT8. When model download size and RAM are the binding constraints.<span class="val">12MB on disk. 48MB inference RAM. Same accuracy as BERT-base.</span></div>
+    <div class="step" data-s="5."><strong>Compute-constrained pretraining:</strong> ELECTRA training scheme. When you need domain-adaptive pretraining but have limited GPU hours.<span class="val">5.6× sample efficiency means 1 GPU-day of ELECTRA ≈ 6 GPU-days of MLM.</span></div>
+  </div>
+
+  <div class="pitfall">
+    <div class="lbl">Don't use vanilla BERT for new projects</div>
+    <h4>BERT-base is a teaching model, not a production model.</h4>
+    <p>In 2026, there is no scenario where vanilla BERT-base is the right production choice. DeBERTa-v3-base is smaller (86M vs 110M), faster, and dramatically more accurate. ELECTRA-small is 8× smaller and equally accurate. DistilBERT is 2× faster. BERT-base remains invaluable for learning (its simplicity makes the architecture transparent) but should never be deployed when better alternatives exist at equal or lower cost.</p>
+  </div>
+
+  <div class="mcq" data-correct="c">
+    <div class="mh"><span>Decision tree</span><span class="qnum">Question 06 / 07</span></div>
+    <div class="mq">A CineMatch competitor asks you: "We're building a review search engine. Should we use DeBERTa or just use OpenAI's text-embedding-3-large API?" How do you reason about this?</div>
+    <div class="opts">
+      <div class="opt" data-key="a"><span class="key">A</span><span class="text">Always use OpenAI — their models are always better.</span></div>
+      <div class="opt" data-key="b"><span class="key">B</span><span class="text">Always use DeBERTa — open-source is always better.</span></div>
+      <div class="opt" data-key="c"><span class="key">C</span><span class="text">Trade-off analysis. OpenAI's API: excellent zero-shot quality, no training needed, ~$0.02 per 1M tokens, but you depend on their availability and pricing, embeddings live on their servers, and you can't fine-tune. DeBERTa + Sentence-BERT: requires fine-tuning (2-4 hours on 1 GPU), then self-hosted at ~$0.001 per 1M tokens, full control over the model, fine-tuned on your domain data (often better quality than generic API), and no external dependency. For a startup with few reviews: API is faster to ship. For a scaled product with 500K+ reviews: self-hosted is cheaper and often better quality.</span></div>
+      <div class="opt" data-key="d"><span class="key">D</span><span class="text">Use both — OpenAI for queries, DeBERTa for documents.</span></div>
+    </div>
+    <div class="feedback" data-right="<strong>Right.</strong> The answer is always a trade-off analysis: (1) Quality — API models are excellent zero-shot; fine-tuned DeBERTa is often better on-domain. (2) Cost — API pricing compounds at scale; self-hosted is cheaper past ~1M embeddings/month. (3) Control — self-hosted lets you fine-tune, version, and debug; API is a black box. (4) Time-to-market — API ships today; self-hosted needs 1-2 weeks of engineering. The right choice depends on your scale, budget, and willingness to invest in infrastructure." data-wrong="<strong>Not quite.</strong> Neither 'always API' nor 'always self-hosted' is correct. The decision depends on scale (API cost compounds), quality needs (fine-tuned models beat generic at scale), and operational maturity (self-hosted requires ML infrastructure). For small startups: API. For scaled products: self-hosted with DeBERTa + Sentence-BERT fine-tuned on domain data."></div>
+  </div>
+</section>
+
+<section id="section-07">
+  <h2 data-num="07 / 08">Phase 1 — complete. The encoder landscape is mapped.</h2>
+
+  <div class="mcq" data-correct="a">
+    <div class="mh"><span>Synthesis</span><span class="qnum">Question 07 / 07</span></div>
+    <div class="mq">Rank these encoder innovations by practical impact on downstream quality (highest to lowest): (1) RoBERTa's training recipe, (2) DeBERTa's disentangled attention, (3) ELECTRA's RTD pretraining, (4) ALBERT's weight sharing.</div>
+    <div class="opts">
+      <div class="opt" data-key="a"><span class="key">A</span><span class="text">RoBERTa (+4 on GLUE) > DeBERTa (+5 over RoBERTa with disentangled attention + RTD combined) > ELECTRA (+2 over BERT at same size, +massive efficiency gain) > ALBERT (+0.5 over BERT, mainly a compression technique). RoBERTa proved that training recipe matters. DeBERTa combined the best attention mechanism with the best pretraining objective. ELECTRA's value is efficiency more than absolute quality. ALBERT's value is compression, not quality improvement.</span></div>
+      <div class="opt" data-key="b"><span class="key">B</span><span class="text">ELECTRA > DeBERTa > RoBERTa > ALBERT.</span></div>
+      <div class="opt" data-key="c"><span class="key">C</span><span class="text">ALBERT > DeBERTa > ELECTRA > RoBERTa.</span></div>
+      <div class="opt" data-key="d"><span class="key">D</span><span class="text">They're all equally important.</span></div>
+    </div>
+    <div class="feedback" data-right="<strong>Right.</strong> The ranking reflects both absolute quality gains and practical impact. RoBERTa showed that recipe optimization is a first-order concern — the easiest, cheapest improvement for any encoder project. DeBERTa-v3 represents the current quality ceiling for encoders by combining disentangled attention with ELECTRA-style RTD. ELECTRA's contribution is primarily efficiency — matching BERT quality at 1/4 compute — which is valuable in different ways. ALBERT's contribution is compression for deployment, not quality improvement." data-wrong="<strong>Not quite.</strong> By quality impact: RoBERTa's recipe gains (+4 GLUE) showed recipe matters. DeBERTa's architecture + ELECTRA's RTD combined give the current SOTA. ELECTRA's main value is efficiency (same quality at 1/4 compute). ALBERT's value is compression (fewer params, same compute). Each innovation serves a different axis: quality, efficiency, or compression."></div>
+  </div>
+
+  <div class="phase-done">
+    <div class="tag">Phase 1 — Complete</div>
+    <h4>You now know every major encoder model and when to use each one.</h4>
+    <p>Phase 1 covered the full encoder lineage: <strong>BERT</strong> (the architecture), <strong>RoBERTa</strong> (the recipe), <strong>DistilBERT/ALBERT</strong> (the compression), <strong>DeBERTa/ELECTRA</strong> (the modern frontier). For CineMatch, the production encoder stack is clear: DeBERTa-v3-base for classification and embeddings, DistilBERT for real-time CPU serving, ELECTRA-small for edge deployment.</p>
+    <p>Phase 2 flips the mask: from encoder (bidirectional, understanding) to <strong>decoder</strong> (causal, generation). We start with <strong>GPT-2</strong> — the model that proved autoregressive language modeling could do anything.</p>
+  </div>
+
+  <div class="checkpoint">
+    <h4>Module 1.4 — Mastery checkpoint</h4>
+    <ol>
+      <li>Write DeBERTa's disentangled attention equation and explain each of the three terms.</li>
+      <li>Explain why relative position encoding is linguistically better than absolute position encoding.</li>
+      <li>Draw ELECTRA's generator-discriminator pipeline and explain why the generator is discarded after pretraining.</li>
+      <li>Derive ELECTRA's sample efficiency advantage (6.7× more signal per sequence).</li>
+      <li>Explain why DeBERTa-v3 combines both DeBERTa's attention and ELECTRA's RTD.</li>
+      <li>Given a deployment constraint (latency, memory, compute, quality), select the right encoder model.</li>
+    </ol>
+  </div>
+</section>
+<section id="section-08">
+  <h2 data-num="08 / 08">Learn &amp; Practice.</h2>
+
+  <p class="learn-intro">Use these resources in layers: start with the approachable explanation when the architecture feels fuzzy, read the original paper once the idea clicks, then inspect the reference implementation to connect the concept to code.</p>
+
+  <div class="resource-stack">
+    <article class="resource-card">
+      <div class="resource-head">
+        <div class="resource-icon">?</div>
+        <div>
+          <div class="resource-kicker">Progressive Article</div>
+          <h3>Stuck? Start here</h3>
+        </div>
+      </div>
+      <a class="resource-title" href="https://huggingface.co/docs/transformers/model_doc/deberta" target="_blank" rel="noopener noreferrer">DeBERTa Model Docs - HuggingFace</a>
+      <p>Disentangled attention explained with usage examples.</p>
+      <a class="resource-title" href="https://huggingface.co/docs/transformers/model_doc/electra" target="_blank" rel="noopener noreferrer">ELECTRA Model Docs - HuggingFace</a>
+      <p>Replaced-token detection objective explained in practical terms.</p>
+      <div class="resource-actions">
+        <a class="resource-link" href="https://huggingface.co/docs/transformers/model_doc/deberta" target="_blank" rel="noopener noreferrer">Read Article</a>
+        <a class="resource-link" href="https://huggingface.co/docs/transformers/model_doc/electra" target="_blank" rel="noopener noreferrer">Read Article</a>
+      </div>
+    </article>
+
+    <article class="resource-card canonical">
+      <div class="resource-head">
+        <div class="resource-icon">A</div>
+        <div>
+          <div class="resource-kicker">Canonical Article</div>
+          <h3>Original research paper</h3>
+        </div>
+      </div>
+      <a class="resource-title" href="https://arxiv.org/abs/2006.03654" target="_blank" rel="noopener noreferrer">DeBERTa - He et al.</a>
+      <p>Disentangled attention and decoding-enhanced pretraining.</p>
+      <a class="resource-title" href="https://arxiv.org/abs/2003.10555" target="_blank" rel="noopener noreferrer">ELECTRA - Clark et al.</a>
+      <p>Text encoders trained as discriminators rather than generators.</p>
+      <div class="resource-actions">
+        <a class="resource-link" href="https://arxiv.org/abs/2006.03654" target="_blank" rel="noopener noreferrer">Read Paper</a>
+        <a class="resource-link" href="https://arxiv.org/abs/2003.10555" target="_blank" rel="noopener noreferrer">Read Paper</a>
+      </div>
+    </article>
+
+    <article class="resource-card repo">
+      <div class="resource-head">
+        <div class="resource-icon">{ }</div>
+        <div>
+          <div class="resource-kicker">GitHub Repository</div>
+          <h3>Reference implementation</h3>
+        </div>
+      </div>
+      <a class="resource-title" href="https://github.com/microsoft/DeBERTa" target="_blank" rel="noopener noreferrer">microsoft/DeBERTa</a>
+      <p>Official DeBERTa implementation.</p>
+      <a class="resource-title" href="https://github.com/google-research/electra" target="_blank" rel="noopener noreferrer">google-research/electra</a>
+      <p>Official ELECTRA implementation.</p>
+      <div class="resource-actions">
+        <a class="resource-link" href="https://github.com/microsoft/DeBERTa" target="_blank" rel="noopener noreferrer">Explore Repo</a>
+        <a class="resource-link" href="https://github.com/google-research/electra" target="_blank" rel="noopener noreferrer">Explore Repo</a>
+      </div>
+    </article>
+  </div>
+</section>
+
+    </div>
+  </div>
+
+  <!-- Footer -->
+  <div class="footer-bar fade-in d6">
+    <span>Module 1.4 / Phase 1 · DeBERTa &amp; ELECTRA</span>
+    <a href="module_2_1_gpt2.html" class="next-link">
+      <span class="lbl">Next Phase</span>
+      <span class="ttl">2.1 — GPT-2</span>
+    </a>
+  </div>
+
+</div>
+
+<script>
+  document.querySelectorAll('.mcq').forEach(mcq=>{const correct=mcq.dataset.correct;const opts=mcq.querySelectorAll('.opt');const fb=mcq.querySelector('.feedback');opts.forEach(opt=>{opt.addEventListener('click',()=>{if(opt.classList.contains('disabled'))return;const chosen=opt.dataset.key;const isRight=chosen===correct;opts.forEach(o=>{o.classList.add('disabled');if(o.dataset.key===correct)o.classList.add('correct');else if(o===opt&&!isRight)o.classList.add('wrong')});if(isRight){fb.classList.add('show','right');fb.innerHTML='<span class="verdict">Correct</span>'+fb.dataset.right}else{fb.classList.add('show','wrong');fb.innerHTML='<span class="verdict">Not quite</span>'+fb.dataset.wrong}})})});
+</script>
+
+</body>
+</html>

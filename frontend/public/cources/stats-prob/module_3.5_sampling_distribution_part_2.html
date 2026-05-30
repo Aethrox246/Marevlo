@@ -1,0 +1,1371 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Module 3.5 (Part 2) — Standard Error & Why Samples Differ | Quantum Neural Analytics OS</title>
+<style>
+:root {
+  --bg-deep: #03040a;
+  --bg-navy: #060818;
+  --bg-panel: rgba(10, 15, 35, 0.55);
+  --neon-cyan: #00f0ff;
+  --neon-purple: #b14dff;
+  --neon-magenta: #ff2bd6;
+  --neon-amber: #ffb547;
+  --neon-green: #00ffaa;
+  --neon-red: #ff4d6d;
+  --text-primary: #e6f4ff;
+  --text-soft: #d8e6ff;
+  --text-dim: #7a8bbf;
+  --border-glow: rgba(0, 240, 255, 0.25);
+  --glass-blur: blur(18px);
+  --mono: 'JetBrains Mono', 'Fira Code', 'Consolas', monospace;
+}
+* { margin: 0; padding: 0; box-sizing: border-box; }
+html { scroll-behavior: smooth; }
+body {
+  background: var(--bg-deep);
+  color: var(--text-soft);
+  font-family: 'Inter', 'Segoe UI', system-ui, sans-serif;
+  overflow-x: hidden;
+  line-height: 1.65;
+  min-height: 100vh;
+  position: relative;
+}
+body::before {
+  content: '';
+  position: fixed; inset: 0;
+  background-image:
+    linear-gradient(rgba(0, 240, 255, 0.04) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(0, 240, 255, 0.04) 1px, transparent 1px);
+  background-size: 60px 60px;
+  pointer-events: none; z-index: 0;
+  animation: gridShift 30s linear infinite;
+}
+body::after {
+  content: '';
+  position: fixed; inset: 0;
+  background:
+    radial-gradient(circle at 22% 28%, rgba(177, 77, 255, 0.13), transparent 42%),
+    radial-gradient(circle at 78% 70%, rgba(0, 240, 255, 0.12), transparent 45%),
+    radial-gradient(circle at 50% 95%, rgba(255, 43, 214, 0.08), transparent 40%);
+  pointer-events: none; z-index: 0;
+}
+@keyframes gridShift { 0% { background-position: 0 0,0 0; } 100% { background-position: 60px 60px,60px 60px; } }
+#particle-canvas { position: fixed; inset: 0; z-index: 1; pointer-events: none; }
+.container { position: relative; z-index: 10; max-width: 1280px; margin: 0 auto; padding: 32px 24px 120px; }
+.hud {
+  display: flex; justify-content: space-between; align-items: center;
+  padding: 14px 22px; background: var(--bg-panel); backdrop-filter: var(--glass-blur);
+  border: 1px solid var(--border-glow); border-radius: 14px;
+  font-family: var(--mono); font-size: 11px; letter-spacing: 1.8px; text-transform: uppercase;
+  margin-bottom: 50px; box-shadow: 0 0 30px rgba(177,77,255,0.1);
+  flex-wrap: wrap; gap: 10px;
+}
+.hud-left { color: var(--neon-cyan); }
+.hud-center { color: var(--text-soft); }
+.hud-right { color: var(--neon-purple); display: flex; align-items: center; gap: 8px; }
+.hud-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--neon-purple); box-shadow: 0 0 12px var(--neon-purple); animation: pulse 1.6s ease-in-out infinite; }
+@keyframes pulse { 0%,100% { opacity: 1; transform: scale(1); } 50% { opacity: 0.4; transform: scale(1.3); } }
+.hero {
+  position: relative; text-align: center; padding: 90px 24px 60px; margin-bottom: 80px;
+  border: 1px solid var(--border-glow); border-radius: 28px;
+  background: linear-gradient(135deg, rgba(20,5,40,0.6), rgba(10,15,40,0.4));
+  backdrop-filter: var(--glass-blur); overflow: hidden;
+  box-shadow: 0 0 60px rgba(177,77,255,0.12), inset 0 0 80px rgba(0,240,255,0.06);
+}
+.hero-bg-svg { position: absolute; inset: 0; width: 100%; height: 100%; opacity: 0.5; pointer-events: none; }
+.hero-tag {
+  display: inline-block; font-family: var(--mono); font-size: 11px; letter-spacing: 3px;
+  color: var(--neon-purple); padding: 6px 18px; border: 1px solid var(--neon-purple);
+  border-radius: 999px; margin-bottom: 26px; text-transform: uppercase;
+  background: rgba(177,77,255,0.06); box-shadow: 0 0 20px rgba(177,77,255,0.25); position: relative; z-index: 2;
+}
+.hero h1 {
+  font-family: 'Inter','Segoe UI',system-ui,sans-serif; font-size: clamp(2.4rem, 6vw, 4.8rem);
+  font-weight: 900; line-height: 1.05; letter-spacing: -2px;
+  background: linear-gradient(135deg, #ffffff 0%, var(--neon-cyan) 40%, var(--neon-purple) 80%, var(--neon-magenta) 100%);
+  background-size: 200% 200%; -webkit-background-clip: text; background-clip: text;
+  -webkit-text-fill-color: transparent; animation: gradientShift 8s ease infinite;
+  margin: 0 auto 18px; text-shadow: 0 0 80px rgba(177,77,255,0.2); text-align: center; position: relative; z-index: 2;
+}
+@keyframes gradientShift { 0%,100% { background-position: 0% 50%; } 50% { background-position: 100% 50%; } }
+.hero .subtitle { font-size: 1.15rem; color: var(--text-soft); max-width: 780px; margin: 0 auto 26px; position: relative; z-index: 2; }
+.hero .overview { font-size: 0.95rem; color: var(--text-dim); max-width: 840px; margin: 0 auto 30px; position: relative; z-index: 2; font-style: italic; }
+.hero-meta { display: flex; justify-content: center; flex-wrap: wrap; gap: 12px; position: relative; z-index: 2; margin-top: 20px; }
+.meta-chip {
+  display: inline-flex; align-items: center; gap: 10px; padding: 10px 18px;
+  background: rgba(10,15,35,0.6); border: 1px solid var(--border-glow); border-radius: 10px;
+  font-family: var(--mono); font-size: 11px; letter-spacing: 1.5px; text-transform: uppercase; transition: all 0.3s;
+}
+.meta-chip:hover { border-color: var(--neon-purple); box-shadow: 0 0 18px rgba(177,77,255,0.25); transform: translateY(-2px); }
+.meta-chip .label { color: var(--text-dim); }
+.meta-chip .value { color: var(--neon-cyan); font-weight: 700; }
+.section { margin-bottom: 90px; position: relative; }
+.section-header { display: flex; align-items: center; gap: 18px; margin-bottom: 36px; }
+.section-num {
+  font-family: var(--mono); font-size: 13px; color: var(--neon-purple);
+  padding: 8px 14px; border: 1px solid var(--neon-purple); border-radius: 8px;
+  background: rgba(177,77,255,0.06); letter-spacing: 2px; white-space: nowrap;
+}
+.section-title {
+  font-size: clamp(1.5rem, 3vw, 2.1rem); font-weight: 700;
+  background: linear-gradient(90deg, #fff, var(--neon-purple));
+  -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent;
+}
+.section-line { flex: 1; height: 1px; background: linear-gradient(90deg, var(--neon-purple), transparent); margin-left: 8px; }
+.sub-section-marker {
+  font-family: var(--mono); font-size: 11px; color: var(--neon-cyan); letter-spacing: 3px;
+  text-transform: uppercase; margin-bottom: 14px; padding: 6px 12px; display: inline-block;
+  border: 1px solid var(--neon-cyan); border-radius: 6px; background: rgba(0,240,255,0.05);
+}
+.concept-block {
+  background: var(--bg-panel); backdrop-filter: var(--glass-blur);
+  border: 1px solid var(--border-glow); border-radius: 20px; padding: 32px;
+  margin-bottom: 24px; position: relative; overflow: hidden;
+}
+.concept-block::after {
+  content: ''; position: absolute; bottom: -50%; right: -10%; width: 320px; height: 320px;
+  background: radial-gradient(circle, rgba(177,77,255,0.08), transparent 70%); pointer-events: none;
+}
+.concept-block h3 { font-size: 1.35rem; color: var(--neon-purple); margin-bottom: 14px; display: flex; align-items: center; gap: 12px; }
+.concept-block h3::before { content: '◆'; color: var(--neon-cyan); font-size: 1rem; }
+.concept-block h4 { font-size: 1.05rem; color: var(--neon-magenta); margin-top: 18px; margin-bottom: 10px; }
+.concept-block p { color: var(--text-soft); margin-bottom: 14px; font-size: 1rem; }
+.concept-block strong { color: #fff; }
+.concept-block em { color: var(--neon-magenta); font-style: normal; }
+.concept-block ul { list-style: none; padding-left: 0; }
+.concept-block ul li { padding: 6px 0 6px 22px; position: relative; color: var(--text-soft); }
+.concept-block ul li::before { content: '▸'; position: absolute; left: 0; color: var(--neon-purple); }
+.highlight-box { background: linear-gradient(135deg, rgba(177,77,255,0.07), rgba(0,240,255,0.05)); border-left: 3px solid var(--neon-purple); padding: 16px 22px; border-radius: 10px; margin: 18px 0; font-size: 0.95rem; }
+.success-box { background: linear-gradient(135deg, rgba(0,255,170,0.06), rgba(0,240,255,0.05)); border-left: 3px solid var(--neon-green); padding: 16px 22px; border-radius: 10px; margin: 18px 0; font-size: 0.95rem; }
+.warning-box { background: linear-gradient(135deg, rgba(255,77,109,0.08), rgba(255,181,71,0.06)); border-left: 3px solid var(--neon-red); padding: 16px 22px; border-radius: 10px; margin: 18px 0; font-size: 0.95rem; }
+.warning-box strong { color: var(--neon-red); }
+.viz-wrap { background: var(--bg-panel); backdrop-filter: var(--glass-blur); border: 1px solid var(--border-glow); border-radius: 22px; padding: 30px; margin-bottom: 28px; position: relative; }
+.viz-title { font-size: 1.15rem; color: var(--neon-purple); margin-bottom: 8px; font-family: var(--mono); letter-spacing: 1px; text-transform: uppercase; }
+.viz-desc { font-size: 0.92rem; color: var(--text-soft); margin-bottom: 22px; }
+.viz-canvas { width: 100%; background: rgba(0,0,0,0.35); border-radius: 12px; border: 1px solid rgba(177,77,255,0.2); display: block; }
+input[type="range"] { width: 100%; -webkit-appearance: none; appearance: none; background: transparent; height: 24px; }
+input[type="range"]::-webkit-slider-runnable-track { height: 4px; background: linear-gradient(90deg, var(--neon-cyan), var(--neon-purple)); border-radius: 4px; }
+input[type="range"]::-moz-range-track { height: 4px; background: linear-gradient(90deg, var(--neon-cyan), var(--neon-purple)); border-radius: 4px; }
+input[type="range"]::-webkit-slider-thumb { -webkit-appearance: none; appearance: none; width: 18px; height: 18px; border-radius: 50%; background: #fff; margin-top: -7px; cursor: pointer; box-shadow: 0 0 12px rgba(177,77,255,0.8); }
+input[type="range"]::-moz-range-thumb { width: 18px; height: 18px; border-radius: 50%; background: #fff; border: 0; cursor: pointer; box-shadow: 0 0 12px rgba(177,77,255,0.8); }
+.slider-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 20px; margin-bottom: 18px; }
+.slider-cell { background: rgba(0,0,0,0.25); border: 1px solid var(--border-glow); border-radius: 12px; padding: 16px; }
+.slider-label { display: flex; justify-content: space-between; font-family: var(--mono); font-size: 11px; text-transform: uppercase; letter-spacing: 1.5px; color: var(--text-dim); margin-bottom: 10px; }
+.slider-label span:last-child { color: var(--neon-purple); font-size: 14px; font-weight: 700; }
+.stat-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px; margin-top: 14px; }
+.stat-box { background: rgba(0,240,255,0.05); border: 1px solid var(--border-glow); border-radius: 10px; padding: 14px; text-align: center; }
+.stat-label { font-family: var(--mono); font-size: 10px; color: var(--text-dim); text-transform: uppercase; letter-spacing: 1.5px; margin-bottom: 6px; }
+.stat-value { font-size: 1.4rem; font-weight: 700; color: var(--neon-cyan); font-family: var(--mono); }
+.stat-value.purple { color: var(--neon-purple); }
+.stat-value.magenta { color: var(--neon-magenta); }
+.stat-value.amber { color: var(--neon-amber); }
+.stat-value.green { color: var(--neon-green); }
+.stat-value.red { color: var(--neon-red); }
+.btn-row { display: flex; flex-wrap: wrap; gap: 12px; margin-bottom: 20px; }
+.btn { background: rgba(177,77,255,0.08); border: 1px solid rgba(177,77,255,0.4); color: var(--neon-purple); padding: 10px 20px; border-radius: 10px; font-family: var(--mono); font-size: 12px; letter-spacing: 1.5px; cursor: pointer; text-transform: uppercase; transition: all 0.25s; }
+.btn:hover { background: rgba(177,77,255,0.18); box-shadow: 0 0 22px rgba(177,77,255,0.3); transform: translateY(-2px); }
+.btn.active { background: linear-gradient(135deg, rgba(177,77,255,0.35), rgba(0,240,255,0.2)); border-color: var(--neon-purple); color: #fff; box-shadow: 0 0 18px rgba(177,77,255,0.4); }
+.formula-card { background: linear-gradient(135deg, rgba(10,15,40,0.85), rgba(30,10,50,0.75)); border: 1px solid var(--border-glow); border-radius: 16px; padding: 28px; margin-bottom: 22px; position: relative; overflow: hidden; }
+.formula-card::before { content: ''; position: absolute; top: 0; left: 0; width: 4px; height: 100%; background: linear-gradient(180deg, var(--neon-purple), var(--neon-cyan), var(--neon-magenta)); }
+.formula-label { font-family: var(--mono); font-size: 11px; color: var(--neon-purple); letter-spacing: 2px; text-transform: uppercase; margin-bottom: 14px; }
+.formula { font-family: var(--mono); font-size: 1.25rem; color: #fff; text-align: center; padding: 18px 12px; background: rgba(0,0,0,0.35); border-radius: 10px; margin: 14px 0; letter-spacing: 1px; overflow-x: auto; }
+.formula-explain { color: var(--text-soft); font-size: 0.95rem; margin-top: 12px; }
+.var-list { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 10px; margin-top: 14px; }
+.var-item { background: rgba(0,0,0,0.3); border: 1px solid rgba(0,240,255,0.15); border-radius: 8px; padding: 10px 14px; font-size: 0.88rem; }
+.var-item code { font-family: var(--mono); color: var(--neon-purple); font-weight: 700; }
+.dual-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 18px; margin-top: 16px; }
+.dual-cell { background: rgba(0,0,0,0.25); border: 1px solid var(--border-glow); border-radius: 12px; padding: 20px; }
+.dual-cell h4 { font-family: var(--mono); font-size: 12px; color: var(--neon-cyan); letter-spacing: 2px; text-transform: uppercase; margin-bottom: 12px; }
+.dual-cell.purple h4 { color: var(--neon-purple); }
+.dual-cell.magenta h4 { color: var(--neon-magenta); }
+.dual-cell.green h4 { color: var(--neon-green); }
+.dual-cell.red h4 { color: var(--neon-red); }
+.dual-cell.amber h4 { color: var(--neon-amber); }
+.dual-cell ul { list-style: none; padding-left: 0; }
+.dual-cell li { padding: 6px 0 6px 18px; color: var(--text-soft); font-size: 0.92rem; border-bottom: 1px dashed rgba(177,77,255,0.08); position: relative; }
+.dual-cell li:last-child { border-bottom: 0; }
+.dual-cell li::before { content: '▸'; position: absolute; left: 0; color: var(--neon-purple); }
+.deep-dive { background: linear-gradient(135deg, rgba(10,15,35,0.7), rgba(20,5,40,0.55)); border: 1px solid var(--border-glow); border-radius: 18px; padding: 26px; margin: 18px 0; }
+.deep-dive .dd-label { font-family: var(--mono); font-size: 11px; color: var(--neon-magenta); letter-spacing: 2px; text-transform: uppercase; margin-bottom: 10px; padding: 4px 10px; display: inline-block; border: 1px solid var(--neon-magenta); border-radius: 6px; background: rgba(255,43,214,0.05); }
+.deep-dive h4 { font-size: 1.1rem; color: #fff; margin-bottom: 10px; }
+.deep-dive p { color: var(--text-soft); font-size: 0.95rem; margin-bottom: 12px; }
+.real-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 18px; margin-top: 14px; }
+.real-card { background: rgba(10,15,35,0.6); border: 1px solid var(--border-glow); border-radius: 14px; padding: 20px; transition: all 0.3s; }
+.real-card:hover { transform: translateY(-4px); border-color: var(--neon-magenta); box-shadow: 0 8px 24px rgba(255,43,214,0.2); }
+.real-card h4 { color: var(--neon-magenta); margin-bottom: 8px; font-size: 1rem; }
+.real-card p { color: var(--text-soft); font-size: 0.9rem; }
+.part-nav { display: flex; justify-content: space-between; flex-wrap: wrap; gap: 14px; margin-top: 50px; padding: 22px; background: var(--bg-panel); backdrop-filter: var(--glass-blur); border: 1px solid var(--border-glow); border-radius: 16px; }
+.part-nav-item { flex: 1; min-width: 200px; padding: 14px 18px; background: rgba(0,240,255,0.04); border: 1px solid rgba(0,240,255,0.15); border-radius: 10px; }
+.part-nav-item.current { background: linear-gradient(135deg, rgba(177,77,255,0.15), rgba(0,240,255,0.12)); border-color: var(--neon-purple); box-shadow: 0 0 18px rgba(177,77,255,0.2); }
+.part-nav-item.done { background: rgba(0,255,170,0.04); border-color: rgba(0,255,170,0.3); }
+.part-nav-label { font-family: var(--mono); font-size: 10px; letter-spacing: 2px; color: var(--text-dim); text-transform: uppercase; margin-bottom: 6px; }
+.part-nav-item.current .part-nav-label { color: var(--neon-purple); }
+.part-nav-item.done .part-nav-label { color: var(--neon-green); }
+.part-nav-title { font-size: 0.92rem; color: #fff; font-weight: 600; }
+.quiz-card { background: var(--bg-panel); backdrop-filter: var(--glass-blur); border: 1px solid var(--border-glow); border-radius: 18px; padding: 28px; margin-bottom: 22px; }
+.quiz-q { font-size: 1.05rem; color: #fff; margin-bottom: 18px; font-weight: 500; }
+.quiz-q .qnum { font-family: var(--mono); color: var(--neon-purple); margin-right: 10px; }
+.quiz-q .qlevel { font-family: var(--mono); font-size: 10px; letter-spacing: 1.5px; padding: 3px 10px; border-radius: 5px; margin-left: 8px; text-transform: uppercase; font-weight: 700; }
+.qlevel.easy { background: rgba(0,255,170,0.12); color: var(--neon-green); border: 1px solid rgba(0,255,170,0.4); }
+.qlevel.mod { background: rgba(255,181,71,0.12); color: var(--neon-amber); border: 1px solid rgba(255,181,71,0.4); }
+.quiz-options { display: grid; gap: 10px; }
+.quiz-opt { padding: 14px 18px; background: rgba(0,240,255,0.04); border: 1px solid var(--border-glow); border-radius: 10px; cursor: pointer; color: var(--text-soft); transition: all 0.25s; font-size: 0.95rem; }
+.quiz-opt:hover { background: rgba(0,240,255,0.12); border-color: var(--neon-cyan); color: #fff; transform: translateX(4px); }
+.quiz-opt.correct { background: rgba(0,255,170,0.15); border-color: var(--neon-green); color: var(--neon-green); box-shadow: 0 0 18px rgba(0,255,170,0.3); }
+.quiz-opt.wrong { background: rgba(255,77,109,0.15); border-color: var(--neon-red); color: var(--neon-red); }
+.quiz-feedback { margin-top: 14px; padding: 12px 16px; border-radius: 10px; font-size: 0.9rem; display: none; }
+.quiz-feedback.show { display: block; }
+.quiz-feedback.ok { background: rgba(0,255,170,0.08); border: 1px solid rgba(0,255,170,0.4); color: var(--neon-green); }
+.quiz-feedback.no { background: rgba(255,77,109,0.08); border: 1px solid rgba(255,77,109,0.4); color: #ff7e9d; }
+.ai-panel { position: relative; background: linear-gradient(135deg, rgba(177,77,255,0.07), rgba(0,240,255,0.06)); border: 1px solid var(--border-glow); border-radius: 24px; padding: 38px 30px; backdrop-filter: var(--glass-blur); overflow: hidden; }
+.ai-head { display: flex; align-items: center; gap: 16px; margin-bottom: 26px; }
+.ai-avatar { width: 54px; height: 54px; border-radius: 50%; background: linear-gradient(135deg, var(--neon-purple), var(--neon-cyan)); display: flex; align-items: center; justify-content: center; font-family: var(--mono); font-weight: 800; color: var(--bg-deep); font-size: 18px; box-shadow: 0 0 24px rgba(177,77,255,0.5); animation: aiPulse 2.4s ease-in-out infinite; }
+@keyframes aiPulse { 0%,100% { box-shadow: 0 0 24px rgba(177,77,255,0.5); } 50% { box-shadow: 0 0 40px rgba(0,240,255,0.6); } }
+.ai-meta .ai-name { font-size: 1.05rem; color: #fff; font-weight: 600; }
+.ai-meta .ai-role { font-family: var(--mono); font-size: 11px; color: var(--neon-purple); letter-spacing: 2px; text-transform: uppercase; }
+.takeaway { display: flex; gap: 14px; align-items: flex-start; padding: 14px 0; border-bottom: 1px dashed rgba(177,77,255,0.15); }
+.takeaway:last-child { border-bottom: 0; }
+.takeaway-num { font-family: var(--mono); font-size: 13px; color: var(--neon-purple); background: rgba(177,77,255,0.1); border: 1px solid rgba(177,77,255,0.4); padding: 4px 10px; border-radius: 6px; flex-shrink: 0; font-weight: 600; }
+.takeaway-text { color: var(--text-soft); font-size: 0.95rem; }
+.takeaway-text strong { color: #fff; }
+.recap-formulas { margin-top: 22px; padding: 18px; background: rgba(0,0,0,0.35); border-radius: 12px; border: 1px solid rgba(177,77,255,0.15); }
+.recap-formulas h4 { font-family: var(--mono); font-size: 12px; letter-spacing: 2px; color: var(--neon-cyan); text-transform: uppercase; margin-bottom: 14px; }
+.recap-formulas code { display: block; font-family: var(--mono); font-size: 0.9rem; color: #fff; padding: 8px 0; border-bottom: 1px dashed rgba(177,77,255,0.1); }
+.recap-formulas code:last-child { border-bottom: 0; }
+.recap-formulas code .name { color: var(--neon-magenta); font-weight: 700; display: inline-block; min-width: 160px; }
+.module-footer { margin-top: 60px; padding: 26px; text-align: center; font-family: var(--mono); font-size: 11px; color: var(--text-dim); letter-spacing: 2px; text-transform: uppercase; border-top: 1px solid var(--border-glow); }
+.comp-table { width: 100%; border-collapse: collapse; margin-top: 16px; font-size: 0.95rem; }
+.comp-table th, .comp-table td { padding: 14px 18px; text-align: left; border-bottom: 1px solid rgba(177,77,255,0.12); vertical-align: top; }
+.comp-table th { font-family: var(--mono); font-size: 11px; letter-spacing: 2px; text-transform: uppercase; color: var(--neon-purple); background: rgba(177,77,255,0.05); }
+.comp-table td:first-child { color: var(--neon-cyan); font-weight: 600; font-family: var(--mono); font-size: 0.85rem; }
+.comp-table tr:hover { background: rgba(177,77,255,0.03); }
+@media (max-width: 720px) {
+  .container { padding: 20px 14px 80px; }
+  .hero { padding: 60px 18px 50px; }
+  .section { margin-bottom: 60px; }
+  .concept-block, .viz-wrap, .ai-panel, .quiz-card { padding: 22px 18px; }
+  .formula { font-size: 0.95rem; padding: 14px 8px; }
+  .comp-table th, .comp-table td { padding: 10px 8px; font-size: 0.82rem; }
+}
+
+  /* â”€â”€ SCROLL REVEAL â”€â”€ */
+  .reveal {
+    opacity: 0;
+    transform: translateY(30px);
+    transition: all 0.8s cubic-bezier(0.16, 1, 0.3, 1);
+  }
+  .reveal.visible { opacity: 1; transform: translateY(0); }
+
+  /* â”€â”€ GRID DRIFT â”€â”€ */
+  @keyframes gridDrift {
+    0%   { background-position: 0 0, 0 0; }
+    100% { background-position: 60px 60px, 60px 60px; }
+  }
+
+  /* â”€â”€ SLIDE IN (quiz feedback) â”€â”€ */
+  @keyframes slideIn {
+    from { opacity: 0; transform: translateY(8px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+  .quiz-feedback.show { animation: slideIn 0.4s; }
+
+  /* â”€â”€ AI PANEL ROTATE â”€â”€ */
+  @keyframes rotate { to { transform: rotate(360deg); } }
+  .ai-panel { overflow: hidden; }
+  .ai-panel::before {
+    content: ''; position: absolute; top: -50%; left: -50%;
+    width: 200%; height: 200%;
+    background: conic-gradient(from 0deg, transparent, rgba(0,240,255,0.05), transparent, rgba(177,77,255,0.05), transparent);
+    animation: rotate 20s linear infinite;
+    pointer-events: none; z-index: 0;
+  }
+  .ai-panel > * { position: relative; z-index: 1; }
+
+  /* â”€â”€ SCANLINES â”€â”€ */
+  .scanlines {
+    position: fixed; inset: 0;
+    background: repeating-linear-gradient(0deg,
+      rgba(0,240,255,0.012) 0px, rgba(0,240,255,0.012) 1px,
+      transparent 1px, transparent 4px);
+    pointer-events: none; z-index: 999; mix-blend-mode: screen;
+  }
+</style>
+</head>
+<body>
+<div class="scanlines"></div>
+
+<canvas id="particle-canvas"></canvas>
+
+<div class="container">
+
+  <div class="hud">
+    <div class="hud-left">⟁ QNA-OS v4.7 // Module 3.5 — Part 2</div>
+    <div class="hud-center">Standard Error · Why Samples Differ</div>
+    <div class="hud-right"><span class="hud-dot"></span>ERROR ANALYSIS ACTIVE</div>
+  </div>
+
+  <section class="hero">
+    <svg class="hero-bg-svg" viewBox="0 0 1200 400" preserveAspectRatio="none">
+      <defs>
+        <linearGradient id="seGrad" x1="0" y1="0" x2="1" y2="0">
+          <stop offset="0%" stop-color="#b14dff" stop-opacity="0.8"/>
+          <stop offset="100%" stop-color="#00f0ff" stop-opacity="0.8"/>
+        </linearGradient>
+      </defs>
+      <!-- center mean point -->
+      <circle cx="600" cy="200" r="6" fill="#ff2bd6" opacity="0.9"/>
+      <text x="600" y="180" fill="#ff2bd6" font-family="JetBrains Mono" font-size="12" text-anchor="middle">μ (truth)</text>
+      <!-- error bars -->
+      <line x1="600" y1="200" x2="450" y2="200" stroke="#b14dff" stroke-width="2" opacity="0.8"/>
+      <line x1="600" y1="200" x2="750" y2="200" stroke="#b14dff" stroke-width="2" opacity="0.8"/>
+      <line x1="450" y1="190" x2="450" y2="210" stroke="#b14dff" stroke-width="2" opacity="0.8"/>
+      <line x1="750" y1="190" x2="750" y2="210" stroke="#b14dff" stroke-width="2" opacity="0.8"/>
+      <text x="600" y="250" fill="#b14dff" font-family="JetBrains Mono" font-size="14" text-anchor="middle">± Standard Error</text>
+      <!-- sample dots scattered around -->
+      <g fill="#00f0ff" opacity="0.6">
+        <circle cx="500" cy="180" r="3"/>
+        <circle cx="550" cy="220" r="3"/>
+        <circle cx="630" cy="195" r="3"/>
+        <circle cx="680" cy="210" r="3"/>
+        <circle cx="720" cy="185" r="3"/>
+        <circle cx="480" cy="215" r="3"/>
+        <circle cx="700" cy="225" r="3"/>
+      </g>
+      <text x="600" y="320" fill="#00f0ff" font-family="JetBrains Mono" font-size="11" text-anchor="middle" opacity="0.7">Each sample wiggles around the truth — SE measures how much.</text>
+    </svg>
+    <div class="hero-tag">◉ MODULE 3.5 — PART 2 of 2 · FINALE</div>
+    <h1>Standard Error &amp; Sample Differences</h1>
+    <p class="subtitle">The two final pieces of the sampling puzzle — one number that tells you how trustworthy your sample is, and the deep reason why samples never exactly match the truth.</p>
+    <p class="overview">Part 2 closes the module with two big ideas in simple words. First, the <strong>standard error</strong> — a number that tells you how much your sample average might be off from the true average. Second, the question: <strong>why do samples differ from populations at all?</strong> We'll see that some difference is natural and unavoidable, some is fixable, and some can ruin your results if you're not careful.</p>
+    <div class="hero-meta">
+      <div class="meta-chip"><span class="label">DURATION:</span><span class="value">50 MIN</span></div>
+      <div class="meta-chip"><span class="label">LEVEL:</span><span class="value">BEGINNER</span></div>
+      <div class="meta-chip"><span class="label">TOPICS:</span><span class="value">02 / 04</span></div>
+      <div class="meta-chip"><span class="label">FORMULAS:</span><span class="value">02</span></div>
+      <div class="meta-chip"><span class="label">PRACTICE:</span><span class="value">06 QUIZ Q</span></div>
+      <div class="meta-chip"><span class="label">PREREQ:</span><span class="value">M-3.5 PART 1</span></div>
+    </div>
+  </section>
+
+  <div class="part-nav">
+    <div class="part-nav-item done">
+      <div class="part-nav-label">✓ PART 1 — Complete</div>
+      <div class="part-nav-title">Sampling · Sample Mean Distribution</div>
+    </div>
+    <div class="part-nav-item current">
+      <div class="part-nav-label">⟁ PART 2 — Now</div>
+      <div class="part-nav-title">Standard Error · Why Samples Differ</div>
+    </div>
+  </div>
+
+  <section class="section reveal">
+    <div class="section-header">
+      <div class="section-num">⟁ OBJECTIVES</div>
+      <h2 class="section-title">What You'll Learn in Part 2</h2>
+      <div class="section-line"></div>
+    </div>
+    <div class="dual-grid">
+      <div class="dual-cell">
+        <h4>📏 Standard Error</h4>
+        <ul>
+          <li>What it really means in simple words</li>
+          <li>Why it's different from standard deviation</li>
+          <li>How to compute it</li>
+          <li>How to read SE in real reports</li>
+        </ul>
+      </div>
+      <div class="dual-cell purple">
+        <h4>🌊 Why Samples Differ</h4>
+        <ul>
+          <li>Three reasons samples differ from truth</li>
+          <li>Natural wiggle vs avoidable mistakes</li>
+          <li>Sampling bias — the dangerous one</li>
+          <li>How to design good samples</li>
+        </ul>
+      </div>
+      <div class="dual-cell magenta">
+        <h4>📊 Real Applications</h4>
+        <ul>
+          <li>"± 3% margin of error" decoded</li>
+          <li>How polls and A/B tests use SE</li>
+          <li>Why some surveys are wrong</li>
+        </ul>
+      </div>
+      <div class="dual-cell green">
+        <h4>🧮 Hands-On Practice</h4>
+        <ul>
+          <li>Interactive SE calculator</li>
+          <li>Bias vs random error demo</li>
+          <li>6-question quiz</li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <!-- ═══════════════════ TOPIC 3 — STANDARD ERROR ═══════════════════ -->
+  <section class="section reveal">
+    <div class="section-header">
+      <div class="section-num">TOPIC 3</div>
+      <h2 class="section-title">Standard Error</h2>
+      <div class="section-line"></div>
+    </div>
+
+    <!-- WHAT -->
+    <div class="concept-block">
+      <div class="sub-section-marker">What it is</div>
+      <h3>What is the Standard Error?</h3>
+      <p>The <strong>standard error</strong> (often shortened to <strong>SE</strong>) is a number that tells you how much your sample average is likely to differ from the true population average.</p>
+      <p>Put very simply: if you took a sample and got an average of 170, the standard error tells you how far that 170 might be from the truth — maybe 2 cm off, maybe 5 cm off, maybe 10 cm off.</p>
+      <ul>
+        <li><strong>Small SE</strong> → your sample average is probably very close to the truth. You can trust it.</li>
+        <li><strong>Big SE</strong> → your sample average could be quite far from the truth. Be careful.</li>
+      </ul>
+      <div class="highlight-box">
+        <strong>Easy way to remember:</strong> The standard error is the "typical wiggle" of a sample average. It's the answer to the question: <em>"If I took another sample, how different would my average be?"</em>
+      </div>
+    </div>
+
+    <!-- THE KEY DIFFERENCE -->
+    <div class="concept-block">
+      <div class="sub-section-marker">Important: SE vs SD</div>
+      <h3>Standard Error vs Standard Deviation — Don't Confuse Them!</h3>
+      <p>These two sound similar but mean different things. Here's the simple way to tell them apart:</p>
+      <div style="overflow-x:auto;">
+        <table class="comp-table">
+          <thead>
+            <tr><th>Term</th><th>What it measures</th><th>Example</th></tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>Standard Deviation (σ)</td>
+              <td>How spread out the <strong>individual values</strong> are in the population</td>
+              <td>"People's heights vary by 10 cm"</td>
+            </tr>
+            <tr>
+              <td>Standard Error (SE)</td>
+              <td>How much the <strong>sample average</strong> wiggles from sample to sample</td>
+              <td>"Average of 100 people varies by 1 cm"</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+      <div class="highlight-box">
+        <strong>Quick rule:</strong> Standard deviation describes <em>individuals</em>. Standard error describes <em>averages</em>. SE is always smaller than σ (because averages are more stable than single values).
+      </div>
+    </div>
+
+    <!-- THE FORMULA -->
+    <div class="formula-card">
+      <div class="formula-label">⟁ The Standard Error Formula</div>
+      <div class="formula">SE = σ / √n</div>
+      <p class="formula-explain"><strong>Recognize this formula?</strong> Yes — it's the exact same formula we used in Part 1 for the "spread of sample means." The <em>standard error of the mean</em> is just a special name for that spread.</p>
+      <div class="var-list">
+        <div class="var-item"><code>SE</code> — standard error (how much sample averages wiggle)</div>
+        <div class="var-item"><code>σ</code> — population standard deviation (how much individuals vary)</div>
+        <div class="var-item"><code>n</code> — sample size (how many people in each sample)</div>
+        <div class="var-item"><code>√n</code> — the square root of n (n=4 → √n=2; n=100 → √n=10)</div>
+      </div>
+      <p class="formula-explain"><strong>What the formula says in plain English:</strong></p>
+      <p class="formula-explain">"To find the typical wiggle of a sample average, take how much individuals wiggle (σ) and shrink it by √n. Bigger samples shrink the wiggle more — making sample averages more reliable."</p>
+    </div>
+
+    <!-- WHEN YOU DON'T KNOW σ -->
+    <div class="formula-card">
+      <div class="formula-label">⟁ When You Don't Know σ — Use the Sample Estimate</div>
+      <div class="formula">SE ≈ s / √n</div>
+      <p class="formula-explain"><strong>The real-world version:</strong> Most of the time, you don't actually know the population standard deviation σ. Instead, you estimate it from your sample. Just replace σ with <strong>s</strong> (the sample standard deviation), and you get a usable formula.</p>
+      <div class="var-list">
+        <div class="var-item"><code>s</code> — sample standard deviation (computed from your data)</div>
+        <div class="var-item"><code>n</code> — sample size</div>
+      </div>
+      <p class="formula-explain">In real projects, this is the version you'll use 99% of the time. Software (Excel, Python, R) computes both s and SE for you with one click.</p>
+    </div>
+
+    <!-- HOW TO USE -->
+    <div class="concept-block">
+      <div class="sub-section-marker">How to use it</div>
+      <h3>How to Use the Standard Error in Practice</h3>
+      <p>Once you have your sample average x̄ and the standard error SE, you can build a "confidence interval" — a range you can be fairly sure contains the true answer:</p>
+      <div class="dual-grid">
+        <div class="dual-cell">
+          <h4>68% Range</h4>
+          <ul>
+            <li>x̄ − SE to x̄ + SE</li>
+            <li>"Plus or minus 1 SE"</li>
+            <li>About 68% sure truth is here</li>
+          </ul>
+        </div>
+        <div class="dual-cell purple">
+          <h4>95% Range (Most Common)</h4>
+          <ul>
+            <li>x̄ − 2·SE to x̄ + 2·SE</li>
+            <li>"Plus or minus 2 SE"</li>
+            <li>About 95% sure truth is here</li>
+            <li>This is the standard in news/research</li>
+          </ul>
+        </div>
+        <div class="dual-cell magenta">
+          <h4>99.7% Range</h4>
+          <ul>
+            <li>x̄ − 3·SE to x̄ + 3·SE</li>
+            <li>"Plus or minus 3 SE"</li>
+            <li>Almost certain truth is here</li>
+          </ul>
+        </div>
+      </div>
+      <p>This comes directly from the empirical rule (68-95-99.7) we learned in Module 3.3.</p>
+      <div class="success-box">
+        <strong>Example:</strong> A survey found average customer satisfaction = 8.2 out of 10, with SE = 0.15. The "95% confidence interval" is 8.2 ± 0.30, which is the range from 7.9 to 8.5. You can say with 95% confidence that the true satisfaction is somewhere between 7.9 and 8.5.
+      </div>
+    </div>
+
+    <!-- WHEN TO USE -->
+    <div class="concept-block">
+      <div class="sub-section-marker">When to use it</div>
+      <h3>When You Should Compute Standard Error</h3>
+      <ul>
+        <li>Any time you <strong>report an average from a sample</strong> and want to express how trustworthy it is.</li>
+        <li>Whenever you create a <strong>chart with error bars</strong> — those bars are usually 1 or 2 SE wide.</li>
+        <li>When running <strong>A/B tests</strong> — SE tells you whether the difference between A and B is real or just noise.</li>
+        <li>For all <strong>polls, surveys, and studies</strong> — SE is the basis of the "margin of error."</li>
+        <li>In <strong>scientific publications</strong> — almost every research result is reported with SE or a confidence interval.</li>
+      </ul>
+    </div>
+
+    <!-- WORKED EXAMPLE -->
+    <div class="deep-dive">
+      <div class="dd-label">⟁ Worked Example</div>
+      <h4>Example: Coffee Shop Customer Wait Times</h4>
+      <p>A coffee shop owner times how long customers wait. They time <strong>36 random customers</strong> and find:</p>
+      <ul>
+        <li>Sample average wait time: <strong>x̄ = 4.0 minutes</strong></li>
+        <li>Sample standard deviation: <strong>s = 1.8 minutes</strong></li>
+        <li>Sample size: <strong>n = 36</strong></li>
+      </ul>
+
+      <p><strong>Step 1 — Calculate the Standard Error.</strong></p>
+      <p style="text-align:center; padding: 12px; font-family: var(--mono); color: var(--neon-purple); font-size:1.1rem;">
+        SE = s / √n = 1.8 / √36 = 1.8 / 6 = <strong>0.30 minutes</strong>
+      </p>
+      <p>The standard error is 0.30 minutes — meaning if we repeated the survey, the average would typically wiggle about 0.30 minutes (18 seconds) from this value.</p>
+
+      <p><strong>Step 2 — Build the 95% confidence interval.</strong></p>
+      <p style="text-align:center; padding: 12px; font-family: var(--mono); color: var(--neon-cyan);">
+        95% range = x̄ ± 2·SE = 4.0 ± 2(0.30) = 4.0 ± 0.60
+      </p>
+      <p>So we're 95% confident that the true average wait time is between <strong>3.4 minutes and 4.6 minutes</strong>.</p>
+
+      <p><strong>Step 3 — Make a business decision.</strong></p>
+      <p>The owner's goal is "average wait under 5 minutes." Since the 95% range is 3.4 to 4.6 — entirely under 5 — the owner can confidently say: "Our average wait is under 5 minutes." 🎉</p>
+
+      <div class="success-box">
+        <strong>Why this works:</strong> The standard error gave us a precise way to turn one sample into a trustworthy statement about all customers — without having to time every single customer.
+      </div>
+    </div>
+
+    <!-- INTERACTIVE: SE CALCULATOR -->
+    <div class="viz-wrap">
+      <div class="viz-title">⟁ Interactive Standard Error Calculator</div>
+      <div class="viz-desc">Move the sliders to set your sample's standard deviation (s) and sample size (n). The visualization shows where the true mean is likely to be, based on a sample average of 100. The pink band is the 95% confidence range. Watch how it shrinks as you increase sample size.</div>
+      <div class="slider-row">
+        <div class="slider-cell">
+          <div class="slider-label"><span>Sample Std Dev (s)</span><span id="seSVal">15</span></div>
+          <input type="range" id="seSSlider" min="5" max="40" value="15">
+        </div>
+        <div class="slider-cell">
+          <div class="slider-label"><span>Sample Size (n)</span><span id="seNVal">25</span></div>
+          <input type="range" id="seNSlider" min="4" max="500" value="25">
+        </div>
+      </div>
+      <canvas id="seCanvas" class="viz-canvas" width="900" height="340"></canvas>
+      <div class="stat-grid">
+        <div class="stat-box">
+          <div class="stat-label">Sample mean x̄</div>
+          <div class="stat-value">100</div>
+        </div>
+        <div class="stat-box">
+          <div class="stat-label">Standard Error</div>
+          <div class="stat-value purple" id="seValue">3.00</div>
+        </div>
+        <div class="stat-box">
+          <div class="stat-label">95% range</div>
+          <div class="stat-value magenta" id="seRange">[94.0, 106.0]</div>
+        </div>
+        <div class="stat-box">
+          <div class="stat-label">Trust level</div>
+          <div class="stat-value green" id="seTrust" style="font-size:1rem;">GOOD</div>
+        </div>
+      </div>
+      <div class="highlight-box" style="margin-top:18px;" id="seInsight">
+        <strong>Read the chart:</strong> the magenta line is your sample average (100). The pink band is the 95% range — the area where the true average is very likely to be. The bigger your sample, the tighter that band.
+      </div>
+    </div>
+
+    <!-- REAL LIFE -->
+    <div class="concept-block">
+      <div class="sub-section-marker">Real-life examples</div>
+      <h3>Where Standard Error Shows Up Every Day</h3>
+      <div class="real-grid">
+        <div class="real-card">
+          <h4>📊 News Polls</h4>
+          <p>"Candidate A: 52% support, ±3%." That ±3% is roughly 2 standard errors. The pollster used SE to give you a trustworthy range.</p>
+        </div>
+        <div class="real-card">
+          <h4>🧪 Drug Trials</h4>
+          <p>"Drug X reduces blood pressure by 12 mmHg (SE = 1.2)." Researchers report SE so others know how reliable the result is.</p>
+        </div>
+        <div class="real-card">
+          <h4>📈 Stock Returns</h4>
+          <p>"Average return: 8% per year (SE = 0.5%)." Investors use SE to judge whether a fund's returns are genuinely good or just luck.</p>
+        </div>
+        <div class="real-card">
+          <h4>🎯 A/B Testing</h4>
+          <p>"Version B converts 5% better, SE = 0.8%." If the difference is 6+ times bigger than SE, it's almost certainly real.</p>
+        </div>
+        <div class="real-card">
+          <h4>🏭 Quality Control</h4>
+          <p>"Average product weight: 500g (SE = 2g)." Factories use SE to decide if a batch meets specifications.</p>
+        </div>
+        <div class="real-card">
+          <h4>🌡️ Climate Science</h4>
+          <p>"Global temperature anomaly: +1.1°C (SE = 0.1°C)." Climate reports use SE to show how confident the estimate is.</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- REAL-LIFE USE -->
+    <div class="concept-block">
+      <div class="sub-section-marker">Real-life use</div>
+      <h3>How Standard Error Drives Real Decisions</h3>
+      <p>SE isn't just a textbook number — it determines real outcomes:</p>
+      <ul>
+        <li><strong>Election predictions:</strong> "Too close to call" happens when the gap between candidates is smaller than 2·SE.</li>
+        <li><strong>Medical approval:</strong> The FDA requires new drugs to show benefits much larger than the SE — to prove the effect is real, not random.</li>
+        <li><strong>Product launches:</strong> Companies pull failing tests when their A/B difference is smaller than SE — meaning "no clear winner."</li>
+        <li><strong>Scientific publishing:</strong> Journals require all reported numbers to come with SE so readers can judge reliability.</li>
+      </ul>
+      <p>Understanding standard error is one of the most useful real-world stats skills. It's the difference between blindly trusting numbers and reading them critically.</p>
+    </div>
+  </section>
+
+  <!-- ═══════════════════ TOPIC 4 — WHY SAMPLES DIFFER ═══════════════════ -->
+  <section class="section reveal">
+    <div class="section-header">
+      <div class="section-num">TOPIC 4</div>
+      <h2 class="section-title">Why Samples Differ from Populations</h2>
+      <div class="section-line"></div>
+    </div>
+
+    <!-- WHAT -->
+    <div class="concept-block">
+      <div class="sub-section-marker">What's going on</div>
+      <h3>Why Don't Samples Match the Real Population?</h3>
+      <p>You take a sample. You compute an average. It's almost never exactly the same as the true population average. Why?</p>
+      <p>There are three big reasons. Two are unavoidable, and one is your enemy:</p>
+      <div class="dual-grid">
+        <div class="dual-cell green">
+          <h4>1. Random Wiggle ✓</h4>
+          <ul>
+            <li>Natural and unavoidable</li>
+            <li>Different samples have different people by chance</li>
+            <li>Measured by the Standard Error</li>
+            <li>Shrinks as sample size grows</li>
+          </ul>
+        </div>
+        <div class="dual-cell amber">
+          <h4>2. Measurement Error ⚠</h4>
+          <ul>
+            <li>Sometimes avoidable, sometimes not</li>
+            <li>Scales might be slightly off</li>
+            <li>People mis-report their weight</li>
+            <li>Better tools and methods reduce it</li>
+          </ul>
+        </div>
+        <div class="dual-cell red">
+          <h4>3. Sampling Bias ✗</h4>
+          <ul>
+            <li>The dangerous one!</li>
+            <li>Sample doesn't represent the population</li>
+            <li>Bigger samples DON'T fix bias</li>
+            <li>Can completely ruin your results</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+
+    <!-- WHY 1: RANDOM WIGGLE -->
+    <div class="concept-block">
+      <div class="sub-section-marker">Reason 1 in detail</div>
+      <h3>Random Wiggle (Sampling Error) — The Friendly Kind</h3>
+      <p>This is the most basic reason samples differ. Every time you take a sample, you grab a slightly different mix of people just by chance.</p>
+      <p>Imagine you have a bag with 1,000 marbles: 500 red, 500 blue. Reach in and grab 10.</p>
+      <ul>
+        <li>You might get 5 red, 5 blue (truth!) — but probably not.</li>
+        <li>You might get 6 red, 4 blue (close-ish).</li>
+        <li>You might get 3 red, 7 blue (more off, but not crazy).</li>
+        <li>Rarely, you might get 9 red, 1 blue (very off, but possible).</li>
+      </ul>
+      <p>None of this is anyone's fault. It's just chance. <strong>This kind of difference is what the standard error measures.</strong> And as we learned, bigger samples make this wiggle smaller.</p>
+      <div class="success-box">
+        <strong>The good news:</strong> Random wiggle is predictable and controllable. You can shrink it by taking bigger samples. It's the "honest" kind of error.
+      </div>
+    </div>
+
+    <!-- WHY 2: MEASUREMENT ERROR -->
+    <div class="concept-block">
+      <div class="sub-section-marker">Reason 2 in detail</div>
+      <h3>Measurement Error — Small Mistakes Add Up</h3>
+      <p>Sometimes the difference comes from <em>how</em> you collect data, not <em>who</em> you measure.</p>
+      <p>Examples:</p>
+      <ul>
+        <li>A scale that always reads 1 kg too heavy → all weights are off by 1 kg.</li>
+        <li>A survey question that's worded confusingly → people answer wrong.</li>
+        <li>People mis-remember their income on a survey.</li>
+        <li>A faulty thermometer reads 2°C too cool.</li>
+        <li>An interviewer pushes people toward certain answers.</li>
+      </ul>
+      <div class="highlight-box">
+        <strong>The fix:</strong> better tools, clearer questions, careful methods, double-checking data. Measurement error can usually be reduced with good design — but never fully eliminated.
+      </div>
+    </div>
+
+    <!-- WHY 3: SAMPLING BIAS -->
+    <div class="concept-block">
+      <div class="sub-section-marker">Reason 3 in detail</div>
+      <h3>Sampling Bias — The Silent Killer</h3>
+      <p>This is the most dangerous reason — and the most common cause of bad statistics.</p>
+      <p><strong>Sampling bias</strong> happens when your sample doesn't really represent the population. Some kinds of people are over-represented, others are under-represented. The sample is systematically off.</p>
+      <p>Worst part? <strong>Bigger samples don't fix it.</strong> If your method is biased, sampling 10,000 people gives just as wrong an answer as sampling 100.</p>
+
+      <h4>Real Examples of Sampling Bias That Caused Big Failures:</h4>
+      <div class="dual-grid">
+        <div class="dual-cell red">
+          <h4>🗳️ The 1936 Election Disaster</h4>
+          <ul>
+            <li>A magazine surveyed 2.4 MILLION people</li>
+            <li>Predicted Landon would beat Roosevelt</li>
+            <li>Roosevelt won in a landslide</li>
+            <li>Why? They polled phone owners (rich people)</li>
+            <li>Phone owners didn't represent all voters</li>
+          </ul>
+        </div>
+        <div class="dual-cell red">
+          <h4>📱 Online-Only Surveys</h4>
+          <ul>
+            <li>Only reaches internet users</li>
+            <li>Misses elderly, rural, poor populations</li>
+            <li>Results favor opinions of online crowd</li>
+            <li>Common modern bias</li>
+          </ul>
+        </div>
+        <div class="dual-cell red">
+          <h4>⭐ Restaurant Review Bias</h4>
+          <ul>
+            <li>Only the most pleased or angry write reviews</li>
+            <li>Average customers don't bother</li>
+            <li>Reviews don't represent typical experience</li>
+            <li>Selection bias in action</li>
+          </ul>
+        </div>
+        <div class="dual-cell red">
+          <h4>🏥 Hospital Patient Studies</h4>
+          <ul>
+            <li>Only sick people come to hospitals</li>
+            <li>Can't conclude things about healthy folks</li>
+            <li>Famous bias in medical research</li>
+          </ul>
+        </div>
+      </div>
+      <div class="warning-box">
+        <strong>The bias trap:</strong> Bias is invisible. Your sample average looks fine. Your standard error looks small. But if your sample is biased, everything is wrong — and you might never know.
+      </div>
+    </div>
+
+    <!-- HOW TO AVOID BIAS -->
+    <div class="concept-block">
+      <div class="sub-section-marker">How to fix it</div>
+      <h3>How to Get Good Samples — Practical Tips</h3>
+      <ul>
+        <li><strong>Random selection:</strong> Every person in the population must have an equal chance of being picked. This is the gold standard.</li>
+        <li><strong>Reach everyone:</strong> Don't just use one method (phone, online, mail). Use multiple methods to reach different groups.</li>
+        <li><strong>Account for non-response:</strong> People who don't respond may be different from those who do. Try to follow up or adjust.</li>
+        <li><strong>Pre-test your survey:</strong> Try questions on a few people first to catch confusing wording.</li>
+        <li><strong>Stratified sampling:</strong> Deliberately ensure each group (age, gender, region) is properly represented.</li>
+        <li><strong>Be honest about limits:</strong> Report what your sample covers and what it doesn't.</li>
+      </ul>
+    </div>
+
+    <!-- INTERACTIVE: BIAS DEMO -->
+    <div class="viz-wrap">
+      <div class="viz-title">⟁ Random Wiggle vs Sampling Bias — Live Demo</div>
+      <div class="viz-desc">Two scenarios. On the left, an unbiased random sample — averages cluster around the truth (170). On the right, a biased sample (only tall people get picked) — averages cluster around the WRONG value (175). Click "Run Samples" to see both in action.</div>
+      <div class="btn-row">
+        <button class="btn" onclick="runBiasDemo(50)">Run 50 Samples</button>
+        <button class="btn" onclick="runBiasDemo(200)">Run 200 Samples</button>
+        <button class="btn" onclick="resetBias()">Reset</button>
+      </div>
+      <canvas id="biasCanvas" class="viz-canvas" width="900" height="380"></canvas>
+      <div class="stat-grid">
+        <div class="stat-box">
+          <div class="stat-label">True mean</div>
+          <div class="stat-value">170.0</div>
+        </div>
+        <div class="stat-box">
+          <div class="stat-label">Unbiased avg</div>
+          <div class="stat-value green" id="unbiasedAvg">—</div>
+        </div>
+        <div class="stat-box">
+          <div class="stat-label">Biased avg</div>
+          <div class="stat-value red" id="biasedAvg">—</div>
+        </div>
+        <div class="stat-box">
+          <div class="stat-label">Bias size</div>
+          <div class="stat-value amber" id="biasSize">—</div>
+        </div>
+      </div>
+      <div class="highlight-box" style="margin-top:18px;" id="biasInsight">
+        <strong>Click "Run 200 Samples"</strong> to see what happens. The green histogram (unbiased) sits right on the truth. The red histogram (biased) sits to the right — systematically wrong, no matter how many samples you take.
+      </div>
+    </div>
+
+    <!-- WHEN TO USE -->
+    <div class="concept-block">
+      <div class="sub-section-marker">When to watch for sample differences</div>
+      <h3>When to Be Most Careful</h3>
+      <ul>
+        <li><strong>Polls during elections:</strong> who answered the phone or filled out the form?</li>
+        <li><strong>Health studies:</strong> Did the study only include certain age groups or genders?</li>
+        <li><strong>Customer feedback:</strong> Are you hearing only from the very happy or very angry?</li>
+        <li><strong>Online surveys:</strong> Who has internet and time to fill these out?</li>
+        <li><strong>Self-reported data:</strong> Are people being honest? (Income, weight, exercise, etc.)</li>
+        <li><strong>Volunteer studies:</strong> Who volunteers may be different from the general population.</li>
+      </ul>
+    </div>
+
+    <!-- WORKED EXAMPLE -->
+    <div class="deep-dive">
+      <div class="dd-label">⟁ Worked Example</div>
+      <h4>Example: Why Two Surveys Gave Different Answers</h4>
+      <p>A company wants to know: "How many hours per day do people use social media?"</p>
+      <p><strong>Survey A:</strong> Posted on Instagram, asks followers to respond.</p>
+      <ul>
+        <li>2,000 responses, average reported usage: 4.5 hours/day</li>
+        <li>Standard error: 0.05 hours</li>
+        <li>Looks very precise! 95% range: 4.4 to 4.6 hours</li>
+      </ul>
+      <p><strong>Survey B:</strong> Randomly selects 500 phone numbers, calls people of all ages.</p>
+      <ul>
+        <li>500 responses, average reported usage: 2.1 hours/day</li>
+        <li>Standard error: 0.12 hours</li>
+        <li>Less precise, but 95% range: 1.86 to 2.34 hours</li>
+      </ul>
+      <p><strong>Which is right?</strong> They give wildly different answers — 4.5 vs 2.1 hours. Why?</p>
+      <ul>
+        <li>Survey A asked Instagram users (heavy social media users by definition) → <strong>sampling bias</strong></li>
+        <li>Survey B reached a much more diverse group → <strong>less bias</strong></li>
+        <li>Survey A's bigger sample size did NOT save it. Bigger sample with bias still gives biased results.</li>
+      </ul>
+      <div class="warning-box">
+        <strong>The lesson:</strong> Don't be fooled by big sample sizes or small standard errors. If your method is biased, your numbers are wrong — and nobody can tell from the report alone. <strong>Always ask: who is in this sample, and who is missing?</strong>
+      </div>
+    </div>
+
+    <!-- REAL LIFE -->
+    <div class="concept-block">
+      <div class="sub-section-marker">Real-life impact</div>
+      <h3>How Sample Differences Affect Decisions</h3>
+      <div class="real-grid">
+        <div class="real-card">
+          <h4>🗳️ Election Surprises</h4>
+          <p>Polls that miss certain voter groups can predict the wrong winner. The 2016 US election surprised many because polls underestimated certain rural voters.</p>
+        </div>
+        <div class="real-card">
+          <h4>💊 Medical Disasters</h4>
+          <p>Drugs tested mainly on young white men have sometimes harmed women or older patients in ways researchers missed.</p>
+        </div>
+        <div class="real-card">
+          <h4>🤖 AI Bias</h4>
+          <p>Facial recognition models trained mostly on light-skinned faces fail on dark-skinned faces. Biased samples create biased AI.</p>
+        </div>
+        <div class="real-card">
+          <h4>📱 Product Mistakes</h4>
+          <p>Companies that only listen to their power users miss how regular users actually behave. Bad product decisions follow.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ═══════════════════ QUIZ ═══════════════════ -->
+  <section class="section reveal">
+    <div class="section-header">
+      <div class="section-num">QUIZ</div>
+      <h2 class="section-title">Test Your Understanding — Part 2</h2>
+      <div class="section-line"></div>
+    </div>
+
+    <div class="quiz-card">
+      <div class="quiz-q"><span class="qnum">Q1</span>What does the standard error tell us?<span class="qlevel easy">EASY</span></div>
+      <div class="quiz-options">
+        <div class="quiz-opt" onclick="checkQ(this, false)">How different individual people are from each other</div>
+        <div class="quiz-opt" onclick="checkQ(this, true)">How much a sample average is likely to differ from the true population average</div>
+        <div class="quiz-opt" onclick="checkQ(this, false)">The total number of people in the sample</div>
+        <div class="quiz-opt" onclick="checkQ(this, false)">The age of the youngest participant</div>
+      </div>
+      <div class="quiz-feedback"></div>
+    </div>
+
+    <div class="quiz-card">
+      <div class="quiz-q"><span class="qnum">Q2</span>Standard error and standard deviation are…<span class="qlevel easy">EASY</span></div>
+      <div class="quiz-options">
+        <div class="quiz-opt" onclick="checkQ(this, false)">Exactly the same thing</div>
+        <div class="quiz-opt" onclick="checkQ(this, true)">Different — SD measures individual spread; SE measures spread of sample averages</div>
+        <div class="quiz-opt" onclick="checkQ(this, false)">Both equal to the sample size</div>
+        <div class="quiz-opt" onclick="checkQ(this, false)">Both random numbers</div>
+      </div>
+      <div class="quiz-feedback"></div>
+    </div>
+
+    <div class="quiz-card">
+      <div class="quiz-q"><span class="qnum">Q3</span>Why does a bigger sample size reduce the standard error?<span class="qlevel easy">EASY</span></div>
+      <div class="quiz-options">
+        <div class="quiz-opt" onclick="checkQ(this, false)">Because bigger samples are cheaper</div>
+        <div class="quiz-opt" onclick="checkQ(this, false)">Because individual values cancel out the formula</div>
+        <div class="quiz-opt" onclick="checkQ(this, true)">Because averaging more values makes the average more stable (formula: SE = σ/√n)</div>
+        <div class="quiz-opt" onclick="checkQ(this, false)">Bigger samples don't reduce SE</div>
+      </div>
+      <div class="quiz-feedback"></div>
+    </div>
+
+    <div class="quiz-card">
+      <div class="quiz-q"><span class="qnum">Q4</span>You have s = 12 and n = 144. What is the standard error?<span class="qlevel mod">MODERATE</span></div>
+      <div class="quiz-options">
+        <div class="quiz-opt" onclick="checkQ(this, false)">12</div>
+        <div class="quiz-opt" onclick="checkQ(this, true)">1.0</div>
+        <div class="quiz-opt" onclick="checkQ(this, false)">144</div>
+        <div class="quiz-opt" onclick="checkQ(this, false)">0.5</div>
+      </div>
+      <div class="quiz-feedback"></div>
+    </div>
+
+    <div class="quiz-card">
+      <div class="quiz-q"><span class="qnum">Q5</span>Which of these is the most dangerous reason samples differ from populations?<span class="qlevel mod">MODERATE</span></div>
+      <div class="quiz-options">
+        <div class="quiz-opt" onclick="checkQ(this, false)">Random wiggle — natural and predictable</div>
+        <div class="quiz-opt" onclick="checkQ(this, false)">Small measurement errors</div>
+        <div class="quiz-opt" onclick="checkQ(this, true)">Sampling bias — the sample doesn't represent the population</div>
+        <div class="quiz-opt" onclick="checkQ(this, false)">The weather on survey day</div>
+      </div>
+      <div class="quiz-feedback"></div>
+    </div>
+
+    <div class="quiz-card">
+      <div class="quiz-q"><span class="qnum">Q6</span>If your sample mean is 80 and standard error is 2, what is the approximate 95% confidence interval?<span class="qlevel mod">MODERATE</span></div>
+      <div class="quiz-options">
+        <div class="quiz-opt" onclick="checkQ(this, false)">[78, 82]</div>
+        <div class="quiz-opt" onclick="checkQ(this, true)">[76, 84]</div>
+        <div class="quiz-opt" onclick="checkQ(this, false)">[60, 100]</div>
+        <div class="quiz-opt" onclick="checkQ(this, false)">[80, 82]</div>
+      </div>
+      <div class="quiz-feedback"></div>
+    </div>
+  </section>
+
+  <!-- ═══════════════════ FINAL MASTER RECAP ═══════════════════ -->
+  <section class="section reveal">
+    <div class="section-header">
+      <div class="section-num">FINAL RECAP</div>
+      <h2 class="section-title">Module 3.5 — Master Recap</h2>
+      <div class="section-line"></div>
+    </div>
+    <div class="ai-panel">
+      <div class="ai-head">
+        <div class="ai-avatar">Σ</div>
+        <div class="ai-meta">
+          <div class="ai-name">QNA-Σ // Synthesis Core</div>
+          <div class="ai-role">Sampling &amp; Standard Error Master — Complete</div>
+        </div>
+      </div>
+      <div>
+        <div class="takeaway">
+          <div class="takeaway-num">01</div>
+          <div class="takeaway-text"><strong>A sampling distribution</strong> is the chart of statistics (like averages) from many samples taken from the same population. It shows how sample numbers wiggle.</div>
+        </div>
+        <div class="takeaway">
+          <div class="takeaway-num">02</div>
+          <div class="takeaway-text"><strong>The sample mean distribution</strong> is the sampling distribution of averages (x̄). Two magical properties: centered at the true mean μ, and always becomes bell-shaped as n grows.</div>
+        </div>
+        <div class="takeaway">
+          <div class="takeaway-num">03</div>
+          <div class="takeaway-text"><strong>Spread of sample means = σ / √n.</strong> Bigger samples → tighter, more reliable averages. To halve the wiggle, quadruple the sample size.</div>
+        </div>
+        <div class="takeaway">
+          <div class="takeaway-num">04</div>
+          <div class="takeaway-text"><strong>The standard error (SE)</strong> is just another name for the spread of sample means. SE tells you how much your sample average might be off from the truth.</div>
+        </div>
+        <div class="takeaway">
+          <div class="takeaway-num">05</div>
+          <div class="takeaway-text"><strong>SE vs SD:</strong> standard deviation measures individuals; standard error measures averages. SE is always smaller than SD (because averages are more stable).</div>
+        </div>
+        <div class="takeaway">
+          <div class="takeaway-num">06</div>
+          <div class="takeaway-text"><strong>Confidence intervals use SE:</strong> "95% range" = x̄ ± 2·SE. This is the basis for all "margin of error" reporting in news, polls, and research.</div>
+        </div>
+        <div class="takeaway">
+          <div class="takeaway-num">07</div>
+          <div class="takeaway-text"><strong>Three reasons samples differ from populations:</strong> random wiggle (good — predictable), measurement error (fixable), and sampling bias (dangerous — invisible).</div>
+        </div>
+        <div class="takeaway">
+          <div class="takeaway-num">08</div>
+          <div class="takeaway-text"><strong>Sampling bias is the silent killer.</strong> Bigger samples DO NOT fix bias. A biased sample of 1 million is just as wrong as a biased sample of 100.</div>
+        </div>
+        <div class="takeaway">
+          <div class="takeaway-num">09</div>
+          <div class="takeaway-text"><strong>The fix for bias:</strong> random selection, reaching diverse groups, accounting for non-response, stratified sampling, and being honest about what your sample covers.</div>
+        </div>
+        <div class="takeaway">
+          <div class="takeaway-num">10</div>
+          <div class="takeaway-text"><strong>Real-world impact:</strong> these ideas drive election polls, drug approvals, A/B testing, quality control, AI training, and scientific research. Sampling skills are useful for life.</div>
+        </div>
+        <div class="takeaway">
+          <div class="takeaway-num">11</div>
+          <div class="takeaway-text"><strong>Critical thinking habit:</strong> when you see a statistic, always ask three questions — (1) what's the sample size? (2) what's the standard error? (3) who is in this sample, and who is missing?</div>
+        </div>
+        <div class="takeaway">
+          <div class="takeaway-num">12</div>
+          <div class="takeaway-text"><strong>You now have the toolkit</strong> to read statistics critically, design good surveys, run reliable A/B tests, and understand the foundation of all inferential statistics. This is a lifelong superpower.</div>
+        </div>
+
+        <div class="recap-formulas">
+          <h4>⟁ Module 3.5 — Complete Formula Vault</h4>
+          <code><span class="name">Sample mean center:</span> Mean of x̄ = μ (true population mean)</code>
+          <code><span class="name">Sample mean spread:</span> Spread of x̄ = σ / √n</code>
+          <code><span class="name">Standard Error (SE):</span> SE = σ / √n (population σ known)</code>
+          <code><span class="name">Standard Error (SE):</span> SE ≈ s / √n (real-world version, σ unknown)</code>
+          <code><span class="name">68% confidence range:</span> x̄ ± SE (about 68% confident truth is here)</code>
+          <code><span class="name">95% confidence range:</span> x̄ ± 2·SE (about 95% — most common)</code>
+          <code><span class="name">99.7% confidence range:</span> x̄ ± 3·SE (almost certain)</code>
+          <code><span class="name">Sample size scaling:</span> To halve SE, multiply n by 4 (diminishing returns)</code>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <div class="part-nav">
+    <div class="part-nav-item done">
+      <div class="part-nav-label">✓ PART 1 — Complete</div>
+      <div class="part-nav-title">Sampling · Sample Mean Distribution</div>
+    </div>
+    <div class="part-nav-item done">
+      <div class="part-nav-label">✓ PART 2 — Complete</div>
+      <div class="part-nav-title">Standard Error · Why Samples Differ</div>
+    </div>
+  </div>
+
+  <div class="module-footer">⟁ MODULE 3.5 — FULLY COMPLETE // Sampling toolkit mastered. You can now read any statistic critically. ⟁</div>
+</div>
+
+<script>
+/* PARTICLE BACKGROUND */
+const canvas = document.getElementById('particle-canvas');
+const ctx = canvas.getContext('2d');
+let particles = [];
+function sizeCanvas() { canvas.width = window.innerWidth; canvas.height = window.innerHeight; }
+sizeCanvas();
+window.addEventListener('resize', sizeCanvas);
+function initParticles() {
+  particles = [];
+  const count = Math.min(60, Math.floor(window.innerWidth / 25));
+  for (let i = 0; i < count; i++) {
+    particles.push({ x: Math.random()*canvas.width, y: Math.random()*canvas.height, vx: (Math.random()-0.5)*0.4, vy: (Math.random()-0.5)*0.4, r: Math.random()*1.6+0.5, hue: Math.random()<0.5?'177,77,255':'0,240,255' });
+  }
+}
+initParticles();
+window.addEventListener('resize', initParticles);
+function drawParticles() {
+  ctx.clearRect(0,0,canvas.width,canvas.height);
+  particles.forEach(p => {
+    p.x += p.vx; p.y += p.vy;
+    if (p.x<0||p.x>canvas.width) p.vx*=-1;
+    if (p.y<0||p.y>canvas.height) p.vy*=-1;
+    ctx.beginPath();
+    ctx.fillStyle = `rgba(${p.hue},0.7)`;
+    ctx.shadowColor = `rgba(${p.hue},1)`;
+    ctx.shadowBlur = 12;
+    ctx.arc(p.x,p.y,p.r,0,Math.PI*2);
+    ctx.fill();
+  });
+  ctx.shadowBlur = 0;
+  for (let i=0;i<particles.length;i++) {
+    for (let j=i+1;j<particles.length;j++) {
+      const dx = particles[i].x-particles[j].x;
+      const dy = particles[i].y-particles[j].y;
+      const d = Math.sqrt(dx*dx+dy*dy);
+      if (d<130) {
+        ctx.strokeStyle = `rgba(177,77,255,${0.12*(1-d/130)})`;
+        ctx.lineWidth = 0.5;
+        ctx.beginPath();
+        ctx.moveTo(particles[i].x,particles[i].y);
+        ctx.lineTo(particles[j].x,particles[j].y);
+        ctx.stroke();
+      }
+    }
+  }
+  requestAnimationFrame(drawParticles);
+}
+drawParticles();
+
+/* HELPERS */
+function normalPdf(x, mu, sigma) { return (1 / (sigma * Math.sqrt(2*Math.PI))) * Math.exp(-((x-mu)**2) / (2*sigma*sigma)); }
+function gaussRand() { let u = 0, v = 0; while (u === 0) u = Math.random(); while (v === 0) v = Math.random(); return Math.sqrt(-2*Math.log(u)) * Math.cos(2*Math.PI*v); }
+
+/* SE CALCULATOR */
+const seCanvas = document.getElementById('seCanvas');
+const seCtx = seCanvas.getContext('2d');
+function updateSE() {
+  const s = +document.getElementById('seSSlider').value;
+  const n = +document.getElementById('seNSlider').value;
+  document.getElementById('seSVal').textContent = s;
+  document.getElementById('seNVal').textContent = n;
+  const se = s / Math.sqrt(n);
+  document.getElementById('seValue').textContent = se.toFixed(2);
+  const lo = 100 - 2*se, hi = 100 + 2*se;
+  document.getElementById('seRange').textContent = `[${lo.toFixed(1)}, ${hi.toFixed(1)}]`;
+  const trust = document.getElementById('seTrust');
+  if (se < 1) { trust.textContent = 'EXCELLENT'; trust.style.color = 'var(--neon-green)'; }
+  else if (se < 3) { trust.textContent = 'GOOD'; trust.style.color = 'var(--neon-cyan)'; }
+  else if (se < 6) { trust.textContent = 'FAIR'; trust.style.color = 'var(--neon-amber)'; }
+  else { trust.textContent = 'POOR'; trust.style.color = 'var(--neon-red)'; }
+
+  const w = seCanvas.width, h = seCanvas.height;
+  seCtx.clearRect(0,0,w,h);
+  const padL = 60, padR = 30, padT = 40, padB = 60;
+  const plotW = w - padL - padR;
+  const plotH = h - padT - padB;
+  const xLo = 80, xHi = 120;
+  const yMax = normalPdf(100, 100, Math.max(se, 0.5)) * 1.1;
+  const xToPx = v => padL + ((v-xLo)/(xHi-xLo))*plotW;
+  const yToPx = v => padT + plotH - (v/yMax)*plotH;
+
+  // shaded 95% band
+  seCtx.fillStyle = 'rgba(255,43,214,0.18)';
+  seCtx.beginPath();
+  seCtx.moveTo(xToPx(lo), yToPx(0));
+  for (let i = 0; i <= 200; i++) {
+    const xv = lo + (i/200)*(hi-lo);
+    const y = normalPdf(xv, 100, se);
+    seCtx.lineTo(xToPx(xv), yToPx(y));
+  }
+  seCtx.lineTo(xToPx(hi), yToPx(0));
+  seCtx.closePath();
+  seCtx.fill();
+
+  // curve
+  seCtx.strokeStyle = '#b14dff'; seCtx.lineWidth = 2.5;
+  seCtx.shadowColor = '#b14dff'; seCtx.shadowBlur = 8;
+  seCtx.beginPath();
+  for (let i = 0; i <= 300; i++) {
+    const xv = xLo + (i/300)*(xHi-xLo);
+    const y = normalPdf(xv, 100, Math.max(se, 0.5));
+    if (i === 0) seCtx.moveTo(xToPx(xv), yToPx(y));
+    else seCtx.lineTo(xToPx(xv), yToPx(y));
+  }
+  seCtx.stroke();
+  seCtx.shadowBlur = 0;
+
+  // mean line
+  seCtx.strokeStyle = '#ff2bd6'; seCtx.lineWidth = 2;
+  seCtx.beginPath();
+  seCtx.moveTo(xToPx(100), padT);
+  seCtx.lineTo(xToPx(100), padT + plotH);
+  seCtx.stroke();
+
+  // axes
+  seCtx.strokeStyle = '#9fb4d6'; seCtx.lineWidth = 1.5;
+  seCtx.beginPath();
+  seCtx.moveTo(padL, padT);
+  seCtx.lineTo(padL, padT+plotH);
+  seCtx.lineTo(padL+plotW, padT+plotH);
+  seCtx.stroke();
+
+  seCtx.fillStyle = '#9fb4d6'; seCtx.font = '11px JetBrains Mono'; seCtx.textAlign = 'center';
+  for (let v = 80; v <= 120; v += 5) {
+    seCtx.fillText(v, xToPx(v), padT+plotH+18);
+  }
+
+  seCtx.fillStyle = '#ff2bd6'; seCtx.font = 'bold 12px JetBrains Mono'; seCtx.textAlign = 'center';
+  seCtx.fillText('x̄ = 100', xToPx(100), padT - 4);
+  seCtx.fillStyle = '#b14dff'; seCtx.font = 'bold 11px JetBrains Mono';
+  seCtx.fillText(lo.toFixed(1), xToPx(lo), padT+plotH+35);
+  seCtx.fillText(hi.toFixed(1), xToPx(hi), padT+plotH+35);
+  seCtx.fillStyle = '#fff'; seCtx.font = 'bold 12px JetBrains Mono';
+  seCtx.fillText('95% confidence range', xToPx(100), padT+plotH+50);
+
+  seCtx.fillStyle = '#b14dff'; seCtx.font = 'bold 13px JetBrains Mono'; seCtx.textAlign = 'left';
+  seCtx.fillText(`SE = s/√n = ${s}/√${n} = ${se.toFixed(2)}`, padL, padT-20);
+
+  const ins = document.getElementById('seInsight');
+  if (se < 1) ins.innerHTML = `<strong>Excellent precision (SE=${se.toFixed(2)}):</strong> the true mean is very likely between ${lo.toFixed(1)} and ${hi.toFixed(1)}. This is a high-quality estimate.`;
+  else if (se < 3) ins.innerHTML = `<strong>Good precision (SE=${se.toFixed(2)}):</strong> 95% confidence range [${lo.toFixed(1)}, ${hi.toFixed(1)}] — a reasonable estimate. Consider more data for tighter range.`;
+  else ins.innerHTML = `<strong>Wide range (SE=${se.toFixed(2)}):</strong> the 95% confidence range is [${lo.toFixed(1)}, ${hi.toFixed(1)}] — too wide for confident decisions. You need a much bigger sample.`;
+}
+document.getElementById('seSSlider').addEventListener('input', updateSE);
+document.getElementById('seNSlider').addEventListener('input', updateSE);
+updateSE();
+
+/* BIAS DEMO */
+const biasCanvas = document.getElementById('biasCanvas');
+const biasCtx = biasCanvas.getContext('2d');
+let unbiased = [], biased = [];
+function runBiasDemo(count) {
+  const n = 30; // sample size
+  const trueMean = 170, trueSD = 10;
+  for (let s = 0; s < count; s++) {
+    // unbiased sample
+    let sum1 = 0;
+    for (let i = 0; i < n; i++) sum1 += trueMean + gaussRand() * trueSD;
+    unbiased.push(sum1 / n);
+    // biased sample (only people taller than 170)
+    let sum2 = 0;
+    let collected = 0;
+    while (collected < n) {
+      const v = trueMean + gaussRand() * trueSD;
+      if (v > trueMean) { // only sample tall people
+        sum2 += v;
+        collected++;
+      }
+    }
+    biased.push(sum2 / n);
+  }
+  drawBias();
+}
+function resetBias() { unbiased = []; biased = []; drawBias(); }
+function drawBias() {
+  const w = biasCanvas.width, h = biasCanvas.height;
+  biasCtx.clearRect(0,0,w,h);
+  const padL = 60, padR = 30, padT = 50, padB = 60;
+  const plotW = w - padL - padR;
+  const plotH = h - padT - padB;
+  const xLo = 165, xHi = 185;
+  const xToPx = v => padL + ((v-xLo)/(xHi-xLo))*plotW;
+
+  const numBins = 40;
+  const unbiasedBins = new Array(numBins).fill(0);
+  const biasedBins = new Array(numBins).fill(0);
+  unbiased.forEach(m => { if (m >= xLo && m <= xHi) unbiasedBins[Math.min(numBins-1, Math.floor((m-xLo)/(xHi-xLo)*numBins))]++; });
+  biased.forEach(m => { if (m >= xLo && m <= xHi) biasedBins[Math.min(numBins-1, Math.floor((m-xLo)/(xHi-xLo)*numBins))]++; });
+  const maxBin = Math.max(...unbiasedBins, ...biasedBins, 1);
+  const binW = plotW / numBins;
+
+  // bars - draw biased (red) first behind unbiased (green)
+  for (let i = 0; i < numBins; i++) {
+    if (biasedBins[i] > 0) {
+      const barH = (biasedBins[i] / maxBin) * plotH;
+      const x = padL + i * binW;
+      const y = padT + plotH - barH;
+      biasCtx.fillStyle = 'rgba(255,77,109,0.65)';
+      biasCtx.shadowColor = '#ff4d6d'; biasCtx.shadowBlur = 4;
+      biasCtx.fillRect(x+1, y, binW-2, barH);
+    }
+  }
+  for (let i = 0; i < numBins; i++) {
+    if (unbiasedBins[i] > 0) {
+      const barH = (unbiasedBins[i] / maxBin) * plotH;
+      const x = padL + i * binW;
+      const y = padT + plotH - barH;
+      biasCtx.fillStyle = 'rgba(0,255,170,0.65)';
+      biasCtx.shadowColor = '#00ffaa'; biasCtx.shadowBlur = 4;
+      biasCtx.fillRect(x+1, y, binW-2, barH);
+    }
+  }
+  biasCtx.shadowBlur = 0;
+
+  // true mean line
+  biasCtx.strokeStyle = '#ff2bd6'; biasCtx.lineWidth = 2; biasCtx.setLineDash([5,4]);
+  biasCtx.beginPath();
+  biasCtx.moveTo(xToPx(170), padT);
+  biasCtx.lineTo(xToPx(170), padT+plotH);
+  biasCtx.stroke();
+  biasCtx.setLineDash([]);
+  biasCtx.fillStyle = '#ff2bd6'; biasCtx.font = 'bold 12px JetBrains Mono'; biasCtx.textAlign = 'center';
+  biasCtx.fillText('μ=170 (truth)', xToPx(170), padT - 8);
+
+  // axes
+  biasCtx.strokeStyle = '#9fb4d6'; biasCtx.lineWidth = 1.5;
+  biasCtx.beginPath();
+  biasCtx.moveTo(padL, padT);
+  biasCtx.lineTo(padL, padT+plotH);
+  biasCtx.lineTo(padL+plotW, padT+plotH);
+  biasCtx.stroke();
+
+  biasCtx.fillStyle = '#9fb4d6'; biasCtx.font = '11px JetBrains Mono'; biasCtx.textAlign = 'center';
+  for (let v = 165; v <= 185; v += 5) {
+    biasCtx.fillText(v, xToPx(v), padT+plotH+18);
+  }
+  biasCtx.fillText('Sample average', padL + plotW/2, padT+plotH+40);
+
+  // title
+  biasCtx.fillStyle = '#b14dff'; biasCtx.font = 'bold 13px JetBrains Mono'; biasCtx.textAlign = 'left';
+  biasCtx.fillText(`Distributions of sample means: ${unbiased.length} unbiased vs ${biased.length} biased samples`, padL, padT - 28);
+
+  // legend
+  biasCtx.fillStyle = 'rgba(0,255,170,0.9)';
+  biasCtx.fillRect(padL + plotW - 240, padT + 8, 14, 14);
+  biasCtx.fillStyle = '#fff'; biasCtx.font = '11px JetBrains Mono'; biasCtx.textAlign = 'left';
+  biasCtx.fillText('Unbiased (random)', padL + plotW - 220, padT + 18);
+  biasCtx.fillStyle = 'rgba(255,77,109,0.9)';
+  biasCtx.fillRect(padL + plotW - 240, padT + 28, 14, 14);
+  biasCtx.fillStyle = '#fff';
+  biasCtx.fillText('Biased (tall only)', padL + plotW - 220, padT + 38);
+
+  // stats
+  if (unbiased.length > 0) {
+    const uAvg = unbiased.reduce((a,b)=>a+b,0)/unbiased.length;
+    const bAvg = biased.reduce((a,b)=>a+b,0)/biased.length;
+    document.getElementById('unbiasedAvg').textContent = uAvg.toFixed(2);
+    document.getElementById('biasedAvg').textContent = bAvg.toFixed(2);
+    document.getElementById('biasSize').textContent = '+' + (bAvg - 170).toFixed(2);
+    const ins = document.getElementById('biasInsight');
+    if (unbiased.length < 30) {
+      ins.innerHTML = `<strong>${unbiased.length} samples taken.</strong> Take more samples to see the patterns clearly.`;
+    } else {
+      ins.innerHTML = `<strong>${unbiased.length} samples each.</strong> Green (unbiased) centers right on the truth (170). Red (biased — only tall people) centers at ~${bAvg.toFixed(1)} — about ${(bAvg-170).toFixed(1)} cm off. <em>No matter how many more samples you take, the red histogram will keep being wrong.</em>`;
+    }
+  } else {
+    document.getElementById('unbiasedAvg').textContent = '—';
+    document.getElementById('biasedAvg').textContent = '—';
+    document.getElementById('biasSize').textContent = '—';
+  }
+}
+drawBias();
+
+/* QUIZ */
+function checkQ(el, correct) {
+  const opts = el.parentElement.querySelectorAll('.quiz-opt');
+  opts.forEach(o => o.classList.remove('correct','wrong'));
+  const fb = el.parentElement.parentElement.querySelector('.quiz-feedback');
+  if (correct) {
+    el.classList.add('correct');
+    fb.className = 'quiz-feedback show ok';
+    fb.textContent = '✓ Correct! Sampling reasoning confirmed.';
+  } else {
+    el.classList.add('wrong');
+    fb.className = 'quiz-feedback show no';
+    fb.textContent = '✗ Not quite — review the relevant section and try again.';
+  }
+}
+
+/* â”€â”€ SCROLL REVEAL OBSERVER â”€â”€ */
+(function() {
+  const reveals = document.querySelectorAll('.reveal');
+  if (!reveals.length) return;
+  const obs = new IntersectionObserver((entries) => {
+    entries.forEach(e => { if (e.isIntersecting) { e.target.classList.add('visible'); obs.unobserve(e.target); } });
+  }, { threshold: 0, rootMargin: '0px 0px -40px 0px' });
+  reveals.forEach(r => obs.observe(r));
+})();
+</script>
+</body>
+</html>

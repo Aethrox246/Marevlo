@@ -1,0 +1,356 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Totient Sieve φ(1..n) - Visualization</title>
+    <style>
+        :root {
+            --bg-page: #0d1117;
+            --bg-surface: #161b22;
+            --bg-input: #0d1117;
+            --border-main: #30363d;
+            --btn-bg: #21262d;
+            --btn-hover: #2d333b;
+            --text-main: #c9d1d9;
+            --text-dim: #8b949e;
+            --accent-orange: #e3b341;
+            --accent-blue: #388bfd;
+            --accent-green: #3fb950;
+            --accent-red: #f85149;
+        }
+
+        * { box-sizing: border-box; }
+        body {
+            background-color: var(--bg-page);
+            color: var(--text-main);
+            font-family: system-ui, -apple-system, sans-serif;
+            margin: 0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            min-height: 100vh;
+            padding-bottom: 40px;
+        }
+
+        .input-bar {
+            width: 100%;
+            background-color: var(--bg-surface);
+            padding: 12px 16px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 12px;
+            border-bottom: 1px solid var(--border-main);
+            flex-wrap: wrap;
+        }
+        label.ui-label { font-family: 'Courier New', monospace; font-size: 13px; color: var(--text-dim); }
+        input[type="number"] {
+            background: var(--bg-input);
+            border: 1px solid var(--border-main);
+            color: var(--text-main);
+            height: 32px;
+            border-radius: 6px;
+            padding: 0 10px;
+            width: 110px;
+            font-size: 14px;
+        }
+
+        button {
+            height: 32px; border-radius: 6px; padding: 0 16px; background: var(--btn-bg);
+            border: 1px solid var(--border-main); color: var(--text-main); font-size: 13px; cursor: pointer;
+            transition: background 0.2s ease;
+        }
+        button:hover { background: var(--btn-hover); }
+
+        .visual-container { margin-top: 30px; width: 100%; max-width: 960px; }
+        .tiles-wrapper { 
+            display: flex; gap: 6px; flex-wrap: wrap; justify-content: center; 
+            padding: 20px; background: var(--bg-surface); border-radius: 8px;
+            border: 1px solid var(--border-main);
+        }
+
+        .tile-unit { display: flex; flex-direction: column; align-items: center; gap: 3px; width: 58px; }
+        .tile {
+            width: 52px; height: 52px; display: flex; align-items: center; justify-content: center;
+            border-radius: 10px; font-size: 18px; font-weight: 700; font-family: 'Courier New', monospace;
+            transition: all 0.3s ease; border: 2px solid var(--border-main); background: #21262d;
+        }
+        .tile-index { font-size: 10px; color: var(--text-dim); }
+
+        .tile.candidate { background: #2a1600; border-color: var(--accent-orange); color: var(--accent-orange); }
+        .tile.prime { background: #0f2a1a; border-color: var(--accent-green); color: var(--accent-green); transform: scale(1.15); }
+        .tile.updated { background: #1f2a3a; border-color: var(--accent-blue); color: var(--accent-blue); }
+
+        .action-panel {
+            margin-top: 25px; background: var(--bg-surface); border: 1px solid var(--border-main);
+            border-radius: 8px; padding: 18px 24px; width: 780px; text-align: center; font-family: monospace;
+            min-height: 135px; font-size: 15px; line-height: 1.6;
+        }
+
+        .info-panel { margin-top: 20px; display: flex; gap: 18px; flex-wrap: wrap; justify-content: center; }
+        .info-cell {
+            background: var(--bg-surface); border: 1px solid var(--border-main); border-radius: 6px;
+            padding: 12px 20px; min-width: 130px; text-align: center;
+        }
+        .info-label { font-size: 11px; color: var(--text-dim); }
+        .info-value { font-family: monospace; font-size: 20px; font-weight: 700; }
+
+        .result-display { 
+            margin-top: 22px; font-size: 32px; font-family: monospace; text-align: center; 
+        }
+        #res-val { color: var(--accent-green); font-weight: bold; }
+
+        .status-bar { margin-top: 8px; font-size: 13.5px; color: var(--text-dim); min-height: 22px; }
+
+        .controls { margin-top: 25px; display: flex; align-items: center; gap: 12px; }
+        input[type="range"] { accent-color: var(--accent-blue); width: 150px; }
+
+        .legend { margin-top: 22px; display: flex; gap: 28px; flex-wrap: wrap; justify-content: center; font-size: 13px; }
+        .legend-item { display: flex; align-items: center; gap: 8px; }
+
+        .log-panel {
+            margin-top: 25px; background: var(--bg-page); border: 1px solid var(--border-main);
+            border-radius: 8px; padding: 16px 20px; width: 780px; max-width: 96%; height: 170px;
+            overflow-y: auto; font-family: 'Courier New', monospace; font-size: 13.2px; line-height: 1.55;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="input-bar">
+        <label class="ui-label">n = </label>
+        <input type="number" id="num-n" value="5">
+        <button onclick="loadCustom()">Load</button>
+        <button onclick="loadExample(5)">Ex 1 (n=5)</button>
+        <button onclick="loadExample(10)">Ex 2 (n=10)</button>
+    </div>
+
+    <div class="visual-container">
+        <div class="tiles-wrapper" id="tiles-container"></div>
+    </div>
+
+    <div class="action-panel" id="main-panel">—</div>
+
+    <div class="info-panel">
+        <div class="info-cell">
+            <span class="info-label">Current i</span>
+            <span class="info-value" id="val-i" style="color:var(--accent-orange);">—</span>
+        </div>
+        <div class="info-cell">
+            <span class="info-label">Smallest Prime Factor</span>
+            <span class="info-value" id="val-spf" style="color:var(--accent-red);">—</span>
+        </div>
+        <div class="info-cell">
+            <span class="info-label">φ(i)</span>
+            <span class="info-value" id="val-phi" style="color:var(--accent-green);">—</span>
+        </div>
+    </div>
+
+    <div class="result-display">
+        φ(1..<span id="n-val">5</span>) = <span id="res-val">—</span>
+    </div>
+
+    <div class="status-bar" id="status-text"></div>
+
+    <div class="controls">
+        <button onclick="reset()">↺ Reset</button>
+        <button onclick="back()">← Back</button>
+        <button onclick="togglePlay()" id="play-btn">▶ Play</button>
+        <button onclick="next()">Next →</button>
+        <div style="display:flex;align-items:center;gap:8px;">
+            <span class="ui-label" style="font-size:12px">Speed</span>
+            <input type="range" id="speed-slider" min="0" max="2" value="1">
+        </div>
+    </div>
+
+    <div class="legend">
+        <div class="legend-item"><span style="display:inline-block;width:18px;height:18px;background:#2a1600;border:2px solid var(--accent-orange);border-radius:6px;"></span> Processing i</div>
+        <div class="legend-item"><span style="display:inline-block;width:18px;height:18px;background:#0f2a1a;border:2px solid var(--accent-green);border-radius:6px;"></span> Prime</div>
+        <div class="legend-item"><span style="display:inline-block;width:18px;height:18px;background:#1f2a3a;border:2px solid var(--accent-blue);border-radius:6px;"></span> φ Updated</div>
+    </div>
+
+    <div class="log-panel" id="log"></div>
+
+    <script>
+        let currentN = 5;
+        let steps = [];
+        let stepIndex = 0;
+        let timer = null;
+        const delays = [1400, 800, 400];
+
+        function init() { loadExample(5); }
+
+        function loadExample(n) {
+            currentN = n;
+            document.getElementById('num-n').value = n;
+            generateSteps();
+            reset();
+        }
+
+        function loadCustom() {
+            const n = parseInt(document.getElementById('num-n').value);
+            if (!isNaN(n) && n >= 1 && n <= 100) loadExample(n);
+            else alert("Please enter n between 1 and 100");
+        }
+
+        function generateSteps() {
+            steps = [];
+            let phi = new Array(currentN + 1).fill(0);
+            let spf = new Array(currentN + 1).fill(0);
+            let primes = [];
+
+            phi[1] = 1;
+
+            steps.push({
+                type: 'init',
+                i: 1,
+                panel: `Totient Sieve for 1 to <b>${currentN}</b><br>Initialize φ[1] = 1`,
+                statusText: `Starting Linear Totient Sieve`,
+                log: `n = ${currentN}\nφ[1] = 1`
+            });
+
+            for (let i = 2; i <= currentN; i++) {
+                if (spf[i] === 0) { // i is prime
+                    spf[i] = i;
+                    primes.push(i);
+                    phi[i] = i - 1;
+
+                    steps.push({
+                        type: 'prime',
+                        i: i,
+                        panel: `<b>${i}</b> is prime → φ(${i}) = ${i}-1 = <b>${phi[i]}</b>`,
+                        statusText: `Prime found: ${i}`,
+                        log: `i=${i} → Prime, φ[${i}]=${phi[i]}`
+                    });
+                }
+
+                // Update multiples
+                for (let p of primes) {
+                    if (p > spf[i] || p * i > currentN) break;
+
+                    spf[p * i] = p;
+
+                    if (p === spf[i]) {
+                        phi[p * i] = phi[i] * p;
+                    } else {
+                        phi[p * i] = phi[i] * (p - 1);
+                    }
+
+                    steps.push({
+                        type: 'updated',
+                        i: p * i,
+                        panel: `Update for multiple <b>${p*i}</b> using prime <b>${p}</b><br>φ[${p*i}] = ${phi[p*i]}`,
+                        statusText: `Updated φ[${p*i}]`,
+                        log: `Multiple ${p*i} ← φ = ${phi[p*i]}`
+                    });
+                }
+            }
+
+            // Final step
+            steps.push({
+                type: 'final',
+                i: currentN,
+                panel: `Completed Totient Sieve!<br>φ(1..${currentN}) = [<b>${phi.slice(1).join(', ')}</b>]`,
+                statusText: `All φ values computed`,
+                log: `Final Result: [${phi.slice(1).join(', ')}]`,
+                phiArray: phi.slice(1)
+            });
+        }
+
+        function renderStep(idx) {
+            const step = steps[idx];
+            if (!step) return;
+
+            const container = document.getElementById('tiles-container');
+            container.innerHTML = '';
+
+            for (let i = 1; i <= currentN; i++) {
+                const unit = document.createElement('div');
+                unit.className = 'tile-unit';
+
+                const tile = document.createElement('div');
+                let cls = 'candidate';
+
+                if (step.type === 'prime' && step.i === i) cls = 'prime';
+                else if (step.type === 'updated' && step.i === i) cls = 'updated';
+
+                tile.className = `tile ${cls}`;
+                tile.innerText = i;
+
+                const idxLabel = document.createElement('div');
+                idxLabel.className = 'tile-index';
+                idxLabel.innerText = i;
+
+                unit.append(tile, idxLabel);
+                container.appendChild(unit);
+            }
+
+            document.getElementById('main-panel').innerHTML = step.panel;
+            document.getElementById('val-i').innerText = step.i || '—';
+            document.getElementById('val-spf').innerText = '—';
+            document.getElementById('val-phi').innerText = '—';
+
+            document.getElementById('n-val').innerText = currentN;
+            const resVal = document.getElementById('res-val');
+            if (step.type === 'final') {
+                resVal.innerText = `[${step.phiArray.join(', ')}]`;
+            } else {
+                resVal.innerText = '—';
+            }
+
+            document.getElementById('status-text').innerText = step.statusText;
+
+            const logPanel = document.getElementById('log');
+            logPanel.innerHTML = '';
+            for (let i = 0; i <= idx; i++) {
+                if (steps[i].log) {
+                    const line = document.createElement('div');
+                    line.style.marginBottom = '5px';
+                    line.innerText = steps[i].log;
+                    logPanel.appendChild(line);
+                }
+            }
+            logPanel.scrollTop = logPanel.scrollHeight;
+        }
+
+        function next() {
+            if (stepIndex < steps.length - 1) {
+                stepIndex++;
+                renderStep(stepIndex);
+            } else pause();
+        }
+
+        function back() {
+            if (stepIndex > 0) {
+                stepIndex--;
+                renderStep(stepIndex);
+            }
+        }
+
+        function reset() {
+            pause();
+            stepIndex = 0;
+            renderStep(0);
+        }
+
+        function togglePlay() {
+            const btn = document.getElementById('play-btn');
+            if (timer) pause();
+            else {
+                btn.innerText = 'Pause';
+                if (stepIndex >= steps.length - 1) stepIndex = 0;
+                timer = setInterval(next, delays[document.getElementById('speed-slider').value]);
+            }
+        }
+
+        function pause() {
+            clearInterval(timer);
+            timer = null;
+            document.getElementById('play-btn').innerText = '▶ Play';
+        }
+
+        window.onload = init;
+    </script>
+</body>
+</html>

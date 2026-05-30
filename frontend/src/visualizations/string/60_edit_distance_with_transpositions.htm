@@ -1,0 +1,322 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Edit Distance With Transpositions - DP Visualization</title>
+    <style>
+        :root {
+            --bg-page: #0d1117;
+            --bg-surface: #161b22;
+            --border-main: #30363d;
+            --accent-purple: #a371f7;
+            --accent-green: #3fb950;
+            --accent-orange: #e3b341;
+            --accent-red: #f85149;
+            --text-main: #c9d1d9;
+            --text-dim: #8b949e;
+        }
+        * { box-sizing: border-box; }
+        body {
+            background: var(--bg-page); color: var(--text-main);
+            font-family: system-ui, -apple-system, sans-serif;
+            margin: 0; padding: 20px 0; display: flex; flex-direction: column; align-items: center;
+        }
+        .input-bar {
+            background: var(--bg-surface); padding: 12px 20px; border-radius: 8px;
+            border: 1px solid var(--border-main); display: flex; gap: 12px; align-items: center; flex-wrap: wrap;
+            margin-bottom: 24px;
+        }
+        input[type="text"] {
+            background: #0d1117; border: 1px solid var(--border-main); color: var(--text-main);
+            padding: 8px 12px; border-radius: 6px; width: 220px; font-family: monospace;
+        }
+        button {
+            padding: 8px 16px; background: #21262d; border: 1px solid var(--border-main);
+            color: var(--text-main); border-radius: 6px; cursor: pointer;
+        }
+        button:hover { background: #30363d; }
+
+        .strings {
+            display: flex; gap: 40px; margin: 20px 0;
+        }
+        .string-box {
+            background: var(--bg-surface); padding: 12px 20px; border-radius: 8px;
+            border: 1px solid var(--border-main); text-align: center;
+        }
+        .tiles { display: flex; gap: 4px; justify-content: center; margin-top: 8px; }
+        .tile {
+            width: 42px; height: 52px; display: flex; flex-direction: column;
+            align-items: center; justify-content: center; border-radius: 6px;
+            font-size: 18px; font-weight: 700; font-family: monospace;
+            transition: all 0.3s; border: 2px solid var(--border-main);
+            background: #21262d;
+        }
+        .tile.current { border-color: var(--accent-purple); background: #1e1030; transform: scale(1.1); }
+
+        .dp-table {
+            display: grid; gap: 2px; background: var(--border-main); padding: 2px;
+            border-radius: 8px; margin: 20px 0;
+        }
+        .dp-cell {
+            background: #21262d; width: 52px; height: 52px; display: flex;
+            align-items: center; justify-content: center; font-family: monospace;
+            font-size: 15px; font-weight: 700; border-radius: 4px;
+            transition: all 0.25s;
+        }
+        .dp-cell.current { border: 2px solid var(--accent-purple); background: #1e1030; }
+        .dp-cell.swap { border: 2px solid var(--accent-orange); }
+
+        .action-panel {
+            background: var(--bg-surface); border: 1px solid var(--border-main);
+            border-radius: 8px; padding: 18px 24px; width: 720px; min-height: 110px;
+            font-family: monospace; line-height: 1.5; margin-bottom: 20px;
+        }
+
+        .controls {
+            margin: 24px 0; display: flex; gap: 12px; align-items: center;
+        }
+        input[type="range"] { width: 160px; accent-color: var(--accent-purple); }
+
+        .log-panel {
+            width: 720px; height: 180px; overflow-y: auto; background: #0d1117;
+            border: 1px solid var(--border-main); border-radius: 8px; padding: 14px;
+            font-family: monospace; font-size: 13px; line-height: 1.45;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="input-bar">
+        <label>A =</label>
+        <input type="text" id="input-a" value="kitten">
+        <label>B =</label>
+        <input type="text" id="input-b" value="sitting">
+        <button onclick="loadCustom()">Load</button>
+        <button onclick="loadExample(0)">Ex 1: kitten/sitting</button>
+        <button onclick="loadExample(1)">Ex 2: abc/acb</button>
+    </div>
+
+    <div style="font-family:monospace;color:var(--accent-purple);margin-bottom:12px;">
+        DP Table — Insert/Delete/Substitute + Adjacent Swap (Transposition)
+    </div>
+
+    <div class="strings">
+        <div class="string-box">
+            <div>A = <b id="str-a"></b></div>
+            <div class="tiles" id="tiles-a"></div>
+        </div>
+        <div class="string-box">
+            <div>B = <b id="str-b"></b></div>
+            <div class="tiles" id="tiles-b"></div>
+        </div>
+    </div>
+
+    <div class="dp-table" id="dp-table"></div>
+
+    <div class="action-panel" id="action-panel">
+        Click Play / Next to fill DP table...
+    </div>
+
+    <div class="controls">
+        <button onclick="resetViz()">Reset</button>
+        <button onclick="stepBack()">← Back</button>
+        <button onclick="togglePlay()" id="play-btn">▶ Play</button>
+        <button onclick="stepForward()">Next →</button>
+        <span style="margin-left:20px;color:var(--text-dim)">Speed</span>
+        <input type="range" id="speed" min="0" max="2" value="1">
+    </div>
+
+    <div class="log-panel" id="log-panel"></div>
+
+    <script>
+        let A = "kitten";
+        let B = "sitting";
+        let steps = [];
+        let stepIdx = 0;
+        let timer = null;
+        const delays = [1100, 580, 260];
+
+        function generateSteps() {
+            steps = [];
+            const n = A.length;
+            const m = B.length;
+            let dp = Array.from({length: n+1}, () => Array(m+1).fill(0));
+
+            steps.push({
+                type: 'init',
+                i: 0, j: 0,
+                panel: `Initialize DP table (${n+1} x ${m+1})<br>dp[0][j] = j (inserts), dp[i][0] = i (deletes)`,
+                log: `Start filling DP table for "${A}" → "${B}"`,
+                dpSnapshot: JSON.parse(JSON.stringify(dp)),
+                highlightI: -1, highlightJ: -1
+            });
+
+            // Base cases
+            for (let j = 0; j <= m; j++) dp[0][j] = j;
+            for (let i = 0; i <= n; i++) dp[i][0] = i;
+
+            steps.push({
+                type: 'base',
+                i: 0, j: 0,
+                panel: `Base cases filled`,
+                log: `Base cases: dp[0][*] = inserts, dp[*][0] = deletes`,
+                dpSnapshot: JSON.parse(JSON.stringify(dp)),
+                highlightI: -1, highlightJ: -1
+            });
+
+            for (let i = 1; i <= n; i++) {
+                for (let j = 1; j <= m; j++) {
+                    let cost = (A[i-1] === B[j-1]) ? 0 : 1;
+                    let minCost = Math.min(
+                        dp[i-1][j] + 1,      // delete
+                        dp[i][j-1] + 1,      // insert
+                        dp[i-1][j-1] + cost  // substitute/match
+                    );
+
+                    let swapCost = Infinity;
+                    if (i > 1 && j > 1 && A[i-1] === B[j-2] && A[i-2] === B[j-1]) {
+                        swapCost = dp[i-2][j-2] + 1;
+                    }
+
+                    dp[i][j] = Math.min(minCost, swapCost);
+
+                    steps.push({
+                        type: 'cell',
+                        i: i, j: j,
+                        panel: `dp[${i}][${j}] = min(delete=${dp[i-1][j]+1}, insert=${dp[i][j-1]+1}, sub=${dp[i-1][j-1]+cost}${swapCost < Infinity ? `, swap=${swapCost}` : ''}) = ${dp[i][j]}`,
+                        log: `Cell (${i},${j}) "${A[i-1]}" vs "${B[j-1]}" → ${dp[i][j]}`,
+                        dpSnapshot: JSON.parse(JSON.stringify(dp)),
+                        highlightI: i, highlightJ: j,
+                        swapUsed: swapCost < Infinity && swapCost === dp[i][j]
+                    });
+                }
+            }
+
+            steps.push({
+                type: 'final',
+                i: n, j: m,
+                panel: `✅ Final Edit Distance = <b>${dp[n][m]}</b>`,
+                log: `Completed. Minimum operations required: ${dp[n][m]}`,
+                dpSnapshot: JSON.parse(JSON.stringify(dp)),
+                highlightI: n, highlightJ: m
+            });
+        }
+
+        function renderStep(idx) {
+            const step = steps[idx];
+            if (!step) return;
+
+            // String tiles
+            const tilesA = document.getElementById('tiles-a');
+            tilesA.innerHTML = '';
+            A.split('').forEach((ch, k) => {
+                const t = document.createElement('div');
+                t.className = 'tile';
+                t.textContent = ch;
+                if (step.highlightI === k+1) t.classList.add('current');
+                tilesA.appendChild(t);
+            });
+
+            const tilesB = document.getElementById('tiles-b');
+            tilesB.innerHTML = '';
+            B.split('').forEach((ch, k) => {
+                const t = document.createElement('div');
+                t.className = 'tile';
+                t.textContent = ch;
+                if (step.highlightJ === k+1) t.classList.add('current');
+                tilesB.appendChild(t);
+            });
+
+            document.getElementById('str-a').textContent = A;
+            document.getElementById('str-b').textContent = B;
+
+            // DP table
+            const table = document.getElementById('dp-table');
+            table.innerHTML = '';
+            table.style.gridTemplateColumns = `repeat(${B.length + 1}, 52px)`;
+
+            for (let r = 0; r <= A.length; r++) {
+                for (let c = 0; c <= B.length; c++) {
+                    const cell = document.createElement('div');
+                    cell.className = 'dp-cell';
+                    cell.textContent = step.dpSnapshot[r][c];
+                    if (r === step.highlightI && c === step.highlightJ) {
+                        cell.classList.add('current');
+                        if (step.swapUsed) cell.classList.add('swap');
+                    }
+                    table.appendChild(cell);
+                }
+            }
+
+            document.getElementById('action-panel').innerHTML = step.panel;
+
+            const logEl = document.getElementById('log-panel');
+            logEl.innerHTML = steps.slice(0, idx+1).map(s => `<div>${s.log}</div>`).join('');
+            logEl.scrollTop = logEl.scrollHeight;
+        }
+
+        function loadExample(ex) {
+            if (ex === 0) {
+                A = "kitten"; B = "sitting";
+            } else {
+                A = "abc"; B = "acb";
+            }
+            document.getElementById('input-a').value = A;
+            document.getElementById('input-b').value = B;
+            generateSteps();
+            resetViz();
+        }
+
+        function loadCustom() {
+            A = document.getElementById('input-a').value.trim();
+            B = document.getElementById('input-b').value.trim();
+            generateSteps();
+            resetViz();
+        }
+
+        function resetViz() {
+            if (timer) clearInterval(timer);
+            timer = null;
+            document.getElementById('play-btn').textContent = '▶ Play';
+            stepIdx = 0;
+            renderStep(0);
+        }
+
+        function stepForward() {
+            if (stepIdx < steps.length - 1) {
+                stepIdx++;
+                renderStep(stepIdx);
+            }
+        }
+
+        function stepBack() {
+            if (stepIdx > 0) {
+                stepIdx--;
+                renderStep(stepIdx);
+            }
+        }
+
+        function togglePlay() {
+            const btn = document.getElementById('play-btn');
+            if (timer) {
+                clearInterval(timer);
+                timer = null;
+                btn.textContent = '▶ Play';
+            } else {
+                btn.textContent = '⏸ Pause';
+                timer = setInterval(() => {
+                    if (stepIdx < steps.length - 1) stepForward();
+                    else {
+                        clearInterval(timer);
+                        timer = null;
+                        btn.textContent = '▶ Play';
+                    }
+                }, delays[parseInt(document.getElementById('speed').value)]);
+            }
+        }
+
+        window.onload = () => loadExample(0);
+    </script>
+</body>
+</html>

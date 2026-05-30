@@ -1,0 +1,2106 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Module 3.4 // Cost &amp; Latency Profiling for Agents — Agentic AI Academy</title>
+
+<!-- Tailwind -->
+<script src="https://cdn.tailwindcss.com"></script>
+
+<!-- Fonts -->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;500;600;700;800;900&family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+
+<!-- Lucide -->
+<script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
+
+<!-- GSAP -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/ScrollTrigger.min.js"></script>
+
+<!-- Chart.js -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+
+<script>
+  tailwind.config = {
+    theme: {
+      extend: {
+        fontFamily: {
+          orbitron: ['Orbitron', 'sans-serif'],
+          inter: ['Inter', 'sans-serif'],
+          mono: ['JetBrains Mono', 'monospace'],
+        },
+        colors: {
+          cyan: { glow: '#00f0ff' },
+          magenta: { glow: '#ff00e5' },
+          violet: { glow: '#8b5cf6' },
+          emerald: { glow: '#00ffa3' },
+        }
+      }
+    }
+  }
+</script>
+
+<style>
+  :root {
+    --c-cyan: #00f0ff;
+    --c-magenta: #ff00e5;
+    --c-violet: #8b5cf6;
+    --c-emerald: #00ffa3;
+    --c-amber: #ffb800;
+    --bg-0: #03040a;
+    --bg-1: #060818;
+    --bg-2: #0a0e26;
+  }
+
+  html, body {
+    background: var(--bg-0);
+    color: #e5e7eb;
+    font-family: 'Inter', sans-serif;
+    overflow-x: hidden;
+    scroll-behavior: smooth;
+  }
+
+  .nebula-bg {
+    position: fixed;
+    inset: 0;
+    z-index: -2;
+    background:
+      radial-gradient(ellipse 60% 50% at 15% 20%, rgba(139,92,246,0.18), transparent 60%),
+      radial-gradient(ellipse 50% 60% at 85% 30%, rgba(0,240,255,0.14), transparent 60%),
+      radial-gradient(ellipse 70% 50% at 50% 90%, rgba(255,0,229,0.16), transparent 65%),
+      linear-gradient(180deg, #03040a 0%, #060818 50%, #03040a 100%);
+  }
+
+  .grid-floor {
+    position: fixed;
+    inset: 0;
+    z-index: -1;
+    background-image:
+      linear-gradient(rgba(139,92,246,0.05) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(139,92,246,0.05) 1px, transparent 1px);
+    background-size: 60px 60px;
+    mask-image: radial-gradient(ellipse at center, black 0%, transparent 75%);
+    animation: gridShift 30s linear infinite;
+  }
+  @keyframes gridShift {
+    from { background-position: 0 0, 0 0; }
+    to { background-position: 60px 60px, 60px 60px; }
+  }
+
+  .scanline::before {
+    content: '';
+    position: absolute;
+    left: 0; right: 0;
+    height: 2px;
+    background: linear-gradient(90deg, transparent, var(--c-violet), transparent);
+    box-shadow: 0 0 12px var(--c-violet);
+    animation: scan 6s linear infinite;
+    opacity: 0.6;
+  }
+  @keyframes scan {
+    0% { top: 0%; } 100% { top: 100%; }
+  }
+
+  .holo-card {
+    position: relative;
+    background: linear-gradient(135deg, rgba(10,14,38,0.7), rgba(6,8,24,0.4));
+    border: 1px solid rgba(139,92,246,0.18);
+    backdrop-filter: blur(14px);
+    -webkit-backdrop-filter: blur(14px);
+    border-radius: 18px;
+    transition: all 0.5s cubic-bezier(0.22, 1, 0.36, 1);
+    overflow: hidden;
+  }
+  .holo-card::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    border-radius: 18px;
+    padding: 1px;
+    background: linear-gradient(135deg, rgba(139,92,246,0.4), transparent 40%, transparent 60%, rgba(0,240,255,0.4));
+    -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+    mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+    -webkit-mask-composite: xor;
+    mask-composite: exclude;
+    pointer-events: none;
+    opacity: 0.7;
+  }
+  .holo-card:hover {
+    transform: translateY(-4px);
+    border-color: rgba(139,92,246,0.5);
+    box-shadow: 0 20px 60px -10px rgba(139,92,246,0.25), 0 0 40px -5px rgba(0,240,255,0.2);
+  }
+  .holo-card:hover::before { opacity: 1; }
+
+  .neon-cyan { color: var(--c-cyan); text-shadow: 0 0 18px rgba(0,240,255,0.5); }
+  .neon-magenta { color: var(--c-magenta); text-shadow: 0 0 18px rgba(255,0,229,0.5); }
+  .neon-violet { color: var(--c-violet); text-shadow: 0 0 18px rgba(139,92,246,0.5); }
+  .neon-emerald { color: var(--c-emerald); text-shadow: 0 0 18px rgba(0,255,163,0.5); }
+  .neon-amber { color: var(--c-amber); text-shadow: 0 0 18px rgba(255,184,0,0.5); }
+
+  .grad-text {
+    background: linear-gradient(120deg, #8b5cf6 0%, #00f0ff 50%, #ff00e5 100%);
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
+  }
+
+  .orb {
+    position: absolute;
+    border-radius: 50%;
+    filter: blur(60px);
+    opacity: 0.5;
+    pointer-events: none;
+    animation: float 12s ease-in-out infinite;
+  }
+  @keyframes float {
+    0%, 100% { transform: translate(0,0) scale(1); }
+    50% { transform: translate(30px,-30px) scale(1.1); }
+  }
+
+  .nav-dot {
+    width: 12px; height: 12px;
+    border-radius: 50%;
+    background: rgba(255,255,255,0.18);
+    border: 1px solid rgba(139,92,246,0.3);
+    transition: all 0.35s;
+    cursor: pointer;
+    position: relative;
+  }
+  .nav-dot:hover { background: var(--c-violet); transform: scale(1.4); }
+  .nav-dot.active {
+    background: var(--c-violet);
+    box-shadow: 0 0 14px var(--c-violet), 0 0 30px var(--c-violet);
+    transform: scale(1.4);
+  }
+  .nav-dot .nav-label {
+    position: absolute;
+    right: 24px; top: 50%;
+    transform: translateY(-50%);
+    background: rgba(6,8,24,0.95);
+    border: 1px solid rgba(139,92,246,0.3);
+    padding: 4px 10px;
+    border-radius: 6px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    color: var(--c-violet);
+    white-space: nowrap;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.25s;
+  }
+  .nav-dot:hover .nav-label { opacity: 1; }
+
+  .section-tag {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    letter-spacing: 0.25em;
+    color: var(--c-violet);
+    padding: 6px 14px;
+    border: 1px solid rgba(139,92,246,0.3);
+    border-radius: 999px;
+    background: rgba(139,92,246,0.05);
+  }
+  .section-tag::before {
+    content: '';
+    width: 6px; height: 6px;
+    border-radius: 50%;
+    background: var(--c-violet);
+    box-shadow: 0 0 10px var(--c-violet);
+    animation: pulse 2s ease-in-out infinite;
+  }
+  @keyframes pulse {
+    0%,100% { opacity: 1; }
+    50% { opacity: 0.4; }
+  }
+
+  .code-block {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 13px;
+    line-height: 1.7;
+    background: linear-gradient(160deg, rgba(3,4,10,0.95), rgba(10,14,38,0.85));
+    border: 1px solid rgba(139,92,246,0.22);
+    border-radius: 14px;
+    padding: 24px;
+    overflow-x: auto;
+    position: relative;
+  }
+  .tok-kw { color: #ff00e5; }
+  .tok-fn { color: #00f0ff; }
+  .tok-str { color: #00ffa3; }
+  .tok-com { color: #6b7280; font-style: italic; }
+  .tok-num { color: #ffb800; }
+  .tok-var { color: #c4b5fd; }
+  .tok-dec { color: #8b5cf6; }
+
+  .track-badge {
+    background: linear-gradient(135deg, rgba(139,92,246,0.12), rgba(0,240,255,0.12));
+    border: 1px solid rgba(139,92,246,0.3);
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    letter-spacing: 0.2em;
+    padding: 5px 12px;
+    border-radius: 4px;
+    color: var(--c-violet);
+  }
+
+  .progress-bar {
+    height: 4px;
+    background: rgba(255,255,255,0.06);
+    border-radius: 999px;
+    overflow: hidden;
+    position: relative;
+  }
+  .progress-fill {
+    height: 100%;
+    background: linear-gradient(90deg, var(--c-violet), var(--c-cyan));
+    border-radius: 999px;
+    box-shadow: 0 0 12px var(--c-violet);
+    width: 0%;
+    transition: width 0.4s;
+  }
+
+  .tab-pill {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 12px;
+    padding: 10px 18px;
+    border-radius: 999px;
+    border: 1px solid rgba(255,255,255,0.1);
+    background: rgba(10,14,38,0.6);
+    color: #94a3b8;
+    cursor: pointer;
+    transition: all 0.3s;
+    letter-spacing: 0.05em;
+  }
+  .tab-pill:hover { color: var(--c-violet); border-color: rgba(139,92,246,0.4); }
+  .tab-pill.active {
+    background: linear-gradient(135deg, rgba(139,92,246,0.18), rgba(0,240,255,0.18));
+    border-color: var(--c-violet);
+    color: var(--c-violet);
+    box-shadow: 0 0 18px -2px rgba(139,92,246,0.4);
+  }
+
+  .cta-btn {
+    position: relative;
+    background: linear-gradient(135deg, #8b5cf6 0%, #00f0ff 50%, #ff00e5 100%);
+    color: #03040a;
+    font-family: 'Orbitron', sans-serif;
+    font-weight: 700;
+    letter-spacing: 0.15em;
+    padding: 18px 38px;
+    border-radius: 12px;
+    transition: all 0.4s;
+    overflow: hidden;
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+  }
+  .cta-btn::after {
+    content: '';
+    position: absolute;
+    inset: -2px;
+    background: linear-gradient(135deg, #8b5cf6, #ff00e5);
+    border-radius: 14px;
+    filter: blur(14px);
+    opacity: 0.5;
+    z-index: -1;
+    transition: opacity 0.4s;
+  }
+  .cta-btn:hover { transform: translateY(-2px); letter-spacing: 0.2em; }
+  .cta-btn:hover::after { opacity: 0.9; }
+
+  .ring-glow {
+    position: absolute;
+    width: 480px; height: 480px;
+    border-radius: 50%;
+    border: 1px solid rgba(139,92,246,0.2);
+    animation: ringRotate 30s linear infinite;
+  }
+  .ring-glow:nth-child(2) { width: 620px; height: 620px; border-color: rgba(0,240,255,0.15); animation-duration: 45s; animation-direction: reverse; }
+  .ring-glow:nth-child(3) { width: 760px; height: 760px; border-color: rgba(255,0,229,0.1); animation-duration: 60s; }
+  @keyframes ringRotate { to { transform: rotate(360deg); } }
+
+  .counter {
+    font-family: 'Orbitron', sans-serif;
+    font-weight: 800;
+    background: linear-gradient(180deg, #fff, #94a3b8);
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
+  }
+
+  .check-item {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    padding: 14px 18px;
+    border-radius: 12px;
+    background: rgba(10,14,38,0.5);
+    border: 1px solid rgba(255,255,255,0.06);
+    transition: all 0.3s;
+    cursor: pointer;
+  }
+  .check-item:hover { border-color: rgba(139,92,246,0.4); background: rgba(139,92,246,0.05); }
+  .check-item.done { border-color: rgba(0,255,163,0.4); background: rgba(0,255,163,0.05); }
+  .check-box {
+    width: 22px; height: 22px;
+    border-radius: 6px;
+    border: 1.5px solid rgba(255,255,255,0.2);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    transition: all 0.3s;
+  }
+  .check-item.done .check-box {
+    background: var(--c-emerald);
+    border-color: var(--c-emerald);
+    box-shadow: 0 0 12px var(--c-emerald);
+  }
+
+  ::-webkit-scrollbar { width: 8px; height: 8px; }
+  ::-webkit-scrollbar-track { background: #03040a; }
+  ::-webkit-scrollbar-thumb { background: linear-gradient(180deg, var(--c-violet), var(--c-magenta)); border-radius: 4px; }
+
+  .section-divider {
+    height: 1px;
+    background: linear-gradient(90deg, transparent, rgba(139,92,246,0.5), transparent);
+    margin: 0 auto;
+    max-width: 80%;
+  }
+
+  /* === MODULE 3.4 SPECIFIC === */
+
+  /* Recap pill (callback to RAG Track 7) */
+  .recap-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 14px;
+    border-radius: 999px;
+    border: 1px solid rgba(0,240,255,0.25);
+    background: rgba(0,240,255,0.05);
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    color: var(--c-cyan);
+    transition: all 0.3s;
+  }
+  .recap-pill .dot {
+    width: 6px; height: 6px;
+    border-radius: 50%;
+    background: var(--c-cyan);
+    box-shadow: 0 0 8px var(--c-cyan);
+  }
+
+  /* Token waterfall bar */
+  .water-row {
+    display: grid;
+    grid-template-columns: 110px 1fr 90px;
+    gap: 12px;
+    padding: 10px 0;
+    align-items: center;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 12px;
+  }
+  .water-bar {
+    height: 22px;
+    border-radius: 6px;
+    background: rgba(255,255,255,0.04);
+    position: relative;
+    overflow: hidden;
+  }
+  .water-bar > div {
+    height: 100%;
+    border-radius: 6px;
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    padding-right: 8px;
+    color: #03040a;
+    font-weight: 700;
+    font-size: 10px;
+    letter-spacing: 0.1em;
+  }
+  .seg-violet > div  { background: linear-gradient(90deg, var(--c-violet), #a78bfa); box-shadow: 0 0 8px rgba(139,92,246,0.4); }
+  .seg-cyan > div    { background: linear-gradient(90deg, var(--c-cyan), #67e8f9); box-shadow: 0 0 8px rgba(0,240,255,0.4); }
+  .seg-magenta > div { background: linear-gradient(90deg, var(--c-magenta), #f0abfc); box-shadow: 0 0 8px rgba(255,0,229,0.4); }
+  .seg-emerald > div { background: linear-gradient(90deg, var(--c-emerald), #6ee7b7); box-shadow: 0 0 8px rgba(0,255,163,0.4); }
+  .seg-amber > div   { background: linear-gradient(90deg, var(--c-amber), #fcd34d); box-shadow: 0 0 8px rgba(255,184,0,0.4); }
+
+  /* Percentile card */
+  .pct-card {
+    position: relative;
+    padding: 22px;
+    border-radius: 14px;
+    background: linear-gradient(160deg, rgba(10,14,38,0.7), rgba(6,8,24,0.4));
+    border: 1px solid rgba(139,92,246,0.22);
+    transition: all 0.35s;
+    overflow: hidden;
+  }
+  .pct-card::after {
+    content: '';
+    position: absolute;
+    bottom: 0; left: 0; right: 0;
+    height: 2px;
+    background: linear-gradient(90deg, transparent, var(--c-violet), transparent);
+  }
+  .pct-card:hover {
+    transform: translateY(-3px);
+    border-color: rgba(139,92,246,0.5);
+    box-shadow: 0 14px 40px -10px rgba(139,92,246,0.3);
+  }
+  .pct-num {
+    font-family: 'Orbitron', sans-serif;
+    font-weight: 800;
+    font-size: 36px;
+    line-height: 1;
+  }
+
+  /* Lever card */
+  .lever-card {
+    position: relative;
+    padding: 22px;
+    border-radius: 14px;
+    background: linear-gradient(160deg, rgba(10,14,38,0.7), rgba(6,8,24,0.4));
+    border: 1px solid rgba(139,92,246,0.22);
+    transition: all 0.4s;
+    overflow: hidden;
+  }
+  .lever-card:hover {
+    transform: translateY(-4px);
+    border-color: rgba(139,92,246,0.5);
+    box-shadow: 0 14px 40px -10px rgba(139,92,246,0.3);
+  }
+  .lever-num {
+    position: absolute;
+    top: 8px; right: 14px;
+    font-family: 'Orbitron', sans-serif;
+    font-weight: 900;
+    font-size: 56px;
+    line-height: 1;
+    opacity: 0.07;
+    color: #fff;
+    pointer-events: none;
+  }
+  .impact-pill {
+    display: inline-block;
+    padding: 3px 9px;
+    border-radius: 4px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    letter-spacing: 0.12em;
+    border: 1px solid;
+  }
+  .imp-high { color: var(--c-emerald); border-color: rgba(0,255,163,0.4); background: rgba(0,255,163,0.06); }
+  .imp-mid  { color: var(--c-cyan);    border-color: rgba(0,240,255,0.4); background: rgba(0,240,255,0.06); }
+  .imp-low  { color: var(--c-amber);   border-color: rgba(255,184,0,0.4); background: rgba(255,184,0,0.06); }
+
+  /* Cost-table row */
+  .cost-row {
+    display: grid;
+    grid-template-columns: 200px 1fr 100px 110px 110px;
+    gap: 1px;
+    background: rgba(139,92,246,0.12);
+    border-radius: 8px;
+    overflow: hidden;
+    margin-bottom: 1px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 12px;
+  }
+  .cost-row > div {
+    background: rgba(6,8,24,0.7);
+    padding: 12px 14px;
+  }
+  .cost-row.header > div {
+    background: linear-gradient(135deg, rgba(139,92,246,0.18), rgba(0,240,255,0.08));
+    font-size: 10px;
+    color: var(--c-violet);
+    letter-spacing: 0.15em;
+    font-weight: 700;
+  }
+  .cost-row.total { border: 1px solid rgba(0,255,163,0.4); }
+  .cost-row.total > div { background: rgba(0,255,163,0.06); }
+
+  /* Trajectory step block */
+  .step-block {
+    padding: 12px 14px;
+    border-radius: 8px;
+    background: linear-gradient(160deg, rgba(10,14,38,0.6), rgba(6,8,24,0.3));
+    border: 1px solid rgba(139,92,246,0.2);
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    transition: all 0.3s;
+  }
+  .step-block:hover { border-color: rgba(139,92,246,0.45); }
+  .step-block.dup { border-color: rgba(255,0,229,0.4); background: rgba(255,0,229,0.04); }
+  .step-block.gold { border-color: rgba(0,255,163,0.3); background: rgba(0,255,163,0.04); }
+
+  /* Sparkline container */
+  .sparkbox {
+    padding: 16px;
+    border-radius: 12px;
+    background: linear-gradient(160deg, rgba(10,14,38,0.6), rgba(6,8,24,0.35));
+    border: 1px solid rgba(139,92,246,0.2);
+  }
+
+  /* Boundary cell (recycled for cost rules) */
+  .boundary-cell {
+    padding: 12px 14px;
+    border-radius: 8px;
+    border: 1px solid rgba(255,255,255,0.08);
+    background: rgba(10,14,38,0.4);
+    font-size: 12px;
+    transition: all 0.3s;
+  }
+  .boundary-cell.allowed { border-color: rgba(0,255,163,0.3); background: rgba(0,255,163,0.05); }
+  .boundary-cell.warn    { border-color: rgba(255,184,0,0.3); background: rgba(255,184,0,0.05); }
+  .boundary-cell.denied  { border-color: rgba(255,0,229,0.3); background: rgba(255,0,229,0.05); }
+
+  /* CI line */
+  .ci-line {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 12px;
+    padding: 6px 14px;
+    border-radius: 4px;
+    margin-bottom: 4px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  .ci-line.pass { background: rgba(0,255,163,0.06); border-left: 2px solid var(--c-emerald); color: #cbd5e1; }
+  .ci-line.fail { background: rgba(255,0,229,0.06); border-left: 2px solid var(--c-magenta); color: #cbd5e1; }
+  .ci-line.warn { background: rgba(255,184,0,0.06); border-left: 2px solid var(--c-amber); color: #cbd5e1; }
+  .ci-status {
+    font-weight: 700;
+    letter-spacing: 0.15em;
+    min-width: 60px;
+  }
+
+  /* Resource buttons */
+  .resource-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 14px 28px;
+    border-radius: 10px;
+    border: 1.5px solid;
+    font-family: 'Orbitron', sans-serif;
+    font-weight: 600;
+    font-size: 12px;
+    letter-spacing: 0.1em;
+    transition: all 0.3s cubic-bezier(0.22, 1, 0.36, 1);
+    text-decoration: none;
+    cursor: pointer;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .resource-btn:hover {
+    transform: translateY(-2px);
+  }
+
+  .resource-btn.learn-more {
+    color: var(--c-cyan);
+    border-color: rgba(0,240,255,0.5);
+    background: rgba(0,240,255,0.08);
+  }
+
+  .resource-btn.learn-more:hover {
+    border-color: var(--c-cyan);
+    background: rgba(0,240,255,0.15);
+    box-shadow: 0 0 24px -4px rgba(0,240,255,0.4);
+  }
+
+  .resource-btn.practice {
+    color: var(--c-magenta);
+    border-color: rgba(255,0,229,0.5);
+    background: rgba(255,0,229,0.08);
+  }
+
+  .resource-btn.practice:hover {
+    border-color: var(--c-magenta);
+    background: rgba(255,0,229,0.15);
+    box-shadow: 0 0 24px -4px rgba(255,0,229,0.4);
+  }
+
+  .resource-btn.disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+    pointer-events: none;
+  }
+
+  .resource-btn i {
+    width: 16px;
+    height: 16px;
+  }
+
+  </style>
+</head>
+<body class="relative">
+
+<!-- Backgrounds -->
+<div class="nebula-bg"></div>
+<div class="grid-floor"></div>
+
+<!-- Header -->
+<header class="fixed top-0 inset-x-0 z-50 backdrop-blur-xl bg-black/30 border-b border-violet-glow/10">
+  <div class="max-w-7xl mx-auto px-6 py-3 flex items-center justify-between">
+    <div class="flex items-center gap-3">
+      <div class="w-9 h-9 rounded-lg bg-gradient-to-br from-violet-glow to-magenta-glow flex items-center justify-center">
+        <i data-lucide="line-chart" class="w-5 h-5 text-black"></i>
+      </div>
+      <div>
+        <div class="font-orbitron text-xs font-bold tracking-widest grad-text">AGENTIC AI ACADEMY</div>
+        <div class="font-mono text-[10px] text-violet-glow/60">// SESSION 02 — AUTONOMOUS SYSTEMS</div>
+      </div>
+    </div>
+    <div class="hidden md:flex items-center gap-6 font-mono text-[11px] text-slate-400">
+      <span class="flex items-center gap-2"><span class="w-2 h-2 rounded-full bg-emerald-glow animate-pulse"></span>TELEMETRY ONLINE</span>
+      <span>COURSE 02 / TRACK 3 / MODULE 3.4</span>
+      <span class="text-violet-glow">[ 44% COMPLETE ]</span>
+    </div>
+  </div>
+</header>
+
+<!-- Side nav -->
+<nav class="fixed right-6 top-1/2 -translate-y-1/2 z-40 flex flex-col gap-4">
+  <a href="#hero" class="nav-dot active" data-section="hero"><span class="nav-label">HERO</span></a>
+  <a href="#objectives" class="nav-dot" data-section="objectives"><span class="nav-label">OBJECTIVES</span></a>
+  <a href="#recap" class="nav-dot" data-section="recap"><span class="nav-label">CACHE RECAP</span></a>
+  <a href="#shape" class="nav-dot" data-section="shape"><span class="nav-label">COST SHAPE</span></a>
+  <a href="#percentiles" class="nav-dot" data-section="percentiles"><span class="nav-label">PERCENTILES</span></a>
+  <a href="#budget" class="nav-dot" data-section="budget"><span class="nav-label">BUDGET</span></a>
+  <a href="#levers" class="nav-dot" data-section="levers"><span class="nav-label">8 LEVERS</span></a>
+  <a href="#economics" class="nav-dot" data-section="economics"><span class="nav-label">ECONOMICS</span></a>
+  <a href="#ci" class="nav-dot" data-section="ci"><span class="nav-label">CI GATES</span></a>
+  <a href="#summary" class="nav-dot" data-section="summary"><span class="nav-label">SUMMARY</span></a>
+  <a href="#checkpoint" class="nav-dot" data-section="checkpoint"><span class="nav-label">CHECKPOINT</span></a>
+  <a href="#next" class="nav-dot" data-section="next"><span class="nav-label">NEXT</span></a>
+</nav>
+
+<!-- ============== 1. HERO ============== -->
+<section id="hero" class="relative min-h-screen flex items-center justify-center px-6 pt-24 overflow-hidden">
+  <div class="absolute inset-0 flex items-center justify-center pointer-events-none">
+    <div class="ring-glow"></div>
+    <div class="ring-glow"></div>
+    <div class="ring-glow"></div>
+  </div>
+
+  <div class="orb w-96 h-96 bg-violet-glow/40" style="top:10%; left:5%;"></div>
+  <div class="orb w-80 h-80 bg-cyan-glow/40" style="bottom:10%; right:5%; animation-delay:-4s;"></div>
+  <div class="orb w-72 h-72 bg-amber-400/25" style="top:40%; right:15%; animation-delay:-7s;"></div>
+
+  <div class="relative max-w-6xl mx-auto text-center z-10">
+    <div class="flex justify-center gap-3 mb-8 flex-wrap" data-hero-anim>
+      <span class="track-badge">COURSE 02</span>
+      <span class="track-badge" style="color: var(--c-violet); border-color: rgba(139,92,246,0.3);">TRACK 3 — AGENT EVAL</span>
+      <span class="track-badge" style="color: var(--c-magenta); border-color: rgba(255,0,229,0.3);">MODULE 3.4</span>
+    </div>
+
+    <h1 class="font-orbitron font-black text-5xl md:text-7xl lg:text-8xl leading-[1.05] mb-8" data-hero-anim>
+      <span class="block text-white">COST &amp; LATENCY</span>
+      <span class="block grad-text">PROFILING</span>
+    </h1>
+
+    <p class="font-inter text-lg md:text-xl text-slate-300 max-w-3xl mx-auto leading-relaxed mb-10" data-hero-anim>
+      Single-call cost lies. Agent cost is a <span class="neon-violet font-semibold">long-tailed distribution</span> across multi-step trajectories. This module makes it visible — and gives you <span class="neon-cyan font-semibold">8 levers</span> to cut it.
+    </p>
+
+    <div class="flex flex-wrap justify-center gap-4 mb-16" data-hero-anim>
+      <a href="#objectives" class="cta-btn">
+        <span>INITIATE MODULE</span>
+        <i data-lucide="arrow-down-right" class="w-5 h-5"></i>
+      </a>
+      <a href="#shape" class="px-8 py-[18px] rounded-xl border border-violet-glow/40 text-violet-glow font-orbitron font-semibold tracking-widest hover:bg-violet-glow/10 transition flex items-center gap-2 text-sm">
+        <i data-lucide="line-chart" class="w-4 h-4"></i>
+        SHOW THE TAIL
+      </a>
+    </div>
+
+    <!-- Counters -->
+    <div class="grid grid-cols-2 md:grid-cols-4 gap-4 max-w-4xl mx-auto" data-hero-anim>
+      <div class="holo-card p-5">
+        <div class="font-mono text-[10px] text-violet-glow tracking-widest mb-2">// LEVERS</div>
+        <div class="counter text-4xl md:text-5xl" data-counter="8" data-suffix="">0</div>
+        <div class="font-mono text-xs text-slate-400 mt-1">Cost reduction tools</div>
+      </div>
+      <div class="holo-card p-5">
+        <div class="font-mono text-[10px] text-cyan-glow tracking-widest mb-2">// PERCENTILES</div>
+        <div class="counter text-4xl md:text-5xl" data-counter="3" data-suffix="">0</div>
+        <div class="font-mono text-xs text-slate-400 mt-1">p50 · p95 · p99</div>
+      </div>
+      <div class="holo-card p-5">
+        <div class="font-mono text-[10px] text-magenta-glow tracking-widest mb-2">// TAIL DELTA</div>
+        <div class="counter text-4xl md:text-5xl" data-counter="50" data-suffix="×">0</div>
+        <div class="font-mono text-xs text-slate-400 mt-1">p99 vs median</div>
+      </div>
+      <div class="holo-card p-5">
+        <div class="font-mono text-[10px] text-emerald-glow tracking-widest mb-2">// TYPICAL CUT</div>
+        <div class="counter text-4xl md:text-5xl" data-counter="65" data-suffix="%">0</div>
+        <div class="font-mono text-xs text-slate-400 mt-1">After lever tuning</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="absolute bottom-8 left-1/2 -translate-x-1/2 flex flex-col items-center gap-2 text-violet-glow/60 font-mono text-[10px] tracking-widest">
+    SCROLL TO BOOT
+    <i data-lucide="mouse" class="w-4 h-4 animate-bounce"></i>
+  </div>
+</section>
+
+<div class="section-divider"></div>
+
+<!-- ============== 2. OBJECTIVES ============== -->
+<section id="objectives" class="relative py-32 px-6">
+  <div class="max-w-7xl mx-auto">
+    <div class="text-center mb-16" data-reveal>
+      <span class="section-tag">// 02 — OBJECTIVE MATRIX</span>
+      <h2 class="font-orbitron font-bold text-4xl md:text-6xl mt-6 mb-4">
+        <span class="text-white">Mission</span> <span class="grad-text">Parameters</span>
+      </h2>
+      <p class="text-slate-400 max-w-2xl mx-auto">Six outcomes. By the end you can attribute every cent and millisecond an agent spends — and apply the right lever to cut both.</p>
+    </div>
+
+    <div class="grid md:grid-cols-2 lg:grid-cols-3 gap-5">
+
+      <div class="holo-card p-7 scanline" data-reveal>
+        <div class="flex items-start justify-between mb-5">
+          <div class="w-12 h-12 rounded-xl bg-gradient-to-br from-cyan-glow/30 to-cyan-glow/5 border border-cyan-glow/30 flex items-center justify-center">
+            <i data-lucide="rewind" class="w-6 h-6 text-cyan-glow"></i>
+          </div>
+          <span class="font-mono text-[10px] text-cyan-glow/60">OBJ.01</span>
+        </div>
+        <h3 class="font-orbitron font-semibold text-lg text-white mb-3">Recall RAG Caching</h3>
+        <p class="text-sm text-slate-400 leading-relaxed">2-min refresher of Course 01 / Track 7 caching primitives. They're the foundation — but agent cost is shaped differently.</p>
+      </div>
+
+      <div class="holo-card p-7 scanline" data-reveal>
+        <div class="flex items-start justify-between mb-5">
+          <div class="w-12 h-12 rounded-xl bg-gradient-to-br from-violet-glow/30 to-violet-glow/5 border border-violet-glow/30 flex items-center justify-center">
+            <i data-lucide="line-chart" class="w-6 h-6 text-violet-glow"></i>
+          </div>
+          <span class="font-mono text-[10px] text-violet-glow/60">OBJ.02</span>
+        </div>
+        <h3 class="font-orbitron font-semibold text-lg text-white mb-3">Profile Trajectory Cost</h3>
+        <p class="text-sm text-slate-400 leading-relaxed">Break down a trajectory into router · LLM · tools · synth · overhead. Know which segment owns each dollar.</p>
+      </div>
+
+      <div class="holo-card p-7 scanline" data-reveal>
+        <div class="flex items-start justify-between mb-5">
+          <div class="w-12 h-12 rounded-xl bg-gradient-to-br from-magenta-glow/30 to-magenta-glow/5 border border-magenta-glow/30 flex items-center justify-center">
+            <i data-lucide="activity" class="w-6 h-6 text-magenta-glow"></i>
+          </div>
+          <span class="font-mono text-[10px] text-magenta-glow/60">OBJ.03</span>
+        </div>
+        <h3 class="font-orbitron font-semibold text-lg text-white mb-3">Report on Percentiles</h3>
+        <p class="text-sm text-slate-400 leading-relaxed">Stop reporting means. Track p50/p95/p99 for cost and latency. The tail is what bills you.</p>
+      </div>
+
+      <div class="holo-card p-7 scanline" data-reveal>
+        <div class="flex items-start justify-between mb-5">
+          <div class="w-12 h-12 rounded-xl bg-gradient-to-br from-amber-400/30 to-amber-400/5 border border-amber-400/30 flex items-center justify-center">
+            <i data-lucide="wallet" class="w-6 h-6 text-amber-400"></i>
+          </div>
+          <span class="font-mono text-[10px] text-amber-400/60">OBJ.04</span>
+        </div>
+        <h3 class="font-orbitron font-semibold text-lg text-white mb-3">Set Token Budgets</h3>
+        <p class="text-sm text-slate-400 leading-relaxed">Allocate context, output, and tool tokens explicitly. Enforce ceilings in code — not in hope.</p>
+      </div>
+
+      <div class="holo-card p-7 scanline" data-reveal>
+        <div class="flex items-start justify-between mb-5">
+          <div class="w-12 h-12 rounded-xl bg-gradient-to-br from-emerald-glow/30 to-emerald-glow/5 border border-emerald-glow/30 flex items-center justify-center">
+            <i data-lucide="sliders" class="w-6 h-6 text-emerald-glow"></i>
+          </div>
+          <span class="font-mono text-[10px] text-emerald-glow/60">OBJ.05</span>
+        </div>
+        <h3 class="font-orbitron font-semibold text-lg text-white mb-3">Apply the 8 Levers</h3>
+        <p class="text-sm text-slate-400 leading-relaxed">Model routing, prompt caching, context pruning, early exit, parallel calls, batching, distillation, structured output.</p>
+      </div>
+
+      <div class="holo-card p-7 scanline" data-reveal>
+        <div class="flex items-start justify-between mb-5">
+          <div class="w-12 h-12 rounded-xl bg-gradient-to-br from-cyan-glow/30 to-magenta-glow/10 border border-cyan-glow/30 flex items-center justify-center">
+            <i data-lucide="banknote" class="w-6 h-6 text-cyan-glow"></i>
+          </div>
+          <span class="font-mono text-[10px] text-cyan-glow/60">OBJ.06</span>
+        </div>
+        <h3 class="font-orbitron font-semibold text-lg text-white mb-3">Compute Unit Economics</h3>
+        <p class="text-sm text-slate-400 leading-relaxed">$ per task, gross margin per trajectory, break-even pricing. Move from "is it cheap?" to "is it profitable?"</p>
+      </div>
+
+    </div>
+  </div>
+</section>
+
+<div class="section-divider"></div>
+
+<!-- ============== 3. RAG CACHE RECAP ============== -->
+<section id="recap" class="relative py-32 px-6">
+  <div class="orb w-72 h-72 bg-cyan-glow/30" style="top: 20%; left: -100px;"></div>
+
+  <div class="max-w-7xl mx-auto">
+    <div class="text-center mb-16" data-reveal>
+      <span class="section-tag" style="color: var(--c-cyan); border-color: rgba(0,240,255,0.3);">// 03 — 2-MIN CALLBACK</span>
+      <h2 class="font-orbitron font-bold text-4xl md:text-6xl mt-6 mb-4">
+        <span class="text-white">Caching</span> <span class="grad-text">→ RAG Track 7</span>
+      </h2>
+      <p class="text-slate-400 max-w-3xl mx-auto">From Course 01 you already know how to cache. Here's the quick recall — then we'll see why agent cost needs <em>more than</em> caching.</p>
+    </div>
+
+    <!-- Recap pills -->
+    <div class="flex flex-wrap justify-center gap-3 mb-10" data-reveal>
+      <div class="recap-pill"><span class="dot"></span>exact-match cache</div>
+      <div class="recap-pill"><span class="dot"></span>semantic cache (embedding)</div>
+      <div class="recap-pill"><span class="dot"></span>provider prompt caching</div>
+      <div class="recap-pill"><span class="dot"></span>retrieval cache (vector store)</div>
+      <div class="recap-pill"><span class="dot"></span>TTL &amp; invalidation</div>
+      <div class="recap-pill"><span class="dot"></span>hit-rate / savings</div>
+    </div>
+
+    <!-- What's different -->
+    <div class="grid md:grid-cols-3 gap-5" data-reveal>
+
+      <div class="holo-card p-6">
+        <div class="font-mono text-[10px] text-emerald-glow tracking-widest mb-2">PORTABLE</div>
+        <h4 class="font-orbitron text-base text-white mb-2">Still applies verbatim</h4>
+        <p class="text-xs text-slate-400 leading-relaxed">Caching tool results, prompt-prefix caching for static system prompts, and embedding caches for repeated lookups all carry forward into agents unchanged.</p>
+      </div>
+
+      <div class="holo-card p-6">
+        <div class="font-mono text-[10px] text-amber-400 tracking-widest mb-2">RE-FRAMED</div>
+        <h4 class="font-orbitron text-base text-white mb-2">Cost grows with steps</h4>
+        <p class="text-xs text-slate-400 leading-relaxed">RAG cost = (input + output) × 1 call. Agent cost = Σ(input_k + output_k) × N steps. Cache hit-rate doesn't tell the whole story — step count does.</p>
+      </div>
+
+      <div class="holo-card p-6">
+        <div class="font-mono text-[10px] text-magenta-glow tracking-widest mb-2">NEW</div>
+        <h4 class="font-orbitron text-base text-white mb-2">Per-trajectory accounting</h4>
+        <p class="text-xs text-slate-400 leading-relaxed">You now need to attribute cost to <em>which step</em>, <em>which sub-agent</em>, and <em>which tool call</em>. Caching alone won't get you there.</p>
+      </div>
+
+    </div>
+
+  </div>
+</section>
+
+<div class="section-divider"></div>
+
+<!-- ============== 4. COST SHAPE ============== -->
+<section id="shape" class="relative py-32 px-6">
+  <div class="orb w-96 h-96 bg-violet-glow/30" style="bottom: 10%; right: -100px;"></div>
+
+  <div class="max-w-7xl mx-auto">
+    <div class="text-center mb-16" data-reveal>
+      <span class="section-tag" style="color: var(--c-violet); border-color: rgba(139,92,246,0.3);">// 04 — THE COST PROFILE</span>
+      <h2 class="font-orbitron font-bold text-4xl md:text-6xl mt-6 mb-4">
+        <span class="text-white">Per-Trajectory</span> <span class="grad-text">Cost Anatomy</span>
+      </h2>
+      <p class="text-slate-400 max-w-3xl mx-auto">An agent run isn't one bill — it's many. Until you can break a trajectory into its cost segments, you cannot optimize.</p>
+    </div>
+
+    <!-- Token waterfall -->
+    <div class="holo-card p-8 md:p-10 mb-10" data-reveal>
+      <div class="flex items-center justify-between mb-5 flex-wrap gap-4">
+        <div>
+          <div class="font-mono text-xs text-violet-glow tracking-widest mb-2">// TOKEN WATERFALL · refund trajectory · 6 steps</div>
+          <h3 class="font-orbitron font-bold text-xl text-white">Where the Tokens Actually Go</h3>
+          <p class="text-xs text-slate-400 mt-1">Each row = one LLM/tool call in the trajectory. Bar length ∝ tokens consumed.</p>
+        </div>
+        <div class="font-mono text-xs text-violet-glow">
+          total: <span class="text-white">9,420 tokens · $0.041 · 4.2s</span>
+        </div>
+      </div>
+
+      <div class="space-y-1">
+        <div class="water-row">
+          <div class="text-violet-glow">router</div>
+          <div class="water-bar seg-violet"><div style="width: 12%;">412 tok</div></div>
+          <div class="text-right text-slate-400">$0.002</div>
+        </div>
+        <div class="water-row">
+          <div class="text-cyan-glow">llm · plan</div>
+          <div class="water-bar seg-cyan"><div style="width: 38%;">1,820 tok</div></div>
+          <div class="text-right text-slate-400">$0.011</div>
+        </div>
+        <div class="water-row">
+          <div class="text-emerald-glow">tool · crm_lookup</div>
+          <div class="water-bar seg-emerald"><div style="width: 18%;">680 tok</div></div>
+          <div class="text-right text-slate-400">$0.001</div>
+        </div>
+        <div class="water-row">
+          <div class="text-emerald-glow">tool · shipping_status</div>
+          <div class="water-bar seg-emerald"><div style="width: 14%;">540 tok</div></div>
+          <div class="text-right text-slate-400">$0.001</div>
+        </div>
+        <div class="water-row">
+          <div class="text-cyan-glow">llm · decide refund</div>
+          <div class="water-bar seg-cyan"><div style="width: 42%;">2,410 tok</div></div>
+          <div class="text-right text-slate-400">$0.013</div>
+        </div>
+        <div class="water-row">
+          <div class="text-emerald-glow">tool · refund</div>
+          <div class="water-bar seg-emerald"><div style="width: 9%;">320 tok</div></div>
+          <div class="text-right text-slate-400">$0.001</div>
+        </div>
+        <div class="water-row">
+          <div class="text-magenta-glow">llm · final_answer</div>
+          <div class="water-bar seg-magenta"><div style="width: 55%;">3,238 tok</div></div>
+          <div class="text-right text-slate-400">$0.012</div>
+        </div>
+      </div>
+
+      <div class="mt-5 p-4 rounded-lg bg-violet-glow/5 border border-violet-glow/25 text-xs text-slate-300 leading-relaxed">
+        <span class="font-mono text-violet-glow">// DIAGNOSTIC:</span>
+        <span class="text-magenta-glow">88% of tokens come from LLM steps</span>, only 12% from tool calls. The final_answer step is the largest single cost — usually because the context carries the full trajectory back in. <span class="text-violet-glow">Optimize the LLM segments first.</span>
+      </div>
+    </div>
+
+    <!-- Sources of cost -->
+    <div class="grid md:grid-cols-2 lg:grid-cols-4 gap-4" data-reveal>
+
+      <div class="holo-card p-5">
+        <div class="font-mono text-[10px] text-violet-glow tracking-widest mb-2">SOURCE 01</div>
+        <h4 class="font-orbitron text-sm text-white mb-2">Step count</h4>
+        <p class="text-xs text-slate-400 leading-relaxed">Each thought-action-observe loop = a full LLM round-trip. Loops are linear in step count.</p>
+      </div>
+
+      <div class="holo-card p-5">
+        <div class="font-mono text-[10px] text-cyan-glow tracking-widest mb-2">SOURCE 02</div>
+        <h4 class="font-orbitron text-sm text-white mb-2">Context bloat</h4>
+        <p class="text-xs text-slate-400 leading-relaxed">Every step appends prior observations. By step 8, the context can be 10× step 1.</p>
+      </div>
+
+      <div class="holo-card p-5">
+        <div class="font-mono text-[10px] text-magenta-glow tracking-widest mb-2">SOURCE 03</div>
+        <h4 class="font-orbitron text-sm text-white mb-2">Long tool outputs</h4>
+        <p class="text-xs text-slate-400 leading-relaxed">A web_search that returns 5K tokens of HTML gets baked into the next prompt. Truncate at the wire.</p>
+      </div>
+
+      <div class="holo-card p-5">
+        <div class="font-mono text-[10px] text-emerald-glow tracking-widest mb-2">SOURCE 04</div>
+        <h4 class="font-orbitron text-sm text-white mb-2">Reasoning verbosity</h4>
+        <p class="text-xs text-slate-400 leading-relaxed">CoT-style thoughts produce long output tokens. Output tokens cost 3-5× input on most providers.</p>
+      </div>
+
+    </div>
+
+  </div>
+</section>
+
+<div class="section-divider"></div>
+
+<!-- ============== 5. PERCENTILES ============== -->
+<section id="percentiles" class="relative py-32 px-6">
+  <div class="orb w-72 h-72 bg-magenta-glow/30" style="top: 30%; left: -80px;"></div>
+
+  <div class="max-w-7xl mx-auto">
+    <div class="text-center mb-16" data-reveal>
+      <span class="section-tag" style="color: var(--c-magenta); border-color: rgba(255,0,229,0.3);">// 05 — DISTRIBUTIONS, NOT MEANS</span>
+      <h2 class="font-orbitron font-bold text-4xl md:text-6xl mt-6 mb-4">
+        <span class="text-white">p50 · p95 · p99 for</span> <span class="grad-text">Agent Workflows</span>
+      </h2>
+      <p class="text-slate-400 max-w-3xl mx-auto">Mean is a lie when distributions are long-tailed. The 5% slowest trajectories are responsible for most of the user pain and most of the bill.</p>
+    </div>
+
+    <!-- Percentile cards -->
+    <div class="grid md:grid-cols-3 gap-5 mb-10" data-reveal>
+
+      <div class="pct-card">
+        <div class="flex items-center justify-between mb-3">
+          <div class="font-mono text-[10px] text-emerald-glow tracking-widest">p50 · MEDIAN</div>
+          <i data-lucide="circle-dot" class="w-4 h-4 text-emerald-glow"></i>
+        </div>
+        <div class="flex items-baseline gap-3 mb-2">
+          <div class="pct-num text-emerald-glow">$0.04</div>
+          <div class="font-mono text-xs text-slate-500">2.1s</div>
+        </div>
+        <p class="text-xs text-slate-400 leading-relaxed">The typical run. Use for revenue modeling and capacity baselines. Do not use to size budgets.</p>
+      </div>
+
+      <div class="pct-card">
+        <div class="flex items-center justify-between mb-3">
+          <div class="font-mono text-[10px] text-amber-400 tracking-widest">p95 · TAIL</div>
+          <i data-lucide="trending-up" class="w-4 h-4 text-amber-400"></i>
+        </div>
+        <div class="flex items-baseline gap-3 mb-2">
+          <div class="pct-num text-amber-400">$0.18</div>
+          <div class="font-mono text-xs text-slate-500">9.7s</div>
+        </div>
+        <p class="text-xs text-slate-400 leading-relaxed">4.5× the median. The bar production SLOs are written against. CI assertions live here.</p>
+      </div>
+
+      <div class="pct-card">
+        <div class="flex items-center justify-between mb-3">
+          <div class="font-mono text-[10px] text-magenta-glow tracking-widest">p99 · CATASTROPHE</div>
+          <i data-lucide="alert-triangle" class="w-4 h-4 text-magenta-glow"></i>
+        </div>
+        <div class="flex items-baseline gap-3 mb-2">
+          <div class="pct-num text-magenta-glow">$2.10</div>
+          <div class="font-mono text-xs text-slate-500">42s</div>
+        </div>
+        <p class="text-xs text-slate-400 leading-relaxed">50× the median. Loops, retries, oversized contexts. Where the budget actually goes.</p>
+      </div>
+
+    </div>
+
+    <!-- Distribution chart -->
+    <div class="holo-card p-8 mb-10" data-reveal>
+      <div class="flex items-center justify-between mb-5 flex-wrap gap-4">
+        <div>
+          <div class="font-mono text-xs text-violet-glow tracking-widest mb-2">// COST PER TRAJECTORY · 500 RUNS</div>
+          <h3 class="font-orbitron font-bold text-xl text-white">The Tail Owns the Bill</h3>
+          <p class="text-xs text-slate-400 mt-1">Mean = $0.11. Median = $0.04. The top 5% of runs drive 47% of total spend.</p>
+        </div>
+      </div>
+      <div style="height: 340px;">
+        <canvas id="distChart"></canvas>
+      </div>
+    </div>
+
+    <!-- Latency vs Cost scatter -->
+    <div class="holo-card p-8" data-reveal>
+      <div class="flex items-center justify-between mb-5 flex-wrap gap-4">
+        <div>
+          <div class="font-mono text-xs text-cyan-glow tracking-widest mb-2">// LATENCY × COST JOINT DISTRIBUTION</div>
+          <h3 class="font-orbitron font-bold text-xl text-white">Slow Runs Are Usually Expensive Runs</h3>
+          <p class="text-xs text-slate-400 mt-1">Strong correlation between latency and cost. Cluster in the upper-right = the trajectories worth debugging first.</p>
+        </div>
+      </div>
+      <div style="height: 320px;">
+        <canvas id="scatterChart"></canvas>
+      </div>
+    </div>
+
+  </div>
+</section>
+
+<div class="section-divider"></div>
+
+<!-- ============== 6. TOKEN BUDGET ============== -->
+<section id="budget" class="relative py-32 px-6">
+
+  <div class="max-w-7xl mx-auto">
+    <div class="text-center mb-16" data-reveal>
+      <span class="section-tag" style="color: var(--c-amber); border-color: rgba(255,184,0,0.3);">// 06 — TOKEN ECONOMICS</span>
+      <h2 class="font-orbitron font-bold text-4xl md:text-6xl mt-6 mb-4">
+        <span class="text-white">Token Budget Across</span> <span class="grad-text">Agent Trajectories</span>
+      </h2>
+      <p class="text-slate-400 max-w-3xl mx-auto">Declare your token allowance per segment before the run, not after. Enforce ceilings in code — every overage is data.</p>
+    </div>
+
+    <!-- Budget table -->
+    <div class="holo-card p-8 md:p-10 mb-10" data-reveal>
+      <div class="flex items-center justify-between mb-5 flex-wrap gap-4">
+        <div>
+          <div class="font-mono text-xs text-amber-400 tracking-widest mb-2">// BUDGET ALLOCATION</div>
+          <h3 class="font-orbitron font-bold text-xl text-white">Per-Segment Ceilings · refund-resolver agent</h3>
+        </div>
+      </div>
+
+      <div>
+        <div class="cost-row header">
+          <div>SEGMENT</div>
+          <div>PURPOSE</div>
+          <div>BUDGET</div>
+          <div>p50 ACTUAL</div>
+          <div>STATUS</div>
+        </div>
+        <div class="cost-row">
+          <div class="text-violet-glow">system_prompt</div>
+          <div class="text-slate-400">role, policy, tool registry</div>
+          <div class="text-slate-300">600 tok</div>
+          <div class="text-emerald-glow">540 tok</div>
+          <div class="text-emerald-glow">OK</div>
+        </div>
+        <div class="cost-row">
+          <div class="text-violet-glow">context_window</div>
+          <div class="text-slate-400">accumulated obs + history</div>
+          <div class="text-slate-300">4,000 tok</div>
+          <div class="text-emerald-glow">2,820 tok</div>
+          <div class="text-emerald-glow">OK</div>
+        </div>
+        <div class="cost-row">
+          <div class="text-cyan-glow">tool_results</div>
+          <div class="text-slate-400">crm / shipping / refund</div>
+          <div class="text-slate-300">1,500 tok</div>
+          <div class="text-amber-400">1,820 tok</div>
+          <div class="text-amber-400">WATCH</div>
+        </div>
+        <div class="cost-row">
+          <div class="text-magenta-glow">llm_thoughts</div>
+          <div class="text-slate-400">reasoning · CoT-style</div>
+          <div class="text-slate-300">2,000 tok</div>
+          <div class="text-emerald-glow">1,640 tok</div>
+          <div class="text-emerald-glow">OK</div>
+        </div>
+        <div class="cost-row">
+          <div class="text-magenta-glow">final_answer</div>
+          <div class="text-slate-400">user-facing reply</div>
+          <div class="text-slate-300">500 tok</div>
+          <div class="text-emerald-glow">320 tok</div>
+          <div class="text-emerald-glow">OK</div>
+        </div>
+        <div class="cost-row total">
+          <div class="text-emerald-glow">TOTAL</div>
+          <div class="text-slate-300">per trajectory</div>
+          <div class="text-slate-300">8,600 tok</div>
+          <div class="text-emerald-glow">7,140 tok</div>
+          <div class="text-emerald-glow">83% USED</div>
+        </div>
+      </div>
+
+      <div class="mt-5 p-4 rounded-lg bg-amber-400/5 border border-amber-400/25 text-xs text-slate-300 leading-relaxed">
+        <span class="font-mono text-amber-400">// ENFORCEMENT:</span>
+        Truncate tool_results to budget at <em>retrieval time</em>, not generation time. A 5,000-token web page never enters the LLM context — only the relevant 1,500 do. Same goes for prior observations: <span class="text-amber-400">summarize when budget would be exceeded</span>.
+      </div>
+    </div>
+
+    <!-- Budget enforcement code -->
+    <div data-reveal>
+      <div class="flex flex-wrap gap-3 mb-6">
+        <button class="tab-pill active" data-tab="budget-config">budget_config.py</button>
+        <button class="tab-pill" data-tab="budget-enforce">enforce.py</button>
+        <button class="tab-pill" data-tab="budget-telemetry">telemetry.py</button>
+      </div>
+
+      <div class="tab-panel" data-panel="budget-config">
+        <div class="code-block">
+<pre><span class="tok-com"># Declare budgets up front. Treat them as a contract.</span>
+
+<span class="tok-kw">from</span> <span class="tok-var">dataclasses</span> <span class="tok-kw">import</span> <span class="tok-var">dataclass</span>
+
+<span class="tok-dec">@dataclass</span>
+<span class="tok-kw">class</span> <span class="tok-fn">TokenBudget</span>:
+    <span class="tok-var">system_prompt</span>:   <span class="tok-fn">int</span> = <span class="tok-num">600</span>
+    <span class="tok-var">context_window</span>:  <span class="tok-fn">int</span> = <span class="tok-num">4000</span>
+    <span class="tok-var">tool_results</span>:    <span class="tok-fn">int</span> = <span class="tok-num">1500</span>
+    <span class="tok-var">llm_thoughts</span>:    <span class="tok-fn">int</span> = <span class="tok-num">2000</span>
+    <span class="tok-var">final_answer</span>:    <span class="tok-fn">int</span> = <span class="tok-num">500</span>
+    <span class="tok-var">max_steps</span>:       <span class="tok-fn">int</span> = <span class="tok-num">7</span>
+
+    <span class="tok-dec">@property</span>
+    <span class="tok-kw">def</span> <span class="tok-fn">total</span>(<span class="tok-var">self</span>):
+        <span class="tok-kw">return</span> (<span class="tok-var">self</span>.<span class="tok-var">system_prompt</span> + <span class="tok-var">self</span>.<span class="tok-var">context_window</span>
+                + <span class="tok-var">self</span>.<span class="tok-var">tool_results</span> + <span class="tok-var">self</span>.<span class="tok-var">llm_thoughts</span>
+                + <span class="tok-var">self</span>.<span class="tok-var">final_answer</span>)
+
+<span class="tok-var">BUDGET</span> = <span class="tok-fn">TokenBudget</span>()                  <span class="tok-com"># 8,600 tok / trajectory</span></pre>
+        </div>
+      </div>
+
+      <div class="tab-panel hidden" data-panel="budget-enforce">
+        <div class="code-block">
+<pre><span class="tok-com"># Enforce at the wire — never let oversized content reach the LLM.</span>
+
+<span class="tok-kw">def</span> <span class="tok-fn">truncate_observation</span>(<span class="tok-var">obs</span>, <span class="tok-var">budget</span>):
+    <span class="tok-var">tokens</span> = <span class="tok-fn">count_tokens</span>(<span class="tok-var">obs</span>)
+    <span class="tok-kw">if</span> <span class="tok-var">tokens</span> &lt;= <span class="tok-var">budget</span>:
+        <span class="tok-kw">return</span> <span class="tok-var">obs</span>
+    <span class="tok-com"># Strategy: keep head + tail, drop middle, mark elision.</span>
+    <span class="tok-var">head</span> = <span class="tok-fn">slice_tokens</span>(<span class="tok-var">obs</span>, <span class="tok-num">0</span>, <span class="tok-var">budget</span> * <span class="tok-num">0.6</span>)
+    <span class="tok-var">tail</span> = <span class="tok-fn">slice_tokens</span>(<span class="tok-var">obs</span>, -<span class="tok-var">budget</span> * <span class="tok-num">0.3</span>, <span class="tok-kw">None</span>)
+    <span class="tok-kw">return</span> <span class="tok-fn">f</span><span class="tok-str">"{head}\n[...{tokens - budget} tokens elided...]\n{tail}"</span>
+
+<span class="tok-kw">def</span> <span class="tok-fn">enforce_step_budget</span>(<span class="tok-var">trajectory</span>, <span class="tok-var">budget</span>):
+    <span class="tok-kw">if</span> <span class="tok-fn">len</span>(<span class="tok-var">trajectory</span>.<span class="tok-var">steps</span>) &gt;= <span class="tok-var">budget</span>.<span class="tok-var">max_steps</span>:
+        <span class="tok-kw">raise</span> <span class="tok-fn">StepBudgetExceeded</span>(
+            <span class="tok-fn">f</span><span class="tok-str">"Hit {budget.max_steps} steps without final answer"</span>)</pre>
+        </div>
+      </div>
+
+      <div class="tab-panel hidden" data-panel="budget-telemetry">
+        <div class="code-block">
+<pre><span class="tok-com"># Emit segment-level telemetry on every trajectory.</span>
+
+<span class="tok-kw">def</span> <span class="tok-fn">record_cost</span>(<span class="tok-var">trajectory</span>, <span class="tok-var">prices</span>):
+    <span class="tok-var">by_segment</span> = <span class="tok-fn">defaultdict</span>(<span class="tok-fn">lambda</span>: {<span class="tok-str">"tok_in"</span>: <span class="tok-num">0</span>, <span class="tok-str">"tok_out"</span>: <span class="tok-num">0</span>, <span class="tok-str">"usd"</span>: <span class="tok-num">0.0</span>})
+    <span class="tok-kw">for</span> <span class="tok-var">step</span> <span class="tok-kw">in</span> <span class="tok-var">trajectory</span>.<span class="tok-var">steps</span>:
+        <span class="tok-var">seg</span>  = <span class="tok-var">step</span>.<span class="tok-var">segment</span>            <span class="tok-com"># router | llm | tool | synth</span>
+        <span class="tok-var">cost</span> = (<span class="tok-var">step</span>.<span class="tok-var">tok_in</span>  * <span class="tok-var">prices</span>[<span class="tok-var">step</span>.<span class="tok-var">model</span>][<span class="tok-str">"in"</span>] +
+                <span class="tok-var">step</span>.<span class="tok-var">tok_out</span> * <span class="tok-var">prices</span>[<span class="tok-var">step</span>.<span class="tok-var">model</span>][<span class="tok-str">"out"</span>])
+        <span class="tok-var">by_segment</span>[<span class="tok-var">seg</span>][<span class="tok-str">"tok_in"</span>]  += <span class="tok-var">step</span>.<span class="tok-var">tok_in</span>
+        <span class="tok-var">by_segment</span>[<span class="tok-var">seg</span>][<span class="tok-str">"tok_out"</span>] += <span class="tok-var">step</span>.<span class="tok-var">tok_out</span>
+        <span class="tok-var">by_segment</span>[<span class="tok-var">seg</span>][<span class="tok-str">"usd"</span>]     += <span class="tok-var">cost</span>
+    <span class="tok-fn">emit</span>(<span class="tok-str">"trajectory.cost"</span>, <span class="tok-var">by_segment</span>, <span class="tok-var">trace_id</span>=<span class="tok-var">trajectory</span>.<span class="tok-var">id</span>)
+    <span class="tok-kw">return</span> <span class="tok-var">by_segment</span></pre>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</section>
+
+<div class="section-divider"></div>
+
+<!-- ============== 7. 8 LEVERS ============== -->
+<section id="levers" class="relative py-32 px-6">
+  <div class="orb w-80 h-80 bg-violet-glow/30" style="top: 30%; right: -80px;"></div>
+
+  <div class="max-w-7xl mx-auto">
+    <div class="text-center mb-16" data-reveal>
+      <span class="section-tag" style="color: var(--c-violet); border-color: rgba(139,92,246,0.3);">// 07 — THE 8 LEVERS</span>
+      <h2 class="font-orbitron font-bold text-4xl md:text-6xl mt-6 mb-4">
+        <span class="text-white">8 Levers for</span> <span class="grad-text">Agent Cost Reduction</span>
+      </h2>
+      <p class="text-slate-400 max-w-3xl mx-auto">Ordered by typical impact in production. Combine 3-4 and a 65% cost cut without quality loss is common.</p>
+    </div>
+
+    <div class="grid md:grid-cols-2 lg:grid-cols-4 gap-5" data-reveal>
+
+      <div class="lever-card">
+        <div class="lever-num">01</div>
+        <div class="flex items-center justify-between mb-2">
+          <span class="font-mono text-[10px] text-violet-glow tracking-widest">LEVER 01</span>
+          <span class="impact-pill imp-high">HIGH</span>
+        </div>
+        <h4 class="font-orbitron text-base text-white mb-2">Model Routing</h4>
+        <p class="text-xs text-slate-400 leading-relaxed mb-2">Use a cheap model for routing and tool args; reserve frontier model for hard reasoning. Often 60% savings alone.</p>
+        <div class="font-mono text-[10px] text-violet-glow">→ Haiku/4-mini for ⅔ of calls, premium for the rest</div>
+      </div>
+
+      <div class="lever-card">
+        <div class="lever-num">02</div>
+        <div class="flex items-center justify-between mb-2">
+          <span class="font-mono text-[10px] text-violet-glow tracking-widest">LEVER 02</span>
+          <span class="impact-pill imp-high">HIGH</span>
+        </div>
+        <h4 class="font-orbitron text-base text-white mb-2">Prompt Caching</h4>
+        <p class="text-xs text-slate-400 leading-relaxed mb-2">Provider-side caching of static system prompts + tool registry. Typically 80-90% off cached tokens.</p>
+        <div class="font-mono text-[10px] text-violet-glow">→ Pin system prompt + tool defs at the head</div>
+      </div>
+
+      <div class="lever-card">
+        <div class="lever-num">03</div>
+        <div class="flex items-center justify-between mb-2">
+          <span class="font-mono text-[10px] text-violet-glow tracking-widest">LEVER 03</span>
+          <span class="impact-pill imp-high">HIGH</span>
+        </div>
+        <h4 class="font-orbitron text-base text-white mb-2">Context Pruning</h4>
+        <p class="text-xs text-slate-400 leading-relaxed mb-2">Summarize prior observations once they age out of the active window. Don't carry every step verbatim to step 9.</p>
+        <div class="font-mono text-[10px] text-violet-glow">→ Rolling summary + last-k full observations</div>
+      </div>
+
+      <div class="lever-card">
+        <div class="lever-num">04</div>
+        <div class="flex items-center justify-between mb-2">
+          <span class="font-mono text-[10px] text-violet-glow tracking-widest">LEVER 04</span>
+          <span class="impact-pill imp-high">HIGH</span>
+        </div>
+        <h4 class="font-orbitron text-base text-white mb-2">Early Exit</h4>
+        <p class="text-xs text-slate-400 leading-relaxed mb-2">Confidence-gated termination. If the model is confident after step 3, don't burn 5 more loops "verifying".</p>
+        <div class="font-mono text-[10px] text-violet-glow">→ Self-confidence ≥ threshold → final_answer</div>
+      </div>
+
+      <div class="lever-card">
+        <div class="lever-num">05</div>
+        <div class="flex items-center justify-between mb-2">
+          <span class="font-mono text-[10px] text-violet-glow tracking-widest">LEVER 05</span>
+          <span class="impact-pill imp-mid">MID</span>
+        </div>
+        <h4 class="font-orbitron text-base text-white mb-2">Parallel Tool Calls</h4>
+        <p class="text-xs text-slate-400 leading-relaxed mb-2">When tools are independent, fan them out in a single step. Cuts latency, not cost — but unlocks early exit later.</p>
+        <div class="font-mono text-[10px] text-violet-glow">→ tool_choice: parallel</div>
+      </div>
+
+      <div class="lever-card">
+        <div class="lever-num">06</div>
+        <div class="flex items-center justify-between mb-2">
+          <span class="font-mono text-[10px] text-violet-glow tracking-widest">LEVER 06</span>
+          <span class="impact-pill imp-mid">MID</span>
+        </div>
+        <h4 class="font-orbitron text-base text-white mb-2">Async Batching</h4>
+        <p class="text-xs text-slate-400 leading-relaxed mb-2">For background workloads, use the provider's batch API — typically 50% off list price. Latency: hours, not seconds.</p>
+        <div class="font-mono text-[10px] text-violet-glow">→ batch_create() for offline pipelines</div>
+      </div>
+
+      <div class="lever-card">
+        <div class="lever-num">07</div>
+        <div class="flex items-center justify-between mb-2">
+          <span class="font-mono text-[10px] text-violet-glow tracking-widest">LEVER 07</span>
+          <span class="impact-pill imp-mid">MID</span>
+        </div>
+        <h4 class="font-orbitron text-base text-white mb-2">Distillation</h4>
+        <p class="text-xs text-slate-400 leading-relaxed mb-2">Fine-tune a small open-weight model on traces from your frontier agent. 10-20× cheaper at inference on hot paths.</p>
+        <div class="font-mono text-[10px] text-violet-glow">→ Llama-class for the router or tool-arg model</div>
+      </div>
+
+      <div class="lever-card">
+        <div class="lever-num">08</div>
+        <div class="flex items-center justify-between mb-2">
+          <span class="font-mono text-[10px] text-violet-glow tracking-widest">LEVER 08</span>
+          <span class="impact-pill imp-low">LOW</span>
+        </div>
+        <h4 class="font-orbitron text-base text-white mb-2">Structured Output</h4>
+        <p class="text-xs text-slate-400 leading-relaxed mb-2">JSON-mode / Pydantic-as-schema cuts CoT verbosity. Smaller outputs = lower output-token bill.</p>
+        <div class="font-mono text-[10px] text-violet-glow">→ output_schema with no "explain why"</div>
+      </div>
+
+    </div>
+
+    <!-- Lever stack-up chart -->
+    <div class="holo-card p-8 mt-10" data-reveal>
+      <div class="flex items-center justify-between mb-5 flex-wrap gap-4">
+        <div>
+          <div class="font-mono text-xs text-emerald-glow tracking-widest mb-2">// CUMULATIVE SAVINGS</div>
+          <h3 class="font-orbitron font-bold text-xl text-white">Stack the Levers · Typical Production Run</h3>
+          <p class="text-xs text-slate-400 mt-1">Each lever applied to the same baseline workload. Final cost is 35% of where you started.</p>
+        </div>
+      </div>
+      <div style="height: 320px;">
+        <canvas id="leversChart"></canvas>
+      </div>
+    </div>
+
+  </div>
+</section>
+
+<div class="section-divider"></div>
+
+<!-- ============== 8. UNIT ECONOMICS ============== -->
+<section id="economics" class="relative py-32 px-6">
+  <div class="orb w-72 h-72 bg-cyan-glow/30" style="bottom: 20%; left: -80px;"></div>
+
+  <div class="max-w-7xl mx-auto">
+    <div class="text-center mb-16" data-reveal>
+      <span class="section-tag" style="color: var(--c-cyan); border-color: rgba(0,240,255,0.3);">// 08 — UNIT ECONOMICS</span>
+      <h2 class="font-orbitron font-bold text-4xl md:text-6xl mt-6 mb-4">
+        <span class="text-white">Per-Trajectory</span> <span class="grad-text">Economics</span>
+      </h2>
+      <p class="text-slate-400 max-w-3xl mx-auto">Cost is necessary but insufficient. The number that tells you whether to ship is <em>gross margin per task</em>.</p>
+    </div>
+
+    <!-- P&L table -->
+    <div class="holo-card p-8 md:p-10 mb-10" data-reveal>
+      <div class="flex items-center justify-between mb-5 flex-wrap gap-4">
+        <div>
+          <div class="font-mono text-xs text-cyan-glow tracking-widest mb-2">// PER-TASK P&amp;L</div>
+          <h3 class="font-orbitron font-bold text-xl text-white">Refund-Resolver Economics</h3>
+          <p class="text-xs text-slate-400 mt-1">All values per resolved customer query. Compare gross margin to the human-handled baseline ($3.40).</p>
+        </div>
+        <div class="font-mono text-xs text-emerald-glow flex items-center gap-2 px-3 py-1.5 rounded-full border border-emerald-glow/30 bg-emerald-glow/5">
+          <span class="w-2 h-2 rounded-full bg-emerald-glow animate-pulse"></span>
+          MARGIN 87%
+        </div>
+      </div>
+
+      <div>
+        <div class="cost-row header">
+          <div>LINE ITEM</div>
+          <div>DESCRIPTION</div>
+          <div>PER TASK</div>
+          <div>p95</div>
+          <div>NOTES</div>
+        </div>
+        <div class="cost-row">
+          <div class="text-cyan-glow">+ revenue</div>
+          <div class="text-slate-400">contract price per resolved ticket</div>
+          <div class="text-emerald-glow">$0.55</div>
+          <div class="text-slate-500">—</div>
+          <div class="text-slate-500">flat fee</div>
+        </div>
+        <div class="cost-row">
+          <div class="text-magenta-glow">− llm_cost</div>
+          <div class="text-slate-400">all model calls</div>
+          <div class="text-slate-300">$0.041</div>
+          <div class="text-amber-400">$0.18</div>
+          <div class="text-slate-500">after 4 levers</div>
+        </div>
+        <div class="cost-row">
+          <div class="text-magenta-glow">− tool_cost</div>
+          <div class="text-slate-400">CRM, shipping, refund APIs</div>
+          <div class="text-slate-300">$0.012</div>
+          <div class="text-slate-500">$0.03</div>
+          <div class="text-slate-500">vendor pass-through</div>
+        </div>
+        <div class="cost-row">
+          <div class="text-magenta-glow">− safety_cost</div>
+          <div class="text-slate-400">PII filter + guardrails</div>
+          <div class="text-slate-300">$0.005</div>
+          <div class="text-slate-500">$0.01</div>
+          <div class="text-slate-500">small but real</div>
+        </div>
+        <div class="cost-row">
+          <div class="text-magenta-glow">− infra_cost</div>
+          <div class="text-slate-400">compute, logs, telemetry</div>
+          <div class="text-slate-300">$0.008</div>
+          <div class="text-slate-500">$0.01</div>
+          <div class="text-slate-500">amortized</div>
+        </div>
+        <div class="cost-row">
+          <div class="text-magenta-glow">− escalation</div>
+          <div class="text-slate-400">human-in-the-loop fallback</div>
+          <div class="text-slate-300">$0.005</div>
+          <div class="text-amber-400">$0.40</div>
+          <div class="text-amber-400">7% rate, dragging tail</div>
+        </div>
+        <div class="cost-row total">
+          <div class="text-emerald-glow">= gross margin</div>
+          <div class="text-slate-300">per resolved task</div>
+          <div class="text-emerald-glow">$0.479</div>
+          <div class="text-amber-400">$-0.08</div>
+          <div class="text-emerald-glow">87% / loss at p95</div>
+        </div>
+      </div>
+
+      <div class="mt-5 p-4 rounded-lg bg-magenta-glow/5 border border-magenta-glow/25 text-xs text-slate-300 leading-relaxed">
+        <span class="font-mono text-magenta-glow">// THE p95 WARNING:</span>
+        At p50 the unit economics are spectacular. At p95 the trajectory is <em>unprofitable</em>. Either price for the tail, cap the tail (max-steps + escalation), or accept that 5% of traffic is loss-leader. <span class="text-magenta-glow">The mean alone would have hidden this.</span>
+      </div>
+    </div>
+
+    <!-- 3 metrics -->
+    <div class="grid md:grid-cols-3 gap-5" data-reveal>
+
+      <div class="holo-card p-6">
+        <div class="font-mono text-[10px] text-emerald-glow tracking-widest mb-2">METRIC 01</div>
+        <h4 class="font-orbitron text-base text-white mb-2">Cost per resolved task</h4>
+        <p class="text-xs text-slate-400 leading-relaxed">Total spend ÷ tasks where success = 1. Failed trajectories still cost — don't divide by total attempts.</p>
+      </div>
+
+      <div class="holo-card p-6">
+        <div class="font-mono text-[10px] text-violet-glow tracking-widest mb-2">METRIC 02</div>
+        <h4 class="font-orbitron text-base text-white mb-2">Gross margin per trajectory</h4>
+        <p class="text-xs text-slate-400 leading-relaxed">Revenue minus full cost stack — LLM, tools, safety, infra, escalation. Report p50 <em>and</em> p95.</p>
+      </div>
+
+      <div class="holo-card p-6">
+        <div class="font-mono text-[10px] text-magenta-glow tracking-widest mb-2">METRIC 03</div>
+        <h4 class="font-orbitron text-base text-white mb-2">Break-even price</h4>
+        <p class="text-xs text-slate-400 leading-relaxed">Min price per task at which p95 trajectory still clears margin. The number to quote in commercial negotiations.</p>
+      </div>
+
+    </div>
+
+  </div>
+</section>
+
+<div class="section-divider"></div>
+
+<!-- ============== 9. CI GATES ============== -->
+<section id="ci" class="relative py-32 px-6">
+
+  <div class="max-w-7xl mx-auto">
+    <div class="text-center mb-16" data-reveal>
+      <span class="section-tag" style="color: var(--c-cyan); border-color: rgba(0,240,255,0.3);">// 09 — COST IN CI</span>
+      <h2 class="font-orbitron font-bold text-4xl md:text-6xl mt-6 mb-4">
+        <span class="text-white">Cost</span> <span class="grad-text">CI Gates</span>
+      </h2>
+      <p class="text-slate-400 max-w-2xl mx-auto">Track cost like correctness. Block merges on regression. A 2× cost regression is as bad as a 2-point accuracy drop.</p>
+    </div>
+
+    <!-- CI output -->
+    <div class="holo-card p-8 mb-10" data-reveal>
+      <div class="flex items-center justify-between mb-4 flex-wrap gap-3">
+        <div class="font-mono text-xs text-violet-glow tracking-widest">// COST-CI · agent_cost.yaml</div>
+        <div class="font-mono text-xs">
+          <span class="text-emerald-glow">7 passed</span> ·
+          <span class="text-magenta-glow">1 failed</span> ·
+          <span class="text-amber-400">1 warning</span>
+        </div>
+      </div>
+
+      <div class="ci-line pass">
+        <span class="ci-status text-emerald-glow">PASS</span>
+        <span>cost_p50_per_task</span>
+        <span class="ml-auto text-slate-500">$0.041 · ceiling $0.05</span>
+      </div>
+      <div class="ci-line pass">
+        <span class="ci-status text-emerald-glow">PASS</span>
+        <span>cost_p95_per_task</span>
+        <span class="ml-auto text-slate-500">$0.18 · ceiling $0.20</span>
+      </div>
+      <div class="ci-line fail">
+        <span class="ci-status text-magenta-glow">FAIL</span>
+        <span>cost_p99_per_task</span>
+        <span class="ml-auto text-magenta-glow">$2.10 · ceiling $0.60  ↑ regression vs main $0.45</span>
+      </div>
+      <div class="ci-line pass">
+        <span class="ci-status text-emerald-glow">PASS</span>
+        <span>latency_p95_ms</span>
+        <span class="ml-auto text-slate-500">9,700 ms · ceiling 12,000 ms</span>
+      </div>
+      <div class="ci-line warn">
+        <span class="ci-status text-amber-400">WARN</span>
+        <span>step_count_p95</span>
+        <span class="ml-auto text-amber-400">7 · ceiling 7 (at the line)</span>
+      </div>
+      <div class="ci-line pass">
+        <span class="ci-status text-emerald-glow">PASS</span>
+        <span>token_budget_p50</span>
+        <span class="ml-auto text-slate-500">7,140 / 8,600 tok (83%)</span>
+      </div>
+      <div class="ci-line pass">
+        <span class="ci-status text-emerald-glow">PASS</span>
+        <span>cache_hit_rate</span>
+        <span class="ml-auto text-slate-500">0.82 · floor 0.70</span>
+      </div>
+      <div class="ci-line pass">
+        <span class="ci-status text-emerald-glow">PASS</span>
+        <span>gross_margin_p50</span>
+        <span class="ml-auto text-slate-500">87% · floor 60%</span>
+      </div>
+      <div class="ci-line pass">
+        <span class="ci-status text-emerald-glow">PASS</span>
+        <span>gross_margin_p95</span>
+        <span class="ml-auto text-slate-500">71% · floor 30%</span>
+      </div>
+
+      <div class="mt-4 p-4 rounded-lg bg-magenta-glow/5 border border-magenta-glow/25 text-xs text-slate-300 leading-relaxed">
+        <span class="font-mono text-magenta-glow">// p99 REGRESSION:</span>
+        Loops or runaway context — a recent prompt change likely removed an early-exit gate. Without a p99 ceiling, this would have shipped and shown up on next month's invoice.
+      </div>
+    </div>
+
+    <!-- pytest pattern -->
+    <div data-reveal>
+      <div class="code-block">
+<pre><span class="tok-com"># Cost-critical assertions. Block deploys on regression.</span>
+
+<span class="tok-dec">@pytest.mark.cost_critical</span>
+<span class="tok-kw">def</span> <span class="tok-fn">test_percentile_budgets</span>():
+    <span class="tok-var">runs</span> = <span class="tok-fn">load_eval_runs</span>(<span class="tok-str">"prod-replay"</span>)
+    <span class="tok-kw">assert</span> <span class="tok-fn">percentile</span>(<span class="tok-var">runs</span>.<span class="tok-var">cost</span>, <span class="tok-num">50</span>)  &lt;= <span class="tok-var">CEILING</span>[<span class="tok-str">"p50"</span>]
+    <span class="tok-kw">assert</span> <span class="tok-fn">percentile</span>(<span class="tok-var">runs</span>.<span class="tok-var">cost</span>, <span class="tok-num">95</span>)  &lt;= <span class="tok-var">CEILING</span>[<span class="tok-str">"p95"</span>]
+    <span class="tok-kw">assert</span> <span class="tok-fn">percentile</span>(<span class="tok-var">runs</span>.<span class="tok-var">cost</span>, <span class="tok-num">99</span>)  &lt;= <span class="tok-var">CEILING</span>[<span class="tok-str">"p99"</span>]
+
+<span class="tok-dec">@pytest.mark.cost_critical</span>
+<span class="tok-kw">def</span> <span class="tok-fn">test_regression_vs_main</span>():
+    <span class="tok-var">delta</span> = <span class="tok-fn">cost_p95</span>(<span class="tok-str">"feature"</span>) - <span class="tok-fn">cost_p95</span>(<span class="tok-str">"main"</span>)
+    <span class="tok-kw">assert</span> <span class="tok-var">delta</span> &lt;= <span class="tok-num">0.02</span>, <span class="tok-fn">f</span><span class="tok-str">"p95 cost regressed by ${delta:.3f}"</span>
+
+<span class="tok-dec">@pytest.mark.cost_critical</span>
+<span class="tok-kw">def</span> <span class="tok-fn">test_margin_at_p95</span>():
+    <span class="tok-kw">assert</span> <span class="tok-fn">gross_margin</span>(<span class="tok-fn">percentile</span>=<span class="tok-num">95</span>) &gt;= <span class="tok-num">0.30</span></pre>
+      </div>
+    </div>
+
+  </div>
+</section>
+
+<div class="section-divider"></div>
+
+<!-- ============== 10. SUMMARY ============== -->
+<section id="summary" class="relative py-32 px-6">
+  <div class="max-w-6xl mx-auto">
+    <div class="text-center mb-16" data-reveal>
+      <span class="section-tag" style="color: var(--c-emerald); border-color: rgba(0,255,163,0.3);">// 10 — DOWNLOAD SUMMARY</span>
+      <h2 class="font-orbitron font-bold text-4xl md:text-6xl mt-6 mb-4">
+        <span class="text-white">Key</span> <span class="grad-text">Takeaways</span>
+      </h2>
+    </div>
+
+    <div class="grid md:grid-cols-2 gap-5">
+
+      <div class="holo-card p-7" data-reveal>
+        <div class="flex items-center gap-3 mb-3">
+          <i data-lucide="rewind" class="w-5 h-5 text-cyan-glow"></i>
+          <span class="font-mono text-xs text-cyan-glow tracking-widest">TAKEAWAY 01</span>
+        </div>
+        <p class="text-slate-200 leading-relaxed">RAG caching primitives <span class="neon-cyan font-semibold">carry forward</span> — but they're necessary, not sufficient. Agent cost grows with step count, context bloat, and tool-output size.</p>
+      </div>
+
+      <div class="holo-card p-7" data-reveal>
+        <div class="flex items-center gap-3 mb-3">
+          <i data-lucide="line-chart" class="w-5 h-5 text-violet-glow"></i>
+          <span class="font-mono text-xs text-violet-glow tracking-widest">TAKEAWAY 02</span>
+        </div>
+        <p class="text-slate-200 leading-relaxed">Profile per trajectory — segment cost into <span class="neon-violet font-semibold">router · llm · tool · synth · overhead</span>. The biggest segment is the optimization target.</p>
+      </div>
+
+      <div class="holo-card p-7" data-reveal>
+        <div class="flex items-center gap-3 mb-3">
+          <i data-lucide="activity" class="w-5 h-5 text-magenta-glow"></i>
+          <span class="font-mono text-xs text-magenta-glow tracking-widest">TAKEAWAY 03</span>
+        </div>
+        <p class="text-slate-200 leading-relaxed">Report <span class="neon-magenta font-semibold">p50 / p95 / p99</span>. Never mean. The top 5% of runs typically drive ~50% of the bill.</p>
+      </div>
+
+      <div class="holo-card p-7" data-reveal>
+        <div class="flex items-center gap-3 mb-3">
+          <i data-lucide="wallet" class="w-5 h-5 text-amber-400"></i>
+          <span class="font-mono text-xs text-amber-400 tracking-widest">TAKEAWAY 04</span>
+        </div>
+        <p class="text-slate-200 leading-relaxed">Declare token budgets <span class="neon-amber font-semibold">per segment</span> and enforce in code. Truncate at retrieval time, not generation time.</p>
+      </div>
+
+      <div class="holo-card p-7" data-reveal>
+        <div class="flex items-center gap-3 mb-3">
+          <i data-lucide="sliders" class="w-5 h-5 text-violet-glow"></i>
+          <span class="font-mono text-xs text-violet-glow tracking-widest">TAKEAWAY 05</span>
+        </div>
+        <p class="text-slate-200 leading-relaxed">The big four levers — <span class="neon-violet font-semibold">routing, prompt caching, context pruning, early exit</span> — typically deliver 60-65% cost cuts together.</p>
+      </div>
+
+      <div class="holo-card p-7" data-reveal>
+        <div class="flex items-center gap-3 mb-3">
+          <i data-lucide="layers" class="w-5 h-5 text-emerald-glow"></i>
+          <span class="font-mono text-xs text-emerald-glow tracking-widest">TAKEAWAY 06</span>
+        </div>
+        <p class="text-slate-200 leading-relaxed">Reach for <span class="neon-emerald font-semibold">parallel calls, batching, distillation, structured output</span> as second-pass levers — each adds 5-15% on top.</p>
+      </div>
+
+      <div class="holo-card p-7" data-reveal>
+        <div class="flex items-center gap-3 mb-3">
+          <i data-lucide="banknote" class="w-5 h-5 text-cyan-glow"></i>
+          <span class="font-mono text-xs text-cyan-glow tracking-widest">TAKEAWAY 07</span>
+        </div>
+        <p class="text-slate-200 leading-relaxed">Track <span class="neon-cyan font-semibold">gross margin per trajectory</span> at both p50 and p95. The p95 line is what tells you if the unit economics actually work.</p>
+      </div>
+
+      <div class="holo-card p-7" data-reveal>
+        <div class="flex items-center gap-3 mb-3">
+          <i data-lucide="git-pull-request-arrow" class="w-5 h-5 text-magenta-glow"></i>
+          <span class="font-mono text-xs text-magenta-glow tracking-widest">TAKEAWAY 08</span>
+        </div>
+        <p class="text-slate-200 leading-relaxed">Cost belongs in CI. Assert <span class="neon-magenta font-semibold">percentile ceilings + regression-vs-main + margin floors</span>. A 2× cost regression should block a merge.</p>
+      </div>
+
+    </div>
+  </div>
+</section>
+
+<div class="section-divider"></div>
+
+<!-- ============== 11. CHECKPOINT ============== -->
+
+<div class="section-divider"></div>
+
+<!-- ============== RESOURCES ============== -->
+<section id="resources" class="relative py-32 px-6">
+  <div class="max-w-7xl mx-auto">
+    <div class="text-center mb-16" data-reveal>
+      <span class="section-tag">// LEARNING RESOURCES</span>
+      <h2 class="font-orbitron font-bold text-4xl md:text-6xl mt-6 mb-4">
+        <span class="text-white">Learn &amp;</span> <span class="grad-text">Practice</span>
+      </h2>
+      <p class="text-slate-400 max-w-2xl mx-auto">Deepen your understanding with curated articles and get hands-on with official reference implementations.</p>
+    </div>
+
+    <div class="grid gap-6 max-w-5xl mx-auto">
+      <!-- Three-Tier Learning Resources -->
+      <div class="space-y-4">
+        <!-- Tier 1: Progressive Article -->
+        <div class="holo-card p-6" data-reveal>
+          <div class="flex items-start gap-3 mb-4">
+            <div class="w-10 h-10 rounded-lg bg-cyan-glow/15 border border-cyan-glow/30 flex items-center justify-center flex-shrink-0">
+              <i data-lucide="lightbulb" class="w-5 h-5 text-cyan-glow"></i>
+            </div>
+            <div>
+              <h4 class="font-orbitron font-semibold text-white">Progressive Article</h4>
+              <p class="text-xs text-slate-400 mt-1">Stuck? Start here - beginner-friendly explanation</p>
+            </div>
+          </div>
+          <p class="text-sm text-slate-300 mb-4 leading-relaxed">
+            <span class="text-cyan-glow font-semibold">Why RAG Caching Doesn't Cover Agent Cost</span><br/>
+            <span class="text-slate-500 text-xs">Cost Engineering Guide - Three new sources of variance that emerge in agents and how to measure them</span>
+          </p>
+          <a href="https://www.example.com/agent-cost-variance" target="_blank" class="resource-btn learn-more">
+            <i data-lucide="external-link" class="w-4 h-4"></i>
+            <span>READ ARTICLE</span>
+          </a>
+        </div>
+
+        <!-- Tier 2: Canonical Article -->
+        <div class="holo-card p-6" data-reveal>
+          <div class="flex items-start gap-3 mb-4">
+            <div class="w-10 h-10 rounded-lg bg-violet-glow/15 border border-violet-glow/30 flex items-center justify-center flex-shrink-0">
+              <i data-lucide="scroll" class="w-5 h-5 text-violet-glow"></i>
+            </div>
+            <div>
+              <h4 class="font-orbitron font-semibold text-white">Canonical Article</h4>
+              <p class="text-xs text-slate-400 mt-1">Authoritative source - official docs or research paper</p>
+            </div>
+          </div>
+          <p class="text-sm text-slate-300 mb-4 leading-relaxed">
+            <span class="text-violet-glow font-semibold">Building Effective Agents - Cost and Latency</span><br/>
+            <span class="text-slate-500 text-xs">Anthropic - Economics of agentic systems and how to break cost into segments</span>
+          </p>
+          <a href="https://www.anthropic.com/research/building-effective-agents" target="_blank" class="resource-btn learn-more">
+            <i data-lucide="external-link" class="w-4 h-4"></i>
+            <span>READ RESEARCH</span>
+          </a>
+        </div>
+
+        <!-- Tier 3: GitHub Repository -->
+        <div class="holo-card p-6" data-reveal>
+          <div class="flex items-start gap-3 mb-4">
+            <div class="w-10 h-10 rounded-lg bg-magenta-glow/15 border border-magenta-glow/30 flex items-center justify-center flex-shrink-0">
+              <i data-lucide="github" class="w-5 h-5 text-magenta-glow"></i>
+            </div>
+            <div>
+              <h4 class="font-orbitron font-semibold text-white">GitHub Repository</h4>
+              <p class="text-xs text-slate-400 mt-1">Hands-on - reference implementation and examples</p>
+            </div>
+          </div>
+          <p class="text-sm text-slate-300 mb-4 leading-relaxed">
+            <span class="text-magenta-glow font-semibold">Langfuse + LiteLLM Cost Tracking</span><br/>
+            <span class="text-slate-500 text-xs">Official cost attribution and token tracking frameworks for agents</span>
+          </p>
+          <a href="https://github.com/langfuse/langfuse" target="_blank" class="resource-btn practice">
+            <i data-lucide="github" class="w-4 h-4"></i>
+            <span>LANGFUSE REPO</span>
+          </a>
+          <a href="https://github.com/BerriAI/litellm" target="_blank" class="resource-btn practice" style="margin-top: 8px;">
+            <i data-lucide="github" class="w-4 h-4"></i>
+            <span>LITELLM REPO</span>
+          </a>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section id="checkpoint" class="relative py-32 px-6">
+  <div class="orb w-96 h-96 bg-emerald-glow/30" style="bottom: 20%; right: -100px;"></div>
+
+  <div class="max-w-5xl mx-auto">
+    <div class="text-center mb-12" data-reveal>
+      <span class="section-tag" style="color: var(--c-amber); border-color: rgba(255,184,0,0.3);">// 11 — MODULE CHECKPOINT</span>
+      <h2 class="font-orbitron font-bold text-4xl md:text-6xl mt-6 mb-4">
+        <span class="text-white">Self-</span><span class="grad-text">Verification</span>
+      </h2>
+      <p class="text-slate-400 max-w-2xl mx-auto">Tap each statement once you can defend it without notes. All seven green → you're cleared for Module 3.5.</p>
+    </div>
+
+    <div class="space-y-3" data-reveal>
+      <div class="check-item" data-check>
+        <div class="check-box"><i data-lucide="check" class="w-3.5 h-3.5 text-black opacity-0"></i></div>
+        <div class="flex-1">
+          <div class="text-white font-medium">I can explain why RAG caching doesn't fully cover agent cost and name the three new sources of variance.</div>
+        </div>
+      </div>
+      <div class="check-item" data-check>
+        <div class="check-box"><i data-lucide="check" class="w-3.5 h-3.5 text-black opacity-0"></i></div>
+        <div class="flex-1">
+          <div class="text-white font-medium">I can break a trajectory into segments and attribute tokens / cost / latency to each.</div>
+        </div>
+      </div>
+      <div class="check-item" data-check>
+        <div class="check-box"><i data-lucide="check" class="w-3.5 h-3.5 text-black opacity-0"></i></div>
+        <div class="flex-1">
+          <div class="text-white font-medium">I can compute p50, p95, and p99 for cost and latency — and explain why a mean would mislead.</div>
+        </div>
+      </div>
+      <div class="check-item" data-check>
+        <div class="check-box"><i data-lucide="check" class="w-3.5 h-3.5 text-black opacity-0"></i></div>
+        <div class="flex-1">
+          <div class="text-white font-medium">I can declare per-segment token budgets and enforce them at retrieval time.</div>
+        </div>
+      </div>
+      <div class="check-item" data-check>
+        <div class="check-box"><i data-lucide="check" class="w-3.5 h-3.5 text-black opacity-0"></i></div>
+        <div class="flex-1">
+          <div class="text-white font-medium">I can name all 8 cost levers and rank them by typical impact.</div>
+        </div>
+      </div>
+      <div class="check-item" data-check>
+        <div class="check-box"><i data-lucide="check" class="w-3.5 h-3.5 text-black opacity-0"></i></div>
+        <div class="flex-1">
+          <div class="text-white font-medium">I can compute cost-per-resolved-task and gross margin per trajectory at p50 and p95.</div>
+        </div>
+      </div>
+      <div class="check-item" data-check>
+        <div class="check-box"><i data-lucide="check" class="w-3.5 h-3.5 text-black opacity-0"></i></div>
+        <div class="flex-1">
+          <div class="text-white font-medium">I can write CI assertions that block deploys on percentile regressions and margin drops.</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="mt-10 holo-card p-6" data-reveal>
+      <div class="flex items-center justify-between mb-3">
+        <div class="font-mono text-xs text-violet-glow tracking-widest">CHECKPOINT PROGRESS</div>
+        <div class="font-orbitron font-bold"><span id="check-count" class="text-violet-glow">0</span><span class="text-slate-500"> / 7</span></div>
+      </div>
+      <div class="progress-bar">
+        <div id="check-progress" class="progress-fill" style="width: 0%;"></div>
+      </div>
+      <div id="check-status" class="mt-3 font-mono text-xs text-slate-500">// Awaiting verification...</div>
+    </div>
+  </div>
+</section>
+
+<div class="section-divider"></div>
+
+<!-- ============== 12. NEXT MODULE ============== -->
+<section id="next" class="relative py-32 px-6">
+  <div class="absolute inset-0 flex items-center justify-center pointer-events-none">
+    <div class="ring-glow"></div>
+    <div class="ring-glow"></div>
+  </div>
+
+  <div class="max-w-4xl mx-auto text-center relative z-10">
+    <div data-reveal>
+      <span class="section-tag" style="color: var(--c-magenta); border-color: rgba(255,0,229,0.3);">// 12 — UPLINK READY</span>
+      <h2 class="font-orbitron font-bold text-4xl md:text-6xl mt-6 mb-4">
+        <span class="text-white">Next</span> <span class="grad-text">Mission</span>
+      </h2>
+    </div>
+
+    <div class="holo-card p-8 md:p-12 mt-10 text-left" data-reveal>
+      <div class="flex flex-col md:flex-row items-start md:items-center justify-between gap-6 mb-6">
+        <div>
+          <div class="flex items-center gap-2 mb-3">
+            <span class="track-badge">TRACK 3</span>
+            <span class="track-badge" style="color: var(--c-magenta); border-color: rgba(255,0,229,0.3);">MODULE 3.5</span>
+          </div>
+          <h3 class="font-orbitron font-bold text-2xl md:text-3xl text-white">Human Evaluation Protocols</h3>
+          <p class="text-slate-400 text-sm mt-2 max-w-xl">From machine metrics to human signal. Annotation tasks, inter-annotator agreement (Cohen's κ, Krippendorff's α), pairwise studies, crowd vs experts, and sample-size math.</p>
+        </div>
+        <div class="w-20 h-20 rounded-2xl bg-gradient-to-br from-violet-glow/20 to-magenta-glow/20 border border-violet-glow/30 flex items-center justify-center flex-shrink-0">
+          <i data-lucide="arrow-right" class="w-8 h-8 text-violet-glow"></i>
+        </div>
+      </div>
+
+      <div class="grid grid-cols-2 md:grid-cols-4 gap-3 mb-8">
+        <div class="p-3 rounded-lg bg-violet-glow/5 border border-violet-glow/20 text-center">
+          <div class="font-mono text-[10px] text-slate-500 mb-1">ESTIMATED</div>
+          <div class="font-orbitron text-sm text-violet-glow">~55 MIN</div>
+        </div>
+        <div class="p-3 rounded-lg bg-magenta-glow/5 border border-magenta-glow/20 text-center">
+          <div class="font-mono text-[10px] text-slate-500 mb-1">TYPE</div>
+          <div class="font-orbitron text-sm text-magenta-glow">PROTOCOLS</div>
+        </div>
+        <div class="p-3 rounded-lg bg-cyan-glow/5 border border-cyan-glow/20 text-center">
+          <div class="font-mono text-[10px] text-slate-500 mb-1">CODE</div>
+          <div class="font-orbitron text-sm text-cyan-glow">IAA + SAMPLING</div>
+        </div>
+        <div class="p-3 rounded-lg bg-emerald-glow/5 border border-emerald-glow/20 text-center">
+          <div class="font-mono text-[10px] text-slate-500 mb-1">DIFFICULTY</div>
+          <div class="font-orbitron text-sm text-emerald-glow">★★★☆☆</div>
+        </div>
+      </div>
+
+      <div class="flex flex-wrap gap-3">
+        <button class="cta-btn">
+          <span>BEGIN MODULE 3.5</span>
+          <i data-lucide="arrow-up-right" class="w-5 h-5"></i>
+        </button>
+        <button class="px-8 py-[18px] rounded-xl border border-violet-glow/40 text-violet-glow font-orbitron font-semibold tracking-widest hover:bg-violet-glow/10 transition text-sm flex items-center gap-2">
+          <i data-lucide="layout-grid" class="w-4 h-4"></i>
+          TRACK MAP
+        </button>
+      </div>
+    </div>
+
+    <div class="mt-12 font-mono text-[10px] text-slate-600 tracking-widest" data-reveal>
+      AGENTIC AI ACADEMY // COURSE 02 — AUTONOMOUS SYSTEMS // MODULE 3.4 — END OF TRANSMISSION
+    </div>
+  </div>
+</section>
+
+<!-- ============== SCRIPTS ============== -->
+<script>
+  lucide.createIcons();
+  gsap.registerPlugin(ScrollTrigger);
+
+  gsap.from('[data-hero-anim]', {
+    y: 20, opacity: 0, duration: 0.5, ease: 'power2.out', stagger: 0.06
+  });
+
+  gsap.utils.toArray('[data-reveal]').forEach(el => {
+    gsap.from(el, {
+      y: 24, opacity: 0, duration: 0.5, ease: 'power2.out',
+      scrollTrigger: { trigger: el, start: 'top 92%', once: true }
+    });
+  });
+  window.addEventListener('load', () => ScrollTrigger.refresh());
+
+  document.querySelectorAll('[data-counter]').forEach(el => {
+    const target = +el.dataset.counter;
+    const suffix = el.dataset.suffix || '';
+    ScrollTrigger.create({
+      trigger: el, start: 'top 90%',
+      onEnter: () => {
+        gsap.to({ v: 0 }, {
+          v: target, duration: 2, ease: 'power2.out',
+          onUpdate: function() { el.textContent = Math.round(this.targets()[0].v) + suffix; }
+        });
+      }
+    });
+  });
+
+  const sections = document.querySelectorAll('section[id]');
+  const navDots = document.querySelectorAll('.nav-dot');
+  window.addEventListener('scroll', () => {
+    const y = window.scrollY + window.innerHeight * 0.4;
+    sections.forEach(sec => {
+      if (y >= sec.offsetTop && y < sec.offsetTop + sec.offsetHeight) {
+        navDots.forEach(d => d.classList.toggle('active', d.dataset.section === sec.id));
+      }
+    });
+  });
+
+  // Code tabs
+  document.querySelectorAll('.tab-pill[data-tab]').forEach(tab => {
+    tab.addEventListener('click', () => {
+      const group = tab.parentElement;
+      group.querySelectorAll('.tab-pill').forEach(t => t.classList.remove('active'));
+      tab.classList.add('active');
+      document.querySelectorAll('.tab-panel').forEach(p => p.classList.add('hidden'));
+      const panel = document.querySelector(`[data-panel="${tab.dataset.tab}"]`);
+      if (panel) panel.classList.remove('hidden');
+    });
+  });
+
+  // Checkpoint
+  const checks = document.querySelectorAll('[data-check]');
+  const checkCount = document.getElementById('check-count');
+  const checkProgress = document.getElementById('check-progress');
+  const checkStatus = document.getElementById('check-status');
+  const totalChecks = checks.length;
+  const total = checks.length;
+  const statusMsgs = [
+    '// Awaiting verification...',
+    '// 1 of 7 confirmed. Cache fundamentals locked.',
+    '// 2 of 7 confirmed. Cost shape understood.',
+    '// 3 of 7 confirmed. Percentiles internalized.',
+    '// 4 of 7 confirmed. Budgets enforceable.',
+    '// 5 of 7 confirmed. Levers ranked.',
+    '// 6 of 7 confirmed. Margins computed.',
+    '// ✓ ALL CHECKS GREEN — CLEARED FOR MODULE 3.5.'
+  ];
+  checks.forEach(c => {
+    c.addEventListener('click', () => {
+      c.classList.toggle('done');
+      const icon = c.querySelector('.check-box svg, .check-box i');
+      if (icon) {
+        icon.style.opacity = c.classList.contains('done') ? '1' : '0';
+      }
+      const done = document.querySelectorAll('[data-check].done').length;
+      checkCount.textContent = done;
+      checkProgress.style.width = (done / total * 100) + '%';
+      checkStatus.textContent = statusMsgs[done] || ('// ' + done + ' of ' + totalChecks + ' confirmed.');
+      checkStatus.style.color = done === total ? 'var(--c-emerald)' : '';
+    });
+  });
+
+  // Cost distribution (long tail)
+  const labels = ['$0–.02','.02–.04','.04–.06','.06–.08','.08–.10','.10–.14','.14–.20','.20–.30','.30–.50','.50–1.0','>$1.0'];
+  const counts = [42, 96, 138, 102, 58, 28, 16, 9, 6, 3, 2];
+  new Chart(document.getElementById('distChart'), {
+    type: 'bar',
+    data: {
+      labels: labels,
+      datasets: [{
+        label: 'Trajectories',
+        data: counts,
+        backgroundColor: counts.map((_,i) => i < 5 ? 'rgba(139,92,246,0.55)' : i < 8 ? 'rgba(255,184,0,0.6)' : 'rgba(255,0,229,0.7)'),
+        borderColor: counts.map((_,i) => i < 5 ? '#8b5cf6' : i < 8 ? '#ffb800' : '#ff00e5'),
+        borderWidth: 1,
+        borderRadius: 4
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {
+        legend: { labels: { color: '#94a3b8', font: { family: 'JetBrains Mono', size: 11 } } },
+        tooltip: { callbacks: { label: ctx => ctx.parsed.y + ' trajectories' } }
+      },
+      scales: {
+        x: {
+          ticks: { color: '#cbd5e1', font: { family: 'JetBrains Mono', size: 10 } },
+          grid: { color: 'rgba(255,255,255,0.05)' }
+        },
+        y: {
+          ticks: { color: '#94a3b8', font: { family: 'JetBrains Mono' } },
+          grid: { color: 'rgba(255,255,255,0.05)' }
+        }
+      }
+    }
+  });
+
+  // Cost × Latency scatter
+  function gen(n, cMin, cMax, lMin, lMax, color) {
+    const pts = [];
+    for (let i = 0; i < n; i++) {
+      const c = cMin + Math.random() * (cMax - cMin);
+      const l = lMin + Math.random() * (lMax - lMin) + c * 30;
+      pts.push({ x: l, y: c });
+    }
+    return { data: pts, backgroundColor: color };
+  }
+  new Chart(document.getElementById('scatterChart'), {
+    type: 'scatter',
+    data: {
+      datasets: [
+        { label: 'Healthy (p<50)',  data: gen(120, 0.01, 0.06, 1.2, 4.0, 'rgba(139,92,246,0.55)').data, backgroundColor: 'rgba(139,92,246,0.55)', pointRadius: 4 },
+        { label: 'Tail (p50-95)',   data: gen(60,  0.06, 0.18, 4.0, 10.0, 'rgba(0,240,255,0.55)').data,  backgroundColor: 'rgba(0,240,255,0.55)',  pointRadius: 4 },
+        { label: 'Catastrophe (>p95)', data: gen(20, 0.18, 2.5,  10, 42, 'rgba(255,0,229,0.7)').data,    backgroundColor: 'rgba(255,0,229,0.7)',    pointRadius: 5 },
+      ]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {
+        legend: { labels: { color: '#94a3b8', font: { family: 'JetBrains Mono', size: 10 } } }
+      },
+      scales: {
+        x: {
+          title: { display: true, text: 'Latency (s)', color: '#94a3b8', font: { family: 'JetBrains Mono' } },
+          ticks: { color: '#94a3b8', font: { family: 'JetBrains Mono' } },
+          grid: { color: 'rgba(255,255,255,0.05)' }
+        },
+        y: {
+          title: { display: true, text: 'Cost ($)', color: '#94a3b8', font: { family: 'JetBrains Mono' } },
+          ticks: { color: '#94a3b8', font: { family: 'JetBrains Mono' }, callback: v => '$' + v.toFixed(2) },
+          grid: { color: 'rgba(255,255,255,0.05)' }
+        }
+      }
+    }
+  });
+
+  // Levers stack-up
+  const leverLabels = ['baseline', '+ routing', '+ caching', '+ pruning', '+ early exit', '+ parallel', '+ struct out'];
+  const leverCost = [0.180, 0.116, 0.080, 0.072, 0.061, 0.061, 0.052];
+  new Chart(document.getElementById('leversChart'), {
+    type: 'bar',
+    data: {
+      labels: leverLabels,
+      datasets: [{
+        label: 'p95 cost / task ($)',
+        data: leverCost,
+        backgroundColor: leverCost.map((v,i) => {
+          const t = i / (leverCost.length - 1);
+          return `rgba(${Math.round(255 - t*155)},${Math.round(0 + t*240)},${Math.round(229 - t*66)},0.55)`;
+        }),
+        borderColor: leverCost.map((v,i) => {
+          const t = i / (leverCost.length - 1);
+          return `rgb(${Math.round(255 - t*155)},${Math.round(0 + t*240)},${Math.round(229 - t*66)})`;
+        }),
+        borderWidth: 1,
+        borderRadius: 6
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {
+        legend: { display: false },
+        tooltip: { callbacks: { label: ctx => '$' + ctx.parsed.y.toFixed(3) } }
+      },
+      scales: {
+        x: {
+          ticks: { color: '#cbd5e1', font: { family: 'JetBrains Mono', size: 10 } },
+          grid: { color: 'rgba(255,255,255,0.05)' }
+        },
+        y: {
+          beginAtZero: true,
+          ticks: { color: '#94a3b8', font: { family: 'JetBrains Mono' }, callback: v => '$' + v.toFixed(2) },
+          grid: { color: 'rgba(255,255,255,0.05)' }
+        }
+      }
+    }
+  });
+</script>
+
+</body>
+</html>

@@ -1,0 +1,517 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport"
+      content="width=device-width, initial-scale=1.0">
+
+<title>Top K Frequent Words</title>
+
+<style>
+
+:root{
+    --bg:#0d1117;
+    --surface:#161b22;
+    --border:#30363d;
+    --text:#c9d1d9;
+    --muted:#8b949e;
+    --purple:#a371f7;
+    --blue:#58a6ff;
+    --green:#3fb950;
+    --orange:#e3b341;
+}
+
+*{
+    box-sizing:border-box;
+}
+
+body{
+    margin:0;
+    padding:20px;
+    background:var(--bg);
+    color:var(--text);
+    font-family:Arial,sans-serif;
+}
+
+h1{
+    text-align:center;
+    color:var(--purple);
+}
+
+.subtitle{
+    text-align:center;
+    color:var(--muted);
+    margin-bottom:20px;
+}
+
+.controls{
+    display:flex;
+    justify-content:center;
+    gap:12px;
+    flex-wrap:wrap;
+    margin-bottom:20px;
+}
+
+button{
+    background:#21262d;
+    color:var(--text);
+    border:1px solid var(--border);
+    padding:10px 18px;
+    border-radius:8px;
+    cursor:pointer;
+}
+
+button:hover{
+    background:#30363d;
+}
+
+.panel{
+    background:var(--surface);
+    border:1px solid var(--border);
+    border-radius:12px;
+    padding:20px;
+    margin-bottom:20px;
+}
+
+.title{
+    color:var(--purple);
+    font-weight:bold;
+    margin-bottom:12px;
+}
+
+.word-list{
+    display:flex;
+    flex-wrap:wrap;
+    gap:10px;
+}
+
+.tile{
+    padding:10px 16px;
+    border:2px solid var(--orange);
+    border-radius:8px;
+    background:#21262d;
+    font-family:monospace;
+}
+
+.info{
+    background:#21262d;
+    padding:15px;
+    border-radius:10px;
+    font-family:monospace;
+}
+
+.result{
+    font-size:28px;
+    color:var(--green);
+    font-weight:bold;
+}
+
+.log{
+    background:#0b0f14;
+    border-radius:10px;
+    padding:15px;
+    font-family:monospace;
+    line-height:1.8;
+    height:260px;
+    overflow:auto;
+}
+
+</style>
+</head>
+
+<body>
+
+<h1>Top K Frequent Words</h1>
+
+<div class="subtitle">
+Sort by frequency descending, then alphabetically ascending
+</div>
+
+<div class="controls">
+
+    <button onclick="loadExample1()">
+        Example 1
+    </button>
+
+    <button onclick="loadExample2()">
+        Example 2
+    </button>
+
+</div>
+
+<div class="controls">
+
+    <button onclick="prevStep()">
+        ← Prev
+    </button>
+
+    <button onclick="togglePlay()"
+            id="playBtn">
+        ▶ Play
+    </button>
+
+    <button onclick="nextStep()">
+        Next →
+    </button>
+
+</div>
+
+<div class="panel">
+
+    <div class="title">
+        Words
+    </div>
+
+    <div id="words"
+         class="word-list">
+    </div>
+
+</div>
+
+<div class="panel">
+
+    <div class="title">
+        Current Step
+    </div>
+
+    <div id="stepInfo"
+         class="info">
+    </div>
+
+</div>
+
+<div class="panel">
+
+    <div class="title">
+        Output
+    </div>
+
+    <div id="result"
+         class="result">
+    </div>
+
+</div>
+
+<div class="panel">
+
+    <div class="title">
+        Execution Logs
+    </div>
+
+    <div id="logs"
+         class="log">
+    </div>
+
+</div>
+
+<script>
+
+let steps = [];
+
+let currentStep = 0;
+
+let timer = null;
+
+let isPlaying = false;
+
+function renderWords(words){
+
+    document.getElementById(
+        "words"
+    ).innerHTML =
+
+        words.map(
+            w =>
+            `
+            <div class="tile">
+                ${w}
+            </div>
+            `
+        ).join("");
+}
+
+function renderStep(){
+
+    const step =
+        steps[currentStep];
+
+    document.getElementById(
+        "stepInfo"
+    ).innerHTML =
+        step.info;
+
+    document.getElementById(
+        "result"
+    ).innerHTML =
+        step.result;
+
+    document.getElementById(
+        "logs"
+    ).innerHTML =
+        step.logs;
+}
+
+function nextStep(){
+
+    if(currentStep < steps.length - 1){
+
+        currentStep++;
+
+        renderStep();
+    }
+    else{
+
+        pausePlay();
+    }
+}
+
+function prevStep(){
+
+    if(currentStep > 0){
+
+        currentStep--;
+
+        renderStep();
+    }
+}
+
+function togglePlay(){
+
+    if(isPlaying){
+
+        pausePlay();
+    }
+    else{
+
+        startPlay();
+    }
+}
+
+function startPlay(){
+
+    isPlaying = true;
+
+    document.getElementById(
+        "playBtn"
+    ).innerHTML =
+        "❚❚ Pause";
+
+    timer = setInterval(() => {
+
+        if(currentStep < steps.length - 1){
+
+            nextStep();
+        }
+        else{
+
+            pausePlay();
+        }
+
+    }, 1400);
+}
+
+function pausePlay(){
+
+    clearInterval(timer);
+
+    isPlaying = false;
+
+    document.getElementById(
+        "playBtn"
+    ).innerHTML =
+        "▶ Play";
+}
+
+function generateSteps(words, k){
+
+    steps = [];
+
+    renderWords(words);
+
+    let freq = {};
+
+    let logs = [];
+
+    steps.push({
+
+        info:
+            `
+            Initialize frequency map
+            `,
+
+        result:
+            `—`,
+
+        logs:
+            `Root created`
+    });
+
+    // Count frequencies
+    for(let word of words){
+
+        freq[word] =
+            (freq[word] || 0) + 1;
+
+        logs.push(
+            `
+            Inserted "${word}"
+            → frequency =
+            ${freq[word]}
+            `
+        );
+
+        steps.push({
+
+            info:
+                `
+                Counting frequency
+                of
+                <span style="color:orange">
+                    ${word}
+                </span>
+                `,
+
+            result:
+                `—`,
+
+            logs:
+                logs.join("<br>")
+        });
+    }
+
+    const uniqueWords =
+        Object.keys(freq);
+
+    logs.push(
+        `
+        Found
+        ${uniqueWords.length}
+        unique words
+        `
+    );
+
+    steps.push({
+
+        info:
+            `
+            Unique words extracted
+            `,
+
+        result:
+            `—`,
+
+        logs:
+            logs.join("<br>")
+    });
+
+    // Sort
+    uniqueWords.sort((a, b) => {
+
+        if(freq[b] !== freq[a]){
+
+            return freq[b] - freq[a];
+        }
+
+        return a.localeCompare(b);
+    });
+
+    logs.push(
+        `
+        Sorted words:
+        ${uniqueWords.join(", ")}
+        `
+    );
+
+    steps.push({
+
+        info:
+            `
+            Sort by frequency descending
+            then alphabetical ascending
+            `,
+
+        result:
+            `—`,
+
+        logs:
+            logs.join("<br>")
+    });
+
+    // Top K
+    const topK =
+        uniqueWords.slice(0, k);
+
+    logs.push(
+        `
+        Top ${k}:
+        ${topK.join(", ")}
+        `
+    );
+
+    steps.push({
+
+        info:
+            `
+            Extract Top ${k}
+            frequent words
+            `,
+
+        result:
+            `
+            [${topK.map(
+                w => `"${w}"`
+            ).join(", ")}]
+            `,
+
+        logs:
+            logs.join("<br>")
+    });
+
+    currentStep = 0;
+
+    renderStep();
+}
+
+function loadExample1(){
+
+    generateSteps(
+
+        [
+            "i",
+            "love",
+            "leetcode",
+            "i",
+            "love",
+            "coding"
+        ],
+
+        2
+    );
+}
+
+function loadExample2(){
+
+    generateSteps(
+
+        [
+            "the",
+            "day",
+            "is",
+            "sunny",
+            "the",
+            "the",
+            "sunny",
+            "is",
+            "is"
+        ],
+
+        4
+    );
+}
+
+loadExample1();
+
+</script>
+
+</body>
+</html>

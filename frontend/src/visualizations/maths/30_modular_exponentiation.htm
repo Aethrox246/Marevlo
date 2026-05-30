@@ -1,0 +1,416 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Modular Exponentiation - Visualization</title>
+    <style>
+        :root {
+            --bg-page: #0d1117;
+            --bg-surface: #161b22;
+            --bg-input: #0d1117;
+            --border-main: #30363d;
+            --btn-bg: #21262d;
+            --btn-hover: #2d333b;
+            --text-main: #c9d1d9;
+            --text-dim: #8b949e;
+            --accent-orange: #e3b341;
+            --accent-blue: #388bfd;
+            --accent-green: #3fb950;
+            --accent-red: #f85149;
+            --accent-purple: #a371f7;
+        }
+
+        * { box-sizing: border-box; }
+        body {
+            background-color: var(--bg-page);
+            color: var(--text-main);
+            font-family: system-ui, -apple-system, sans-serif;
+            margin: 0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            min-height: 100vh;
+            padding-bottom: 40px;
+        }
+
+        /* INPUT BAR */
+        .input-bar {
+            width: 100%;
+            background-color: var(--bg-surface);
+            padding: 12px 16px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 8px;
+            border-bottom: 1px solid var(--border-main);
+            flex-wrap: wrap;
+        }
+        label.ui-label { font-family: 'Courier New', monospace; font-size: 13px; color: var(--text-dim); }
+        input[type="number"] {
+            background: var(--bg-input);
+            border: 1px solid var(--border-main);
+            color: var(--text-main);
+            height: 32px;
+            border-radius: 6px;
+            padding: 0 10px;
+            font-size: 13px;
+            width: 100px;
+        }
+
+        button {
+            height: 32px; border-radius: 6px; padding: 0 14px; background: var(--btn-bg);
+            border: 1px solid var(--border-main); color: var(--text-main); font-size: 13px; cursor: pointer;
+            transition: background 0.2s ease;
+        }
+        button:hover { background: var(--btn-hover); }
+
+        /* VISUALIZATION */
+        .visual-container { margin-top: 30px; display: flex; flex-direction: column; align-items: center; gap: 20px; width: 100%; }
+        .tiles-wrapper { display: flex; gap: 16px; flex-wrap: wrap; justify-content: center; max-width: 900px; min-height: 100px; position: relative; }
+
+        .tile-unit { display: flex; flex-direction: column; align-items: center; gap: 4px; position: relative; }
+        .tile {
+            min-width: 60px; height: 60px; display: flex; align-items: center; justify-content: center;
+            border-radius: 8px; font-size: 20px; font-weight: 600; font-family: 'Courier New', monospace;
+            transition: all 0.3s ease; border: 2px solid var(--border-main); background: #21262d;
+            color: var(--text-main);
+        }
+        .tile-index { font-size: 11px; color: var(--text-dim); font-family: monospace; }
+
+        /* Highlight States */
+        .tile.current { background: #2a1600; border-color: var(--accent-orange); color: var(--accent-orange); transform: scale(1.15); box-shadow: 0 0 12px rgba(227, 179, 65, 0.4); z-index: 2; }
+        .tile.result { background: #1e1030; border-color: var(--accent-purple); color: var(--accent-purple); transform: scale(1.12); box-shadow: 0 0 12px var(--accent-purple); z-index: 2; }
+        .tile.added { background: #0d2244; border-color: var(--accent-blue); color: var(--accent-blue); transform: scale(1.08); z-index: 2; }
+        .tile.winning { background: #0f2a1a; border-color: var(--accent-green); color: var(--accent-green); transform: scale(1.15); box-shadow: 0 0 12px var(--accent-green); z-index: 3; }
+        .tile.failed { background: #2a0d0d; border-color: var(--accent-red); color: var(--accent-red); transform: scale(1.15); box-shadow: 0 0 12px var(--accent-red); z-index: 3; }
+        .tile.past { opacity: 0.35; background: #161b22; border-color: var(--border-main); color: var(--text-dim); }
+
+        /* PANEL */
+        .action-panel {
+            margin-top: 20px; background: var(--bg-surface); border: 1px solid var(--border-main);
+            border-radius: 6px; padding: 14px 20px; width: 720px; text-align: center; font-family: monospace; min-height: 80px;
+            display: flex; flex-direction: column; justify-content: center; font-size: 15px; line-height: 1.5;
+        }
+
+        /* INFO PANEL */
+        .info-panel { margin-top: 10px; display: flex; gap: 12px; flex-wrap: wrap; justify-content: center; }
+        .info-cell {
+            background: var(--bg-surface); border: 1px solid var(--border-main); border-radius: 6px;
+            padding: 8px 14px; display: flex; flex-direction: column; align-items: center; min-width: 110px; gap: 4px;
+        }
+        .info-label { font-size: 11px; color: var(--text-dim); }
+        .info-value { font-family: monospace; font-size: 16px; font-weight: 700; text-align: center; }
+
+        /* RESULT */
+        .result-display { margin-top: 10px; display: flex; flex-direction: column; align-items: center; }
+        #res-val { font-size: 22px; color: var(--text-dim); font-family: monospace; transition: all 0.3s; font-weight: bold; }
+        .pop { animation: popAnim 400ms ease; color: var(--accent-green) !important; font-size: 28px !important; text-shadow: 0 0 12px var(--accent-green); }
+        .pop-false { animation: popAnim 400ms ease; color: var(--accent-red) !important; font-size: 28px !important; text-shadow: 0 0 12px var(--accent-red); }
+
+        @keyframes popAnim { 0%{transform:scale(1)} 50%{transform:scale(1.15)} 100%{transform:scale(1)} }
+
+        /* STATUS */
+        .status-bar { margin-top: 8px; font-size: 13px; color: var(--text-dim); height: 1.2em; text-align: center; width: 700px;}
+
+        /* CONTROLS */
+        .controls { margin-top: 24px; display: flex; align-items: center; gap: 8px; }
+        input[type="range"] { accent-color: var(--accent-blue); width: 120px; cursor: pointer; }
+
+        /* LEGEND */
+        .legend { margin-top: 12px; display: flex; gap: 16px; flex-wrap: wrap; justify-content: center; max-width: 800px; }
+        .legend-item { display: flex; align-items: center; font-size: 12px; color: var(--text-dim); }
+        .dot { width: 10px; height: 10px; border-radius: 2px; margin-right: 6px; display: inline-block; }
+
+        /* LOG */
+        .log-panel {
+            margin-top: 12px; background: var(--bg-page); border: 1px solid var(--border-main);
+            border-radius: 6px; padding: 12px 16px; width: 720px; max-width: 90%; height: 130px;
+            overflow-y: auto; font-family: 'Courier New', monospace; font-size: 13px; white-space: pre-wrap;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="input-bar">
+        <label class="ui-label">a =</label>
+        <input type="number" id="a-input" value="3">
+        <label class="ui-label">b =</label>
+        <input type="number" id="b-input" value="4">
+        <label class="ui-label">m =</label>
+        <input type="number" id="m-input" value="5">
+        <button onclick="loadCustom()">Load</button>
+        <button onclick="loadExample(3,4,5)">Ex 1 (3^4 % 5)</button>
+        <button onclick="loadExample(2,10,1000)">Ex 2 (2^10 % 1000)</button>
+    </div>
+
+    <div class="visual-container">
+        <div class="ui-label">Computation Steps (result = (result * a) % m each iteration)</div>
+        <div class="tiles-wrapper" id="tiles-container"></div>
+    </div>
+
+    <div class="action-panel" id="main-panel">—</div>
+
+    <div class="info-panel">
+        <div class="info-cell">
+            <span class="info-label">Iteration (i)</span>
+            <span class="info-value" id="val-i" style="color: var(--accent-orange);">—</span>
+        </div>
+        <div class="info-cell">
+            <span class="info-label">Current Result</span>
+            <span class="info-value" id="val-result" style="color: var(--accent-purple);">—</span>
+        </div>
+        <div class="info-cell">
+            <span class="info-label">Multiplication</span>
+            <span class="info-value" id="val-mult" style="color: var(--accent-blue);">—</span>
+        </div>
+        <div class="info-cell">
+            <span class="info-label">After Modulo</span>
+            <span class="info-value" id="val-after" style="color: var(--accent-green);">—</span>
+        </div>
+        <div class="info-cell">
+            <span class="info-label">Original a^b % m</span>
+            <span class="info-value" id="val-target" style="color: var(--text-main);">—</span>
+        </div>
+    </div>
+
+    <div class="result-display">
+        <span class="ui-label" style="margin-bottom: 4px;">Final Result =</span>
+        <span id="res-val">—</span>
+    </div>
+
+    <div class="status-bar" id="status-text"></div>
+
+    <div class="controls">
+        <button onclick="reset()">↺ Reset</button>
+        <button onclick="back()">← Back</button>
+        <button onclick="togglePlay()" id="play-btn">Play</button>
+        <button onclick="next()">Next →</button>
+        <div class="controls" style="margin-top:0">
+            <span class="ui-label" style="margin-right:4px; font-size:11px">Speed</span>
+            <input type="range" id="speed-slider" min="0" max="2" value="1">
+        </div>
+    </div>
+
+    <div class="legend">
+        <div class="legend-item"><span class="dot" style="background:var(--bg-surface); border:1px solid var(--accent-orange)"></span> Current Iteration</div>
+        <div class="legend-item"><span class="dot" style="background:var(--bg-surface); border:1px solid var(--accent-purple)"></span> Current Result</div>
+        <div class="legend-item"><span class="dot" style="background:var(--bg-surface); border:1px solid var(--accent-blue)"></span> Multiply by a</div>
+        <div class="legend-item"><span class="dot" style="background:var(--bg-surface); border:1px solid var(--accent-green)"></span> After Modulo</div>
+    </div>
+
+    <div class="log-panel" id="log"></div>
+
+    <script>
+        let a = 3, b = 4, m = 5;
+        let steps = [];
+        let stepIndex = 0;
+        let timer = null;
+        const delays = [1600, 800, 400];
+
+        function init() {
+            loadExample(3, 4, 5);
+        }
+
+        function loadExample(newA, newB, newM) {
+            a = parseInt(newA);
+            b = parseInt(newB);
+            m = parseInt(newM);
+            document.getElementById('a-input').value = a;
+            document.getElementById('b-input').value = b;
+            document.getElementById('m-input').value = m;
+            generateSteps();
+            reset();
+        }
+
+        function loadCustom() {
+            const valA = parseInt(document.getElementById('a-input').value);
+            const valB = parseInt(document.getElementById('b-input').value);
+            const valM = parseInt(document.getElementById('m-input').value);
+
+            if (!isNaN(valA) && !isNaN(valB) && !isNaN(valM) && valM > 0) {
+                loadExample(valA, valB, valM);
+            } else {
+                alert("Please enter valid non-negative integers with m > 0.");
+            }
+        }
+
+        function generateSteps() {
+            steps = [];
+            let result = 1;
+            let maxIterations = Math.min(b, 20); // Safety limit for visualization
+
+            // STEP 0: INIT
+            steps.push({
+                type: 'init',
+                i: 0,
+                result: 1,
+                mult: '—',
+                after: '—',
+                panel: `Compute <b>${a}<sup>${b}</sup> % ${m}</b> using naive iterative method.<br>Initialize result = 1 (because a<sup>0</sup> = 1)`,
+                statusText: `Starting modular exponentiation: ${a}^${b} mod ${m}`,
+                log: `Computing ${a}^${b} % ${m}\nInitialize result = 1`,
+                logColor: 'var(--text-dim)'
+            });
+
+            for (let i = 1; i <= b; i++) {
+                let prevResult = result;
+                let multValue = (result * a);
+                result = multValue % m;
+
+                // Select iteration
+                steps.push({
+                    type: 'iteration',
+                    i: i,
+                    result: prevResult,
+                    mult: `${prevResult} * ${a} = ${multValue}`,
+                    after: `${multValue} % ${m} = ${result}`,
+                    panel: `Iteration ${i}: Multiply current result by a and take modulo m<br><code>result = (${prevResult} * ${a}) % ${m}</code>`,
+                    statusText: `Iteration ${i} of ${b}`,
+                    log: `i = ${i}\n  (${prevResult} * ${a}) = ${multValue}\n  ${multValue} % ${m} = ${result}`,
+                    logColor: 'var(--accent-orange)'
+                });
+
+                // Show multiplication step
+                steps.push({
+                    type: 'multiply',
+                    i: i,
+                    result: multValue,
+                    mult: `${prevResult} * ${a}`,
+                    after: multValue,
+                    panel: `<span style="color:var(--accent-blue)">Multiplication:</span> ${prevResult} × ${a} = ${multValue}`,
+                    statusText: `Multiplying...`,
+                    log: `  Multiplication step: ${prevResult} * ${a} = ${multValue}`,
+                    logColor: 'var(--accent-blue)'
+                });
+
+                // Show modulo step
+                steps.push({
+                    type: 'modulo',
+                    i: i,
+                    result: result,
+                    mult: multValue,
+                    after: result,
+                    panel: `<span style="color:var(--accent-green)">After modulo:</span> ${multValue} % ${m} = <b>${result}</b><br>Current result updated`,
+                    statusText: `Applying modulo ${m}`,
+                    log: `  Modulo: ${multValue} % ${m} = ${result}`,
+                    logColor: 'var(--accent-green)'
+                });
+            }
+
+            // FINAL STEP
+            const isCorrect = (result === (Math.pow(a, b) % m)); // For validation only
+            steps.push({
+                type: 'final',
+                i: b,
+                result: result,
+                mult: '—',
+                after: '—',
+                panel: `Computation complete.<br>Final result = <b>${result}</b><br>${a}<sup>${b}</sup> % ${m} = ${result}`,
+                complete: true,
+                isTrue: true,
+                statusText: `Done. Final result is ${result}`,
+                log: `\nFinal Result: ${result}`,
+                logColor: 'var(--accent-green)',
+                bold: true
+            });
+        }
+
+        function renderStep(idx) {
+            const step = steps[idx];
+            if (!step) return;
+
+            const container = document.getElementById('tiles-container');
+            container.innerHTML = '';
+
+            // Show current result as main tile + iteration info
+            const wrapper = document.createElement('div');
+            wrapper.className = 'tile-unit';
+
+            const tile = document.createElement('div');
+            tile.className = `tile ${step.type === 'final' ? 'winning' : (step.type === 'iteration' ? 'current' : 'result')}`;
+            tile.innerText = step.result;
+            wrapper.appendChild(tile);
+
+            const idxLabel = document.createElement('div');
+            idxLabel.className = 'tile-index';
+            idxLabel.innerText = step.i === 0 ? 'Init' : `i=${step.i}`;
+            wrapper.appendChild(idxLabel);
+
+            container.appendChild(wrapper);
+
+            // Update panels
+            document.getElementById('main-panel').innerHTML = step.panel;
+            document.getElementById('val-i').innerText = step.i;
+            document.getElementById('val-result').innerText = step.result;
+            document.getElementById('val-mult').innerText = step.mult;
+            document.getElementById('val-after').innerText = step.after;
+            document.getElementById('val-target').innerText = `${a}^${b} % ${m}`;
+
+            const resVal = document.getElementById('res-val');
+            resVal.innerText = step.complete ? step.result : '—';
+            
+            if (step.complete) {
+                resVal.className = 'pop';
+            } else {
+                resVal.className = '';
+            }
+
+            document.getElementById('status-text').innerText = step.statusText;
+
+            // Log
+            const logPanel = document.getElementById('log');
+            logPanel.innerHTML = '';
+            for (let k = 0; k <= idx; k++) {
+                if (steps[k].log) {
+                    const line = document.createElement('div');
+                    line.style.marginBottom = '3px';
+                    if (steps[k].logColor) line.style.color = steps[k].logColor;
+                    if (steps[k].bold) line.style.fontWeight = 'bold';
+                    line.innerText = steps[k].log;
+                    logPanel.appendChild(line);
+                }
+            }
+            logPanel.scrollTop = logPanel.scrollHeight;
+        }
+
+        function next() {
+            if (stepIndex < steps.length - 1) {
+                stepIndex++;
+                renderStep(stepIndex);
+            } else pause();
+        }
+
+        function back() {
+            if (stepIndex > 0) {
+                stepIndex--;
+                renderStep(stepIndex);
+            }
+        }
+
+        function reset() {
+            pause();
+            stepIndex = 0;
+            renderStep(0);
+        }
+
+        function togglePlay() {
+            const btn = document.getElementById('play-btn');
+            if (timer) pause();
+            else {
+                btn.innerText = 'Pause';
+                if (stepIndex >= steps.length - 1) stepIndex = 0;
+                timer = setInterval(next, delays[document.getElementById('speed-slider').value]);
+            }
+        }
+
+        function pause() {
+            clearInterval(timer);
+            timer = null;
+            document.getElementById('play-btn').innerText = 'Play';
+        }
+
+        window.onload = init;
+    </script>
+</body>
+</html>

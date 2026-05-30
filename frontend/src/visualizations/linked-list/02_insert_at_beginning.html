@@ -1,0 +1,444 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Insert at Beginning - Visualization</title>
+    <style>
+        :root {
+            --bg-page: #0d1117;
+            --bg-surface: #161b22;
+            --bg-input: #0d1117;
+            --border-main: #30363d;
+            --btn-bg: #21262d;
+            --btn-hover: #2d333b;
+            --text-main: #c9d1d9;
+            --text-dim: #8b949e;
+            --text-log: #58a6ff;
+            --accent-orange: #e3b341;
+            --accent-blue: #388bfd;
+            --accent-green: #3fb950;
+            --accent-red: #f85149;
+            --accent-purple: #a371f7;
+        }
+
+        * { box-sizing: border-box; }
+        body {
+            background-color: var(--bg-page);
+            color: var(--text-main);
+            font-family: system-ui, -apple-system, sans-serif;
+            margin: 0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            min-height: 100vh;
+            padding-bottom: 40px;
+        }
+
+        /* ROW 1: INPUT BAR */
+        .input-bar {
+            width: 100%;
+            background-color: var(--bg-surface);
+            padding: 12px 16px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 8px;
+            border-bottom: 1px solid var(--border-main);
+            flex-wrap: wrap;
+        }
+        label.ui-label { font-family: 'Courier New', monospace; font-size: 13px; color: var(--text-dim); }
+        input[type="text"], input[type="number"] {
+            background: var(--bg-input);
+            border: 1px solid var(--border-main);
+            color: var(--text-main);
+            height: 32px;
+            border-radius: 6px;
+            padding: 0 10px;
+            font-size: 13px;
+        }
+        .head-input { width: 260px; }
+        .value-input { width: 80px; }
+
+        button {
+            height: 32px; border-radius: 6px; padding: 0 14px; background: var(--btn-bg);
+            border: 1px solid var(--border-main); color: var(--text-main); font-size: 13px; cursor: pointer;
+            transition: background 0.2s ease;
+        }
+        button:hover { background: var(--btn-hover); }
+
+        /* ROW 2: LINKED LIST VISUAL */
+        .visual-container { margin-top: 30px; display: flex; flex-direction: column; align-items: center; gap: 20px; width: 100%; }
+        .list-wrapper { 
+            display: flex; 
+            align-items: center; 
+            gap: 8px; 
+            flex-wrap: nowrap; 
+            justify-content: center; 
+            max-width: 900px; 
+            min-height: 90px; 
+            position: relative;
+        }
+        
+        .node-unit { display: flex; align-items: center; gap: 4px; position: relative; }
+        .node {
+            min-width: 56px; height: 56px; display: flex; align-items: center; justify-content: center;
+            border-radius: 8px; font-size: 18px; font-weight: 700; font-family: 'Courier New', monospace;
+            transition: all 0.4s ease; border: 3px solid var(--accent-blue); background: #21262d;
+            color: var(--text-main); position: relative;
+            box-shadow: 0 4px 12px rgba(56, 139, 253, 0.2);
+        }
+        .node.new { border-color: var(--accent-green); transform: scale(1.1); box-shadow: 0 0 20px rgba(63, 185, 80, 0.5); }
+        .node-index { font-size: 11px; color: var(--text-dim); font-family: monospace; margin-top: 4px; }
+        
+        .arrow {
+            font-size: 28px; color: var(--accent-orange); font-weight: bold;
+            transition: all 0.4s ease; min-width: 30px;
+        }
+        .head-pointer {
+            position: absolute; top: -38px; left: 50%; transform: translateX(-50%);
+            font-size: 13px; color: var(--accent-purple); font-family: monospace;
+            display: flex; align-items: center; gap: 4px;
+        }
+        .head-pointer::before { content: "↑ HEAD"; }
+
+        /* Highlight States */
+        .node.search-space { background: #0d2244; border-color: var(--accent-blue); }
+        .node.eliminated { opacity: 0.25; }
+
+        /* ROW 3: PANEL */
+        .action-panel {
+            margin-top: 40px; background: var(--bg-surface); border: 1px solid var(--border-main);
+            border-radius: 6px; padding: 12px 20px; width: 680px; text-align: center; font-family: monospace; min-height: 80px;
+            display: flex; flex-direction: column; justify-content: center; font-size: 15px; line-height: 1.5;
+        }
+
+        /* ROW 4: INFO PANEL */
+        .info-panel { margin-top: 10px; display: flex; gap: 10px; flex-wrap: wrap; justify-content: center; }
+        .info-cell {
+            background: var(--bg-surface); border: 1px solid var(--border-main); border-radius: 6px;
+            padding: 8px 14px; display: flex; flex-direction: column; align-items: center; min-width: 110px; gap: 4px;
+        }
+        .info-label { font-size: 11px; color: var(--text-dim); }
+        .info-value { font-family: monospace; font-size: 15px; font-weight: 700; text-align: center; }
+
+        /* ROW 5: RESULT DISPLAY */
+        .result-display { margin-top: 10px; display: flex; flex-direction: column; align-items: center; }
+        #res-val { font-size: 18px; color: var(--text-dim); font-family: monospace; transition: all 0.3s; font-weight: bold; }
+        .pop { animation: popAnim 400ms ease; color: var(--accent-green) !important; font-size: 24px !important; text-shadow: 0 0 12px var(--accent-green); }
+
+        @keyframes popAnim { 0%{transform:scale(1)} 50%{transform:scale(1.15)} 100%{transform:scale(1)} }
+
+        /* ROW 6: STATUS BAR */
+        .status-bar { margin-top: 8px; font-size: 13px; color: var(--text-dim); height: 1.2em; text-align: center; width: 600px;}
+
+        /* ROW 7: CONTROLS */
+        .controls { margin-top: 24px; display: flex; align-items: center; gap: 8px; }
+        input[type="range"] { accent-color: var(--accent-blue); width: 100px; cursor: pointer; }
+
+        /* ROW 8: LEGEND */
+        .legend { margin-top: 12px; display: flex; gap: 16px; flex-wrap: wrap; justify-content: center; max-width: 800px; }
+        .legend-item { display: flex; align-items: center; font-size: 12px; color: var(--text-dim); }
+        .dot { width: 12px; height: 12px; border-radius: 4px; margin-right: 6px; display: inline-block; }
+
+        /* ROW 9: LOG PANEL */
+        .log-panel {
+            margin-top: 12px; background: var(--bg-page); border: 1px solid var(--border-main);
+            border-radius: 6px; padding: 12px 16px; width: 700px; max-width: 90%; height: 130px;
+            overflow-y: auto; font-family: 'Courier New', monospace; font-size: 13px;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="input-bar">
+        <label class="ui-label">head =</label>
+        <input type="text" id="head-input" class="head-input" placeholder="1, 2, 3">
+        <label class="ui-label">value =</label>
+        <input type="number" id="value-input" class="value-input" placeholder="0">
+        <button onclick="loadCustom()">Load</button>
+        <button onclick="loadExample([], 5)">Ex 1: Empty</button>
+        <button onclick="loadExample([1, 2, 3], 0)">Ex 2: 1→2→3</button>
+    </div>
+
+    <div class="visual-container">
+        <div class="ui-label">Singly Linked List:</div>
+        <div class="list-wrapper" id="list-container"></div>
+    </div>
+
+    <div class="action-panel" id="main-panel">—</div>
+
+    <div class="info-panel">
+        <div class="info-cell">
+            <span class="info-label">new_node</span>
+            <span class="info-value" id="val-new" style="color: var(--accent-green);">—</span>
+        </div>
+        <div class="info-cell">
+            <span class="info-label">old_head</span>
+            <span class="info-value" id="val-oldhead" style="color: var(--accent-blue);">—</span>
+        </div>
+        <div class="info-cell">
+            <span class="info-label">new_head</span>
+            <span class="info-value" id="val-newhead" style="color: var(--accent-purple);">—</span>
+        </div>
+        <div class="info-cell">
+            <span class="info-label">value</span>
+            <span class="info-value" id="val-value" style="color: var(--text-main);">—</span>
+        </div>
+    </div>
+
+    <div class="result-display">
+        <span class="ui-label" style="margin-bottom: 4px;">new head value =</span>
+        <span id="res-val">—</span>
+    </div>
+
+    <div class="status-bar" id="status-text"></div>
+
+    <div class="controls">
+        <button onclick="reset()">↺ Reset</button>
+        <button onclick="back()">← Back</button>
+        <button onclick="togglePlay()" id="play-btn">Play</button>
+        <button onclick="next()">Next →</button>
+        <div class="controls" style="margin-top:0">
+            <span class="ui-label" style="margin-right:4px; font-size:11px">Speed</span>
+            <input type="range" id="speed-slider" min="0" max="2" value="1">
+        </div>
+    </div>
+
+    <div class="legend">
+        <div class="legend-item"><span class="dot" style="background:#21262d; border:3px solid var(--accent-green)"></span> New Node</div>
+        <div class="legend-item"><span class="dot" style="background:#21262d; border:3px solid var(--accent-blue)"></span> Existing Node</div>
+        <div class="legend-item"><span class="dot" style="background:#0d2244; border:3px solid var(--accent-blue)"></span> Current List</div>
+        <div class="legend-item"><span class="dot" style="background:var(--accent-orange); width:20px; border-radius:0"></span> Next Pointer</div>
+    </div>
+
+    <div class="log-panel" id="log"></div>
+
+    <script>
+        let currentList = [];
+        let insertValue = 0;
+        let steps = [];
+        let stepIndex = 0;
+        let timer = null;
+        const delays = [1600, 800, 400];
+
+        function init() { loadExample([1, 2, 3], 0); }
+
+        function loadExample(list, val) {
+            currentList = [...list];
+            insertValue = parseInt(val);
+            document.getElementById('head-input').value = currentList.length ? currentList.join(', ') : 'None';
+            document.getElementById('value-input').value = insertValue;
+            generateSteps();
+            reset();
+        }
+
+        function loadCustom() {
+            const headStr = document.getElementById('head-input').value.trim();
+            const valStr = document.getElementById('value-input').value.trim();
+            
+            if (valStr === '') {
+                alert("Please enter a value to insert.");
+                return;
+            }
+            
+            const parsedValue = parseInt(valStr);
+            let parsedList = [];
+            
+            if (headStr.toLowerCase() !== 'none' && headStr !== '') {
+                parsedList = headStr.split(',').map(x => parseInt(x.trim())).filter(x => !isNaN(x));
+            }
+            
+            loadExample(parsedList.slice(0, 8), parsedValue); // limit display size
+        }
+
+        function generateSteps() {
+            steps = [];
+            
+            // STEP 0: INIT
+            steps.push({
+                type: 'init',
+                list: [...currentList],
+                newNode: null,
+                oldHead: currentList.length ? currentList[0] : null,
+                panel: `Initial state:<br><code>head → ${currentList.length ? currentList.join(' → ') : 'None'}</code><br>Inserting value <b>${insertValue}</b> at beginning (O(1) operation).`,
+                statusText: `Current list ready. Click Play to start insertion.`,
+                log: `head = [${currentList.join(', ')}] | value = ${insertValue}\nStarting Insert at Beginning (Direct Head Update)`,
+                logColor: 'var(--text-dim)'
+            });
+
+            // STEP 1: CREATE NEW NODE
+            steps.push({
+                type: 'create',
+                list: [...currentList],
+                newNode: insertValue,
+                oldHead: currentList.length ? currentList[0] : null,
+                panel: `1. Create <code>new_node</code> with value <b>${insertValue}</b>.<br><code>new_node.next = None</code> (temporary).`,
+                statusText: `Creating new node with value ${insertValue}...`,
+                log: `new_node = Node(${insertValue})\nnew_node.next = None`,
+                logColor: 'var(--accent-green)'
+            });
+
+            // STEP 2: LINK NEW NODE TO OLD HEAD
+            steps.push({
+                type: 'link',
+                list: [...currentList],
+                newNode: insertValue,
+                oldHead: currentList.length ? currentList[0] : null,
+                panel: `2. Set <code>new_node.next = head</code><br>Now new node points to the old first node.`,
+                statusText: `Linking new node to current head...`,
+                log: `new_node.next = old_head (${currentList.length ? currentList[0] : 'None'})`,
+                logColor: 'var(--accent-orange)'
+            });
+
+            // STEP 3: UPDATE HEAD
+            steps.push({
+                type: 'update',
+                list: [insertValue, ...currentList],
+                newNode: insertValue,
+                oldHead: currentList.length ? currentList[0] : null,
+                panel: `<span style="color:var(--accent-green)">3. Update <code>head = new_node</code></span><br>The new node is now the first node of the list.`,
+                statusText: `Updating head pointer to new node...`,
+                log: `head = new_node (${insertValue})\nInsertion complete in O(1) time!`,
+                logColor: 'var(--accent-green)'
+            });
+
+            // STEP 4: FINAL
+            steps.push({
+                type: 'final',
+                list: [insertValue, ...currentList],
+                newNode: insertValue,
+                oldHead: currentList.length ? currentList[0] : null,
+                panel: `Binary operation complete.<br>New list: <code>head → ${insertValue} → ${currentList.join(' → ')}</code>`,
+                statusText: `Done. New head value = ${insertValue}`,
+                log: `Final list: ${insertValue} → ${currentList.length ? currentList.join(' → ') : 'None'}\n✓ Insertion successful`,
+                logColor: 'var(--accent-green)',
+                complete: true,
+                finalStr: insertValue.toString()
+            });
+        }
+
+        function renderStep(idx) {
+            const step = steps[idx];
+            if (!step) return;
+
+            const container = document.getElementById('list-container');
+            container.innerHTML = '';
+
+            // Render new_node if it exists and is separate
+            if (step.newNode !== null && (step.type === 'create' || step.type === 'link')) {
+                const newWrapper = document.createElement('div');
+                newWrapper.className = 'node-unit';
+                const newNodeEl = document.createElement('div');
+                newNodeEl.className = `node new`;
+                newNodeEl.innerHTML = `${step.newNode}<br><span style="font-size:10px; color:var(--accent-green)">new</span>`;
+                newWrapper.appendChild(newNodeEl);
+                container.appendChild(newWrapper);
+
+                // Arrow to old head
+                if (step.type === 'link' || step.type === 'update') {
+                    const arrow = document.createElement('div');
+                    arrow.className = 'arrow';
+                    arrow.innerText = '→';
+                    container.appendChild(arrow);
+                }
+            }
+
+            // Render current list nodes
+            step.list.forEach((val, i) => {
+                const wrapper = document.createElement('div');
+                wrapper.className = 'node-unit';
+                
+                const nodeEl = document.createElement('div');
+                nodeEl.className = `node ${i === 0 && step.type === 'update' ? 'new' : ''}`;
+                nodeEl.innerText = val;
+                wrapper.appendChild(nodeEl);
+                
+                // Add arrow unless last node
+                if (i < step.list.length - 1) {
+                    const arrow = document.createElement('div');
+                    arrow.className = 'arrow';
+                    arrow.innerText = '→';
+                    wrapper.appendChild(arrow);
+                }
+                
+                container.appendChild(wrapper);
+            });
+
+            // Head pointer (always on first node in final view)
+            if (step.type === 'update' || step.type === 'final') {
+                const headDiv = document.createElement('div');
+                headDiv.className = 'head-pointer';
+                headDiv.style.left = '12%';
+                container.prepend(headDiv);
+            }
+
+            document.getElementById('main-panel').innerHTML = step.panel;
+            document.getElementById('val-new').innerText = step.newNode !== null ? step.newNode : '—';
+            document.getElementById('val-oldhead').innerText = step.oldHead !== null ? step.oldHead : 'None';
+            document.getElementById('val-newhead').innerText = step.type === 'update' || step.type === 'final' ? insertValue : '—';
+            document.getElementById('val-value').innerText = insertValue;
+
+            const resVal = document.getElementById('res-val');
+            resVal.innerText = step.complete ? step.finalStr : '—';
+            if (step.complete) resVal.className = 'pop';
+            else resVal.className = '';
+
+            document.getElementById('status-text').innerText = step.statusText;
+
+            // Log panel
+            const logPanel = document.getElementById('log');
+            logPanel.innerHTML = '';
+            for (let k = 0; k <= idx; k++) {
+                if (steps[k].log) {
+                    const line = document.createElement('div');
+                    line.style.marginBottom = '3px';
+                    line.style.whiteSpace = 'pre-wrap';
+                    if (steps[k].logColor) line.style.color = steps[k].logColor;
+                    line.innerText = steps[k].log;
+                    logPanel.appendChild(line);
+                }
+            }
+            logPanel.scrollTop = logPanel.scrollHeight;
+        }
+
+        function next() {
+            if (stepIndex < steps.length - 1) {
+                stepIndex++;
+                renderStep(stepIndex);
+            } else pause();
+        }
+
+        function back() {
+            if (stepIndex > 0) {
+                stepIndex--;
+                renderStep(stepIndex);
+            }
+        }
+
+        function reset() {
+            pause();
+            stepIndex = 0;
+            renderStep(0);
+        }
+
+        function togglePlay() {
+            const btn = document.getElementById('play-btn');
+            if (timer) pause();
+            else {
+                btn.innerText = 'Pause';
+                if (stepIndex >= steps.length - 1) stepIndex = 0;
+                timer = setInterval(next, delays[document.getElementById('speed-slider').value]);
+            }
+        }
+
+        function pause() {
+            clearInterval(timer);
+            timer = null;
+            document.getElementById('play-btn').innerText = 'Play';
+        }
+
+        window.onload = init;
+    </script>
+</body>
+</html>

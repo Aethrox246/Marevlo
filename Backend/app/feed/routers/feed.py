@@ -30,8 +30,14 @@ def list_feed(
     posts, total, liked_set = feed_service.list_posts(
         db, current_user_id=user.id, sort=sort, page=page, limit=limit
     )
+    url_cache: dict[str, str | None] = {}
     items = [
-        feed_service.to_out(p, liked_by_me=p.id in liked_set) for p in posts
+        feed_service.to_out(
+            p,
+            liked_by_me=p.id in liked_set,
+            url_cache=url_cache,
+        )
+        for p in posts
     ]
     return PostListOut(
         posts=items,

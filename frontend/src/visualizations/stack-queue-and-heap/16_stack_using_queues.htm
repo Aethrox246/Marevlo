@@ -1,0 +1,488 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Stack using Two Queues - Visualization</title>
+    <style>
+        :root {
+            --bg-page: #0d1117;
+            --bg-surface: #161b22;
+            --bg-input: #0d1117;
+            --border-main: #30363d;
+            --btn-bg: #21262d;
+            --btn-hover: #2d333b;
+            --text-main: #c9d1d9;
+            --text-dim: #8b949e;
+            --accent-orange: #e3b341;
+            --accent-blue: #388bfd;
+            --accent-green: #3fb950;
+            --accent-red: #f85149;
+            --accent-purple: #a371f7;
+        }
+
+        * { box-sizing: border-box; }
+        body {
+            background-color: var(--bg-page);
+            color: var(--text-main);
+            font-family: system-ui, -apple-system, sans-serif;
+            margin: 0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            min-height: 100vh;
+            padding-bottom: 40px;
+        }
+
+        .input-bar {
+            width: 100%;
+            background-color: var(--bg-surface);
+            padding: 12px 16px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 8px;
+            border-bottom: 1px solid var(--border-main);
+            flex-wrap: wrap;
+        }
+        label.ui-label { font-family: 'Courier New', monospace; font-size: 13px; color: var(--text-dim); }
+        input[type="text"] {
+            background: var(--bg-input);
+            border: 1px solid var(--border-main);
+            color: var(--text-main);
+            height: 32px;
+            border-radius: 6px;
+            padding: 0 10px;
+            width: 280px;
+            font-size: 13px;
+        }
+
+        button {
+            height: 32px; border-radius: 6px; padding: 0 14px; background: var(--btn-bg);
+            border: 1px solid var(--border-main); color: var(--text-main); font-size: 13px; cursor: pointer;
+            transition: background 0.2s ease;
+        }
+        button:hover { background: var(--btn-hover); }
+
+        .visual-container { margin-top: 30px; display: flex; flex-direction: column; align-items: center; gap: 25px; width: 100%; }
+        .queue-container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 8px;
+            width: 100%;
+            max-width: 900px;
+        }
+        .queue-label {
+            font-family: 'Courier New', monospace;
+            color: var(--accent-blue);
+            font-size: 14px;
+            font-weight: bold;
+        }
+        .tiles-wrapper {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+            justify-content: flex-start;
+            min-height: 70px;
+            padding: 12px;
+            background: #0d1117;
+            border: 2px solid var(--border-main);
+            border-radius: 8px;
+            width: 100%;
+            position: relative;
+        }
+
+        .tile {
+            min-width: 48px; height: 48px; display: flex; align-items: center; justify-content: center;
+            border-radius: 6px; font-size: 18px; font-weight: 600; font-family: 'Courier New', monospace;
+            transition: all 0.3s ease; border: 2px solid var(--border-main); background: #21262d;
+            color: var(--text-main);
+            position: relative;
+        }
+        .tile.front { border-color: var(--accent-green); box-shadow: 0 0 0 3px rgba(63, 185, 80, 0.3); }
+        .tile.moving { background: #2a1600; border-color: var(--accent-orange); color: var(--accent-orange); transform: scale(1.15); }
+
+        .info-panel { margin-top: 15px; display: flex; gap: 12px; flex-wrap: wrap; justify-content: center; }
+        .info-cell {
+            background: var(--bg-surface); border: 1px solid var(--border-main); border-radius: 6px;
+            padding: 10px 16px; display: flex; flex-direction: column; align-items: center; min-width: 130px;
+        }
+        .info-label { font-size: 11px; color: var(--text-dim); }
+        .info-value { font-family: monospace; font-size: 18px; font-weight: 700; }
+
+        .action-panel {
+            margin-top: 20px; background: var(--bg-surface); border: 1px solid var(--border-main);
+            border-radius: 6px; padding: 16px 24px; width: 720px; min-height: 110px;
+            font-family: monospace; font-size: 15px; line-height: 1.6;
+        }
+
+        .result-display { margin-top: 10px; font-size: 22px; font-weight: bold; font-family: monospace; }
+        .status-bar { margin-top: 8px; font-size: 13px; color: var(--text-dim); min-height: 1.4em; }
+
+        .controls { margin-top: 20px; display: flex; align-items: center; gap: 10px; flex-wrap: wrap; justify-content: center; }
+        input[type="range"] { accent-color: var(--accent-blue); width: 120px; }
+
+        .legend { margin-top: 15px; display: flex; gap: 20px; flex-wrap: wrap; justify-content: center; font-size: 13px; }
+        .legend-item { display: flex; align-items: center; gap: 6px; }
+
+        .log-panel {
+            margin-top: 20px; background: var(--bg-page); border: 1px solid var(--border-main);
+            border-radius: 6px; padding: 12px 16px; width: 720px; max-width: 95%; height: 160px;
+            overflow-y: auto; font-family: 'Courier New', monospace; font-size: 13px; line-height: 1.4;
+        }
+
+        .q1-label { color: #58a6ff; }
+        .q2-label { color: #f0883e; }
+    </style>
+</head>
+<body>
+
+    <div class="input-bar">
+        <label class="ui-label">Operations:</label>
+        <input type="text" id="ops-input" placeholder="Push 1, Push 2, Push 3, Pop, Top, Pop" value="Push 1, Push 2, Push 3, Pop, Top, Pop">
+        <button onclick="loadCustom()">Load Sequence</button>
+        <button onclick="loadExample(0)">Ex 1</button>
+        <button onclick="loadExample(1)">Ex 2</button>
+    </div>
+
+    <div class="visual-container">
+        <div class="queue-container">
+            <div class="queue-label q1-label">Queue 1 (Main - Stack Top at Front)</div>
+            <div class="tiles-wrapper" id="q1-tiles"></div>
+        </div>
+        <div class="queue-container">
+            <div class="queue-label q2-label">Queue 2 (Temporary)</div>
+            <div class="tiles-wrapper" id="q2-tiles"></div>
+        </div>
+    </div>
+
+    <div class="action-panel" id="main-panel">—</div>
+
+    <div class="info-panel">
+        <div class="info-cell">
+            <span class="info-label">Operation</span>
+            <span class="info-value" id="val-op" style="color:var(--accent-orange);">—</span>
+        </div>
+        <div class="info-cell">
+            <span class="info-label">Stack Top</span>
+            <span class="info-value" id="val-top" style="color:var(--accent-green);">—</span>
+        </div>
+        <div class="info-cell">
+            <span class="info-label">q1 Size</span>
+            <span class="info-value" id="val-q1" style="color:#58a6ff;">0</span>
+        </div>
+        <div class="info-cell">
+            <span class="info-label">q2 Size</span>
+            <span class="info-value" id="val-q2" style="color:#f0883e;">0</span>
+        </div>
+    </div>
+
+    <div class="result-display">
+        <span id="res-val" style="color:var(--text-dim);">Ready</span>
+    </div>
+
+    <div class="status-bar" id="status-text"></div>
+
+    <div class="controls">
+        <button onclick="reset()">↺ Reset</button>
+        <button onclick="back()">← Back</button>
+        <button onclick="togglePlay()" id="play-btn">Play</button>
+        <button onclick="next()">Next →</button>
+        <div>
+            <span class="ui-label" style="margin-right:4px; font-size:11px">Speed</span>
+            <input type="range" id="speed-slider" min="0" max="2" value="1">
+        </div>
+    </div>
+
+    <div class="legend">
+        <div class="legend-item"><span style="display:inline-block;width:14px;height:14px;background:#21262d;border:2px solid #58a6ff;border-radius:4px;"></span> Queue 1</div>
+        <div class="legend-item"><span style="display:inline-block;width:14px;height:14px;background:#21262d;border:2px solid #f0883e;border-radius:4px;"></span> Queue 2</div>
+        <div class="legend-item"><span style="display:inline-block;width:14px;height:14px;background:#2a1600;border:2px solid #e3b341;border-radius:4px;"></span> Moving</div>
+        <div class="legend-item"><span style="display:inline-block;width:14px;height:14px;background:#0f2a1a;border:2px solid #3fb950;border-radius:4px;"></span> Front / Top</div>
+    </div>
+
+    <div class="log-panel" id="log"></div>
+
+    <script>
+        let q1 = [];
+        let q2 = [];
+        let steps = [];
+        let stepIndex = 0;
+        let timer = null;
+        const delays = [1600, 800, 400];
+        let currentSequence = [];
+
+        const examples = [
+            ["Push 1", "Push 2", "Push 3", "Pop", "Top", "Pop"],
+            ["Push 5", "Pop", "Push 6", "Push 7", "Pop", "Pop"]
+        ];
+
+        function parseSequence(str) {
+            return str.split(',').map(s => s.trim()).filter(Boolean);
+        }
+
+        function generateSteps(sequence) {
+            steps = [];
+            q1 = [];
+            q2 = [];
+
+            steps.push({
+                type: 'init',
+                q1: [...q1],
+                q2: [...q2],
+                panel: `<b>Stack using Two Queues (Push Costly)</b><br>q1 = [], q2 = []<br>Push operation moves all elements to maintain LIFO order.`,
+                statusText: `Starting simulation...`,
+                log: `Initialize: q1 = [], q2 = []`,
+                logColor: 'var(--text-dim)'
+            });
+
+            sequence.forEach(op => {
+                const parts = op.split(' ');
+                const cmd = parts[0].toLowerCase();
+                const val = parts[1] ? parseInt(parts[1]) : null;
+
+                if (cmd === 'push' && val !== null) {
+                    // Push step breakdown
+                    steps.push({
+                        type: 'push-start',
+                        op: `Push ${val}`,
+                        q1: [...q1],
+                        q2: [...q2],
+                        panel: `Push <b>${val}</b> → Move all from q1 to q2`,
+                        statusText: `Moving elements to q2...`,
+                        log: `Push ${val}: Start transfer q1 → q2`,
+                        logColor: 'var(--accent-orange)'
+                    });
+
+                    // Transfer q1 to q2
+                    while (q1.length > 0) {
+                        const moved = q1.shift();
+                        q2.push(moved);
+                        steps.push({
+                            type: 'transfer',
+                            op: `Push ${val}`,
+                            q1: [...q1],
+                            q2: [...q2],
+                            panel: `Transfer <b>${moved}</b> from q1 to q2`,
+                            statusText: `Transferred ${moved}`,
+                            log: `  ← ${moved}`,
+                            logColor: 'var(--accent-orange)'
+                        });
+                    }
+
+                    // Enqueue new element to q1
+                    q1.push(val);
+                    steps.push({
+                        type: 'enqueue',
+                        op: `Push ${val}`,
+                        q1: [...q1],
+                        q2: [...q2],
+                        panel: `Enqueue <b>${val}</b> to q1`,
+                        statusText: `Added ${val} to q1`,
+                        log: `  Enqueue ${val} to q1`,
+                        logColor: 'var(--accent-blue)'
+                    });
+
+                    // Transfer back q2 to q1
+                    while (q2.length > 0) {
+                        const moved = q2.shift();
+                        q1.push(moved);
+                        steps.push({
+                            type: 'transfer-back',
+                            op: `Push ${val}`,
+                            q1: [...q1],
+                            q2: [...q2],
+                            panel: `Transfer <b>${moved}</b> back to q1`,
+                            statusText: `Restoring order`,
+                            log: `  → ${moved}`,
+                            logColor: 'var(--accent-blue)'
+                        });
+                    }
+
+                    steps.push({
+                        type: 'push-complete',
+                        op: `Push ${val}`,
+                        q1: [...q1],
+                        q2: [...q2],
+                        panel: `Push <b>${val}</b> complete.<br>q1 front is now the new top.`,
+                        statusText: `Push done`,
+                        log: `Push ${val} completed. Top = ${val}`,
+                        logColor: 'var(--accent-green)'
+                    });
+                } 
+                else if (cmd === 'pop') {
+                    if (q1.length === 0) {
+                        steps.push({
+                            type: 'pop-empty',
+                            op: 'Pop',
+                            q1: [...q1],
+                            q2: [...q2],
+                            panel: `<span style="color:var(--accent-red)">Stack is empty!</span>`,
+                            statusText: `Pop failed`,
+                            log: `Pop: Stack empty`,
+                            logColor: 'var(--accent-red)'
+                        });
+                    } else {
+                        const popped = q1.shift();
+                        steps.push({
+                            type: 'pop',
+                            op: 'Pop',
+                            q1: [...q1],
+                            q2: [...q2],
+                            panel: `Pop returned <b>${popped}</b>`,
+                            statusText: `Popped ${popped}`,
+                            log: `Pop → ${popped}`,
+                            logColor: 'var(--accent-green)'
+                        });
+                    }
+                } 
+                else if (cmd === 'top') {
+                    const topVal = q1.length > 0 ? q1[0] : '—';
+                    steps.push({
+                        type: 'top',
+                        op: 'Top',
+                        q1: [...q1],
+                        q2: [...q2],
+                        panel: `Top element is <b>${topVal}</b>`,
+                        statusText: `Peeked top`,
+                        log: `Top → ${topVal}`,
+                        logColor: 'var(--accent-green)'
+                    });
+                }
+            });
+
+            // Final step
+            steps.push({
+                type: 'final',
+                q1: [...q1],
+                q2: [...q2],
+                panel: `<b>Simulation Complete</b><br>Final Stack (q1 front = top): [${q1.join(', ')}]`,
+                statusText: `Done`,
+                log: `Final state - q1: [${q1.join(', ')}]`,
+                logColor: 'var(--accent-green)',
+                bold: true
+            });
+        }
+
+        function renderTiles(containerId, arr, highlightFront = true) {
+            const container = document.getElementById(containerId);
+            container.innerHTML = '';
+            
+            if (arr.length === 0) {
+                const empty = document.createElement('div');
+                empty.style.color = 'var(--text-dim)';
+                empty.style.fontStyle = 'italic';
+                empty.style.padding = '10px';
+                empty.textContent = 'empty';
+                container.appendChild(empty);
+                return;
+            }
+
+            arr.forEach((val, i) => {
+                const tile = document.createElement('div');
+                tile.className = 'tile';
+                tile.textContent = val;
+                if (highlightFront && i === 0) tile.classList.add('front');
+                container.appendChild(tile);
+            });
+        }
+
+        function renderStep(idx) {
+            const step = steps[idx];
+            if (!step) return;
+
+            renderTiles('q1-tiles', step.q1);
+            renderTiles('q2-tiles', step.q2);
+
+            document.getElementById('main-panel').innerHTML = step.panel || '—';
+            document.getElementById('val-op').innerText = step.op || '—';
+            document.getElementById('val-top').innerText = step.q1 && step.q1.length > 0 ? step.q1[0] : '—';
+            document.getElementById('val-q1').innerText = step.q1 ? step.q1.length : 0;
+            document.getElementById('val-q2').innerText = step.q2 ? step.q2.length : 0;
+
+            document.getElementById('status-text').innerText = step.statusText || '';
+
+            // Log
+            const logPanel = document.getElementById('log');
+            logPanel.innerHTML = '';
+            for (let k = 0; k <= idx; k++) {
+                const s = steps[k];
+                if (s.log) {
+                    const line = document.createElement('div');
+                    line.style.marginBottom = '3px';
+                    line.style.whiteSpace = 'pre-wrap';
+                    if (s.logColor) line.style.color = s.logColor;
+                    if (s.bold) line.style.fontWeight = 'bold';
+                    line.innerText = s.log;
+                    logPanel.appendChild(line);
+                }
+            }
+            logPanel.scrollTop = logPanel.scrollHeight;
+        }
+
+        function next() {
+            if (stepIndex < steps.length - 1) {
+                stepIndex++;
+                renderStep(stepIndex);
+            } else {
+                pause();
+            }
+        }
+
+        function back() {
+            if (stepIndex > 0) {
+                stepIndex--;
+                renderStep(stepIndex);
+            }
+        }
+
+        function reset() {
+            pause();
+            stepIndex = 0;
+            renderStep(0);
+        }
+
+        function togglePlay() {
+            const btn = document.getElementById('play-btn');
+            if (timer) {
+                pause();
+            } else {
+                btn.innerText = 'Pause';
+                if (stepIndex >= steps.length - 1) stepIndex = 0;
+                timer = setInterval(next, delays[document.getElementById('speed-slider').value]);
+            }
+        }
+
+        function pause() {
+            clearInterval(timer);
+            timer = null;
+            document.getElementById('play-btn').innerText = 'Play';
+        }
+
+        function loadCustom() {
+            const input = document.getElementById('ops-input').value;
+            currentSequence = parseSequence(input);
+            if (currentSequence.length === 0) {
+                alert("Enter valid operations like: Push 1, Push 2, Pop");
+                return;
+            }
+            generateSteps(currentSequence);
+            reset();
+        }
+
+        function loadExample(exIdx) {
+            currentSequence = examples[exIdx];
+            document.getElementById('ops-input').value = currentSequence.join(', ');
+            generateSteps(currentSequence);
+            reset();
+        }
+
+        function init() {
+            loadExample(0);
+        }
+
+        window.onload = init;
+    </script>
+</body>
+</html>

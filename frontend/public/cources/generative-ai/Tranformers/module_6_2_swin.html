@@ -1,0 +1,1431 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Module 6.2 — Swin Transformer · Marevlo Transformer Track</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;500&family=Syne:wght@500;700;800&family=Inter+Tight:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg-0: #05070d;
+    --bg-1: #080b14;
+    --bg-2: #0d1220;
+    --bg-card: #0a0f1c;
+    --bg-code: #06090f;
+    --line: rgba(120, 200, 255, 0.18);
+    --line-strong: rgba(120, 200, 255, 0.55);
+    --glow: #5fd4ff;
+    --glow-soft: #7af0ff;
+    --accent: #ff4d8a;
+    --accent-2: #b48cff;
+    --accent-yellow: #f0c674;
+    --green: #7fc28a;
+    --red: #e26a6a;
+    --text: #e6f1ff;
+    --muted: #7a8aa3;
+    --text-dim: #aebbd1;
+    --text-faint: #6a7a93;
+    --mono: 'JetBrains Mono', ui-monospace, monospace;
+    --display: 'Syne', sans-serif;
+    --body: 'Inter Tight', sans-serif;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  html { scroll-behavior: smooth; }
+  html, body {
+    background: var(--bg-0);
+    color: var(--text);
+    font-family: var(--body);
+    font-size: 16px;
+    line-height: 1.7;
+    overflow-x: hidden;
+    min-height: 100vh;
+  }
+
+  .circuit-bg {
+    position: fixed;
+    inset: 0;
+    z-index: 0;
+    pointer-events: none;
+    background:
+      radial-gradient(ellipse 80% 60% at 20% 10%, rgba(95, 212, 255, 0.08), transparent 60%),
+      radial-gradient(ellipse 70% 50% at 85% 90%, rgba(180, 140, 255, 0.07), transparent 60%),
+      radial-gradient(ellipse 60% 40% at 50% 50%, rgba(255, 77, 138, 0.04), transparent 70%),
+      var(--bg-0);
+  }
+  .circuit-bg svg {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    opacity: 0.95;
+  }
+  .circuit-bg::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background-image:
+      linear-gradient(rgba(120,200,255,0.03) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(120,200,255,0.03) 1px, transparent 1px);
+    background-size: 60px 60px;
+    mask-image: radial-gradient(ellipse at center, black 30%, transparent 80%);
+    -webkit-mask-image: radial-gradient(ellipse at center, black 30%, transparent 80%);
+  }
+
+  .grain {
+    position: fixed;
+    inset: 0;
+    z-index: 1;
+    pointer-events: none;
+    opacity: 0.04;
+    mix-blend-mode: overlay;
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='3'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  }
+
+  .wrap {
+    position: relative;
+    z-index: 2;
+    max-width: 1280px;
+    margin: 0 auto;
+    padding: 48px 56px 96px;
+  }
+
+  .topbar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-family: var(--mono);
+    font-size: 11px;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    color: var(--muted);
+    padding-bottom: 24px;
+    border-bottom: 1px solid var(--line);
+  }
+  .topbar .left { display: flex; gap: 28px; align-items: center; }
+  .topbar .dot {
+    width: 6px; height: 6px; border-radius: 50%;
+    background: var(--glow);
+    box-shadow: 0 0 10px var(--glow), 0 0 20px var(--glow);
+    animation: pulse 2s ease-in-out infinite;
+  }
+  @keyframes pulse {
+    0%, 100% { opacity: 1; transform: scale(1); }
+    50% { opacity: 0.5; transform: scale(0.85); }
+  }
+
+  .hero {
+    margin-top: 72px;
+    display: grid;
+    grid-template-columns: 1.3fr 1fr;
+    gap: 80px;
+    align-items: end;
+  }
+  .module-tag {
+    font-family: var(--mono);
+    font-size: 12px;
+    letter-spacing: 0.3em;
+    text-transform: uppercase;
+    color: var(--glow);
+    margin-bottom: 24px;
+    display: inline-flex;
+    align-items: center;
+    gap: 14px;
+  }
+  .module-tag::before {
+    content: '';
+    width: 28px; height: 1px;
+    background: var(--glow);
+    box-shadow: 0 0 6px var(--glow);
+  }
+  h1.title {
+    font-family: var(--display);
+    font-weight: 800;
+    font-size: clamp(44px, 6.5vw, 84px);
+    line-height: 0.95;
+    letter-spacing: -0.03em;
+    color: var(--text);
+  }
+  h1.title .accent {
+    background: linear-gradient(120deg, var(--glow), var(--accent-2) 60%, var(--accent));
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+    font-style: italic;
+    font-weight: 700;
+  }
+  h1.title .line2 { display: block; opacity: 0.92; }
+  .lede {
+    font-size: 16.5px;
+    line-height: 1.65;
+    color: var(--text-dim);
+    max-width: 460px;
+    border-left: 1px solid var(--line);
+    padding-left: 24px;
+  }
+  .lede strong { color: var(--text); font-weight: 500; }
+  .lede em { color: var(--glow-soft); font-style: italic; }
+
+  .meta-strip {
+    margin-top: 64px;
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 1px;
+    background: var(--line);
+    border-top: 1px solid var(--line);
+    border-bottom: 1px solid var(--line);
+  }
+  .meta-cell { background: var(--bg-0); padding: 22px 24px; }
+  .meta-cell .label {
+    font-family: var(--mono);
+    font-size: 10px;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin-bottom: 10px;
+  }
+  .meta-cell .value {
+    font-family: var(--display);
+    font-size: 20px;
+    font-weight: 700;
+    color: var(--text);
+    letter-spacing: -0.01em;
+  }
+  .meta-cell .value span.unit {
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--glow);
+    margin-left: 6px;
+    font-weight: 400;
+  }
+
+  .body-grid {
+    margin-top: 88px;
+    display: grid;
+    grid-template-columns: 240px 1fr;
+    gap: 64px;
+  }
+  .sidebar {
+    font-family: var(--mono);
+    font-size: 11px;
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    color: var(--muted);
+    position: sticky;
+    top: 40px;
+    align-self: start;
+  }
+  .sidebar h4 { color: var(--glow); font-weight: 400; margin-bottom: 18px; }
+  .sidebar ul { list-style: none; }
+  .sidebar li {
+    padding: 10px 0;
+    border-top: 1px solid var(--line);
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    cursor: pointer;
+    transition: color 0.2s ease;
+  }
+  .sidebar li:last-child { border-bottom: 1px solid var(--line); }
+  .sidebar li .num { color: var(--glow); }
+  .sidebar li:hover { color: var(--text); }
+  .sidebar li.active { color: var(--text); }
+
+  .content section { margin-bottom: 80px; }
+  .content h2 {
+    font-family: var(--display);
+    font-weight: 700;
+    font-size: 32px;
+    letter-spacing: -0.015em;
+    line-height: 1.15;
+    margin-bottom: 24px;
+    padding-top: 20px;
+    position: relative;
+    color: var(--text);
+  }
+  .content h2::before {
+    content: attr(data-num);
+    position: absolute;
+    top: -2px;
+    left: 0;
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--glow);
+    letter-spacing: 0.2em;
+    font-weight: 400;
+  }
+  .content h3 {
+    font-family: var(--display);
+    font-size: 22px;
+    font-weight: 700;
+    letter-spacing: -0.01em;
+    margin: 40px 0 18px;
+    color: var(--text);
+  }
+  .content h4 {
+    font-family: var(--display);
+    font-size: 17px;
+    font-weight: 700;
+    margin: 28px 0 12px;
+    color: var(--text);
+  }
+  .content p {
+    font-size: 15.5px;
+    line-height: 1.75;
+    color: var(--text-dim);
+    margin-bottom: 18px;
+    max-width: 68ch;
+  }
+  .content p strong { color: var(--glow-soft); font-weight: 600; }
+  .content p em { color: var(--text); font-style: italic; }
+
+  .eq {
+    margin: 28px 0;
+    padding: 28px 32px;
+    background: linear-gradient(180deg, rgba(120,200,255,0.04), rgba(120,200,255,0.01));
+    border: 1px solid var(--line);
+    font-family: var(--body);
+    font-size: 19px;
+    font-style: italic;
+    text-align: center;
+    color: var(--text);
+    line-height: 1.6;
+    position: relative;
+  }
+  .eq::before {
+    content: '';
+    position: absolute;
+    top: -1px; left: -1px;
+    width: 14px; height: 14px;
+    border-top: 1px solid var(--glow);
+    border-left: 1px solid var(--glow);
+  }
+  .eq::after {
+    content: '';
+    position: absolute;
+    bottom: -1px; right: -1px;
+    width: 14px; height: 14px;
+    border-bottom: 1px solid var(--glow);
+    border-right: 1px solid var(--glow);
+  }
+  .eq .num {
+    position: absolute;
+    right: 18px;
+    top: 50%;
+    transform: translateY(-50%);
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--text-faint);
+    font-style: normal;
+  }
+
+  .calcbox {
+    background: var(--bg-card);
+    border: 1px solid var(--line);
+    border-left: 2px solid var(--accent-yellow);
+    padding: 28px 32px;
+    margin: 32px 0;
+    position: relative;
+  }
+  .calcbox .ch {
+    font-family: var(--mono);
+    font-size: 11px;
+    font-weight: 500;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    color: var(--accent-yellow);
+    margin-bottom: 18px;
+  }
+  .calcbox .step {
+    padding: 12px 0 12px 40px;
+    border-bottom: 1px solid var(--line);
+    position: relative;
+    font-family: var(--body);
+    font-size: 14.5px;
+    color: var(--text);
+    line-height: 1.65;
+  }
+  .calcbox .step:last-child { border-bottom: none; }
+  .calcbox .step::before {
+    content: attr(data-s);
+    position: absolute;
+    left: 0;
+    top: 12px;
+    font-family: var(--mono);
+    font-size: 12px;
+    color: var(--accent-yellow);
+    font-weight: 500;
+  }
+  .calcbox .step .val {
+    display: block;
+    font-family: var(--mono);
+    font-size: 12.5px;
+    color: var(--muted);
+    margin-top: 6px;
+    line-height: 1.6;
+  }
+  .calcbox .step strong { color: var(--glow-soft); font-weight: 600; }
+
+  .insight {
+    background: linear-gradient(180deg, rgba(120,200,255,0.04), transparent);
+    border: 1px solid var(--line);
+    padding: 28px 32px;
+    margin: 32px 0;
+    font-family: var(--body);
+    position: relative;
+  }
+  .insight::before {
+    content: '';
+    position: absolute;
+    top: -1px; left: -1px;
+    width: 14px; height: 14px;
+    border-top: 1px solid var(--glow);
+    border-left: 1px solid var(--glow);
+  }
+  .insight .key {
+    font-family: var(--mono);
+    font-size: 10px;
+    letter-spacing: 0.28em;
+    text-transform: uppercase;
+    font-weight: 500;
+    margin-bottom: 12px;
+    color: var(--glow);
+  }
+  .insight p { font-size: 16px; line-height: 1.6; color: var(--text); font-weight: 400; margin: 0; max-width: none; }
+
+  .pitfall {
+    background: linear-gradient(135deg, rgba(226,106,106,0.06), transparent);
+    border: 1px solid rgba(226,106,106,0.28);
+    border-left: 3px solid var(--red);
+    padding: 26px 32px;
+    margin: 32px 0;
+  }
+  .pitfall .lbl {
+    font-family: var(--mono);
+    font-size: 10px;
+    letter-spacing: 0.25em;
+    text-transform: uppercase;
+    font-weight: 500;
+    color: var(--red);
+    margin-bottom: 10px;
+  }
+  .pitfall h4 { margin: 0 0 10px; font-size: 17px; color: var(--text); }
+  .pitfall p { font-size: 14.5px; color: var(--text-dim); margin: 0; max-width: none; }
+
+  .cinematch {
+    background: linear-gradient(135deg, rgba(255,77,138,0.08), transparent 80%);
+    border: 1px solid rgba(255,77,138,0.30);
+    border-left: 3px solid var(--accent);
+    padding: 32px 36px;
+    margin: 40px 0;
+    position: relative;
+  }
+  .cinematch .tag {
+    position: absolute;
+    top: -10px;
+    left: 24px;
+    background: var(--bg-0);
+    color: var(--accent);
+    font-family: var(--mono);
+    font-size: 10px;
+    font-weight: 500;
+    letter-spacing: 0.25em;
+    padding: 0 12px;
+    text-transform: uppercase;
+  }
+  .cinematch h4 { font-family: var(--display); font-size: 20px; font-weight: 700; margin-bottom: 14px; color: var(--text); }
+  .cinematch p { color: var(--text-dim); margin-bottom: 12px; font-size: 15px; max-width: none; }
+  .cinematch p:last-child { margin-bottom: 0; }
+  .cinematch p strong { color: var(--accent); }
+
+  .historical {
+    background: linear-gradient(135deg, rgba(180,140,255,0.06), transparent);
+    border: 1px solid rgba(180,140,255,0.30);
+    border-left: 3px solid var(--accent-2);
+    padding: 32px 36px;
+    margin: 40px 0;
+    position: relative;
+  }
+  .historical .tag {
+    position: absolute;
+    top: -10px;
+    left: 24px;
+    background: var(--bg-0);
+    color: var(--accent-2);
+    font-family: var(--mono);
+    font-size: 10px;
+    font-weight: 500;
+    letter-spacing: 0.25em;
+    padding: 0 12px;
+    text-transform: uppercase;
+  }
+  .historical h4 { font-family: var(--display); font-size: 20px; font-weight: 700; margin-bottom: 14px; color: var(--text); }
+  .historical p { color: var(--text-dim); margin-bottom: 12px; font-size: 15px; max-width: none; }
+  .historical p:last-child { margin-bottom: 0; }
+
+  .diagram-wrap { margin: 48px 0; }
+  .diagram-wrap svg {
+    width: 100%;
+    height: auto;
+    display: block;
+    background: linear-gradient(180deg, rgba(120,200,255,0.025), rgba(120,200,255,0.005));
+    border: 1px solid var(--line);
+    padding: 24px;
+  }
+  .caption {
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--muted);
+    margin-top: 14px;
+    text-align: center;
+    letter-spacing: 0.05em;
+    line-height: 1.6;
+  }
+  .caption b { color: var(--glow); font-weight: 500; }
+
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 28px 0;
+    font-family: var(--mono);
+    font-size: 13.5px;
+    background: var(--bg-card);
+    border: 1px solid var(--line);
+  }
+  th, td {
+    padding: 14px 18px;
+    text-align: left;
+    border-bottom: 1px solid var(--line);
+  }
+  th {
+    font-family: var(--mono);
+    font-weight: 500;
+    font-size: 10px;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    color: var(--glow);
+    background: rgba(120,200,255,0.04);
+  }
+  td { color: var(--text); }
+  td strong { color: var(--glow-soft); font-weight: 600; }
+  td.win { color: var(--green); font-weight: 600; }
+  tr:last-child td { border-bottom: none; }
+
+  pre {
+    background: var(--bg-code);
+    border: 1px solid var(--line);
+    border-left: 2px solid var(--glow);
+    padding: 24px 28px;
+    margin: 28px 0;
+    overflow-x: auto;
+    font-family: var(--mono);
+    font-size: 13.5px;
+    line-height: 1.7;
+    position: relative;
+    color: #d8e6f5;
+  }
+  pre::before {
+    content: 'PYTHON';
+    position: absolute;
+    top: 8px;
+    right: 14px;
+    font-family: var(--mono);
+    font-size: 9px;
+    letter-spacing: 0.25em;
+    color: var(--text-faint);
+    font-weight: 500;
+  }
+  pre code { color: #d8e6f5; font-family: var(--mono); }
+  pre .k { color: var(--accent); font-weight: 500; }
+  pre .s { color: var(--green); }
+  pre .n { color: var(--accent-yellow); }
+  pre .c { color: var(--text-faint); font-style: italic; }
+  pre .f { color: var(--glow); }
+  pre .v { color: var(--accent-2); }
+
+  .mcq {
+    background: linear-gradient(180deg, rgba(120,200,255,0.03), transparent);
+    border: 1px solid var(--line);
+    border-left: 3px solid var(--accent-yellow);
+    padding: 28px 32px;
+    margin: 36px 0;
+    position: relative;
+  }
+  .mcq .mh {
+    font-family: var(--mono);
+    font-size: 10px;
+    letter-spacing: 0.25em;
+    text-transform: uppercase;
+    font-weight: 500;
+    color: var(--accent-yellow);
+    margin-bottom: 16px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+  .mcq .mh .qnum {
+    font-family: var(--mono);
+    color: var(--text-faint);
+    font-size: 11px;
+    letter-spacing: 0.1em;
+    font-weight: 400;
+  }
+  .mcq .mq {
+    font-family: var(--display);
+    font-size: 18px;
+    font-weight: 500;
+    color: var(--text);
+    line-height: 1.5;
+    margin-bottom: 22px;
+    letter-spacing: -0.005em;
+  }
+  .mcq .mq code {
+    font-family: var(--mono);
+    font-size: 15px;
+    background: var(--bg-code);
+    padding: 2px 8px;
+    color: var(--glow);
+    border: 1px solid var(--line);
+    font-weight: 400;
+  }
+  .mcq .opts { display: flex; flex-direction: column; gap: 10px; }
+  .mcq .opt {
+    background: var(--bg-card);
+    border: 1px solid var(--line);
+    padding: 14px 18px;
+    cursor: pointer;
+    font-family: var(--body);
+    font-size: 14.5px;
+    color: var(--text-dim);
+    transition: all 0.18s;
+    display: flex;
+    align-items: flex-start;
+    gap: 14px;
+    line-height: 1.55;
+  }
+  .mcq .opt:hover {
+    border-color: var(--line-strong);
+    background: rgba(120,200,255,0.04);
+    color: var(--text);
+  }
+  .mcq .opt .key {
+    font-family: var(--mono);
+    font-size: 12px;
+    color: var(--muted);
+    font-weight: 500;
+    min-width: 18px;
+    margin-top: 2px;
+  }
+  .mcq .opt .text { flex: 1; }
+  .mcq .opt code {
+    font-family: var(--mono);
+    font-size: 13px;
+    background: var(--bg-code);
+    padding: 1px 6px;
+    color: var(--glow);
+    border: 1px solid var(--line);
+  }
+  .mcq .opt.correct {
+    border-color: var(--green);
+    background: linear-gradient(90deg, rgba(127,194,138,0.10), transparent);
+    color: var(--text);
+  }
+  .mcq .opt.correct .key { color: var(--green); }
+  .mcq .opt.wrong {
+    border-color: var(--red);
+    background: linear-gradient(90deg, rgba(226,106,106,0.10), transparent);
+    color: var(--text);
+  }
+  .mcq .opt.wrong .key { color: var(--red); }
+  .mcq .opt.disabled { cursor: default; }
+  .mcq .opt.disabled:hover {
+    border-color: var(--line);
+    background: var(--bg-card);
+  }
+  .mcq .opt.correct.disabled:hover {
+    border-color: var(--green);
+    background: linear-gradient(90deg, rgba(127,194,138,0.10), transparent);
+  }
+  .mcq .opt.wrong.disabled:hover {
+    border-color: var(--red);
+    background: linear-gradient(90deg, rgba(226,106,106,0.10), transparent);
+  }
+  .mcq .feedback {
+    margin-top: 20px;
+    padding: 20px 24px;
+    background: var(--bg-code);
+    border-left: 2px solid var(--glow);
+    font-family: var(--body);
+    font-size: 14.5px;
+    line-height: 1.7;
+    color: var(--text-dim);
+    display: none;
+  }
+  .mcq .feedback.show { display: block; }
+  .mcq .feedback .verdict {
+    font-family: var(--mono);
+    font-size: 10px;
+    letter-spacing: 0.28em;
+    text-transform: uppercase;
+    font-weight: 500;
+    margin-bottom: 10px;
+    display: block;
+  }
+  .mcq .feedback.right .verdict { color: var(--green); }
+  .mcq .feedback.wrong .verdict { color: var(--red); }
+  .mcq .feedback strong { color: var(--text); font-weight: 600; }
+  .mcq .feedback code {
+    font-family: var(--mono);
+    font-size: 13px;
+    background: rgba(120,200,255,0.05);
+    padding: 1px 6px;
+    color: var(--glow);
+    border: 1px solid var(--line);
+  }
+
+  .checkpoint {
+    background: linear-gradient(180deg, rgba(120,200,255,0.04), transparent);
+    border: 1px solid var(--line-strong);
+    padding: 36px;
+    margin: 56px 0;
+    position: relative;
+  }
+  .checkpoint::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 2px;
+    background: linear-gradient(90deg, var(--glow), var(--accent-2), var(--accent));
+  }
+  .checkpoint h4 {
+    font-family: var(--mono);
+    font-size: 11px;
+    letter-spacing: 0.28em;
+    text-transform: uppercase;
+    color: var(--glow);
+    font-weight: 500;
+    margin-bottom: 24px;
+  }
+  .checkpoint ol { list-style: none; counter-reset: item; }
+  .checkpoint li {
+    counter-increment: item;
+    padding: 14px 0 14px 48px;
+    border-bottom: 1px solid var(--line);
+    position: relative;
+    font-family: var(--body);
+    font-size: 15px;
+    color: var(--text);
+    line-height: 1.55;
+  }
+  .checkpoint li:last-child { border-bottom: none; }
+  .checkpoint li::before {
+    content: counter(item, decimal-leading-zero);
+    position: absolute;
+    left: 0;
+    top: 14px;
+    font-family: var(--mono);
+    font-size: 12px;
+    color: var(--glow);
+    font-weight: 400;
+  }
+
+  .phase-done {
+    background: linear-gradient(135deg, rgba(127,194,138,0.08), transparent);
+    border: 1px solid rgba(127,194,138,0.30);
+    border-left: 3px solid var(--green);
+    padding: 36px 40px;
+    margin: 56px 0;
+    position: relative;
+  }
+  .phase-done .tag {
+    position: absolute;
+    top: -10px;
+    left: 24px;
+    background: var(--bg-0);
+    color: var(--green);
+    font-family: var(--mono);
+    font-size: 10px;
+    font-weight: 500;
+    letter-spacing: 0.3em;
+    padding: 0 14px;
+    text-transform: uppercase;
+  }
+  .phase-done h4 { font-family: var(--display); font-size: 22px; font-weight: 700; margin-bottom: 18px; color: var(--text); }
+  .phase-done p { color: var(--text-dim); font-size: 15px; margin-bottom: 14px; line-height: 1.7; max-width: none; }
+  .phase-done p:last-child { margin-bottom: 0; }
+  .phase-done strong { color: var(--green); }
+  /* ---------- Learn resources ---------- */
+  .learn-intro {
+    color: var(--text-dim);
+    max-width: 62ch;
+    margin-bottom: 34px;
+  }
+  .resource-stack {
+    display: grid;
+    gap: 18px;
+    margin: 34px 0 10px;
+  }
+  .resource-card {
+    background: linear-gradient(135deg, rgba(120,200,255,0.055), rgba(180,140,255,0.035) 55%, rgba(255,77,138,0.025));
+    border: 1px solid var(--line);
+    padding: 26px 28px;
+    position: relative;
+    overflow: hidden;
+  }
+  .resource-card::before {
+    content: '';
+    position: absolute;
+    inset: -1px;
+    border: 1px solid transparent;
+    pointer-events: none;
+    background: linear-gradient(120deg, rgba(95,212,255,0.65), transparent 42%, rgba(255,77,138,0.45)) border-box;
+    mask: linear-gradient(#000 0 0) padding-box, linear-gradient(#000 0 0);
+    -webkit-mask: linear-gradient(#000 0 0) padding-box, linear-gradient(#000 0 0);
+    mask-composite: exclude;
+    -webkit-mask-composite: xor;
+  }
+  .resource-head {
+    display: grid;
+    grid-template-columns: 42px 1fr;
+    gap: 16px;
+    align-items: center;
+    margin-bottom: 18px;
+  }
+  .resource-icon {
+    width: 34px;
+    height: 34px;
+    display: grid;
+    place-items: center;
+    border: 1px solid rgba(95,212,255,0.55);
+    background: rgba(95,212,255,0.07);
+    color: var(--glow);
+    font-family: var(--mono);
+    font-size: 16px;
+    line-height: 1;
+  }
+  .resource-card.canonical .resource-icon {
+    border-color: rgba(180,140,255,0.65);
+    background: rgba(180,140,255,0.08);
+    color: var(--accent-2);
+  }
+  .resource-card.repo .resource-icon {
+    border-color: rgba(255,77,138,0.62);
+    background: rgba(255,77,138,0.07);
+    color: var(--accent);
+  }
+  .resource-kicker {
+    font-family: var(--mono);
+    font-size: 10px;
+    letter-spacing: 0.24em;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin-bottom: 3px;
+  }
+  .resource-card h3 {
+    margin: 0;
+    font-size: 21px;
+    line-height: 1.15;
+  }
+  .resource-title {
+    display: block;
+    font-family: var(--display);
+    font-size: 18px;
+    font-weight: 700;
+    line-height: 1.35;
+    color: var(--glow-soft);
+    margin-bottom: 8px;
+    text-decoration: none;
+  }
+  .resource-card.canonical .resource-title { color: var(--accent-2); }
+  .resource-card.repo .resource-title { color: var(--accent); }
+  .resource-card p {
+    max-width: none;
+    margin-bottom: 18px;
+    font-size: 14.5px;
+    color: var(--text-dim);
+  }
+  .resource-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px;
+  }
+  .resource-link {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 42px;
+    padding: 0 18px;
+    border: 1px solid rgba(95,212,255,0.65);
+    color: var(--glow);
+    background: rgba(95,212,255,0.04);
+    font-family: var(--mono);
+    font-size: 11px;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    text-decoration: none;
+    transition: border-color 0.18s ease, background 0.18s ease, color 0.18s ease;
+  }
+  .resource-link:hover {
+    border-color: var(--glow);
+    background: rgba(95,212,255,0.10);
+    color: var(--text);
+  }
+  .resource-card.canonical .resource-link {
+    border-color: rgba(180,140,255,0.70);
+    color: var(--accent-2);
+    background: rgba(180,140,255,0.04);
+  }
+  .resource-card.canonical .resource-link:hover {
+    border-color: var(--accent-2);
+    background: rgba(180,140,255,0.10);
+    color: var(--text);
+  }
+  .resource-card.repo .resource-link {
+    border-color: rgba(255,77,138,0.72);
+    color: var(--accent);
+    background: rgba(255,77,138,0.04);
+  }
+  .resource-card.repo .resource-link:hover {
+    border-color: var(--accent);
+    background: rgba(255,77,138,0.10);
+    color: var(--text);
+  }
+
+  .ibox {
+    background: var(--bg-card);
+    border: 1px solid var(--line-strong);
+    padding: 32px;
+    margin: 40px 0;
+    position: relative;
+    overflow: hidden;
+  }
+  .ibox::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 2px;
+    background: linear-gradient(90deg, var(--accent), var(--accent-2), var(--glow));
+  }
+  .ibox .ilbl {
+    font-family: var(--mono);
+    font-size: 10px;
+    letter-spacing: 0.28em;
+    text-transform: uppercase;
+    color: var(--glow);
+    font-weight: 500;
+    margin-bottom: 16px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  .ibox .ilbl .dot {
+    display: inline-block;
+    width: 6px; height: 6px;
+    background: var(--glow);
+    border-radius: 50%;
+    box-shadow: 0 0 8px var(--glow);
+    animation: pulse 2s infinite;
+  }
+  .ibox .idesc {
+    font-family: var(--body);
+    font-size: 14.5px;
+    color: var(--text-dim);
+    margin-bottom: 22px;
+    line-height: 1.65;
+  }
+
+  code.inline {
+    font-family: var(--mono);
+    font-size: 14px;
+    background: var(--bg-code);
+    padding: 2px 8px;
+    color: var(--glow);
+    border: 1px solid var(--line);
+  }
+
+  .footer-bar {
+    margin-top: 72px;
+    padding-top: 24px;
+    border-top: 1px solid var(--line);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-family: var(--mono);
+    font-size: 11px;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    color: var(--muted);
+  }
+  .footer-bar .prev-link, .footer-bar .next-link {
+    text-decoration: none;
+    color: var(--muted);
+    display: inline-flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+  .footer-bar .next-link { align-items: flex-end; }
+  .footer-bar .lbl {
+    font-family: var(--mono);
+    font-size: 10px;
+    letter-spacing: 0.25em;
+    color: var(--text-faint);
+  }
+  .footer-bar .ttl {
+    font-family: var(--display);
+    font-size: 16px;
+    color: var(--text);
+    font-weight: 700;
+    text-transform: none;
+    letter-spacing: -0.01em;
+  }
+  .footer-bar .next-link .ttl { color: var(--glow); }
+  .footer-bar .next-link .ttl::after { content: ' →'; }
+  .footer-bar .prev-link .ttl::before { content: '← '; }
+
+  .fade-in { opacity: 0; transform: translateY(14px); animation: fadeIn 0.9s ease forwards; }
+  .d1 { animation-delay: 0.1s; }
+  .d2 { animation-delay: 0.25s; }
+  .d3 { animation-delay: 0.4s; }
+  .d4 { animation-delay: 0.55s; }
+  .d5 { animation-delay: 0.7s; }
+  .d6 { animation-delay: 0.85s; }
+  @keyframes fadeIn { to { opacity: 1; transform: translateY(0); } }
+
+  .draw-path {
+    stroke-dasharray: 800;
+    stroke-dashoffset: 800;
+    animation: draw 6s ease-out forwards;
+  }
+  @keyframes draw { to { stroke-dashoffset: 0; } }
+
+  .node-pulse { animation: nodePulse 3s ease-in-out infinite; transform-origin: center; transform-box: fill-box; }
+  @keyframes nodePulse {
+    0%, 100% { opacity: 0.6; r: 2.5; }
+    50% { opacity: 1; r: 3.8; }
+  }
+
+  @media (max-width: 960px) {
+    .wrap { padding: 32px 24px 64px; }
+    .hero { grid-template-columns: 1fr; gap: 40px; }
+    .meta-strip { grid-template-columns: repeat(2, 1fr); }
+    .body-grid { grid-template-columns: 1fr; gap: 32px; }
+    .sidebar { position: static; }
+    .content h2 { font-size: 26px; }
+    .calcbox, .insight, .pitfall, .cinematch, .historical, .mcq, .ibox, .checkpoint, .resource-card { padding: 22px 20px; }
+    .resource-head { grid-template-columns: 1fr; gap: 12px; }
+  }
+
+  /* ---------- Readability + sidebar anchors ---------- */
+  .content section { scroll-margin-top: 36px; }
+  .sidebar a {
+    color: inherit;
+    text-decoration: none;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    width: 100%;
+  }
+  .sidebar a:focus-visible {
+    outline: 1px solid var(--glow);
+    outline-offset: 4px;
+  }
+  .eq,
+  .calcbox,
+  .insight,
+  .pitfall,
+  .cinematch,
+  .historical,
+  .mcq,
+  .checkpoint,
+  .ibox,
+  .resource-card,
+  .phase-done,
+  .diagram-wrap svg,
+  table,
+  pre {
+    background-color: #090f1d;
+  }
+  .eq { background: linear-gradient(180deg, rgba(120,200,255,0.10), rgba(120,200,255,0.04)), #090f1d; }
+  .calcbox { background: linear-gradient(180deg, rgba(240,198,116,0.07), rgba(120,200,255,0.03)), #090f1d; }
+  .insight { background: linear-gradient(180deg, rgba(120,200,255,0.10), rgba(120,200,255,0.035)), #090f1d; }
+  .pitfall { background: linear-gradient(135deg, rgba(226,106,106,0.12), rgba(120,200,255,0.025)), #090f1d; }
+  .cinematch { background: linear-gradient(135deg, rgba(255,77,138,0.13), rgba(120,200,255,0.025)), #090f1d; }
+  .historical { background: linear-gradient(135deg, rgba(180,140,255,0.13), rgba(120,200,255,0.025)), #090f1d; }
+  .mcq { background: linear-gradient(180deg, rgba(120,200,255,0.085), rgba(120,200,255,0.025)), #090f1d; }
+  .mcq .opt { background: #0b1221; }
+  .mcq .feedback { background: #070b14; }
+  .checkpoint { background: linear-gradient(180deg, rgba(120,200,255,0.09), rgba(120,200,255,0.025)), #090f1d; }
+  .ibox { background: #090f1d; }
+  .resource-card { background: linear-gradient(135deg, rgba(120,200,255,0.10), rgba(180,140,255,0.075) 55%, rgba(255,77,138,0.055)), #090f1d; }
+  .phase-done { background: linear-gradient(135deg, rgba(120,200,255,0.10), rgba(255,77,138,0.055)), #090f1d; }
+  .diagram-wrap svg { background: linear-gradient(180deg, rgba(120,200,255,0.07), rgba(120,200,255,0.025)), #090f1d; }
+  table { background: #090f1d; }
+  th { background: rgba(120,200,255,0.10); }
+  pre { background: #070b14; }
+</style>
+</head>
+<body>
+
+<div class="circuit-bg">
+  <svg viewBox="0 0 1600 1000" preserveAspectRatio="xMidYMid slice" xmlns="http://www.w3.org/2000/svg">
+    <defs>
+      <filter id="bgglow" x="-50%" y="-50%" width="200%" height="200%">
+        <feGaussianBlur stdDeviation="2" result="b"/>
+        <feMerge>
+          <feMergeNode in="b"/>
+          <feMergeNode in="SourceGraphic"/>
+        </feMerge>
+      </filter>
+      <linearGradient id="lineGrad" x1="0" y1="0" x2="1" y2="1">
+        <stop offset="0%" stop-color="#5fd4ff" stop-opacity="0.7"/>
+        <stop offset="100%" stop-color="#b48cff" stop-opacity="0.2"/>
+      </linearGradient>
+      <radialGradient id="nodeGlow">
+        <stop offset="0%" stop-color="#7af0ff" stop-opacity="1"/>
+        <stop offset="100%" stop-color="#5fd4ff" stop-opacity="0"/>
+      </radialGradient>
+    </defs>
+
+    <g stroke="url(#lineGrad)" fill="none" stroke-width="1" filter="url(#bgglow)">
+      <path class="draw-path" d="M 50 120 L 280 120 L 280 240 L 520 240 L 520 180 L 760 180"/>
+      <path class="draw-path" d="M 760 180 L 760 320 L 1020 320 L 1020 260 L 1280 260 L 1280 400 L 1540 400" style="animation-delay:0.4s"/>
+      <path class="draw-path" d="M 80 480 L 240 480 L 240 620 L 480 620 L 480 540 L 720 540 L 720 680" style="animation-delay:0.8s"/>
+      <path class="draw-path" d="M 720 680 L 960 680 L 960 780 L 1200 780 L 1200 700 L 1500 700" style="animation-delay:1.2s"/>
+      <path class="draw-path" d="M 50 820 L 320 820 L 320 900 L 600 900 L 600 860 L 880 860" style="animation-delay:1.6s"/>
+      <path class="draw-path" d="M 880 860 L 880 940 L 1180 940 L 1180 880 L 1500 880" style="animation-delay:2s"/>
+      <path class="draw-path" d="M 1100 40 L 1100 180 L 1360 180 L 1360 80 L 1560 80" style="animation-delay:2.4s"/>
+      <path class="draw-path" d="M 380 40 L 380 160 L 620 160 L 620 60 L 880 60" style="animation-delay:2.8s"/>
+      <path class="draw-path" d="M 200 320 L 200 420 L 80 420" style="animation-delay:1.5s"/>
+      <path class="draw-path" d="M 1380 540 L 1380 640 L 1240 640" style="animation-delay:1.8s"/>
+      <path class="draw-path" d="M 540 720 L 540 800 L 360 800" style="animation-delay:2.2s"/>
+    </g>
+
+    <g stroke="rgba(120,200,255,0.08)" fill="none" stroke-width="0.6">
+      <path d="M 0 60 L 200 60 L 200 200 L 400 200"/>
+      <path d="M 600 400 L 800 400 L 800 460 L 1000 460"/>
+      <path d="M 1200 100 L 1400 100 L 1400 220"/>
+      <path d="M 100 700 L 300 700 L 300 580"/>
+      <path d="M 900 200 L 900 100 L 1100 100"/>
+      <path d="M 1300 800 L 1500 800 L 1500 920"/>
+    </g>
+
+    <g fill="#5fd4ff" filter="url(#bgglow)">
+      <circle class="node-pulse" cx="280" cy="120" r="3"/>
+      <circle class="node-pulse" cx="520" cy="240" r="3" style="animation-delay:0.3s"/>
+      <circle class="node-pulse" cx="760" cy="180" r="3" style="animation-delay:0.6s"/>
+      <circle class="node-pulse" cx="1020" cy="320" r="3" style="animation-delay:0.9s"/>
+      <circle class="node-pulse" cx="1280" cy="260" r="3" style="animation-delay:1.2s"/>
+      <circle class="node-pulse" cx="240" cy="620" r="3" style="animation-delay:0.4s"/>
+      <circle class="node-pulse" cx="720" cy="540" r="3" style="animation-delay:0.7s"/>
+      <circle class="node-pulse" cx="960" cy="680" r="3" style="animation-delay:1s"/>
+      <circle class="node-pulse" cx="1200" cy="780" r="3" style="animation-delay:1.3s"/>
+      <circle class="node-pulse" cx="320" cy="820" r="3" style="animation-delay:0.5s"/>
+      <circle class="node-pulse" cx="880" cy="860" r="3" style="animation-delay:0.8s"/>
+      <circle class="node-pulse" cx="1100" cy="180" r="3" style="animation-delay:1.1s"/>
+      <circle class="node-pulse" cx="380" cy="160" r="3" style="animation-delay:1.4s"/>
+      <circle class="node-pulse" cx="200" cy="420" r="3" style="animation-delay:0.6s"/>
+    </g>
+
+    <g>
+      <circle cx="760" cy="180" r="18" fill="url(#nodeGlow)" opacity="0.6"/>
+      <circle cx="960" cy="680" r="18" fill="url(#nodeGlow)" opacity="0.6"/>
+      <circle cx="1100" cy="180" r="14" fill="url(#nodeGlow)" opacity="0.4"/>
+    </g>
+  </svg>
+</div>
+
+<div class="grain"></div>
+
+<div class="wrap">
+
+  <div class="topbar fade-in d1">
+    <div class="left">
+      <span class="dot"></span>
+      <span>Marevlo · Transformer Architectures</span>
+      <span>·</span>
+      <span>Phase 6 — Vision &amp; Multimodal</span>
+    </div>
+    <div class="right">
+      <span>Module 6.2</span>
+    </div>
+  </div>
+
+  <div class="hero">
+    <div>
+      <div class="module-tag fade-in d2">Phase 6 — Vision &amp; Multimodal · Module 6.2</div>
+      <h1 class="title fade-in d2">
+        Swin
+        <span class="line2">Transformer.</span>
+        <span class="line2"><span class="accent">Hierarchical</span> vision.</span>
+      </h1>
+    </div>
+    <p class="lede fade-in d3">
+      ViT processes all patches at one scale with global attention. Swin Transformer (Liu et al., 2021) introduces two ideas from CNNs: <em>hierarchical feature maps</em> (progressively lower resolution, like a CNN's pooling layers) and <em>local windowed attention</em> (each patch attends only within its window, like a convolution's receptive field). The result: a vision transformer that produces multi-scale features for detection and segmentation while maintaining linear complexity in image size. Swin became the default vision backbone in 2022-2024, replacing both ViT and CNN backbones for dense prediction tasks.
+    </p>
+  </div>
+
+  <div class="meta-strip fade-in d4">
+    <div class="meta-cell">
+      <div class="label">Phase</div>
+      <div class="value">6 <span class="unit">Vision</span></div>
+    </div>
+    <div class="meta-cell">
+      <div class="label">Module</div>
+      <div class="value">6.2</div>
+    </div>
+    <div class="meta-cell">
+      <div class="label">Reading Time</div>
+      <div class="value">30 <span class="unit">min</span></div>
+    </div>
+    <div class="meta-cell">
+      <div class="label">Paper</div>
+      <div class="value">Liu <span class="unit">2021</span></div>
+    </div>
+  </div>
+
+  <div class="body-grid">
+
+    <aside class="sidebar fade-in d5">
+      <h4>// In This Module</h4>
+      <ul>
+        <li class="active"><a href="#section-01"><span class="num">01</span> Shifted Windows</a></li>
+        <li><a href="#section-02"><span class="num">02</span> Hierarchical Maps</a></li>
+        <li><a href="#section-03"><span class="num">03</span> Detection &amp; Seg</a></li>
+        <li><a href="#section-04"><span class="num">04</span> Swin vs ViT</a></li>
+        <li><a href="#section-05"><span class="num">05</span> Legacy</a></li>
+        <li><a href="#section-06"><span class="num">06</span> Learn More</a></li>
+      </ul>
+    </aside>
+
+    <div class="content">
+
+<section id="section-01">
+  <h2 data-num="01 / 06">Shifted windows — local attention for images.</h2>
+
+  <p>ViT's global attention at T=196 is cheap. But for object detection at 1024&times;1024 (T=4096 patches), global attention costs T&sup2; = 16.8M per head — expensive for processing many images. Swin's solution: partition the image into non-overlapping <strong>windows</strong> (typically 7&times;7 patches = 49 tokens per window) and compute attention <em>only within each window</em>.</p>
+
+  <div class="calcbox">
+    <div class="ch">Swin's windowed attention cost</div>
+    <div class="step" data-s="1.">Image: 56&times;56 patches (after 4&times; downsampling of 224&times;224 at patch size 4). Window: 7&times;7 = 49 patches.<span class="val">Number of windows: (56/7)&sup2; = 64 windows.</span></div>
+    <div class="step" data-s="2.">Attention per window: 49&sup2; = 2,401 scores. Total: 64 &times; 2,401 = <strong>153,664</strong> scores.<span class="val">Compare to global ViT: 3,136&sup2; = 9.8M scores. Swin is 64&times; cheaper.</span></div>
+    <div class="step" data-s="3.">But windows don't interact! Patch (6,6) in window A can't attend to patch (7,7) in window B — they're in adjacent windows.<span class="val">Solution: shift the window partition by half a window in alternating layers.</span></div>
+    <div class="step" data-s="4."><strong>Shifted windows:</strong> Layer L uses window grid at position (0,0). Layer L+1 shifts the grid by (3,3), so window boundaries of layer L+1 fall in the middle of layer L's windows. Patches that were separated by window boundaries in layer L are now in the same window in layer L+1.<span class="val">After 2 layers: every patch has attended to every patch within a 14&times;14 region. Like Longformer's sliding window propagation, but in 2D.</span></div>
+  </div>
+
+  <div class="mcq" data-correct="c">
+    <div class="mh"><span>Shifted windows</span><span class="qnum">Question 01 / 07</span></div>
+    <div class="mq">Swin uses 7&times;7 windows. After 2 layers (regular + shifted), what's the effective receptive field?</div>
+    <div class="opts">
+      <div class="opt" data-key="a"><span class="key">A</span><span class="text">7&times;7 — same as the window size.</span></div>
+      <div class="opt" data-key="b"><span class="key">B</span><span class="text">49&times;49 — windows squared.</span></div>
+      <div class="opt" data-key="c"><span class="key">C</span><span class="text">~14&times;14. The shift is half a window (3.5 patches). Layer 1: each patch sees its 7&times;7 window. Layer 2 (shifted): the window now overlaps with the adjacent windows from layer 1, connecting patches that were previously separated. After 2 layers, the effective receptive field doubles to ~14&times;14. With S stages of 2 layers each, the receptive field grows to cover the full feature map — similar to how CNN receptive fields grow through stacked convolution layers.</span></div>
+      <div class="opt" data-key="d"><span class="key">D</span><span class="text">The entire image — shifting gives global attention.</span></div>
+    </div>
+    <div class="feedback" data-right="<strong>Right.</strong> Shifted windows double the receptive field every 2 layers — exactly analogous to how stacked 3&times;3 convolutions double the CNN receptive field. After 4 Swin layers: ~28&times;28 receptive field. After the full stage: covers the entire feature map. The shifting mechanism achieves global connectivity through local operations, just like CNNs. The key difference: within each window, attention (not convolution) captures the relationships." data-wrong="<strong>Not quite.</strong> The shift connects adjacent windows across layers. Layer 1: 7&times;7 receptive field per window. Layer 2 (shifted): patches at window boundaries now share a window, extending the receptive field to ~14&times;14. This grows with depth, eventually covering the full feature map."></div>
+  </div>
+</section>
+
+<section id="section-02">
+  <h2 data-num="02 / 06">Hierarchical feature maps — the CNN-like structure.</h2>
+
+  <p>CNNs produce features at multiple scales: early layers have high resolution (many positions, few channels), later layers have low resolution (few positions, many channels). This <strong>feature pyramid</strong> is essential for object detection (small objects need high-res features, large objects need low-res features). ViT produces single-scale features. Swin produces multi-scale features through <strong>patch merging</strong>.</p>
+
+  <table>
+    <thead><tr><th>Stage</th><th>Resolution</th><th>Channels</th><th>Patches</th><th>Window attention</th></tr></thead>
+    <tbody>
+      <tr><td>Stage 1</td><td>56 &times; 56</td><td>96</td><td>3136</td><td>49 tokens &times; 64 windows</td></tr>
+      <tr><td>Stage 2 (merge 2&times;2)</td><td>28 &times; 28</td><td>192</td><td>784</td><td>49 tokens &times; 16 windows</td></tr>
+      <tr><td>Stage 3 (merge 2&times;2)</td><td>14 &times; 14</td><td>384</td><td>196</td><td>49 tokens &times; 4 windows</td></tr>
+      <tr><td>Stage 4 (merge 2&times;2)</td><td>7 &times; 7</td><td>768</td><td>49</td><td>49 tokens &times; 1 window (global!)</td></tr>
+    </tbody>
+  </table>
+
+  <p>Patch merging concatenates 2&times;2 adjacent patches into one, then projects to 2&times; channels. This halves spatial resolution and doubles channels — exactly like a CNN's strided convolution or max-pooling. The final stage (7&times;7 = 49 patches in 1 window) is effectively global attention, but at very low computational cost.</p>
+
+  <div class="mcq" data-correct="b">
+    <div class="mh"><span>Hierarchical</span><span class="qnum">Question 02 / 07</span></div>
+    <div class="mq">Swin's Stage 4 has only 49 patches in a single 7&times;7 window. This means Stage 4 has global attention. Why not use global attention throughout?</div>
+    <div class="opts">
+      <div class="opt" data-key="a"><span class="key">A</span><span class="text">Global attention is always worse than windowed.</span></div>
+      <div class="opt" data-key="b"><span class="key">B</span><span class="text">Cost. Stage 1 has 3,136 patches. Global attention: 3136&sup2; = 9.8M scores. Windowed: 64 windows &times; 49&sup2; = 154K scores — 64&times; cheaper. By Stage 4 (49 patches), global and windowed are identical. The hierarchical design uses cheap local attention at high resolution (where most computation happens) and global attention at low resolution (where it's cheap). This mirrors CNNs: local processing early (convolutions), global processing late (fully-connected or global average pooling).</span></div>
+      <div class="opt" data-key="c"><span class="key">C</span><span class="text">Windowed attention produces better features.</span></div>
+      <div class="opt" data-key="d"><span class="key">D</span><span class="text">Stage 4 global attention is a bug in the design.</span></div>
+    </div>
+    <div class="feedback" data-right="<strong>Right.</strong> The hierarchical design optimizes compute allocation: expensive early stages (3136 patches) use cheap local attention. The final stage (49 patches) naturally becomes global because one window covers all patches. Total Swin-Base attention cost: ~200K scores. Total ViT global on 3136 patches: ~9.8M. Swin is ~50&times; cheaper while producing richer multi-scale features." data-wrong="<strong>Not quite.</strong> Global attention at Stage 1 (3136 patches) would cost 9.8M scores — 64&times; more than windowed. By Stage 4 (49 patches), global is cheap (2,401 scores). The hierarchical design uses local attention where patches are many (expensive stages) and naturally converges to global where patches are few (cheap stages)."></div>
+  </div>
+</section>
+
+<section id="section-03">
+  <h2 data-num="03 / 06">Swin for object detection and segmentation.</h2>
+
+  <div class="cinematch">
+    <div class="tag">CineMatch Integration</div>
+    <h4>Swin as CineMatch's visual backbone for scene analysis.</h4>
+    <p><strong>Scene understanding:</strong> CineMatch analyzes movie frames to automatically tag scene types (indoor, outdoor, action, dialogue, chase, etc.). Swin-Tiny (29M params) with a Mask R-CNN detection head identifies and segments objects in each frame: characters, vehicles, weapons, animals. This feeds the automated content tagging pipeline — "this movie contains car chases (72% of action scenes), firearms (3 scenes), and animals (2 scenes)."</p>
+    <p><strong>Why Swin over ViT:</strong> Scene analysis requires detecting objects of different sizes in high-resolution frames (1280&times;720). Swin's multi-scale features handle both large objects (buildings, landscapes) and small objects (faces, weapons) simultaneously. ViT's single-scale output would need separate processing for each scale.</p>
+    <p><strong>Why Swin over CNN:</strong> Swin-Tiny (29M) matches ResNet-50's detection performance with fewer parameters and better scalability. Swin-Large matches the best CNN detection backbones while being simpler to scale (just add more layers and channels).</p>
+  </div>
+
+  <div class="mcq" data-correct="a">
+    <div class="mh"><span>Detection</span><span class="qnum">Question 03 / 07</span></div>
+    <div class="mq">For CineMatch's scene analysis, Swin produces features at 4 scales (56&times;56, 28&times;28, 14&times;14, 7&times;7). How does the detection head use all 4 scales?</div>
+    <div class="opts">
+      <div class="opt" data-key="a"><span class="key">A</span><span class="text">Feature Pyramid Network (FPN). The detection head connects all 4 scales with top-down and lateral connections, creating a feature pyramid where: 56&times;56 features detect small objects (faces, props), 28&times;28 features detect medium objects (people, furniture), 14&times;14 features detect large objects (vehicles, buildings), and 7&times;7 features capture global scene layout. Each object is detected at the scale matching its size. This multi-scale approach is why Swin excels at detection — and why ViT (single scale) struggles.</span></div>
+      <div class="opt" data-key="b"><span class="key">B</span><span class="text">Only the largest scale (7&times;7) is used for detection.</span></div>
+      <div class="opt" data-key="c"><span class="key">C</span><span class="text">All scales are averaged together.</span></div>
+      <div class="opt" data-key="d"><span class="key">D</span><span class="text">The detection head processes each scale separately and merges results.</span></div>
+    </div>
+    <div class="feedback" data-right="<strong>Right.</strong> FPN (Feature Pyramid Network) is the standard multi-scale detection approach. It combines Swin's 4-stage features with top-down pathway (high-level semantics from coarse scales enrich fine-scale features) and lateral connections (preserving spatial detail at each scale). Objects are detected at the appropriate scale: small objects from high-res features, large objects from low-res features. This is the primary advantage of hierarchical vision transformers over flat ViT." data-wrong="<strong>Not quite.</strong> Multi-scale detection uses a Feature Pyramid Network (FPN) that connects all 4 scales. Small objects are detected from high-resolution features (56&times;56), large objects from low-resolution features (7&times;7). The FPN adds top-down and lateral connections so each scale benefits from both local detail and global semantics."></div>
+  </div>
+</section>
+
+<section id="section-04">
+  <h2 data-num="04 / 06">Swin vs ViT — when to use which.</h2>
+
+  <table>
+    <thead><tr><th>Task</th><th>Best model</th><th>Why</th></tr></thead>
+    <tbody>
+      <tr><td>Image classification</td><td>Either (ViT or Swin)</td><td>Both achieve ~84-87% on ImageNet at comparable sizes</td></tr>
+      <tr><td class="win">Object detection</td><td class="win">Swin</td><td class="win">Multi-scale features essential for detecting objects of different sizes</td></tr>
+      <tr><td class="win">Semantic segmentation</td><td class="win">Swin</td><td class="win">Dense per-pixel prediction needs multi-scale features</td></tr>
+      <tr><td>Vision-language (CLIP input)</td><td>ViT</td><td>CLIP uses ViT's [CLS] token — single-scale is sufficient</td></tr>
+      <tr><td>Multimodal LLM (image encoder)</td><td>ViT</td><td>Flat sequence of patch tokens is easier to concatenate with text tokens</td></tr>
+    </tbody>
+  </table>
+
+  <div class="mcq" data-correct="d">
+    <div class="mh"><span>Selection</span><span class="qnum">Question 04 / 07</span></div>
+    <div class="mq">For CineMatch's multimodal chatbot (Module 6.4), should the image encoder be Swin or ViT?</div>
+    <div class="opts">
+      <div class="opt" data-key="a"><span class="key">A</span><span class="text">Swin — always the better vision model.</span></div>
+      <div class="opt" data-key="b"><span class="key">B</span><span class="text">Swin — multi-scale features improve LLM understanding.</span></div>
+      <div class="opt" data-key="c"><span class="key">C</span><span class="text">Neither — use a CNN for image encoding.</span></div>
+      <div class="opt" data-key="d"><span class="key">D</span><span class="text">ViT. For multimodal LLMs, the image encoder outputs a flat sequence of patch tokens that gets concatenated with text tokens and fed to the decoder. ViT's flat architecture naturally produces this: 196 patch tokens, each a d-dimensional vector. Swin's hierarchical output (4 different scales) would need to be flattened and projected, adding complexity with no proven benefit for language-conditioned understanding. All major multimodal LLMs (GPT-4V, LLaVA, Gemini) use ViT-style encoders, not Swin.</span></div>
+    </div>
+    <div class="feedback" data-right="<strong>Right.</strong> Multimodal LLMs need a flat sequence of visual tokens to concatenate with text tokens. ViT naturally produces this (196 &times; d). Swin's multi-scale output adds complexity without benefit for the language decoder. Swin excels at detection/segmentation (needs multi-scale); ViT excels at representation learning for downstream tasks (classification, CLIP, multimodal). Different tools for different tasks." data-wrong="<strong>Not quite.</strong> Multimodal LLMs concatenate visual tokens with text tokens in a flat sequence. ViT naturally produces this flat representation (196 patch tokens). Swin's multi-scale hierarchy would need flattening and projection, adding complexity without proven benefit. All major multimodal LLMs use ViT-style encoders."></div>
+  </div>
+</section>
+
+<section id="section-05">
+  <h2 data-num="05 / 06">Swin's legacy — the vision backbone convergence.</h2>
+
+  <div class="mcq" data-correct="c">
+    <div class="mh"><span>Legacy</span><span class="qnum">Question 05 / 07</span></div>
+    <div class="mq">Swin combines windowed attention (from Longformer) with hierarchical features (from CNNs). What does this hybrid design tell us about transformer architecture design?</div>
+    <div class="opts">
+      <div class="opt" data-key="a"><span class="key">A</span><span class="text">Pure transformers are better than hybrids.</span></div>
+      <div class="opt" data-key="b"><span class="key">B</span><span class="text">CNNs are still superior to transformers.</span></div>
+      <div class="opt" data-key="c"><span class="key">C</span><span class="text">The best architectures borrow good ideas regardless of their origin. Swin takes CNN insights (local processing early, global late; multi-scale features; translation equivariance through shifted windows) and implements them with transformer primitives (attention instead of convolution). It's not "transformer vs CNN" — it's "attention mechanism + the structural priors that actually help." Pure ViT proves transformers work without priors. Swin proves they work <em>better</em> with the right priors.</span></div>
+      <div class="opt" data-key="d"><span class="key">D</span><span class="text">Hybrid designs are always optimal.</span></div>
+    </div>
+    <div class="feedback" data-right="<strong>Right.</strong> The ViT-to-Swin evolution mirrors BERT-to-RoBERTa or GPT-2-to-LLaMA: the first model proves the concept, subsequent models add the right inductive biases. Swin takes CNN-validated priors (locality, hierarchy, shift-equivariance) and implements them with attention. The lesson: architectural innovation isn't about purity — it's about finding the right combination of mechanism (attention) and structure (hierarchy, locality) for the task." data-wrong="<strong>Not quite.</strong> Swin demonstrates that the best architectures combine the transformer's mechanism (attention) with validated structural priors (CNN-inspired locality and hierarchy). It's not about purity — it's about using the right inductive biases with the right mechanism. Both ViT (minimal bias) and Swin (structured bias) are valid depending on the task."></div>
+  </div>
+
+  <div class="mcq" data-correct="b">
+    <div class="mh"><span>Production</span><span class="qnum">Question 06 / 07</span></div>
+    <div class="mq">CineMatch needs to detect small text overlays in movie posters (watermarks, age ratings, studio logos). Which model handles this best?</div>
+    <div class="opts">
+      <div class="opt" data-key="a"><span class="key">A</span><span class="text">ViT-Base — global attention sees everything.</span></div>
+      <div class="opt" data-key="b"><span class="key">B</span><span class="text">Swin-Tiny with FPN. Small text overlays are tiny objects (10-50 pixels in a 1024&times;768 poster). Swin's high-resolution Stage 1 features (256&times;192 at initial patch size 4) preserve fine details that ViT's 14&times;14 patch grid (at patch size 16) would merge into larger patches, losing the text. FPN connects high-res features to the detection head, enabling precise localization of small overlays.</span></div>
+      <div class="opt" data-key="c"><span class="key">C</span><span class="text">DeBERTa — it's a text model and text overlays are text.</span></div>
+      <div class="opt" data-key="d"><span class="key">D</span><span class="text">Any model works equally well for small object detection.</span></div>
+    </div>
+    <div class="feedback" data-right="<strong>Right.</strong> Small object detection is Swin's killer application. ViT's 16&times;16 patches merge small details into coarse representations. Swin's 4&times;4 initial patches (finer resolution) combined with multi-scale FPN features preserve small-object details that ViT loses. For CineMatch's poster analysis — detecting small text, logos, and ratings — Swin's hierarchical design directly addresses the need." data-wrong="<strong>Not quite.</strong> Small text overlays (10-50 pixels) require high-resolution features. Swin's Stage 1 (fine 4&times;4 patches) preserves these details. ViT's 16&times;16 patches merge small features into coarse representations, losing the text. Multi-scale detection with FPN is essential for small objects."></div>
+  </div>
+
+  <div class="mcq" data-correct="a">
+    <div class="mh"><span>Synthesis</span><span class="qnum">Question 07 / 07</span></div>
+    <div class="mq">In 2026, what is the standard vision backbone for new projects?</div>
+    <div class="opts">
+      <div class="opt" data-key="a"><span class="key">A</span><span class="text">It depends on the task. For classification and multimodal: ViT (flat, simple, CLIP-compatible). For detection and segmentation: Swin (multi-scale, FPN-compatible). For mobile deployment: EfficientNet or MobileNet CNN (optimized for inference speed). The "standard" is task-specific. The general trend: ViT for representation learning, Swin for dense prediction, with both outperforming CNNs at comparable compute budgets.</span></div>
+      <div class="opt" data-key="b"><span class="key">B</span><span class="text">Always Swin — it's the most recent and capable.</span></div>
+      <div class="opt" data-key="c"><span class="key">C</span><span class="text">Always ResNet — proven and reliable.</span></div>
+      <div class="opt" data-key="d"><span class="key">D</span><span class="text">Always ViT — the simplest architecture.</span></div>
+    </div>
+    <div class="feedback" data-right="<strong>Right.</strong> The vision backbone landscape has specialized: ViT for representation (CLIP, multimodal, classification), Swin for dense prediction (detection, segmentation), and CNNs for mobile/edge (optimized inference). No single architecture dominates all tasks. The trend: transformers replaced CNNs for high-compute settings, but CNNs remain competitive on mobile and for small-data regimes." data-wrong="<strong>Not quite.</strong> No single vision backbone is best for everything. ViT for classification/multimodal, Swin for detection/segmentation, CNNs for mobile. The choice depends on the task (classification vs detection), deployment (GPU vs mobile), and data scale (large vs small)."></div>
+  </div>
+
+  <div class="checkpoint">
+    <h4>Module 6.2 — Mastery checkpoint</h4>
+    <ol>
+      <li>Explain shifted window attention and derive the cost savings over global attention.</li>
+      <li>Draw Swin's 4-stage hierarchy with patch merging and explain why it mirrors a CNN feature pyramid.</li>
+      <li>Explain how FPN uses multi-scale features for detecting objects of different sizes.</li>
+      <li>Choose between ViT and Swin for classification, detection, and multimodal tasks.</li>
+    </ol>
+  </div>
+</section>
+
+<section id="section-06">
+  <h2 data-num="06 / 06">Learn &amp; Practice.</h2>
+
+  <p class="learn-intro">Use these resources in layers: start with the approachable explanation when the architecture feels fuzzy, read the original paper once the idea clicks, then inspect the reference implementation to connect the concept to code.</p>
+
+  <div class="resource-stack">
+    <article class="resource-card">
+      <div class="resource-head">
+        <div class="resource-icon">?</div>
+        <div>
+          <div class="resource-kicker">Progressive Article</div>
+          <h3>Stuck? Start here</h3>
+        </div>
+      </div>
+      <a class="resource-title" href="https://huggingface.co/docs/transformers/model_doc/swin" target="_blank" rel="noopener noreferrer">Swin Transformer Model Docs - HuggingFace</a>
+      <p>Shifted-window mechanism and hierarchical pyramid explained.</p>
+      <div class="resource-actions">
+        <a class="resource-link" href="https://huggingface.co/docs/transformers/model_doc/swin" target="_blank" rel="noopener noreferrer">Read Article</a>
+      </div>
+    </article>
+
+    <article class="resource-card canonical">
+      <div class="resource-head">
+        <div class="resource-icon">A</div>
+        <div>
+          <div class="resource-kicker">Canonical Article</div>
+          <h3>Original research paper</h3>
+        </div>
+      </div>
+      <a class="resource-title" href="https://arxiv.org/abs/2103.14030" target="_blank" rel="noopener noreferrer">Swin Transformer - Liu et al.</a>
+      <p>Hierarchical vision transformer using shifted windows.</p>
+      <div class="resource-actions">
+        <a class="resource-link" href="https://arxiv.org/abs/2103.14030" target="_blank" rel="noopener noreferrer">Read Paper</a>
+      </div>
+    </article>
+
+    <article class="resource-card repo">
+      <div class="resource-head">
+        <div class="resource-icon">{ }</div>
+        <div>
+          <div class="resource-kicker">GitHub Repository</div>
+          <h3>Reference implementation</h3>
+        </div>
+      </div>
+      <a class="resource-title" href="https://github.com/microsoft/Swin-Transformer" target="_blank" rel="noopener noreferrer">microsoft/Swin-Transformer</a>
+      <p>Official Swin Transformer repository.</p>
+      <div class="resource-actions">
+        <a class="resource-link" href="https://github.com/microsoft/Swin-Transformer" target="_blank" rel="noopener noreferrer">Explore Repo</a>
+      </div>
+    </article>
+  </div>
+</section>
+    </div>
+  </div>
+
+  <div class="footer-bar fade-in d6">
+    <span>Module 6.2 / Phase 6 · Swin Transformer</span>
+    <a href="module_6_3_clip.html" class="next-link">
+      <span class="lbl">Next Module</span>
+      <span class="ttl">6.3 — CLIP</span>
+    </a>
+  </div>
+
+</div>
+
+<script>
+  document.querySelectorAll('.mcq').forEach(mcq=>{const correct=mcq.dataset.correct;const opts=mcq.querySelectorAll('.opt');const fb=mcq.querySelector('.feedback');opts.forEach(opt=>{opt.addEventListener('click',()=>{if(opt.classList.contains('disabled'))return;const chosen=opt.dataset.key;const isRight=chosen===correct;opts.forEach(o=>{o.classList.add('disabled');if(o.dataset.key===correct)o.classList.add('correct');else if(o===opt&&!isRight)o.classList.add('wrong')});if(isRight){fb.classList.add('show','right');fb.innerHTML='<span class="verdict">Correct</span>'+fb.dataset.right}else{fb.classList.add('show','wrong');fb.innerHTML='<span class="verdict">Not quite</span>'+fb.dataset.wrong}})})});
+</script>
+</body>
+</html>

@@ -87,6 +87,8 @@ class Post(Base):
         Index("idx_posts_created_at", "created_at"),
         Index("idx_posts_type", "type"),
         Index("idx_posts_problem_id", "problem_id"),
+        Index("idx_posts_deleted_created", "deleted_at", "created_at"),
+        Index("idx_posts_deleted_like", "deleted_at", "like_count"),
     )
 
 

@@ -11,7 +11,7 @@ import logging
 from datetime import datetime, timedelta, timezone
 from typing import Optional, Tuple
 
-from sqlalchemy import func, select
+from sqlalchemy import and_, case, func, select
 from sqlalchemy.orm import Session
 
 from app.auth.models.user import EmailOTP, User, UserSession
@@ -108,23 +108,28 @@ class AuthService:
 
         Returns True if flagged. Caller is responsible for the email + audit.
         """
-        prior_count = db.execute(
-            select(func.count(UserSession.id))
+        prior_count, matching_count = db.execute(
+            select(
+                func.count(UserSession.id),
+                func.sum(
+                    case(
+                        (
+                            and_(
+                                UserSession.ip_address == new_session.ip_address,
+                                UserSession.device == new_session.device,
+                            ),
+                            1,
+                        ),
+                        else_=0,
+                    )
+                ),
+            )
             .where(UserSession.user_id == user.id)
             .where(UserSession.id != new_session.id)
-        ).scalar() or 0
-        if prior_count == 0:
+        ).one()
+        if int(prior_count or 0) == 0:
             return False  # first ever login, not suspicious
-
-        existing = db.execute(
-            select(UserSession.id)
-            .where(UserSession.user_id == user.id)
-            .where(UserSession.id != new_session.id)
-            .where(UserSession.ip_address == new_session.ip_address)
-            .where(UserSession.device == new_session.device)
-            .limit(1)
-        ).scalar_one_or_none()
-        return existing is None
+        return int(matching_count or 0) == 0
 
     def _notify_if_suspicious(
         self,

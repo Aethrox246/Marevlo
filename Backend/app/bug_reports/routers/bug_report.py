@@ -17,8 +17,6 @@ from app.bug_reports.models.bug_report import BugReport
 from app.core.dependencies import get_current_user, get_db
 from app.core.rate_limiting import limiter
 
-logger = logging.getLogger(__name__)
-
 router = APIRouter(prefix="/bug-reports", tags=["bug-reports"])
 
 
@@ -30,15 +28,17 @@ class BugReportOut(BaseModel):
 @router.post("", status_code=201, response_model=BugReportOut)
 @limiter.limit("5/hour")
 async def submit_bug_report(
-    request: Request,  # slowapi reads this via introspection
+    request: Request,  # noqa: ARG001 - slowapi reads this via introspection
     title: str = Form(..., min_length=5, max_length=200),
     description: str = Form(..., min_length=10, max_length=5000),
     user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ) -> BugReportOut:
+    """Submit a bug report (title + description)."""
     title_clean = title.strip()
     if len(title_clean) < 5:
         raise HTTPException(422, "Title must be at least 5 non-whitespace characters.")
+
     description_clean = description.strip()
     if len(description_clean) < 10:
         raise HTTPException(422, "Description must be at least 10 non-whitespace characters.")

@@ -1,0 +1,367 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Segmented Sieve - Visualization</title>
+    <style>
+        :root {
+            --bg-page: #0d1117;
+            --bg-surface: #161b22;
+            --bg-input: #0d1117;
+            --border-main: #30363d;
+            --btn-bg: #21262d;
+            --btn-hover: #2d333b;
+            --text-main: #c9d1d9;
+            --text-dim: #8b949e;
+            --accent-orange: #e3b341;
+            --accent-blue: #388bfd;
+            --accent-green: #3fb950;
+            --accent-red: #f85149;
+            --accent-purple: #a371f7;
+        }
+
+        * { box-sizing: border-box; }
+        body {
+            background-color: var(--bg-page);
+            color: var(--text-main);
+            font-family: system-ui, -apple-system, sans-serif;
+            margin: 0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            min-height: 100vh;
+            padding-bottom: 40px;
+        }
+
+        .input-bar {
+            width: 100%;
+            background-color: var(--bg-surface);
+            padding: 12px 16px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 8px;
+            border-bottom: 1px solid var(--border-main);
+            flex-wrap: wrap;
+        }
+        label.ui-label { font-family: 'Courier New', monospace; font-size: 13px; color: var(--text-dim); }
+        input[type="number"] {
+            background: var(--bg-input);
+            border: 1px solid var(--border-main);
+            color: var(--text-main);
+            height: 32px;
+            border-radius: 6px;
+            padding: 0 10px;
+            width: 90px;
+            font-size: 13px;
+        }
+
+        button {
+            height: 32px; border-radius: 6px; padding: 0 14px; background: var(--btn-bg);
+            border: 1px solid var(--border-main); color: var(--text-main); font-size: 13px; cursor: pointer;
+            transition: background 0.2s ease;
+        }
+        button:hover { background: var(--btn-hover); }
+
+        .visual-container { margin-top: 30px; display: flex; flex-direction: column; align-items: center; gap: 20px; width: 100%; }
+        .tiles-wrapper { display: flex; gap: 8px; flex-wrap: wrap; justify-content: center; max-width: 860px; min-height: 120px; position: relative; }
+
+        .tile-unit { display: flex; flex-direction: column; align-items: center; gap: 4px; position: relative; }
+        .tile {
+            min-width: 48px; height: 48px; display: flex; align-items: center; justify-content: center;
+            border-radius: 8px; font-size: 18px; font-weight: 700; font-family: 'Courier New', monospace;
+            transition: all 0.3s ease; border: 2px solid var(--border-main); background: #21262d;
+            color: var(--text-main);
+        }
+        .tile-index { font-size: 11px; color: var(--text-dim); font-family: monospace; }
+
+        .tile.candidate { background: #2a1600; border-color: var(--accent-orange); color: var(--accent-orange); transform: scale(1.12); }
+        .tile.marked { background: #2a0d0d; border-color: var(--accent-red); color: var(--accent-red); opacity: 0.75; }
+        .tile.prime { background: #0f2a1a; border-color: var(--accent-green); color: var(--accent-green); transform: scale(1.18); box-shadow: 0 0 15px var(--accent-green); }
+
+        .action-panel {
+            margin-top: 30px; background: var(--bg-surface); border: 1px solid var(--border-main);
+            border-radius: 6px; padding: 16px 22px; width: 720px; text-align: center; font-family: monospace;
+            min-height: 125px; font-size: 15px; line-height: 1.6;
+        }
+
+        .info-panel { margin-top: 18px; display: flex; gap: 14px; flex-wrap: wrap; justify-content: center; }
+        .info-cell {
+            background: var(--bg-surface); border: 1px solid var(--border-main); border-radius: 6px;
+            padding: 10px 16px; display: flex; flex-direction: column; align-items: center; min-width: 115px;
+        }
+        .info-label { font-size: 11px; color: var(--text-dim); }
+        .info-value { font-family: monospace; font-size: 18px; font-weight: 700; }
+
+        .result-display { margin-top: 18px; text-align: center; }
+        #res-val { font-size: 38px; font-family: monospace; font-weight: bold; transition: all 0.4s; }
+        .pop { color: var(--accent-green) !important; text-shadow: 0 0 20px var(--accent-green); animation: popAnim 600ms; }
+
+        @keyframes popAnim { 0%{transform:scale(0.6)} 50%{transform:scale(1.25)} 100%{transform:scale(1)} }
+
+        .status-bar { margin-top: 10px; font-size: 13px; color: var(--text-dim); height: 1.4em; width: 620px; text-align: center; }
+
+        .controls { margin-top: 28px; display: flex; align-items: center; gap: 10px; }
+        input[type="range"] { accent-color: var(--accent-blue); width: 130px; }
+
+        .legend { margin-top: 18px; display: flex; gap: 20px; flex-wrap: wrap; justify-content: center; }
+        .legend-item { display: flex; align-items: center; font-size: 12px; color: var(--text-dim); }
+        .dot { width: 14px; height: 14px; border-radius: 3px; margin-right: 7px; }
+
+        .log-panel {
+            margin-top: 18px; background: var(--bg-page); border: 1px solid var(--border-main);
+            border-radius: 6px; padding: 14px 18px; width: 740px; max-width: 95%; height: 155px;
+            overflow-y: auto; font-family: 'Courier New', monospace; font-size: 13.5px;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="input-bar">
+        <label class="ui-label">L =</label>
+        <input type="number" id="num-l" value="10">
+        <label class="ui-label">R =</label>
+        <input type="number" id="num-r" value="20">
+        <button onclick="loadCustom()">Load</button>
+        <button onclick="loadExample(10,20)">Ex 1 (10-20)</button>
+        <button onclick="loadExample(1,10)">Ex 2 (1-10)</button>
+    </div>
+
+    <div class="visual-container">
+        <div class="ui-label" id="arr-label">Segmented Sieve</div>
+        <div class="tiles-wrapper" id="tiles-container"></div>
+    </div>
+
+    <div class="action-panel" id="main-panel">—</div>
+
+    <div class="info-panel">
+        <div class="info-cell">
+            <span class="info-label">Current Prime (p)</span>
+            <span class="info-value" id="val-p" style="color:var(--accent-orange);">—</span>
+        </div>
+        <div class="info-cell">
+            <span class="info-label">Marking Multiple</span>
+            <span class="info-value" id="val-multiple" style="color:var(--accent-red);">—</span>
+        </div>
+        <div class="info-cell">
+            <span class="info-label">Primes Found</span>
+            <span class="info-value" id="val-count" style="color:var(--accent-green);">—</span>
+        </div>
+    </div>
+
+    <div class="result-display">
+        <span class="ui-label" style="font-size:18px;">Primes in [L,R] = </span>
+        <span id="res-val">—</span>
+    </div>
+
+    <div class="status-bar" id="status-text"></div>
+
+    <div class="controls">
+        <button onclick="reset()">↺ Reset</button>
+        <button onclick="back()">← Back</button>
+        <button onclick="togglePlay()" id="play-btn">Play</button>
+        <button onclick="next()">Next →</button>
+        <div style="display:flex; align-items:center; gap:6px;">
+            <span class="ui-label" style="font-size:11px">Speed</span>
+            <input type="range" id="speed-slider" min="0" max="2" value="1">
+        </div>
+    </div>
+
+    <div class="legend">
+        <div class="legend-item"><span class="dot" style="background:#2a1600;border:2px solid var(--accent-orange)"></span> Current p</div>
+        <div class="legend-item"><span class="dot" style="background:#2a0d0d;border:2px solid var(--accent-red)"></span> Marked Composite</div>
+        <div class="legend-item"><span class="dot" style="background:#0f2a1a;border:2px solid var(--accent-green)"></span> Prime</div>
+    </div>
+
+    <div class="log-panel" id="log"></div>
+
+    <script>
+        let L = 10, R = 20;
+        let steps = [];
+        let stepIndex = 0;
+        let timer = null;
+        const delays = [1400, 800, 400];
+
+        function init() { loadExample(10, 20); }
+
+        function loadExample(l, r) {
+            L = l; R = r;
+            document.getElementById('num-l').value = L;
+            document.getElementById('num-r').value = R;
+            generateSteps();
+            reset();
+        }
+
+        function loadCustom() {
+            const l = parseInt(document.getElementById('num-l').value);
+            const r = parseInt(document.getElementById('num-r').value);
+            if (!isNaN(l) && !isNaN(r) && l >= 0 && r >= l) {
+                loadExample(l, r);
+            } else {
+                alert("Please enter valid L and R (L ≤ R).");
+            }
+        }
+
+        function generateSteps() {
+            steps = [];
+            let primes = [];
+            let isPrime = new Array(R+1).fill(true);
+            isPrime[0] = isPrime[1] = false;
+
+            // Generate small primes up to sqrt(R)
+            const limit = Math.floor(Math.sqrt(R));
+            for (let p = 2; p * p <= R; p++) {
+                if (isPrime[p]) {
+                    primes.push(p);
+                    for (let multiple = p * p; multiple <= R; multiple += p) {
+                        isPrime[multiple] = false;
+                    }
+                }
+            }
+
+            // Collect primes in [L, R]
+            let rangePrimes = [];
+            for (let i = Math.max(L, 2); i <= R; i++) {
+                if (isPrime[i]) rangePrimes.push(i);
+            }
+
+            // Initial state
+            steps.push({
+                type: 'init',
+                primes: [],
+                rangePrimes: [],
+                panel: `Segmented Sieve for range [<b>${L}</b>, <b>${R}</b>].<br>First generate small primes up to √${R} ≈ ${limit}.`,
+                statusText: `Generating small primes...`,
+                log: `Range [${L}, ${R}]\n√R ≈ ${limit}`
+            });
+
+            // Simulate simple sieve
+            let currentSmallPrimes = [];
+            for (let p = 2; p <= limit; p++) {
+                if (isPrime[p]) {
+                    currentSmallPrimes.push(p);
+                    steps.push({
+                        type: 'small_prime',
+                        primes: [...currentSmallPrimes],
+                        p: p,
+                        panel: `Found small prime <b>${p}</b>.`,
+                        statusText: `Small prime: ${p}`,
+                        log: `Added small prime ${p}`
+                    });
+                }
+            }
+
+            // Final result
+            steps.push({
+                type: 'final',
+                primes: currentSmallPrimes,
+                rangePrimes: rangePrimes,
+                p: '—',
+                panel: `Final primes in range [<b>${L}</b>, <b>${R}</b>]:<br><b>${rangePrimes.join(', ')}</b>`,
+                statusText: `Found ${rangePrimes.length} primes`,
+                log: `Final Result: ${rangePrimes.join(', ')}`,
+                isTrue: true
+            });
+        }
+
+        function renderStep(idx) {
+            const step = steps[idx];
+            if (!step) return;
+
+            const container = document.getElementById('tiles-container');
+            container.innerHTML = '';
+
+            for (let i = L; i <= R; i++) {
+                const wrapper = document.createElement('div');
+                wrapper.className = 'tile-unit';
+
+                const tile = document.createElement('div');
+                let stateClass = 'candidate';
+                if (step.type === 'final') {
+                    if (step.rangePrimes.includes(i)) stateClass = 'prime';
+                    else stateClass = 'marked';
+                }
+
+                tile.className = `tile ${stateClass}`;
+                tile.innerText = i;
+
+                const idxLabel = document.createElement('div');
+                idxLabel.className = 'tile-index';
+                idxLabel.innerText = i;
+
+                wrapper.append(tile, idxLabel);
+                container.appendChild(wrapper);
+            }
+
+            document.getElementById('main-panel').innerHTML = step.panel;
+
+            document.getElementById('val-p').innerText = step.p || '—';
+            document.getElementById('val-multiple').innerText = '—';
+            document.getElementById('val-count').innerText = step.rangePrimes ? step.rangePrimes.length : '—';
+
+            const resVal = document.getElementById('res-val');
+            if (step.type === 'final') {
+                resVal.innerText = step.rangePrimes.join(', ');
+                resVal.className = 'pop';
+            } else {
+                resVal.innerText = '—';
+                resVal.className = '';
+            }
+
+            document.getElementById('status-text').innerText = step.statusText;
+
+            const logPanel = document.getElementById('log');
+            logPanel.innerHTML = '';
+            for (let i = 0; i <= idx; i++) {
+                if (steps[i].log) {
+                    const line = document.createElement('div');
+                    line.style.marginBottom = '5px';
+                    line.style.whiteSpace = 'pre-wrap';
+                    line.innerText = steps[i].log;
+                    logPanel.appendChild(line);
+                }
+            }
+            logPanel.scrollTop = logPanel.scrollHeight;
+        }
+
+        function next() {
+            if (stepIndex < steps.length - 1) {
+                stepIndex++;
+                renderStep(stepIndex);
+            } else pause();
+        }
+
+        function back() {
+            if (stepIndex > 0) {
+                stepIndex--;
+                renderStep(stepIndex);
+            }
+        }
+
+        function reset() {
+            pause();
+            stepIndex = 0;
+            renderStep(0);
+        }
+
+        function togglePlay() {
+            const btn = document.getElementById('play-btn');
+            if (timer) pause();
+            else {
+                btn.innerText = 'Pause';
+                if (stepIndex >= steps.length - 1) stepIndex = 0;
+                timer = setInterval(next, delays[document.getElementById('speed-slider').value]);
+            }
+        }
+
+        function pause() {
+            clearInterval(timer);
+            timer = null;
+            document.getElementById('play-btn').innerText = 'Play';
+        }
+
+        window.onload = init;
+    </script>
+</body>
+</html>

@@ -1,0 +1,1895 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Module 2.5 (Part 2) — Covariance &amp; Correlation | Quantum Neural Analytics OS</title>
+<style>
+/* ═══════════════════════════════════════════════════════════
+   QUANTUM NEURAL ANALYTICS OS — CORE DESIGN SYSTEM
+   ═══════════════════════════════════════════════════════════ */
+:root {
+  --bg-deep: #03040a;
+  --bg-navy: #060818;
+  --bg-panel: rgba(10, 15, 35, 0.55);
+  --neon-cyan: #00f0ff;
+  --neon-purple: #b14dff;
+  --neon-magenta: #ff2bd6;
+  --neon-amber: #ffb547;
+  --neon-green: #00ffaa;
+  --neon-red: #ff4d6d;
+  --text-primary: #e6f4ff;
+  --text-soft: #d8e6ff;
+  --text-dim: #7a8bbf;
+  --border-glow: rgba(0, 240, 255, 0.25);
+  --glass-blur: blur(18px);
+  --mono: 'JetBrains Mono', 'Fira Code', 'Consolas', monospace;
+}
+* { margin: 0; padding: 0; box-sizing: border-box; }
+html { scroll-behavior: smooth; }
+body {
+  background: var(--bg-deep);
+  color: var(--text-soft);
+  font-family: 'Inter', 'Segoe UI', system-ui, sans-serif;
+  overflow-x: hidden;
+  line-height: 1.65;
+  min-height: 100vh;
+  position: relative;
+}
+body::before {
+  content: '';
+  position: fixed; inset: 0;
+  background-image:
+    linear-gradient(rgba(0, 240, 255, 0.04) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(0, 240, 255, 0.04) 1px, transparent 1px);
+  background-size: 60px 60px;
+  pointer-events: none; z-index: 0;
+  animation: gridShift 30s linear infinite;
+}
+body::after {
+  content: '';
+  position: fixed; inset: 0;
+  background:
+    radial-gradient(circle at 18% 22%, rgba(0, 240, 255, 0.12), transparent 42%),
+    radial-gradient(circle at 82% 65%, rgba(177, 77, 255, 0.13), transparent 45%),
+    radial-gradient(circle at 50% 95%, rgba(255, 43, 214, 0.08), transparent 40%);
+  pointer-events: none; z-index: 0;
+}
+@keyframes gridShift {
+  0% { background-position: 0 0, 0 0; }
+  100% { background-position: 60px 60px, 60px 60px; }
+}
+#particle-canvas { position: fixed; inset: 0; z-index: 1; pointer-events: none; }
+.container {
+  position: relative; z-index: 10;
+  max-width: 1280px;
+  margin: 0 auto;
+  padding: 32px 24px 120px;
+}
+
+/* ── HUD ── */
+.hud {
+  display: flex; justify-content: space-between; align-items: center;
+  padding: 14px 22px;
+  background: var(--bg-panel);
+  backdrop-filter: var(--glass-blur);
+  border: 1px solid var(--border-glow);
+  border-radius: 14px;
+  font-family: var(--mono);
+  font-size: 11px;
+  letter-spacing: 1.8px;
+  text-transform: uppercase;
+  margin-bottom: 50px;
+  box-shadow: 0 0 30px rgba(0, 240, 255, 0.1);
+  flex-wrap: wrap; gap: 10px;
+}
+.hud-left { color: var(--neon-cyan); }
+.hud-center { color: var(--text-soft); }
+.hud-right { color: var(--neon-purple); display: flex; align-items: center; gap: 8px; }
+.hud-dot {
+  width: 8px; height: 8px; border-radius: 50%;
+  background: var(--neon-cyan);
+  box-shadow: 0 0 12px var(--neon-cyan);
+  animation: pulse 1.6s ease-in-out infinite;
+}
+@keyframes pulse {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.4; transform: scale(1.3); }
+}
+
+/* ── HERO ── */
+.hero {
+  position: relative;
+  text-align: center;
+  padding: 90px 24px 60px;
+  margin-bottom: 80px;
+  border: 1px solid var(--border-glow);
+  border-radius: 28px;
+  background: linear-gradient(135deg, rgba(10, 15, 40, 0.6), rgba(20, 5, 40, 0.4));
+  backdrop-filter: var(--glass-blur);
+  overflow: hidden;
+  box-shadow: 0 0 60px rgba(0, 240, 255, 0.1), inset 0 0 80px rgba(177, 77, 255, 0.06);
+}
+.hero-bg-svg {
+  position: absolute; inset: 0;
+  width: 100%; height: 100%;
+  opacity: 0.45;
+  pointer-events: none;
+}
+.hero-tag {
+  display: inline-block;
+  font-family: var(--mono);
+  font-size: 11px;
+  letter-spacing: 3px;
+  color: var(--neon-cyan);
+  padding: 6px 18px;
+  border: 1px solid var(--neon-cyan);
+  border-radius: 999px;
+  margin-bottom: 26px;
+  text-transform: uppercase;
+  background: rgba(0, 240, 255, 0.05);
+  box-shadow: 0 0 20px rgba(0, 240, 255, 0.2);
+  position: relative; z-index: 2;
+}
+.hero h1 {
+  font-family: 'Inter', 'Segoe UI', system-ui, sans-serif;
+  font-size: clamp(2.4rem, 6vw, 4.8rem);
+  font-weight: 900;
+  line-height: 1.05;
+  letter-spacing: -2px;
+  background: linear-gradient(135deg, #ffffff 0%, var(--neon-cyan) 40%, var(--neon-purple) 80%, var(--neon-magenta) 100%);
+  background-size: 200% 200%;
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  animation: gradientShift 8s ease infinite;
+  margin: 0 auto 18px;
+  text-shadow: 0 0 80px rgba(177, 77, 255, 0.2);
+  text-align: center;
+  position: relative; z-index: 2;
+}
+@keyframes gradientShift {
+  0%, 100% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+}
+.hero .subtitle {
+  font-size: 1.15rem;
+  color: var(--text-soft);
+  max-width: 780px;
+  margin: 0 auto 26px;
+  position: relative; z-index: 2;
+}
+.hero .overview {
+  font-size: 0.95rem;
+  color: var(--text-dim);
+  max-width: 840px;
+  margin: 0 auto 30px;
+  position: relative; z-index: 2;
+  font-style: italic;
+}
+.hero-meta {
+  display: flex; justify-content: center; flex-wrap: wrap;
+  gap: 12px;
+  position: relative; z-index: 2;
+  margin-top: 20px;
+}
+.meta-chip {
+  display: inline-flex; align-items: center; gap: 10px;
+  padding: 10px 18px;
+  background: rgba(10, 15, 35, 0.6);
+  border: 1px solid var(--border-glow);
+  border-radius: 10px;
+  font-family: var(--mono);
+  font-size: 11px;
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+  transition: all 0.3s;
+}
+.meta-chip:hover {
+  border-color: var(--neon-cyan);
+  box-shadow: 0 0 18px rgba(0, 240, 255, 0.2);
+  transform: translateY(-2px);
+}
+.meta-chip .label { color: var(--text-dim); }
+.meta-chip .value { color: var(--neon-cyan); font-weight: 700; }
+
+/* ── Sections ── */
+.section { margin-bottom: 90px; position: relative; }
+.section-header {
+  display: flex; align-items: center; gap: 18px;
+  margin-bottom: 36px;
+}
+.section-num {
+  font-family: var(--mono);
+  font-size: 13px;
+  color: var(--neon-cyan);
+  padding: 8px 14px;
+  border: 1px solid var(--neon-cyan);
+  border-radius: 8px;
+  background: rgba(0, 240, 255, 0.06);
+  letter-spacing: 2px;
+  white-space: nowrap;
+}
+.section-title {
+  font-size: clamp(1.5rem, 3vw, 2.1rem);
+  font-weight: 700;
+  background: linear-gradient(90deg, #fff, var(--neon-cyan));
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+.section-line {
+  flex: 1;
+  height: 1px;
+  background: linear-gradient(90deg, var(--neon-cyan), transparent);
+  margin-left: 8px;
+}
+.sub-section-marker {
+  font-family: var(--mono);
+  font-size: 11px;
+  color: var(--neon-purple);
+  letter-spacing: 3px;
+  text-transform: uppercase;
+  margin-bottom: 14px;
+  padding: 6px 12px;
+  display: inline-block;
+  border: 1px solid var(--neon-purple);
+  border-radius: 6px;
+  background: rgba(177, 77, 255, 0.05);
+}
+
+/* ── Concept block ── */
+.concept-block {
+  background: var(--bg-panel);
+  backdrop-filter: var(--glass-blur);
+  border: 1px solid var(--border-glow);
+  border-radius: 20px;
+  padding: 32px;
+  margin-bottom: 24px;
+  position: relative;
+  overflow: hidden;
+}
+.concept-block::after {
+  content: '';
+  position: absolute; bottom: -50%; right: -10%;
+  width: 320px; height: 320px;
+  background: radial-gradient(circle, rgba(0, 240, 255, 0.08), transparent 70%);
+  pointer-events: none;
+}
+.concept-block h3 {
+  font-size: 1.35rem;
+  color: var(--neon-cyan);
+  margin-bottom: 14px;
+  display: flex; align-items: center; gap: 12px;
+}
+.concept-block h3::before { content: '◆'; color: var(--neon-purple); font-size: 1rem; }
+.concept-block h4 {
+  font-size: 1.05rem;
+  color: var(--neon-magenta);
+  margin-top: 18px;
+  margin-bottom: 10px;
+}
+.concept-block p { color: var(--text-soft); margin-bottom: 14px; font-size: 1rem; }
+.concept-block strong { color: #fff; }
+.concept-block em { color: var(--neon-magenta); font-style: normal; }
+.concept-block ul { list-style: none; padding-left: 0; }
+.concept-block ul li {
+  padding: 6px 0 6px 22px;
+  position: relative;
+  color: var(--text-soft);
+}
+.concept-block ul li::before {
+  content: '▸';
+  position: absolute; left: 0;
+  color: var(--neon-cyan);
+}
+.highlight-box {
+  background: linear-gradient(135deg, rgba(0, 240, 255, 0.07), rgba(177, 77, 255, 0.06));
+  border-left: 3px solid var(--neon-cyan);
+  padding: 16px 22px;
+  border-radius: 10px;
+  margin: 18px 0;
+  font-size: 0.95rem;
+}
+.warning-box {
+  background: linear-gradient(135deg, rgba(255, 77, 109, 0.08), rgba(255, 181, 71, 0.06));
+  border-left: 3px solid var(--neon-red);
+  padding: 16px 22px;
+  border-radius: 10px;
+  margin: 18px 0;
+  font-size: 0.95rem;
+}
+.warning-box strong { color: var(--neon-red); }
+.success-box {
+  background: linear-gradient(135deg, rgba(0, 255, 170, 0.06), rgba(0, 240, 255, 0.05));
+  border-left: 3px solid var(--neon-green);
+  padding: 16px 22px;
+  border-radius: 10px;
+  margin: 18px 0;
+  font-size: 0.95rem;
+}
+
+/* ── Viz wrap ── */
+.viz-wrap {
+  background: var(--bg-panel);
+  backdrop-filter: var(--glass-blur);
+  border: 1px solid var(--border-glow);
+  border-radius: 22px;
+  padding: 30px;
+  margin-bottom: 28px;
+  position: relative;
+}
+.viz-title {
+  font-size: 1.15rem;
+  color: var(--neon-cyan);
+  margin-bottom: 8px;
+  font-family: var(--mono);
+  letter-spacing: 1px;
+  text-transform: uppercase;
+}
+.viz-desc {
+  font-size: 0.92rem;
+  color: var(--text-soft);
+  margin-bottom: 22px;
+}
+
+/* ── Canvas ── */
+.viz-canvas {
+  width: 100%;
+  background: rgba(0, 0, 0, 0.35);
+  border-radius: 12px;
+  border: 1px solid rgba(0, 240, 255, 0.2);
+  display: block;
+}
+
+/* ── Sliders ── */
+input[type="range"] {
+  width: 100%; -webkit-appearance: none; appearance: none;
+  background: transparent; height: 24px;
+}
+input[type="range"]::-webkit-slider-runnable-track {
+  height: 4px;
+  background: linear-gradient(90deg, var(--neon-cyan), var(--neon-purple));
+  border-radius: 4px;
+}
+input[type="range"]::-moz-range-track {
+  height: 4px;
+  background: linear-gradient(90deg, var(--neon-cyan), var(--neon-purple));
+  border-radius: 4px;
+}
+input[type="range"]::-webkit-slider-thumb {
+  -webkit-appearance: none; appearance: none;
+  width: 18px; height: 18px; border-radius: 50%;
+  background: #fff; margin-top: -7px; cursor: pointer;
+  box-shadow: 0 0 12px rgba(0, 240, 255, 0.8);
+}
+input[type="range"]::-moz-range-thumb {
+  width: 18px; height: 18px; border-radius: 50%;
+  background: #fff; border: 0; cursor: pointer;
+  box-shadow: 0 0 12px rgba(0, 240, 255, 0.8);
+}
+.slider-row {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 20px;
+  margin-bottom: 18px;
+}
+.slider-cell {
+  background: rgba(0, 0, 0, 0.25);
+  border: 1px solid var(--border-glow);
+  border-radius: 12px;
+  padding: 16px;
+}
+.slider-label {
+  display: flex; justify-content: space-between;
+  font-family: var(--mono);
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 1.5px;
+  color: var(--text-dim);
+  margin-bottom: 10px;
+}
+.slider-label span:last-child { color: var(--neon-cyan); font-size: 14px; font-weight: 700; }
+
+/* ── Stat boxes ── */
+.stat-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 12px;
+  margin-top: 14px;
+}
+.stat-box {
+  background: rgba(0, 240, 255, 0.05);
+  border: 1px solid var(--border-glow);
+  border-radius: 10px;
+  padding: 14px;
+  text-align: center;
+}
+.stat-label {
+  font-family: var(--mono);
+  font-size: 10px;
+  color: var(--text-dim);
+  text-transform: uppercase;
+  letter-spacing: 1.5px;
+  margin-bottom: 6px;
+}
+.stat-value {
+  font-size: 1.4rem;
+  font-weight: 700;
+  color: var(--neon-cyan);
+  font-family: var(--mono);
+}
+.stat-value.purple { color: var(--neon-purple); }
+.stat-value.magenta { color: var(--neon-magenta); }
+.stat-value.amber { color: var(--neon-amber); }
+.stat-value.green { color: var(--neon-green); }
+.stat-value.red { color: var(--neon-red); }
+
+/* ── Buttons ── */
+.btn-row { display: flex; flex-wrap: wrap; gap: 12px; margin-bottom: 20px; }
+.btn {
+  background: rgba(0, 240, 255, 0.06);
+  border: 1px solid var(--border-glow);
+  color: var(--neon-cyan);
+  padding: 10px 20px;
+  border-radius: 10px;
+  font-family: var(--mono);
+  font-size: 12px;
+  letter-spacing: 1.5px;
+  cursor: pointer;
+  text-transform: uppercase;
+  transition: all 0.25s;
+}
+.btn:hover {
+  background: rgba(0, 240, 255, 0.15);
+  box-shadow: 0 0 22px rgba(0, 240, 255, 0.3);
+  transform: translateY(-2px);
+}
+.btn.purple { border-color: rgba(177, 77, 255, 0.4); color: var(--neon-purple); }
+.btn.purple:hover { background: rgba(177, 77, 255, 0.15); box-shadow: 0 0 22px rgba(177, 77, 255, 0.3); }
+.btn.magenta { border-color: rgba(255, 43, 214, 0.4); color: var(--neon-magenta); }
+.btn.magenta:hover { background: rgba(255, 43, 214, 0.15); box-shadow: 0 0 22px rgba(255, 43, 214, 0.3); }
+.btn.active {
+  background: linear-gradient(135deg, rgba(0, 240, 255, 0.2), rgba(177, 77, 255, 0.18));
+  color: #fff;
+  border-color: var(--neon-cyan);
+  box-shadow: 0 0 16px rgba(0, 240, 255, 0.3);
+}
+
+/* ── Formula card ── */
+.formula-card {
+  background: linear-gradient(135deg, rgba(10, 15, 40, 0.85), rgba(30, 10, 50, 0.75));
+  border: 1px solid var(--border-glow);
+  border-radius: 16px;
+  padding: 28px;
+  margin-bottom: 22px;
+  position: relative;
+  overflow: hidden;
+}
+.formula-card::before {
+  content: '';
+  position: absolute; top: 0; left: 0;
+  width: 4px; height: 100%;
+  background: linear-gradient(180deg, var(--neon-cyan), var(--neon-purple), var(--neon-magenta));
+}
+.formula-label {
+  font-family: var(--mono);
+  font-size: 11px;
+  color: var(--neon-cyan);
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  margin-bottom: 14px;
+}
+.formula {
+  font-family: var(--mono);
+  font-size: 1.3rem;
+  color: #fff;
+  text-align: center;
+  padding: 18px 12px;
+  background: rgba(0, 0, 0, 0.35);
+  border-radius: 10px;
+  margin: 14px 0;
+  letter-spacing: 1px;
+  overflow-x: auto;
+}
+.formula-explain {
+  color: var(--text-soft);
+  font-size: 0.95rem;
+  margin-top: 12px;
+}
+.var-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 10px;
+  margin-top: 14px;
+}
+.var-item {
+  background: rgba(0, 0, 0, 0.3);
+  border: 1px solid rgba(0, 240, 255, 0.15);
+  border-radius: 8px;
+  padding: 10px 14px;
+  font-size: 0.88rem;
+}
+.var-item code {
+  font-family: var(--mono);
+  color: var(--neon-cyan);
+  font-weight: 700;
+}
+
+/* ── Tabs/Examples ── */
+.example-tabs { display: flex; gap: 8px; margin-bottom: 14px; flex-wrap: wrap; }
+.tab {
+  padding: 8px 16px;
+  font-family: var(--mono);
+  font-size: 11px;
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+  border: 1px solid var(--border-glow);
+  background: rgba(0, 240, 255, 0.04);
+  color: var(--text-soft);
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.25s;
+}
+.tab.active {
+  background: linear-gradient(135deg, rgba(0, 240, 255, 0.2), rgba(177, 77, 255, 0.2));
+  border-color: var(--neon-cyan);
+  color: #fff;
+  box-shadow: 0 0 16px rgba(0, 240, 255, 0.3);
+}
+.example-body {
+  background: rgba(0, 0, 0, 0.3);
+  border-radius: 12px;
+  padding: 22px;
+  border: 1px solid rgba(0, 240, 255, 0.15);
+}
+.example-step {
+  padding: 10px 0;
+  border-bottom: 1px dashed rgba(0, 240, 255, 0.1);
+  color: var(--text-soft);
+}
+.example-step:last-child { border-bottom: 0; }
+.example-step strong { color: var(--neon-cyan); }
+
+/* ── Dual cells ── */
+.dual-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 18px;
+  margin-top: 16px;
+}
+.dual-cell {
+  background: rgba(0, 0, 0, 0.25);
+  border: 1px solid var(--border-glow);
+  border-radius: 12px;
+  padding: 20px;
+}
+.dual-cell h4 {
+  font-family: var(--mono);
+  font-size: 12px;
+  color: var(--neon-cyan);
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  margin-bottom: 12px;
+}
+.dual-cell.purple h4 { color: var(--neon-purple); }
+.dual-cell.red h4 { color: var(--neon-red); }
+.dual-cell.green h4 { color: var(--neon-green); }
+.dual-cell.magenta h4 { color: var(--neon-magenta); }
+.dual-cell ul { list-style: none; padding-left: 0; }
+.dual-cell li {
+  padding: 6px 0 6px 18px;
+  color: var(--text-soft);
+  font-size: 0.92rem;
+  border-bottom: 1px dashed rgba(0, 240, 255, 0.08);
+  position: relative;
+}
+.dual-cell li:last-child { border-bottom: 0; }
+.dual-cell li::before {
+  content: '▸';
+  position: absolute; left: 0;
+  color: var(--neon-cyan);
+}
+
+/* ── Real grid ── */
+.real-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: 18px;
+  margin-top: 14px;
+}
+.real-card {
+  background: rgba(10, 15, 35, 0.6);
+  border: 1px solid var(--border-glow);
+  border-radius: 14px;
+  padding: 20px;
+  transition: all 0.3s;
+}
+.real-card:hover {
+  transform: translateY(-4px);
+  border-color: var(--neon-purple);
+  box-shadow: 0 8px 24px rgba(177, 77, 255, 0.2);
+}
+.real-card h4 { color: var(--neon-magenta); margin-bottom: 8px; font-size: 1rem; }
+.real-card p { color: var(--text-soft); font-size: 0.9rem; }
+
+/* ── Part Nav ── */
+.part-nav {
+  display: flex; justify-content: space-between; flex-wrap: wrap;
+  gap: 14px;
+  margin-top: 50px;
+  padding: 22px;
+  background: var(--bg-panel);
+  backdrop-filter: var(--glass-blur);
+  border: 1px solid var(--border-glow);
+  border-radius: 16px;
+}
+.part-nav-item {
+  flex: 1;
+  min-width: 200px;
+  padding: 14px 18px;
+  background: rgba(0, 240, 255, 0.04);
+  border: 1px solid rgba(0, 240, 255, 0.15);
+  border-radius: 10px;
+}
+.part-nav-item.current {
+  background: linear-gradient(135deg, rgba(0, 240, 255, 0.15), rgba(177, 77, 255, 0.12));
+  border-color: var(--neon-cyan);
+  box-shadow: 0 0 18px rgba(0, 240, 255, 0.2);
+}
+.part-nav-item.done {
+  background: rgba(0, 255, 170, 0.04);
+  border-color: rgba(0, 255, 170, 0.3);
+}
+.part-nav-label {
+  font-family: var(--mono);
+  font-size: 10px;
+  letter-spacing: 2px;
+  color: var(--text-dim);
+  text-transform: uppercase;
+  margin-bottom: 6px;
+}
+.part-nav-item.current .part-nav-label { color: var(--neon-cyan); }
+.part-nav-item.done .part-nav-label { color: var(--neon-green); }
+.part-nav-title { font-size: 0.92rem; color: #fff; font-weight: 600; }
+
+/* ── AI Panel ── */
+.ai-panel {
+  position: relative;
+  background: linear-gradient(135deg, rgba(0, 240, 255, 0.06), rgba(177, 77, 255, 0.06));
+  border: 1px solid var(--border-glow);
+  border-radius: 24px;
+  padding: 38px 30px;
+  backdrop-filter: var(--glass-blur);
+  overflow: hidden;
+}
+.ai-head { display: flex; align-items: center; gap: 16px; margin-bottom: 26px; }
+.ai-avatar {
+  width: 54px; height: 54px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, var(--neon-cyan), var(--neon-purple));
+  display: flex; align-items: center; justify-content: center;
+  font-family: var(--mono);
+  font-weight: 800;
+  color: var(--bg-deep);
+  font-size: 18px;
+  box-shadow: 0 0 24px rgba(0, 240, 255, 0.5);
+  animation: aiPulse 2.4s ease-in-out infinite;
+}
+@keyframes aiPulse {
+  0%,100% { box-shadow: 0 0 24px rgba(0, 240, 255, 0.5); }
+  50% { box-shadow: 0 0 40px rgba(177, 77, 255, 0.6); }
+}
+.ai-meta .ai-name { font-size: 1.05rem; color: #fff; font-weight: 600; }
+.ai-meta .ai-role {
+  font-family: var(--mono);
+  font-size: 11px;
+  color: var(--neon-cyan);
+  letter-spacing: 2px;
+  text-transform: uppercase;
+}
+.takeaway {
+  display: flex; gap: 14px; align-items: flex-start;
+  padding: 14px 0;
+  border-bottom: 1px dashed rgba(0, 240, 255, 0.15);
+}
+.takeaway:last-child { border-bottom: 0; }
+.takeaway-num {
+  font-family: var(--mono);
+  font-size: 13px;
+  color: var(--neon-cyan);
+  background: rgba(0, 240, 255, 0.08);
+  border: 1px solid var(--border-glow);
+  padding: 4px 10px;
+  border-radius: 6px;
+  flex-shrink: 0;
+  font-weight: 600;
+}
+.takeaway-text { color: var(--text-soft); font-size: 0.95rem; }
+.takeaway-text strong { color: #fff; }
+
+.module-footer {
+  margin-top: 60px;
+  padding: 26px;
+  text-align: center;
+  font-family: var(--mono);
+  font-size: 11px;
+  color: var(--text-dim);
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  border-top: 1px solid var(--border-glow);
+}
+
+@media (max-width: 720px) {
+  .container { padding: 20px 14px 80px; }
+  .hero { padding: 60px 18px 50px; }
+  .section { margin-bottom: 60px; }
+  .concept-block, .viz-wrap, .ai-panel { padding: 22px 18px; }
+  .formula { font-size: 0.95rem; padding: 14px 8px; }
+}
+
+  /* ── SCROLL REVEAL ── */
+  .reveal {
+    opacity: 0;
+    transform: translateY(30px);
+    transition: all 0.8s cubic-bezier(0.16, 1, 0.3, 1);
+  }
+  .reveal.visible { opacity: 1; transform: translateY(0); }
+
+  /* ── SLIDE IN ── */
+  @keyframes slideIn {
+    from { opacity: 0; transform: translateY(8px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+
+  /* ── AI PANEL ROTATE ── */
+  @keyframes rotate { to { transform: rotate(360deg); } }
+  .ai-panel { overflow: hidden; }
+  .ai-panel::before {
+    content: ''; position: absolute; top: -50%; left: -50%;
+    width: 200%; height: 200%;
+    background: conic-gradient(from 0deg, transparent, rgba(0,240,255,0.05), transparent, rgba(177,77,255,0.05), transparent);
+    animation: rotate 20s linear infinite;
+    pointer-events: none; z-index: 0;
+  }
+  .ai-panel > * { position: relative; z-index: 1; }
+
+  /* ── SCANLINES ── */
+  .scanlines {
+    position: fixed; inset: 0;
+    background: repeating-linear-gradient(0deg,
+      rgba(0,240,255,0.012) 0px, rgba(0,240,255,0.012) 1px,
+      transparent 1px, transparent 4px);
+    pointer-events: none; z-index: 999; mix-blend-mode: screen;
+  }
+</style>
+</head>
+<body>
+<div class="scanlines"></div>
+
+<canvas id="particle-canvas"></canvas>
+
+<div class="container">
+
+  <!-- ═══════════════════ HUD ═══════════════════ -->
+  <div class="hud">
+    <div class="hud-left">⟁ QNA-OS v4.7 // Module 2.5 — Part 2</div>
+    <div class="hud-center">Covariance · Correlation · Joint Behavior</div>
+    <div class="hud-right"><span class="hud-dot"></span>DEPENDENCY ENGINE ONLINE</div>
+  </div>
+
+  <!-- ═══════════════════ HERO ═══════════════════ -->
+  <section class="hero">
+    <svg class="hero-bg-svg" viewBox="0 0 1200 400" preserveAspectRatio="none">
+      <defs>
+        <linearGradient id="scatGrad" x1="0" y1="0" x2="1" y2="1">
+          <stop offset="0%" stop-color="#00f0ff" stop-opacity="0.8"/>
+          <stop offset="100%" stop-color="#b14dff" stop-opacity="0.8"/>
+        </linearGradient>
+      </defs>
+      <!-- diagonal scatter cloud -->
+      <g fill="#00f0ff" opacity="0.55">
+        <circle cx="200" cy="320" r="3"/><circle cx="260" cy="295" r="3"/>
+        <circle cx="320" cy="270" r="3"/><circle cx="380" cy="248" r="3"/>
+        <circle cx="440" cy="225" r="3"/><circle cx="500" cy="200" r="3"/>
+        <circle cx="560" cy="180" r="3"/><circle cx="620" cy="160" r="3"/>
+        <circle cx="680" cy="140" r="3"/><circle cx="740" cy="120" r="3"/>
+        <circle cx="800" cy="100" r="3"/><circle cx="860" cy="85" r="3"/>
+        <circle cx="280" cy="310" r="3"/><circle cx="340" cy="285" r="3"/>
+        <circle cx="400" cy="260" r="3"/><circle cx="460" cy="235" r="3"/>
+        <circle cx="520" cy="215" r="3"/><circle cx="580" cy="195" r="3"/>
+        <circle cx="640" cy="170" r="3"/><circle cx="700" cy="150" r="3"/>
+        <circle cx="760" cy="125" r="3"/><circle cx="820" cy="105" r="3"/>
+      </g>
+      <!-- best fit line -->
+      <line x1="180" y1="335" x2="900" y2="75" stroke="url(#scatGrad)" stroke-width="2.5" opacity="0.85"/>
+      <!-- axes -->
+      <line x1="100" y1="360" x2="1100" y2="360" stroke="rgba(0,240,255,0.3)" stroke-width="1" stroke-dasharray="4 4"/>
+      <line x1="100" y1="40" x2="100" y2="360" stroke="rgba(0,240,255,0.3)" stroke-width="1" stroke-dasharray="4 4"/>
+      <text x="600" y="385" fill="#00f0ff" font-family="JetBrains Mono" font-size="11" text-anchor="middle" opacity="0.7">X · STUDY HOURS</text>
+      <text x="55" y="200" fill="#b14dff" font-family="JetBrains Mono" font-size="11" text-anchor="middle" opacity="0.7" transform="rotate(-90 55 200)">Y · TEST SCORE</text>
+      <text x="950" y="55" fill="#ff2bd6" font-family="JetBrains Mono" font-size="11" opacity="0.7">ρ = +0.92</text>
+    </svg>
+    <div class="hero-tag">◉ MODULE 2.5 — PART 2 of 3</div>
+    <h1>Covariance &amp; Correlation</h1>
+    <p class="subtitle">When two random variables share a story — how do we measure the way they move together? Covariance captures joint motion; correlation strips out the scale.</p>
+    <p class="overview">Part 2 extends the single-variable summaries of Part 1 into the world of <em>pairs</em>. We build covariance from first principles, see why its scale-dependence is a problem, then derive correlation as the clean, scale-free fix. We end with the famous warning: correlation is not causation — and an interactive demo of how nonlinear patterns can have zero correlation despite being perfectly structured.</p>
+    <div class="hero-meta">
+      <div class="meta-chip"><span class="label">DURATION:</span><span class="value">70 MIN</span></div>
+      <div class="meta-chip"><span class="label">LEVEL:</span><span class="value">CORE</span></div>
+      <div class="meta-chip"><span class="label">CONCEPTS:</span><span class="value">02 / 06</span></div>
+      <div class="meta-chip"><span class="label">FORMULAS:</span><span class="value">06</span></div>
+      <div class="meta-chip"><span class="label">PRACTICE:</span><span class="value">06 TASKS</span></div>
+      <div class="meta-chip"><span class="label">PREREQ:</span><span class="value">M-2.5 PART 1</span></div>
+    </div>
+  </section>
+
+  <!-- ═══════════════════ PART NAV ═══════════════════ -->
+  <div class="part-nav">
+    <div class="part-nav-item done">
+      <div class="part-nav-label">✓ PART 1 — Complete</div>
+      <div class="part-nav-title">Expectation · Variance · Std Dev</div>
+    </div>
+    <div class="part-nav-item current">
+      <div class="part-nav-label">⟁ PART 2 — Now</div>
+      <div class="part-nav-title">Covariance · Correlation</div>
+    </div>
+    <div class="part-nav-item">
+      <div class="part-nav-label">PART 3 — Next</div>
+      <div class="part-nav-title">Moments · MGFs · Master Recap</div>
+    </div>
+  </div>
+
+  <!-- ═══════════════════ SECTION 1 — WHY THIS PART EXISTS ═══════════════════ -->
+  <section class="section reveal">
+    <div class="section-header">
+      <div class="section-num">1</div>
+      <h2 class="section-title">From One Variable to Two</h2>
+      <div class="section-line"></div>
+    </div>
+
+    <div class="concept-block">
+      <div class="sub-section-marker">The new question</div>
+      <h3>When Random Variables Travel Together</h3>
+      <p>In Part 1 we summarized a <em>single</em> random variable with two numbers: a center (E[X]) and a spread (Var(X)). That's enough when we only care about one quantity.</p>
+      <p>But real data almost never comes alone. Height and weight. Study hours and test scores. Temperature and electricity demand. Stock A and stock B. Income and education. In every case the question shifts from "what does X do?" to <strong>"how do X and Y move together?"</strong></p>
+      <div class="highlight-box">
+        <strong>Part 2's central question:</strong> <em>If X goes up, does Y tend to go up, down, or wander randomly?</em> We need a mathematical tool that captures the <em>joint dynamics</em> of two variables — not just their individual behaviors.
+      </div>
+    </div>
+
+    <div class="concept-block">
+      <div class="sub-section-marker">Three possible relationships</div>
+      <h3>The Three Flavors of Joint Behavior</h3>
+      <div class="dual-grid">
+        <div class="dual-cell green">
+          <h4>Positive Relationship</h4>
+          <ul>
+            <li>X up → Y also tends up</li>
+            <li>X down → Y also tends down</li>
+            <li>Example: study hours &amp; test scores</li>
+            <li>Example: height &amp; weight</li>
+          </ul>
+        </div>
+        <div class="dual-cell red">
+          <h4>Negative Relationship</h4>
+          <ul>
+            <li>X up → Y tends down</li>
+            <li>X down → Y tends up</li>
+            <li>Example: price &amp; demand</li>
+            <li>Example: exercise &amp; resting heart rate</li>
+          </ul>
+        </div>
+        <div class="dual-cell purple">
+          <h4>No (Linear) Relationship</h4>
+          <ul>
+            <li>X says nothing about Y</li>
+            <li>Cloud has no slope</li>
+            <li>Example: shoe size &amp; IQ</li>
+            <li>Example: dice rolls in two casinos</li>
+          </ul>
+        </div>
+      </div>
+      <p>We need a single number that captures which of these three patterns we have — and how strong the pattern is. That number is <strong>covariance</strong>.</p>
+    </div>
+  </section>
+
+  <!-- ═══════════════════ SECTION 2 — COVARIANCE ═══════════════════ -->
+  <section class="section reveal">
+    <div class="section-header">
+      <div class="section-num">2</div>
+      <h2 class="section-title">Covariance</h2>
+      <div class="section-line"></div>
+    </div>
+
+    <div class="concept-block">
+      <div class="sub-section-marker">Building the idea</div>
+      <h3>The Core Intuition — Synchronized Deviations</h3>
+      <p>Recall variance: Var(X) = E[(X − μ_X)²] — the average <em>squared</em> deviation of X from its own mean.</p>
+      <p>Covariance generalizes this to two variables: instead of squaring one deviation, we <em>multiply</em> the deviation of X by the deviation of Y. The covariance is the average of that product.</p>
+      <div class="highlight-box">
+        <strong>Mental model:</strong> For each data point, ask "is X above its mean? Is Y above its mean?" If both deviate in the same direction (both above, or both below), the product is positive. If they deviate in opposite directions, the product is negative. Average all the products → covariance.
+      </div>
+    </div>
+
+    <div class="formula-card">
+      <div class="formula-label">⟁ Covariance — Definition</div>
+      <div class="formula">Cov(X, Y) = E[(X − μ_X)(Y − μ_Y)]</div>
+      <p class="formula-explain">For each pair of outcomes, multiply the deviation of X from its mean by the deviation of Y from its mean, then average across the joint distribution. The sign tells you the direction of the relationship; the magnitude tells you the strength — but the magnitude depends on the scales of X and Y.</p>
+      <div class="var-list">
+        <div class="var-item"><code>μ_X = E[X]</code> — mean of X</div>
+        <div class="var-item"><code>μ_Y = E[Y]</code> — mean of Y</div>
+        <div class="var-item"><code>(X − μ_X)(Y − μ_Y)</code> — joint deviation product</div>
+        <div class="var-item"><code>Cov(X, Y)</code> — average over the joint distribution</div>
+      </div>
+    </div>
+
+    <div class="formula-card">
+      <div class="formula-label">⟁ Covariance — Computational Shortcut</div>
+      <div class="formula">Cov(X, Y) = E[XY] − E[X]·E[Y]</div>
+      <p class="formula-explain">Just like variance has a shortcut formula (E[X²] − μ²), covariance has one too. To compute Cov(X, Y): compute the expected product E[XY], then subtract the product of the expectations. Much easier than tracking deviations directly.</p>
+      <p class="formula-explain"><strong>Proof:</strong> Expand E[(X−μ_X)(Y−μ_Y)] = E[XY − μ_Y X − μ_X Y + μ_X μ_Y] = E[XY] − μ_Y μ_X − μ_X μ_Y + μ_X μ_Y = E[XY] − μ_X μ_Y. ✓</p>
+    </div>
+
+    <div class="concept-block">
+      <div class="sub-section-marker">Reading the sign</div>
+      <h3>What the Sign of Covariance Tells You</h3>
+      <ul>
+        <li><strong>Cov(X, Y) &gt; 0</strong> — on average, when X is above its mean, Y is also above. Positive linear association.</li>
+        <li><strong>Cov(X, Y) &lt; 0</strong> — on average, when X is above its mean, Y is below. Negative linear association.</li>
+        <li><strong>Cov(X, Y) = 0</strong> — no <em>linear</em> association on average. Important: this doesn't mean independent! It only means no linear pull.</li>
+      </ul>
+      <div class="warning-box">
+        <strong>Critical gotcha:</strong> Zero covariance does <em>not</em> imply independence. Two variables can have Cov = 0 yet still be perfectly related through a nonlinear pattern (we demonstrate this with an interactive demo below).
+      </div>
+    </div>
+
+    <!-- COVARIANCE COMPUTATION EXAMPLE -->
+    <div class="concept-block">
+      <div class="sub-section-marker">A complete worked computation</div>
+      <h3>Computing Covariance Step by Step</h3>
+      <p>Given paired data: (X, Y) = (1, 2), (2, 4), (3, 5), (4, 7), (5, 8). Compute Cov(X, Y).</p>
+      <ul>
+        <li><strong>Step 1 — Means:</strong> μ_X = (1+2+3+4+5)/5 = 3. μ_Y = (2+4+5+7+8)/5 = 5.2.</li>
+        <li><strong>Step 2 — Deviations from means:</strong>
+          <ul>
+            <li>(X − μ_X): −2, −1, 0, 1, 2</li>
+            <li>(Y − μ_Y): −3.2, −1.2, −0.2, 1.8, 2.8</li>
+          </ul>
+        </li>
+        <li><strong>Step 3 — Products of deviations:</strong> 6.4, 1.2, 0, 1.8, 5.6</li>
+        <li><strong>Step 4 — Average:</strong> Cov(X, Y) = (6.4 + 1.2 + 0 + 1.8 + 5.6) / 5 = 15.0 / 5 = <strong style="color:var(--neon-cyan)">3.0</strong>.</li>
+      </ul>
+      <p>Positive covariance → X and Y rise together. But is 3.0 a "big" number? That depends entirely on the scales of X and Y. This scale-dependence is what makes covariance hard to interpret in absolute terms — and motivates correlation.</p>
+    </div>
+
+    <!-- INTERACTIVE COVARIANCE SCATTER -->
+    <div class="viz-wrap">
+      <div class="viz-title">⟁ Covariance Sign Explorer — Watch the Cloud Tilt</div>
+      <div class="viz-desc">Adjust the relationship strength to see how the scatter cloud changes. Positive values tilt up; negative tilt down; zero gives a circular cloud. The cyan box shows the mean position (μ_X, μ_Y).</div>
+      <div class="slider-row">
+        <div class="slider-cell">
+          <div class="slider-label"><span>Relationship Strength</span><span id="covStrengthVal">+0.7</span></div>
+          <input type="range" id="covStrength" min="-100" max="100" value="70">
+        </div>
+        <div class="slider-cell">
+          <div class="slider-label"><span>Spread (Noise)</span><span id="covNoiseVal">1.0</span></div>
+          <input type="range" id="covNoise" min="20" max="200" value="100">
+        </div>
+      </div>
+      <div class="btn-row">
+        <button class="btn" onclick="regenCov()">⟁ Regenerate Sample</button>
+      </div>
+      <canvas id="covCanvas" class="viz-canvas" width="900" height="380"></canvas>
+      <div class="stat-grid">
+        <div class="stat-box">
+          <div class="stat-label">μ_X</div>
+          <div class="stat-value" id="covMx">0.00</div>
+        </div>
+        <div class="stat-box">
+          <div class="stat-label">μ_Y</div>
+          <div class="stat-value" id="covMy">0.00</div>
+        </div>
+        <div class="stat-box">
+          <div class="stat-label">Cov(X, Y)</div>
+          <div class="stat-value magenta" id="covVal">0.00</div>
+        </div>
+        <div class="stat-box">
+          <div class="stat-label">Sign</div>
+          <div class="stat-value green" id="covSign" style="font-size:1rem;">POSITIVE</div>
+        </div>
+      </div>
+      <div class="highlight-box" style="margin-top:18px;" id="covInsight">
+        Pull the strength slider left or right. Notice: the cloud's <em>tilt</em> reveals the sign instantly. Watch the points: are they mostly in the upper-right &amp; lower-left quadrants (positive), or upper-left &amp; lower-right (negative)?
+      </div>
+    </div>
+
+    <div class="formula-card">
+      <div class="formula-label">⟁ Covariance — Algebraic Properties</div>
+      <div class="formula">Cov(X, X) = Var(X)</div>
+      <div class="formula">Cov(X, Y) = Cov(Y, X)</div>
+      <div class="formula">Cov(aX + b, cY + d) = ac · Cov(X, Y)</div>
+      <div class="formula">Var(X + Y) = Var(X) + Var(Y) + 2·Cov(X, Y)</div>
+      <p class="formula-explain"><strong>Variance is self-covariance.</strong> Covariance is symmetric in its arguments. Linear scaling pulls constants outside (and adding constants has no effect — shifts don't change joint motion). The fourth equation is the crucial generalization of Var(X+Y) = Var(X) + Var(Y) from Part 1 — that simple form only holds when Cov(X, Y) = 0.</p>
+    </div>
+
+    <div class="concept-block">
+      <div class="sub-section-marker">Why scale dependence is a problem</div>
+      <h3>The Achilles Heel of Covariance</h3>
+      <p>Suppose Cov(X, Y) = 3.0. Is that a "strong" relationship? You cannot tell. The number 3.0 means something very different depending on the scales:</p>
+      <ul>
+        <li>If X is in millimeters and Y is in kilograms, Cov is in mm·kg — odd units.</li>
+        <li>If you re-measure X in meters (divide by 1000), the covariance drops by 1000× — to 0.003. Same data, same relationship, very different number.</li>
+        <li>Cov(X, Y) values from different datasets cannot be directly compared.</li>
+      </ul>
+      <p>We need a measure that captures the same information as covariance, but is <strong>independent of scale</strong>. Enter correlation.</p>
+    </div>
+  </section>
+
+  <!-- ═══════════════════ SECTION 3 — CORRELATION ═══════════════════ -->
+  <section class="section reveal">
+    <div class="section-header">
+      <div class="section-num">3</div>
+      <h2 class="section-title">Pearson Correlation</h2>
+      <div class="section-line"></div>
+    </div>
+
+    <div class="concept-block">
+      <div class="sub-section-marker">The fix to covariance's scale problem</div>
+      <h3>Standardizing the Relationship</h3>
+      <p><strong>Pearson correlation</strong> (denoted ρ, rho) is covariance divided by the product of standard deviations. This division removes the units entirely — what remains is a pure, scale-free number between −1 and +1.</p>
+      <div class="highlight-box">
+        <strong>The key insight:</strong> By dividing by σ_X · σ_Y, we're measuring covariance in <em>units of standard deviation</em>. The result is unitless. A correlation of 0.7 means the same thing whether X is in meters, miles, or microseconds.
+      </div>
+    </div>
+
+    <div class="formula-card">
+      <div class="formula-label">⟁ Pearson Correlation Coefficient</div>
+      <div class="formula">ρ(X, Y) = Cov(X, Y) / (σ_X · σ_Y)</div>
+      <p class="formula-explain">Take the covariance and normalize it by the product of standard deviations. The result is always in the range [−1, +1]. Often written as ρ_{XY}, Corr(X, Y), or simply r when computed from sample data.</p>
+      <div class="var-list">
+        <div class="var-item"><code>Cov(X, Y)</code> — captures direction &amp; raw magnitude</div>
+        <div class="var-item"><code>σ_X = √Var(X)</code> — std dev of X (units of X)</div>
+        <div class="var-item"><code>σ_Y = √Var(Y)</code> — std dev of Y (units of Y)</div>
+        <div class="var-item"><code>ρ ∈ [−1, +1]</code> — unitless, comparable across datasets</div>
+      </div>
+    </div>
+
+    <div class="concept-block">
+      <div class="sub-section-marker">Interpreting the magnitude</div>
+      <h3>The Correlation Scale</h3>
+      <div class="dual-grid">
+        <div class="dual-cell green">
+          <h4>ρ = +1 — Perfect Positive</h4>
+          <ul>
+            <li>All points lie exactly on a line with positive slope</li>
+            <li>Y is a perfect linear function of X</li>
+            <li>No scatter at all</li>
+            <li>Rare in real data</li>
+          </ul>
+        </div>
+        <div class="dual-cell">
+          <h4>ρ ≈ +0.7 to +0.9 — Strong Positive</h4>
+          <ul>
+            <li>Clear upward trend with some scatter</li>
+            <li>Example: height &amp; weight in adults</li>
+            <li>Example: education years &amp; income</li>
+          </ul>
+        </div>
+        <div class="dual-cell purple">
+          <h4>ρ ≈ ±0.3 to ±0.5 — Moderate</h4>
+          <ul>
+            <li>Trend visible but lots of noise</li>
+            <li>Example: stress level &amp; sleep quality</li>
+            <li>Useful but not predictive on its own</li>
+          </ul>
+        </div>
+        <div class="dual-cell magenta">
+          <h4>ρ ≈ 0 — None</h4>
+          <ul>
+            <li>No linear pattern</li>
+            <li>Either truly independent or nonlinear relationship</li>
+            <li>Watch out for misleading nonlinear cases</li>
+          </ul>
+        </div>
+        <div class="dual-cell">
+          <h4>ρ ≈ −0.7 to −0.9 — Strong Negative</h4>
+          <ul>
+            <li>Clear downward trend with some scatter</li>
+            <li>Example: car age &amp; resale price</li>
+            <li>Example: exercise &amp; resting heart rate</li>
+          </ul>
+        </div>
+        <div class="dual-cell red">
+          <h4>ρ = −1 — Perfect Negative</h4>
+          <ul>
+            <li>All points on a line with negative slope</li>
+            <li>Y is a perfect inverse linear function of X</li>
+            <li>Also rare in real data</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+
+    <!-- INTERACTIVE CORRELATION GALLERY -->
+    <div class="viz-wrap">
+      <div class="viz-title">⟁ Correlation Gallery — Six Canonical Patterns</div>
+      <div class="viz-desc">Click any preset to see a scatter cloud with a target correlation value. The trendline shows the best linear fit. Notice how scatter widens as |ρ| shrinks — and how nonlinear patterns can have ρ ≈ 0 despite being structured.</div>
+      <div class="btn-row">
+        <button class="btn active" onclick="setCorr('p1')">ρ ≈ +1</button>
+        <button class="btn" onclick="setCorr('p07')">ρ ≈ +0.7</button>
+        <button class="btn purple" onclick="setCorr('p03')">ρ ≈ +0.3</button>
+        <button class="btn magenta" onclick="setCorr('zero')">ρ ≈ 0</button>
+        <button class="btn purple" onclick="setCorr('n07')">ρ ≈ −0.7</button>
+        <button class="btn" onclick="setCorr('n1')">ρ ≈ −1</button>
+        <button class="btn magenta" onclick="setCorr('nonlin')">Nonlinear · ρ ≈ 0</button>
+      </div>
+      <canvas id="corrCanvas" class="viz-canvas" width="900" height="380"></canvas>
+      <div class="stat-grid">
+        <div class="stat-box">
+          <div class="stat-label">Sample size n</div>
+          <div class="stat-value" id="corrN">120</div>
+        </div>
+        <div class="stat-box">
+          <div class="stat-label">Cov(X, Y)</div>
+          <div class="stat-value purple" id="corrCov">0.00</div>
+        </div>
+        <div class="stat-box">
+          <div class="stat-label">ρ (correlation)</div>
+          <div class="stat-value magenta" id="corrRho">0.00</div>
+        </div>
+        <div class="stat-box">
+          <div class="stat-label">Strength</div>
+          <div class="stat-value green" id="corrStrength" style="font-size:1rem;">PERFECT +</div>
+        </div>
+      </div>
+      <div class="highlight-box" style="margin-top:18px;" id="corrInsight">
+        Use the "Nonlinear" button to see the famous trap: data that follows a perfect parabola has ρ ≈ 0 — yet X completely determines Y! Linear correlation is blind to curved relationships.
+      </div>
+    </div>
+
+    <div class="formula-card">
+      <div class="formula-label">⟁ Why ρ Lies in [−1, +1] — The Cauchy-Schwarz Bound</div>
+      <div class="formula">|Cov(X, Y)| ≤ σ_X · σ_Y</div>
+      <p class="formula-explain">This is a deep result from linear algebra (the Cauchy-Schwarz inequality applied to random variables). Dividing both sides by σ_X · σ_Y gives |ρ| ≤ 1. Equality (ρ = ±1) holds <em>if and only if</em> Y is a perfect linear function of X.</p>
+      <p class="formula-explain">This is why ρ = 1 means "perfectly linearly predictable." Anything less leaves residual scatter.</p>
+    </div>
+
+    <!-- WORKED CORRELATION EXAMPLE -->
+    <div class="viz-wrap">
+      <div class="viz-title">⟁ Worked Correlation Examples</div>
+      <div class="example-tabs">
+        <button class="tab active" onclick="showCorrEx(1)">Easy</button>
+        <button class="tab" onclick="showCorrEx(2)">Medium</button>
+        <button class="tab" onclick="showCorrEx(3)">Advanced</button>
+      </div>
+      <div class="example-body" id="corrBody"></div>
+    </div>
+  </section>
+
+  <!-- ═══════════════════ SECTION 4 — INDEPENDENCE VS UNCORRELATED ═══════════════════ -->
+  <section class="section reveal">
+    <div class="section-header">
+      <div class="section-num">4</div>
+      <h2 class="section-title">Independence vs. Uncorrelated</h2>
+      <div class="section-line"></div>
+    </div>
+
+    <div class="concept-block">
+      <div class="sub-section-marker">A subtle but critical distinction</div>
+      <h3>The Two Concepts Are Not the Same</h3>
+      <p>Many students collapse "uncorrelated" and "independent" into the same idea. They are not. The relationship is asymmetric:</p>
+      <div class="dual-grid">
+        <div class="dual-cell green">
+          <h4>Independence (Strong)</h4>
+          <ul>
+            <li>P(X, Y) = P(X) · P(Y) for all values</li>
+            <li>Knowing X tells you nothing about Y</li>
+            <li>The strongest form of "no relationship"</li>
+            <li>Implies uncorrelated (ρ = 0)</li>
+          </ul>
+        </div>
+        <div class="dual-cell magenta">
+          <h4>Uncorrelated (Weak)</h4>
+          <ul>
+            <li>Cov(X, Y) = 0, hence ρ = 0</li>
+            <li>No <em>linear</em> association</li>
+            <li>Does NOT imply independent</li>
+            <li>Curved or other patterns can survive</li>
+          </ul>
+        </div>
+      </div>
+      <div class="highlight-box">
+        <strong>The implication chain:</strong> Independent ⟹ Uncorrelated, but Uncorrelated ⇏ Independent. The reverse implication fails because correlation is blind to nonlinear structure.
+      </div>
+    </div>
+
+    <div class="concept-block">
+      <div class="sub-section-marker">The famous counterexample</div>
+      <h3>The Parabola — Zero Correlation, Total Dependence</h3>
+      <p>Let X be a random variable symmetric around zero (say uniform on [−1, +1]). Let Y = X². Then:</p>
+      <ul>
+        <li>X completely determines Y. Knowing X = 0.5 means Y must be 0.25 exactly. They are <em>maximally dependent</em>.</li>
+        <li>E[X] = 0 (symmetry). E[XY] = E[X·X²] = E[X³] = 0 (odd moment of a symmetric distribution).</li>
+        <li>Cov(X, Y) = E[XY] − E[X]E[Y] = 0 − 0 = <strong>0</strong>.</li>
+        <li>Therefore ρ(X, Y) = 0 / (σ_X σ_Y) = <strong>0</strong>.</li>
+      </ul>
+      <p>So ρ = 0 even though Y is a deterministic function of X. The correlation coefficient simply cannot see the parabolic structure — it only looks for linear trends.</p>
+      <div class="warning-box">
+        <strong>Practical warning:</strong> Always plot your data. Never trust ρ ≈ 0 alone to conclude "no relationship." Curved trends, periodic patterns, and threshold effects all produce ρ ≈ 0 while being highly informative.
+      </div>
+    </div>
+
+    <div class="formula-card">
+      <div class="formula-label">⟁ Independence — Algebraic Consequences</div>
+      <div class="formula">If X ⊥ Y, then E[XY] = E[X] · E[Y]</div>
+      <div class="formula">If X ⊥ Y, then Cov(X, Y) = 0  ⟹  ρ(X, Y) = 0</div>
+      <div class="formula">If X ⊥ Y, then Var(X + Y) = Var(X) + Var(Y)</div>
+      <p class="formula-explain">Independence has stronger algebraic consequences than just zero correlation. The expected product factors, the covariance vanishes, and the variance of sums adds cleanly. These are the formulas that power the central limit theorem, error analysis, and most of inferential statistics.</p>
+    </div>
+  </section>
+
+  <!-- ═══════════════════ SECTION 5 — CORRELATION ≠ CAUSATION ═══════════════════ -->
+  <section class="section reveal">
+    <div class="section-header">
+      <div class="section-num">5</div>
+      <h2 class="section-title">Correlation ≠ Causation</h2>
+      <div class="section-line"></div>
+    </div>
+
+    <div class="concept-block">
+      <div class="sub-section-marker">The most famous warning in statistics</div>
+      <h3>What Correlation Cannot Tell You</h3>
+      <p>A high correlation between X and Y is consistent with <em>several</em> very different underlying realities. Correlation alone cannot distinguish between them:</p>
+      <ul>
+        <li><strong>X causes Y</strong> — smoking → lung cancer rates</li>
+        <li><strong>Y causes X</strong> — high temperature → AC unit sales (looks like AC → temp if you only see the correlation)</li>
+        <li><strong>A third variable Z causes both</strong> — ice cream sales and drowning deaths both rise with summer temperature</li>
+        <li><strong>Selection bias</strong> — measured only in a non-representative slice of data</li>
+        <li><strong>Pure coincidence</strong> — random alignment in a small sample</li>
+      </ul>
+      <div class="highlight-box">
+        <strong>Famous example:</strong> Number of pirates worldwide has been declining for two centuries. Global average temperature has been rising. ρ is strongly negative. Conclusion? Pirates don't cause global cooling. Both trends are driven by separate, unrelated causes.
+      </div>
+    </div>
+
+    <div class="concept-block">
+      <div class="sub-section-marker">When can we conclude causation?</div>
+      <h3>What Establishing Causation Actually Requires</h3>
+      <p>To move from correlation to causation, you need <em>more than data</em> — you need either:</p>
+      <ul>
+        <li><strong>Randomized controlled experiments</strong> — assign X randomly so it cannot depend on hidden factors. The gold standard.</li>
+        <li><strong>Quasi-experimental designs</strong> — natural experiments where assignment to X is effectively random (e.g., draft lotteries, policy changes by birth date).</li>
+        <li><strong>Instrumental variables</strong> — using an exogenous "instrument" Z that affects X but not Y directly (covered in Track 6, Module 6.5).</li>
+        <li><strong>Causal graph analysis with strong assumptions</strong> — Pearl's do-calculus and DAGs (also Module 6.5).</li>
+      </ul>
+      <p>Observational correlation, no matter how strong, does not get you there alone. This is the single most-violated rule in published claims about data.</p>
+    </div>
+
+    <div class="concept-block">
+      <div class="sub-section-marker">Where correlation lives in practice</div>
+      <h3>Real-World Uses of Correlation</h3>
+      <div class="real-grid">
+        <div class="real-card">
+          <h4>📈 Finance — Portfolio Diversification</h4>
+          <p>Two stocks with low/negative correlation reduce overall portfolio variance when combined. Modern portfolio theory is essentially correlation engineering.</p>
+        </div>
+        <div class="real-card">
+          <h4>🧬 Genomics — GWAS</h4>
+          <p>Genome-wide association studies look for correlations between genetic variants and traits/diseases — generating hypotheses for follow-up causal experiments.</p>
+        </div>
+        <div class="real-card">
+          <h4>🤖 ML — Feature Selection</h4>
+          <p>Highly correlated input features cause multicollinearity, inflating coefficient variance in regression. Removing redundant features is correlation-driven.</p>
+        </div>
+        <div class="real-card">
+          <h4>🌐 Signal Processing</h4>
+          <p>Autocorrelation (a variable correlated with its own past) is the basis for radar, sonar, and time-series prediction (Track 6, Module 6.4).</p>
+        </div>
+        <div class="real-card">
+          <h4>🏥 Epidemiology</h4>
+          <p>Initial associations between exposures and outcomes are detected as correlations — then causal inference methods refine them into actionable claims.</p>
+        </div>
+        <div class="real-card">
+          <h4>📊 A/B Testing</h4>
+          <p>Random assignment of users to variants converts a correlation question into a causal question. The randomization is what licenses the causal interpretation.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ═══════════════════ COMMON MISTAKES ═══════════════════ -->
+  <section class="section reveal">
+    <div class="section-header">
+      <div class="section-num">6</div>
+      <h2 class="section-title">Common Mistakes</h2>
+      <div class="section-line"></div>
+    </div>
+    <div class="warning-box">
+      <strong>Mistake 1 — "Cov = 0 means independent."</strong> No. Cov = 0 means no <em>linear</em> relationship. Variables can be perfectly nonlinearly dependent (Y = X²) and still have zero covariance.
+    </div>
+    <div class="warning-box">
+      <strong>Mistake 2 — Comparing covariances across datasets.</strong> Covariance is unitful and scale-dependent. Cov = 5 in one dataset and Cov = 50 in another tells you nothing about which has the stronger relationship. Convert to correlation first.
+    </div>
+    <div class="warning-box">
+      <strong>Mistake 3 — Confusing ρ with R².</strong> Correlation ρ ranges from −1 to +1. R² (coefficient of determination in regression) is ρ² and ranges from 0 to 1. R² represents the proportion of variance explained.
+    </div>
+    <div class="warning-box">
+      <strong>Mistake 4 — "ρ = 0.5 is twice as strong as ρ = 0.25."</strong> No. The squared values are more meaningful for "shared variance." ρ = 0.5 → R² = 0.25 (25% of variance explained). ρ = 0.25 → R² = 0.0625 (only 6.25%). The ratio is 4×, not 2×.
+    </div>
+    <div class="warning-box">
+      <strong>Mistake 5 — Computing correlation from outliers-contaminated data.</strong> Pearson ρ is sensitive to outliers. A single bad point can flip the sign. For robust analysis, use Spearman rank correlation or robust estimators.
+    </div>
+    <div class="warning-box">
+      <strong>Mistake 6 — Treating ρ as "causal strength."</strong> The single biggest sin. ρ measures linear association, not causation. Even ρ = 0.99 in observational data cannot tell you whether X → Y, Y → X, or Z → both.
+    </div>
+    <div class="warning-box">
+      <strong>Mistake 7 — Adding variances of correlated variables.</strong> Var(X + Y) = Var(X) + Var(Y) only when Cov(X, Y) = 0. Otherwise add 2·Cov(X, Y). This is critical for portfolio risk and error propagation.
+    </div>
+  </section>
+
+  <!-- ═══════════════════ PART 2 RECAP ═══════════════════ -->
+  <section class="section reveal">
+    <div class="section-header">
+      <div class="section-num">PART 2 RECAP</div>
+      <h2 class="section-title">AI Synthesis Panel</h2>
+      <div class="section-line"></div>
+    </div>
+    <div class="ai-panel">
+      <div class="ai-head">
+        <div class="ai-avatar">Ξ</div>
+        <div class="ai-meta">
+          <div class="ai-name">QNA-Σ // Synthesis Core</div>
+          <div class="ai-role">Covariance &amp; Correlation Analyst — Stage 2</div>
+        </div>
+      </div>
+      <div>
+        <div class="takeaway">
+          <div class="takeaway-num">01</div>
+          <div class="takeaway-text"><strong>Covariance Cov(X, Y) = E[(X − μ_X)(Y − μ_Y)]</strong> measures how X and Y move together. Positive = same direction; negative = opposite; zero = no linear relationship.</div>
+        </div>
+        <div class="takeaway">
+          <div class="takeaway-num">02</div>
+          <div class="takeaway-text"><strong>Shortcut formula:</strong> Cov(X, Y) = E[XY] − E[X]·E[Y]. Mirrors the variance shortcut from Part 1.</div>
+        </div>
+        <div class="takeaway">
+          <div class="takeaway-num">03</div>
+          <div class="takeaway-text"><strong>Covariance is scale-dependent.</strong> Re-scaling X changes the magnitude. Hence values from different datasets are not directly comparable.</div>
+        </div>
+        <div class="takeaway">
+          <div class="takeaway-num">04</div>
+          <div class="takeaway-text"><strong>Pearson correlation ρ = Cov(X, Y) / (σ_X · σ_Y)</strong> fixes the scale problem. Always lies in [−1, +1]. Unitless. Comparable across datasets.</div>
+        </div>
+        <div class="takeaway">
+          <div class="takeaway-num">05</div>
+          <div class="takeaway-text"><strong>ρ = ±1</strong> means perfect linear relationship (all points on a line). <strong>ρ = 0</strong> means no linear relationship — but nonlinear structure can still exist.</div>
+        </div>
+        <div class="takeaway">
+          <div class="takeaway-num">06</div>
+          <div class="takeaway-text"><strong>Independence ⟹ Uncorrelated</strong>, but the converse fails. Two variables can have ρ = 0 yet be perfectly related (Y = X² with symmetric X).</div>
+        </div>
+        <div class="takeaway">
+          <div class="takeaway-num">07</div>
+          <div class="takeaway-text"><strong>Variance of sums:</strong> Var(X + Y) = Var(X) + Var(Y) + 2·Cov(X, Y). The covariance term is what makes portfolio diversification work.</div>
+        </div>
+        <div class="takeaway">
+          <div class="takeaway-num">08</div>
+          <div class="takeaway-text"><strong>Correlation ≠ Causation.</strong> High ρ is consistent with X→Y, Y→X, Z→both, selection bias, or coincidence. Establishing causation requires randomization or causal inference methods.</div>
+        </div>
+        <div class="takeaway">
+          <div class="takeaway-num">09</div>
+          <div class="takeaway-text"><strong>Coming in Part 3:</strong> Higher-order moments (skewness, kurtosis) — the shape fingerprints beyond mean and spread — and Moment Generating Functions, which encode <em>all</em> moments in one elegant function.</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ═══════════════════ PART NAV (BOTTOM) ═══════════════════ -->
+  <div class="part-nav">
+    <div class="part-nav-item done">
+      <div class="part-nav-label">✓ PART 1 — Complete</div>
+      <div class="part-nav-title">Expectation · Variance · Std Dev</div>
+    </div>
+    <div class="part-nav-item current">
+      <div class="part-nav-label">⟁ PART 2 — Complete</div>
+      <div class="part-nav-title">Covariance · Correlation</div>
+    </div>
+    <div class="part-nav-item">
+      <div class="part-nav-label">PART 3 — Up Next</div>
+      <div class="part-nav-title">Moments · MGFs · Master Recap</div>
+    </div>
+  </div>
+
+  <div class="module-footer">⟁ END OF MODULE 2.5 — PART 2 // Joint behavior calibrated. Continue → Part 3: Moments &amp; MGFs ⟁</div>
+</div>
+
+<script>
+/* ═══════════════════════════════════════════════════════════
+   PARTICLE BACKGROUND
+   ═══════════════════════════════════════════════════════════ */
+const canvas = document.getElementById('particle-canvas');
+const ctx = canvas.getContext('2d');
+let particles = [];
+function sizeCanvas() {
+  canvas.width = window.innerWidth;
+  canvas.height = window.innerHeight;
+}
+sizeCanvas();
+window.addEventListener('resize', sizeCanvas);
+
+function initParticles() {
+  particles = [];
+  const count = Math.min(60, Math.floor(window.innerWidth / 25));
+  for (let i = 0; i < count; i++) {
+    particles.push({
+      x: Math.random() * canvas.width,
+      y: Math.random() * canvas.height,
+      vx: (Math.random() - 0.5) * 0.4,
+      vy: (Math.random() - 0.5) * 0.4,
+      r: Math.random() * 1.6 + 0.5,
+      hue: Math.random() < 0.5 ? '0,240,255' : '177,77,255'
+    });
+  }
+}
+initParticles();
+window.addEventListener('resize', initParticles);
+
+function drawParticles() {
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+  particles.forEach(p => {
+    p.x += p.vx; p.y += p.vy;
+    if (p.x < 0 || p.x > canvas.width) p.vx *= -1;
+    if (p.y < 0 || p.y > canvas.height) p.vy *= -1;
+    ctx.beginPath();
+    ctx.fillStyle = `rgba(${p.hue}, 0.7)`;
+    ctx.shadowColor = `rgba(${p.hue}, 1)`;
+    ctx.shadowBlur = 12;
+    ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2);
+    ctx.fill();
+  });
+  ctx.shadowBlur = 0;
+  for (let i = 0; i < particles.length; i++) {
+    for (let j = i + 1; j < particles.length; j++) {
+      const dx = particles[i].x - particles[j].x;
+      const dy = particles[i].y - particles[j].y;
+      const d = Math.sqrt(dx*dx + dy*dy);
+      if (d < 130) {
+        ctx.strokeStyle = `rgba(0, 240, 255, ${0.12 * (1 - d/130)})`;
+        ctx.lineWidth = 0.5;
+        ctx.beginPath();
+        ctx.moveTo(particles[i].x, particles[i].y);
+        ctx.lineTo(particles[j].x, particles[j].y);
+        ctx.stroke();
+      }
+    }
+  }
+  requestAnimationFrame(drawParticles);
+}
+drawParticles();
+
+/* ═══════════════════════════════════════════════════════════
+   UTILITIES — Gaussian sampler & stats
+   ═══════════════════════════════════════════════════════════ */
+function randn() {
+  let u = 0, v = 0;
+  while (u === 0) u = Math.random();
+  while (v === 0) v = Math.random();
+  return Math.sqrt(-2 * Math.log(u)) * Math.cos(2 * Math.PI * v);
+}
+
+function mean(a) { return a.reduce((s,v) => s + v, 0) / a.length; }
+function variance(a) {
+  const m = mean(a);
+  return a.reduce((s,v) => s + (v-m)*(v-m), 0) / a.length;
+}
+function covariance(a, b) {
+  const ma = mean(a), mb = mean(b);
+  let cov = 0;
+  for (let i = 0; i < a.length; i++) cov += (a[i] - ma) * (b[i] - mb);
+  return cov / a.length;
+}
+function correlation(a, b) {
+  const sa = Math.sqrt(variance(a)), sb = Math.sqrt(variance(b));
+  if (sa === 0 || sb === 0) return 0;
+  return covariance(a, b) / (sa * sb);
+}
+
+/* ═══════════════════════════════════════════════════════════
+   COVARIANCE SCATTER VISUALIZER
+   ═══════════════════════════════════════════════════════════ */
+const covCanvas = document.getElementById('covCanvas');
+const covCtx = covCanvas.getContext('2d');
+let covSampleSeed = [];
+const N_COV = 120;
+
+function genCovSeed() {
+  covSampleSeed = [];
+  for (let i = 0; i < N_COV; i++) {
+    covSampleSeed.push({ u: randn(), v: randn() });
+  }
+}
+genCovSeed();
+
+function drawCov() {
+  const strength = parseInt(document.getElementById('covStrength').value) / 100;
+  const noiseLevel = parseInt(document.getElementById('covNoise').value) / 100;
+  document.getElementById('covStrengthVal').textContent = (strength >= 0 ? '+' : '') + strength.toFixed(2);
+  document.getElementById('covNoiseVal').textContent = noiseLevel.toFixed(2);
+
+  // Build correlated samples
+  // X = u, Y = strength*u + sqrt(1-strength^2)*v
+  const xs = [], ys = [];
+  const rho = Math.max(-0.999, Math.min(0.999, strength));
+  for (let i = 0; i < N_COV; i++) {
+    const u = covSampleSeed[i].u, v = covSampleSeed[i].v;
+    const x = u * noiseLevel * 2;
+    const y = (rho * u + Math.sqrt(1 - rho * rho) * v) * noiseLevel * 2;
+    xs.push(x); ys.push(y);
+  }
+
+  const mx = mean(xs), my = mean(ys);
+  const cov = covariance(xs, ys);
+
+  document.getElementById('covMx').textContent = mx.toFixed(2);
+  document.getElementById('covMy').textContent = my.toFixed(2);
+  document.getElementById('covVal').textContent = (cov >= 0 ? '+' : '') + cov.toFixed(3);
+
+  const signEl = document.getElementById('covSign');
+  if (cov > 0.1) {
+    signEl.textContent = 'POSITIVE';
+    signEl.style.color = 'var(--neon-green)';
+  } else if (cov < -0.1) {
+    signEl.textContent = 'NEGATIVE';
+    signEl.style.color = 'var(--neon-red)';
+  } else {
+    signEl.textContent = '≈ ZERO';
+    signEl.style.color = 'var(--neon-purple)';
+  }
+
+  // Draw
+  const w = covCanvas.width, h = covCanvas.height;
+  covCtx.clearRect(0, 0, w, h);
+  const padL = 60, padR = 30, padT = 30, padB = 50;
+  const plotW = w - padL - padR;
+  const plotH = h - padT - padB;
+
+  // axes
+  covCtx.strokeStyle = '#9fb4d6';
+  covCtx.lineWidth = 1.2;
+  covCtx.beginPath();
+  covCtx.moveTo(padL, padT + plotH);
+  covCtx.lineTo(padL + plotW, padT + plotH);
+  covCtx.moveTo(padL, padT);
+  covCtx.lineTo(padL, padT + plotH);
+  covCtx.stroke();
+
+  // axis labels
+  covCtx.fillStyle = '#9fb4d6';
+  covCtx.font = '11px JetBrains Mono';
+  covCtx.textAlign = 'center';
+  covCtx.fillText('X', padL + plotW / 2, padT + plotH + 35);
+  covCtx.save();
+  covCtx.translate(padL - 35, padT + plotH / 2);
+  covCtx.rotate(-Math.PI / 2);
+  covCtx.fillText('Y', 0, 0);
+  covCtx.restore();
+
+  // Determine plot ranges
+  const xMin = -5, xMax = 5, yMin = -5, yMax = 5;
+  const xToPx = x => padL + ((x - xMin) / (xMax - xMin)) * plotW;
+  const yToPx = y => padT + plotH - ((y - yMin) / (yMax - yMin)) * plotH;
+
+  // Gridlines for mean
+  const mxPx = xToPx(mx), myPx = yToPx(my);
+  covCtx.strokeStyle = 'rgba(0, 240, 255, 0.25)';
+  covCtx.lineWidth = 1;
+  covCtx.setLineDash([4, 4]);
+  covCtx.beginPath();
+  covCtx.moveTo(mxPx, padT);
+  covCtx.lineTo(mxPx, padT + plotH);
+  covCtx.moveTo(padL, myPx);
+  covCtx.lineTo(padL + plotW, myPx);
+  covCtx.stroke();
+  covCtx.setLineDash([]);
+
+  // Points colored by quadrant relative to mean
+  for (let i = 0; i < N_COV; i++) {
+    const x = xs[i], y = ys[i];
+    const px = xToPx(x), py = yToPx(y);
+    if (px < padL || px > padL + plotW || py < padT || py > padT + plotH) continue;
+    // quadrant
+    const xAbove = x > mx, yAbove = y > my;
+    let color;
+    if ((xAbove && yAbove) || (!xAbove && !yAbove)) {
+      color = 'rgba(0, 255, 170, 0.75)'; // same direction (positive contrib)
+    } else {
+      color = 'rgba(255, 77, 109, 0.75)'; // opposite (negative contrib)
+    }
+    covCtx.beginPath();
+    covCtx.fillStyle = color;
+    covCtx.shadowColor = color;
+    covCtx.shadowBlur = 6;
+    covCtx.arc(px, py, 3, 0, Math.PI * 2);
+    covCtx.fill();
+  }
+  covCtx.shadowBlur = 0;
+
+  // Mean point marker
+  covCtx.fillStyle = '#00f0ff';
+  covCtx.strokeStyle = '#00f0ff';
+  covCtx.lineWidth = 2;
+  covCtx.beginPath();
+  covCtx.arc(mxPx, myPx, 6, 0, Math.PI * 2);
+  covCtx.stroke();
+  covCtx.fillStyle = '#00f0ff';
+  covCtx.font = 'bold 11px JetBrains Mono';
+  covCtx.textAlign = 'left';
+  covCtx.fillText('(μ_X, μ_Y)', mxPx + 10, myPx - 8);
+
+  // Insight
+  const ins = document.getElementById('covInsight');
+  if (cov > 0.3) {
+    ins.innerHTML = `<strong>Strong positive covariance (${cov.toFixed(2)}).</strong> Most points lie in same-direction quadrants (upper-right or lower-left of mean point) — they contribute positively to the sum. The cloud tilts upward.`;
+  } else if (cov < -0.3) {
+    ins.innerHTML = `<strong>Strong negative covariance (${cov.toFixed(2)}).</strong> Most points lie in opposite-direction quadrants. The cloud tilts downward.`;
+  } else {
+    ins.innerHTML = `<strong>Near-zero covariance (${cov.toFixed(2)}).</strong> Points are spread evenly across all four quadrants — positive and negative contributions cancel out.`;
+  }
+}
+document.getElementById('covStrength').addEventListener('input', drawCov);
+document.getElementById('covNoise').addEventListener('input', drawCov);
+function regenCov() { genCovSeed(); drawCov(); }
+drawCov();
+
+/* ═══════════════════════════════════════════════════════════
+   CORRELATION GALLERY
+   ═══════════════════════════════════════════════════════════ */
+const corrCanvas = document.getElementById('corrCanvas');
+const corrCtx = corrCanvas.getContext('2d');
+let corrCurrent = 'p1';
+const corrSeed = [];
+for (let i = 0; i < 120; i++) corrSeed.push({ u: randn(), v: randn(), w: Math.random() });
+
+function buildCorrSample(preset) {
+  const xs = [], ys = [];
+  const n = corrSeed.length;
+  for (let i = 0; i < n; i++) {
+    const u = corrSeed[i].u, v = corrSeed[i].v;
+    const t = (corrSeed[i].w * 2 - 1); // uniform [-1,1]
+    let x, y;
+    switch (preset) {
+      case 'p1':
+        x = u; y = u + v * 0.05;
+        break;
+      case 'p07':
+        x = u; y = 0.7 * u + Math.sqrt(1 - 0.49) * v;
+        break;
+      case 'p03':
+        x = u; y = 0.3 * u + Math.sqrt(1 - 0.09) * v;
+        break;
+      case 'zero':
+        x = u; y = v;
+        break;
+      case 'n07':
+        x = u; y = -0.7 * u + Math.sqrt(1 - 0.49) * v;
+        break;
+      case 'n1':
+        x = u; y = -u + v * 0.05;
+        break;
+      case 'nonlin':
+        // perfect parabola Y = X^2 - 1 with symmetric X (uniform [-1,1])
+        x = t * 2; // scale
+        y = (x * x) / 2 - 1.5 + v * 0.15;
+        break;
+      default:
+        x = u; y = v;
+    }
+    xs.push(x); ys.push(y);
+  }
+  return { xs, ys };
+}
+
+function setCorr(preset) {
+  corrCurrent = preset;
+  // toggle btn active
+  document.querySelectorAll('.viz-wrap .btn').forEach(b => b.classList.remove('active'));
+  const btnIdx = ['p1','p07','p03','zero','n07','n1','nonlin'].indexOf(preset);
+  // find the button by onclick
+  const all = document.querySelectorAll('.btn-row .btn');
+  // Find buttons whose onclick contains setCorr matching preset
+  all.forEach(b => {
+    if (b.onclick && b.onclick.toString().includes(`'${preset}'`)) {
+      b.classList.add('active');
+    }
+  });
+  drawCorr();
+}
+
+function drawCorr() {
+  const { xs, ys } = buildCorrSample(corrCurrent);
+  const mx = mean(xs), my = mean(ys);
+  const cov = covariance(xs, ys);
+  const rho = correlation(xs, ys);
+
+  document.getElementById('corrN').textContent = xs.length;
+  document.getElementById('corrCov').textContent = (cov >= 0 ? '+' : '') + cov.toFixed(3);
+  document.getElementById('corrRho').textContent = (rho >= 0 ? '+' : '') + rho.toFixed(3);
+
+  // strength label
+  const absR = Math.abs(rho);
+  const sEl = document.getElementById('corrStrength');
+  let label, color;
+  if (absR > 0.95) { label = rho > 0 ? 'PERFECT +' : 'PERFECT −'; color = rho > 0 ? 'var(--neon-green)' : 'var(--neon-red)'; }
+  else if (absR > 0.6) { label = rho > 0 ? 'STRONG +' : 'STRONG −'; color = rho > 0 ? 'var(--neon-green)' : 'var(--neon-red)'; }
+  else if (absR > 0.25) { label = rho > 0 ? 'MODERATE +' : 'MODERATE −'; color = 'var(--neon-amber)'; }
+  else { label = '≈ ZERO'; color = 'var(--neon-magenta)'; }
+  sEl.textContent = label;
+  sEl.style.color = color;
+
+  // Draw
+  const w = corrCanvas.width, h = corrCanvas.height;
+  corrCtx.clearRect(0, 0, w, h);
+  const padL = 60, padR = 30, padT = 30, padB = 50;
+  const plotW = w - padL - padR;
+  const plotH = h - padT - padB;
+
+  // axes
+  corrCtx.strokeStyle = '#9fb4d6';
+  corrCtx.lineWidth = 1.2;
+  corrCtx.beginPath();
+  corrCtx.moveTo(padL, padT + plotH);
+  corrCtx.lineTo(padL + plotW, padT + plotH);
+  corrCtx.moveTo(padL, padT);
+  corrCtx.lineTo(padL, padT + plotH);
+  corrCtx.stroke();
+
+  // labels
+  corrCtx.fillStyle = '#9fb4d6';
+  corrCtx.font = '11px JetBrains Mono';
+  corrCtx.textAlign = 'center';
+  corrCtx.fillText('X', padL + plotW / 2, padT + plotH + 35);
+  corrCtx.save();
+  corrCtx.translate(padL - 35, padT + plotH / 2);
+  corrCtx.rotate(-Math.PI / 2);
+  corrCtx.fillText('Y', 0, 0);
+  corrCtx.restore();
+
+  // Determine plot range from data
+  let xMin = Math.min(...xs), xMax = Math.max(...xs);
+  let yMin = Math.min(...ys), yMax = Math.max(...ys);
+  const xPad = (xMax - xMin) * 0.1 + 0.3;
+  const yPad = (yMax - yMin) * 0.1 + 0.3;
+  xMin -= xPad; xMax += xPad; yMin -= yPad; yMax += yPad;
+
+  const xToPx = x => padL + ((x - xMin) / (xMax - xMin)) * plotW;
+  const yToPx = y => padT + plotH - ((y - yMin) / (yMax - yMin)) * plotH;
+
+  // Trend line (best linear fit) — Y = a + b*X where b = Cov/Var(X)
+  const vx = variance(xs);
+  if (vx > 0) {
+    const b = cov / vx;
+    const a = my - b * mx;
+    const lineY1 = a + b * xMin;
+    const lineY2 = a + b * xMax;
+    corrCtx.strokeStyle = 'rgba(255, 43, 214, 0.7)';
+    corrCtx.lineWidth = 2;
+    corrCtx.setLineDash([8, 4]);
+    corrCtx.beginPath();
+    corrCtx.moveTo(xToPx(xMin), yToPx(lineY1));
+    corrCtx.lineTo(xToPx(xMax), yToPx(lineY2));
+    corrCtx.stroke();
+    corrCtx.setLineDash([]);
+  }
+
+  // Points
+  for (let i = 0; i < xs.length; i++) {
+    const px = xToPx(xs[i]), py = yToPx(ys[i]);
+    if (px < padL || px > padL + plotW || py < padT || py > padT + plotH) continue;
+    corrCtx.beginPath();
+    corrCtx.fillStyle = 'rgba(0, 240, 255, 0.75)';
+    corrCtx.shadowColor = '#00f0ff';
+    corrCtx.shadowBlur = 6;
+    corrCtx.arc(px, py, 3, 0, Math.PI * 2);
+    corrCtx.fill();
+  }
+  corrCtx.shadowBlur = 0;
+
+  // Title
+  corrCtx.fillStyle = '#00f0ff';
+  corrCtx.font = 'bold 12px JetBrains Mono';
+  corrCtx.textAlign = 'left';
+  let title = '';
+  switch (corrCurrent) {
+    case 'p1': title = 'Perfect Positive (ρ ≈ +1) — Y is linear in X'; break;
+    case 'p07': title = 'Strong Positive (ρ ≈ +0.7) — clear upward trend with noise'; break;
+    case 'p03': title = 'Moderate Positive (ρ ≈ +0.3) — slight upward tendency'; break;
+    case 'zero': title = 'Uncorrelated (ρ ≈ 0) — no linear pattern, random cloud'; break;
+    case 'n07': title = 'Strong Negative (ρ ≈ −0.7) — downward trend with noise'; break;
+    case 'n1': title = 'Perfect Negative (ρ ≈ −1) — Y is inverse linear in X'; break;
+    case 'nonlin': title = 'Nonlinear Parabola — Y = X² with ρ ≈ 0 (TRAP!)'; break;
+  }
+  corrCtx.fillText(title, padL, padT - 12);
+
+  // Insight
+  const ins = document.getElementById('corrInsight');
+  switch (corrCurrent) {
+    case 'p1':
+      ins.innerHTML = '<strong>Perfect positive correlation.</strong> Every point sits on the trendline. Y is exactly a linear function of X. In real data, this only happens when Y is computed from X (e.g., Y = price × quantity).';
+      break;
+    case 'p07':
+      ins.innerHTML = '<strong>Strong positive correlation (ρ ≈ 0.7).</strong> The upward trend is obvious despite noise. About 50% of the variance in Y is "explained" by X (R² ≈ 0.49).';
+      break;
+    case 'p03':
+      ins.innerHTML = '<strong>Moderate positive correlation (ρ ≈ 0.3).</strong> Trend exists but is weak — only ~9% of Y\'s variance is explained by X. Useful for ensembles, weak for single-variable prediction.';
+      break;
+    case 'zero':
+      ins.innerHTML = '<strong>No linear relationship.</strong> Points form a roughly circular cloud. Knowing X gives you no linear information about Y.';
+      break;
+    case 'n07':
+      ins.innerHTML = '<strong>Strong negative correlation (ρ ≈ −0.7).</strong> X up → Y tends down. The downward trendline captures the bulk of the relationship.';
+      break;
+    case 'n1':
+      ins.innerHTML = '<strong>Perfect negative correlation.</strong> Y is exactly an inversely linear function of X. Knowing X tells you Y exactly.';
+      break;
+    case 'nonlin':
+      ins.innerHTML = '<strong>The famous trap!</strong> Y is <em>perfectly determined</em> by X (Y ≈ X²), yet ρ ≈ 0 because the relationship is symmetric and non-linear. Pearson correlation is blind to curves. Always plot your data — never trust ρ alone.';
+      break;
+  }
+}
+drawCorr();
+
+/* ═══════════════════════════════════════════════════════════
+   WORKED EXAMPLES — CORRELATION
+   ═══════════════════════════════════════════════════════════ */
+const corrEx = {
+  1: `
+    <div class="example-step"><strong>Problem:</strong> Five students' (study hours X, test score Y) data: (2, 65), (3, 70), (5, 80), (6, 85), (4, 75). Compute Cov(X, Y) and ρ.</div>
+    <div class="example-step"><strong>Step 1 — Means:</strong> μ_X = (2+3+5+6+4)/5 = 4. μ_Y = (65+70+80+85+75)/5 = 75.</div>
+    <div class="example-step"><strong>Step 2 — Deviations &amp; products:</strong>
+      (2−4)(65−75) = (−2)(−10) = 20.<br>
+      (3−4)(70−75) = (−1)(−5) = 5.<br>
+      (5−4)(80−75) = (1)(5) = 5.<br>
+      (6−4)(85−75) = (2)(10) = 20.<br>
+      (4−4)(75−75) = 0.
+    </div>
+    <div class="example-step"><strong>Step 3 — Cov:</strong> Cov(X, Y) = (20+5+5+20+0)/5 = <strong style="color:var(--neon-cyan)">10</strong>.</div>
+    <div class="example-step"><strong>Step 4 — Standard deviations:</strong> σ_X = √[(4+1+1+4+0)/5] = √2 ≈ 1.414. σ_Y = √[(100+25+25+100+0)/5] = √50 ≈ 7.071.</div>
+    <div class="example-step"><strong>Step 5 — Correlation:</strong> ρ = 10 / (1.414 × 7.071) = 10 / 10 = <strong style="color:var(--neon-cyan)">+1.0</strong>.</div>
+    <div class="example-step"><strong>Interpretation:</strong> Perfect positive correlation. Y is exactly a linear function of X (in fact, Y = 5X + 55). Real-world data rarely achieves this, but the example shows the mechanics cleanly.</div>
+  `,
+  2: `
+    <div class="example-step"><strong>Problem:</strong> Joint distribution of (X, Y) takes 4 equally likely values: (0, 0), (1, 0), (0, 1), (1, 1) — i.e., independent coin flips. Compute Cov(X, Y) and ρ.</div>
+    <div class="example-step"><strong>Step 1 — Marginals:</strong> X is uniform on {0, 1}, so μ_X = 0.5, Var(X) = 0.25, σ_X = 0.5. Same for Y.</div>
+    <div class="example-step"><strong>Step 2 — Joint product:</strong> E[XY] = (0)(0)(¼) + (1)(0)(¼) + (0)(1)(¼) + (1)(1)(¼) = 0 + 0 + 0 + 0.25 = 0.25.</div>
+    <div class="example-step"><strong>Step 3 — Shortcut:</strong> Cov(X, Y) = E[XY] − μ_X μ_Y = 0.25 − (0.5)(0.5) = <strong style="color:var(--neon-cyan)">0</strong>.</div>
+    <div class="example-step"><strong>Step 4 — Correlation:</strong> ρ = 0 / (0.5 × 0.5) = <strong style="color:var(--neon-cyan)">0</strong>.</div>
+    <div class="example-step"><strong>Interpretation:</strong> Independent variables produce zero covariance — confirming independence ⟹ uncorrelated. Knowing X = 1 gives you no information about Y.</div>
+  `,
+  3: `
+    <div class="example-step"><strong>Problem (Counterexample):</strong> Let X take values −2, −1, 0, 1, 2 each with probability 1/5. Let Y = X². Compute Cov(X, Y) and ρ. Are X and Y independent?</div>
+    <div class="example-step"><strong>Step 1 — μ_X:</strong> (−2−1+0+1+2)/5 = 0.</div>
+    <div class="example-step"><strong>Step 2 — Compute E[XY] = E[X·X²] = E[X³]:</strong> ((−2)³ + (−1)³ + 0³ + 1³ + 2³)/5 = (−8 − 1 + 0 + 1 + 8)/5 = <strong style="color:var(--neon-cyan)">0</strong>.</div>
+    <div class="example-step"><strong>Step 3 — Cov:</strong> Cov(X, Y) = E[XY] − μ_X μ_Y = 0 − 0 = <strong style="color:var(--neon-cyan)">0</strong>. Hence ρ = 0.</div>
+    <div class="example-step"><strong>Step 4 — Are they independent?</strong> NO! If X = 2, then Y must be 4. If X = 0, then Y must be 0. Y is <em>completely determined</em> by X.</div>
+    <div class="example-step"><strong>Conclusion:</strong> ρ(X, Y) = 0 yet X and Y are perfectly dependent (deterministically related!). This is THE counterexample showing that uncorrelated ⇏ independent. The symmetric, parabolic shape of Y = X² has zero linear trend — invisible to Pearson correlation.</div>
+  `
+};
+function showCorrEx(n) {
+  const tabs = document.querySelectorAll('.example-tabs')[0].querySelectorAll('.tab');
+  tabs.forEach((t, i) => t.classList.toggle('active', i === n - 1));
+  document.getElementById('corrBody').innerHTML = corrEx[n];
+}
+showCorrEx(1);
+
+/* ── SCROLL REVEAL OBSERVER ── */
+(function() {
+  const reveals = document.querySelectorAll('.reveal');
+  if (!reveals.length) return;
+  const obs = new IntersectionObserver((entries) => {
+    entries.forEach(e => { if (e.isIntersecting) { e.target.classList.add('visible'); obs.unobserve(e.target); } });
+  }, { threshold: 0, rootMargin: '0px 0px -40px 0px' });
+  reveals.forEach(r => obs.observe(r));
+})();
+</script>
+</body>
+</html>

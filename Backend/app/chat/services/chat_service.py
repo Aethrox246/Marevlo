@@ -14,6 +14,7 @@ from typing import List, Optional, Tuple
 
 from sqlalchemy import and_, func, or_, select
 from sqlalchemy.orm import Session, aliased, selectinload
+from sqlalchemy.orm.attributes import set_committed_value
 
 from app.auth.models.user import User, UserSession
 from app.chat.models.chat import Chat, Follow, Message, MessageRead, MessageReaction
@@ -257,8 +258,16 @@ class ChatService:
         db.flush()
 
         # Validate reply_to_id belongs to the same chat
+        parent = None
         if reply_to_id is not None:
-            parent = db.get(Message, reply_to_id)
+            parent = (
+                db.execute(
+                    select(Message)
+                    .where(Message.id == reply_to_id)
+                    .options(selectinload(Message.sender))
+                )
+                .scalar_one_or_none()
+            )
             if not parent or parent.chat_id != chat_id:
                 raise NotFound("Replied-to message not found in this chat")
 
@@ -274,14 +283,10 @@ class ChatService:
         chat.last_message_at = datetime.now(timezone.utc)
         db.commit()
 
-        msg = db.execute(
-            select(Message)
-            .where(Message.id == msg.id)
-            .options(
-                selectinload(Message.reply_to_msg).selectinload(Message.sender),
-                selectinload(Message.reactions),
-            )
-        ).scalar_one()
+        db.refresh(msg)
+        if parent is not None:
+            set_committed_value(msg, "reply_to_msg", parent)
+        set_committed_value(msg, "reactions", [])
 
         return msg, recipient
 

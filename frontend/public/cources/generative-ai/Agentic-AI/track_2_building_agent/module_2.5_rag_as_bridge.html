@@ -1,0 +1,1760 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Module 2.5 // 🌉 RAG as a Tool for Agents — Agentic AI Academy</title>
+
+<!-- Tailwind -->
+<script src="https://cdn.tailwindcss.com"></script>
+
+<!-- Fonts -->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;500;600;700;800;900&family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+
+<!-- Lucide -->
+<script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
+
+<!-- GSAP -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/ScrollTrigger.min.js"></script>
+
+<!-- Chart.js -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+
+<script>
+  tailwind.config = {
+    theme: {
+      extend: {
+        fontFamily: {
+          orbitron: ['Orbitron', 'sans-serif'],
+          inter: ['Inter', 'sans-serif'],
+          mono: ['JetBrains Mono', 'monospace'],
+        },
+        colors: {
+          cyan: { glow: '#00f0ff' },
+          magenta: { glow: '#ff00e5' },
+          violet: { glow: '#8b5cf6' },
+          emerald: { glow: '#00ffa3' },
+        }
+      }
+    }
+  }
+</script>
+
+<style>
+  :root {
+    --c-cyan: #00f0ff;
+    --c-magenta: #ff00e5;
+    --c-violet: #8b5cf6;
+    --c-emerald: #00ffa3;
+    --c-amber: #ffb800;
+    --c-red: #ff3860;
+    --bg-0: #03040a;
+    --bg-1: #060818;
+    --bg-2: #0a0e26;
+  }
+
+  html, body {
+    background: var(--bg-0);
+    color: #e5e7eb;
+    font-family: 'Inter', sans-serif;
+    overflow-x: hidden;
+    scroll-behavior: smooth;
+  }
+
+  .nebula-bg {
+    position: fixed;
+    inset: 0;
+    z-index: -2;
+    background:
+      radial-gradient(ellipse 60% 50% at 15% 20%, rgba(0,240,255,0.18), transparent 60%),
+      radial-gradient(ellipse 50% 60% at 85% 30%, rgba(255,0,229,0.14), transparent 60%),
+      radial-gradient(ellipse 70% 50% at 50% 90%, rgba(139,92,246,0.16), transparent 65%),
+      linear-gradient(180deg, #03040a 0%, #060818 50%, #03040a 100%);
+  }
+
+  .grid-floor {
+    position: fixed;
+    inset: 0;
+    z-index: -1;
+    background-image:
+      linear-gradient(rgba(0,240,255,0.05) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(0,240,255,0.05) 1px, transparent 1px);
+    background-size: 60px 60px;
+    mask-image: radial-gradient(ellipse at center, black 0%, transparent 75%);
+    animation: gridShift 30s linear infinite;
+  }
+  @keyframes gridShift {
+    from { background-position: 0 0, 0 0; }
+    to { background-position: 60px 60px, 60px 60px; }
+  }
+
+  .scanline::before {
+    content: '';
+    position: absolute;
+    left: 0; right: 0;
+    height: 2px;
+    background: linear-gradient(90deg, transparent, var(--c-cyan), transparent);
+    box-shadow: 0 0 12px var(--c-cyan);
+    animation: scan 6s linear infinite;
+    opacity: 0.6;
+  }
+  @keyframes scan {
+    0%   { top: 0%; }
+    100% { top: 100%; }
+  }
+
+  .holo-card {
+    position: relative;
+    background: linear-gradient(135deg, rgba(10,14,38,0.7), rgba(6,8,24,0.4));
+    border: 1px solid rgba(0,240,255,0.15);
+    backdrop-filter: blur(14px);
+    -webkit-backdrop-filter: blur(14px);
+    border-radius: 18px;
+    transition: all 0.5s cubic-bezier(0.22, 1, 0.36, 1);
+    overflow: hidden;
+  }
+  .holo-card::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    border-radius: 18px;
+    padding: 1px;
+    background: linear-gradient(135deg, rgba(0,240,255,0.4), transparent 40%, transparent 60%, rgba(255,0,229,0.4));
+    -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+    mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+    -webkit-mask-composite: xor;
+    mask-composite: exclude;
+    pointer-events: none;
+    opacity: 0.7;
+  }
+  .holo-card:hover {
+    transform: translateY(-4px);
+    border-color: rgba(0,240,255,0.45);
+    box-shadow: 0 20px 60px -10px rgba(0,240,255,0.25), 0 0 40px -5px rgba(139,92,246,0.2);
+  }
+  .holo-card:hover::before { opacity: 1; }
+
+  .neon-cyan { color: var(--c-cyan); text-shadow: 0 0 18px rgba(0,240,255,0.5); }
+  .neon-magenta { color: var(--c-magenta); text-shadow: 0 0 18px rgba(255,0,229,0.5); }
+  .neon-violet { color: var(--c-violet); text-shadow: 0 0 18px rgba(139,92,246,0.5); }
+  .neon-emerald { color: var(--c-emerald); text-shadow: 0 0 18px rgba(0,255,163,0.5); }
+  .neon-amber { color: var(--c-amber); text-shadow: 0 0 18px rgba(255,184,0,0.5); }
+
+  .grad-text {
+    background: linear-gradient(120deg, #00f0ff 0%, #8b5cf6 50%, #ff00e5 100%);
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
+  }
+
+  .orb {
+    position: absolute;
+    border-radius: 50%;
+    filter: blur(60px);
+    opacity: 0.5;
+    pointer-events: none;
+    animation: float 12s ease-in-out infinite;
+  }
+  @keyframes float {
+    0%, 100% { transform: translate(0,0) scale(1); }
+    50% { transform: translate(30px,-30px) scale(1.1); }
+  }
+
+  .nav-dot {
+    width: 12px; height: 12px;
+    border-radius: 50%;
+    background: rgba(255,255,255,0.18);
+    border: 1px solid rgba(0,240,255,0.3);
+    transition: all 0.35s;
+    cursor: pointer;
+    position: relative;
+  }
+  .nav-dot:hover { background: var(--c-cyan); transform: scale(1.4); }
+  .nav-dot.active {
+    background: var(--c-cyan);
+    box-shadow: 0 0 14px var(--c-cyan), 0 0 30px var(--c-cyan);
+    transform: scale(1.4);
+  }
+  .nav-dot .nav-label {
+    position: absolute;
+    right: 24px; top: 50%;
+    transform: translateY(-50%);
+    background: rgba(6,8,24,0.95);
+    border: 1px solid rgba(0,240,255,0.3);
+    padding: 4px 10px;
+    border-radius: 6px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    color: var(--c-cyan);
+    white-space: nowrap;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.25s;
+  }
+  .nav-dot:hover .nav-label { opacity: 1; }
+
+  .section-tag {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    letter-spacing: 0.25em;
+    color: var(--c-cyan);
+    padding: 6px 14px;
+    border: 1px solid rgba(0,240,255,0.3);
+    border-radius: 999px;
+    background: rgba(0,240,255,0.05);
+  }
+  .section-tag::before {
+    content: '';
+    width: 6px; height: 6px;
+    border-radius: 50%;
+    background: var(--c-cyan);
+    box-shadow: 0 0 10px var(--c-cyan);
+    animation: pulse 2s ease-in-out infinite;
+  }
+  @keyframes pulse {
+    0%,100% { opacity: 1; }
+    50% { opacity: 0.4; }
+  }
+
+  .code-block {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 12.5px;
+    line-height: 1.7;
+    background: linear-gradient(160deg, rgba(3,4,10,0.95), rgba(10,14,38,0.85));
+    border: 1px solid rgba(0,240,255,0.2);
+    border-radius: 14px;
+    padding: 24px;
+    overflow-x: auto;
+    position: relative;
+  }
+  .code-block-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 10px 18px;
+    background: rgba(0,240,255,0.05);
+    border: 1px solid rgba(0,240,255,0.2);
+    border-bottom: none;
+    border-radius: 14px 14px 0 0;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    color: var(--c-cyan);
+    letter-spacing: 0.1em;
+  }
+  .code-block-header + .code-block {
+    border-radius: 0 0 14px 14px;
+    border-top: none;
+  }
+  .tok-kw { color: #ff00e5; }
+  .tok-fn { color: #00f0ff; }
+  .tok-str { color: #00ffa3; }
+  .tok-com { color: #6b7280; font-style: italic; }
+  .tok-num { color: #ffb800; }
+  .tok-var { color: #c4b5fd; }
+  .tok-cls { color: #ffb800; }
+  .tok-dec { color: #ff00e5; }
+  .tok-type { color: #00f0ff; }
+  .tok-op { color: #ff00e5; font-weight: 700; }
+
+  .track-badge {
+    background: linear-gradient(135deg, rgba(0,240,255,0.12), rgba(139,92,246,0.12));
+    border: 1px solid rgba(0,240,255,0.3);
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    letter-spacing: 0.2em;
+    padding: 5px 12px;
+    border-radius: 4px;
+    color: var(--c-cyan);
+  }
+
+  .progress-bar {
+    height: 4px;
+    background: rgba(255,255,255,0.06);
+    border-radius: 999px;
+    overflow: hidden;
+    position: relative;
+  }
+  .progress-fill {
+    height: 100%;
+    background: linear-gradient(90deg, var(--c-cyan), var(--c-magenta));
+    border-radius: 999px;
+    box-shadow: 0 0 12px var(--c-cyan);
+    width: 0%;
+    transition: width 0.4s;
+  }
+
+  .tab-pill {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 12px;
+    padding: 10px 18px;
+    border-radius: 999px;
+    border: 1px solid rgba(255,255,255,0.1);
+    background: rgba(10,14,38,0.6);
+    color: #94a3b8;
+    cursor: pointer;
+    transition: all 0.3s;
+    letter-spacing: 0.05em;
+  }
+  .tab-pill:hover { color: var(--c-cyan); border-color: rgba(0,240,255,0.4); }
+  .tab-pill.active {
+    background: linear-gradient(135deg, rgba(0,240,255,0.18), rgba(139,92,246,0.18));
+    border-color: var(--c-cyan);
+    color: var(--c-cyan);
+    box-shadow: 0 0 18px -2px rgba(0,240,255,0.4);
+  }
+
+  .expand-content {
+    max-height: 0;
+    overflow: hidden;
+    transition: max-height 0.6s cubic-bezier(0.22, 1, 0.36, 1);
+  }
+  .expand-content.open { max-height: 1600px; }
+
+  .cta-btn {
+    position: relative;
+    background: linear-gradient(135deg, #00f0ff 0%, #8b5cf6 50%, #ff00e5 100%);
+    color: #03040a;
+    font-family: 'Orbitron', sans-serif;
+    font-weight: 700;
+    letter-spacing: 0.15em;
+    padding: 18px 38px;
+    border-radius: 12px;
+    transition: all 0.4s;
+    overflow: hidden;
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+  }
+  .cta-btn::after {
+    content: '';
+    position: absolute;
+    inset: -2px;
+    background: linear-gradient(135deg, #00f0ff, #ff00e5);
+    border-radius: 14px;
+    filter: blur(14px);
+    opacity: 0.5;
+    z-index: -1;
+    transition: opacity 0.4s;
+  }
+  .cta-btn:hover {
+    transform: translateY(-2px);
+    letter-spacing: 0.2em;
+  }
+  .cta-btn:hover::after { opacity: 0.9; }
+
+  .ring-glow {
+    position: absolute;
+    width: 480px; height: 480px;
+    border-radius: 50%;
+    border: 1px solid rgba(0,240,255,0.2);
+    animation: ringRotate 30s linear infinite;
+  }
+  .ring-glow:nth-child(2) { width: 620px; height: 620px; border-color: rgba(255,0,229,0.15); animation-duration: 45s; animation-direction: reverse; }
+  .ring-glow:nth-child(3) { width: 760px; height: 760px; border-color: rgba(139,92,246,0.1); animation-duration: 60s; }
+  @keyframes ringRotate {
+    to { transform: rotate(360deg); }
+  }
+
+  .counter {
+    font-family: 'Orbitron', sans-serif;
+    font-weight: 800;
+    background: linear-gradient(180deg, #fff, #94a3b8);
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
+  }
+
+  .check-item {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    padding: 14px 18px;
+    border-radius: 12px;
+    background: rgba(10,14,38,0.5);
+    border: 1px solid rgba(255,255,255,0.06);
+    transition: all 0.3s;
+    cursor: pointer;
+  }
+  .check-item:hover {
+    border-color: rgba(0,240,255,0.4);
+    background: rgba(0,240,255,0.05);
+  }
+  .check-item.done {
+    border-color: rgba(0,255,163,0.4);
+    background: rgba(0,255,163,0.05);
+  }
+  .check-box {
+    width: 22px; height: 22px;
+    border-radius: 6px;
+    border: 1.5px solid rgba(255,255,255,0.2);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    transition: all 0.3s;
+  }
+  .check-item.done .check-box {
+    background: var(--c-emerald);
+    border-color: var(--c-emerald);
+    box-shadow: 0 0 12px var(--c-emerald);
+  }
+
+  ::-webkit-scrollbar { width: 8px; height: 8px; }
+  ::-webkit-scrollbar-track { background: #03040a; }
+  ::-webkit-scrollbar-thumb { background: linear-gradient(180deg, var(--c-cyan), var(--c-magenta)); border-radius: 4px; }
+
+  .section-divider {
+    height: 1px;
+    background: linear-gradient(90deg, transparent, rgba(0,240,255,0.5), transparent);
+    margin: 0 auto;
+    max-width: 80%;
+  }
+
+  /* Bridge banner */
+  .bridge-banner {
+    position: relative;
+    background: linear-gradient(135deg, rgba(0,255,163,0.07), rgba(0,240,255,0.07));
+    border: 1px dashed rgba(0,255,163,0.4);
+    border-radius: 14px;
+    padding: 24px;
+  }
+  .bridge-banner::before {
+    content: '🌉 BRIDGE MODULE';
+    position: absolute;
+    top: -10px; left: 24px;
+    padding: 2px 12px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    letter-spacing: 0.2em;
+    background: var(--bg-0);
+    color: var(--c-emerald);
+    border: 1px solid rgba(0,255,163,0.5);
+    border-radius: 999px;
+  }
+
+  /* Recap callback (RAG course style) */
+  .recap-block {
+    position: relative;
+    background: linear-gradient(135deg, rgba(0,240,255,0.06), rgba(139,92,246,0.06));
+    border: 1px dashed rgba(0,240,255,0.35);
+    border-radius: 14px;
+    padding: 24px;
+  }
+  .recap-block::before {
+    content: '2-MIN CALLBACK';
+    position: absolute;
+    top: -10px; left: 24px;
+    padding: 2px 12px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    letter-spacing: 0.2em;
+    background: var(--bg-0);
+    color: var(--c-cyan);
+    border: 1px solid rgba(0,240,255,0.35);
+    border-radius: 999px;
+  }
+
+  /* Architecture compare */
+  .arch-pill {
+    padding: 14px 16px;
+    border-radius: 12px;
+    background: rgba(6,8,24,0.85);
+    border: 1.5px solid;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    letter-spacing: 0.08em;
+    text-align: center;
+    min-width: 130px;
+    transition: all 0.3s;
+  }
+  .arch-pill.cyan { border-color: var(--c-cyan); color: var(--c-cyan); box-shadow: 0 0 18px -8px var(--c-cyan); }
+  .arch-pill.magenta { border-color: var(--c-magenta); color: var(--c-magenta); box-shadow: 0 0 18px -8px var(--c-magenta); }
+  .arch-pill.violet { border-color: var(--c-violet); color: var(--c-violet); box-shadow: 0 0 18px -8px var(--c-violet); }
+  .arch-pill.emerald { border-color: var(--c-emerald); color: var(--c-emerald); box-shadow: 0 0 18px -8px var(--c-emerald); }
+  .arch-pill.amber { border-color: var(--c-amber); color: var(--c-amber); box-shadow: 0 0 18px -8px var(--c-amber); }
+
+  /* Knowledge source tile */
+  .ksrc-tile {
+    padding: 18px;
+    border-radius: 14px;
+    background: rgba(10,14,38,0.55);
+    border: 1px solid rgba(139,92,246,0.2);
+    transition: all 0.3s;
+    cursor: pointer;
+  }
+  .ksrc-tile:hover { transform: translateY(-3px); border-color: rgba(139,92,246,0.5); }
+
+  /* Decision row */
+  .triple-row {
+    display: grid;
+    grid-template-columns: 1.2fr 1fr 1fr 1fr;
+    align-items: center;
+    padding: 14px 0;
+    border-bottom: 1px dashed rgba(0,240,255,0.12);
+    gap: 12px;
+  }
+  .triple-row:last-child { border-bottom: none; }
+
+  /* Resource buttons */
+  .resource-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 14px 28px;
+    border-radius: 10px;
+    border: 1.5px solid;
+    font-family: 'Orbitron', sans-serif;
+    font-weight: 600;
+    font-size: 12px;
+    letter-spacing: 0.1em;
+    transition: all 0.3s cubic-bezier(0.22, 1, 0.36, 1);
+    text-decoration: none;
+    cursor: pointer;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .resource-btn:hover {
+    transform: translateY(-2px);
+  }
+
+  .resource-btn.learn-more {
+    color: var(--c-cyan);
+    border-color: rgba(0,240,255,0.5);
+    background: rgba(0,240,255,0.08);
+  }
+
+  .resource-btn.learn-more:hover {
+    border-color: var(--c-cyan);
+    background: rgba(0,240,255,0.15);
+    box-shadow: 0 0 24px -4px rgba(0,240,255,0.4);
+  }
+
+  .resource-btn.practice {
+    color: var(--c-magenta);
+    border-color: rgba(255,0,229,0.5);
+    background: rgba(255,0,229,0.08);
+  }
+
+  .resource-btn.practice:hover {
+    border-color: var(--c-magenta);
+    background: rgba(255,0,229,0.15);
+    box-shadow: 0 0 24px -4px rgba(255,0,229,0.4);
+  }
+
+  .resource-btn.disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+    pointer-events: none;
+  }
+
+  .resource-btn i {
+    width: 16px;
+    height: 16px;
+  }
+
+  </style>
+</head>
+<body class="relative">
+
+<div class="nebula-bg"></div>
+<div class="grid-floor"></div>
+
+<!-- Top bar -->
+<header class="fixed top-0 inset-x-0 z-50 backdrop-blur-xl bg-black/30 border-b border-cyan-glow/10">
+  <div class="max-w-7xl mx-auto px-6 py-3 flex items-center justify-between">
+    <div class="flex items-center gap-3">
+      <div class="w-9 h-9 rounded-lg bg-gradient-to-br from-cyan-glow to-violet-glow flex items-center justify-center">
+        <i data-lucide="hexagon" class="w-5 h-5 text-black"></i>
+      </div>
+      <div>
+        <div class="font-orbitron text-xs font-bold tracking-widest grad-text">AGENTIC AI ACADEMY</div>
+        <div class="font-mono text-[10px] text-cyan-glow/60">// SESSION 02 — AUTONOMOUS SYSTEMS</div>
+      </div>
+    </div>
+    <div class="hidden md:flex items-center gap-6 font-mono text-[11px] text-slate-400">
+      <span class="flex items-center gap-2"><span class="w-2 h-2 rounded-full bg-emerald-glow animate-pulse"></span>NEURAL LINK STABLE</span>
+      <span>COURSE 02 / TRACK 2 / MODULE 2.5</span>
+      <span class="text-cyan-glow">[ 65% COMPLETE ]</span>
+    </div>
+  </div>
+</header>
+
+<!-- Side nav -->
+<nav class="fixed right-6 top-1/2 -translate-y-1/2 z-40 flex flex-col gap-4">
+  <a href="#hero" class="nav-dot active" data-section="hero"><span class="nav-label">HERO</span></a>
+  <a href="#objectives" class="nav-dot" data-section="objectives"><span class="nav-label">OBJECTIVES</span></a>
+  <a href="#recap" class="nav-dot" data-section="recap"><span class="nav-label">RAG RECAP</span></a>
+  <a href="#archs" class="nav-dot" data-section="archs"><span class="nav-label">ARCHS</span></a>
+  <a href="#decide" class="nav-dot" data-section="decide"><span class="nav-label">WHEN TO RETRIEVE</span></a>
+  <a href="#multi" class="nav-dot" data-section="multi"><span class="nav-label">MULTI-SOURCE</span></a>
+  <a href="#code" class="nav-dot" data-section="code"><span class="nav-label">CODE</span></a>
+  <a href="#tradeoffs" class="nav-dot" data-section="tradeoffs"><span class="nav-label">LONG-CTX vs RAG vs FT</span></a>
+  <a href="#boundary" class="nav-dot" data-section="boundary"><span class="nav-label">BOUNDARY</span></a>
+  <a href="#checkpoint" class="nav-dot" data-section="checkpoint"><span class="nav-label">CHECKPOINT</span></a>
+  <a href="#next" class="nav-dot" data-section="next"><span class="nav-label">NEXT</span></a>
+</nav>
+
+<!-- ============== 1. HERO ============== -->
+<section id="hero" class="relative min-h-screen flex items-center justify-center px-6 pt-24 overflow-hidden">
+  <div class="absolute inset-0 flex items-center justify-center pointer-events-none">
+    <div class="ring-glow"></div>
+    <div class="ring-glow"></div>
+    <div class="ring-glow"></div>
+  </div>
+
+  <div class="orb w-96 h-96 bg-cyan-glow/40" style="top:10%; left:5%;"></div>
+  <div class="orb w-80 h-80 bg-magenta-glow/40" style="bottom:10%; right:5%; animation-delay:-4s;"></div>
+
+  <div class="relative max-w-6xl mx-auto text-center z-10">
+    <div class="flex justify-center gap-3 mb-8 flex-wrap" data-hero-anim>
+      <span class="track-badge">COURSE 02</span>
+      <span class="track-badge" style="color: var(--c-magenta); border-color: rgba(255,0,229,0.3);">TRACK 2 — BUILDING AGENTS</span>
+      <span class="track-badge" style="color: var(--c-violet); border-color: rgba(139,92,246,0.3);">MODULE 2.5</span>
+      <span class="track-badge" style="color: var(--c-emerald); border-color: rgba(0,255,163,0.3);">🌉 BRIDGE</span>
+    </div>
+
+    <h1 class="font-orbitron font-black text-5xl md:text-7xl lg:text-8xl leading-[1.05] mb-8" data-hero-anim>
+      <span class="block text-white">RAG AS A</span>
+      <span class="block grad-text">TOOL FOR AGENTS</span>
+    </h1>
+
+    <p class="font-inter text-lg md:text-xl text-slate-300 max-w-3xl mx-auto leading-relaxed mb-10" data-hero-anim>
+      You built RAG in the prior course. This module reframes it. <span class="neon-cyan font-semibold">Retrieval-as-a-tool</span> the agent <em>decides</em> to call — versus <span class="neon-magenta font-semibold">always-retrieval</span> the pipeline forces. When agents should retrieve, and when they shouldn't.
+    </p>
+
+    <div class="flex flex-wrap justify-center gap-4 mb-16" data-hero-anim>
+      <a href="#objectives" class="cta-btn">
+        <span>INITIATE MODULE</span>
+        <i data-lucide="arrow-down-right" class="w-5 h-5"></i>
+      </a>
+      <a href="#archs" class="px-8 py-[18px] rounded-xl border border-cyan-glow/40 text-cyan-glow font-orbitron font-semibold tracking-widest hover:bg-cyan-glow/10 transition flex items-center gap-2 text-sm">
+        <i data-lucide="git-compare-arrows" class="w-4 h-4"></i>
+        SEE THE ARCHITECTURES
+      </a>
+    </div>
+
+    <div class="grid grid-cols-2 md:grid-cols-4 gap-4 max-w-4xl mx-auto" data-hero-anim>
+      <div class="holo-card p-5">
+        <div class="font-mono text-[10px] text-cyan-glow tracking-widest mb-2">// ARCHS</div>
+        <div class="counter text-4xl md:text-5xl" data-counter="2" data-suffix="">0</div>
+        <div class="font-mono text-xs text-slate-400 mt-1">Pipeline vs Agent</div>
+      </div>
+      <div class="holo-card p-5">
+        <div class="font-mono text-[10px] text-magenta-glow tracking-widest mb-2">// SIGNALS</div>
+        <div class="counter text-4xl md:text-5xl" data-counter="5" data-suffix="">0</div>
+        <div class="font-mono text-xs text-slate-400 mt-1">When to retrieve</div>
+      </div>
+      <div class="holo-card p-5">
+        <div class="font-mono text-[10px] text-violet-glow tracking-widest mb-2">// SOURCES</div>
+        <div class="counter text-4xl md:text-5xl" data-counter="4" data-suffix="">0</div>
+        <div class="font-mono text-xs text-slate-400 mt-1">Per multi-RAG</div>
+      </div>
+      <div class="holo-card p-5">
+        <div class="font-mono text-[10px] text-emerald-glow tracking-widest mb-2">// LEVERS</div>
+        <div class="counter text-4xl md:text-5xl" data-counter="3" data-suffix="">0</div>
+        <div class="font-mono text-xs text-slate-400 mt-1">RAG · LongCtx · FT</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="absolute bottom-8 left-1/2 -translate-x-1/2 flex flex-col items-center gap-2 text-cyan-glow/60 font-mono text-[10px] tracking-widest">
+    SCROLL TO BEGIN
+    <i data-lucide="mouse" class="w-4 h-4 animate-bounce"></i>
+  </div>
+</section>
+
+<div class="section-divider"></div>
+
+<!-- ============== 2. OBJECTIVES ============== -->
+<section id="objectives" class="relative py-32 px-6">
+  <div class="max-w-7xl mx-auto">
+    <div class="text-center mb-16" data-reveal>
+      <span class="section-tag">// 02 — OBJECTIVE MATRIX</span>
+      <h2 class="font-orbitron font-bold text-4xl md:text-6xl mt-6 mb-4">
+        <span class="text-white">Mission</span> <span class="grad-text">Parameters</span>
+      </h2>
+      <p class="text-slate-400 max-w-2xl mx-auto">Five outcomes — all agent-specific. Everything generic about RAG internals stays in the RAG course.</p>
+    </div>
+
+    <div class="grid md:grid-cols-2 lg:grid-cols-3 gap-5">
+
+      <div class="holo-card p-7 scanline" data-reveal>
+        <div class="flex items-start justify-between mb-5">
+          <div class="w-12 h-12 rounded-xl bg-gradient-to-br from-cyan-glow/30 to-cyan-glow/5 border border-cyan-glow/30 flex items-center justify-center">
+            <i data-lucide="rewind" class="w-6 h-6 text-cyan-glow"></i>
+          </div>
+          <span class="font-mono text-[10px] text-cyan-glow/60">OBJ.01</span>
+        </div>
+        <h3 class="font-orbitron font-semibold text-lg text-white mb-3">2-Min RAG Recap</h3>
+        <p class="text-sm text-slate-400 leading-relaxed">Confirm carry-over from the RAG course: embeddings, vector store, retriever interface — nothing taught here.</p>
+      </div>
+
+      <div class="holo-card p-7 scanline" data-reveal>
+        <div class="flex items-start justify-between mb-5">
+          <div class="w-12 h-12 rounded-xl bg-gradient-to-br from-magenta-glow/30 to-magenta-glow/5 border border-magenta-glow/30 flex items-center justify-center">
+            <i data-lucide="git-compare-arrows" class="w-6 h-6 text-magenta-glow"></i>
+          </div>
+          <span class="font-mono text-[10px] text-magenta-glow/60">OBJ.02</span>
+        </div>
+        <h3 class="font-orbitron font-semibold text-lg text-white mb-3">Tool vs Always Architectures</h3>
+        <p class="text-sm text-slate-400 leading-relaxed">Tell <em>retrieval-as-a-tool</em> apart from <em>always-retrieval</em>. Pick by use case, not by reflex.</p>
+      </div>
+
+      <div class="holo-card p-7 scanline" data-reveal>
+        <div class="flex items-start justify-between mb-5">
+          <div class="w-12 h-12 rounded-xl bg-gradient-to-br from-violet-glow/30 to-violet-glow/5 border border-violet-glow/30 flex items-center justify-center">
+            <i data-lucide="brain-circuit" class="w-6 h-6 text-violet-glow"></i>
+          </div>
+          <span class="font-mono text-[10px] text-violet-glow/60">OBJ.03</span>
+        </div>
+        <h3 class="font-orbitron font-semibold text-lg text-white mb-3">Decide When to Retrieve</h3>
+        <p class="text-sm text-slate-400 leading-relaxed">Apply 5 signals to determine if the agent's current turn benefits from retrieval — or just spends tokens.</p>
+      </div>
+
+      <div class="holo-card p-7 scanline" data-reveal>
+        <div class="flex items-start justify-between mb-5">
+          <div class="w-12 h-12 rounded-xl bg-gradient-to-br from-emerald-glow/30 to-emerald-glow/5 border border-emerald-glow/30 flex items-center justify-center">
+            <i data-lucide="layers" class="w-6 h-6 text-emerald-glow"></i>
+          </div>
+          <span class="font-mono text-[10px] text-emerald-glow/60">OBJ.04</span>
+        </div>
+        <h3 class="font-orbitron font-semibold text-lg text-white mb-3">Multi-Retrieval Agents</h3>
+        <p class="text-sm text-slate-400 leading-relaxed">Expose multiple knowledge sources as separate tools. Let the LLM pick which one(s) to query.</p>
+      </div>
+
+      <div class="holo-card p-7 scanline" data-reveal>
+        <div class="flex items-start justify-between mb-5">
+          <div class="w-12 h-12 rounded-xl bg-gradient-to-br from-amber-400/30 to-amber-400/5 border border-amber-400/30 flex items-center justify-center">
+            <i data-lucide="scale" class="w-6 h-6 text-amber-400"></i>
+          </div>
+          <span class="font-mono text-[10px] text-amber-400/60">OBJ.05</span>
+        </div>
+        <h3 class="font-orbitron font-semibold text-lg text-white mb-3">Long Context vs RAG vs FT — for Agents</h3>
+        <p class="text-sm text-slate-400 leading-relaxed">The agent-specific lens on the three knowledge levers. When 1M-token context kills the case for RAG.</p>
+      </div>
+
+      <div class="holo-card p-7 scanline" data-reveal>
+        <div class="flex items-start justify-between mb-5">
+          <div class="w-12 h-12 rounded-xl bg-gradient-to-br from-red-400/30 to-red-400/5 border border-red-400/30 flex items-center justify-center">
+            <i data-lucide="ban" class="w-6 h-6 text-red-400"></i>
+          </div>
+          <span class="font-mono text-[10px] text-red-400/60">OBJ.OUT</span>
+        </div>
+        <h3 class="font-orbitron font-semibold text-lg text-white mb-3">What This Module Skips</h3>
+        <p class="text-sm text-slate-400 leading-relaxed">Embedding models, chunking strategies, vector store ops, hybrid search, reranking — all in the <span class="text-cyan-glow">RAG Course</span>.</p>
+      </div>
+
+    </div>
+  </div>
+</section>
+
+<div class="section-divider"></div>
+
+<!-- ============== 3. 2-MIN RAG RECAP ============== -->
+<section id="recap" class="relative py-32 px-6">
+  <div class="orb w-72 h-72 bg-violet-glow/30" style="top: 20%; left: -100px;"></div>
+
+  <div class="max-w-7xl mx-auto">
+    <div class="text-center mb-16" data-reveal>
+      <span class="section-tag" style="color: var(--c-magenta); border-color: rgba(255,0,229,0.3);">// 03 — 2-MIN RAG RECAP</span>
+      <h2 class="font-orbitron font-bold text-4xl md:text-6xl mt-6 mb-4">
+        <span class="text-white">What You Already</span> <span class="grad-text">Built</span>
+      </h2>
+      <p class="text-slate-400 max-w-3xl mx-auto">You completed the RAG course. This is a 2-minute callback — not a re-teach. If anything below feels foreign, swing back to the RAG course before continuing.</p>
+    </div>
+
+    <div class="recap-block mb-10" data-reveal>
+      <p class="text-sm text-slate-300 leading-relaxed pt-2">
+        <span class="text-cyan-glow font-semibold">In the RAG course you shipped:</span> a pipeline that takes a query, embeds it, retrieves K relevant chunks from a vector store, stuffs them into a prompt, and lets the model answer. You also covered chunking, hybrid search (BM25 + dense), reranking, and faithfulness eval. <span class="text-magenta-glow font-semibold">All of that stays there.</span> This module is concerned only with how an <em>agent</em> consumes retrieval.
+      </p>
+    </div>
+
+    <div class="grid lg:grid-cols-2 gap-6 mb-10">
+
+      <div class="holo-card p-7" data-reveal>
+        <div class="flex items-center gap-3 mb-4">
+          <i data-lucide="check-circle-2" class="w-5 h-5 text-emerald-glow"></i>
+          <span class="font-orbitron text-sm text-emerald-glow">RAG-COURSE TAKEAWAYS</span>
+        </div>
+        <ul class="space-y-2 text-sm text-slate-300">
+          <li class="flex items-start gap-2"><i data-lucide="dot" class="w-4 h-4 text-cyan-glow mt-0.5"></i><span><code class="text-cyan-glow">Retriever</code> is a Runnable: query in → list[Document] out.</span></li>
+          <li class="flex items-start gap-2"><i data-lucide="dot" class="w-4 h-4 text-cyan-glow mt-0.5"></i><span>Embedding model + vector store back it. Hybrid (BM25 + dense) is the default in 2026.</span></li>
+          <li class="flex items-start gap-2"><i data-lucide="dot" class="w-4 h-4 text-cyan-glow mt-0.5"></i><span>Reranker (cross-encoder) tightens the top-K. Eval = faithfulness + answer-relevance.</span></li>
+          <li class="flex items-start gap-2"><i data-lucide="dot" class="w-4 h-4 text-cyan-glow mt-0.5"></i><span>The classic shape: <code>retriever | stuff | model | parser</code>.</span></li>
+        </ul>
+      </div>
+
+      <div class="holo-card p-7" data-reveal style="border-color: rgba(255,0,229,0.3);">
+        <div class="flex items-center gap-3 mb-4">
+          <i data-lucide="alert-triangle" class="w-5 h-5 text-magenta-glow"></i>
+          <span class="font-orbitron text-sm text-magenta-glow">WHY THAT SHAPE BREAKS FOR AGENTS</span>
+        </div>
+        <ul class="space-y-2 text-sm text-slate-300">
+          <li class="flex items-start gap-2"><i data-lucide="x" class="w-4 h-4 text-red-400 mt-0.5"></i><span>Every turn retrieves — even greetings, small talk, function-calls.</span></li>
+          <li class="flex items-start gap-2"><i data-lucide="x" class="w-4 h-4 text-red-400 mt-0.5"></i><span>Context bloats with documents the LLM didn't need.</span></li>
+          <li class="flex items-start gap-2"><i data-lucide="x" class="w-4 h-4 text-red-400 mt-0.5"></i><span>Multi-step agents end up retrieving the same chunks repeatedly.</span></li>
+          <li class="flex items-start gap-2"><i data-lucide="x" class="w-4 h-4 text-red-400 mt-0.5"></i><span>Only one knowledge source — agents often need many.</span></li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="holo-card p-8 text-center" data-reveal>
+      <div class="font-mono text-xs text-cyan-glow tracking-widest mb-3">// THE REFRAME</div>
+      <p class="font-orbitron text-lg md:text-xl text-white leading-relaxed max-w-4xl mx-auto">
+        For pipelines: <span class="neon-cyan">retrieval is the architecture</span>.<br>
+        For agents: <span class="neon-magenta">retrieval is a tool the LLM picks</span> — when, where, how often.
+      </p>
+    </div>
+  </div>
+</section>
+
+<div class="section-divider"></div>
+
+<!-- ============== 4. TWO ARCHITECTURES ============== -->
+<section id="archs" class="relative py-32 px-6">
+  <div class="orb w-96 h-96 bg-cyan-glow/30" style="bottom: 10%; right: -100px;"></div>
+
+  <div class="max-w-7xl mx-auto">
+    <div class="text-center mb-16" data-reveal>
+      <span class="section-tag" style="color: var(--c-emerald); border-color: rgba(0,255,163,0.3);">// 04 — TWO ARCHITECTURES</span>
+      <h2 class="font-orbitron font-bold text-4xl md:text-6xl mt-6 mb-4">
+        <span class="text-white">Retrieval-as-Tool vs</span> <span class="grad-text">Always-Retrieval</span>
+      </h2>
+      <p class="text-slate-400 max-w-3xl mx-auto">Two shapes. One forces retrieval on every turn. The other lets the agent decide. Each has a sweet spot.</p>
+    </div>
+
+    <!-- Always-retrieval diagram -->
+    <div class="grid lg:grid-cols-2 gap-6 mb-10">
+
+      <!-- LEFT: Always-retrieval -->
+      <div class="holo-card p-7" data-reveal>
+        <div class="flex items-center justify-between mb-5">
+          <span class="font-orbitron text-base text-white">ALWAYS-RETRIEVAL</span>
+          <span class="font-mono text-[10px] text-cyan-glow px-2 py-1 rounded bg-cyan-glow/10 border border-cyan-glow/25">PIPELINE</span>
+        </div>
+
+        <!-- SVG diagram -->
+        <svg viewBox="0 0 380 130" class="w-full h-32">
+          <defs>
+            <marker id="ar-cyan" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto">
+              <path d="M0,0 L10,5 L0,10 z" fill="#00f0ff"/>
+            </marker>
+          </defs>
+          <rect x="10" y="55" width="60" height="40" rx="8" class="" fill="rgba(0,240,255,0.12)" stroke="#00f0ff" stroke-width="1.5"/>
+          <text x="40" y="79" style="font-family:Orbitron;fill:#fff;font-size:9px;text-anchor:middle">QUERY</text>
+          <rect x="100" y="45" width="80" height="60" rx="8" fill="rgba(139,92,246,0.12)" stroke="#8b5cf6" stroke-width="1.5"/>
+          <text x="140" y="71" style="font-family:Orbitron;fill:#fff;font-size:9px;text-anchor:middle">RETRIEVE</text>
+          <text x="140" y="86" style="font-family:JetBrains Mono;fill:#94a3b8;font-size:8px;text-anchor:middle">(forced)</text>
+          <rect x="210" y="45" width="80" height="60" rx="8" fill="rgba(255,0,229,0.12)" stroke="#ff00e5" stroke-width="1.5"/>
+          <text x="250" y="71" style="font-family:Orbitron;fill:#fff;font-size:9px;text-anchor:middle">STUFF +</text>
+          <text x="250" y="86" style="font-family:Orbitron;fill:#fff;font-size:9px;text-anchor:middle">LLM</text>
+          <rect x="320" y="55" width="50" height="40" rx="8" fill="rgba(0,255,163,0.12)" stroke="#00ffa3" stroke-width="1.5"/>
+          <text x="345" y="79" style="font-family:Orbitron;fill:#fff;font-size:9px;text-anchor:middle">ANS</text>
+          <line x1="70" y1="75" x2="98" y2="75" stroke="#00f0ff" stroke-width="2" marker-end="url(#ar-cyan)"/>
+          <line x1="180" y1="75" x2="208" y2="75" stroke="#00f0ff" stroke-width="2" marker-end="url(#ar-cyan)"/>
+          <line x1="290" y1="75" x2="318" y2="75" stroke="#00f0ff" stroke-width="2" marker-end="url(#ar-cyan)"/>
+        </svg>
+
+        <ul class="space-y-2 text-xs text-slate-300 mt-4">
+          <li class="flex items-start gap-2"><i data-lucide="check" class="w-4 h-4 text-emerald-glow mt-0.5"></i><span>Predictable, single-shape — easy to evaluate (faithfulness, recall@k).</span></li>
+          <li class="flex items-start gap-2"><i data-lucide="check" class="w-4 h-4 text-emerald-glow mt-0.5"></i><span>Right for narrow Q&amp;A workloads with one corpus.</span></li>
+          <li class="flex items-start gap-2"><i data-lucide="x" class="w-4 h-4 text-red-400 mt-0.5"></i><span>Wastes tokens on turns that don't need retrieval.</span></li>
+          <li class="flex items-start gap-2"><i data-lucide="x" class="w-4 h-4 text-red-400 mt-0.5"></i><span>Cannot pick between multiple knowledge sources.</span></li>
+        </ul>
+      </div>
+
+      <!-- RIGHT: Retrieval-as-tool -->
+      <div class="holo-card p-7" data-reveal style="border-color: rgba(255,0,229,0.3);">
+        <div class="flex items-center justify-between mb-5">
+          <span class="font-orbitron text-base text-white">RETRIEVAL-AS-TOOL</span>
+          <span class="font-mono text-[10px] text-magenta-glow px-2 py-1 rounded bg-magenta-glow/10 border border-magenta-glow/25">AGENT</span>
+        </div>
+
+        <!-- SVG diagram -->
+        <svg viewBox="0 0 380 130" class="w-full h-32">
+          <defs>
+            <marker id="ar-m" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto">
+              <path d="M0,0 L10,5 L0,10 z" fill="#ff00e5"/>
+            </marker>
+          </defs>
+          <rect x="10" y="55" width="60" height="40" rx="8" fill="rgba(0,240,255,0.12)" stroke="#00f0ff" stroke-width="1.5"/>
+          <text x="40" y="79" style="font-family:Orbitron;fill:#fff;font-size:9px;text-anchor:middle">QUERY</text>
+          <circle cx="160" cy="75" r="32" fill="rgba(255,0,229,0.12)" stroke="#ff00e5" stroke-width="1.5"/>
+          <text x="160" y="74" style="font-family:Orbitron;fill:#fff;font-size:9px;text-anchor:middle">AGENT</text>
+          <text x="160" y="88" style="font-family:JetBrains Mono;fill:#94a3b8;font-size:8px;text-anchor:middle">decides</text>
+          <rect x="240" y="20" width="80" height="35" rx="8" fill="rgba(139,92,246,0.12)" stroke="#8b5cf6" stroke-width="1.5"/>
+          <text x="280" y="42" style="font-family:Orbitron;fill:#fff;font-size:9px;text-anchor:middle">retrieve()</text>
+          <rect x="240" y="95" width="80" height="35" rx="8" fill="rgba(255,184,0,0.12)" stroke="#ffb800" stroke-width="1.5"/>
+          <text x="280" y="117" style="font-family:Orbitron;fill:#fff;font-size:9px;text-anchor:middle">other tool</text>
+          <line x1="70" y1="75" x2="126" y2="75" stroke="#ff00e5" stroke-width="2" marker-end="url(#ar-m)"/>
+          <path d="M188,60 Q220,38 238,38" stroke="#ff00e5" stroke-width="2" fill="none" stroke-dasharray="4 4" marker-end="url(#ar-m)"/>
+          <path d="M188,90 Q220,112 238,112" stroke="#ff00e5" stroke-width="2" fill="none" stroke-dasharray="4 4" marker-end="url(#ar-m)"/>
+          <path d="M238,42 Q200,50 195,65" stroke="#ff00e5" stroke-width="2" fill="none" marker-end="url(#ar-m)"/>
+        </svg>
+
+        <ul class="space-y-2 text-xs text-slate-300 mt-4">
+          <li class="flex items-start gap-2"><i data-lucide="check" class="w-4 h-4 text-emerald-glow mt-0.5"></i><span>Retrieves <em>only when needed</em> — saves tokens, latency, cost.</span></li>
+          <li class="flex items-start gap-2"><i data-lucide="check" class="w-4 h-4 text-emerald-glow mt-0.5"></i><span>Composes with other tools (calendar, CRM, web search).</span></li>
+          <li class="flex items-start gap-2"><i data-lucide="check" class="w-4 h-4 text-emerald-glow mt-0.5"></i><span>Supports multiple retrievers as distinct tools (§ 6).</span></li>
+          <li class="flex items-start gap-2"><i data-lucide="x" class="w-4 h-4 text-red-400 mt-0.5"></i><span>Harder to test — model may skip retrieval when it shouldn't.</span></li>
+        </ul>
+      </div>
+    </div>
+
+    <!-- One-line discriminator -->
+    <div class="holo-card p-8 text-center" data-reveal>
+      <div class="font-mono text-xs text-cyan-glow tracking-widest mb-3">// THE ONE-LINE DISCRIMINATOR</div>
+      <p class="font-orbitron text-lg md:text-xl text-white leading-relaxed max-w-4xl mx-auto">
+        <span class="neon-cyan">Always-retrieval</span> = <em>you</em> control when. <br>
+        <span class="neon-magenta">Retrieval-as-tool</span> = <em>the LLM</em> controls when.
+      </p>
+    </div>
+  </div>
+</section>
+
+<div class="section-divider"></div>
+
+<!-- ============== 5. WHEN TO RETRIEVE ============== -->
+<section id="decide" class="relative py-32 px-6">
+  <div class="orb w-80 h-80 bg-emerald-glow/30" style="top: 20%; left: -80px;"></div>
+
+  <div class="max-w-7xl mx-auto">
+    <div class="text-center mb-16" data-reveal>
+      <span class="section-tag" style="color: var(--c-violet); border-color: rgba(139,92,246,0.3);">// 05 — WHEN AGENTS SHOULD RETRIEVE</span>
+      <h2 class="font-orbitron font-bold text-4xl md:text-6xl mt-6 mb-4">
+        <span class="text-white">Five Signals That Say</span> <span class="grad-text">Retrieve</span>
+      </h2>
+      <p class="text-slate-400 max-w-3xl mx-auto">Five signals. If any are present, give the agent a retrieval tool. If none are — skip RAG entirely, you'll add latency for nothing.</p>
+    </div>
+
+    <div class="grid md:grid-cols-2 lg:grid-cols-3 gap-5 mb-10">
+
+      <div class="holo-card p-7" data-reveal>
+        <div class="flex items-center gap-3 mb-3">
+          <i data-lucide="database" class="w-6 h-6 text-cyan-glow"></i>
+          <span class="font-mono text-[10px] text-cyan-glow tracking-widest">SIGNAL 01</span>
+        </div>
+        <h3 class="font-orbitron text-base text-white mb-2">Private / Domain Knowledge</h3>
+        <p class="text-xs text-slate-300 leading-relaxed">Information the model can't possibly know — internal docs, your codebase, customer history. Retrieval is the <em>only</em> way in.</p>
+      </div>
+
+      <div class="holo-card p-7" data-reveal>
+        <div class="flex items-center gap-3 mb-3">
+          <i data-lucide="clock" class="w-6 h-6 text-magenta-glow"></i>
+          <span class="font-mono text-[10px] text-magenta-glow tracking-widest">SIGNAL 02</span>
+        </div>
+        <h3 class="font-orbitron text-base text-white mb-2">Fresh / Post-Cutoff Facts</h3>
+        <p class="text-xs text-slate-300 leading-relaxed">News, prices, current product specs. The model's training data is months old by the time you ship.</p>
+      </div>
+
+      <div class="holo-card p-7" data-reveal>
+        <div class="flex items-center gap-3 mb-3">
+          <i data-lucide="quote" class="w-6 h-6 text-violet-glow"></i>
+          <span class="font-mono text-[10px] text-violet-glow tracking-widest">SIGNAL 03</span>
+        </div>
+        <h3 class="font-orbitron text-base text-white mb-2">Citation Requirement</h3>
+        <p class="text-xs text-slate-300 leading-relaxed">The product must link claims to sources. RAG produces source IDs; an unaided model can only confabulate URLs.</p>
+      </div>
+
+      <div class="holo-card p-7" data-reveal>
+        <div class="flex items-center gap-3 mb-3">
+          <i data-lucide="library" class="w-6 h-6 text-emerald-glow"></i>
+          <span class="font-mono text-[10px] text-emerald-glow tracking-widest">SIGNAL 04</span>
+        </div>
+        <h3 class="font-orbitron text-base text-white mb-2">Corpus &gt; Context Window</h3>
+        <p class="text-xs text-slate-300 leading-relaxed">Your knowledge base is bigger than even long-context models can swallow. RAG narrows it; long-context can't.</p>
+      </div>
+
+      <div class="holo-card p-7" data-reveal>
+        <div class="flex items-center gap-3 mb-3">
+          <i data-lucide="shield-check" class="w-6 h-6 text-amber-400"></i>
+          <span class="font-mono text-[10px] text-amber-400 tracking-widest">SIGNAL 05</span>
+        </div>
+        <h3 class="font-orbitron text-base text-white mb-2">Hallucination Cost Is High</h3>
+        <p class="text-xs text-slate-300 leading-relaxed">Medical, legal, financial, compliance. Grounding to retrieved evidence + faithfulness eval beats raw inference.</p>
+      </div>
+
+      <div class="holo-card p-7" data-reveal style="border-color: rgba(255,56,96,0.3);">
+        <div class="flex items-center gap-3 mb-3">
+          <i data-lucide="x-circle" class="w-6 h-6 text-red-400"></i>
+          <span class="font-mono text-[10px] text-red-400 tracking-widest">DON'T RETRIEVE FOR</span>
+        </div>
+        <h3 class="font-orbitron text-base text-white mb-2">Pure Reasoning · Code · Chitchat</h3>
+        <p class="text-xs text-slate-300 leading-relaxed">Math, logic, code synthesis, casual back-and-forth. Retrieval adds noise — and the model is already good at these.</p>
+      </div>
+
+    </div>
+
+    <!-- Two failure modes to avoid -->
+    <div class="grid md:grid-cols-2 gap-6" data-reveal>
+      <div class="holo-card p-7">
+        <div class="flex items-center gap-3 mb-4">
+          <i data-lucide="alert-octagon" class="w-5 h-5 text-amber-400"></i>
+          <span class="font-orbitron text-sm text-amber-400">FAILURE 01 — UNDER-RETRIEVAL</span>
+        </div>
+        <p class="text-sm text-slate-300 leading-relaxed mb-3">The agent has the tool but skips calling it on questions it should answer with sources. Result: confident hallucinations.</p>
+        <p class="text-xs text-slate-400 leading-relaxed"><span class="text-cyan-glow font-semibold">Fix:</span> tighten the tool description with explicit triggers. Or hybrid: detect intent first, force-call the retriever on knowledge-intent turns.</p>
+      </div>
+      <div class="holo-card p-7">
+        <div class="flex items-center gap-3 mb-4">
+          <i data-lucide="alert-octagon" class="w-5 h-5 text-amber-400"></i>
+          <span class="font-orbitron text-sm text-amber-400">FAILURE 02 — OVER-RETRIEVAL</span>
+        </div>
+        <p class="text-sm text-slate-300 leading-relaxed mb-3">The agent calls retrieve on every turn — even "hi" and follow-ups. Latency explodes, context fills with junk.</p>
+        <p class="text-xs text-slate-400 leading-relaxed"><span class="text-cyan-glow font-semibold">Fix:</span> add a refusal clause to the tool description ("do NOT call for greetings, code, or pure reasoning"). Cap calls per trajectory.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<div class="section-divider"></div>
+
+<!-- ============== 6. MULTI-RETRIEVAL AGENTS ============== -->
+<section id="multi" class="relative py-32 px-6">
+  <div class="orb w-72 h-72 bg-magenta-glow/30" style="top: 30%; left: -80px;"></div>
+
+  <div class="max-w-7xl mx-auto">
+    <div class="text-center mb-16" data-reveal>
+      <span class="section-tag">// 06 — MULTI-RETRIEVAL AGENTS</span>
+      <h2 class="font-orbitron font-bold text-4xl md:text-6xl mt-6 mb-4">
+        <span class="text-white">Multiple Knowledge</span> <span class="grad-text">Sources</span>
+      </h2>
+      <p class="text-slate-400 max-w-3xl mx-auto">Real agents serve queries that span engineering docs, customer history, the open web, and the codebase. Expose each as a <em>separate tool</em> and let the LLM pick.</p>
+    </div>
+
+    <!-- Multi-source diagram -->
+    <div class="holo-card p-8 md:p-10 mb-10" data-reveal>
+      <div class="flex items-center justify-between mb-6">
+        <div>
+          <div class="font-mono text-xs text-cyan-glow tracking-widest mb-2">// ROUTING TO N SOURCES</div>
+          <h3 class="font-orbitron font-bold text-xl text-white">One Agent · Four Retrievers</h3>
+        </div>
+      </div>
+
+      <div class="flex flex-wrap items-center justify-center gap-3 md:gap-6">
+        <div class="arch-pill magenta">
+          <i data-lucide="bot" class="w-4 h-4 mx-auto mb-1"></i>
+          AGENT<br>
+          <span class="text-[9px] opacity-70">picks tool(s)</span>
+        </div>
+        <i data-lucide="chevron-right" class="w-6 h-6 text-slate-500"></i>
+        <div class="grid grid-cols-2 gap-3">
+          <div class="ksrc-tile">
+            <div class="flex items-center gap-2 mb-1">
+              <i data-lucide="book-open" class="w-4 h-4 text-cyan-glow"></i>
+              <span class="font-orbitron text-xs text-cyan-glow">DOCS</span>
+            </div>
+            <div class="text-[10px] text-slate-400">product handbook · API ref</div>
+          </div>
+          <div class="ksrc-tile">
+            <div class="flex items-center gap-2 mb-1">
+              <i data-lucide="users" class="w-4 h-4 text-violet-glow"></i>
+              <span class="font-orbitron text-xs text-violet-glow">CRM</span>
+            </div>
+            <div class="text-[10px] text-slate-400">customer history · tickets</div>
+          </div>
+          <div class="ksrc-tile">
+            <div class="flex items-center gap-2 mb-1">
+              <i data-lucide="code" class="w-4 h-4 text-emerald-glow"></i>
+              <span class="font-orbitron text-xs text-emerald-glow">CODE</span>
+            </div>
+            <div class="text-[10px] text-slate-400">repo embeddings</div>
+          </div>
+          <div class="ksrc-tile">
+            <div class="flex items-center gap-2 mb-1">
+              <i data-lucide="globe" class="w-4 h-4 text-amber-400"></i>
+              <span class="font-orbitron text-xs text-amber-400">WEB</span>
+            </div>
+            <div class="text-[10px] text-slate-400">fresh facts · prices · news</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="mt-6 pt-6 border-t border-cyan-glow/10 text-center">
+        <p class="text-xs text-slate-400 max-w-2xl mx-auto leading-relaxed">The LLM reads tool descriptions — same mechanism as Module 0.2 — and picks the right one (or several in parallel) per turn. Module 1.0 tool patterns + Module 2.4 graph nodes assemble cleanly.</p>
+      </div>
+    </div>
+
+    <!-- Three patterns -->
+    <div class="grid md:grid-cols-3 gap-5" data-reveal>
+
+      <div class="holo-card p-6">
+        <div class="flex items-center gap-3 mb-3">
+          <i data-lucide="git-fork" class="w-5 h-5 text-cyan-glow"></i>
+          <span class="font-orbitron text-sm text-cyan-glow">P1 — ROUTER</span>
+        </div>
+        <p class="text-xs text-slate-300 leading-relaxed mb-3">LLM picks <em>one</em> retriever per turn. Cheapest. Use when sources are clearly disjoint.</p>
+        <code class="font-mono text-[10px] text-cyan-glow block">if intent=docs → search_docs</code>
+      </div>
+
+      <div class="holo-card p-6" style="border-color: rgba(255,0,229,0.3);">
+        <div class="flex items-center gap-3 mb-3">
+          <i data-lucide="layers" class="w-5 h-5 text-magenta-glow"></i>
+          <span class="font-orbitron text-sm text-magenta-glow">P2 — PARALLEL FAN-OUT</span>
+        </div>
+        <p class="text-xs text-slate-300 leading-relaxed mb-3">LLM emits N tool calls at once — Module 0.2's parallel pattern. Use when a query genuinely spans sources.</p>
+        <code class="font-mono text-[10px] text-magenta-glow block">[search_docs, search_crm]</code>
+      </div>
+
+      <div class="holo-card p-6" style="border-color: rgba(139,92,246,0.3);">
+        <div class="flex items-center gap-3 mb-3">
+          <i data-lucide="git-pull-request" class="w-5 h-5 text-violet-glow"></i>
+          <span class="font-orbitron text-sm text-violet-glow">P3 — CASCADE</span>
+        </div>
+        <p class="text-xs text-slate-300 leading-relaxed mb-3">Cheap retriever first; only escalate to expensive ones on miss. Best cost/latency profile.</p>
+        <code class="font-mono text-[10px] text-violet-glow block">docs → if empty → web</code>
+      </div>
+
+    </div>
+  </div>
+</section>
+
+<div class="section-divider"></div>
+
+<!-- ============== 7. CODE ============== -->
+<section id="code" class="relative py-32 px-6">
+  <div class="max-w-7xl mx-auto">
+    <div class="text-center mb-16" data-reveal>
+      <span class="section-tag" style="color: var(--c-emerald); border-color: rgba(0,255,163,0.3);">// 07 — CODE: RETRIEVAL AS A TOOL</span>
+      <h2 class="font-orbitron font-bold text-4xl md:text-6xl mt-6 mb-4">
+        <span class="text-white">Wrap a Retriever</span> <span class="grad-text">as a Tool</span>
+      </h2>
+      <p class="text-slate-400 max-w-3xl mx-auto">A 15-line bridge from the RAG course's retriever to an agent tool the LangGraph ReAct loop can call.</p>
+    </div>
+
+    <div class="flex flex-wrap gap-3 justify-center mb-8" data-reveal>
+      <button class="tab-pill active" data-tab="single">1. SINGLE SOURCE</button>
+      <button class="tab-pill" data-tab="multi">2. MULTI-SOURCE</button>
+      <button class="tab-pill" data-tab="graph">3. INTO THE GRAPH</button>
+    </div>
+
+    <div data-reveal>
+
+      <!-- 1. Single -->
+      <div class="tab-panel" data-panel="single">
+        <div class="code-block-header">
+          <span><i data-lucide="wrench" class="w-3.5 h-3.5 inline mr-1.5"></i> tools/search_docs.py — retriever → @tool</span>
+          <span class="text-slate-500">// 1 / 3 · ONE KNOWLEDGE SOURCE</span>
+        </div>
+        <div class="code-block">
+<pre><span class="tok-kw">from</span> langchain_core.tools <span class="tok-kw">import</span> tool
+<span class="tok-kw">from</span> pydantic <span class="tok-kw">import</span> BaseModel, Field
+
+<span class="tok-com"># The retriever itself comes from the RAG course — black box here.</span>
+<span class="tok-kw">from</span> rag <span class="tok-kw">import</span> docs_retriever     <span class="tok-com"># Runnable: query → list[Document]</span>
+
+<span class="tok-kw">class</span> <span class="tok-cls">SearchDocsArgs</span>(<span class="tok-cls">BaseModel</span>):
+    query: <span class="tok-type">str</span> = Field(..., description=<span class="tok-str">"Specific question to search the docs for."</span>)
+    top_k: <span class="tok-type">int</span> = Field(<span class="tok-num">4</span>, ge=<span class="tok-num">1</span>, le=<span class="tok-num">10</span>)
+
+<span class="tok-dec">@tool</span>(args_schema=SearchDocsArgs)
+<span class="tok-kw">def</span> <span class="tok-fn">search_docs</span>(query: <span class="tok-type">str</span>, top_k: <span class="tok-type">int</span> = <span class="tok-num">4</span>) -&gt; <span class="tok-type">list</span>[<span class="tok-cls">dict</span>]:
+    <span class="tok-com">"""Search Acme Cloud's product documentation.
+
+    Use this when the user asks how to use a feature, what an API does,
+    or what the platform supports. Do NOT use for greetings, casual chat,
+    code synthesis, or pure reasoning questions."""</span>
+    docs = docs_retriever.<span class="tok-fn">invoke</span>(query)[:top_k]
+    <span class="tok-kw">return</span> [
+        {<span class="tok-str">"source_id"</span>: d.metadata[<span class="tok-str">"id"</span>], <span class="tok-str">"title"</span>: d.metadata[<span class="tok-str">"title"</span>],
+         <span class="tok-str">"content"</span>: d.page_content[:<span class="tok-num">1200</span>]}
+        <span class="tok-kw">for</span> d <span class="tok-kw">in</span> docs
+    ]
+<span class="tok-com"># Description is load-bearing: it teaches the LLM WHEN to call this tool.</span></pre>
+        </div>
+      </div>
+
+      <!-- 2. Multi -->
+      <div class="tab-panel hidden" data-panel="multi">
+        <div class="code-block-header">
+          <span><i data-lucide="layers" class="w-3.5 h-3.5 inline mr-1.5"></i> tools/multi.py — four retrievers, one agent</span>
+          <span class="text-slate-500">// 2 / 3 · MULTIPLE SOURCES</span>
+        </div>
+        <div class="code-block">
+<pre><span class="tok-kw">from</span> langchain_core.tools <span class="tok-kw">import</span> tool
+
+<span class="tok-dec">@tool</span>
+<span class="tok-kw">def</span> <span class="tok-fn">search_docs</span>(query: <span class="tok-type">str</span>) -&gt; <span class="tok-type">list</span>[<span class="tok-cls">dict</span>]:
+    <span class="tok-com">"""Product documentation. Use for HOW-TO and FEATURE questions."""</span>
+    ...
+
+<span class="tok-dec">@tool</span>
+<span class="tok-kw">def</span> <span class="tok-fn">search_crm</span>(user_id: <span class="tok-type">str</span>, query: <span class="tok-type">str</span>) -&gt; <span class="tok-type">list</span>[<span class="tok-cls">dict</span>]:
+    <span class="tok-com">"""Customer history. Use ONLY when a specific user_id is in context."""</span>
+    ...
+
+<span class="tok-dec">@tool</span>
+<span class="tok-kw">def</span> <span class="tok-fn">search_code</span>(query: <span class="tok-type">str</span>) -&gt; <span class="tok-type">list</span>[<span class="tok-cls">dict</span>]:
+    <span class="tok-com">"""Internal codebase. Use for &quot;where is X implemented?&quot; questions."""</span>
+    ...
+
+<span class="tok-dec">@tool</span>
+<span class="tok-kw">def</span> <span class="tok-fn">search_web</span>(query: <span class="tok-type">str</span>) -&gt; <span class="tok-type">list</span>[<span class="tok-cls">dict</span>]:
+    <span class="tok-com">"""Open web. Use for FRESH facts (news, prices, new releases).</span>
+<span class="tok-com">       AVOID for anything that should live in docs or code."""</span>
+    ...
+
+KNOWLEDGE_TOOLS = [search_docs, search_crm, search_code, search_web]
+<span class="tok-com"># LLM reads all 4 descriptions and picks. Often emits 2+ in parallel.</span></pre>
+        </div>
+      </div>
+
+      <!-- 3. Into graph -->
+      <div class="tab-panel hidden" data-panel="graph">
+        <div class="code-block-header">
+          <span><i data-lucide="workflow" class="w-3.5 h-3.5 inline mr-1.5"></i> graph.py — bind to the LangGraph ReAct agent</span>
+          <span class="text-slate-500">// 3 / 3 · MODULE 2.4 PATTERN</span>
+        </div>
+        <div class="code-block">
+<pre><span class="tok-kw">from</span> langgraph.graph <span class="tok-kw">import</span> StateGraph, START, END
+<span class="tok-kw">from</span> langgraph.prebuilt <span class="tok-kw">import</span> ToolNode
+<span class="tok-kw">from</span> langchain_openai <span class="tok-kw">import</span> ChatOpenAI
+<span class="tok-kw">from</span> tools.multi <span class="tok-kw">import</span> KNOWLEDGE_TOOLS
+
+<span class="tok-com"># Identical to Module 2.4's ReAct graph — just bind the retrieval tools.</span>
+model = <span class="tok-fn">ChatOpenAI</span>(model=<span class="tok-str">"gpt-4o-mini"</span>).<span class="tok-fn">bind_tools</span>(KNOWLEDGE_TOOLS)
+
+<span class="tok-kw">def</span> <span class="tok-fn">agent_node</span>(state):
+    <span class="tok-kw">return</span> {<span class="tok-str">"messages"</span>: [model.<span class="tok-fn">invoke</span>(state[<span class="tok-str">"messages"</span>])]}
+
+tool_node = <span class="tok-fn">ToolNode</span>(KNOWLEDGE_TOOLS)
+
+<span class="tok-kw">def</span> <span class="tok-fn">route</span>(state):
+    <span class="tok-kw">return</span> <span class="tok-str">"tools"</span> <span class="tok-kw">if</span> state[<span class="tok-str">"messages"</span>][-<span class="tok-num">1</span>].tool_calls <span class="tok-kw">else</span> <span class="tok-str">"__end__"</span>
+
+builder = <span class="tok-fn">StateGraph</span>(AgentState)
+builder.<span class="tok-fn">add_node</span>(<span class="tok-str">"agent"</span>, agent_node)
+builder.<span class="tok-fn">add_node</span>(<span class="tok-str">"tools"</span>, tool_node)
+builder.<span class="tok-fn">add_edge</span>(START, <span class="tok-str">"agent"</span>)
+builder.<span class="tok-fn">add_conditional_edges</span>(<span class="tok-str">"agent"</span>, route, {<span class="tok-str">"tools"</span>: <span class="tok-str">"tools"</span>, <span class="tok-str">"__end__"</span>: END})
+builder.<span class="tok-fn">add_edge</span>(<span class="tok-str">"tools"</span>, <span class="tok-str">"agent"</span>)
+
+graph = builder.<span class="tok-fn">compile</span>()
+<span class="tok-com"># The agent now retrieves only when its own reasoning calls for it —</span>
+<span class="tok-com"># and picks among 4 knowledge sources by reading the tool descriptions.</span></pre>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- Insight -->
+    <div class="mt-10 p-6 rounded-xl border border-cyan-glow/20 bg-cyan-glow/5" data-reveal>
+      <div class="flex items-start gap-3">
+        <i data-lucide="lightbulb" class="w-5 h-5 text-cyan-glow flex-shrink-0 mt-0.5"></i>
+        <p class="text-sm text-slate-300 leading-relaxed">
+          <span class="text-cyan-glow font-semibold">Reuse compounds:</span> the retriever is whatever the RAG course built. The tool wrapper is 15 lines. The agent loop is Module 2.4 unchanged. RAG-as-tool is a <em>composition pattern</em>, not new infrastructure.
+        </p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<div class="section-divider"></div>
+
+<!-- ============== 8. LONG CTX vs RAG vs FT ============== -->
+<section id="tradeoffs" class="relative py-32 px-6">
+  <div class="orb w-80 h-80 bg-amber-400/30" style="top: 10%; right: -80px;"></div>
+
+  <div class="max-w-7xl mx-auto">
+    <div class="text-center mb-16" data-reveal>
+      <span class="section-tag" style="color: var(--c-amber); border-color: rgba(255,184,0,0.3);">// 08 — LONG-CTX vs RAG vs FINE-TUNING</span>
+      <h2 class="font-orbitron font-bold text-4xl md:text-6xl mt-6 mb-4">
+        <span class="text-white">The Three Levers,</span> <span class="grad-text">Agent Lens</span>
+      </h2>
+      <p class="text-slate-400 max-w-3xl mx-auto">Module 2.0 covered this for chains. Here we look at the agent-specific implications — especially how 1M-token contexts have changed when RAG is worth it.</p>
+    </div>
+
+    <!-- 3 columns -->
+    <div class="grid md:grid-cols-3 gap-6 mb-10">
+
+      <div class="holo-card p-7" data-reveal>
+        <div class="flex items-center gap-3 mb-4">
+          <div class="w-10 h-10 rounded-lg bg-cyan-glow/15 border border-cyan-glow/30 flex items-center justify-center">
+            <i data-lucide="brain" class="w-5 h-5 text-cyan-glow"></i>
+          </div>
+          <span class="font-orbitron text-lg text-white">LONG CONTEXT</span>
+        </div>
+        <div class="space-y-3 text-sm">
+          <div class="text-xs text-slate-500 font-mono">MECHANISM</div>
+          <div class="text-cyan-glow">Stuff the whole corpus into the prompt</div>
+          <div class="text-xs text-slate-500 font-mono mt-3">AGENT IMPACT</div>
+          <div class="text-slate-300">Every step pays the full context cost — token bills compound across the loop.</div>
+          <div class="text-xs text-slate-500 font-mono mt-3">SWEET SPOT</div>
+          <div class="text-slate-300">Corpus is small + static, query touches most of it (codebase Q&amp;A on a single repo).</div>
+        </div>
+      </div>
+
+      <div class="holo-card p-7" data-reveal style="border-color: rgba(139,92,246,0.3);">
+        <div class="flex items-center gap-3 mb-4">
+          <div class="w-10 h-10 rounded-lg bg-violet-glow/15 border border-violet-glow/30 flex items-center justify-center">
+            <i data-lucide="database-zap" class="w-5 h-5 text-violet-glow"></i>
+          </div>
+          <span class="font-orbitron text-lg text-white">RAG</span>
+        </div>
+        <div class="space-y-3 text-sm">
+          <div class="text-xs text-slate-500 font-mono">MECHANISM</div>
+          <div class="text-violet-glow">Retrieve K relevant chunks per call</div>
+          <div class="text-xs text-slate-500 font-mono mt-3">AGENT IMPACT</div>
+          <div class="text-slate-300">As a tool: pays only when called. Multiple sources sit as separate tools.</div>
+          <div class="text-xs text-slate-500 font-mono mt-3">SWEET SPOT</div>
+          <div class="text-slate-300">Corpus &gt;&gt; context, citations needed, multi-source, frequent updates.</div>
+        </div>
+      </div>
+
+      <div class="holo-card p-7" data-reveal style="border-color: rgba(255,0,229,0.3);">
+        <div class="flex items-center gap-3 mb-4">
+          <div class="w-10 h-10 rounded-lg bg-magenta-glow/15 border border-magenta-glow/30 flex items-center justify-center">
+            <i data-lucide="cpu" class="w-5 h-5 text-magenta-glow"></i>
+          </div>
+          <span class="font-orbitron text-lg text-white">FINE-TUNING</span>
+        </div>
+        <div class="space-y-3 text-sm">
+          <div class="text-xs text-slate-500 font-mono">MECHANISM</div>
+          <div class="text-magenta-glow">Bake knowledge / style into weights</div>
+          <div class="text-xs text-slate-500 font-mono mt-3">AGENT IMPACT</div>
+          <div class="text-slate-300">Best for specialist sub-agents — extraction, routing — where calling cheap is critical.</div>
+          <div class="text-xs text-slate-500 font-mono mt-3">SWEET SPOT</div>
+          <div class="text-slate-300">High-volume narrow tasks, format/style enforcement, prompt-compression.</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Decision table -->
+    <div class="holo-card p-6 md:p-8 mb-10" data-reveal>
+      <div class="font-mono text-xs text-cyan-glow tracking-widest mb-5">// AGENT-SPECIFIC DECISION TABLE</div>
+      <div class="space-y-1">
+        <div class="triple-row" style="border-bottom: 1px solid rgba(0,240,255,0.25);">
+          <div class="font-orbitron text-xs text-white">SITUATION</div>
+          <div class="font-mono text-[10px] text-cyan-glow tracking-widest">LONG CTX</div>
+          <div class="font-mono text-[10px] text-violet-glow tracking-widest">RAG-AS-TOOL</div>
+          <div class="font-mono text-[10px] text-magenta-glow tracking-widest">FINE-TUNING</div>
+        </div>
+        <div class="triple-row">
+          <div class="text-sm text-slate-300">Corpus 50 MB · static · queries span much of it</div>
+          <div class="text-xs text-emerald-glow">★ best</div>
+          <div class="text-xs text-amber-400">ok</div>
+          <div class="text-xs text-red-400">overkill</div>
+        </div>
+        <div class="triple-row">
+          <div class="text-sm text-slate-300">Corpus 50 GB · frequently updated · citations required</div>
+          <div class="text-xs text-red-400">impossible</div>
+          <div class="text-xs text-emerald-glow">★ best</div>
+          <div class="text-xs text-red-400">no</div>
+        </div>
+        <div class="triple-row">
+          <div class="text-sm text-slate-300">Specialist intent-classifier called 1M times/day</div>
+          <div class="text-xs text-red-400">too expensive</div>
+          <div class="text-xs text-amber-400">unneeded</div>
+          <div class="text-xs text-emerald-glow">★ best</div>
+        </div>
+        <div class="triple-row">
+          <div class="text-sm text-slate-300">Multi-domain agent (docs + CRM + code + web)</div>
+          <div class="text-xs text-red-400">no</div>
+          <div class="text-xs text-emerald-glow">★ best (multi-tool)</div>
+          <div class="text-xs text-amber-400">router only</div>
+        </div>
+        <div class="triple-row">
+          <div class="text-sm text-slate-300">Strict house style for every output</div>
+          <div class="text-xs text-amber-400">prompt heavy</div>
+          <div class="text-xs text-red-400">no</div>
+          <div class="text-xs text-emerald-glow">★ best</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Key shift -->
+    <div class="holo-card p-8 text-center" data-reveal>
+      <div class="font-mono text-xs text-amber-400 tracking-widest mb-3">// THE 2026 SHIFT</div>
+      <p class="font-orbitron text-lg md:text-xl text-white leading-relaxed max-w-4xl mx-auto">
+        With 1M-token contexts, <span class="neon-cyan">long-ctx beats RAG</span> on small/static corpora —<br>
+        but for <span class="neon-violet">multi-source agents with citations</span>, RAG-as-tool still wins.<br><br>
+        <span class="text-slate-400 text-sm">All three coexist in production. They are not competitors; they are levers.</span>
+      </p>
+    </div>
+  </div>
+</section>
+
+<div class="section-divider"></div>
+
+<!-- ============== 9. BOUNDARY ============== -->
+<section id="boundary" class="relative py-32 px-6">
+  <div class="max-w-6xl mx-auto">
+    <div class="text-center mb-16" data-reveal>
+      <span class="section-tag" style="color: var(--c-violet); border-color: rgba(139,92,246,0.3);">// 09 — BOUNDARY</span>
+      <h2 class="font-orbitron font-bold text-4xl md:text-6xl mt-6 mb-4">
+        <span class="text-white">For RAG Internals —</span> <span class="grad-text">RAG Course</span>
+      </h2>
+      <p class="text-slate-400 max-w-3xl mx-auto">An explicit reminder of where this module ends and the companion course begins. So you know what to import — and where to look when something breaks.</p>
+    </div>
+
+    <div class="bridge-banner mb-10" data-reveal>
+      <p class="text-sm text-slate-300 leading-relaxed pt-2">
+        This is a <span class="text-emerald-glow font-semibold">bridge module</span>. By design, it touches only the agent-side surface of RAG: how the agent <em>uses</em> a retriever, decides <em>when</em> to call it, and combines it with other tools. Anything <em>inside</em> the retriever — embeddings, indexes, hybrid search, rerankers — is the RAG course's problem.
+      </p>
+    </div>
+
+    <div class="holo-card p-6 md:p-8" data-reveal>
+      <div class="overflow-x-auto">
+        <table class="w-full text-sm">
+          <thead>
+            <tr class="text-left border-b border-cyan-glow/20">
+              <th class="py-4 px-3 font-mono text-xs text-cyan-glow tracking-widest">CONCERN</th>
+              <th class="py-4 px-3 font-mono text-xs text-slate-400 tracking-widest">LIVES IN</th>
+              <th class="py-4 px-3 font-mono text-xs text-emerald-glow tracking-widest">REFERENCE</th>
+            </tr>
+          </thead>
+          <tbody class="text-slate-300">
+            <tr class="border-b border-cyan-glow/8">
+              <td class="py-3 px-3 font-orbitron text-xs text-white">Embedding model selection &amp; eval</td>
+              <td class="py-3 px-3 text-xs">RAG Course / Track 2</td>
+              <td class="py-3 px-3 text-xs text-emerald-glow">MTEB benchmarks</td>
+            </tr>
+            <tr class="border-b border-cyan-glow/8">
+              <td class="py-3 px-3 font-orbitron text-xs text-white">Chunking strategy</td>
+              <td class="py-3 px-3 text-xs">RAG Course / Track 3</td>
+              <td class="py-3 px-3 text-xs text-emerald-glow">recursive · semantic · sentence</td>
+            </tr>
+            <tr class="border-b border-cyan-glow/8">
+              <td class="py-3 px-3 font-orbitron text-xs text-white">Vector store ops</td>
+              <td class="py-3 px-3 text-xs">RAG Course / Track 4</td>
+              <td class="py-3 px-3 text-xs text-emerald-glow">pgvector · Qdrant · Pinecone</td>
+            </tr>
+            <tr class="border-b border-cyan-glow/8">
+              <td class="py-3 px-3 font-orbitron text-xs text-white">Hybrid search &amp; reranking</td>
+              <td class="py-3 px-3 text-xs">RAG Course / Track 5</td>
+              <td class="py-3 px-3 text-xs text-emerald-glow">BM25 + dense · cross-encoders</td>
+            </tr>
+            <tr class="border-b border-cyan-glow/8">
+              <td class="py-3 px-3 font-orbitron text-xs text-white">Faithfulness eval</td>
+              <td class="py-3 px-3 text-xs">RAG Course / Track 6</td>
+              <td class="py-3 px-3 text-xs text-emerald-glow">RAGAS · LLM-as-judge</td>
+            </tr>
+            <tr class="border-b border-cyan-glow/8">
+              <td class="py-3 px-3 font-orbitron text-xs text-white">Retrieval-as-tool wrapping</td>
+              <td class="py-3 px-3 text-xs text-cyan-glow">This module</td>
+              <td class="py-3 px-3 text-xs text-emerald-glow">@tool decorator</td>
+            </tr>
+            <tr class="border-b border-cyan-glow/8">
+              <td class="py-3 px-3 font-orbitron text-xs text-white">Multi-source routing</td>
+              <td class="py-3 px-3 text-xs text-cyan-glow">This module + Module 2.4</td>
+              <td class="py-3 px-3 text-xs text-emerald-glow">LangGraph ReAct + bind_tools</td>
+            </tr>
+            <tr>
+              <td class="py-3 px-3 font-orbitron text-xs text-white">When to retrieve vs not</td>
+              <td class="py-3 px-3 text-xs text-cyan-glow">This module</td>
+              <td class="py-3 px-3 text-xs text-emerald-glow">5-signal heuristic</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="holo-card p-8 mt-10 text-center" data-reveal>
+      <div class="font-mono text-xs text-cyan-glow tracking-widest mb-3">// THE RULE</div>
+      <p class="font-orbitron text-lg md:text-xl text-white leading-relaxed">
+        Retriever broken? → <span class="neon-violet">RAG Course.</span><br>
+        Agent picks the wrong source? → <span class="neon-cyan">this module's tool descriptions.</span>
+      </p>
+    </div>
+  </div>
+</section>
+
+<div class="section-divider"></div>
+
+<!-- ============== 10. CHECKPOINT ============== -->
+
+<div class="section-divider"></div>
+
+<!-- ============== RESOURCES ============== -->
+<section id="resources" class="relative py-32 px-6">
+  <div class="max-w-7xl mx-auto">
+    <div class="text-center mb-16" data-reveal>
+      <span class="section-tag">// LEARNING RESOURCES</span>
+      <h2 class="font-orbitron font-bold text-4xl md:text-6xl mt-6 mb-4">
+        <span class="text-white">Learn &amp;</span> <span class="grad-text">Practice</span>
+      </h2>
+      <p class="text-slate-400 max-w-2xl mx-auto">Deepen your understanding with curated articles and get hands-on with official reference implementations.</p>
+    </div>
+
+    <div class="grid gap-6 max-w-5xl mx-auto">
+      <!-- Three-Tier Learning Resources -->
+      <div class="space-y-4">
+        <!-- Tier 1: Progressive Article -->
+        <div class="holo-card p-6" data-reveal>
+          <div class="flex items-start gap-3 mb-4">
+            <div class="w-10 h-10 rounded-lg bg-cyan-glow/15 border border-cyan-glow/30 flex items-center justify-center flex-shrink-0">
+              <i data-lucide="lightbulb" class="w-5 h-5 text-cyan-glow"></i>
+            </div>
+            <div>
+              <h4 class="font-orbitron font-semibold text-white">Progressive Article</h4>
+              <p class="text-xs text-slate-400 mt-1">Stuck? Start here — beginner-friendly explanation</p>
+            </div>
+          </div>
+          <p class="text-sm text-slate-300 mb-4 leading-relaxed">
+            <span class="text-cyan-glow font-semibold">What is RAG?</span><br/>
+            <span class="text-slate-500 text-xs">IBM — Uses librarian analogy; explains difference between RAG and fine-tuning</span>
+          </p>
+          <a href="https://www.ibm.com/think/topics/retrieval-augmented-generation" target="_blank" class="resource-btn learn-more">
+            <i data-lucide="external-link" class="w-4 h-4"></i>
+            <span>READ ARTICLE</span>
+          </a>
+        </div>
+
+        <!-- Tier 2: Canonical Article -->
+        <div class="holo-card p-6" data-reveal>
+          <div class="flex items-start gap-3 mb-4">
+            <div class="w-10 h-10 rounded-lg bg-violet-glow/15 border border-violet-glow/30 flex items-center justify-center flex-shrink-0">
+              <i data-lucide="scroll" class="w-5 h-5 text-violet-glow"></i>
+            </div>
+            <div>
+              <h4 class="font-orbitron font-semibold text-white">Canonical Article</h4>
+              <p class="text-xs text-slate-400 mt-1">Authoritative source — official docs or research paper</p>
+            </div>
+          </div>
+          <p class="text-sm text-slate-300 mb-4 leading-relaxed">
+            <span class="text-violet-glow font-semibold">Practical Tips for Retrieval-Augmented Generation</span><br/>
+            <span class="text-slate-500 text-xs">Stack Overflow Blog — Production-grade RAG patterns and best practices</span>
+          </p>
+          <a href="https://stackoverflow.blog/2024/08/15/practical-tips-for-retrieval-augmented-generation-rag/" target="_blank" class="resource-btn learn-more">
+            <i data-lucide="external-link" class="w-4 h-4"></i>
+            <span>READ RESEARCH</span>
+          </a>
+        </div>
+
+        <!-- Tier 3: GitHub Repository -->
+        <div class="holo-card p-6" data-reveal>
+          <div class="flex items-start gap-3 mb-4">
+            <div class="w-10 h-10 rounded-lg bg-magenta-glow/15 border border-magenta-glow/30 flex items-center justify-center flex-shrink-0">
+              <i data-lucide="github" class="w-5 h-5 text-magenta-glow"></i>
+            </div>
+            <div>
+              <h4 class="font-orbitron font-semibold text-white">GitHub Repository</h4>
+              <p class="text-xs text-slate-400 mt-1">Hands-on — reference implementation & examples</p>
+            </div>
+          </div>
+          <p class="text-sm text-slate-300 mb-4 leading-relaxed">
+            <span class="text-magenta-glow font-semibold">LlamaIndex</span><br/>
+            <span class="text-slate-500 text-xs">Official LlamaIndex repository for RAG patterns and examples</span>
+          </p>
+          <a href="https://github.com/run-llama/llama_index" target="_blank" class="resource-btn practice">
+            <i data-lucide="github" class="w-4 h-4"></i>
+            <span>EXPLORE REPO</span>
+          </a>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section id="checkpoint" class="relative py-32 px-6">
+  <div class="max-w-5xl mx-auto">
+    <div class="text-center mb-12" data-reveal>
+      <span class="section-tag" style="color: var(--c-amber); border-color: rgba(255,184,0,0.3);">// 10 — MODULE CHECKPOINT</span>
+      <h2 class="font-orbitron font-bold text-4xl md:text-6xl mt-6 mb-4">
+        <span class="text-white">Self-</span><span class="grad-text">Verification</span>
+      </h2>
+      <p class="text-slate-400 max-w-2xl mx-auto">Six confirmations. Each defensible from memory and codeable from scratch.</p>
+    </div>
+
+    <div class="space-y-3" data-reveal>
+      <div class="check-item" data-check>
+        <div class="check-box"><i data-lucide="check" class="w-3.5 h-3.5 text-black opacity-0"></i></div>
+        <div class="flex-1 text-white font-medium">I can explain the difference between <em>always-retrieval</em> and <em>retrieval-as-a-tool</em> — and name the discriminator ("who decides when?").</div>
+      </div>
+      <div class="check-item" data-check>
+        <div class="check-box"><i data-lucide="check" class="w-3.5 h-3.5 text-black opacity-0"></i></div>
+        <div class="flex-1 text-white font-medium">I can apply the 5 signals to decide if an agent's turn should retrieve — and name two failure modes (under- and over-retrieval).</div>
+      </div>
+      <div class="check-item" data-check>
+        <div class="check-box"><i data-lucide="check" class="w-3.5 h-3.5 text-black opacity-0"></i></div>
+        <div class="flex-1 text-white font-medium">I can wrap an existing retriever as a typed <code class="text-cyan-glow">@tool</code> with an LLM-load-bearing description.</div>
+      </div>
+      <div class="check-item" data-check>
+        <div class="check-box"><i data-lucide="check" class="w-3.5 h-3.5 text-black opacity-0"></i></div>
+        <div class="flex-1 text-white font-medium">I can expose multiple retrievers to one agent and pick between the 3 multi-source patterns (router, parallel fan-out, cascade).</div>
+      </div>
+      <div class="check-item" data-check>
+        <div class="check-box"><i data-lucide="check" class="w-3.5 h-3.5 text-black opacity-0"></i></div>
+        <div class="flex-1 text-white font-medium">I can pick long-context vs RAG-as-tool vs fine-tuning for a given agent use case using the agent-specific decision table.</div>
+      </div>
+      <div class="check-item" data-check>
+        <div class="check-box"><i data-lucide="check" class="w-3.5 h-3.5 text-black opacity-0"></i></div>
+        <div class="flex-1 text-white font-medium">I can name which RAG concerns live in this module vs the RAG course — and know where to look when something breaks.</div>
+      </div>
+    </div>
+
+    <div class="mt-10 holo-card p-6" data-reveal>
+      <div class="flex items-center justify-between mb-3">
+        <div class="font-mono text-xs text-cyan-glow tracking-widest">CHECKPOINT PROGRESS</div>
+        <div class="font-orbitron font-bold"><span id="check-count" class="text-cyan-glow">0</span><span class="text-slate-500"> / 6</span></div>
+      </div>
+      <div class="progress-bar">
+        <div id="check-progress" class="progress-fill" style="width: 0%;"></div>
+      </div>
+      <div id="check-status" class="mt-3 font-mono text-xs text-slate-500">// Awaiting verification...</div>
+    </div>
+  </div>
+</section>
+
+<div class="section-divider"></div>
+
+<!-- ============== 11. NEXT MODULE ============== -->
+<section id="next" class="relative py-32 px-6">
+  <div class="absolute inset-0 flex items-center justify-center pointer-events-none">
+    <div class="ring-glow"></div>
+    <div class="ring-glow"></div>
+  </div>
+
+  <div class="max-w-4xl mx-auto text-center relative z-10">
+    <div data-reveal>
+      <span class="section-tag" style="color: var(--c-magenta); border-color: rgba(255,0,229,0.3);">// 11 — UPLINK READY</span>
+      <h2 class="font-orbitron font-bold text-4xl md:text-6xl mt-6 mb-4">
+        <span class="text-white">Next</span> <span class="grad-text">Mission</span>
+      </h2>
+    </div>
+
+    <div class="holo-card p-8 md:p-12 mt-10 text-left" data-reveal>
+      <div class="flex flex-col md:flex-row items-start md:items-center justify-between gap-6 mb-6">
+        <div>
+          <div class="flex items-center gap-2 mb-3">
+            <span class="track-badge" style="color: var(--c-magenta); border-color: rgba(255,0,229,0.3);">TRACK 2</span>
+            <span class="track-badge" style="color: var(--c-violet); border-color: rgba(139,92,246,0.3);">MODULE 2.6</span>
+            <span class="track-badge" style="color: var(--c-emerald); border-color: rgba(0,255,163,0.3);">🌉 BRIDGE</span>
+          </div>
+          <h3 class="font-orbitron font-bold text-2xl md:text-3xl text-white">MCP for Agents</h3>
+          <p class="text-slate-400 text-sm mt-2 max-w-xl">Second bridge. The Model Context Protocol. How to expose tools through MCP servers and consume MCP-provided tools from your agent. Connects to the companion MCP Course.</p>
+        </div>
+        <div class="w-20 h-20 rounded-2xl bg-gradient-to-br from-cyan-glow/20 to-magenta-glow/20 border border-cyan-glow/30 flex items-center justify-center flex-shrink-0">
+          <i data-lucide="plug" class="w-8 h-8 text-cyan-glow"></i>
+        </div>
+      </div>
+
+      <div class="grid grid-cols-2 md:grid-cols-4 gap-3 mb-8">
+        <div class="p-3 rounded-lg bg-cyan-glow/5 border border-cyan-glow/20 text-center">
+          <div class="font-mono text-[10px] text-slate-500 mb-1">ESTIMATED</div>
+          <div class="font-orbitron text-sm text-cyan-glow">~45 MIN</div>
+        </div>
+        <div class="p-3 rounded-lg bg-magenta-glow/5 border border-magenta-glow/20 text-center">
+          <div class="font-mono text-[10px] text-slate-500 mb-1">TYPE</div>
+          <div class="font-orbitron text-sm text-magenta-glow">BRIDGE</div>
+        </div>
+        <div class="p-3 rounded-lg bg-violet-glow/5 border border-violet-glow/20 text-center">
+          <div class="font-mono text-[10px] text-slate-500 mb-1">FOCUS</div>
+          <div class="font-orbitron text-sm text-violet-glow">PROTOCOL</div>
+        </div>
+        <div class="p-3 rounded-lg bg-emerald-glow/5 border border-emerald-glow/20 text-center">
+          <div class="font-mono text-[10px] text-slate-500 mb-1">DIFFICULTY</div>
+          <div class="font-orbitron text-sm text-emerald-glow">★★★☆☆</div>
+        </div>
+      </div>
+
+      <div class="flex flex-wrap gap-3">
+        <button class="cta-btn">
+          <span>BEGIN MODULE 2.6</span>
+          <i data-lucide="arrow-up-right" class="w-5 h-5"></i>
+        </button>
+        <button class="px-8 py-[18px] rounded-xl border border-cyan-glow/40 text-cyan-glow font-orbitron font-semibold tracking-widest hover:bg-cyan-glow/10 transition text-sm flex items-center gap-2">
+          <i data-lucide="layout-grid" class="w-4 h-4"></i>
+          COURSE MAP
+        </button>
+      </div>
+    </div>
+
+    <div class="mt-12 font-mono text-[10px] text-slate-600 tracking-widest" data-reveal>
+      AGENTIC AI ACADEMY // COURSE 02 // MODULE 2.5 — END OF TRANSMISSION
+    </div>
+  </div>
+</section>
+
+<!-- ============== SCRIPTS ============== -->
+<script>
+  lucide.createIcons();
+  gsap.registerPlugin(ScrollTrigger);
+
+  gsap.from('[data-hero-anim]', { y: 20, opacity: 0, duration: 0.5, ease: 'power2.out', stagger: 0.06 });
+
+  gsap.utils.toArray('[data-reveal]').forEach(el => {
+    gsap.from(el, {
+      y: 24, opacity: 0, duration: 0.5, ease: 'power2.out',
+      scrollTrigger: { trigger: el, start: 'top 92%', once: true }
+    });
+  });
+  window.addEventListener('load', () => ScrollTrigger.refresh());
+
+  document.querySelectorAll('[data-counter]').forEach(el => {
+    const target = +el.dataset.counter;
+    const suffix = el.dataset.suffix || '';
+    ScrollTrigger.create({
+      trigger: el, start: 'top 90%',
+      onEnter: () => {
+        gsap.to({ v: 0 }, {
+          v: target, duration: 2, ease: 'power2.out',
+          onUpdate: function() { el.textContent = Math.round(this.targets()[0].v) + suffix; }
+        });
+      }
+    });
+  });
+
+  // Nav dots
+  const sections = document.querySelectorAll('section[id]');
+  const navDots = document.querySelectorAll('.nav-dot');
+  window.addEventListener('scroll', () => {
+    const y = window.scrollY + window.innerHeight * 0.4;
+    sections.forEach(sec => {
+      if (y >= sec.offsetTop && y < sec.offsetTop + sec.offsetHeight) {
+        navDots.forEach(d => d.classList.toggle('active', d.dataset.section === sec.id));
+      }
+    });
+  });
+
+  // Tabs
+  document.querySelectorAll('.tab-pill').forEach(tab => {
+    tab.addEventListener('click', () => {
+      document.querySelectorAll('.tab-pill').forEach(t => t.classList.remove('active'));
+      tab.classList.add('active');
+      document.querySelectorAll('.tab-panel').forEach(p => p.classList.add('hidden'));
+      document.querySelector(`[data-panel="${tab.dataset.tab}"]`).classList.remove('hidden');
+    });
+  });
+
+  // Checkpoint
+  const checks = document.querySelectorAll('[data-check]');
+  const checkCount = document.getElementById('check-count');
+  const checkProgress = document.getElementById('check-progress');
+  const checkStatus = document.getElementById('check-status');
+  const totalChecks = checks.length;
+  const TOTAL = 6;
+  const statusMsgs = [
+    '// Awaiting verification...',
+    '// 1 of 6 confirmed.',
+    '// 2 of 6 confirmed.',
+    '// 3 of 6 confirmed. Halfway.',
+    '// 4 of 6 confirmed.',
+    '// 5 of 6 confirmed. One left.',
+    '// ✓ ALL CHECKS GREEN — CLEARED FOR MODULE 2.6.'
+  ];
+  checks.forEach(c => {
+    c.addEventListener('click', () => {
+      c.classList.toggle('done');
+      const icon = c.querySelector('.check-box svg, .check-box i');
+      if (icon) {
+        icon.style.opacity = c.classList.contains('done') ? '1' : '0';
+      }
+      const done = document.querySelectorAll('[data-check].done').length;
+      checkCount.textContent = done;
+      checkProgress.style.width = (done / TOTAL * 100) + '%';
+      checkStatus.textContent = statusMsgs[done] || ('// ' + done + ' of ' + totalChecks + ' confirmed.');
+      checkStatus.style.color = done === TOTAL ? 'var(--c-emerald)' : '';
+    });
+  });
+</script>
+
+</body>
+</html>

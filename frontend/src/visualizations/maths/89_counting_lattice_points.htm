@@ -1,0 +1,412 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Counting Lattice Points in Circles - Visualization</title>
+    <style>
+        :root {
+            --bg-page: #0d1117;
+            --bg-surface: #161b22;
+            --bg-input: #0d1117;
+            --border-main: #30363d;
+            --btn-bg: #21262d;
+            --btn-hover: #2d333b;
+            --text-main: #c9d1d9;
+            --text-dim: #8b949e;
+            --accent-orange: #e3b341;
+            --accent-blue: #388bfd;
+            --accent-green: #3fb950;
+            --accent-red: #f85149;
+            --accent-purple: #a371f7;
+        }
+
+        * { box-sizing: border-box; }
+        body {
+            background-color: var(--bg-page);
+            color: var(--text-main);
+            font-family: system-ui, -apple-system, sans-serif;
+            margin: 0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            min-height: 100vh;
+            padding-bottom: 40px;
+        }
+
+        /* INPUT BAR */
+        .input-bar {
+            width: 100%;
+            background-color: var(--bg-surface);
+            padding: 12px 16px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 8px;
+            border-bottom: 1px solid var(--border-main);
+            flex-wrap: wrap;
+        }
+        label.ui-label { font-family: 'Courier New', monospace; font-size: 13px; color: var(--text-dim); }
+        input[type="text"] {
+            background: var(--bg-input);
+            border: 1px solid var(--border-main);
+            color: var(--text-main);
+            height: 32px;
+            border-radius: 6px;
+            padding: 0 10px;
+            font-size: 13px;
+            width: 240px;
+        }
+
+        button {
+            height: 32px; border-radius: 6px; padding: 0 14px; background: var(--btn-bg);
+            border: 1px solid var(--border-main); color: var(--text-main); font-size: 13px; cursor: pointer;
+            transition: background 0.2s ease;
+        }
+        button:hover { background: var(--btn-hover); }
+
+        /* VISUALIZATION */
+        .visual-container { margin-top: 30px; display: flex; flex-direction: column; align-items: center; gap: 20px; width: 100%; }
+        .tiles-wrapper { 
+            display: flex; gap: 12px; flex-wrap: wrap; justify-content: center; 
+            max-width: 900px; min-height: 130px; position: relative; 
+        }
+        
+        .tile-unit { display: flex; flex-direction: column; align-items: center; gap: 4px; position: relative; }
+        .tile {
+            min-width: 54px; height: 54px; display: flex; align-items: center; justify-content: center;
+            border-radius: 8px; font-size: 20px; font-weight: 600; font-family: 'Courier New', monospace;
+            transition: all 0.3s ease; border: 2px solid var(--border-main); background: #21262d;
+            color: var(--text-main);
+        }
+        .tile-index { font-size: 11px; color: var(--text-dim); font-family: monospace; }
+
+        /* Highlight States */
+        .tile.candidate { background: #2a1600; border-color: var(--accent-orange); color: var(--accent-orange); transform: scale(1.15); box-shadow: 0 0 12px rgba(227,179,65,0.4); }
+        .tile.evaluating { background: #0d2244; border-color: var(--accent-blue); color: var(--accent-blue); }
+        .tile.winning { background: #0f2a1a; border-color: var(--accent-green); color: var(--accent-green); transform: scale(1.18); box-shadow: 0 0 15px var(--accent-green); }
+        .tile.past { opacity: 0.35; background: #161b22; border-color: var(--border-main); }
+
+        /* PANEL */
+        .action-panel {
+            margin-top: 20px; background: var(--bg-surface); border: 1px solid var(--border-main);
+            border-radius: 6px; padding: 14px 20px; width: 720px; text-align: center; 
+            font-family: monospace; min-height: 90px; font-size: 15px; line-height: 1.5;
+        }
+
+        /* INFO PANEL */
+        .info-panel { margin-top: 10px; display: flex; gap: 10px; flex-wrap: wrap; justify-content: center; }
+        .info-cell {
+            background: var(--bg-surface); border: 1px solid var(--border-main); border-radius: 6px;
+            padding: 8px 14px; display: flex; flex-direction: column; align-items: center; min-width: 110px; gap: 4px;
+        }
+        .info-label { font-size: 11px; color: var(--text-dim); }
+        .info-value { font-family: monospace; font-size: 16px; font-weight: 700; }
+
+        /* RESULT */
+        .result-display { margin-top: 15px; display: flex; flex-direction: column; align-items: center; }
+        #res-val { font-size: 24px; color: var(--text-dim); font-family: monospace; font-weight: bold; transition: all 0.4s; }
+        .pop { animation: popAnim 400ms ease; color: var(--accent-green) !important; font-size: 30px !important; text-shadow: 0 0 15px var(--accent-green); }
+
+        @keyframes popAnim { 0%{transform:scale(1)} 50%{transform:scale(1.18)} 100%{transform:scale(1)} }
+
+        /* STATUS & CONTROLS */
+        .status-bar { margin-top: 8px; font-size: 13px; color: var(--text-dim); height: 1.3em; text-align: center; width: 700px;}
+        .controls { margin-top: 25px; display: flex; align-items: center; gap: 10px; flex-wrap: wrap; justify-content: center; }
+        input[type="range"] { accent-color: var(--accent-blue); width: 120px; }
+
+        /* LEGEND */
+        .legend { margin-top: 15px; display: flex; gap: 18px; flex-wrap: wrap; justify-content: center; max-width: 900px; }
+        .legend-item { display: flex; align-items: center; font-size: 12px; color: var(--text-dim); }
+        .dot { width: 11px; height: 11px; border-radius: 3px; margin-right: 7px; display: inline-block; }
+
+        /* LOG */
+        .log-panel {
+            margin-top: 15px; background: var(--bg-page); border: 1px solid var(--border-main);
+            border-radius: 6px; padding: 12px 16px; width: 720px; max-width: 95%; height: 130px;
+            overflow-y: auto; font-family: 'Courier New', monospace; font-size: 13px; line-height: 1.4;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="input-bar">
+        <label class="ui-label">Circles (h,k,r)</label>
+        <input type="text" id="circles-input" value="[[0,0,1],[2,2,1]]">
+        <button onclick="loadCustom()">Load</button>
+        <button onclick="loadExample(0)">Ex 1 ([[0,0,1],[2,2,1]])</button>
+        <button onclick="loadExample(1)">Ex 2 ([[0,0,2],[1,1,1]])</button>
+    </div>
+
+    <div class="visual-container">
+        <div class="ui-label">Current point (x,y) for circle <span id="current-circle" style="color:var(--accent-orange)">—</span></div>
+        <div class="tiles-wrapper" id="tiles-container"></div>
+    </div>
+
+    <div class="action-panel" id="main-panel">—</div>
+
+    <div class="info-panel">
+        <div class="info-cell">
+            <span class="info-label">Circle</span>
+            <span class="info-value" id="val-circle" style="color: var(--accent-orange);">—</span>
+        </div>
+        <div class="info-cell">
+            <span class="info-label">Point (x,y)</span>
+            <span class="info-value" id="val-point" style="color: var(--accent-blue);">—</span>
+        </div>
+        <div class="info-cell">
+            <span class="info-label">dx² + dy²</span>
+            <span class="info-value" id="val-dist" style="color: var(--accent-purple);">—</span>
+        </div>
+        <div class="info-cell">
+            <span class="info-label">≤ r² ?</span>
+            <span class="info-value" id="val-check" style="color: var(--accent-green);">—</span>
+        </div>
+    </div>
+
+    <div class="result-display">
+        <span class="ui-label" style="margin-bottom: 6px;">Total Unique Lattice Points =</span>
+        <span id="res-val">—</span>
+    </div>
+
+    <div class="status-bar" id="status-text"></div>
+
+    <div class="controls">
+        <button onclick="reset()">↺ Reset</button>
+        <button onclick="back()">← Back</button>
+        <button onclick="togglePlay()" id="play-btn">Play</button>
+        <button onclick="next()">Next →</button>
+        <div style="display:flex; align-items:center; gap:6px;">
+            <span class="ui-label" style="font-size:11px">Speed</span>
+            <input type="range" id="speed-slider" min="0" max="2" value="1">
+        </div>
+    </div>
+
+    <div class="legend">
+        <div class="legend-item"><span class="dot" style="background:var(--bg-surface); border:1px solid var(--accent-orange)"></span> Current Circle</div>
+        <div class="legend-item"><span class="dot" style="background:var(--accent-green); border:1px solid var(--accent-green)"></span> Point Inside</div>
+    </div>
+
+    <div class="log-panel" id="log"></div>
+
+    <script>
+        let circles = [[0,0,1], [2,2,1]];
+        let steps = [];
+        let stepIndex = 0;
+        let timer = null;
+        const delays = [1400, 700, 350];
+
+        function init() {
+            loadExample(0);
+        }
+
+        function loadExample(ex) {
+            if (ex === 0) {
+                circles = [[0,0,1], [2,2,1]];
+                document.getElementById('circles-input').value = "[[0,0,1],[2,2,1]]";
+            } else {
+                circles = [[0,0,2], [1,1,1]];
+                document.getElementById('circles-input').value = "[[0,0,2],[1,1,1]]";
+            }
+            generateSteps();
+            reset();
+        }
+
+        function loadCustom() {
+            try {
+                circles = JSON.parse(document.getElementById('circles-input').value.trim());
+            } catch(e) {
+                alert("Invalid circles format. Use [[0,0,1],[2,2,1]] style.");
+                return;
+            }
+            generateSteps();
+            reset();
+        }
+
+        function isPointInCircle(x, y, h, k, r) {
+            return (x - h) ** 2 + (y - k) ** 2 <= r ** 2;
+        }
+
+        function generateSteps() {
+            steps = [];
+            let uniquePoints = new Set();
+
+            steps.push({
+                type: 'init',
+                circle: '—',
+                point: '—',
+                dist: '—',
+                check: '—',
+                panel: `Counting unique lattice points inside or on any of the circles<br>Circles: ${circles}`,
+                status: `Processing ${circles.length} circles...`,
+                log: `Circles: ${circles}\nFinding all unique integer points (x,y) inside or on any circle...`,
+                logColor: 'var(--text-dim)'
+            });
+
+            for (let c = 0; c < circles.length; c++) {
+                const [h, k, r] = circles[c];
+
+                steps.push({
+                    type: 'circle',
+                    circle: c,
+                    point: '—',
+                    dist: '—',
+                    check: '—',
+                    panel: `Processing circle ${c}: center (${h},${k}), radius ${r}`,
+                    status: `Circle ${c} (h=${h}, k=${k}, r=${r})`,
+                    log: `Circle ${c}: (${h},${k}), r=${r}`,
+                    logColor: 'var(--accent-orange)'
+                });
+
+                const xMin = h - r;
+                const xMax = h + r;
+                const yMin = k - r;
+                const yMax = k + r;
+
+                for (let x = xMin; x <= xMax; x++) {
+                    for (let y = yMin; y <= yMax; y++) {
+                        const inside = isPointInCircle(x, y, h, k, r);
+                        const pointKey = `${x},${y}`;
+
+                        steps.push({
+                            type: inside ? 'winning' : 'evaluate',
+                            circle: c,
+                            point: `${x},${y}`,
+                            dist: (x - h) ** 2 + (y - k) ** 2,
+                            check: inside ? 'Inside' : 'Outside',
+                            panel: `Point (${x},${y}) for circle ${c}<br>Distance² = ${(x-h)**2 + (y-k)**2} ≤ ${r**2} ? ${inside ? '<span style="color:var(--accent-green)">Yes</span>' : '<span style="color:var(--accent-red)">No</span>'}`,
+                            status: `(${x},${y}) → ${inside ? 'Inside' : 'Outside'}`,
+                            log: `Point (${x},${y}) → Distance² = ${(x-h)**2 + (y-k)**2} ${inside ? '≤' : '>'} ${r**2} → ${inside ? 'Inside ✓' : 'Outside ✗'}`,
+                            logColor: inside ? 'var(--accent-green)' : 'var(--accent-blue)'
+                        });
+
+                        if (inside) {
+                            uniquePoints.add(pointKey);
+                        }
+                    }
+                }
+            }
+
+            const total = uniquePoints.size;
+
+            steps.push({
+                type: 'final',
+                circle: '—',
+                point: '—',
+                dist: '—',
+                check: '—',
+                panel: `Computation complete.<br>Total unique lattice points: <b>${total}</b>`,
+                status: `Final count: ${total}`,
+                log: `Final Unique Lattice Points Count = ${total}`,
+                logColor: 'var(--accent-green)',
+                complete: true,
+                result: total
+            });
+        }
+
+        function renderStep(idx) {
+            const step = steps[idx];
+            if (!step) return;
+
+            const container = document.getElementById('tiles-container');
+            container.innerHTML = '';
+
+            if (step.point !== '—') {
+                const [x, y] = step.point.split(',').map(Number);
+                // Tile for x
+                const wx = document.createElement('div');
+                wx.className = 'tile-unit';
+                const tx = document.createElement('div');
+                tx.className = `tile ${step.type === 'winning' ? 'winning' : 'candidate'}`;
+                tx.innerText = x;
+                const lx = document.createElement('div');
+                lx.className = 'tile-index';
+                lx.innerText = 'x';
+                wx.append(tx, lx);
+                container.appendChild(wx);
+
+                // Tile for y
+                const wy = document.createElement('div');
+                wy.className = 'tile-unit';
+                const ty = document.createElement('div');
+                ty.className = `tile ${step.type === 'winning' ? 'winning' : 'candidate'}`;
+                ty.innerText = y;
+                const ly = document.createElement('div');
+                ly.className = 'tile-index';
+                ly.innerText = 'y';
+                wy.append(ty, ly);
+                container.appendChild(wy);
+            }
+
+            document.getElementById('main-panel').innerHTML = step.panel || '—';
+            document.getElementById('val-circle').innerText = step.circle !== '—' ? `Circle ${step.circle}` : '—';
+            document.getElementById('val-point').innerText = step.point || '—';
+            document.getElementById('val-dist').innerText = step.dist !== '—' ? step.dist : '—';
+            document.getElementById('val-check').innerText = step.check || '—';
+
+            const resVal = document.getElementById('res-val');
+            if (step.complete) {
+                resVal.innerText = step.result;
+                resVal.className = 'pop';
+            } else {
+                resVal.innerText = '—';
+                resVal.className = '';
+            }
+
+            document.getElementById('status-text').innerText = step.status || '';
+
+            const logPanel = document.getElementById('log');
+            logPanel.innerHTML = '';
+            for (let k = 0; k <= idx; k++) {
+                if (steps[k].log) {
+                    const line = document.createElement('div');
+                    line.style.marginBottom = '3px';
+                    line.style.whiteSpace = 'pre-wrap';
+                    if (steps[k].logColor) line.style.color = steps[k].logColor;
+                    line.innerText = steps[k].log;
+                    logPanel.appendChild(line);
+                }
+            }
+            logPanel.scrollTop = logPanel.scrollHeight;
+        }
+
+        function next() {
+            if (stepIndex < steps.length - 1) {
+                stepIndex++;
+                renderStep(stepIndex);
+            } else pause();
+        }
+
+        function back() {
+            if (stepIndex > 0) {
+                stepIndex--;
+                renderStep(stepIndex);
+            }
+        }
+
+        function reset() {
+            pause();
+            stepIndex = 0;
+            renderStep(0);
+        }
+
+        function togglePlay() {
+            const btn = document.getElementById('play-btn');
+            if (timer) pause();
+            else {
+                btn.innerText = 'Pause';
+                if (stepIndex >= steps.length - 1) stepIndex = 0;
+                timer = setInterval(next, delays[document.getElementById('speed-slider').value]);
+            }
+        }
+
+        function pause() {
+            clearInterval(timer);
+            timer = null;
+            document.getElementById('play-btn').innerText = 'Play';
+        }
+
+        window.onload = init;
+    </script>
+</body>
+</html>

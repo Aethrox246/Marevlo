@@ -1,0 +1,334 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Count Palindromic Substrings in Range Queries - Brute Force Visualization</title>
+    <style>
+        :root {
+            --bg-page: #0d1117;
+            --bg-surface: #161b22;
+            --border-main: #30363d;
+            --accent-purple: #a371f7;
+            --accent-green: #3fb950;
+            --accent-orange: #e3b341;
+            --accent-red: #f85149;
+            --text-main: #c9d1d9;
+            --text-dim: #8b949e;
+        }
+        * { box-sizing: border-box; }
+        body {
+            background: var(--bg-page); color: var(--text-main);
+            font-family: system-ui, -apple-system, sans-serif;
+            margin: 0; padding: 20px 0; display: flex; flex-direction: column; align-items: center;
+        }
+        .input-bar {
+            background: var(--bg-surface); padding: 12px 20px; border-radius: 8px;
+            border: 1px solid var(--border-main); display: flex; gap: 12px; align-items: center; flex-wrap: wrap;
+            margin-bottom: 24px;
+        }
+        input[type="text"] {
+            background: #0d1117; border: 1px solid var(--border-main); color: var(--text-main);
+            padding: 8px 12px; border-radius: 6px; width: 280px; font-family: monospace;
+        }
+        button {
+            padding: 8px 16px; background: #21262d; border: 1px solid var(--border-main);
+            color: var(--text-main); border-radius: 6px; cursor: pointer;
+        }
+        button:hover { background: #30363d; }
+
+        .string-display {
+            display: flex; gap: 6px; justify-content: center;
+            background: var(--bg-surface); padding: 20px; border-radius: 10px;
+            border: 1px solid var(--border-main); margin-bottom: 20px;
+        }
+        .tile {
+            width: 48px; height: 58px; display: flex; flex-direction: column;
+            align-items: center; justify-content: center; border-radius: 6px;
+            font-size: 22px; font-weight: 700; font-family: monospace;
+            transition: all 0.3s; border: 2px solid var(--border-main);
+            background: #21262d;
+        }
+        .tile.in-range { border-color: var(--accent-purple); background: #1e1030; }
+        .tile.pal { border-color: var(--accent-green); }
+
+        .query-info {
+            background: var(--bg-surface); border: 1px solid var(--border-main);
+            border-radius: 8px; padding: 12px 20px; width: 720px; margin-bottom: 16px;
+            font-family: monospace;
+        }
+
+        .action-panel {
+            background: var(--bg-surface); border: 1px solid var(--border-main);
+            border-radius: 8px; padding: 18px 24px; margin: 16px 0; width: 720px;
+            font-family: monospace; line-height: 1.5; min-height: 110px;
+        }
+
+        .result-panel {
+            background: var(--bg-surface); border: 1px solid var(--border-main);
+            border-radius: 8px; padding: 16px 20px; width: 720px; margin-bottom: 20px;
+        }
+
+        .controls {
+            margin: 24px 0; display: flex; gap: 12px; align-items: center;
+        }
+        input[type="range"] { width: 160px; accent-color: var(--accent-purple); }
+
+        .log-panel {
+            width: 720px; height: 180px; overflow-y: auto; background: #0d1117;
+            border: 1px solid var(--border-main); border-radius: 8px; padding: 14px;
+            font-family: monospace; font-size: 13px; line-height: 1.45;
+        }
+        .legend {
+            display: flex; gap: 24px; margin: 20px 0; font-size: 13px; color: var(--text-dim);
+        }
+    </style>
+</head>
+<body>
+
+    <div class="input-bar">
+        <label>s =</label>
+        <input type="text" id="input-s" value="aba">
+        <label>Queries (JSON):</label>
+        <input type="text" id="input-queries" value="[[0,2],[1,2]]">
+        <button onclick="loadCustom()">Load</button>
+        <button onclick="loadExample(0)">Ex 1: aba</button>
+        <button onclick="loadExample(1)">Ex 2: abc</button>
+    </div>
+
+    <div style="font-family:monospace;color:var(--accent-purple);margin-bottom:12px;">
+        Brute Force — For each query, check every substring in [l,r]
+    </div>
+
+    <div class="string-display" id="tiles-container"></div>
+
+    <div class="query-info" id="query-info">
+        Current Query: — | Palindrome Count: —
+    </div>
+
+    <div class="action-panel" id="action-panel">
+        Click Play / Next to start processing queries...
+    </div>
+
+    <div class="result-panel" id="result-panel">
+        <strong>Query Results:</strong><br>
+        <span id="results-content" style="color:var(--accent-green)"></span>
+    </div>
+
+    <div class="controls">
+        <button onclick="resetViz()">Reset</button>
+        <button onclick="stepBack()">← Back</button>
+        <button onclick="togglePlay()" id="play-btn">▶ Play</button>
+        <button onclick="stepForward()">Next →</button>
+        <span style="margin-left:20px;color:var(--text-dim)">Speed</span>
+        <input type="range" id="speed" min="0" max="2" value="1">
+    </div>
+
+    <div class="legend">
+        <div><span style="color:var(--accent-purple)">■</span> Current Substring Range</div>
+        <div><span style="color:var(--accent-green)">■</span> Palindrome</div>
+    </div>
+
+    <div class="log-panel" id="log-panel"></div>
+
+    <script>
+        let s = "aba";
+        let queries = [[0,2], [1,2]];
+        let steps = [];
+        let stepIdx = 0;
+        let timer = null;
+        const delays = [1100, 580, 260];
+
+        function isPalindrome(substr) {
+            return substr === substr.split('').reverse().join('');
+        }
+
+        function generateSteps() {
+            steps = [];
+            let queryResults = [];
+
+            steps.push({
+                type: 'init',
+                panel: `String: <b>"${s}"</b> (n=${s.length}) | ${queries.length} queries`,
+                log: `Start processing ${queries.length} range queries`,
+                currentQuery: -1,
+                highlightStart: -1,
+                highlightEnd: -1,
+                palCount: 0
+            });
+
+            for (let q = 0; q < queries.length; q++) {
+                const [l, r] = queries[q];
+                let count = 0;
+
+                steps.push({
+                    type: 'newQuery',
+                    currentQuery: q,
+                    panel: `Query ${q}: [${l},${r}]`,
+                    log: `Processing range [${l}, ${r}]`,
+                    highlightStart: l,
+                    highlightEnd: r,
+                    palCount: 0
+                });
+
+                for (let i = l; i <= r; i++) {
+                    for (let j = i; j <= r; j++) {
+                        const substr = s.substring(i, j+1);
+                        const isPal = isPalindrome(substr);
+
+                        steps.push({
+                            type: 'check',
+                            currentQuery: q,
+                            highlightStart: i,
+                            highlightEnd: j,
+                            panel: `Substring s[${i}:${j+1}] = "<b>${substr}</b>"`,
+                            log: `[${i},${j}] "${substr}" → ${isPal ? 'PALINDROME' : 'not'}`,
+                            palCount: count
+                        });
+
+                        if (isPal) {
+                            count++;
+                            steps.push({
+                                type: 'foundPal',
+                                currentQuery: q,
+                                highlightStart: i,
+                                highlightEnd: j,
+                                panel: `✅ Palindrome found! Count now ${count}`,
+                                log: `Increment count to ${count}`,
+                                palCount: count
+                            });
+                        }
+                    }
+                }
+
+                queryResults.push(count);
+
+                steps.push({
+                    type: 'queryResult',
+                    currentQuery: q,
+                    panel: `Query ${q} result: <b>${count}</b>`,
+                    log: `Query ${q} complete → ${count} palindromes`,
+                    highlightStart: l,
+                    highlightEnd: r,
+                    palCount: count
+                });
+            }
+
+            steps.push({
+                type: 'final',
+                panel: `✅ All queries processed: <b>${JSON.stringify(queryResults)}</b>`,
+                log: `Final results: ${JSON.stringify(queryResults)}`,
+                highlightStart: -1,
+                highlightEnd: -1,
+                palCount: 0
+            });
+        }
+
+        function renderStep(idx) {
+            const step = steps[idx];
+            if (!step) return;
+
+            // String tiles
+            const container = document.getElementById('tiles-container');
+            container.innerHTML = '';
+            for (let k = 0; k < s.length; k++) {
+                const tile = document.createElement('div');
+                tile.className = 'tile';
+                tile.textContent = s[k];
+                if (step.highlightStart !== -1 && k >= step.highlightStart && k <= step.highlightEnd) {
+                    tile.classList.add('in-range');
+                }
+                container.appendChild(tile);
+            }
+
+            document.getElementById('action-panel').innerHTML = step.panel;
+
+            // Query info
+            let queryText = step.currentQuery >= 0 ? `Query ${step.currentQuery}` : '—';
+            document.getElementById('query-info').innerHTML = `
+                Current Query: <b>${queryText}</b> | Palindrome Count: <b>${step.palCount}</b>
+            `;
+
+            // Results
+            let resHtml = '';
+            if (step.results && step.results.length > 0) {
+                resHtml = step.results.map((r, idx) => `Query ${idx}: <b>${r}</b><br>`).join('');
+            }
+            document.getElementById('results-content').innerHTML = resHtml;
+
+            // Log
+            const logEl = document.getElementById('log-panel');
+            logEl.innerHTML = steps.slice(0, idx+1).map(s => `<div>${s.log}</div>`).join('');
+            logEl.scrollTop = logEl.scrollHeight;
+        }
+
+        function loadExample(ex) {
+            if (ex === 0) {
+                s = "aba";
+                queries = [[0,2], [1,2]];
+            } else {
+                s = "abc";
+                queries = [[0,0], [0,2]];
+            }
+            document.getElementById('input-s').value = s;
+            document.getElementById('input-queries').value = JSON.stringify(queries);
+            generateSteps();
+            resetViz();
+        }
+
+        function loadCustom() {
+            s = document.getElementById('input-s').value.trim();
+            try {
+                queries = JSON.parse(document.getElementById('input-queries').value.trim());
+            } catch(e) {
+                queries = [];
+            }
+            generateSteps();
+            resetViz();
+        }
+
+        function resetViz() {
+            if (timer) clearInterval(timer);
+            timer = null;
+            document.getElementById('play-btn').textContent = '▶ Play';
+            stepIdx = 0;
+            renderStep(0);
+        }
+
+        function stepForward() {
+            if (stepIdx < steps.length - 1) {
+                stepIdx++;
+                renderStep(stepIdx);
+            }
+        }
+
+        function stepBack() {
+            if (stepIdx > 0) {
+                stepIdx--;
+                renderStep(stepIdx);
+            }
+        }
+
+        function togglePlay() {
+            const btn = document.getElementById('play-btn');
+            if (timer) {
+                clearInterval(timer);
+                timer = null;
+                btn.textContent = '▶ Play';
+            } else {
+                btn.textContent = '⏸ Pause';
+                timer = setInterval(() => {
+                    if (stepIdx < steps.length - 1) stepForward();
+                    else {
+                        clearInterval(timer);
+                        timer = null;
+                        btn.textContent = '▶ Play';
+                    }
+                }, delays[parseInt(document.getElementById('speed').value)]);
+            }
+        }
+
+        window.onload = () => loadExample(0);
+    </script>
+</body>
+</html>

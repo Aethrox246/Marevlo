@@ -1,0 +1,972 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Module 5.1 — Gaussian Processes · NeuralNet Track</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;500;600;700;800&family=DM+Mono:ital,wght@0,300;0,400;1,300&display=swap" rel="stylesheet">
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --ink:#04060d;--paper:#f0edea;--nerve:#6e28d9;--axon:#ff3a6e;
+  --dim:#5c5778;--muted:#a09ab8;--card:#0e0f1c;--card-2:#181930;
+  --line:rgba(110,40,217,0.18);--line-strong:rgba(110,40,217,0.35);
+  --good:#7fc28a;--warn:#f0c674;
+}
+html{scroll-behavior:smooth}
+body{background:var(--ink);color:var(--paper);font-family:'Syne',sans-serif;overflow-x:hidden;min-height:100vh;font-weight:400}
+canvas#brain{position:fixed;top:0;left:0;width:100%;height:100%;z-index:0;opacity:0.45;pointer-events:none}
+
+/* ============ NAV ============ */
+nav.top{position:sticky;top:0;z-index:50;display:flex;align-items:center;justify-content:space-between;padding:1.2rem 3.5rem;border-bottom:.5px solid var(--line);background:rgba(4,6,13,.78);backdrop-filter:blur(12px)}
+.logo{font-family:'DM Mono',monospace;font-size:10px;letter-spacing:.16em;color:var(--nerve);text-transform:uppercase}
+.crumb{font-family:'DM Mono',monospace;font-size:10px;letter-spacing:.13em;color:var(--dim);text-transform:uppercase}
+.crumb b{color:var(--paper);font-weight:400}
+.nav-links{display:flex;gap:2rem;list-style:none}
+.nav-links a{font-size:12px;letter-spacing:.06em;color:var(--dim);text-decoration:none;transition:color .2s}
+.nav-links a:hover{color:var(--paper)}
+.nav-btn{font-family:'Syne',sans-serif;font-size:12px;font-weight:700;letter-spacing:.04em;color:var(--ink);background:var(--paper);border:none;padding:8px 22px;border-radius:100px;cursor:pointer;transition:opacity .2s}
+.nav-btn:hover{opacity:.82}
+
+/* ============ HERO ============ */
+.hero{position:relative;z-index:2;max-width:1100px;margin:0 auto;padding:5rem 3.5rem 3rem;display:grid;grid-template-columns:1.05fr .95fr;gap:3.5rem;align-items:center}
+.tag{display:inline-flex;align-items:center;gap:8px;font-family:'DM Mono',monospace;font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:var(--nerve);border:.5px solid rgba(110,40,217,.32);padding:5px 14px;border-radius:100px;margin-bottom:1.8rem;animation:fu .6s ease both}
+.tdot{width:5px;height:5px;background:var(--nerve);border-radius:50%;animation:bl 1.8s infinite}
+@keyframes bl{0%,100%{opacity:1}50%{opacity:.15}}
+h1.title{font-size:54px;font-weight:800;line-height:1.04;letter-spacing:-1.8px;color:var(--paper);margin-bottom:1.4rem;animation:fu .7s .1s ease both}
+h1.title .vio{color:var(--nerve)}
+h1.title .red{color:var(--axon)}
+.lede{font-size:14.5px;font-weight:400;color:var(--dim);line-height:1.85;max-width:520px;margin-bottom:2.2rem;animation:fu .7s .2s ease both}
+.lede em{color:var(--muted);font-style:italic}
+.meta-row{display:flex;gap:2rem;flex-wrap:wrap;padding-top:1.6rem;border-top:.5px solid var(--line);animation:fu .7s .3s ease both}
+.meta-item{display:flex;flex-direction:column;gap:5px}
+.meta-label{font-family:'DM Mono',monospace;font-size:9.5px;letter-spacing:.14em;text-transform:uppercase;color:var(--dim)}
+.meta-val{font-size:13px;color:var(--paper);font-weight:600;letter-spacing:-.1px}
+@keyframes fu{from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:translateY(0)}}
+
+.hero-illo{display:flex;justify-content:center;align-items:center;animation:fu .8s .2s ease both}
+.hero-illo svg{width:100%;max-width:400px;height:auto;overflow:visible}
+
+/* ============ STATS BAND ============ */
+.stats-band{position:relative;z-index:2;border-top:.5px solid var(--line);border-bottom:.5px solid var(--line)}
+.stats-in{max-width:1100px;margin:0 auto;padding:0 3.5rem;display:grid;grid-template-columns:repeat(4,1fr)}
+.si{padding:1.4rem 0;border-right:.5px solid var(--line)}
+.si:last-child{border-right:none}
+.si:not(:first-child){padding-left:1.6rem}
+.sn{font-size:24px;font-weight:800;color:var(--paper);letter-spacing:-.8px;line-height:1;margin-bottom:4px}
+.sn .u{font-size:15px;color:var(--nerve)}
+.sl{font-family:'DM Mono',monospace;font-size:10px;letter-spacing:.09em;text-transform:uppercase;color:var(--dim)}
+
+/* ============ MAIN ============ */
+main{position:relative;z-index:2;max-width:1100px;margin:0 auto;padding:5rem 3.5rem 4rem}
+section.mod-sec{margin-bottom:5rem}
+.sh{display:flex;align-items:baseline;justify-content:space-between;border-top:.5px solid var(--line);padding-top:1.2rem;margin-bottom:1.8rem}
+.st{font-family:'DM Mono',monospace;font-size:10px;letter-spacing:.13em;text-transform:uppercase;color:var(--nerve)}
+.sc{font-family:'DM Mono',monospace;font-size:10px;color:var(--dim);letter-spacing:.08em}
+
+h2.section-title{font-size:34px;font-weight:700;letter-spacing:-.8px;color:var(--paper);margin-bottom:1.4rem;line-height:1.18;max-width:760px}
+h2.section-title .vio{color:var(--nerve)}
+h2.section-title .red{color:var(--axon)}
+h3.sub{font-size:20px;font-weight:700;letter-spacing:-.3px;color:var(--paper);margin:2.5rem 0 1rem}
+
+p{font-size:14.5px;line-height:1.85;color:var(--muted);margin-bottom:1.1rem;max-width:760px}
+p.dim{color:var(--dim)}
+p strong{color:var(--paper);font-weight:600}
+p em{color:var(--paper);font-style:italic;font-weight:500}
+a{color:var(--nerve);text-decoration:none;border-bottom:1px solid rgba(110,40,217,.3)}
+a:hover{border-bottom-color:var(--nerve)}
+
+/* ============ EQUATION ============ */
+.eq{margin:1.6rem 0;padding:1.3rem 1.8rem;background:var(--card);border:.5px solid var(--line);border-radius:8px;font-family:'DM Mono',monospace;font-size:14px;text-align:center;color:var(--paper);line-height:1.6;position:relative;max-width:760px}
+.eq .num{position:absolute;right:14px;top:50%;transform:translateY(-50%);font-family:'DM Mono',monospace;font-size:10px;color:var(--dim);letter-spacing:.1em}
+
+/* ============ CODE BLOCKS ============ */
+pre{background:var(--card);border:.5px solid var(--line);border-left:2px solid var(--nerve);padding:1.4rem 1.6rem;margin:1.6rem 0;border-radius:6px;overflow-x:auto;font-family:'DM Mono',monospace;font-size:13px;line-height:1.7;position:relative;max-width:760px}
+pre::before{content:'PYTHON';position:absolute;top:8px;right:14px;font-family:'DM Mono',monospace;font-size:9px;letter-spacing:.2em;color:var(--dim);font-weight:400}
+pre code{color:var(--paper)}
+.k{color:var(--axon);font-weight:500}
+.s{color:#a8c8d8}
+.n{color:#f0c674}
+.c{color:var(--dim);font-style:italic}
+.f{color:var(--nerve)}
+.v{color:var(--muted)}
+code.inline{font-family:'DM Mono',monospace;font-size:13px;background:var(--card);padding:2px 8px;border-radius:3px;color:var(--warn);border:.5px solid var(--line)}
+
+/* ============ INSIGHT BOX ============ */
+.insight{background:var(--card);border:.5px solid var(--line-strong);border-left:2px solid var(--axon);padding:1.6rem 1.8rem;margin:2rem 0;border-radius:6px;max-width:760px}
+.insight .key{font-family:'DM Mono',monospace;font-size:10px;letter-spacing:.16em;text-transform:uppercase;color:var(--axon);font-weight:400;margin-bottom:.7rem}
+.insight p{font-size:15px;line-height:1.65;color:var(--paper);font-weight:500;margin:0;max-width:none}
+
+/* ============ PITFALL ============ */
+.pitfall{background:linear-gradient(135deg,rgba(255,58,110,.06),transparent);border:.5px solid rgba(255,58,110,.25);border-left:2px solid var(--axon);padding:1.4rem 1.7rem;margin:1.6rem 0;border-radius:6px;max-width:760px}
+.pitfall .lbl{font-family:'DM Mono',monospace;font-size:10px;letter-spacing:.16em;text-transform:uppercase;color:var(--axon);font-weight:400;margin-bottom:.6rem}
+.pitfall h4{font-size:16px;font-weight:700;color:var(--paper);margin:0 0 .6rem;letter-spacing:-.2px}
+.pitfall p{font-size:13.5px;color:var(--muted);margin:0;line-height:1.7}
+
+/* ============ CINEMATCH ============ */
+.cinematch{background:linear-gradient(135deg,rgba(110,40,217,.13) 0%,rgba(255,58,110,.05) 100%);border:.5px solid var(--line-strong);border-left:2px solid var(--nerve);padding:2rem 2rem;margin:2.5rem 0;border-radius:6px;position:relative;max-width:760px}
+.cinematch .tag-pill{position:absolute;top:-10px;left:1.6rem;background:var(--ink);color:var(--nerve);font-family:'DM Mono',monospace;font-size:10px;font-weight:400;letter-spacing:.2em;padding:0 12px;text-transform:uppercase}
+.cinematch h4{font-size:18px;font-weight:700;color:var(--paper);margin-bottom:.8rem;letter-spacing:-.2px;line-height:1.35}
+.cinematch p{color:var(--muted);font-size:13.5px;line-height:1.75;margin-bottom:.7rem;max-width:none}
+.cinematch p:last-child{margin-bottom:0}
+
+/* ============ TABLE ============ */
+table{width:100%;max-width:760px;border-collapse:collapse;margin:1.6rem 0;font-family:'DM Mono',monospace;font-size:12.5px;background:var(--card);border:.5px solid var(--line);border-radius:6px;overflow:hidden}
+th,td{padding:.85rem 1.1rem;text-align:left;border-bottom:.5px solid var(--line)}
+th{font-family:'DM Mono',monospace;font-weight:400;font-size:10px;letter-spacing:.13em;text-transform:uppercase;color:var(--nerve);background:var(--card-2)}
+td{color:var(--paper)}
+tr:last-child td{border-bottom:none}
+
+/* ============ CALCBOX ============ */
+.calcbox{background:var(--card);border:.5px solid var(--line);border-radius:8px;padding:1.5rem 1.7rem;margin:1.6rem 0;max-width:760px}
+.calcbox .ch{font-family:'DM Mono',monospace;font-size:10px;letter-spacing:.13em;text-transform:uppercase;color:var(--nerve);margin-bottom:1rem;padding-bottom:.7rem;border-bottom:.5px solid var(--line)}
+.calcbox .step{font-family:'DM Mono',monospace;font-size:12.5px;color:var(--paper);line-height:1.7;padding:.5rem 0 .5rem 2.3rem;position:relative}
+.calcbox .step::before{content:attr(data-s);position:absolute;left:0;top:.5rem;color:var(--nerve);font-size:11px;letter-spacing:.05em}
+.calcbox .step .val{display:block;color:var(--dim);font-size:11.5px;margin-top:.3rem;line-height:1.6}
+.calcbox .step strong{color:var(--axon);font-weight:600}
+
+/* ============ MCQ ============ */
+.mcq{background:var(--card);border:.5px solid var(--line-strong);border-left:2px solid var(--axon);padding:1.7rem 1.9rem;margin:2rem 0;border-radius:6px;max-width:760px}
+.mcq .mh{font-family:'DM Mono',monospace;font-size:10px;letter-spacing:.16em;text-transform:uppercase;color:var(--axon);font-weight:400;margin-bottom:1rem;display:flex;justify-content:space-between;align-items:center}
+.mcq .mh .qnum{font-family:'DM Mono',monospace;color:var(--dim);font-size:10px;letter-spacing:.08em;font-weight:400}
+.mcq .mq{font-size:17px;font-weight:600;color:var(--paper);line-height:1.5;margin-bottom:1.2rem;letter-spacing:-.2px}
+.mcq .opts{display:flex;flex-direction:column;gap:.55rem}
+.mcq .opt{background:var(--card-2);border:.5px solid var(--line);padding:.85rem 1.1rem;border-radius:4px;cursor:pointer;font-family:'Syne',sans-serif;font-size:14px;color:var(--paper);transition:all .15s;display:flex;align-items:flex-start;gap:.85rem;line-height:1.55}
+.mcq .opt:hover{border-color:var(--nerve);background:var(--card)}
+.mcq .opt .key{font-family:'DM Mono',monospace;font-size:11px;color:var(--dim);font-weight:400;min-width:16px;margin-top:2px;letter-spacing:.05em}
+.mcq .opt .text{flex:1;color:var(--muted)}
+.mcq .opt.correct{border-color:var(--good);background:linear-gradient(90deg,rgba(127,194,138,.10),transparent)}
+.mcq .opt.correct .key{color:var(--good)}
+.mcq .opt.correct .text{color:var(--paper)}
+.mcq .opt.wrong{border-color:var(--axon);background:linear-gradient(90deg,rgba(255,58,110,.10),transparent)}
+.mcq .opt.wrong .key{color:var(--axon)}
+.mcq .opt.disabled{cursor:default}
+.mcq .opt.disabled:hover{border-color:var(--line);background:var(--card-2)}
+.mcq .opt.correct.disabled:hover{border-color:var(--good);background:linear-gradient(90deg,rgba(127,194,138,.10),transparent)}
+.mcq .opt.wrong.disabled:hover{border-color:var(--axon);background:linear-gradient(90deg,rgba(255,58,110,.10),transparent)}
+.mcq .feedback{margin-top:1.1rem;padding:1.1rem 1.3rem;background:var(--ink);border-left:2px solid var(--nerve);border-radius:4px;font-size:13.5px;line-height:1.7;color:var(--muted);display:none}
+.mcq .feedback.show{display:block}
+.mcq .feedback .verdict{font-family:'DM Mono',monospace;font-size:10px;letter-spacing:.18em;text-transform:uppercase;font-weight:400;margin-bottom:.5rem;display:block}
+.mcq .feedback.right .verdict{color:var(--good)}
+.mcq .feedback.wrong .verdict{color:var(--axon)}
+.mcq .feedback strong{color:var(--paper);font-weight:600}
+
+/* ============ CHECKPOINT ============ */
+.checkpoint{background:var(--card);border:.5px solid var(--line-strong);padding:2rem 2rem;margin:2.5rem 0;border-radius:12px;max-width:760px}
+.checkpoint h4{font-family:'DM Mono',monospace;font-size:10px;letter-spacing:.16em;text-transform:uppercase;color:var(--axon);font-weight:400;margin-bottom:1.4rem}
+.checkpoint ol{list-style:none;counter-reset:item}
+.checkpoint li{counter-increment:item;padding:.9rem 0 .9rem 3.2rem;border-bottom:.5px solid var(--line);position:relative;font-size:14px;font-weight:500;color:var(--paper);line-height:1.6;letter-spacing:-.1px}
+.checkpoint li:last-child{border-bottom:none}
+.checkpoint li::before{content:counter(item,decimal-leading-zero);position:absolute;left:0;top:1rem;font-family:'DM Mono',monospace;font-size:11px;color:var(--nerve);letter-spacing:.1em}
+
+/* ============ FOOTER NAV ============ */
+.footnav{position:relative;z-index:2;max-width:1100px;margin:0 auto;padding:3rem 3.5rem;display:flex;justify-content:space-between;align-items:center;gap:1.5rem;flex-wrap:wrap;border-top:.5px solid var(--line)}
+.footnav a{border:none;text-decoration:none;display:block;transition:transform .2s}
+.footnav a:hover{transform:translateY(-2px)}
+.footnav .lbl{font-family:'DM Mono',monospace;font-size:10px;letter-spacing:.16em;text-transform:uppercase;color:var(--dim);margin-bottom:.4rem}
+.footnav .ttl{font-size:18px;color:var(--paper);font-weight:700;letter-spacing:-.3px}
+.footnav .prev .ttl::before{content:'← '}
+.footnav .next{text-align:right}
+.footnav .next .ttl{color:var(--nerve)}
+.footnav .next .ttl::after{content:' →'}
+
+footer.foot{position:relative;z-index:2;max-width:1100px;margin:0 auto;padding:1.8rem 3.5rem;display:flex;align-items:center;justify-content:space-between;gap:1rem;flex-wrap:wrap}
+.fl{font-family:'DM Mono',monospace;font-size:11px;color:var(--dim)}
+.fr{display:flex;align-items:center;gap:7px;font-family:'DM Mono',monospace;font-size:11px;color:var(--dim)}
+.fd{width:6px;height:6px;background:var(--nerve);border-radius:50%;animation:bl 2s infinite}
+
+/* ============ REVEAL ============ */
+.reveal{opacity:0;transform:translateY(20px);transition:opacity .9s cubic-bezier(.2,.7,.2,1),transform .9s cubic-bezier(.2,.7,.2,1)}
+.reveal.on{opacity:1;transform:translateY(0)}
+
+/* ============ RESPONSIVE ============ */
+@media (max-width:900px){
+  nav.top{padding:1rem 1.5rem;flex-wrap:wrap;gap:.8rem}
+  .nav-links{display:none}
+  .hero{grid-template-columns:1fr;padding:3rem 1.5rem 2rem;gap:2rem}
+  h1.title{font-size:38px;letter-spacing:-1.2px}
+  .stats-in{padding:0 1.5rem;grid-template-columns:repeat(2,1fr)}
+  .si{border-right:none;border-bottom:.5px solid var(--line)}
+  .si:nth-child(odd){border-right:.5px solid var(--line)}
+  .si:not(:first-child){padding-left:1rem}
+  .si:nth-child(odd):not(:first-child){padding-left:0}
+  main{padding:3rem 1.5rem 2rem}
+  h2.section-title{font-size:26px}
+  .footnav,footer.foot{padding-left:1.5rem;padding-right:1.5rem}
+  pre{padding:1rem 1.1rem;font-size:11.5px}
+  table{font-size:11px}
+  th,td{padding:.6rem .7rem}
+  .calcbox .step{font-size:11.5px;padding-left:2rem}
+  .mcq{padding:1.3rem 1.4rem}
+  .mcq .mq{font-size:15px}
+}
+
+
+/* ============ LEARNING RESOURCES ============ */
+.resources-section{max-width:860px;margin:5rem auto 4rem}
+.resources-kicker{display:flex;justify-content:center;margin-bottom:1.6rem}
+.resources-kicker span{display:inline-flex;align-items:center;gap:8px;font-family:'DM Mono',monospace;font-size:10px;letter-spacing:.18em;text-transform:uppercase;color:var(--nerve);border:.5px solid var(--line-strong);border-radius:100px;padding:6px 16px;background:rgba(110,40,217,.06)}
+.resources-kicker span::before{content:'';width:6px;height:6px;border-radius:50%;background:var(--nerve);box-shadow:0 0 12px var(--nerve)}
+.resources-title{text-align:center;font-size:46px;font-weight:800;letter-spacing:-1.4px;line-height:1.05;color:var(--paper);margin-bottom:.8rem}
+.resources-title .vio{color:var(--nerve)}
+.resources-title .red{color:var(--axon)}
+.resources-sub{text-align:center;color:var(--muted);font-size:14px;line-height:1.65;margin:0 auto 2.8rem;max-width:560px}
+.resource-card{background:linear-gradient(135deg,rgba(14,15,28,.98),rgba(10,11,24,.96));border:.5px solid var(--line-strong);border-radius:12px;padding:1.6rem 1.7rem;margin:1rem auto;box-shadow:0 18px 50px rgba(0,0,0,.18);max-width:760px;position:relative;overflow:hidden}
+.resource-card::after{content:'';position:absolute;inset:0;border-radius:12px;pointer-events:none;border-right:.5px solid rgba(255,58,110,.45)}
+.resource-head{display:grid;grid-template-columns:34px 1fr;gap:12px;align-items:center;margin-bottom:1rem}
+.resource-icon{width:34px;height:34px;border-radius:7px;display:flex;align-items:center;justify-content:center;font-family:'DM Mono',monospace;font-size:13px;border:.5px solid var(--line-strong);background:rgba(110,40,217,.12);color:var(--nerve)}
+.resource-card.progressive .resource-icon{background:rgba(110,40,217,.10);color:var(--nerve)}
+.resource-card.canonical .resource-icon{background:rgba(255,58,110,.10);color:var(--axon);border-color:rgba(255,58,110,.28)}
+.resource-card.github .resource-icon{background:rgba(240,198,116,.08);color:var(--warn);border-color:rgba(240,198,116,.25)}
+.resource-type{font-size:16px;font-weight:700;color:var(--paper);letter-spacing:-.2px;margin-bottom:2px}
+.resource-desc{font-size:12px;color:var(--dim);line-height:1.5;margin:0;max-width:none}
+.resource-item{padding:.6rem 0;border-top:.5px solid var(--line)}
+.resource-item:first-of-type{border-top:none;padding-top:0}
+.resource-name{font-size:13.5px;font-weight:700;color:var(--nerve);line-height:1.45;margin-bottom:.28rem}
+.resource-card.canonical .resource-name{color:var(--axon)}
+.resource-card.github .resource-name{color:var(--warn)}
+.resource-note{font-size:12.5px;color:var(--muted);line-height:1.65;margin:0;max-width:none}
+.resource-actions{display:flex;gap:.7rem;flex-wrap:wrap;margin-top:1rem}
+.resource-btn{display:inline-flex;align-items:center;gap:8px;font-family:'DM Mono',monospace;font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:var(--paper);border:.5px solid var(--line-strong);border-radius:7px;padding:10px 14px;background:rgba(110,40,217,.08);text-decoration:none;transition:transform .18s,border-color .18s,background .18s}
+.resource-btn::before{content:'>';font-size:12px;color:var(--nerve)}
+.resource-btn:hover{transform:translateY(-1px);border-color:var(--nerve);background:rgba(110,40,217,.15)}
+@media (max-width:900px){.resources-section{margin:3rem 0}.resources-title{font-size:32px;letter-spacing:-.8px}.resource-card{padding:1.25rem}.resource-head{grid-template-columns:30px 1fr}.resource-icon{width:30px;height:30px}.resource-actions{flex-direction:column}.resource-btn{justify-content:center}}
+
+</style>
+</head>
+<body>
+
+<canvas id="brain"></canvas>
+
+<nav class="top">
+  <div class="logo">// NeuralNet · Deep Learning</div>
+  <ul class="nav-links">
+    <li><a href="#">Curriculum</a></li>
+    <li><a href="#">Labs</a></li>
+    <li><a href="#">Resources</a></li>
+    <li><a href="#">Community</a></li>
+  </ul>
+  <div class="crumb">Phase 5 · <b>Module 5.1</b></div>
+</nav>
+
+<header class="hero">
+  <div>
+    <div class="tag"><span class="tdot"></span>Phase 5 — Uncertainty · Module 5.1</div>
+    <h1 class="title">Gaussian<br><span class="vio">Processes</span>.<br>Predictions that <span class="red">know</span><br>what they don't know.</h1>
+    <p class="lede">
+      Every model we've built produces a point estimate — "this user will rate this movie 4.2 stars." But how <em>confident</em> is that prediction? Is 4.2 a near-certainty, or a wild guess from sparse data? Gaussian Processes are the principled framework for predictions that come with <em>calibrated uncertainty</em>: a mean prediction <em>and</em> a variance that grows where data is sparse and shrinks where data is dense. For CineMatch, this means knowing when to recommend confidently and when to hedge with exploration.
+    </p>
+    <div class="meta-row">
+      <div class="meta-item"><span class="meta-label">Phase</span><span class="meta-val">5 — Uncertainty</span></div>
+      <div class="meta-item"><span class="meta-label">Module</span><span class="meta-val">5.1</span></div>
+      <div class="meta-item"><span class="meta-label">Time</span><span class="meta-val">~40 min</span></div>
+      <div class="meta-item"><span class="meta-label">Covers</span><span class="meta-val">GP · Kernels · Posterior</span></div>
+    </div>
+  </div>
+
+  <div class="hero-illo">
+    <svg viewBox="0 0 400 320" xmlns="http://www.w3.org/2000/svg" aria-label="GP posterior with mean and uncertainty band">
+      <defs>
+        <radialGradient id="hg" cx="50%" cy="50%" r="60%">
+          <stop offset="0%" stop-color="#6e28d9" stop-opacity="0.22"/>
+          <stop offset="100%" stop-color="#6e28d9" stop-opacity="0"/>
+        </radialGradient>
+        <linearGradient id="bandGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+          <stop offset="0%" stop-color="#ff3a6e" stop-opacity=".25"/>
+          <stop offset="50%" stop-color="#ff3a6e" stop-opacity=".42"/>
+          <stop offset="100%" stop-color="#ff3a6e" stop-opacity=".25"/>
+        </linearGradient>
+      </defs>
+      <circle cx="200" cy="160" r="170" fill="url(#hg)"/>
+
+      <!-- frame -->
+      <rect x="30" y="30" width="340" height="240" fill="none" stroke="rgba(110,40,217,0.25)" stroke-width=".5"/>
+      <line x1="30" y1="150" x2="370" y2="150" stroke="rgba(110,40,217,0.18)" stroke-width=".4" stroke-dasharray="2 4"/>
+
+      <!-- uncertainty band (filled path: upper then lower reversed) -->
+      <path id="band" fill="url(#bandGrad)" stroke="none" opacity=".9"/>
+
+      <!-- mean line -->
+      <path id="mean" fill="none" stroke="#6e28d9" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>
+
+      <!-- observed points -->
+      <g id="obs"></g>
+
+      <!-- axis labels -->
+      <text x="38" y="48" font-family="DM Mono,monospace" font-size="9" fill="#6e28d9" fill-opacity="0.7" letter-spacing="1">f(x) — POSTERIOR</text>
+      <text x="270" y="48" font-family="DM Mono,monospace" font-size="9" fill="#ff3a6e" fill-opacity="0.7" letter-spacing="1">± 2σ BAND</text>
+      <text x="200" y="295" text-anchor="middle" font-family="DM Mono,monospace" font-size="9" fill="#a09ab8" letter-spacing="1.5">INPUT  x  →  PREDICTION  μ ± σ</text>
+    </svg>
+  </div>
+</header>
+
+<div class="stats-band">
+  <div class="stats-in">
+    <div class="si"><div class="sn">06<span class="u"> sec</span></div><div class="sl">Sections</div></div>
+    <div class="si"><div class="sn">40<span class="u"> min</span></div><div class="sl">Read time</div></div>
+    <div class="si"><div class="sn">O(N<span class="u">³</span>)</div><div class="sl">Inference cost</div></div>
+    <div class="si"><div class="sn">07</div><div class="sl">Checkpoint MCQs</div></div>
+  </div>
+</div>
+
+<main>
+
+<!-- ============ SECTION 1 ============ -->
+<section class="mod-sec">
+  <div class="sh"><span class="st">Section 01 — Functions, not parameters</span><span class="sc">01 / 06</span></div>
+  <h2 class="section-title">A distribution over <span class="vio">functions</span>, not parameters.</h2>
+
+  <p>A neural network learns <em>parameters</em> (weights) and uses them to define a function. A Gaussian Process does something conceptually different: it defines a <em>distribution over functions</em> directly. Instead of asking "what's the best function?", a GP asks "given the data we've seen, what <em>set of functions</em> is consistent with that data?"</p>
+
+  <p>The prior (before seeing data): infinitely many smooth functions, drawn from a multivariate Gaussian. The posterior (after seeing data): only the functions that pass through (or near) the observed points survive. The more data we see, the narrower the posterior band — and in regions with no data, the band stays wide. That width <em>is</em> our uncertainty.</p>
+
+  <div class="insight">
+    <div class="key">The GP intuition</div>
+    <p>Think of a GP as placing a rubber band over the observed data points. Near the points, the band is tight (low uncertainty). Far from any point, the band is loose (high uncertainty). The shape of the band is determined by the <em>kernel</em>, which encodes our beliefs about function smoothness.</p>
+  </div>
+
+  <div class="mcq" data-correct="b">
+    <div class="mh"><span>GP concept</span><span class="qnum">Question 01 / 07</span></div>
+    <div class="mq">How does a GP differ from a neural network in what it represents?</div>
+    <div class="opts">
+      <div class="opt" data-key="a"><span class="key">A</span><span class="text">A GP has more parameters than a neural network.</span></div>
+      <div class="opt" data-key="b"><span class="key">B</span><span class="text">A neural network learns a single function (defined by its weights). A GP represents a distribution over functions — it doesn't commit to one answer but maintains a probability over all consistent functions, with uncertainty that reflects how much data supports each region.</span></div>
+      <div class="opt" data-key="c"><span class="key">C</span><span class="text">GPs can only handle linear functions.</span></div>
+      <div class="opt" data-key="d"><span class="key">D</span><span class="text">GPs don't use any math — they're purely visual.</span></div>
+    </div>
+    <div class="feedback" data-right="<strong>Right.</strong> A neural network collapses to one function f(x) = network(x; w*) after training. A GP maintains the full posterior distribution over functions — giving both a mean prediction (what's most likely) and a variance (how uncertain we are). This is qualitatively different from a point estimate and is exactly what's needed for exploration-exploitation decisions in recommendation." data-wrong="<strong>Not quite.</strong> The key difference is distributional vs point. Neural networks output one prediction per input. GPs output a distribution over predictions — a mean and a variance — capturing uncertainty directly. GPs don't have 'parameters' in the neural-network sense; they store training data and compute predictions through kernel-weighted combinations."></div>
+  </div>
+</section>
+
+<!-- ============ SECTION 2 ============ -->
+<section class="mod-sec">
+  <div class="sh"><span class="st">Section 02 — Kernel</span><span class="sc">02 / 06</span></div>
+  <h2 class="section-title">The <span class="red">kernel</span> — encoding smoothness assumptions.</h2>
+
+  <p>A GP is fully specified by a mean function m(x) (usually zero) and a <strong>kernel</strong> (covariance function) k(x, x') that defines how correlated two function values should be based on how similar their inputs are. The kernel is the GP's structural prior — it plays the same role as the architecture in a neural network.</p>
+
+  <p>The most common kernel is the <strong>Radial Basis Function (RBF)</strong>, also called the squared exponential:</p>
+
+  <div class="eq">
+    k(x, x') = σ² · exp(−||x − x'||² / 2ℓ²)
+    <span class="num">(2.1)</span>
+  </div>
+
+  <p>Two hyperparameters: <strong>ℓ</strong> (length scale) controls how quickly correlation decays with distance — large ℓ means smooth, slowly-varying functions; small ℓ means wiggly, rapidly-varying ones. <strong>σ²</strong> (output variance) controls the amplitude of the function.</p>
+
+  <h3 class="sub">Math Core — why the RBF kernel guarantees smoothness.</h3>
+
+  <p>The RBF kernel is <em>positive definite</em> — meaning any kernel matrix K built from it has all positive eigenvalues. This is required for K to be a valid covariance matrix (covariance matrices must be positive semi-definite). The proof: the RBF kernel can be written as an infinite sum of polynomial kernels, each of which is positive definite, and sums of positive definite functions are positive definite.</p>
+
+  <p>The smoothness property is stronger: functions drawn from a GP with an RBF kernel are <em>infinitely differentiable</em> (C∞). This follows from the kernel being infinitely differentiable in both arguments. In practice, this means RBF-GP predictions are always smooth curves — no sharp corners, no discontinuities. If your data has sharp transitions (e.g., a user's taste changing abruptly after a life event), the RBF kernel will smooth them out. Use Matérn-1/2 or -3/2 for rougher functions.</p>
+
+  <h3 class="sub">Worked example — computing the kernel matrix by hand.</h3>
+
+  <div class="calcbox">
+    <div class="ch">RBF kernel matrix for 3 training points, ℓ=1.0, σ²=1.0</div>
+    <div class="step" data-s="1.">Training points: x₁ = 0.0, x₂ = 1.0, x₃ = 3.0</div>
+    <div class="step" data-s="2.">k(x₁, x₁) = 1.0 · exp(−0²/2) = 1.000<span class="val">Self-similarity is always σ² = 1.0</span></div>
+    <div class="step" data-s="3.">k(x₁, x₂) = 1.0 · exp(−1²/2) = exp(−0.5) = 0.607<span class="val">Points 1.0 apart: 61% correlated</span></div>
+    <div class="step" data-s="4.">k(x₁, x₃) = 1.0 · exp(−9/2) = exp(−4.5) = 0.011<span class="val">Points 3.0 apart: only 1% correlated — nearly independent</span></div>
+    <div class="step" data-s="5.">k(x₂, x₃) = 1.0 · exp(−4/2) = exp(−2.0) = 0.135<span class="val">Points 2.0 apart: 14% correlated</span></div>
+    <div class="step" data-s="6.">Full kernel matrix K:
+      <span class="val">[[1.000, 0.607, 0.011],<br>&nbsp;[0.607, 1.000, 0.135],<br>&nbsp;[0.011, 0.135, 1.000]]</span></div>
+    <div class="step" data-s="7.">With noise σ²_n = 0.01: K_noisy = K + 0.01·I → diagonal becomes 1.01<span class="val">The noise term makes inversion numerically stable (regularization!)</span></div>
+  </div>
+
+  <table>
+    <thead><tr><th>Kernel</th><th>Formula</th><th>Properties</th></tr></thead>
+    <tbody>
+      <tr><td>RBF</td><td>σ² exp(−r²/2ℓ²)</td><td>Infinitely smooth; the default choice</td></tr>
+      <tr><td>Matérn-5/2</td><td>σ²(1+√5r/ℓ+5r²/3ℓ²)exp(−√5r/ℓ)</td><td>Twice differentiable; more realistic for physical processes</td></tr>
+      <tr><td>Linear</td><td>σ²(x·x')</td><td>Equivalent to Bayesian linear regression</td></tr>
+      <tr><td>Periodic</td><td>σ² exp(−2sin²(π|x−x'|/p)/ℓ²)</td><td>Captures repeating patterns</td></tr>
+    </tbody>
+  </table>
+
+  <div class="mcq" data-correct="d">
+    <div class="mh"><span>Kernel</span><span class="qnum">Question 02 / 07</span></div>
+    <div class="mq">You increase the RBF length scale ℓ from 0.1 to 10. What happens to the GP's prior function samples?</div>
+    <div class="opts">
+      <div class="opt" data-key="a"><span class="key">A</span><span class="text">They become more wiggly — shorter length scale = smoother.</span></div>
+      <div class="opt" data-key="b"><span class="key">B</span><span class="text">They don't change — ℓ only affects the posterior.</span></div>
+      <div class="opt" data-key="c"><span class="key">C</span><span class="text">They become constant (flat lines).</span></div>
+      <div class="opt" data-key="d"><span class="key">D</span><span class="text">They become much smoother. ℓ controls correlation distance — at ℓ=10, points 5 units apart are still highly correlated (exp(−25/200) ≈ 0.88), so the function varies slowly. At ℓ=0.1, those same points are nearly uncorrelated (exp(−25/0.02) ≈ 0), so the function wiggles rapidly.</span></div>
+    </div>
+    <div class="feedback" data-right="<strong>Right.</strong> The length scale ℓ is the characteristic distance over which the function varies. Large ℓ → distant points are correlated → smooth, slowly-varying functions. Small ℓ → only nearby points are correlated → wiggly, rapidly-varying functions. Choosing ℓ is choosing how smooth you believe the true function is — and it can be learned from data via marginal likelihood optimization." data-wrong="<strong>Not quite.</strong> Larger ℓ → smoother functions. The RBF kernel decays as exp(−r²/2ℓ²) — increasing ℓ makes the exponential decay slower, so distant points stay correlated. This means the function can't change quickly over short distances. ℓ is the GP's version of the 'how smooth?' prior."></div>
+  </div>
+</section>
+
+<!-- ============ SECTION 3 ============ -->
+<section class="mod-sec">
+  <div class="sh"><span class="st">Section 03 — Posterior</span><span class="sc">03 / 06</span></div>
+  <h2 class="section-title"><span class="vio">Posterior</span> — conditioning on data.</h2>
+
+  <p>The magic of GPs is closed-form posterior inference. Given training data (X, y) and test points X*, the posterior is still Gaussian with known mean and variance:</p>
+
+  <div class="eq">
+    μ* = K(X*, X) · [K(X, X) + σ²<sub>n</sub>I]<sup>−1</sup> · y
+    <span class="num">(3.1)</span>
+  </div>
+
+  <div class="eq">
+    Σ* = K(X*, X*) − K(X*, X) · [K(X, X) + σ²<sub>n</sub>I]<sup>−1</sup> · K(X, X*)
+    <span class="num">(3.2)</span>
+  </div>
+
+  <p>Where K(A, B) is the kernel matrix between sets A and B, and σ²<sub>n</sub> is the observation noise variance. The mean μ* is the prediction; the diagonal of Σ* gives the uncertainty at each test point.</p>
+
+  <pre><code><span class="k">import</span> numpy <span class="k">as</span> np
+
+<span class="k">def</span> <span class="f">rbf_kernel</span>(X1, X2, l=<span class="n">1.0</span>, sigma=<span class="n">1.0</span>):
+    <span class="s">"""RBF (squared exponential) kernel matrix."""</span>
+    sq_dist = np.sum(X1**<span class="n">2</span>, <span class="n">1</span>).reshape(-<span class="n">1</span>,<span class="n">1</span>) + np.sum(X2**<span class="n">2</span>,<span class="n">1</span>) - <span class="n">2</span>*X1@X2.T
+    <span class="k">return</span> sigma**<span class="n">2</span> * np.exp(-sq_dist / (<span class="n">2</span> * l**<span class="n">2</span>))
+
+<span class="k">def</span> <span class="f">gp_predict</span>(X_train, y_train, X_test, l=<span class="n">1.0</span>, sigma=<span class="n">1.0</span>, noise=<span class="n">0.1</span>):
+    <span class="s">"""GP posterior mean and variance at test points."""</span>
+    K = rbf_kernel(X_train, X_train, l, sigma) + noise**<span class="n">2</span> * np.eye(<span class="f">len</span>(X_train))
+    K_s = rbf_kernel(X_train, X_test, l, sigma)
+    K_ss = rbf_kernel(X_test, X_test, l, sigma)
+
+    K_inv = np.linalg.solve(K, np.eye(<span class="f">len</span>(K)))  <span class="c"># (K + σ²I)^{-1}</span>
+
+    mu = K_s.T @ K_inv @ y_train                  <span class="c"># posterior mean</span>
+    cov = K_ss - K_s.T @ K_inv @ K_s              <span class="c"># posterior covariance</span>
+    <span class="k">return</span> mu, np.diag(cov)                        <span class="c"># mean, variance per point</span></code></pre>
+
+  <h3 class="sub">Worked example — full posterior prediction by hand.</h3>
+
+  <div class="calcbox">
+    <div class="ch">Predicting at x* = 2.0 from 3 training points (ℓ=1.0, σ²=1.0, σ²_n=0.01)</div>
+    <div class="step" data-s="1.">Training: X = [0, 1, 3], y = [0.5, 1.2, 0.3]<span class="val">Test point x* = 2.0 — between x₂ and x₃</span></div>
+    <div class="step" data-s="2.">K(X,X) + σ²_n·I (from worked example above):
+      <span class="val">[[1.01, 0.607, 0.011],<br>&nbsp;[0.607, 1.01, 0.135],<br>&nbsp;[0.011, 0.135, 1.01]]</span></div>
+    <div class="step" data-s="3.">K(X*, X) = [k(2,0), k(2,1), k(2,3)] = [exp(−2), exp(−0.5), exp(−0.5)]
+      <span class="val">= [0.135, 0.607, 0.607] — x* is equidistant from x₂ and x₃</span></div>
+    <div class="step" data-s="4.">Invert K_noisy (using numpy or by hand for 3×3 — here just the result):
+      <span class="val">K_inv ≈ [[1.60, −0.94, 0.11],<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;[−0.94, 1.72, −0.20],<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;[0.11, −0.20, 1.02]]</span></div>
+    <div class="step" data-s="5.">α = K_inv · y = [1.60·0.5 − 0.94·1.2 + 0.11·0.3, ...] = [−0.295, 1.206, −0.125]<span class="val">The "weights" each training point gets</span></div>
+    <div class="step" data-s="6.">μ* = K(X*,X) · α = 0.135·(−0.295) + 0.607·1.206 + 0.607·(−0.125)
+      <span class="val">= −0.040 + 0.732 − 0.076 = <strong>0.616</strong> — prediction is between y₂=1.2 and y₃=0.3, weighted toward x₂</span></div>
+    <div class="step" data-s="7.">Σ* = k(2,2) − K(X*,X) · K_inv · K(X*,X)ᵀ = 1.0 − [0.135, 0.607, 0.607] · K_inv · [0.135, 0.607, 0.607]ᵀ
+      <span class="val">≈ 1.0 − 0.72 = <strong>0.28</strong> → σ* = √0.28 = 0.53. Prediction: 0.62 ± 1.04 (95% CI)</span></div>
+  </div>
+
+  <p>Compare: at x* = 0.5 (close to training data), σ* would be ~0.12. At x* = 5.0 (far from all data), σ* → 1.0 (full prior uncertainty). The GP's uncertainty is a direct function of data density — this is the core value.</p>
+
+  <h3 class="sub">Math Core — learning hyperparameters via marginal likelihood.</h3>
+
+  <p>How do we choose ℓ, σ², and σ²<sub>n</sub>? The GP provides a principled answer: maximize the <strong>log marginal likelihood</strong> (also called "model evidence"):</p>
+
+  <div class="eq">
+    log p(y | X, θ) = −½ yᵀ K<sub>y</sub><sup>−1</sup> y − ½ log|K<sub>y</sub>| − N/2 · log(2π)
+    <span class="num">(3.3)</span>
+  </div>
+
+  <p>Where K<sub>y</sub> = K(X,X) + σ²<sub>n</sub>I and θ = {ℓ, σ², σ²<sub>n</sub>}. The three terms have intuitive meanings: the first is the <strong>data fit</strong> (how well the GP fits the training data), the second is the <strong>complexity penalty</strong> (−½ log|K<sub>y</sub>| penalizes overly complex models — analogous to weight decay), and the third is a constant. Maximizing this balances fit and complexity automatically — no validation set needed for hyperparameter selection.</p>
+
+  <pre><code><span class="k">def</span> <span class="f">neg_log_marginal_likelihood</span>(X, y, l, sigma, noise):
+    <span class="s">"""Negative log marginal likelihood — minimize this to learn GP hyperparameters."""</span>
+    N = len(X)
+    K_y = rbf_kernel(X, X, l, sigma) + noise**<span class="n">2</span> * np.eye(N)
+
+    <span class="c"># Cholesky decomposition (numerically stable alternative to direct inverse)</span>
+    L = np.linalg.cholesky(K_y)
+    alpha = np.linalg.solve(L.T, np.linalg.solve(L, y))
+
+    <span class="c"># Three terms: data fit + complexity + constant</span>
+    data_fit = <span class="n">0.5</span> * y @ alpha
+    complexity = np.sum(np.log(np.diag(L)))  <span class="c"># = 0.5 * log|K_y|</span>
+    constant = <span class="n">0.5</span> * N * np.log(<span class="n">2</span> * np.pi)
+
+    <span class="k">return</span> data_fit + complexity + constant
+
+<span class="c"># Optimize with scipy:</span>
+<span class="c"># from scipy.optimize import minimize</span>
+<span class="c"># result = minimize(lambda p: neg_log_marginal_likelihood(X, y, *np.exp(p)),</span>
+<span class="c">#                   x0=np.log([1.0, 1.0, 0.1]),  # log-space for positivity</span>
+<span class="c">#                   method='L-BFGS-B')</span>
+<span class="c"># l_opt, sigma_opt, noise_opt = np.exp(result.x)</span></code></pre>
+
+  <div class="pitfall">
+    <div class="lbl">Numerical failure mode</div>
+    <h4>Cholesky decomposition fails if K<sub>y</sub> isn't positive definite.</h4>
+    <p>If σ²<sub>n</sub> is too small (e.g., 1e-10), the kernel matrix becomes numerically singular — K has eigenvalues near zero, and adding a tiny noise term doesn't help. Cholesky raises <code class="inline">LinAlgError: Matrix is not positive definite</code>. The fix: add a jitter term (typically 1e-6 to 1e-4) to the diagonal: <code class="inline">K_y += jitter * np.eye(N)</code>. This is standard in all GP libraries (GPyTorch, GPflow) and is not a hack — it's the numerical analyst's way of saying "I believe there's at least this much observation noise."</p>
+  </div>
+
+  <div class="mcq" data-correct="a">
+    <div class="mh"><span>Posterior</span><span class="qnum">Question 03 / 07</span></div>
+    <div class="mq">A GP is trained on 5 data points. At test point x* that is far from all training points, what does the posterior look like?</div>
+    <div class="opts">
+      <div class="opt" data-key="a"><span class="key">A</span><span class="text">The posterior mean reverts to the prior mean (≈ 0), and the posterior variance is large — close to the prior variance σ². The GP says "I have no data here, so I don't know — my prediction is the prior with full uncertainty."</span></div>
+      <div class="opt" data-key="b"><span class="key">B</span><span class="text">The posterior is a delta function at the nearest training point's y-value.</span></div>
+      <div class="opt" data-key="c"><span class="key">C</span><span class="text">The posterior variance is zero because the GP interpolates.</span></div>
+      <div class="opt" data-key="d"><span class="key">D</span><span class="text">The GP refuses to make a prediction.</span></div>
+    </div>
+    <div class="feedback" data-right="<strong>Right.</strong> When x* is far from training data, K(X*, X) ≈ 0 (the kernel decays with distance). So μ* ≈ 0 (reverts to prior mean) and Σ* ≈ K(X*, X*) = σ² (full prior uncertainty). This is exactly the behavior we want: honest uncertainty that grows where data is sparse. Near training points, the variance shrinks to near σ²_n (observation noise), reflecting high confidence." data-wrong="<strong>Not quite.</strong> Far from training data, the GP's posterior reverts to its prior — mean ≈ 0, variance ≈ σ² (the full prior uncertainty). This is the hallmark of GPs: they know what they don't know. Near training points, variance shrinks to the noise level. Between training points, variance interpolates. The GP always makes a prediction — it just expresses uncertainty honestly."></div>
+  </div>
+</section>
+
+<!-- ============ SECTION 4 ============ -->
+<section class="mod-sec">
+  <div class="sh"><span class="st">Section 04 — Epistemic vs aleatoric</span><span class="sc">04 / 06</span></div>
+  <h2 class="section-title"><span class="red">Epistemic</span> vs aleatoric uncertainty.</h2>
+
+  <p>The GP posterior variance captures two distinct types of uncertainty:</p>
+
+  <p><strong>Epistemic uncertainty</strong> (model uncertainty): uncertainty from <em>lack of data</em>. "I haven't seen this region before, so I don't know." This shrinks as you collect more data in that region. In the GP, it's the part of the variance that comes from the posterior covariance Σ*.</p>
+
+  <p><strong>Aleatoric uncertainty</strong> (data noise): irreducible uncertainty from noise in the observations themselves. "Even with infinite data, predictions here will vary because the data is inherently noisy." In the GP, it's σ²<sub>n</sub> — the observation noise variance, which doesn't shrink with more data.</p>
+
+  <h3 class="sub">Math Core — decomposing the posterior variance.</h3>
+
+  <p>The total predictive variance at x* is:</p>
+
+  <div class="eq">
+    Var[y*] = Var[f*] + σ²<sub>n</sub> = (σ² − K(x*,X) K<sub>y</sub><sup>−1</sup> K(X,x*)) + σ²<sub>n</sub>
+    <span class="num">(4.1)</span>
+  </div>
+
+  <p>The first term (Var[f*]) is <strong>epistemic</strong> — it depends on how far x* is from training data. As N → ∞ and data fills the input space, Var[f*] → 0 everywhere. The second term (σ²<sub>n</sub>) is <strong>aleatoric</strong> — it stays constant regardless of N. In practice:</p>
+
+  <div class="calcbox">
+    <div class="ch">Uncertainty decomposition for CineMatch</div>
+    <div class="step" data-s="1.">User A has rated 500 action movies. GP predicts their rating for a new action film:<span class="val">Var[f*] = 0.02 (lots of nearby data), σ²_n = 0.25 (inherent taste variation). Total: 0.27</span></div>
+    <div class="step" data-s="2.">Same user, a new documentary (0 documentary ratings):<span class="val">Var[f*] = 0.95 (no nearby data — nearly full prior), σ²_n = 0.25. Total: 1.20</span></div>
+    <div class="step" data-s="3.">After user rates 10 documentaries, re-predict:<span class="val">Var[f*] drops to 0.08. σ²_n still 0.25. Total: 0.33. Epistemic collapsed, aleatoric unchanged.</span></div>
+    <div class="step" data-s="4.">The decision: recommend the documentary in step 2 to <em>learn</em> (high epistemic = high information gain), even though it has higher total uncertainty. After step 3, switch to exploitation.<span class="val">This is the core of Bayesian optimization — Module 5.2</span></div>
+  </div>
+
+  <div class="cinematch">
+    <div class="tag-pill">CineMatch Integration</div>
+    <h4>Uncertainty-aware recommendations.</h4>
+    <p>CineMatch predicts a user will rate a movie 4.2 stars with <strong>epistemic variance 0.8</strong> (we have little data on this user-movie pairing — cold start) vs another movie rated 3.9 stars with <strong>epistemic variance 0.1</strong> (thousands of similar users rated it). Which should we recommend? A purely exploitation-based ranker picks 4.2. An exploration-aware ranker might pick 3.9 — because it's a confident 3.9 vs an uncertain 4.2. Or it might pick 4.2 <em>precisely because</em> the high uncertainty means we'll learn a lot from the user's response. This is the <strong>exploration-exploitation trade-off</strong> that GPs enable and Module 5.2 will formalize.</p>
+  </div>
+
+  <div class="mcq" data-correct="c">
+    <div class="mh"><span>Uncertainty types</span><span class="qnum">Question 04 / 07</span></div>
+    <div class="mq">A CineMatch user has rated 500 action movies and 0 documentaries. The GP predicts their rating for a new documentary with high epistemic uncertainty. What does this mean, and can it be reduced?</div>
+    <div class="opts">
+      <div class="opt" data-key="a"><span class="key">A</span><span class="text">The user is inherently unpredictable — nothing can reduce this uncertainty.</span></div>
+      <div class="opt" data-key="b"><span class="key">B</span><span class="text">The GP's kernel is wrong — switch to a different kernel to reduce uncertainty.</span></div>
+      <div class="opt" data-key="c"><span class="key">C</span><span class="text">High epistemic uncertainty means the GP has no data about this user's documentary preferences. It can absolutely be reduced — by showing the user a few documentaries and observing their ratings. After 5-10 documentary ratings, the epistemic uncertainty in that region will shrink dramatically. This is what makes epistemic uncertainty actionable: it tells you exactly where to collect more data.</span></div>
+      <div class="opt" data-key="d"><span class="key">D</span><span class="text">Epistemic uncertainty means the documentary is a bad recommendation.</span></div>
+    </div>
+    <div class="feedback" data-right="<strong>Right.</strong> Epistemic uncertainty = data gap. The GP correctly identifies that it has zero documentary data for this user and honestly reports high uncertainty. Collecting even a few documentary ratings from this user will collapse the uncertainty. This is the fundamental value proposition: the GP doesn't just say 'I predict 3.5 stars' — it says 'I predict 3.5 ± 1.2 stars because I have no data here, and I know I could fix this by collecting more data in this region.'" data-wrong="<strong>Not quite.</strong> Epistemic uncertainty means 'I lack data' — not 'the user is unpredictable.' It's reducible by collecting more data in the uncertain region. After 5-10 documentary ratings, the GP's posterior will tighten dramatically around this user's documentary preferences. This distinguishes epistemic from aleatoric uncertainty, which is irreducible."></div>
+  </div>
+</section>
+
+<!-- ============ SECTION 5 ============ -->
+<section class="mod-sec">
+  <div class="sh"><span class="st">Section 05 — Scalability</span><span class="sc">05 / 06</span></div>
+  <h2 class="section-title">The GP's <span class="vio">computational bottleneck</span> — and workarounds.</h2>
+
+  <p>The posterior equations (3.1, 3.2) require inverting K(X, X) + σ²<sub>n</sub>I — an N × N matrix where N is the number of training points. Matrix inversion is O(N³) in compute and O(N²) in memory. For CineMatch with N = 200,000 rated interactions, this is 200K × 200K = 40 billion entries — completely infeasible.</p>
+
+  <table>
+    <thead><tr><th>N (training points)</th><th>Matrix size</th><th>Inversion cost</th><th>Feasible?</th></tr></thead>
+    <tbody>
+      <tr><td>100</td><td>100 × 100</td><td>~10⁶ FLOPS</td><td>Instant</td></tr>
+      <tr><td>1,000</td><td>1K × 1K</td><td>~10⁹ FLOPS</td><td>Seconds</td></tr>
+      <tr><td>10,000</td><td>10K × 10K</td><td>~10¹² FLOPS</td><td>Minutes</td></tr>
+      <tr><td>200,000</td><td>200K × 200K</td><td>~10¹⁵ FLOPS</td><td>No</td></tr>
+    </tbody>
+  </table>
+
+  <h3 class="sub">Approximate GP methods.</h3>
+
+  <p>For large N, exact GPs are replaced by approximations: sparse GPs (use M &lt;&lt; N inducing points), random Fourier features (approximate the kernel with random projections), or deep kernel learning (use a neural network to learn a feature map, then place a GP on top). For CineMatch, the practical approach is to use GPs <em>not</em> for the main prediction model (that's the transformer) but for specific, small-scale problems where uncertainty matters — like the hyperparameter optimization in Module 5.2, which has N ≈ 20-100 evaluations.</p>
+
+  <div class="mcq" data-correct="b">
+    <div class="mh"><span>Scalability</span><span class="qnum">Question 05 / 07</span></div>
+    <div class="mq">Why doesn't CineMatch use a GP as its main recommender model?</div>
+    <div class="opts">
+      <div class="opt" data-key="a"><span class="key">A</span><span class="text">GPs can't handle categorical data like movie IDs.</span></div>
+      <div class="opt" data-key="b"><span class="key">B</span><span class="text">GPs require O(N³) compute for inference, where N is the training set size. CineMatch has N = 200K+ interactions — the kernel matrix would be 200K × 200K, requiring ~10¹⁵ FLOPS to invert. A transformer handles the same data in a single forward pass. GPs are used for small-N problems where uncertainty is critical — like hyperparameter optimization (N ≈ 50 evaluations).</span></div>
+      <div class="opt" data-key="c"><span class="key">C</span><span class="text">GPs always underperform neural networks.</span></div>
+      <div class="opt" data-key="d"><span class="key">D</span><span class="text">CineMatch's data is too noisy for GPs.</span></div>
+    </div>
+    <div class="feedback" data-right="<strong>Right.</strong> The O(N³) bottleneck is the reason. GPs excel at small-data, uncertainty-critical problems (hyperparameter search with 20-100 evaluations, Bayesian optimization, active learning). For large-data prediction (200K+ points), transformers scale linearly with data and provide better predictions. The GP's value for CineMatch is not as the main model but as the surrogate in the hyperparameter optimization loop — which is exactly Module 5.2." data-wrong="<strong>Not quite.</strong> The bottleneck is computational: O(N³) for GP inference. At N=200K, the kernel matrix is 200K × 200K — infeasible. GPs can handle categorical data (via appropriate kernels) and noisy data (noise is a parameter). They just can't scale to large N. Their niche: small-N problems where calibrated uncertainty is worth the cost."></div>
+  </div>
+</section>
+
+<!-- ============ SECTION 6 ============ -->
+<section class="mod-sec">
+  <div class="sh"><span class="st">Section 06 — Where they fit</span><span class="sc">06 / 06</span></div>
+  <h2 class="section-title">GPs in the deep learning <span class="red">stack</span> — where they fit.</h2>
+
+  <p>GPs don't <em>replace</em> deep learning — they complement it in specific, high-value niches:</p>
+
+  <table>
+    <thead><tr><th>Application</th><th>Why GP?</th><th>CineMatch use</th></tr></thead>
+    <tbody>
+      <tr><td>Bayesian optimization</td><td>N ≈ 20-100, need uncertainty to decide where to evaluate next</td><td>Tune transformer hyperparameters (Module 5.2)</td></tr>
+      <tr><td>Active learning</td><td>Choose which examples to label next based on uncertainty</td><td>Choose which users to survey for rating feedback</td></tr>
+      <tr><td>Calibrated uncertainty</td><td>Neural networks are often overconfident; GP posterior is calibrated by construction</td><td>Flag low-confidence recommendations for human review</td></tr>
+      <tr><td>Last-layer GP</td><td>Replace the final linear layer of a neural network with a GP for uncertainty-aware predictions</td><td>Uncertainty-aware rating predictions on top of transformer features</td></tr>
+    </tbody>
+  </table>
+
+  <div class="mcq" data-correct="d">
+    <div class="mh"><span>GP + deep learning</span><span class="qnum">Question 06 / 07</span></div>
+    <div class="mq">How can CineMatch combine a transformer and a GP to get both scalability and calibrated uncertainty?</div>
+    <div class="opts">
+      <div class="opt" data-key="a"><span class="key">A</span><span class="text">Replace the transformer entirely with a GP.</span></div>
+      <div class="opt" data-key="b"><span class="key">B</span><span class="text">Train the GP on raw movie IDs.</span></div>
+      <div class="opt" data-key="c"><span class="key">C</span><span class="text">Use the transformer's loss as the GP kernel.</span></div>
+      <div class="opt" data-key="d"><span class="key">D</span><span class="text">Use the transformer as a feature extractor (compute a 256-dim representation per user-movie pair), then place a GP on top of those features. The transformer handles the O(N) scaling and representation learning; the GP on the 256-dim features provides calibrated uncertainty for each prediction. This is the 'last-layer GP' or 'deep kernel learning' approach — scalable because the GP operates in the low-dimensional feature space, not on raw data.</span></div>
+    </div>
+    <div class="feedback" data-right="<strong>Right.</strong> The deep kernel / last-layer GP approach gives the best of both worlds: the transformer's representation power and scalability, plus the GP's calibrated uncertainty. The GP operates on the transformer's 256-dim output (not the 200K raw interactions), so the kernel matrix is manageable. In practice, this adds ~1ms to inference per query — negligible on top of the transformer's ~10ms — and gives CineMatch calibrated confidence intervals on every recommendation." data-wrong="<strong>Not quite.</strong> The combination is: transformer for features (scalable, powerful), GP on top for uncertainty (calibrated, principled). The GP sees 256-dim feature vectors from the transformer, not raw data — so the kernel matrix stays small. This 'last-layer GP' is a standard production pattern for uncertainty-aware deep learning systems."></div>
+  </div>
+
+  <div class="mcq" data-correct="a">
+    <div class="mh"><span>Synthesis</span><span class="qnum">Question 07 / 07</span></div>
+    <div class="mq">What is the single most important thing a GP provides that a standard neural network does not?</div>
+    <div class="opts">
+      <div class="opt" data-key="a"><span class="key">A</span><span class="text">Calibrated uncertainty estimates — the GP's posterior variance grows where data is sparse and shrinks where data is dense. A neural network's softmax confidence is not calibrated (it can be highly confident and wrong). This uncertainty is what enables principled exploration, active learning, and safe decision-making.</span></div>
+      <div class="opt" data-key="b"><span class="key">B</span><span class="text">Faster training on large datasets.</span></div>
+      <div class="opt" data-key="c"><span class="key">C</span><span class="text">Better accuracy on image classification.</span></div>
+      <div class="opt" data-key="d"><span class="key">D</span><span class="text">More parameters for more expressiveness.</span></div>
+    </div>
+    <div class="feedback" data-right="<strong>Right.</strong> Calibrated uncertainty is the GP's unique contribution. Neural networks produce point estimates and uncalibrated confidence (a softmax output of 0.95 doesn't mean 95% accuracy). GP posteriors are calibrated by construction — the 95% credible interval actually contains the true value 95% of the time (given correct kernel and noise assumptions). This enables downstream decisions: when to explore vs exploit, which data to collect next, when to defer to a human." data-wrong="<strong>Not quite.</strong> The GP's distinguishing feature is calibrated uncertainty. Neural networks are faster and more accurate on large datasets, but they can't honestly say 'I don't know.' The GP's posterior variance is calibrated — it grows where data is sparse, shrinks where it's dense, and enables principled decision-making under uncertainty."></div>
+  </div>
+
+  <div class="checkpoint">
+    <h4>Module 5.1 — Mastery checkpoint</h4>
+    <ol>
+      <li>Explain the conceptual difference between a GP (distribution over functions) and a neural network (single function from parameters).</li>
+      <li>Write the RBF kernel and explain the role of length scale ℓ and output variance σ².</li>
+      <li>Write the GP posterior mean and variance equations and explain when variance is large vs small.</li>
+      <li>Implement GP regression in NumPy (kernel matrix, posterior inference).</li>
+      <li>Distinguish epistemic (reducible) from aleatoric (irreducible) uncertainty.</li>
+      <li>Explain the O(N³) computational bottleneck and name two approximate GP methods.</li>
+      <li>Describe the last-layer GP approach for combining transformers with calibrated uncertainty.</li>
+    </ol>
+  </div>
+
+  <h3 class="sub">Where this leads.</h3>
+
+  <p>Module 5.2 applies GPs to their killer application in deep learning: <strong>Bayesian hyperparameter optimization</strong>. Instead of grid search or random search over learning rates, dropout rates, and layer sizes, we use a GP to model the relationship between hyperparameters and validation performance — then use the GP's uncertainty to decide which hyperparameters to try next. This is the exploration-exploitation trade-off from the CineMatch example above, applied to the ML engineering workflow itself.</p>
+</section>
+
+
+<!-- ============ LEARNING RESOURCES ============ -->
+<section class="mod-sec resources-section">
+  <div class="resources-kicker"><span>// Learning Resources</span></div>
+  <h2 class="resources-title">Learn &amp; <span class="vio">Practice</span></h2>
+  <p class="resources-sub">Deepen this module with a progressive explanation, the canonical source, and hands-on reference code.</p>
+    <article class="resource-card progressive">
+      <div class="resource-head">
+        <div class="resource-icon">P</div>
+        <div>
+          <div class="resource-type">Progressive Article</div>
+          <p class="resource-desc">Stuck? Start here - beginner-friendly explanation</p>
+        </div>
+      </div>
+      <div class="resource-item">
+        <div class="resource-name">Distill - A Visual Exploration of Gaussian Processes</div>
+        <p class="resource-note">Interactive visual introduction to GP priors, kernels, and posteriors.</p>
+      </div>
+      <div class="resource-actions">
+      <a class="resource-btn" href="https://distill.pub/2019/visual-exploration-gaussian-processes/" target="_blank" rel="noopener">Read article</a>
+      </div>
+    </article>
+    <article class="resource-card canonical">
+      <div class="resource-head">
+        <div class="resource-icon">C</div>
+        <div>
+          <div class="resource-type">Canonical Article</div>
+          <p class="resource-desc">Authoritative source - paper, docs, or textbook chapter</p>
+        </div>
+      </div>
+      <div class="resource-item">
+        <div class="resource-name">Rasmussen &amp; Williams - Gaussian Processes for Machine Learning</div>
+        <p class="resource-note">Free canonical GPML textbook.</p>
+      </div>
+      <div class="resource-actions">
+      <a class="resource-btn" href="http://gaussianprocess.org/gpml/" target="_blank" rel="noopener">Read source</a>
+      </div>
+    </article>
+    <article class="resource-card github">
+      <div class="resource-head">
+        <div class="resource-icon">&lt;/&gt;</div>
+        <div>
+          <div class="resource-type">GitHub Repository</div>
+          <p class="resource-desc">Hands-on implementation and runnable examples</p>
+        </div>
+      </div>
+      <div class="resource-item">
+        <div class="resource-name">cornellius-gp/gpytorch</div>
+        <p class="resource-note">Production Gaussian process library built on PyTorch.</p>
+      </div>
+      <div class="resource-item">
+        <div class="resource-name">scikit-learn/scikit-learn - GaussianProcessRegressor</div>
+        <p class="resource-note">Scikit-learn implementation reference.</p>
+      </div>
+      <div class="resource-actions">
+      <a class="resource-btn" href="https://github.com/cornellius-gp/gpytorch" target="_blank" rel="noopener">Explore repo</a>
+      <a class="resource-btn" href="https://github.com/scikit-learn/scikit-learn" target="_blank" rel="noopener">Explore repo</a>
+      </div>
+    </article>
+</section>
+
+</main>
+
+<!-- ============ FOOTER NAV ============ -->
+<nav class="footnav">
+  <a href="module_4_5_gans.html" class="prev">
+    <div class="lbl">Previous phase</div>
+    <div class="ttl">4.5 — GANs</div>
+  </a>
+  <a href="module_5_2_bayesian_hpo.html" class="next">
+    <div class="lbl">Next module</div>
+    <div class="ttl">5.2 — Bayesian HPO</div>
+  </a>
+</nav>
+
+<footer class="foot">
+  <div class="fl">Deep Learning &amp; Neural Networks · Module 5.1 · 2025</div>
+  <div class="fr"><div class="fd"></div> Phase 5 · Uncertainty</div>
+</footer>
+
+<script>
+/* ============ Particle network background ============ */
+(function(){
+  const cv=document.getElementById('brain'),cx=cv.getContext('2d');
+  function rs(){cv.width=window.innerWidth;cv.height=window.innerHeight}rs();
+  window.addEventListener('resize',rs);
+  const pts=[];
+  const n = window.innerWidth < 700 ? 50 : 90;
+  for(let i=0;i<n;i++)pts.push({
+    x:Math.random()*window.innerWidth,
+    y:Math.random()*window.innerHeight,
+    vx:(Math.random()-.5)*.22,
+    vy:(Math.random()-.5)*.22,
+    r:Math.random()*1.8+.7,
+    ph:Math.random()*Math.PI*2
+  });
+  (function loop(){
+    cx.clearRect(0,0,cv.width,cv.height);
+    const t=Date.now()*.001;
+    for(let i=0;i<pts.length;i++){
+      const a=pts[i];a.x+=a.vx;a.y+=a.vy;
+      if(a.x<0||a.x>cv.width)a.vx*=-1;
+      if(a.y<0||a.y>cv.height)a.vy*=-1;
+      for(let j=i+1;j<pts.length;j++){
+        const b=pts[j],dx=b.x-a.x,dy=b.y-a.y,d=Math.sqrt(dx*dx+dy*dy);
+        if(d<130){
+          cx.beginPath();cx.moveTo(a.x,a.y);cx.lineTo(b.x,b.y);
+          cx.strokeStyle=`rgba(100,35,200,${(1-d/130)*.14})`;
+          cx.lineWidth=.5;cx.stroke();
+        }
+      }
+    }
+    for(let i=0;i<pts.length;i++){
+      const a=pts[i],g=.5+.5*Math.sin(t*1.4+a.ph);
+      cx.beginPath();cx.arc(a.x,a.y,a.r,0,Math.PI*2);
+      cx.fillStyle=`rgba(100,35,200,${.22+g*.48})`;cx.fill();
+    }
+    requestAnimationFrame(loop);
+  })();
+})();
+
+/* ============ Hero illustration: GP posterior with uncertainty band ============ */
+(function(){
+  const meanEl=document.getElementById('mean');
+  const bandEl=document.getElementById('band');
+  const obsG=document.getElementById('obs');
+  const ns='http://www.w3.org/2000/svg';
+
+  // Observed points (in svg coords). x range 30-370, y baseline 150.
+  const obs = [
+    {x: 70,  y: 195},
+    {x: 115, y: 110},
+    {x: 175, y: 175},
+    {x: 235, y: 95},
+    {x: 290, y: 165},
+    {x: 340, y: 130}
+  ];
+
+  // RBF kernel
+  const ell = 38;   // length scale (in svg pixels)
+  const sig2 = 1.0; // output variance
+  const noise = 0.01;
+
+  function rbf(a,b){ return sig2 * Math.exp(-((a-b)*(a-b))/(2*ell*ell)); }
+
+  // Build K + noise*I
+  const N = obs.length;
+  const K = [];
+  for(let i=0;i<N;i++){
+    K.push([]);
+    for(let j=0;j<N;j++){
+      K[i].push(rbf(obs[i].x, obs[j].x) + (i===j?noise:0));
+    }
+  }
+  // Center the y values around 0 for prior mean = 0; we will add back baseline
+  const baselineY = 150;
+  const yCentered = obs.map(p => (baselineY - p.y) / 60); // scale into rough unit
+
+  // Invert K (3x3 / 6x6) — use Gauss-Jordan
+  function invert(M){
+    const n=M.length;
+    const A = M.map((r,i)=>r.concat(M.map((_,j)=>i===j?1:0)));
+    for(let i=0;i<n;i++){
+      // pivot
+      let piv = A[i][i];
+      if(Math.abs(piv) < 1e-12){
+        // swap with a row below
+        for(let k=i+1;k<n;k++){
+          if(Math.abs(A[k][i])>1e-12){ [A[i],A[k]]=[A[k],A[i]]; piv=A[i][i]; break; }
+        }
+      }
+      for(let j=0;j<2*n;j++) A[i][j] /= piv;
+      for(let k=0;k<n;k++){
+        if(k===i) continue;
+        const f = A[k][i];
+        for(let j=0;j<2*n;j++) A[k][j] -= f*A[i][j];
+      }
+    }
+    return A.map(r=>r.slice(n));
+  }
+  const Kinv = invert(K);
+
+  // alpha = K_inv · y
+  const alpha = [];
+  for(let i=0;i<N;i++){
+    let s=0;
+    for(let j=0;j<N;j++) s += Kinv[i][j]*yCentered[j];
+    alpha.push(s);
+  }
+
+  // Predict on a grid
+  const xs = [];
+  for(let x=30;x<=370;x+=4) xs.push(x);
+
+  const means = [];
+  const vars_ = [];
+  xs.forEach(x=>{
+    // k* vector
+    const ks = obs.map(p => rbf(x, p.x));
+    let mu = 0;
+    for(let i=0;i<N;i++) mu += ks[i]*alpha[i];
+    // variance: k(x,x) - ks^T K^-1 ks
+    let v = sig2;
+    for(let i=0;i<N;i++){
+      let s=0;
+      for(let j=0;j<N;j++) s += Kinv[i][j]*ks[j];
+      v -= ks[i]*s;
+    }
+    v = Math.max(v, 0.002);
+    means.push(mu);
+    vars_.push(v);
+  });
+
+  // Convert mean back to svg y
+  const meanPts = xs.map((x,i) => [x, baselineY - means[i]*60]);
+
+  // build smooth path via catmull-rom -> bezier
+  function smoothPath(points){
+    if(!points.length) return '';
+    let d = `M ${points[0][0]} ${points[0][1].toFixed(1)}`;
+    for(let i=0;i<points.length-1;i++){
+      const p0 = points[Math.max(0,i-1)];
+      const p1 = points[i];
+      const p2 = points[i+1];
+      const p3 = points[Math.min(points.length-1,i+2)];
+      const c1x = p1[0] + (p2[0]-p0[0])/6;
+      const c1y = p1[1] + (p2[1]-p0[1])/6;
+      const c2x = p2[0] - (p3[0]-p1[0])/6;
+      const c2y = p2[1] - (p3[1]-p1[1])/6;
+      d += ` C ${c1x.toFixed(1)} ${c1y.toFixed(1)}, ${c2x.toFixed(1)} ${c2y.toFixed(1)}, ${p2[0]} ${p2[1].toFixed(1)}`;
+    }
+    return d;
+  }
+
+  meanEl.setAttribute('d', smoothPath(meanPts));
+
+  // Build uncertainty band: upper points then lower points reversed
+  const sigmas = vars_.map(v => Math.sqrt(v));
+  const upperPts = xs.map((x,i) => [x, baselineY - (means[i]+2*sigmas[i])*60]);
+  const lowerPts = xs.map((x,i) => [x, baselineY - (means[i]-2*sigmas[i])*60]);
+
+  // Build a closed path from upper-forward + lower-reverse
+  let bandD = `M ${upperPts[0][0]} ${upperPts[0][1].toFixed(1)}`;
+  for(let i=1;i<upperPts.length;i++){
+    bandD += ` L ${upperPts[i][0]} ${upperPts[i][1].toFixed(1)}`;
+  }
+  for(let i=lowerPts.length-1;i>=0;i--){
+    bandD += ` L ${lowerPts[i][0]} ${lowerPts[i][1].toFixed(1)}`;
+  }
+  bandD += ' Z';
+  bandEl.setAttribute('d', bandD);
+
+  // Draw observed points
+  obs.forEach((p,idx)=>{
+    const c = document.createElementNS(ns,'circle');
+    c.setAttribute('cx', p.x);
+    c.setAttribute('cy', p.y);
+    c.setAttribute('r', '4.2');
+    c.setAttribute('fill', '#f0edea');
+    c.setAttribute('stroke', '#6e28d9');
+    c.setAttribute('stroke-width', '1.6');
+    obsG.appendChild(c);
+  });
+
+  // subtle pulse on observed points
+  let t=0;
+  function pulse(){
+    t+=.018;
+    Array.from(obsG.children).forEach((c,i)=>{
+      const k = .5 + .5*Math.sin(t + i*0.9);
+      c.setAttribute('r', (3.8 + k*1.1).toFixed(2));
+    });
+    requestAnimationFrame(pulse);
+  }
+  pulse();
+})();
+
+/* ============ MCQ interactions ============ */
+document.querySelectorAll('.mcq').forEach(mcq=>{
+  const correct=mcq.dataset.correct;
+  const opts=mcq.querySelectorAll('.opt');
+  const fb=mcq.querySelector('.feedback');
+  opts.forEach(opt=>{
+    opt.addEventListener('click',()=>{
+      if(opt.classList.contains('disabled'))return;
+      const chosen=opt.dataset.key;
+      const isRight=chosen===correct;
+      opts.forEach(o=>{
+        o.classList.add('disabled');
+        if(o.dataset.key===correct) o.classList.add('correct');
+        else if(o===opt && !isRight) o.classList.add('wrong');
+      });
+      if(isRight){
+        fb.classList.add('show','right');
+        fb.innerHTML='<span class="verdict">Correct</span>'+fb.dataset.right;
+      } else {
+        fb.classList.add('show','wrong');
+        fb.innerHTML='<span class="verdict">Not quite</span>'+fb.dataset.wrong;
+      }
+    });
+  });
+});
+
+/* ============ Reveal on scroll ============ */
+(function(){
+  const els=document.querySelectorAll('.mod-sec, .checkpoint, .cinematch, .insight, .pitfall, .calcbox, .mcq, table, pre, .eq');
+  els.forEach(e=>e.classList.add('reveal'));
+  const io=new IntersectionObserver((entries)=>{
+    entries.forEach(e=>{
+      if(e.isIntersecting){ e.target.classList.add('on'); io.unobserve(e.target); }
+    });
+  },{threshold:.12});
+  els.forEach(e=>io.observe(e));
+})();
+</script>
+
+</body>
+</html>

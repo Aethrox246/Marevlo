@@ -1,0 +1,444 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Substring Search using Trie</title>
+    <style>
+        :root {
+            --bg: #0d1117;
+            --surface: #161b22;
+            --border: #30363d;
+            --text: #c9d1d9;
+            --muted: #8b949e;
+            --purple: #a371f7;
+            --blue: #58a6ff;
+            --green: #3fb950;
+            --orange: #e3b341;
+        }
+        * { box-sizing: border-box; }
+        body {
+            margin: 0;
+            padding: 20px;
+            background: var(--bg);
+            color: var(--text);
+            font-family: system-ui, sans-serif;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+        h1 { color: var(--purple); margin: 0 0 8px 0; }
+        .subtitle { color: var(--muted); margin-bottom: 20px; }
+        .controls {
+            display: flex;
+            gap: 12px;
+            flex-wrap: wrap;
+            justify-content: center;
+            margin: 15px 0;
+        }
+        button {
+            background: #21262d;
+            color: var(--text);
+            border: 1px solid var(--border);
+            padding: 10px 18px;
+            border-radius: 8px;
+            cursor: pointer;
+        }
+        button:hover { background: #30363d; }
+        .main {
+            display: flex;
+            gap: 40px;
+            flex-wrap: wrap;
+            justify-content: center;
+            width: 100%;
+            max-width: 1350px;
+        }
+        .panel {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 18px;
+        }
+        .patterns-panel { width: 340px; }
+        .text-panel { width: 520px; }
+        .trie-panel { width: 620px; }
+        .label {
+            color: var(--purple);
+            font-weight: bold;
+            margin-bottom: 10px;
+            text-align: center;
+        }
+        .words-list {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            padding: 12px;
+            background: #21262d;
+            border-radius: 10px;
+            min-height: 140px;
+        }
+        .tile {
+            padding: 8px 16px;
+            background: #30363d;
+            border: 2px solid var(--orange);
+            border-radius: 8px;
+            font-family: monospace;
+        }
+        .text-container {
+            background: #21262d;
+            border: 3px solid var(--blue);
+            border-radius: 12px;
+            padding: 20px;
+            font-family: monospace;
+            font-size: 26px;
+            letter-spacing: 4px;
+            line-height: 1.6;
+        }
+        .char {
+            padding: 2px 6px;
+            border-radius: 4px;
+            transition: all 0.2s;
+        }
+        .char.match {
+            background: var(--green);
+            color: #0d1117;
+            font-weight: bold;
+        }
+        .trie {
+            background: #21262d;
+            border: 3px solid var(--blue);
+            border-radius: 12px;
+            padding: 20px;
+            min-height: 460px;
+            overflow: auto;
+            font-family: monospace;
+        }
+        .trie-node {
+            display: inline-block;
+            background: #30363d;
+            border: 3px solid #58a6ff;
+            border-radius: 10px;
+            padding: 12px 18px;
+            margin: 12px 8px;
+            text-align: center;
+            position: relative;
+        }
+        .trie-node.current {
+            border-color: var(--orange);
+            box-shadow: 0 0 0 4px rgba(227,179,65,0.4);
+        }
+        .trie-node .end {
+            color: var(--green);
+            font-size: 13px;
+            margin-top: 4px;
+        }
+        .children {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            justify-content: center;
+            margin-top: 14px;
+        }
+        .results {
+            margin: 20px 0;
+            padding: 16px;
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            font-family: monospace;
+        }
+        .action {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            padding: 16px;
+            width: 100%;
+            max-width: 1100px;
+            margin: 20px 0;
+            min-height: 110px;
+            font-family: monospace;
+        }
+        .log {
+            background: #0d1117;
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            padding: 14px;
+            width: 100%;
+            max-width: 1100px;
+            height: 240px;
+            overflow-y: auto;
+            font-family: 'Courier New', monospace;
+            font-size: 14px;
+        }
+    </style>
+</head>
+<body>
+    <h1>Substring Search using Trie</h1>
+    <p class="subtitle">Trie from Patterns → Find All Occurrences</p>
+
+    <div class="controls">
+        <button onclick="loadExample(0)">Example 1: ababc</button>
+        <button onclick="loadExample(1)">Example 2: hello</button>
+        <button onclick="resetViz()">Reset</button>
+    </div>
+
+    <div class="main">
+        <div class="panel patterns-panel">
+            <div class="label">Patterns</div>
+            <div class="words-list" id="patterns-list"></div>
+        </div>
+
+        <div class="panel text-panel">
+            <div class="label">Text</div>
+            <div class="text-container" id="text-view"></div>
+        </div>
+
+        <div class="panel trie-panel">
+            <div class="label">Trie (Patterns)</div>
+            <div class="trie" id="trie"></div>
+        </div>
+    </div>
+
+    <div class="results" id="results">
+        <strong>Matches Found:</strong><br>
+        <span id="match-list"></span>
+    </div>
+
+    <div class="action" id="action">Click example to begin</div>
+
+    <div class="controls">
+        <button onclick="prevStep()">← Prev</button>
+        <button onclick="togglePlay()" id="play-btn">▶ Play</button>
+        <button onclick="nextStep()">Next →</button>
+        <label>Speed <input type="range" id="speed" min="0" max="2" value="1"></label>
+    </div>
+
+    <div class="log" id="log"></div>
+
+    <script>
+        let root = null;
+        let steps = [];
+        let stepIdx = 0;
+        let timer = null;
+        let isPlaying = false;
+        let text = "";
+        let patterns = [];
+
+        class TrieNode {
+            constructor() {
+                this.children = new Array(26).fill(null);
+                this.isEnd = false;
+                this.patternIndex = -1; // track which pattern ends here
+            }
+        }
+
+        function createTrie() {
+            return new TrieNode();
+        }
+
+        function insert(word, idx) {
+            let node = root;
+            const path = [];
+            for (let ch of word) {
+                const i = ch.charCodeAt(0) - 97;
+                path.push(ch);
+                if (!node.children[i]) {
+                    node.children[i] = new TrieNode();
+                }
+                node = node.children[i];
+            }
+            node.isEnd = true;
+            node.patternIndex = idx;
+            return path;
+        }
+
+        function generateSteps(inputText, inputPatterns) {
+            text = inputText;
+            patterns = [...inputPatterns];
+            root = createTrie();
+            steps = [];
+
+            // Build Trie
+            steps.push({
+                action: "Initialize Trie",
+                panel: `Text: <span style="color:var(--orange)">${text}</span>`,
+                log: "Trie root created",
+                highlight: [],
+                currentPos: 0,
+                matches: {}
+            });
+
+            for (let i = 0; i < patterns.length; i++) {
+                const path = insert(patterns[i], i);
+                steps.push({
+                    action: `Insert pattern "${patterns[i]}"`,
+                    panel: `Inserted "${patterns[i]}"`,
+                    log: `Path: ${path.join('')}`,
+                    highlight: path,
+                    currentPos: 0,
+                    matches: {}
+                });
+            }
+
+            // Search in text
+            const allMatches = {};
+            patterns.forEach((p, idx) => allMatches[p] = []);
+
+            for (let start = 0; start < text.length; start++) {
+                let node = root;
+                let matched = false;
+                let path = [];
+                for (let j = start; j < text.length; j++) {
+                    const idx = text[j].charCodeAt(0) - 97;
+                    path.push(text[j]);
+                    if (!node.children[idx]) break;
+                    node = node.children[idx];
+
+                    if (node.isEnd) {
+                        const pat = patterns[node.patternIndex];
+                        allMatches[pat].push(start);
+                        steps.push({
+                            action: `Match "${pat}" at ${start}`,
+                            panel: `Found <span style="color:var(--green)">${pat}</span> starting at ${start}`,
+                            log: `Match at position ${start}`,
+                            highlight: path,
+                            currentPos: start,
+                            matches: {...allMatches}
+                        });
+                    }
+                }
+            }
+
+            // Final summary
+            steps.push({
+                action: "All Matches",
+                panel: Object.keys(allMatches).map(p => `<strong>${p}</strong>: [${allMatches[p].join(', ')}]`).join('<br>'),
+                log: "Search complete",
+                highlight: [],
+                currentPos: text.length,
+                matches: allMatches
+            });
+        }
+
+        function renderPatterns() {
+            const cont = document.getElementById('patterns-list');
+            cont.innerHTML = patterns.map(p => `<div class="tile">${p}</div>`).join('');
+        }
+
+        function renderText(matches = {}) {
+            const cont = document.getElementById('text-view');
+            let html = '';
+            const posSet = new Set();
+            Object.values(matches).forEach(arr => arr.forEach(p => posSet.add(p)));
+            for (let i = 0; i < text.length; i++) {
+                let cls = posSet.has(i) ? 'match' : '';
+                html += `<span class="char ${cls}">${text[i]}</span>`;
+            }
+            cont.innerHTML = html;
+        }
+
+        function buildTrieHTML(node, prefix = "", highlight = []) {
+            if (!node) return '';
+            let html = `<div class="trie-node ${highlight.length && prefix.length <= highlight.length ? 'current' : ''}">`;
+            html += `<div>${prefix || 'ROOT'}</div>`;
+            if (node.isEnd) html += `<div class="end">END</div>`;
+
+            let chHtml = '<div class="children">';
+            let has = false;
+            for (let i = 0; i < 26; i++) {
+                if (node.children[i]) {
+                    has = true;
+                    const ch = String.fromCharCode(97 + i);
+                    chHtml += buildTrieHTML(node.children[i], prefix + ch, highlight);
+                }
+            }
+            chHtml += '</div>';
+            if (has) html += chHtml;
+            html += '</div>';
+            return html;
+        }
+
+        function renderTrie(highlight = []) {
+            const cont = document.getElementById('trie');
+            cont.innerHTML = buildTrieHTML(root, "", highlight);
+        }
+
+        function renderResults(matches) {
+            const cont = document.getElementById('match-list');
+            let html = '';
+            for (let p in matches) {
+                html += `<div><strong>${p}</strong>: [${matches[p].join(', ')}]</div>`;
+            }
+            cont.innerHTML = html || 'No matches yet';
+        }
+
+        function renderStep(idx) {
+            stepIdx = Math.max(0, Math.min(idx, steps.length - 1));
+            const step = steps[stepIdx];
+
+            document.getElementById('action').innerHTML = step.panel;
+            renderText(step.matches || {});
+            renderTrie(step.highlight || []);
+            renderResults(step.matches || {});
+
+            const logEl = document.getElementById('log');
+            logEl.innerHTML = steps.slice(0, stepIdx + 1).map(s => `<div>${s.log}</div>`).join('');
+            logEl.scrollTop = logEl.scrollHeight;
+        }
+
+        function nextStep() {
+            if (stepIdx < steps.length - 1) renderStep(stepIdx + 1);
+            else pause();
+        }
+
+        function prevStep() {
+            if (stepIdx > 0) renderStep(stepIdx - 1);
+        }
+
+        function togglePlay() {
+            const btn = document.getElementById('play-btn');
+            if (isPlaying) {
+                pause();
+            } else {
+                isPlaying = true;
+                btn.textContent = '❚❚ Pause';
+                const speedMap = [1100, 550, 280];
+                timer = setInterval(() => {
+                    if (stepIdx < steps.length - 1) nextStep();
+                    else pause();
+                }, speedMap[document.getElementById('speed').value]);
+            }
+        }
+
+        function pause() {
+            clearInterval(timer);
+            isPlaying = false;
+            document.getElementById('play-btn').textContent = '▶ Play';
+        }
+
+        function resetViz() {
+            pause();
+            stepIdx = 0;
+            renderStep(0);
+        }
+
+        function loadExample(n) {
+            const examples = [
+                {
+                    text: "ababc",
+                    patterns: ["ab", "bc", "abc"]
+                },
+                {
+                    text: "hello",
+                    patterns: ["he", "ll", "lo", "xyz"]
+                }
+            ];
+            const ex = examples[n];
+            generateSteps(ex.text, ex.patterns);
+            resetViz();
+        }
+
+        window.onload = () => loadExample(0);
+    </script>
+</body>
+</html>

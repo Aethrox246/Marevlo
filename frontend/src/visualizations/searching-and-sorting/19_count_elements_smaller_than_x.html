@@ -1,0 +1,475 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Count Elements Smaller Than X - Visualization</title>
+    <style>
+        :root {
+            --bg-page: #0d1117;
+            --bg-surface: #161b22;
+            --bg-input: #0d1117;
+            --border-main: #30363d;
+            --btn-bg: #21262d;
+            --btn-hover: #2d333b;
+            --text-main: #c9d1d9;
+            --text-dim: #8b949e;
+            --text-log: #58a6ff;
+            --accent-orange: #e3b341;
+            --accent-blue: #388bfd;
+            --accent-green: #3fb950;
+            --accent-red: #f85149;
+            --accent-purple: #a371f7;
+        }
+
+        * { box-sizing: border-box; }
+        body {
+            background-color: var(--bg-page);
+            color: var(--text-main);
+            font-family: system-ui, -apple-system, sans-serif;
+            margin: 0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            min-height: 100vh;
+            padding-bottom: 40px;
+        }
+
+        /* ROW 1: INPUT BAR */
+        .input-bar {
+            width: 100%;
+            background-color: var(--bg-surface);
+            padding: 12px 16px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 8px;
+            border-bottom: 1px solid var(--border-main);
+            flex-wrap: wrap;
+        }
+        label.ui-label { font-family: 'Courier New', monospace; font-size: 13px; color: var(--text-dim); }
+        input[type="text"], input[type="number"] {
+            background: var(--bg-input);
+            border: 1px solid var(--border-main);
+            color: var(--text-main);
+            height: 32px;
+            border-radius: 6px;
+            padding: 0 10px;
+            font-size: 13px;
+        }
+        .arr-input { width: 320px; }
+        .x-input { width: 80px; }
+
+        button {
+            height: 32px; border-radius: 6px; padding: 0 14px; background: var(--btn-bg);
+            border: 1px solid var(--border-main); color: var(--text-main); font-size: 13px; cursor: pointer;
+            transition: background 0.2s ease;
+        }
+        button:hover { background: var(--btn-hover); }
+
+        /* ROW 2: ARRAY TILES */
+        .visual-container { margin-top: 30px; display: flex; flex-direction: column; align-items: center; gap: 20px; width: 100%; }
+        .tiles-wrapper { display: flex; gap: 12px; flex-wrap: wrap; justify-content: center; max-width: 800px; min-height: 80px; position: relative;}
+        
+        .tile-unit { display: flex; flex-direction: column; align-items: center; gap: 4px; position: relative; }
+        .tile {
+            min-width: 48px; height: 48px; display: flex; align-items: center; justify-content: center;
+            border-radius: 6px; font-size: 16px; font-weight: 600; font-family: 'Courier New', monospace;
+            transition: all 0.3s ease; border: 2px solid var(--border-main); background: #21262d;
+            color: var(--text-main);
+        }
+        .tile-index { font-size: 11px; color: var(--text-dim); font-family: monospace; }
+        
+        /* Highlight States */
+        .tile.search-space { background: #0d2244; border-color: var(--accent-blue); }
+        .tile.candidate { background: #2a1600; border-color: var(--accent-orange); color: var(--accent-orange); transform: scale(1.15); box-shadow: 0 0 12px rgba(227, 179, 65, 0.4); z-index: 2; }
+        .tile.temp-match { background: #0f2a1a; border-color: var(--accent-green); color: var(--accent-green); border-style: dashed; z-index: 2;}
+        .tile.winning { background: #0f2a1a; border-color: var(--accent-green); color: var(--accent-green); transform: scale(1.15); box-shadow: 0 0 12px var(--accent-green); z-index: 3;}
+        .tile.eliminated { opacity: 0.2; background: #161b22; border-color: var(--border-main); color: var(--text-dim); }
+
+        /* Dummy Tile for Out of Bounds Insertion */
+        .tile-unit.dummy-tile { opacity: 0.5; }
+        .tile-unit.dummy-tile .tile { border-style: dotted; background: transparent; }
+
+        /* Pointers */
+        .ptr-container { display: flex; flex-direction: column; align-items: center; position: absolute; bottom: -50px; gap: 2px; font-size: 11px; font-family: monospace; font-weight: bold; transition: all 0.3s; }
+        .ptr-left { color: var(--accent-purple); }
+        .ptr-mid { color: var(--accent-orange); }
+        .ptr-right { color: var(--accent-blue); }
+        .ptr-arrow { font-size: 16px; line-height: 10px; margin-bottom: 2px; color: var(--text-dim); }
+
+        /* ROW 3: PANEL */
+        .action-panel {
+            margin-top: 40px; background: var(--bg-surface); border: 1px solid var(--border-main);
+            border-radius: 6px; padding: 12px 20px; width: 680px; text-align: center; font-family: monospace; min-height: 70px;
+            display: flex; flex-direction: column; justify-content: center; font-size: 15px; line-height: 1.5;
+        }
+
+        /* ROW 4: INFO PANEL */
+        .info-panel { margin-top: 10px; display: flex; gap: 10px; flex-wrap: wrap; justify-content: center; }
+        .info-cell {
+            background: var(--bg-surface); border: 1px solid var(--border-main); border-radius: 6px;
+            padding: 8px 14px; display: flex; flex-direction: column; align-items: center; min-width: 90px; gap: 4px;
+        }
+        .info-label { font-size: 11px; color: var(--text-dim); }
+        .info-value { font-family: monospace; font-size: 15px; font-weight: 700; text-align: center; }
+
+        /* ROW 5: RESULT DISPLAY */
+        .result-display { margin-top: 10px; display: flex; flex-direction: column; align-items: center; }
+        #res-val { font-size: 18px; color: var(--text-dim); font-family: monospace; transition: all 0.3s; font-weight: bold; }
+        .pop { animation: popAnim 400ms ease; color: var(--accent-green) !important; font-size: 24px !important; text-shadow: 0 0 12px var(--accent-green); }
+
+        @keyframes popAnim { 0%{transform:scale(1)} 50%{transform:scale(1.15)} 100%{transform:scale(1)} }
+
+        /* ROW 6: STATUS BAR */
+        .status-bar { margin-top: 8px; font-size: 13px; color: var(--text-dim); height: 1.2em; text-align: center; width: 600px;}
+
+        /* ROW 7: CONTROLS */
+        .controls { margin-top: 24px; display: flex; align-items: center; gap: 8px; }
+        input[type="range"] { accent-color: var(--accent-blue); width: 100px; cursor: pointer; }
+
+        /* ROW 8: LEGEND */
+        .legend { margin-top: 12px; display: flex; gap: 16px; flex-wrap: wrap; justify-content: center; max-width: 800px; }
+        .legend-item { display: flex; align-items: center; font-size: 12px; color: var(--text-dim); }
+        .dot { width: 10px; height: 10px; border-radius: 2px; margin-right: 6px; display: inline-block; }
+
+        /* ROW 9: LOG PANEL */
+        .log-panel {
+            margin-top: 12px; background: var(--bg-page); border: 1px solid var(--border-main);
+            border-radius: 6px; padding: 12px 16px; width: 700px; max-width: 90%; height: 120px;
+            overflow-y: auto; font-family: 'Courier New', monospace; font-size: 13px;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="input-bar">
+        <label class="ui-label">arr =</label>
+        <input type="text" id="arr-input" class="arr-input" placeholder="3, 7, 1, 9, 4">
+        <label class="ui-label">X =</label>
+        <input type="number" id="x-input" class="x-input" placeholder="5">
+        <button onclick="loadCustom()">Load</button>
+        <button onclick="loadExample([3, 7, 1, 9, 4], 5)">Ex 1</button>
+        <button onclick="loadExample([10, 20, 30, 40], 25)">Ex 2</button>
+    </div>
+
+    <div class="visual-container">
+        <div class="ui-label">Array State:</div>
+        <div class="tiles-wrapper" id="tiles-container"></div>
+    </div>
+
+    <div class="action-panel" id="main-panel">—</div>
+
+    <div class="info-panel">
+        <div class="info-cell">
+            <span class="info-label">left</span>
+            <span class="info-value" id="val-left" style="color: var(--accent-purple);">—</span>
+        </div>
+        <div class="info-cell">
+            <span class="info-label">mid</span>
+            <span class="info-value" id="val-mid" style="color: var(--accent-orange);">—</span>
+        </div>
+        <div class="info-cell">
+            <span class="info-label">right</span>
+            <span class="info-value" id="val-right" style="color: var(--accent-blue);">—</span>
+        </div>
+        <div class="info-cell">
+            <span class="info-label">X</span>
+            <span class="info-value" id="val-x" style="color: var(--text-main);">—</span>
+        </div>
+        <div class="info-cell">
+            <span class="info-label">Count (< X)</span>
+            <span class="info-value" id="val-count" style="color: var(--accent-green);">—</span>
+        </div>
+    </div>
+
+    <div class="result-display">
+        <span class="ui-label" style="margin-bottom: 4px;">number of elements < X =</span>
+        <span id="res-val">—</span>
+    </div>
+
+    <div class="status-bar" id="status-text"></div>
+
+    <div class="controls">
+        <button onclick="reset()">↺ Reset</button>
+        <button onclick="back()">← Back</button>
+        <button onclick="togglePlay()" id="play-btn">Play</button>
+        <button onclick="next()">Next →</button>
+        <div class="controls" style="margin-top:0">
+            <span class="ui-label" style="margin-right:4px; font-size:11px">Speed</span>
+            <input type="range" id="speed-slider" min="0" max="2" value="1">
+        </div>
+    </div>
+
+    <div class="legend">
+        <div class="legend-item"><span class="dot" style="background:var(--bg-surface); border:1px solid var(--accent-blue)"></span> Search Space</div>
+        <div class="legend-item"><span class="dot" style="background:var(--bg-surface); border:1px solid var(--accent-orange)"></span> Midpoint</div>
+        <div class="legend-item"><span class="dot" style="background:var(--bg-surface); border:1px dashed var(--accent-green)"></span> Sorted State</div>
+        <div class="legend-item"><span class="dot" style="background:var(--accent-green); border:1px solid var(--accent-green)"></span> Final Elements < X</div>
+        <div class="legend-item"><span class="dot" style="background:var(--bg-surface); border:1px solid var(--border-main); opacity:0.5"></span> Eliminated</div>
+    </div>
+
+    <div class="log-panel" id="log"></div>
+
+    <script>
+        let originalArr = [3, 7, 1, 9, 4];
+        let targetX = 5;
+        let steps = [];
+        let stepIndex = 0;
+        let timer = null;
+        const delays = [2000, 1000, 500];
+
+        function init() { loadExample([3, 7, 1, 9, 4], 5); }
+
+        function loadExample(newArr, newX) {
+            originalArr = [...newArr];
+            targetX = parseInt(newX);
+            document.getElementById('arr-input').value = originalArr.join(', ');
+            document.getElementById('x-input').value = targetX;
+            generateSteps();
+            reset();
+        }
+
+        function loadCustom() {
+            const valStr = document.getElementById('arr-input').value;
+            const xStr = document.getElementById('x-input').value;
+            const parsedArr = valStr.split(',').map(x => parseInt(x.trim())).filter(x => !isNaN(x));
+            const parsedX = parseInt(xStr);
+            
+            if (parsedArr.length > 0 && !isNaN(parsedX)) {
+                loadExample(parsedArr.slice(0, 20), parsedX); 
+            } else {
+                alert("Please enter a valid array of numbers and an X value.");
+            }
+        }
+
+        function generateSteps() {
+            steps = [];
+            const n = originalArr.length;
+            if (n === 0) return;
+
+            let curArr = [...originalArr];
+
+            const getArrStates = (arr, l, r, m) => {
+                let states = arr.map((_, idx) => {
+                    if (idx === m) return 'candidate';
+                    if (idx >= l && idx <= r) return 'search-space';
+                    return 'eliminated';
+                });
+                // State for the dummy (n-th) boundary element
+                states.push('eliminated'); 
+                return states;
+            };
+
+            // STEP 0: INIT
+            steps.push({
+                type: 'init', arr: [...curArr], left: '—', right: '—', mid: '—', valMid: '—', count: '—',
+                arrStates: curArr.map(() => 'search-space').concat(['eliminated']),
+                panel: `<b>Count elements smaller than X</b><br>To do this in O(log n) time, we must first sort the array.`,
+                statusText: `Original array state.`,
+                log: `n=${n}, X=${targetX}. Finding count of elements < X.\nInitial Array: [${curArr.join(', ')}]`,
+                logColor: 'var(--text-dim)'
+            });
+
+            // STEP 1: SORT
+            curArr.sort((a, b) => a - b);
+            steps.push({
+                type: 'sort', arr: [...curArr], left: '—', right: '—', mid: '—', valMid: '—', count: '—',
+                arrStates: curArr.map(() => 'temp-match').concat(['eliminated']),
+                panel: `<b>Step 1: Sort the array.</b><br>The array is now sorted in ascending order. (O(N log N) time).`,
+                statusText: `Array sorted in non-decreasing order.`,
+                log: `Step 1: Array sorted.\nSorted Array: [${curArr.join(', ')}]`,
+                logColor: 'var(--accent-green)'
+            });
+
+            let left = 0;
+            let right = n - 1;
+
+            // STEP 2: BS INIT
+            steps.push({
+                type: 'bs-init', arr: [...curArr], left: left, right: right, mid: '—', valMid: '—', count: '—',
+                arrStates: getArrStates(curArr, left, right, -1),
+                panel: `<b>Step 2: Binary Search for Insertion Point.</b><br>In a sorted array, the index where X would be inserted is exactly the count of elements smaller than X.<br>Initialize <code>left = 0</code>, <code>right = ${right}</code>.`,
+                statusText: `Starting binary search...`,
+                log: `Step 2: Binary Search for insertion point of ${targetX}.\nInitialize left=${left}, right=${right}.`,
+                logColor: 'var(--text-dim)'
+            });
+
+            while (left <= right) {
+                let mid = Math.floor((left + right) / 2);
+                let valMid = curArr[mid];
+
+                // EVALUATE
+                steps.push({
+                    type: 'eval', arr: [...curArr], left: left, right: right, mid: mid, valMid: valMid, count: '—',
+                    arrStates: getArrStates(curArr, left, right, mid),
+                    panel: `Calculate midpoint: <code>mid = floor((${left} + ${right}) / 2) = ${mid}</code>.<br>Compare <code>arr[mid]</code> (<b>${valMid}</b>) with X (<b>${targetX}</b>).`,
+                    statusText: `Checking midpoint at index ${mid}...`,
+                    log: `\nRange [${left}, ${right}]: Calculate mid=${mid}.\n  Compare arr[${mid}]=${valMid} with X=${targetX}.`,
+                    logColor: 'var(--text-main)'
+                });
+
+                if (valMid < targetX) {
+                    let oldLeft = left;
+                    left = mid + 1;
+                    steps.push({
+                        type: 'go-right', arr: [...curArr], left: left, right: right, mid: mid, valMid: valMid, count: '—',
+                        arrStates: getArrStates(curArr, left, right, -1),
+                        panel: `<span style="color:var(--accent-blue)"><code>${valMid} < ${targetX}</code></span>.<br>Element is strictly smaller than X. We need to find the first element >= X, so search <b>right</b>.<br>Update <code>left = mid + 1 = ${left}</code>.`,
+                        statusText: `arr[mid] < X. Moving left pointer to ${left}.`,
+                        log: `  ${valMid} < ${targetX}. Search right half. Update left = ${left}.`,
+                        logColor: 'var(--accent-blue)'
+                    });
+                } else {
+                    let oldRight = right;
+                    right = mid - 1;
+                    steps.push({
+                        type: 'go-left', arr: [...curArr], left: left, right: right, mid: mid, valMid: valMid, count: '—',
+                        arrStates: getArrStates(curArr, left, right, -1),
+                        panel: `<span style="color:var(--accent-orange)"><code>${valMid} >= ${targetX}</code></span>.<br>Element is greater than or equal to X. We need to search <b>left</b>.<br>Update <code>right = mid - 1 = ${right}</code>.`,
+                        statusText: `arr[mid] >= X. Moving right pointer to ${right}.`,
+                        log: `  ${valMid} >= ${targetX}. Search left half. Update right = ${right}.`,
+                        logColor: 'var(--accent-orange)'
+                    });
+                }
+            }
+
+            let count = left;
+
+            // FINAL STEP
+            let finalStates = curArr.map((_, i) => i < count ? 'winning' : 'eliminated');
+            finalStates.push('eliminated'); // for the dummy
+
+            steps.push({
+                type: 'final', arr: [...curArr], left: left, right: right, mid: '—', valMid: '—', count: count,
+                arrStates: finalStates,
+                panel: `<span style="color:var(--accent-green)">Binary Search Complete.</span> <code>left > right</code> (${left} > ${right}).<br>The insertion point is <b>${count}</b>, which means there are exactly <b>${count}</b> elements strictly smaller than ${targetX}.`,
+                complete: true,
+                finalStr: count.toString(),
+                statusText: `Done. Found ${count} elements smaller than X.`,
+                log: `\nLoop terminates (left > right).\nInsertion point (left) = ${count}.\nFinal Result: ${count} elements smaller than ${targetX}.`,
+                logColor: 'var(--accent-green)', bold: true
+            });
+        }
+
+        function renderStep(idx) {
+            const step = steps[idx];
+            if (!step) return;
+
+            const container = document.getElementById('tiles-container');
+            container.innerHTML = '';
+            
+            step.arrStates.forEach((state, i) => {
+                const wrapper = document.createElement('div');
+                wrapper.className = 'tile-unit';
+                if (i === step.arr.length) wrapper.classList.add('dummy-tile');
+                
+                const tile = document.createElement('div');
+                tile.className = `tile ${state}`;
+                tile.innerText = i < step.arr.length ? step.arr[i] : '∞';
+                
+                const idxLabel = document.createElement('div');
+                idxLabel.className = 'tile-index';
+                idxLabel.innerText = `[${i}]`;
+                
+                wrapper.append(tile, idxLabel);
+
+                // Add Pointers
+                const ptrs = [];
+                if (!step.complete && step.type !== 'init' && step.type !== 'sort') {
+                    if (step.left === i && step.left <= step.right + 1) ptrs.push('<div class="ptr-left">L</div>');
+                    if (step.mid === i && step.mid !== '—') ptrs.push('<div class="ptr-mid">M</div>');
+                    if (step.right === i && step.right >= -1 && step.right !== step.left) ptrs.push('<div class="ptr-right">R</div>');
+                    else if (step.right === i) ptrs.push('<div class="ptr-right">R</div>'); // stacked
+                }
+
+                if (ptrs.length > 0) {
+                    const ptrContainer = document.createElement('div');
+                    ptrContainer.className = 'ptr-container';
+                    ptrContainer.innerHTML = '<div class="ptr-arrow">↑</div>' + ptrs.join('');
+                    wrapper.appendChild(ptrContainer);
+                }
+
+                container.appendChild(wrapper);
+            });
+
+            if (!step.complete) {
+                container.style.marginBottom = "45px";
+            } else {
+                container.style.marginBottom = "0px";
+            }
+
+            document.getElementById('main-panel').innerHTML = step.panel;
+            document.getElementById('val-left').innerText = step.left;
+            document.getElementById('val-mid').innerText = step.mid;
+            document.getElementById('val-right').innerText = step.right;
+            document.getElementById('val-x').innerText = targetX;
+            document.getElementById('val-count').innerText = step.count;
+
+            const resVal = document.getElementById('res-val');
+            resVal.innerText = step.complete ? step.finalStr : '—';
+            
+            if (step.complete) {
+                resVal.className = 'pop';
+            } else {
+                resVal.className = '';
+            }
+
+            document.getElementById('status-text').innerText = step.statusText;
+
+            const logPanel = document.getElementById('log');
+            logPanel.innerHTML = '';
+            for (let k = 0; k <= idx; k++) {
+                if (steps[k].log) {
+                    const line = document.createElement('div');
+                    line.style.marginBottom = '2px';
+                    line.style.whiteSpace = 'pre-wrap';
+                    if (steps[k].logColor) line.style.color = steps[k].logColor;
+                    if (steps[k].bold) line.style.fontWeight = 'bold';
+                    line.innerText = steps[k].log;
+                    logPanel.appendChild(line);
+                }
+            }
+            logPanel.scrollTop = logPanel.scrollHeight;
+        }
+
+        function next() {
+            if (stepIndex < steps.length - 1) {
+                stepIndex++;
+                renderStep(stepIndex);
+            } else pause();
+        }
+
+        function back() {
+            if (stepIndex > 0) {
+                stepIndex--;
+                renderStep(stepIndex);
+            }
+        }
+
+        function reset() {
+            pause();
+            stepIndex = 0;
+            renderStep(0);
+        }
+
+        function togglePlay() {
+            const btn = document.getElementById('play-btn');
+            if (timer) pause();
+            else {
+                btn.innerText = 'Pause';
+                if (stepIndex >= steps.length - 1) stepIndex = 0;
+                timer = setInterval(next, delays[document.getElementById('speed-slider').value]);
+            }
+        }
+
+        function pause() {
+            clearInterval(timer);
+            timer = null;
+            document.getElementById('play-btn').innerText = 'Play';
+        }
+
+        window.onload = init;
+    </script>
+</body>
+</html>

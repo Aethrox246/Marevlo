@@ -411,26 +411,31 @@ async def profile_endpoint(
 
         tier = Tier(profile.tier)
         # Bandit summary
-        from app.mira.cognitive.bandit import ThompsonBandit, ExplanationStyle
+        from app.mira.cognitive.bandit import ThompsonBandit
+        from app.mira.models.schemas import ExplainStyle
 
-        bandit = ThompsonBandit.from_state(profile.bandit_state or {})
+        bandit_state = profile.bandit_state or {}
+        if isinstance(bandit_state, dict):
+            from app.mira.models.schemas import StyleBanditState
+            bandit_state = StyleBanditState(**bandit_state)
+        
+        # Get expected values for each style
+        expected_vals = ThompsonBandit.get_expected_values(bandit_state)
         bandit_stats = {}
-        max_ev = -1.0
-        dominant = None
-        for style in ExplanationStyle:
-            arm = bandit.arms.get(style)
-            if arm is None:
-                continue
-            ev = arm.alpha / max(arm.alpha + arm.beta, 1)
-            attempts = arm.alpha + arm.beta - 2  # pseudo-count priors
-            bandit_stats[style.value] = {
-                "expected_value": round(ev, 3),
-                "attempts": max(0, int(attempts)),
-                "successes": max(0, int(arm.alpha - 1)),
-            }
-            if ev > max_ev and attempts > 0:
-                max_ev = ev
-                dominant = style.value
+        for style in ExplainStyle:
+            if style.value in expected_vals:
+                ev = expected_vals[style.value]
+                arm = bandit_state.arms.get(style.value)
+                if arm:
+                    attempts = arm.alpha + arm.beta - 2  # pseudo-count priors
+                    bandit_stats[style.value] = {
+                        "expected_value": round(ev, 3),
+                        "attempts": max(0, int(attempts)),
+                        "successes": max(0, int(arm.alpha - 1)),
+                    }
+        
+        dominant = ThompsonBandit.get_dominant_style(bandit_state)
+        dominant = dominant.value if dominant else None
 
         # Top concepts by p_known
         beliefs = profile.beliefs or {}

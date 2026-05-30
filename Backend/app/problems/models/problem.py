@@ -30,7 +30,11 @@ class Problem(Base):
         lazy="noload",
     )
 
-    __table_args__ = (Index("idx_problems_difficulty", "difficulty"),)
+    __table_args__ = (
+        Index("idx_problems_difficulty", "difficulty"),
+        Index("idx_problems_created_at", "created_at"),
+        Index("idx_problems_slug", "slug"),
+    )
 
 
 class ProblemTestCase(Base):

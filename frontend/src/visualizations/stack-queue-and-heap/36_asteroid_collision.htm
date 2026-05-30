@@ -1,0 +1,391 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Asteroid Collision - Stack Simulation</title>
+    <style>
+        :root {
+            --bg-page: #0d1117;
+            --bg-surface: #161b22;
+            --bg-input: #0d1117;
+            --border-main: #30363d;
+            --btn-bg: #21262d;
+            --btn-hover: #2d333b;
+            --text-main: #c9d1d9;
+            --text-dim: #8b949e;
+            --accent-orange: #e3b341;
+            --accent-blue: #388bfd;
+            --accent-green: #3fb950;
+            --accent-red: #f85149;
+            --accent-purple: #a371f7;
+        }
+
+        * { box-sizing: border-box; }
+        body {
+            background-color: var(--bg-page);
+            color: var(--text-main);
+            font-family: system-ui, -apple-system, sans-serif;
+            margin: 0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            min-height: 100vh;
+            padding-bottom: 40px;
+        }
+
+        .input-bar {
+            width: 100%;
+            background-color: var(--bg-surface);
+            padding: 12px 16px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 12px;
+            border-bottom: 1px solid var(--border-main);
+            flex-wrap: wrap;
+        }
+        label.ui-label { font-family: 'Courier New', monospace; font-size: 13px; color: var(--text-dim); }
+        input[type="text"] {
+            background: var(--bg-input);
+            border: 1px solid var(--border-main);
+            color: var(--text-main);
+            height: 32px;
+            border-radius: 6px;
+            padding: 0 12px;
+            width: 380px;
+            font-size: 14px;
+        }
+
+        button {
+            height: 32px; border-radius: 6px; padding: 0 14px; background: var(--btn-bg);
+            border: 1px solid var(--border-main); color: var(--text-main); font-size: 13px; cursor: pointer;
+        }
+        button:hover { background: var(--btn-hover); }
+
+        .visual-container { 
+            margin-top: 30px; 
+            display: flex; 
+            flex-direction: column; 
+            align-items: center; 
+            gap: 30px; 
+            width: 100%; 
+            max-width: 1100px; 
+        }
+
+        .asteroids {
+            display: flex;
+            gap: 8px;
+            padding: 20px;
+            background: #161b22;
+            border: 3px solid var(--accent-blue);
+            border-radius: 12px;
+        }
+        .asteroid {
+            width: 58px; height: 58px; display: flex; align-items: center; justify-content: center;
+            border-radius: 50%; font-size: 22px; font-weight: 700; font-family: monospace;
+            border: 3px solid var(--border-main); background: #21262d; color: var(--text-main);
+            position: relative;
+        }
+        .asteroid.right { border-color: var(--accent-green); }
+        .asteroid.left { border-color: var(--accent-red); }
+        .asteroid.current { transform: scale(1.15); box-shadow: 0 0 15px var(--accent-orange); }
+
+        .stack-container {
+            background: #161b22;
+            border: 3px solid var(--accent-purple);
+            border-radius: 12px;
+            padding: 20px;
+            width: 420px;
+        }
+        .stack-label { color: var(--accent-purple); font-weight: bold; text-align: center; margin-bottom: 12px; }
+        .stack-box {
+            background: #21262d;
+            border: 2px solid var(--border-main);
+            border-radius: 10px;
+            padding: 16px;
+            min-height: 260px;
+            display: flex;
+            flex-direction: column-reverse;
+            gap: 10px;
+            align-items: center;
+        }
+        .stack-tile {
+            width: 62px; height: 62px; display: flex; align-items: center; justify-content: center;
+            border-radius: 50%; font-size: 24px; font-weight: 700; font-family: monospace;
+            border: 3px solid var(--accent-purple); background: #1a1f2e; color: var(--accent-purple);
+        }
+
+        .action-panel {
+            margin-top: 20px; background: var(--bg-surface); border: 1px solid var(--border-main);
+            border-radius: 8px; padding: 20px 28px; width: 780px; min-height: 160px;
+            font-family: monospace; font-size: 15px; line-height: 1.65;
+        }
+
+        .controls { margin-top: 20px; display: flex; align-items: center; gap: 14px; flex-wrap: wrap; justify-content: center; }
+        input[type="range"] { accent-color: var(--accent-blue); width: 180px; }
+
+        .legend { margin-top: 15px; display: flex; gap: 22px; flex-wrap: wrap; justify-content: center; font-size: 13px; }
+        .legend-item { display: flex; align-items: center; gap: 8px; }
+
+        .log-panel {
+            margin-top: 20px; background: var(--bg-page); border: 1px solid var(--border-main);
+            border-radius: 8px; padding: 16px 20px; width: 780px; height: 210px;
+            overflow-y: auto; font-family: 'Courier New', monospace; font-size: 13.5px; line-height: 1.55;
+        }
+
+        @keyframes pulse { 0%,100% { transform: scale(1); } 50% { transform: scale(1.12); } }
+    </style>
+</head>
+<body>
+
+    <div class="input-bar">
+        <label class="ui-label">Asteroids:</label>
+        <input type="text" id="input-asteroids" value="[5,10,-5]" style="width:380px;">
+        <button onclick="loadCustom()">Load</button>
+        <button onclick="loadExample(0)">Ex 1</button>
+        <button onclick="loadExample(1)">Ex 2</button>
+    </div>
+
+    <div class="visual-container">
+        <div>
+            <div class="ui-label">Asteroids (Left to Right)</div>
+            <div class="asteroids" id="asteroids"></div>
+        </div>
+
+        <div class="stack-container">
+            <div class="stack-label">Stack (Surviving Asteroids)</div>
+            <div class="stack-box" id="stack-box"></div>
+        </div>
+    </div>
+
+    <div class="action-panel" id="main-panel">—</div>
+
+    <div class="controls">
+        <button onclick="reset()">↺ Reset</button>
+        <button onclick="back()">← Back</button>
+        <button onclick="togglePlay()" id="play-btn">▶ Play</button>
+        <button onclick="next()">Next →</button>
+        <div>
+            <span class="ui-label" style="margin-right:6px;font-size:12px">Speed</span>
+            <input type="range" id="speed-slider" min="0" max="2" value="1">
+        </div>
+    </div>
+
+    <div class="legend">
+        <div class="legend-item"><span style="display:inline-block;width:18px;height:18px;background:#0f2a1a;border:3px solid #3fb950;border-radius:50%;"></span> Right-moving (+)</div>
+        <div class="legend-item"><span style="display:inline-block;width:18px;height:18px;background:#2a0f0f;border:3px solid #f85149;border-radius:50%;"></span> Left-moving (-)</div>
+    </div>
+
+    <div class="log-panel" id="log"></div>
+
+    <script>
+        let asteroids = [];
+        let stack = [];
+        let steps = [];
+        let stepIndex = 0;
+        let timer = null;
+        const delays = [1600, 850, 400];
+
+        const examples = [
+            [5, 10, -5],
+            [8, -8]
+        ];
+
+        function generateSteps(input) {
+            asteroids = [...input];
+            stack = [];
+            steps = [];
+
+            steps.push({
+                type: 'init',
+                asteroids: [...asteroids],
+                stack: [],
+                panel: `<b>Asteroid Collision (Stack)</b><br>Input: [${asteroids.join(', ')}]`,
+                statusText: `Start`,
+                log: `Start`,
+                logColor: 'var(--text-dim)'
+            });
+
+            for (let i = 0; i < asteroids.length; i++) {
+                const curr = asteroids[i];
+
+                steps.push({
+                    type: 'process',
+                    asteroids: [...asteroids],
+                    stack: [...stack],
+                    i: i,
+                    curr: curr,
+                    panel: `Processing asteroid <b>${curr}</b>`,
+                    statusText: `Asteroid ${curr}`,
+                    log: `  Process ${curr}`,
+                    logColor: 'var(--accent-orange)'
+                });
+
+                if (curr > 0) {
+                    stack.push(curr);
+                    steps.push({
+                        type: 'push',
+                        asteroids: [...asteroids],
+                        stack: [...stack],
+                        i: i,
+                        panel: `Pushed <b>${curr}</b> (positive)`,
+                        statusText: `Push ${curr}`,
+                        log: `    Push ${curr}`,
+                        logColor: 'var(--accent-green)'
+                    });
+                    continue;
+                }
+
+                // Negative asteroid
+                while (stack.length > 0 && stack[stack.length-1] > 0 && Math.abs(curr) > stack[stack.length-1]) {
+                    stack.pop();
+                    steps.push({
+                        type: 'pop',
+                        asteroids: [...asteroids],
+                        stack: [...stack],
+                        i: i,
+                        panel: `Destroyed positive asteroid`,
+                        statusText: `Pop`,
+                        log: `    Destroy positive`,
+                        logColor: 'var(--accent-red)'
+                    });
+                }
+
+                if (stack.length > 0 && stack[stack.length-1] > 0) {
+                    if (Math.abs(curr) === stack[stack.length-1]) {
+                        stack.pop();
+                        steps.push({
+                            type: 'destroy',
+                            asteroids: [...asteroids],
+                            stack: [...stack],
+                            i: i,
+                            panel: `<b>Equal size → both destroyed</b>`,
+                            statusText: `Both destroyed`,
+                            log: `    Equal → both destroyed`,
+                            logColor: 'var(--accent-red)'
+                        });
+                    }
+                    // else: current destroyed, do nothing
+                } else {
+                    stack.push(curr);
+                    steps.push({
+                        type: 'push',
+                        asteroids: [...asteroids],
+                        stack: [...stack],
+                        i: i,
+                        panel: `Pushed <b>${curr}</b> (survived)`,
+                        statusText: `Push ${curr}`,
+                        log: `    Push ${curr}`,
+                        logColor: 'var(--accent-green)'
+                    });
+                }
+            }
+
+            steps.push({
+                type: 'final',
+                asteroids: [...asteroids],
+                stack: [...stack],
+                panel: `<b>Final: [${stack.join(', ')}]</b>`,
+                statusText: `Done`,
+                log: `\nFinal stack: [${stack.join(', ')}]`,
+                logColor: 'var(--accent-green)',
+                bold: true
+            });
+        }
+
+        function renderAsteroids(highlightIdx) {
+            const container = document.getElementById('asteroids');
+            container.innerHTML = '';
+            asteroids.forEach((val, idx) => {
+                const ast = document.createElement('div');
+                ast.className = `asteroid ${val > 0 ? 'right' : 'left'} ${idx === highlightIdx ? 'current' : ''}`;
+                ast.textContent = val;
+                container.appendChild(ast);
+            });
+        }
+
+        function renderStack() {
+            const container = document.getElementById('stack-box');
+            container.innerHTML = '';
+            for (let i = stack.length - 1; i >= 0; i--) {
+                const tile = document.createElement('div');
+                tile.className = 'stack-tile';
+                tile.textContent = stack[i];
+                container.appendChild(tile);
+            }
+        }
+
+        function renderStep(idx) {
+            const step = steps[idx];
+            if (!step) return;
+
+            stack = [...step.stack];
+            renderAsteroids(step.i !== undefined ? step.i : -1);
+            renderStack();
+
+            document.getElementById('main-panel').innerHTML = step.panel || '—';
+
+            const logPanel = document.getElementById('log');
+            logPanel.innerHTML = '';
+            for (let k = 0; k <= idx; k++) {
+                const s = steps[k];
+                if (s.log) {
+                    const line = document.createElement('div');
+                    line.style.marginBottom = '5px';
+                    line.style.whiteSpace = 'pre-wrap';
+                    if (s.logColor) line.style.color = s.logColor;
+                    if (s.bold) line.style.fontWeight = 'bold';
+                    line.innerText = s.log;
+                    logPanel.appendChild(line);
+                }
+            }
+            logPanel.scrollTop = logPanel.scrollHeight;
+        }
+
+        function next() { if (stepIndex < steps.length - 1) { stepIndex++; renderStep(stepIndex); } else pause(); }
+        function back() { if (stepIndex > 0) { stepIndex--; renderStep(stepIndex); } }
+        function reset() { pause(); stepIndex = 0; renderStep(0); }
+
+        function togglePlay() {
+            const btn = document.getElementById('play-btn');
+            if (timer) pause();
+            else {
+                btn.innerText = 'Pause';
+                if (stepIndex >= steps.length - 1) stepIndex = 0;
+                timer = setInterval(next, delays[document.getElementById('speed-slider').value]);
+            }
+        }
+
+        function pause() {
+            clearInterval(timer);
+            timer = null;
+            document.getElementById('play-btn').innerText = '▶ Play';
+        }
+
+        function loadCustom() {
+            try {
+                const input = JSON.parse(document.getElementById('input-asteroids').value);
+                if (Array.isArray(input)) {
+                    generateSteps(input);
+                    reset();
+                }
+            } catch(e) {
+                alert("Enter valid array like [5,10,-5]");
+            }
+        }
+
+        function loadExample(idx) {
+            document.getElementById('input-asteroids').value = JSON.stringify(examples[idx]);
+            generateSteps(examples[idx]);
+            reset();
+        }
+
+        function init() {
+            loadExample(0);
+        }
+
+        window.onload = init;
+    </script>
+</body>
+</html>

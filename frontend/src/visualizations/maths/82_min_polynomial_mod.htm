@@ -1,0 +1,219 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Min Polynomial Mod - Visualization</title>
+    <style>
+        :root{--bg-page:#0d1117;--bg-surface:#161b22;--bg-input:#0d1117;--border-main:#30363d;
+            --btn-bg:#21262d;--btn-hover:#2d333b;--text-main:#c9d1d9;--text-dim:#8b949e;
+            --accent-orange:#e3b341;--accent-blue:#388bfd;--accent-green:#3fb950;
+            --accent-red:#f85149;--accent-purple:#a371f7;}
+        *{box-sizing:border-box;}
+        body{background:var(--bg-page);color:var(--text-main);font-family:system-ui,sans-serif;
+            margin:0;display:flex;flex-direction:column;align-items:center;min-height:100vh;padding-bottom:40px;}
+        .input-bar{width:100%;background:var(--bg-surface);padding:12px 16px;display:flex;
+            justify-content:center;align-items:center;gap:8px;border-bottom:1px solid var(--border-main);flex-wrap:wrap;}
+        label.ui-label{font-family:monospace;font-size:13px;color:var(--text-dim);}
+        input[type="text"],input[type="number"]{background:var(--bg-input);border:1px solid var(--border-main);
+            color:var(--text-main);height:32px;border-radius:6px;padding:0 10px;font-size:13px;}
+        button{height:32px;padding:0 14px;background:var(--btn-bg);border:1px solid var(--border-main);
+            color:var(--text-main);border-radius:6px;cursor:pointer;font-size:13px;}
+        button:hover{background:var(--btn-hover);}
+        .visual-container{margin-top:28px;width:100%;text-align:center;}
+        .poly-display{font-family:monospace;font-size:18px;margin:12px 0;color:var(--accent-blue);}
+        .matrix-table{border-collapse:collapse;margin:0 auto;}
+        .matrix-table td{border:1px solid var(--border-main);padding:8px 14px;font-family:monospace;
+            font-size:15px;text-align:center;background:var(--btn-bg);transition:all 0.3s;min-width:50px;}
+        .matrix-table td.active{background:#0d2244;color:var(--accent-blue);border-color:var(--accent-blue);}
+        .matrix-table td.pivot{background:#2a1600;color:var(--accent-orange);border-color:var(--accent-orange);}
+        .matrix-table td.zero{color:var(--text-dim);}
+        .matrix-table th{padding:6px 14px;font-size:12px;color:var(--text-dim);font-family:monospace;
+            border-bottom:1px solid var(--border-main);}
+        .info-panel{margin-top:16px;display:flex;gap:14px;flex-wrap:wrap;justify-content:center;}
+        .info-cell{background:var(--bg-surface);border:1px solid var(--border-main);border-radius:6px;
+            padding:8px 16px;min-width:120px;}
+        .info-label{font-size:11px;color:var(--text-dim);}
+        .info-value{font-family:monospace;font-size:16px;font-weight:700;}
+        .result-box{margin-top:16px;background:var(--bg-surface);border:1px solid var(--border-main);
+            border-radius:8px;padding:12px 28px;display:inline-block;font-family:monospace;font-size:16px;}
+        .action-panel{margin-top:20px;background:var(--bg-surface);border:1px solid var(--border-main);
+            border-radius:6px;padding:14px 22px;width:860px;max-width:96%;min-height:90px;
+            font-family:monospace;font-size:14px;line-height:1.6;text-align:center;}
+        .controls{margin-top:20px;display:flex;align-items:center;gap:10px;}
+        .log-panel{margin-top:12px;background:var(--bg-page);border:1px solid var(--border-main);
+            border-radius:6px;padding:12px 16px;width:860px;max-width:96%;height:130px;overflow-y:auto;
+            font-family:monospace;font-size:13px;}
+    </style>
+</head>
+<body>
+<div class="input-bar">
+    <label class="ui-label">Sequence a(n) mod p (comma-sep):</label>
+    <input type="text" id="inp-seq" value="1,3,2,6,4,5,1,3,2,6,4,5" style="width:260px">
+    <label class="ui-label">p =</label>
+    <input type="number" id="inp-p" value="7" min="2" style="width:70px">
+    <button onclick="loadCustom()">Find</button>
+    <button onclick="loadExample(0)">Ex 1: period-6 mod 7</button>
+    <button onclick="loadExample(1)">Ex 2: Fibonacci mod 5</button>
+</div>
+
+<div class="visual-container">
+    <div class="poly-display" id="poly-display">Min Polynomial: —</div>
+    <div style="font-size:12px;color:var(--text-dim);font-family:monospace;margin-bottom:10px">
+        Berlekamp-Massey: Find shortest LFSR that generates the sequence
+    </div>
+    <div style="overflow-x:auto;max-width:92vw">
+        <table class="matrix-table" id="state-table">
+            <thead><tr id="tbl-head"></tr></thead>
+            <tbody id="tbl-body"></tbody>
+        </table>
+    </div>
+    <div class="info-panel">
+        <div class="info-cell"><div class="info-label">Step</div><div class="info-value" id="inf-step">—</div></div>
+        <div class="info-cell"><div class="info-label">Discrepancy</div><div class="info-value" id="inf-delta">—</div></div>
+        <div class="info-cell"><div class="info-label">LFSR length</div><div class="info-value" id="inf-len">—</div></div>
+        <div class="info-cell"><div class="info-label">Degree</div><div class="info-value" id="inf-deg" style="color:var(--accent-green)">—</div></div>
+    </div>
+    <div class="result-box" id="result-box">Min polynomial = ?</div>
+</div>
+
+<div class="action-panel" id="main-panel">Click <b>▶ Play</b> or <b>Next</b> to start.</div>
+<div class="controls">
+    <button onclick="reset()">↺ Reset</button>
+    <button onclick="back()">← Back</button>
+    <button onclick="togglePlay()" id="play-btn">▶ Play</button>
+    <button onclick="next()">Next →</button>
+    <span class="ui-label">Speed</span>
+    <input type="range" id="speed-slider" min="0" max="2" value="1">
+</div>
+<div class="log-panel" id="log"></div>
+
+<script>
+    let steps=[], stepIdx=0, timer=null;
+    const delays=[1400,700,350];
+
+    // Berlekamp-Massey over GF(p)
+    function berlekampMassey(s, p) {
+        const n=s.length;
+        let C=[1], B=[1], L=0, b=1, x=1;
+        const history=[];
+
+        function modp(v){ return ((v%p)+p)%p; }
+        function modinv(a,m){
+            // Extended Euclidean
+            let [old_r,r]=[a,m], [old_s,sv]=[1,0];
+            while(r!==0){ const q=Math.floor(old_r/r); [old_r,r]=[r,old_r-q*r]; [old_s,sv]=[sv,old_s-q*sv]; }
+            return modp(old_s);
+        }
+
+        for(let i=0;i<n;i++){
+            let delta=modp(s[i]);
+            for(let j=1;j<C.length;j++) delta=modp(delta+C[j]*s[i-j]);
+            history.push({i,delta,C:[...C],L,B:[...B],b});
+            if(delta===0){ x++; continue; }
+            const T=[...C];
+            const coef=modp(delta*modinv(b,p));
+            while(C.length < B.length+x) C.push(0);
+            for(let j=x;j<B.length+x;j++) C[j]=modp(C[j]-coef*B[j-x]);
+            if(2*L<=i){ L=i+1-L; B=T; b=delta; x=1; } else x++;
+        }
+        return {C,L,history};
+    }
+
+    function polyStr(C, p) {
+        if(C.length<=1) return '1';
+        let parts=['1'];
+        for(let i=1;i<C.length;i++){
+            const c=(((-C[i])%p)+p)%p;
+            if(c===0) continue;
+            parts.push(c===1?`x^${i}`:`${c}x^${i}`);
+        }
+        return parts.join(' + ');
+    }
+
+    function generateSteps(seq, p) {
+        steps=[];
+        const add=(panel,log,color,extra={})=>steps.push({panel,log,logColor:color,...extra});
+
+        add(`<b>Minimal Polynomial mod ${p}</b><br>Sequence: [${seq.join(',')}]<br>Using Berlekamp-Massey algorithm to find shortest LFSR.`,
+            `Start BM on [${seq.join(',')}] mod ${p}`,'var(--text-dim)',
+            {seq,C:[1],L:0,step:0,delta:null});
+
+        const {C,L,history}=berlekampMassey(seq,p);
+
+        history.forEach(h=>{
+            if(h.delta===0){
+                add(`Step ${h.i}: s[${h.i}]=${seq[h.i]}, discrepancy = <b>0</b> → No update needed.`,
+                    `i=${h.i}: delta=0, C unchanged`,'var(--text-dim)',
+                    {seq,C:[...h.C],L:h.L,step:h.i+1,delta:0});
+            } else {
+                add(`Step ${h.i}: s[${h.i}]=${seq[h.i]}, discrepancy = <b style="color:var(--accent-orange)">${h.delta}</b> ≠ 0 → Update C`,
+                    `i=${h.i}: delta=${h.delta}, update C`,'var(--accent-orange)',
+                    {seq,C:[...h.C],L:h.L,step:h.i+1,delta:h.delta});
+            }
+        });
+
+        const poly=polyStr(C,p);
+        add(`<span style="color:var(--accent-green)">✅ Min polynomial found!<br>C = [${C.join(',')}]<br><b>p(x) = ${poly}</b><br>LFSR length = ${L}</span>`,
+            `Min poly: ${poly}, L=${L}`,'var(--accent-green)',
+            {seq,C:[...C],L,step:seq.length,delta:null,done:true,poly});
+    }
+
+    function renderStep(idx) {
+        const s=steps[idx];
+        if(!s) return;
+        // Table: show sequence with current position
+        const head=document.getElementById('tbl-head');
+        const body=document.getElementById('tbl-body');
+        head.innerHTML='<th>i</th>'+s.seq.map((_,i)=>`<th>${i}</th>`).join('');
+        body.innerHTML=
+            '<tr><td>s[i]</td>'+s.seq.map((v,i)=>`<td class="${i===s.step-1?'active':''}">${v}</td>`).join('')+'</tr>'+
+            '<tr><td>C[i]</td>'+s.C.map((v,i)=>`<td class="${i===0?'pivot':''}">${v}</td>`).join('')+'</tr>';
+        document.getElementById('inf-step').textContent=s.step;
+        document.getElementById('inf-delta').textContent=s.delta!==null?s.delta:'—';
+        document.getElementById('inf-len').textContent=s.L;
+        document.getElementById('inf-deg').textContent=s.C.length-1;
+        document.getElementById('poly-display').innerHTML=`Min Polynomial: <span style="color:var(--accent-blue)">${s.done?s.poly:`deg ${s.C.length-1}`}</span>`;
+        document.getElementById('result-box').innerHTML=s.done?`<span style="color:var(--accent-green)">p(x) = ${s.poly}  (LFSR length ${s.L})</span>`:'In progress...';
+        document.getElementById('main-panel').innerHTML=s.panel;
+        const log=document.getElementById('log');
+        log.innerHTML='';
+        for(let i=0;i<=idx;i++){
+            if(!steps[i].log) continue;
+            const line=document.createElement('div');
+            line.style.color=steps[i].logColor||'var(--text-main)';
+            line.textContent=steps[i].log;
+            log.appendChild(line);
+        }
+        log.scrollTop=log.scrollHeight;
+    }
+
+    function next(){if(stepIdx<steps.length-1){stepIdx++;renderStep(stepIdx);}else pause();}
+    function back(){if(stepIdx>0){stepIdx--;renderStep(stepIdx);}}
+    function reset(){pause();stepIdx=0;renderStep(0);}
+    function togglePlay(){
+        const btn=document.getElementById('play-btn');
+        if(timer) pause();
+        else{btn.textContent='⏸ Pause';if(stepIdx>=steps.length-1)stepIdx=0;
+            timer=setInterval(next,delays[parseInt(document.getElementById('speed-slider').value)]);}
+    }
+    function pause(){clearInterval(timer);timer=null;document.getElementById('play-btn').textContent='▶ Play';}
+    function loadCustom(){
+        const seq=document.getElementById('inp-seq').value.split(',').map(v=>parseInt(v.trim())).filter(v=>!isNaN(v));
+        const p=parseInt(document.getElementById('inp-p').value);
+        if(!seq.length||p<2){alert('Invalid input');return;}
+        generateSteps(seq,p);reset();
+    }
+    function loadExample(i){
+        const ex=[
+            ['1,3,2,6,4,5,1,3,2,6,4,5','7'],
+            ['0,1,1,2,3,0,3,3,1,4,0,4,4,3,2,0,2,2,4,1,0,1','5']
+        ][i];
+        document.getElementById('inp-seq').value=ex[0];
+        document.getElementById('inp-p').value=ex[1];
+        loadCustom();
+    }
+    window.onload=()=>loadExample(0);
+</script>
+</body>
+</html>

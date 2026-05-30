@@ -34,4 +34,5 @@ class ProblemSubmission(Base):
         Index("idx_submissions_user_status", "user_id", "status"),
         Index("idx_submissions_user_problem", "user_id", "problem_id"),
         Index("idx_submissions_problem_status", "problem_id", "status"),
+        Index("idx_submissions_submitted_at", "submitted_at"),
     )

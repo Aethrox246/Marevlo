@@ -1,0 +1,410 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Auto-correct Suggestion (Edit Distance Top-K) - Visualization</title>
+    <style>
+        :root {
+            --bg-page: #0d1117;
+            --bg-surface: #161b22;
+            --bg-input: #0d1117;
+            --border-main: #30363d;
+            --btn-bg: #21262d;
+            --btn-hover: #2d333b;
+            --text-main: #c9d1d9;
+            --text-dim: #8b949e;
+            --accent-orange: #e3b341;
+            --accent-blue: #388bfd;
+            --accent-green: #3fb950;
+            --accent-red: #f85149;
+            --accent-purple: #a371f7;
+        }
+
+        * { box-sizing: border-box; }
+        body {
+            background-color: var(--bg-page);
+            color: var(--text-main);
+            font-family: system-ui, -apple-system, sans-serif;
+            margin: 0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            min-height: 100vh;
+            padding-bottom: 40px;
+        }
+
+        .input-bar {
+            width: 100%;
+            background-color: var(--bg-surface);
+            padding: 12px 16px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 8px;
+            border-bottom: 1px solid var(--border-main);
+            flex-wrap: wrap;
+        }
+        label.ui-label { font-family: 'Courier New', monospace; font-size: 13px; color: var(--text-dim); }
+        input[type="text"] {
+            background: var(--bg-input);
+            border: 1px solid var(--border-main);
+            color: var(--text-main);
+            height: 32px;
+            border-radius: 6px;
+            padding: 0 10px;
+            width: 160px;
+            font-size: 13px;
+        }
+
+        button {
+            height: 32px; border-radius: 6px; padding: 0 14px; background: var(--btn-bg);
+            border: 1px solid var(--border-main); color: var(--text-main); font-size: 13px; cursor: pointer;
+            transition: background 0.2s ease;
+        }
+        button:hover { background: var(--btn-hover); }
+
+        .visual-container { margin-top: 30px; display: flex; flex-direction: column; align-items: center; gap: 20px; width: 100%; }
+        .string-display { display: flex; flex-direction: column; gap: 16px; justify-content: center; position: relative; padding: 20px 0; }
+        
+        .tile-unit { display: flex; flex-direction: column; align-items: center; gap: 4px; position: relative; }
+        .tile {
+            min-width: 50px; height: 50px; display: flex; align-items: center; justify-content: center;
+            border-radius: 6px; font-size: 22px; font-weight: 600; font-family: 'Courier New', monospace;
+            transition: all 0.3s ease; border: 2px solid var(--border-main); background: #21262d;
+            color: var(--text-main);
+        }
+        .tile-index { font-size: 11px; color: var(--text-dim); font-family: monospace; }
+        
+        .tile.center { background: #1e1030; border-color: var(--accent-purple); color: var(--accent-purple); z-index: 2; transform: scale(1.1);}
+        .tile.expanding { background: #0d2244; border-color: var(--accent-blue); color: var(--accent-blue); }
+        .tile.valid-pal { background: #0f2a1a; border-color: var(--accent-green); color: var(--accent-green); box-shadow: 0 0 10px var(--accent-green); }
+        .tile.mismatch { background: #2a0d0d; border-color: var(--accent-red); color: var(--accent-red); transform: scale(0.95); opacity: 0.8; }
+        .tile.idle { opacity: 0.9; }
+
+        .action-panel {
+            margin-top: 20px; background: var(--bg-surface); border: 1px solid var(--border-main);
+            border-radius: 6px; padding: 12px 20px; width: 680px; text-align: center; font-family: monospace; min-height: 80px;
+            display: flex; flex-direction: column; justify-content: center; font-size: 15px; line-height: 1.5;
+        }
+
+        .info-panel { margin-top: 10px; display: flex; gap: 10px; flex-wrap: wrap; justify-content: center; }
+        .info-cell {
+            background: var(--bg-surface); border: 1px solid var(--border-main); border-radius: 6px;
+            padding: 8px 14px; display: flex; flex-direction: column; align-items: center; min-width: 110px; gap: 4px;
+        }
+        .info-label { font-size: 11px; color: var(--text-dim); }
+        .info-value { font-family: monospace; font-size: 16px; font-weight: 700; text-align: center; }
+
+        .result-display { margin-top: 10px; display: flex; flex-direction: column; align-items: center; }
+        #res-val { font-size: 24px; color: var(--text-dim); font-family: monospace; transition: all 0.3s; font-weight: bold; }
+        .pop { animation: popAnim 400ms ease; color: var(--accent-green) !important; text-shadow: 0 0 12px var(--accent-green); }
+
+        @keyframes popAnim { 0%{transform:scale(1)} 50%{transform:scale(1.25)} 100%{transform:scale(1)} }
+
+        .status-bar { margin-top: 8px; font-size: 13px; color: var(--text-dim); height: 1.2em; text-align: center; width: 600px;}
+
+        .controls { margin-top: 24px; display: flex; align-items: center; gap: 8px; }
+        input[type="range"] { accent-color: var(--accent-blue); width: 100px; cursor: pointer; }
+
+        .legend { margin-top: 12px; display: flex; gap: 16px; flex-wrap: wrap; justify-content: center; max-width: 800px; }
+        .legend-item { display: flex; align-items: center; font-size: 12px; color: var(--text-dim); }
+        .dot { width: 10px; height: 10px; border-radius: 2px; margin-right: 6px; display: inline-block; }
+
+        .log-panel {
+            margin-top: 12px; background: var(--bg-page); border: 1px solid var(--border-main);
+            border-radius: 6px; padding: 12px 16px; width: 700px; max-width: 90%; height: 140px;
+            overflow-y: auto; font-family: 'Courier New', monospace; font-size: 13px;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="input-bar">
+        <label class="ui-label">Query =</label>
+        <input type="text" id="query-input" placeholder="aple" style="width:140px">
+        <label class="ui-label">K =</label>
+        <input type="text" id="k-input" value="3" style="width:60px">
+        <button onclick="loadCustom()">Load</button>
+        <button onclick="loadExample(0)">Ex 1 ("aple", K=3)</button>
+        <button onclick="loadExample(1)">Ex 2 ("cat", K=2)</button>
+    </div>
+
+    <div class="visual-container">
+        <div class="ui-label">Brute-Force Edit Distance + Top-K Ranking</div>
+        <div class="string-display" id="tiles-container"></div>
+    </div>
+
+    <div class="action-panel" id="main-panel">—</div>
+
+    <div class="info-panel">
+        <div class="info-cell">
+            <span class="info-label">Current Word</span>
+            <span class="info-value" id="val-word" style="color: var(--accent-purple);">—</span>
+        </div>
+        <div class="info-cell">
+            <span class="info-label">Edit Distance</span>
+            <span class="info-value" id="val-dist" style="color: var(--accent-blue);">—</span>
+        </div>
+        <div class="info-cell">
+            <span class="info-label">Top-K Found</span>
+            <span class="info-value" id="val-count" style="color: var(--accent-green);">0</span>
+        </div>
+    </div>
+
+    <div class="result-display">
+        <span class="ui-label" style="margin-bottom: 4px;">Top-K Suggestions =</span>
+        <span id="res-val">—</span>
+    </div>
+
+    <div class="status-bar" id="status-text"></div>
+
+    <div class="controls">
+        <button onclick="reset()">↺ Reset</button>
+        <button onclick="back()">← Back</button>
+        <button onclick="togglePlay()" id="play-btn">Play</button>
+        <button onclick="next()">Next →</button>
+        <div class="controls" style="margin-top:0">
+            <span class="ui-label" style="margin-right:4px; font-size:11px">Speed</span>
+            <input type="range" id="speed-slider" min="0" max="2" value="1">
+        </div>
+    </div>
+
+    <div class="legend">
+        <div class="legend-item"><span class="dot" style="background:var(--accent-purple)"></span> Query</div>
+        <div class="legend-item"><span class="dot" style="background:var(--accent-blue)"></span> Dictionary Word</div>
+        <div class="legend-item"><span class="dot" style="background:var(--accent-green)"></span> Close Match</div>
+        <div class="legend-item"><span class="dot" style="background:var(--accent-red)"></span> Farther</div>
+    </div>
+
+    <div class="log-panel" id="log"></div>
+
+    <script>
+        let currentQuery = "aple";
+        let currentK = 3;
+        let dictionary = ["apple", "apply", "ape", "app", "ple"];
+        let steps = [];
+        let stepIndex = 0;
+        let timer = null;
+        const delays = [1400, 700, 350];
+
+        function init() { loadExample(0); }
+
+        function loadExample(ex) {
+            if (ex === 0) {
+                currentQuery = "aple";
+                dictionary = ["apple", "apply", "ape", "app", "ple"];
+                currentK = 3;
+            } else {
+                currentQuery = "cat";
+                dictionary = ["bat", "cats", "cut", "dog", "at", "cat"];
+                currentK = 2;
+            }
+            document.getElementById('query-input').value = currentQuery;
+            document.getElementById('k-input').value = currentK;
+            generateSteps();
+            reset();
+        }
+
+        function loadCustom() {
+            currentQuery = document.getElementById('query-input').value.trim();
+            currentK = parseInt(document.getElementById('k-input').value) || 3;
+            if (currentQuery) {
+                generateSteps();
+                reset();
+            }
+        }
+
+        function editDistance(a, b) {
+            const m = a.length, n = b.length;
+            const dp = Array.from({length: m+1}, () => Array(n+1).fill(0));
+            for (let i = 0; i <= m; i++) dp[i][0] = i;
+            for (let j = 0; j <= n; j++) dp[0][j] = j;
+            for (let i = 1; i <= m; i++) {
+                for (let j = 1; j <= n; j++) {
+                    const cost = a[i-1] === b[j-1] ? 0 : 1;
+                    dp[i][j] = Math.min(
+                        dp[i-1][j] + 1,
+                        dp[i][j-1] + 1,
+                        dp[i-1][j-1] + cost
+                    );
+                }
+            }
+            return dp[m][n];
+        }
+
+        function generateSteps() {
+            steps = [];
+            let results = [];
+
+            steps.push({
+                type: 'init',
+                panel: `Query: <b>"${currentQuery}"</b><br>Dictionary: <b>${JSON.stringify(dictionary)}</b><br>K=${currentK}`,
+                statusText: `Computing edit distances for all dictionary words...`,
+                log: `Start auto-correct for query "${currentQuery}"`,
+                count: 0
+            });
+
+            for (let word of dictionary) {
+                const dist = editDistance(currentQuery, word);
+                results.push({word, dist});
+                steps.push({
+                    type: 'compute',
+                    currentWord: word,
+                    dist: dist,
+                    panel: `Edit distance("${currentQuery}", "${word}") = <b>${dist}</b>`,
+                    statusText: `Distance to "${word}" = ${dist}`,
+                    log: `  "${word}" → distance ${dist}`,
+                    count: results.length
+                });
+            }
+
+            // Sort: distance asc, then word lex asc
+            results.sort((a, b) => a.dist - b.dist || a.word.localeCompare(b.word));
+
+            steps.push({
+                type: 'sort',
+                sortedResults: results,
+                panel: `Sorted by distance then lex: <b>${results.map(r => `(${r.dist},${r.word})`).join(', ')}</b>`,
+                statusText: `Sorting complete`,
+                log: `Sorted list ready`,
+                count: results.length
+            });
+
+            const topK = results.slice(0, currentK).map(r => r.word);
+
+            steps.push({
+                type: 'final',
+                complete: true,
+                finalResult: topK,
+                panel: `Top ${currentK} suggestions: <b>${JSON.stringify(topK)}</b>`,
+                statusText: `Done. Top-${currentK} returned.`,
+                log: `\nFinal Top-${currentK}: ${JSON.stringify(topK)}`,
+                bold: true,
+                count: currentK
+            });
+        }
+
+        function renderStep(idx) {
+            const step = steps[idx];
+            if (!step) return;
+
+            const container = document.getElementById('tiles-container');
+            container.innerHTML = '';
+
+            // Query tiles
+            let row = document.createElement('div');
+            row.className = 'string-row';
+            let label = document.createElement('div');
+            label.className = 'string-label';
+            label.innerText = "Query:";
+            row.appendChild(label);
+
+            currentQuery.split('').forEach((ch, i) => {
+                const unit = document.createElement('div');
+                unit.className = 'tile-unit';
+                const tile = document.createElement('div');
+                tile.className = `tile ${step.type === 'final' ? 'valid-pal' : 'idle'}`;
+                tile.innerText = ch;
+                const idxLabel = document.createElement('div');
+                idxLabel.className = 'tile-index';
+                idxLabel.innerText = `[${i}]`;
+                unit.append(tile, idxLabel);
+                row.appendChild(unit);
+            });
+            container.appendChild(row);
+
+            if (step.currentWord) {
+                row = document.createElement('div');
+                row.className = 'string-row';
+                label = document.createElement('div');
+                label.className = 'string-label';
+                label.innerText = "Word:";
+                row.appendChild(label);
+
+                step.currentWord.split('').forEach((ch, i) => {
+                    const unit = document.createElement('div');
+                    unit.className = 'tile-unit';
+                    const tile = document.createElement('div');
+                    tile.className = `tile ${step.type === 'compute' ? 'center' : 'idle'}`;
+                    tile.innerText = ch;
+                    const idxLabel = document.createElement('div');
+                    idxLabel.className = 'tile-index';
+                    idxLabel.innerText = `[${i}]`;
+                    unit.append(tile, idxLabel);
+                    row.appendChild(unit);
+                });
+                container.appendChild(row);
+            }
+
+            document.getElementById('main-panel').innerHTML = step.panel;
+            document.getElementById('val-word').innerText = step.currentWord || '—';
+            document.getElementById('val-dist').innerText = step.dist !== undefined ? step.dist : '—';
+            document.getElementById('val-count').innerText = step.count || 0;
+
+            const resVal = document.getElementById('res-val');
+            if (step.complete) {
+                resVal.innerHTML = JSON.stringify(step.finalResult);
+            } else {
+                resVal.innerText = '—';
+            }
+            if (step.complete) resVal.classList.add('pop');
+            else resVal.classList.remove('pop');
+
+            document.getElementById('status-text').innerText = step.statusText;
+
+            const logPanel = document.getElementById('log');
+            logPanel.innerHTML = '';
+            for (let k = 0; k <= idx; k++) {
+                if (steps[k].log) {
+                    const line = document.createElement('div');
+                    line.style.marginBottom = '2px';
+                    line.style.whiteSpace = 'pre-wrap';
+                    if (steps[k].bold) line.style.fontWeight = 'bold';
+                    line.innerText = steps[k].log;
+                    logPanel.appendChild(line);
+                }
+            }
+            logPanel.scrollTop = logPanel.scrollHeight;
+        }
+
+        function next() {
+            if (stepIndex < steps.length - 1) {
+                stepIndex++;
+                renderStep(stepIndex);
+            } else pause();
+        }
+
+        function back() {
+            if (stepIndex > 0) {
+                stepIndex--;
+                renderStep(stepIndex);
+            }
+        }
+
+        function reset() {
+            pause();
+            stepIndex = 0;
+            renderStep(0);
+        }
+
+        function togglePlay() {
+            const btn = document.getElementById('play-btn');
+            if (timer) pause();
+            else {
+                btn.innerText = 'Pause';
+                if (stepIndex >= steps.length - 1) stepIndex = 0;
+                timer = setInterval(next, delays[document.getElementById('speed-slider').value]);
+            }
+        }
+
+        function pause() {
+            clearInterval(timer);
+            timer = null;
+            document.getElementById('play-btn').innerText = 'Play';
+        }
+
+        window.onload = init;
+    </script>
+</body>
+</html>

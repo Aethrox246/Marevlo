@@ -1,0 +1,629 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Queue using Two Stacks Visualization</title>
+
+<style>
+
+:root{
+    --bg:#0d1117;
+    --surface:#161b22;
+    --border:#30363d;
+    --text:#c9d1d9;
+
+    --blue:#58a6ff;
+    --green:#3fb950;
+    --orange:#e3b341;
+    --red:#f85149;
+}
+
+*{
+    box-sizing:border-box;
+}
+
+body{
+    margin:0;
+    background:var(--bg);
+    color:var(--text);
+    font-family:system-ui;
+    padding:20px;
+
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+}
+
+h1{
+    margin-bottom:20px;
+}
+
+.controls{
+    display:flex;
+    gap:10px;
+    margin-bottom:20px;
+}
+
+button{
+    padding:10px 18px;
+    border:none;
+    border-radius:8px;
+    background:#21262d;
+    color:white;
+    cursor:pointer;
+    font-size:15px;
+}
+
+button:hover{
+    background:#30363d;
+}
+
+.main-container{
+    display:flex;
+    gap:50px;
+    margin-top:20px;
+}
+
+.stack-box{
+    background:var(--surface);
+    border:2px solid var(--border);
+    border-radius:12px;
+    width:220px;
+    min-height:420px;
+
+    padding:20px;
+
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+}
+
+.stack-title{
+    font-size:24px;
+    font-weight:bold;
+    margin-bottom:20px;
+}
+
+.stack{
+    display:flex;
+    flex-direction:column-reverse;
+    gap:10px;
+    width:100%;
+    min-height:300px;
+}
+
+.node{
+    height:60px;
+    border-radius:10px;
+
+    display:flex;
+    justify-content:center;
+    align-items:center;
+
+    font-size:22px;
+    font-weight:bold;
+
+    transition:0.4s;
+}
+
+.stack1-node{
+    border:2px solid var(--blue);
+    background:#1f2937;
+}
+
+.stack2-node{
+    border:2px solid var(--green);
+    background:#10261a;
+    color:var(--green);
+}
+
+.highlight{
+    transform:scale(1.1);
+    box-shadow:0 0 20px var(--orange);
+}
+
+.output-node{
+    border:2px solid var(--red);
+    background:#2d1212;
+    color:var(--red);
+}
+
+.panel{
+    width:1000px;
+    margin-top:30px;
+
+    background:var(--surface);
+    border:1px solid var(--border);
+
+    border-radius:12px;
+
+    padding:20px;
+
+    text-align:center;
+}
+
+.panel-title{
+    font-size:28px;
+    font-weight:bold;
+    margin-bottom:10px;
+}
+
+.panel-action{
+    color:var(--orange);
+    font-size:22px;
+    font-weight:bold;
+}
+
+.log-box{
+    width:1000px;
+    margin-top:20px;
+
+    background:var(--surface);
+    border:1px solid var(--border);
+
+    border-radius:12px;
+
+    padding:15px;
+
+    height:260px;
+
+    overflow-y:auto;
+
+    font-family:monospace;
+}
+
+.log-line{
+    margin:6px 0;
+}
+
+.empty{
+    color:#555;
+    margin-top:100px;
+}
+
+.speed-box{
+    margin-left:20px;
+}
+
+</style>
+</head>
+
+<body>
+
+<h1>Queue using Two Stacks</h1>
+
+<div class="controls">
+
+    <button onclick="loadExample(0)">
+        Example 1
+    </button>
+
+    <button onclick="loadExample(1)">
+        Example 2
+    </button>
+
+    <button onclick="resetVisualization()">
+        Reset
+    </button>
+
+    <button onclick="backStep()">
+        ← Back
+    </button>
+
+    <button onclick="togglePlay()" id="playBtn">
+        ▶ Play
+    </button>
+
+    <button onclick="nextStep()">
+        Next →
+    </button>
+
+    <div class="speed-box">
+
+        Speed:
+        <input type="range"
+               id="speedSlider"
+               min="0"
+               max="2"
+               value="1">
+
+    </div>
+
+</div>
+
+<div class="main-container">
+
+    <!-- STACK 1 -->
+
+    <div class="stack-box">
+
+        <div class="stack-title"
+             style="color:var(--blue)">
+            Stack1
+        </div>
+
+        <div class="stack"
+             id="stack1"></div>
+
+    </div>
+
+    <!-- STACK 2 -->
+
+    <div class="stack-box">
+
+        <div class="stack-title"
+             style="color:var(--green)">
+            Stack2
+        </div>
+
+        <div class="stack"
+             id="stack2"></div>
+
+    </div>
+
+    <!-- OUTPUT -->
+
+    <div class="stack-box">
+
+        <div class="stack-title"
+             style="color:var(--red)">
+            Output
+        </div>
+
+        <div class="stack"
+             id="output"></div>
+
+    </div>
+
+</div>
+
+<!-- PANEL -->
+
+<div class="panel">
+
+    <div class="panel-title"
+         id="panelTitle">
+
+        Queue Visualization
+
+    </div>
+
+    <div class="panel-action"
+         id="panelAction">
+
+        Click Play to start
+
+    </div>
+
+</div>
+
+<!-- LOGS -->
+
+<div class="log-box"
+     id="logBox"></div>
+
+<script>
+
+let stack1 = [];
+
+let stack2 = [];
+
+let output = [];
+
+let steps = [];
+
+let stepIndex = 0;
+
+let timer = null;
+
+const delays = [1800,1000,500];
+
+function snapshot(title,action,highlight=null){
+
+    steps.push({
+
+        title,
+        action,
+        highlight,
+
+        stack1:[...stack1],
+        stack2:[...stack2],
+        output:[...output]
+    });
+}
+
+function enqueue(x){
+
+    stack1.push(x);
+
+    snapshot(
+        `Enqueue ${x}`,
+        `Push ${x} into Stack1`,
+        x
+    );
+}
+
+function dequeue(){
+
+    if(stack2.length === 0){
+
+        snapshot(
+            "Transfer Required",
+            "Stack2 Empty → Transfer Stack1 → Stack2"
+        );
+
+        while(stack1.length){
+
+            let val = stack1.pop();
+
+            snapshot(
+                "Transfer Element",
+                `Pop ${val} from Stack1`,
+                val
+            );
+
+            stack2.push(val);
+
+            snapshot(
+                "Transfer Element",
+                `Push ${val} into Stack2`,
+                val
+            );
+        }
+    }
+
+    if(stack2.length){
+
+        let val = stack2.pop();
+
+        output.push(val);
+
+        snapshot(
+            `Dequeue ${val}`,
+            `Pop ${val} from Stack2 → Output`,
+            val
+        );
+
+    }else{
+
+        snapshot(
+            "Queue Empty",
+            "Nothing to Dequeue"
+        );
+    }
+}
+
+function loadExample(ex){
+
+    pause();
+
+    stack1 = [];
+    stack2 = [];
+    output = [];
+
+    steps = [];
+
+    snapshot(
+        "Initialize Queue",
+        "stack1=[] , stack2=[]"
+    );
+
+    if(ex === 0){
+
+        enqueue(1);
+
+        enqueue(2);
+
+        enqueue(3);
+
+        dequeue();
+
+        enqueue(4);
+
+        dequeue();
+
+        dequeue();
+
+    }else{
+
+        enqueue(5);
+
+        dequeue();
+
+        enqueue(6);
+
+        enqueue(7);
+
+        dequeue();
+
+        dequeue();
+    }
+
+    stepIndex = 0;
+
+    renderStep(0);
+}
+
+function renderStack(id,data,type,highlight){
+
+    const container =
+        document.getElementById(id);
+
+    container.innerHTML = '';
+
+    if(data.length === 0){
+
+        container.innerHTML =
+            `<div class="empty">Empty</div>`;
+
+        return;
+    }
+
+    data.forEach(val=>{
+
+        const div =
+            document.createElement('div');
+
+        div.className =
+            `node ${type}`;
+
+        if(val === highlight){
+
+            div.classList.add('highlight');
+        }
+
+        div.textContent = val;
+
+        container.appendChild(div);
+    });
+}
+
+function renderStep(i){
+
+    const step = steps[i];
+
+    if(!step) return;
+
+    renderStack(
+        "stack1",
+        step.stack1,
+        "stack1-node",
+        step.highlight
+    );
+
+    renderStack(
+        "stack2",
+        step.stack2,
+        "stack2-node",
+        step.highlight
+    );
+
+    renderStack(
+        "output",
+        step.output,
+        "output-node",
+        step.highlight
+    );
+
+    document.getElementById(
+        "panelTitle"
+    ).textContent = step.title;
+
+    document.getElementById(
+        "panelAction"
+    ).textContent = step.action;
+
+    const logBox =
+        document.getElementById(
+            "logBox"
+        );
+
+    logBox.innerHTML = '';
+
+    for(let j=0;j<=i;j++){
+
+        const line =
+            document.createElement('div');
+
+        line.className = 'log-line';
+
+        line.innerHTML =
+            `<span style="color:#58a6ff">
+                Step ${j}
+             </span>
+             : ${steps[j].action}`;
+
+        logBox.appendChild(line);
+    }
+
+    logBox.scrollTop =
+        logBox.scrollHeight;
+}
+
+function nextStep(){
+
+    if(stepIndex < steps.length - 1){
+
+        stepIndex++;
+
+        renderStep(stepIndex);
+
+    }else{
+
+        pause();
+    }
+}
+
+function backStep(){
+
+    if(stepIndex > 0){
+
+        stepIndex--;
+
+        renderStep(stepIndex);
+    }
+}
+
+function resetVisualization(){
+
+    pause();
+
+    stepIndex = 0;
+
+    renderStep(0);
+}
+
+function togglePlay(){
+
+    const btn =
+        document.getElementById(
+            "playBtn"
+        );
+
+    if(timer){
+
+        pause();
+
+    }else{
+
+        btn.textContent = "Pause";
+
+        if(stepIndex >= steps.length - 1){
+
+            stepIndex = 0;
+        }
+
+        timer = setInterval(
+
+            nextStep,
+
+            delays[
+                document.getElementById(
+                    "speedSlider"
+                ).value
+            ]
+        );
+    }
+}
+
+function pause(){
+
+    clearInterval(timer);
+
+    timer = null;
+
+    document.getElementById(
+        "playBtn"
+    ).textContent = "Play";
+}
+
+window.onload = () => {
+
+    loadExample(0);
+};
+
+</script>
+
+</body>
+</html>

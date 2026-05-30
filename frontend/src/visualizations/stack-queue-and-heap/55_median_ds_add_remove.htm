@@ -1,0 +1,430 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Median Finder (Add/Remove)</title>
+    <style>
+        :root {
+            --bg-page: #0d1117;
+            --bg-surface: #161b22;
+            --border-main: #30363d;
+            --btn-bg: #21262d;
+            --btn-hover: #2d333b;
+            --text-main: #c9d1d9;
+            --text-dim: #8b949e;
+            --accent-purple: #a371f7;
+            --accent-blue: #388bfd;
+            --accent-green: #3fb950;
+            --accent-orange: #e3b341;
+        }
+
+        * { box-sizing: border-box; }
+        body {
+            background-color: var(--bg-page);
+            color: var(--text-main);
+            font-family: system-ui, -apple-system, sans-serif;
+            margin: 0;
+            padding: 20px 0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        h1 { color: var(--accent-purple); margin: 0 0 8px 0; }
+
+        .input-bar {
+            width: 100%;
+            max-width: 1100px;
+            background: var(--bg-surface);
+            padding: 12px;
+            display: flex;
+            gap: 12px;
+            flex-wrap: wrap;
+            justify-content: center;
+            border-bottom: 1px solid var(--border-main);
+            margin-bottom: 20px;
+        }
+        button {
+            padding: 8px 16px;
+            background: var(--btn-bg);
+            border: 1px solid var(--border-main);
+            color: var(--text-main);
+            border-radius: 6px;
+            cursor: pointer;
+        }
+        button:hover { background: var(--btn-hover); }
+
+        .heaps {
+            display: flex;
+            gap: 60px;
+            width: 100%;
+            max-width: 1000px;
+        }
+
+        .heap-container {
+            text-align: center;
+        }
+
+        .label {
+            color: var(--accent-purple);
+            font-weight: bold;
+            margin-bottom: 8px;
+        }
+
+        .heap {
+            background: #21262d;
+            border: 3px solid var(--accent-blue);
+            border-radius: 12px;
+            padding: 16px;
+            min-height: 300px;
+            width: 120px;
+            display: flex;
+            flex-direction: column-reverse;
+            gap: 6px;
+            align-items: center;
+        }
+
+        .tile {
+            width: 80px;
+            padding: 12px 0;
+            background: #2d333b;
+            border: 2px solid var(--accent-orange);
+            border-radius: 6px;
+            font-family: monospace;
+            font-size: 18px;
+            text-align: center;
+            transition: all 0.3s ease;
+        }
+
+        .tile.top {
+            border-color: var(--accent-green);
+            box-shadow: 0 0 12px var(--accent-green);
+        }
+
+        .info {
+            margin: 20px 0;
+            text-align: center;
+            font-family: monospace;
+            line-height: 1.6;
+        }
+
+        .action-panel {
+            background: var(--bg-surface);
+            border: 1px solid var(--border-main);
+            border-radius: 10px;
+            padding: 18px;
+            width: 100%;
+            max-width: 1000px;
+            min-height: 140px;
+            margin: 20px 0;
+            font-family: monospace;
+        }
+
+        .controls {
+            margin: 20px 0;
+            display: flex;
+            align-items: center;
+            gap: 16px;
+            flex-wrap: wrap;
+            justify-content: center;
+        }
+
+        .log-panel {
+            background: var(--bg-page);
+            border: 1px solid var(--border-main);
+            border-radius: 10px;
+            padding: 16px;
+            width: 100%;
+            max-width: 1000px;
+            height: 240px;
+            overflow-y: auto;
+            font-family: 'Courier New', monospace;
+            font-size: 14px;
+        }
+    </style>
+</head>
+<body>
+
+    <h1>Median Finder (Add/Remove)</h1>
+    <p style="color:var(--text-dim);margin-bottom:20px;">Two Heaps with Lazy Deletion</p>
+
+    <div class="input-bar">
+        <button onclick="loadExample(0)">Example 1</button>
+        <button onclick="loadExample(1)">Example 2</button>
+        <button onclick="resetSim()">Reset</button>
+    </div>
+
+    <div class="heaps">
+        <div class="heap-container">
+            <div class="label">Max-Heap (Lower Half)</div>
+            <div class="heap" id="max-heap"></div>
+        </div>
+        <div class="heap-container">
+            <div class="label">Min-Heap (Upper Half)</div>
+            <div class="heap" id="min-heap"></div>
+        </div>
+    </div>
+
+    <div class="info" id="info">
+        Median: <span id="median-val" style="color:var(--accent-green)">—</span>
+    </div>
+
+    <div class="action-panel" id="action">Click an example to begin</div>
+
+    <div class="controls">
+        <button onclick="prevStep()">← Back</button>
+        <button onclick="togglePlay()" id="play-btn">▶ Play</button>
+        <button onclick="nextStep()">Next →</button>
+        <label>Speed <input type="range" id="speed" min="0" max="2" value="1"></label>
+    </div>
+
+    <div class="log-panel" id="log"></div>
+
+    <script>
+        let maxHeap = []; // negated for max-heap
+        let minHeap = [];
+        let removalCount = {};
+        let steps = [];
+        let stepIdx = 0;
+        let timer = null;
+        let isPlaying = false;
+        const delays = [1650, 850, 380];
+
+        const examples = [
+            ["addNum(5)", "addNum(2)", "addNum(7)", "findMedian()", "removeNum(2)", "findMedian()"],
+            ["addNum(1)", "addNum(1)", "addNum(2)", "findMedian()", "removeNum(1)", "findMedian()"]
+        ];
+
+        function heapPush(heap, val, isMax = false) {
+            heap.push(isMax ? -val : val);
+            let i = heap.length - 1;
+            while (i > 0) {
+                const parent = Math.floor((i - 1) / 2);
+                if ((isMax && -heap[i] > -heap[parent]) || (!isMax && heap[i] < heap[parent])) {
+                    [heap[i], heap[parent]] = [heap[parent], heap[i]];
+                    i = parent;
+                } else break;
+            }
+        }
+
+        function heapPop(heap, isMax = false) {
+            if (heap.length === 0) return null;
+            const top = heap[0];
+            heap[0] = heap[heap.length - 1];
+            heap.pop();
+            let i = 0;
+            while (true) {
+                let smallest = i;
+                const left = 2 * i + 1;
+                const right = 2 * i + 2;
+                if (left < heap.length && ((isMax && -heap[left] > -heap[smallest]) || (!isMax && heap[left] < heap[smallest]))) smallest = left;
+                if (right < heap.length && ((isMax && -heap[right] > -heap[smallest]) || (!isMax && heap[right] < heap[smallest]))) smallest = right;
+                if (smallest === i) break;
+                [heap[i], heap[smallest]] = [heap[smallest], heap[i]];
+                i = smallest;
+            }
+            return isMax ? -top : top;
+        }
+
+        function cleanHeap(heap, isMax) {
+            while (heap.length > 0) {
+                const top = isMax ? -heap[0] : heap[0];
+                if ((removalCount[top] || 0) > 0) {
+                    removalCount[top]--;
+                    heapPop(heap, isMax);
+                } else break;
+            }
+        }
+
+        function rebalance() {
+            if (maxHeap.length > minHeap.length + 1) {
+                const val = heapPop(maxHeap, true);
+                heapPush(minHeap, val, false);
+            } else if (minHeap.length > maxHeap.length) {
+                const val = heapPop(minHeap, false);
+                heapPush(maxHeap, val, true);
+            }
+        }
+
+        function generateSteps(ops) {
+            maxHeap = [];
+            minHeap = [];
+            removalCount = {};
+            steps = [];
+
+            steps.push({
+                panel: `<b>Initialize</b><br>maxHeap=[], minHeap=[]`,
+                log: `Empty median finder`,
+                max: [],
+                min: [],
+                median: null,
+                action: 'Initialize'
+            });
+
+            for (let op of ops) {
+                if (op.startsWith("addNum")) {
+                    const val = parseInt(op.match(/\d+/)[0]);
+                    if (maxHeap.length === 0 || val <= -maxHeap[0]) {
+                        heapPush(maxHeap, val, true);
+                    } else {
+                        heapPush(minHeap, val, false);
+                    }
+                    rebalance();
+                    cleanHeap(maxHeap, true);
+                    cleanHeap(minHeap, false);
+                    let med = null;
+                    if (maxHeap.length > 0) {
+                        cleanHeap(maxHeap, true);
+                        cleanHeap(minHeap, false);
+                        if (maxHeap.length === minHeap.length + 1) {
+                            med = -maxHeap[0];
+                        } else if (minHeap.length === maxHeap.length + 1) {
+                            med = minHeap[0];
+                        } else if (maxHeap.length > 0 && minHeap.length > 0) {
+                            med = (-maxHeap[0] + minHeap[0]) / 2;
+                        }
+                    }
+                    steps.push({
+                        panel: `addNum(${val})<br>maxHeap: [${maxHeap.map(v => -v).join(', ')}]<br>minHeap: [${minHeap.join(', ')}]`,
+                        log: `Added ${val}`,
+                        max: [...maxHeap],
+                        min: [...minHeap],
+                        median: med,
+                        action: `Added ${val}`
+                    });
+                } else if (op.startsWith("removeNum")) {
+                    const val = parseInt(op.match(/\d+/)[0]);
+                    removalCount[val] = (removalCount[val] || 0) + 1;
+                    cleanHeap(maxHeap, true);
+                    cleanHeap(minHeap, false);
+                    rebalance();
+                    let med = null;
+                    if (maxHeap.length > 0) {
+                        cleanHeap(maxHeap, true);
+                        cleanHeap(minHeap, false);
+                        if (maxHeap.length === minHeap.length + 1) {
+                            med = -maxHeap[0];
+                        } else if (minHeap.length === maxHeap.length + 1) {
+                            med = minHeap[0];
+                        } else if (maxHeap.length > 0 && minHeap.length > 0) {
+                            med = (-maxHeap[0] + minHeap[0]) / 2;
+                        }
+                    }
+                    steps.push({
+                        panel: `removeNum(${val})<br>maxHeap: [${maxHeap.map(v => -v).join(', ')}]<br>minHeap: [${minHeap.join(', ')}]`,
+                        log: `Removed ${val}`,
+                        max: [...maxHeap],
+                        min: [...minHeap],
+                        median: med,
+                        action: `Removed ${val}`
+                    });
+                } else if (op === "findMedian()") {
+                    cleanHeap(maxHeap, true);
+                    cleanHeap(minHeap, false);
+                    let med = null;
+                    if (maxHeap.length > 0) {
+                        if (maxHeap.length === minHeap.length + 1) {
+                            med = -maxHeap[0];
+                        } else if (minHeap.length === maxHeap.length + 1) {
+                            med = minHeap[0];
+                        } else if (maxHeap.length > 0 && minHeap.length > 0) {
+                            med = (-maxHeap[0] + minHeap[0]) / 2;
+                        }
+                    }
+                    steps.push({
+                        panel: `findMedian()<br>→ ${med !== null ? med : 'None'}`,
+                        log: `Median = ${med !== null ? med : 'None'}`,
+                        max: [...maxHeap],
+                        min: [...minHeap],
+                        median: med,
+                        action: `findMedian()`
+                    });
+                }
+            }
+        }
+
+        function renderHeaps() {
+            const maxContainer = document.getElementById('max-heap');
+            maxContainer.innerHTML = '';
+            maxHeap.forEach((v, i) => {
+                const tile = document.createElement('div');
+                tile.className = 'tile';
+                if (i === 0) tile.classList.add('top');
+                tile.textContent = -v;
+                maxContainer.appendChild(tile);
+            });
+
+            const minContainer = document.getElementById('min-heap');
+            minContainer.innerHTML = '';
+            minHeap.forEach((v, i) => {
+                const tile = document.createElement('div');
+                tile.className = 'tile';
+                if (i === 0) tile.classList.add('top');
+                tile.textContent = v;
+                minContainer.appendChild(tile);
+            });
+        }
+
+        function renderStep(idx) {
+            stepIdx = idx;
+            const step = steps[idx];
+            if (!step) return;
+
+            document.getElementById('action').innerHTML = step.panel || '—';
+            renderHeaps();
+
+            const medEl = document.getElementById('median-val');
+            medEl.textContent = step.median !== null ? step.median : '—';
+
+            const logEl = document.getElementById('log');
+            logEl.innerHTML = steps.slice(0, idx+1).map(s => 
+                `<div style="margin:5px 0;">${s.log}</div>`
+            ).join('');
+            logEl.scrollTop = logEl.scrollHeight;
+        }
+
+        function nextStep() {
+            if (stepIdx < steps.length - 1) renderStep(stepIdx + 1);
+            else pause();
+        }
+
+        function prevStep() {
+            if (stepIdx > 0) renderStep(stepIdx - 1);
+        }
+
+        function resetSim() {
+            pause();
+            stepIdx = 0;
+            renderStep(0);
+        }
+
+        function togglePlay() {
+            const btn = document.getElementById('play-btn');
+            if (isPlaying) {
+                pause();
+            } else {
+                isPlaying = true;
+                btn.textContent = '❚❚ Pause';
+                timer = setInterval(() => {
+                    if (stepIdx < steps.length - 1) nextStep();
+                    else pause();
+                }, delays[document.getElementById('speed').value]);
+            }
+        }
+
+        function pause() {
+            clearInterval(timer);
+            isPlaying = false;
+            document.getElementById('play-btn').textContent = '▶ Play';
+        }
+
+        function loadExample(n) {
+            generateSteps(examples[n]);
+            resetSim();
+        }
+
+        window.onload = () => loadExample(0);
+    </script>
+</body>
+</html>

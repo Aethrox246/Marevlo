@@ -1,0 +1,1293 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Module 3.5 (Part 1) — Sampling Distributions & Sample Mean | Quantum Neural Analytics OS</title>
+<style>
+:root {
+  --bg-deep: #03040a;
+  --bg-navy: #060818;
+  --bg-panel: rgba(10, 15, 35, 0.55);
+  --neon-cyan: #00f0ff;
+  --neon-purple: #b14dff;
+  --neon-magenta: #ff2bd6;
+  --neon-amber: #ffb547;
+  --neon-green: #00ffaa;
+  --neon-red: #ff4d6d;
+  --text-primary: #e6f4ff;
+  --text-soft: #d8e6ff;
+  --text-dim: #7a8bbf;
+  --border-glow: rgba(0, 240, 255, 0.25);
+  --glass-blur: blur(18px);
+  --mono: 'JetBrains Mono', 'Fira Code', 'Consolas', monospace;
+}
+* { margin: 0; padding: 0; box-sizing: border-box; }
+html { scroll-behavior: smooth; }
+body {
+  background: var(--bg-deep);
+  color: var(--text-soft);
+  font-family: 'Inter', 'Segoe UI', system-ui, sans-serif;
+  overflow-x: hidden;
+  line-height: 1.65;
+  min-height: 100vh;
+  position: relative;
+}
+body::before {
+  content: '';
+  position: fixed; inset: 0;
+  background-image:
+    linear-gradient(rgba(0, 240, 255, 0.04) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(0, 240, 255, 0.04) 1px, transparent 1px);
+  background-size: 60px 60px;
+  pointer-events: none; z-index: 0;
+  animation: gridShift 30s linear infinite;
+}
+body::after {
+  content: '';
+  position: fixed; inset: 0;
+  background:
+    radial-gradient(circle at 18% 22%, rgba(0, 240, 255, 0.12), transparent 42%),
+    radial-gradient(circle at 82% 65%, rgba(177, 77, 255, 0.13), transparent 45%),
+    radial-gradient(circle at 50% 95%, rgba(255, 43, 214, 0.08), transparent 40%);
+  pointer-events: none; z-index: 0;
+}
+@keyframes gridShift { 0% { background-position: 0 0,0 0; } 100% { background-position: 60px 60px,60px 60px; } }
+#particle-canvas { position: fixed; inset: 0; z-index: 1; pointer-events: none; }
+.container { position: relative; z-index: 10; max-width: 1280px; margin: 0 auto; padding: 32px 24px 120px; }
+.hud {
+  display: flex; justify-content: space-between; align-items: center;
+  padding: 14px 22px; background: var(--bg-panel); backdrop-filter: var(--glass-blur);
+  border: 1px solid var(--border-glow); border-radius: 14px;
+  font-family: var(--mono); font-size: 11px; letter-spacing: 1.8px; text-transform: uppercase;
+  margin-bottom: 50px; box-shadow: 0 0 30px rgba(0,240,255,0.1);
+  flex-wrap: wrap; gap: 10px;
+}
+.hud-left { color: var(--neon-cyan); }
+.hud-center { color: var(--text-soft); }
+.hud-right { color: var(--neon-purple); display: flex; align-items: center; gap: 8px; }
+.hud-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--neon-cyan); box-shadow: 0 0 12px var(--neon-cyan); animation: pulse 1.6s ease-in-out infinite; }
+@keyframes pulse { 0%,100% { opacity: 1; transform: scale(1); } 50% { opacity: 0.4; transform: scale(1.3); } }
+.hero {
+  position: relative; text-align: center; padding: 90px 24px 60px; margin-bottom: 80px;
+  border: 1px solid var(--border-glow); border-radius: 28px;
+  background: linear-gradient(135deg, rgba(10,15,40,0.6), rgba(20,5,40,0.4));
+  backdrop-filter: var(--glass-blur); overflow: hidden;
+  box-shadow: 0 0 60px rgba(0,240,255,0.1), inset 0 0 80px rgba(177,77,255,0.06);
+}
+.hero-bg-svg { position: absolute; inset: 0; width: 100%; height: 100%; opacity: 0.45; pointer-events: none; }
+.hero-tag {
+  display: inline-block; font-family: var(--mono); font-size: 11px; letter-spacing: 3px;
+  color: var(--neon-cyan); padding: 6px 18px; border: 1px solid var(--neon-cyan);
+  border-radius: 999px; margin-bottom: 26px; text-transform: uppercase;
+  background: rgba(0,240,255,0.05); box-shadow: 0 0 20px rgba(0,240,255,0.2); position: relative; z-index: 2;
+}
+.hero h1 {
+  font-family: 'Inter','Segoe UI',system-ui,sans-serif; font-size: clamp(2.4rem, 6vw, 4.8rem);
+  font-weight: 900; line-height: 1.05; letter-spacing: -2px;
+  background: linear-gradient(135deg, #ffffff 0%, var(--neon-cyan) 40%, var(--neon-purple) 80%, var(--neon-magenta) 100%);
+  background-size: 200% 200%; -webkit-background-clip: text; background-clip: text;
+  -webkit-text-fill-color: transparent; animation: gradientShift 8s ease infinite;
+  margin: 0 auto 18px; text-shadow: 0 0 80px rgba(177,77,255,0.2); text-align: center; position: relative; z-index: 2;
+}
+@keyframes gradientShift { 0%,100% { background-position: 0% 50%; } 50% { background-position: 100% 50%; } }
+.hero .subtitle { font-size: 1.15rem; color: var(--text-soft); max-width: 780px; margin: 0 auto 26px; position: relative; z-index: 2; }
+.hero .overview { font-size: 0.95rem; color: var(--text-dim); max-width: 840px; margin: 0 auto 30px; position: relative; z-index: 2; font-style: italic; }
+.hero-meta { display: flex; justify-content: center; flex-wrap: wrap; gap: 12px; position: relative; z-index: 2; margin-top: 20px; }
+.meta-chip {
+  display: inline-flex; align-items: center; gap: 10px; padding: 10px 18px;
+  background: rgba(10,15,35,0.6); border: 1px solid var(--border-glow); border-radius: 10px;
+  font-family: var(--mono); font-size: 11px; letter-spacing: 1.5px; text-transform: uppercase; transition: all 0.3s;
+}
+.meta-chip:hover { border-color: var(--neon-cyan); box-shadow: 0 0 18px rgba(0,240,255,0.2); transform: translateY(-2px); }
+.meta-chip .label { color: var(--text-dim); }
+.meta-chip .value { color: var(--neon-cyan); font-weight: 700; }
+.section { margin-bottom: 90px; position: relative; }
+.section-header { display: flex; align-items: center; gap: 18px; margin-bottom: 36px; }
+.section-num {
+  font-family: var(--mono); font-size: 13px; color: var(--neon-cyan);
+  padding: 8px 14px; border: 1px solid var(--neon-cyan); border-radius: 8px;
+  background: rgba(0,240,255,0.06); letter-spacing: 2px; white-space: nowrap;
+}
+.section-title {
+  font-size: clamp(1.5rem, 3vw, 2.1rem); font-weight: 700;
+  background: linear-gradient(90deg, #fff, var(--neon-cyan));
+  -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent;
+}
+.section-line { flex: 1; height: 1px; background: linear-gradient(90deg, var(--neon-cyan), transparent); margin-left: 8px; }
+.sub-section-marker {
+  font-family: var(--mono); font-size: 11px; color: var(--neon-purple); letter-spacing: 3px;
+  text-transform: uppercase; margin-bottom: 14px; padding: 6px 12px; display: inline-block;
+  border: 1px solid var(--neon-purple); border-radius: 6px; background: rgba(177,77,255,0.05);
+}
+.concept-block {
+  background: var(--bg-panel); backdrop-filter: var(--glass-blur);
+  border: 1px solid var(--border-glow); border-radius: 20px; padding: 32px;
+  margin-bottom: 24px; position: relative; overflow: hidden;
+}
+.concept-block::after {
+  content: ''; position: absolute; bottom: -50%; right: -10%; width: 320px; height: 320px;
+  background: radial-gradient(circle, rgba(0,240,255,0.08), transparent 70%); pointer-events: none;
+}
+.concept-block h3 { font-size: 1.35rem; color: var(--neon-cyan); margin-bottom: 14px; display: flex; align-items: center; gap: 12px; }
+.concept-block h3::before { content: '◆'; color: var(--neon-purple); font-size: 1rem; }
+.concept-block h4 { font-size: 1.05rem; color: var(--neon-magenta); margin-top: 18px; margin-bottom: 10px; }
+.concept-block p { color: var(--text-soft); margin-bottom: 14px; font-size: 1rem; }
+.concept-block strong { color: #fff; }
+.concept-block em { color: var(--neon-magenta); font-style: normal; }
+.concept-block ul { list-style: none; padding-left: 0; }
+.concept-block ul li { padding: 6px 0 6px 22px; position: relative; color: var(--text-soft); }
+.concept-block ul li::before { content: '▸'; position: absolute; left: 0; color: var(--neon-cyan); }
+.highlight-box { background: linear-gradient(135deg, rgba(0,240,255,0.07), rgba(177,77,255,0.06)); border-left: 3px solid var(--neon-cyan); padding: 16px 22px; border-radius: 10px; margin: 18px 0; font-size: 0.95rem; }
+.success-box { background: linear-gradient(135deg, rgba(0,255,170,0.06), rgba(0,240,255,0.05)); border-left: 3px solid var(--neon-green); padding: 16px 22px; border-radius: 10px; margin: 18px 0; font-size: 0.95rem; }
+.warning-box { background: linear-gradient(135deg, rgba(255,77,109,0.08), rgba(255,181,71,0.06)); border-left: 3px solid var(--neon-red); padding: 16px 22px; border-radius: 10px; margin: 18px 0; font-size: 0.95rem; }
+.warning-box strong { color: var(--neon-red); }
+.viz-wrap { background: var(--bg-panel); backdrop-filter: var(--glass-blur); border: 1px solid var(--border-glow); border-radius: 22px; padding: 30px; margin-bottom: 28px; position: relative; }
+.viz-title { font-size: 1.15rem; color: var(--neon-cyan); margin-bottom: 8px; font-family: var(--mono); letter-spacing: 1px; text-transform: uppercase; }
+.viz-desc { font-size: 0.92rem; color: var(--text-soft); margin-bottom: 22px; }
+.viz-canvas { width: 100%; background: rgba(0,0,0,0.35); border-radius: 12px; border: 1px solid rgba(0,240,255,0.2); display: block; }
+input[type="range"] { width: 100%; -webkit-appearance: none; appearance: none; background: transparent; height: 24px; }
+input[type="range"]::-webkit-slider-runnable-track { height: 4px; background: linear-gradient(90deg, var(--neon-cyan), var(--neon-purple)); border-radius: 4px; }
+input[type="range"]::-moz-range-track { height: 4px; background: linear-gradient(90deg, var(--neon-cyan), var(--neon-purple)); border-radius: 4px; }
+input[type="range"]::-webkit-slider-thumb { -webkit-appearance: none; appearance: none; width: 18px; height: 18px; border-radius: 50%; background: #fff; margin-top: -7px; cursor: pointer; box-shadow: 0 0 12px rgba(0,240,255,0.8); }
+input[type="range"]::-moz-range-thumb { width: 18px; height: 18px; border-radius: 50%; background: #fff; border: 0; cursor: pointer; box-shadow: 0 0 12px rgba(0,240,255,0.8); }
+.slider-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 20px; margin-bottom: 18px; }
+.slider-cell { background: rgba(0,0,0,0.25); border: 1px solid var(--border-glow); border-radius: 12px; padding: 16px; }
+.slider-label { display: flex; justify-content: space-between; font-family: var(--mono); font-size: 11px; text-transform: uppercase; letter-spacing: 1.5px; color: var(--text-dim); margin-bottom: 10px; }
+.slider-label span:last-child { color: var(--neon-cyan); font-size: 14px; font-weight: 700; }
+.stat-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px; margin-top: 14px; }
+.stat-box { background: rgba(0,240,255,0.05); border: 1px solid var(--border-glow); border-radius: 10px; padding: 14px; text-align: center; }
+.stat-label { font-family: var(--mono); font-size: 10px; color: var(--text-dim); text-transform: uppercase; letter-spacing: 1.5px; margin-bottom: 6px; }
+.stat-value { font-size: 1.4rem; font-weight: 700; color: var(--neon-cyan); font-family: var(--mono); }
+.stat-value.purple { color: var(--neon-purple); }
+.stat-value.magenta { color: var(--neon-magenta); }
+.stat-value.amber { color: var(--neon-amber); }
+.stat-value.green { color: var(--neon-green); }
+.stat-value.red { color: var(--neon-red); }
+.btn-row { display: flex; flex-wrap: wrap; gap: 12px; margin-bottom: 20px; }
+.btn { background: rgba(0,240,255,0.06); border: 1px solid var(--border-glow); color: var(--neon-cyan); padding: 10px 20px; border-radius: 10px; font-family: var(--mono); font-size: 12px; letter-spacing: 1.5px; cursor: pointer; text-transform: uppercase; transition: all 0.25s; }
+.btn:hover { background: rgba(0,240,255,0.15); box-shadow: 0 0 22px rgba(0,240,255,0.3); transform: translateY(-2px); }
+.btn.purple { border-color: rgba(177,77,255,0.4); color: var(--neon-purple); }
+.btn.purple:hover { background: rgba(177,77,255,0.15); box-shadow: 0 0 22px rgba(177,77,255,0.3); }
+.btn.magenta { border-color: rgba(255,43,214,0.4); color: var(--neon-magenta); }
+.btn.magenta:hover { background: rgba(255,43,214,0.15); box-shadow: 0 0 22px rgba(255,43,214,0.3); }
+.btn.active { background: linear-gradient(135deg, rgba(0,240,255,0.3), rgba(177,77,255,0.2)); border-color: var(--neon-cyan); color: #fff; box-shadow: 0 0 18px rgba(0,240,255,0.4); }
+.formula-card { background: linear-gradient(135deg, rgba(10,15,40,0.85), rgba(30,10,50,0.75)); border: 1px solid var(--border-glow); border-radius: 16px; padding: 28px; margin-bottom: 22px; position: relative; overflow: hidden; }
+.formula-card::before { content: ''; position: absolute; top: 0; left: 0; width: 4px; height: 100%; background: linear-gradient(180deg, var(--neon-cyan), var(--neon-purple), var(--neon-magenta)); }
+.formula-label { font-family: var(--mono); font-size: 11px; color: var(--neon-cyan); letter-spacing: 2px; text-transform: uppercase; margin-bottom: 14px; }
+.formula { font-family: var(--mono); font-size: 1.25rem; color: #fff; text-align: center; padding: 18px 12px; background: rgba(0,0,0,0.35); border-radius: 10px; margin: 14px 0; letter-spacing: 1px; overflow-x: auto; }
+.formula-explain { color: var(--text-soft); font-size: 0.95rem; margin-top: 12px; }
+.var-list { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 10px; margin-top: 14px; }
+.var-item { background: rgba(0,0,0,0.3); border: 1px solid rgba(0,240,255,0.15); border-radius: 8px; padding: 10px 14px; font-size: 0.88rem; }
+.var-item code { font-family: var(--mono); color: var(--neon-cyan); font-weight: 700; }
+.dual-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 18px; margin-top: 16px; }
+.dual-cell { background: rgba(0,0,0,0.25); border: 1px solid var(--border-glow); border-radius: 12px; padding: 20px; }
+.dual-cell h4 { font-family: var(--mono); font-size: 12px; color: var(--neon-cyan); letter-spacing: 2px; text-transform: uppercase; margin-bottom: 12px; }
+.dual-cell.purple h4 { color: var(--neon-purple); }
+.dual-cell.magenta h4 { color: var(--neon-magenta); }
+.dual-cell.green h4 { color: var(--neon-green); }
+.dual-cell.amber h4 { color: var(--neon-amber); }
+.dual-cell ul { list-style: none; padding-left: 0; }
+.dual-cell li { padding: 6px 0 6px 18px; color: var(--text-soft); font-size: 0.92rem; border-bottom: 1px dashed rgba(0,240,255,0.08); position: relative; }
+.dual-cell li:last-child { border-bottom: 0; }
+.dual-cell li::before { content: '▸'; position: absolute; left: 0; color: var(--neon-cyan); }
+.deep-dive { background: linear-gradient(135deg, rgba(10,15,35,0.7), rgba(20,5,40,0.55)); border: 1px solid var(--border-glow); border-radius: 18px; padding: 26px; margin: 18px 0; }
+.deep-dive .dd-label { font-family: var(--mono); font-size: 11px; color: var(--neon-magenta); letter-spacing: 2px; text-transform: uppercase; margin-bottom: 10px; padding: 4px 10px; display: inline-block; border: 1px solid var(--neon-magenta); border-radius: 6px; background: rgba(255,43,214,0.05); }
+.deep-dive h4 { font-size: 1.1rem; color: #fff; margin-bottom: 10px; }
+.deep-dive p { color: var(--text-soft); font-size: 0.95rem; margin-bottom: 12px; }
+.part-nav { display: flex; justify-content: space-between; flex-wrap: wrap; gap: 14px; margin-top: 50px; padding: 22px; background: var(--bg-panel); backdrop-filter: var(--glass-blur); border: 1px solid var(--border-glow); border-radius: 16px; }
+.part-nav-item { flex: 1; min-width: 200px; padding: 14px 18px; background: rgba(0,240,255,0.04); border: 1px solid rgba(0,240,255,0.15); border-radius: 10px; }
+.part-nav-item.current { background: linear-gradient(135deg, rgba(0,240,255,0.15), rgba(177,77,255,0.12)); border-color: var(--neon-cyan); box-shadow: 0 0 18px rgba(0,240,255,0.2); }
+.part-nav-item.done { background: rgba(0,255,170,0.04); border-color: rgba(0,255,170,0.3); }
+.part-nav-label { font-family: var(--mono); font-size: 10px; letter-spacing: 2px; color: var(--text-dim); text-transform: uppercase; margin-bottom: 6px; }
+.part-nav-item.current .part-nav-label { color: var(--neon-cyan); }
+.part-nav-item.done .part-nav-label { color: var(--neon-green); }
+.part-nav-title { font-size: 0.92rem; color: #fff; font-weight: 600; }
+.quiz-card { background: var(--bg-panel); backdrop-filter: var(--glass-blur); border: 1px solid var(--border-glow); border-radius: 18px; padding: 28px; margin-bottom: 22px; }
+.quiz-q { font-size: 1.05rem; color: #fff; margin-bottom: 18px; font-weight: 500; }
+.quiz-q .qnum { font-family: var(--mono); color: var(--neon-cyan); margin-right: 10px; }
+.quiz-q .qlevel { font-family: var(--mono); font-size: 10px; letter-spacing: 1.5px; padding: 3px 10px; border-radius: 5px; margin-left: 8px; text-transform: uppercase; font-weight: 700; }
+.qlevel.easy { background: rgba(0,255,170,0.12); color: var(--neon-green); border: 1px solid rgba(0,255,170,0.4); }
+.qlevel.mod { background: rgba(255,181,71,0.12); color: var(--neon-amber); border: 1px solid rgba(255,181,71,0.4); }
+.quiz-options { display: grid; gap: 10px; }
+.quiz-opt { padding: 14px 18px; background: rgba(0,240,255,0.04); border: 1px solid var(--border-glow); border-radius: 10px; cursor: pointer; color: var(--text-soft); transition: all 0.25s; font-size: 0.95rem; }
+.quiz-opt:hover { background: rgba(0,240,255,0.12); border-color: var(--neon-cyan); color: #fff; transform: translateX(4px); }
+.quiz-opt.correct { background: rgba(0,255,170,0.15); border-color: var(--neon-green); color: var(--neon-green); box-shadow: 0 0 18px rgba(0,255,170,0.3); }
+.quiz-opt.wrong { background: rgba(255,77,109,0.15); border-color: var(--neon-red); color: var(--neon-red); }
+.quiz-feedback { margin-top: 14px; padding: 12px 16px; border-radius: 10px; font-size: 0.9rem; display: none; }
+.quiz-feedback.show { display: block; }
+.quiz-feedback.ok { background: rgba(0,255,170,0.08); border: 1px solid rgba(0,255,170,0.4); color: var(--neon-green); }
+.quiz-feedback.no { background: rgba(255,77,109,0.08); border: 1px solid rgba(255,77,109,0.4); color: #ff7e9d; }
+.ai-panel { position: relative; background: linear-gradient(135deg, rgba(0,240,255,0.06), rgba(177,77,255,0.06)); border: 1px solid var(--border-glow); border-radius: 24px; padding: 38px 30px; backdrop-filter: var(--glass-blur); overflow: hidden; }
+.ai-head { display: flex; align-items: center; gap: 16px; margin-bottom: 26px; }
+.ai-avatar { width: 54px; height: 54px; border-radius: 50%; background: linear-gradient(135deg, var(--neon-cyan), var(--neon-purple)); display: flex; align-items: center; justify-content: center; font-family: var(--mono); font-weight: 800; color: var(--bg-deep); font-size: 18px; box-shadow: 0 0 24px rgba(0,240,255,0.5); animation: aiPulse 2.4s ease-in-out infinite; }
+@keyframes aiPulse { 0%,100% { box-shadow: 0 0 24px rgba(0,240,255,0.5); } 50% { box-shadow: 0 0 40px rgba(177,77,255,0.6); } }
+.ai-meta .ai-name { font-size: 1.05rem; color: #fff; font-weight: 600; }
+.ai-meta .ai-role { font-family: var(--mono); font-size: 11px; color: var(--neon-cyan); letter-spacing: 2px; text-transform: uppercase; }
+.takeaway { display: flex; gap: 14px; align-items: flex-start; padding: 14px 0; border-bottom: 1px dashed rgba(0,240,255,0.15); }
+.takeaway:last-child { border-bottom: 0; }
+.takeaway-num { font-family: var(--mono); font-size: 13px; color: var(--neon-cyan); background: rgba(0,240,255,0.08); border: 1px solid var(--border-glow); padding: 4px 10px; border-radius: 6px; flex-shrink: 0; font-weight: 600; }
+.takeaway-text { color: var(--text-soft); font-size: 0.95rem; }
+.takeaway-text strong { color: #fff; }
+.module-footer { margin-top: 60px; padding: 26px; text-align: center; font-family: var(--mono); font-size: 11px; color: var(--text-dim); letter-spacing: 2px; text-transform: uppercase; border-top: 1px solid var(--border-glow); }
+.real-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 18px; margin-top: 14px; }
+.real-card { background: rgba(10,15,35,0.6); border: 1px solid var(--border-glow); border-radius: 14px; padding: 20px; transition: all 0.3s; }
+.real-card:hover { transform: translateY(-4px); border-color: var(--neon-purple); box-shadow: 0 8px 24px rgba(177,77,255,0.2); }
+.real-card h4 { color: var(--neon-magenta); margin-bottom: 8px; font-size: 1rem; }
+.real-card p { color: var(--text-soft); font-size: 0.9rem; }
+@media (max-width: 720px) {
+  .container { padding: 20px 14px 80px; }
+  .hero { padding: 60px 18px 50px; }
+  .section { margin-bottom: 60px; }
+  .concept-block, .viz-wrap, .ai-panel, .quiz-card { padding: 22px 18px; }
+  .formula { font-size: 0.95rem; padding: 14px 8px; }
+}
+
+  /* â”€â”€ SCROLL REVEAL â”€â”€ */
+  .reveal {
+    opacity: 0;
+    transform: translateY(30px);
+    transition: all 0.8s cubic-bezier(0.16, 1, 0.3, 1);
+  }
+  .reveal.visible { opacity: 1; transform: translateY(0); }
+
+  /* â”€â”€ GRID DRIFT â”€â”€ */
+  @keyframes gridDrift {
+    0%   { background-position: 0 0, 0 0; }
+    100% { background-position: 60px 60px, 60px 60px; }
+  }
+
+  /* â”€â”€ SLIDE IN (quiz feedback) â”€â”€ */
+  @keyframes slideIn {
+    from { opacity: 0; transform: translateY(8px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+  .quiz-feedback.show { animation: slideIn 0.4s; }
+
+  /* â”€â”€ AI PANEL ROTATE â”€â”€ */
+  @keyframes rotate { to { transform: rotate(360deg); } }
+  .ai-panel { overflow: hidden; }
+  .ai-panel::before {
+    content: ''; position: absolute; top: -50%; left: -50%;
+    width: 200%; height: 200%;
+    background: conic-gradient(from 0deg, transparent, rgba(0,240,255,0.05), transparent, rgba(177,77,255,0.05), transparent);
+    animation: rotate 20s linear infinite;
+    pointer-events: none; z-index: 0;
+  }
+  .ai-panel > * { position: relative; z-index: 1; }
+
+  /* â”€â”€ SCANLINES â”€â”€ */
+  .scanlines {
+    position: fixed; inset: 0;
+    background: repeating-linear-gradient(0deg,
+      rgba(0,240,255,0.012) 0px, rgba(0,240,255,0.012) 1px,
+      transparent 1px, transparent 4px);
+    pointer-events: none; z-index: 999; mix-blend-mode: screen;
+  }
+</style>
+</head>
+<body>
+<div class="scanlines"></div>
+
+<canvas id="particle-canvas"></canvas>
+
+<div class="container">
+
+  <div class="hud">
+    <div class="hud-left">⟁ QNA-OS v4.7 // Module 3.5 — Part 1</div>
+    <div class="hud-center">Sampling · Sample Mean Distribution</div>
+    <div class="hud-right"><span class="hud-dot"></span>SAMPLING ENGINE ACTIVE</div>
+  </div>
+
+  <section class="hero">
+    <svg class="hero-bg-svg" viewBox="0 0 1200 400" preserveAspectRatio="none">
+      <defs>
+        <linearGradient id="sampGrad" x1="0" y1="0" x2="1" y2="0">
+          <stop offset="0%" stop-color="#00f0ff" stop-opacity="0.8"/>
+          <stop offset="100%" stop-color="#b14dff" stop-opacity="0.8"/>
+        </linearGradient>
+      </defs>
+      <!-- big population circle -->
+      <circle cx="250" cy="200" r="130" fill="none" stroke="url(#sampGrad)" stroke-width="2" opacity="0.5"/>
+      <g fill="#00f0ff" opacity="0.6">
+        <circle cx="200" cy="160" r="3"/>
+        <circle cx="250" cy="140" r="3"/>
+        <circle cx="300" cy="170" r="3"/>
+        <circle cx="220" cy="220" r="3"/>
+        <circle cx="270" cy="240" r="3"/>
+        <circle cx="180" cy="200" r="3"/>
+        <circle cx="320" cy="220" r="3"/>
+        <circle cx="240" cy="180" r="3"/>
+        <circle cx="290" cy="200" r="3"/>
+      </g>
+      <text x="250" y="80" fill="#00f0ff" font-family="JetBrains Mono" font-size="13" text-anchor="middle" opacity="0.9">POPULATION</text>
+      <!-- arrows to samples -->
+      <path d="M 380 200 L 520 150" stroke="#ff2bd6" stroke-width="1.5" opacity="0.7"/>
+      <path d="M 380 220 L 520 220" stroke="#ff2bd6" stroke-width="1.5" opacity="0.7"/>
+      <path d="M 380 240 L 520 290" stroke="#ff2bd6" stroke-width="1.5" opacity="0.7"/>
+      <!-- 3 small samples -->
+      <g>
+        <circle cx="600" cy="150" r="40" fill="none" stroke="#b14dff" stroke-width="1.5" opacity="0.7"/>
+        <circle cx="600" cy="220" r="40" fill="none" stroke="#b14dff" stroke-width="1.5" opacity="0.7"/>
+        <circle cx="600" cy="290" r="40" fill="none" stroke="#b14dff" stroke-width="1.5" opacity="0.7"/>
+        <g fill="#b14dff" opacity="0.7">
+          <circle cx="590" cy="145" r="2"/><circle cx="610" cy="155" r="2"/>
+          <circle cx="595" cy="215" r="2"/><circle cx="605" cy="225" r="2"/>
+          <circle cx="588" cy="285" r="2"/><circle cx="612" cy="295" r="2"/>
+        </g>
+      </g>
+      <text x="600" y="100" fill="#b14dff" font-family="JetBrains Mono" font-size="11" text-anchor="middle" opacity="0.9">SAMPLES</text>
+      <!-- arrow to distribution -->
+      <path d="M 680 220 L 820 220" stroke="#ff2bd6" stroke-width="1.5" opacity="0.7"/>
+      <polygon points="810,214 825,220 810,226" fill="#ff2bd6" opacity="0.8"/>
+      <!-- bell curve of sample means -->
+      <path d="M 870 290 Q 970 290 1020 250 Q 1070 200 1100 150 Q 1130 200 1180 290" fill="none" stroke="url(#sampGrad)" stroke-width="2" opacity="0.7"/>
+      <path d="M 870 290 Q 970 290 1020 250 Q 1070 200 1100 150 Q 1130 200 1180 290 L 1180 310 L 870 310 Z" fill="url(#sampGrad)" opacity="0.15"/>
+      <text x="1030" y="80" fill="#ff2bd6" font-family="JetBrains Mono" font-size="11" text-anchor="middle" opacity="0.9">SAMPLING DISTRIBUTION</text>
+    </svg>
+    <div class="hero-tag">◉ MODULE 3.5 — PART 1 of 2</div>
+    <h1>Sampling &amp; Sample Means</h1>
+    <p class="subtitle">When we can't measure everyone, we take a sample. But samples are messy — they don't always match the real group. Let's learn how to think about samples in a smart, predictable way.</p>
+    <p class="overview">Part 1 covers two big ideas in simple words. First, <strong>sampling distributions</strong> — what happens when we take many small groups from a big group and look at them. Second, the <strong>sample mean distribution</strong> — when we take the average of each sample, the averages form their own beautiful bell-shaped pattern, even when the original data is messy. By the end, you'll understand why averages are predictable, even when individual data isn't.</p>
+    <div class="hero-meta">
+      <div class="meta-chip"><span class="label">DURATION:</span><span class="value">50 MIN</span></div>
+      <div class="meta-chip"><span class="label">LEVEL:</span><span class="value">BEGINNER</span></div>
+      <div class="meta-chip"><span class="label">TOPICS:</span><span class="value">02 / 04</span></div>
+      <div class="meta-chip"><span class="label">FORMULAS:</span><span class="value">03</span></div>
+      <div class="meta-chip"><span class="label">PRACTICE:</span><span class="value">05 QUIZ Q</span></div>
+      <div class="meta-chip"><span class="label">PREREQ:</span><span class="value">M-2.5, M-3.3</span></div>
+    </div>
+  </section>
+
+  <div class="part-nav">
+    <div class="part-nav-item current">
+      <div class="part-nav-label">⟁ PART 1 — Now</div>
+      <div class="part-nav-title">Sampling · Sample Mean Distribution</div>
+    </div>
+    <div class="part-nav-item">
+      <div class="part-nav-label">PART 2 — Next</div>
+      <div class="part-nav-title">Standard Error · Why Samples Differ</div>
+    </div>
+  </div>
+
+  <section class="section reveal">
+    <div class="section-header">
+      <div class="section-num">⟁ OBJECTIVES</div>
+      <h2 class="section-title">What You'll Learn in Part 1</h2>
+      <div class="section-line"></div>
+    </div>
+    <div class="dual-grid">
+      <div class="dual-cell">
+        <h4>🎯 Sampling Distributions</h4>
+        <ul>
+          <li>What it means in plain English</li>
+          <li>Why we need it instead of full population</li>
+          <li>How sampling works step-by-step</li>
+          <li>When to use it in real projects</li>
+        </ul>
+      </div>
+      <div class="dual-cell purple">
+        <h4>📊 Sample Mean Distribution</h4>
+        <ul>
+          <li>What the "distribution of averages" means</li>
+          <li>Why it always becomes bell-shaped</li>
+          <li>The math formula explained simply</li>
+          <li>Worked example with real numbers</li>
+        </ul>
+      </div>
+      <div class="dual-cell magenta">
+        <h4>🌍 Real-Life Examples</h4>
+        <ul>
+          <li>Election polls</li>
+          <li>Product quality testing</li>
+          <li>Health surveys</li>
+          <li>App user research</li>
+        </ul>
+      </div>
+      <div class="dual-cell green">
+        <h4>🧮 Hands-On Practice</h4>
+        <ul>
+          <li>Interactive sampling simulator</li>
+          <li>Watch the bell shape build live</li>
+          <li>Easy → moderate quiz</li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <!-- ═══════════════════ TOPIC 1 — SAMPLING DISTRIBUTIONS ═══════════════════ -->
+  <section class="section reveal">
+    <div class="section-header">
+      <div class="section-num">TOPIC 1</div>
+      <h2 class="section-title">Sampling Distributions</h2>
+      <div class="section-line"></div>
+    </div>
+
+    <!-- WHAT -->
+    <div class="concept-block">
+      <div class="sub-section-marker">What it is</div>
+      <h3>What is a Sampling Distribution?</h3>
+      <p>Imagine you want to know the average height of all college students in your country. There are millions of them. You can't measure everyone — that would take years.</p>
+      <p>So instead, you do this:</p>
+      <ul>
+        <li>Pick a small group (say, 50 students) — this is your <strong>sample</strong>.</li>
+        <li>Measure their average height.</li>
+        <li>Now pick another 50 students. Find their average.</li>
+        <li>Repeat many, many times — say, 1,000 different samples of 50 students each.</li>
+      </ul>
+      <p>You now have 1,000 averages. Each average is slightly different. If you draw a chart of all those averages, you get a <strong>sampling distribution</strong>.</p>
+      <div class="highlight-box">
+        <strong>Simple meaning:</strong> A sampling distribution is the chart of "what averages (or other numbers) you would see if you took many samples from the same big group." It tells you how much your sample numbers can wiggle around.
+      </div>
+    </div>
+
+    <!-- WHY -->
+    <div class="concept-block">
+      <div class="sub-section-marker">Why we need it</div>
+      <h3>Why Do We Care About Sampling Distributions?</h3>
+      <p>Three big reasons, in simple words:</p>
+      <div class="dual-grid">
+        <div class="dual-cell">
+          <h4>1. We Can't Measure Everyone</h4>
+          <ul>
+            <li>Populations are too big or too expensive</li>
+            <li>Testing every light bulb destroys them</li>
+            <li>Polling every voter is impossible</li>
+            <li>Samples are the only way</li>
+          </ul>
+        </div>
+        <div class="dual-cell purple">
+          <h4>2. Samples Always Wiggle</h4>
+          <ul>
+            <li>One sample says 170 cm</li>
+            <li>Another says 173 cm</li>
+            <li>Another says 168 cm</li>
+            <li>How much wiggle is normal?</li>
+          </ul>
+        </div>
+        <div class="dual-cell magenta">
+          <h4>3. It Lets Us Trust Samples</h4>
+          <ul>
+            <li>Tells us how close samples are to the truth</li>
+            <li>Lets us calculate margin of error</li>
+            <li>Lets us say "we're 95% sure"</li>
+            <li>Powers all of statistics</li>
+          </ul>
+        </div>
+      </div>
+      <div class="success-box">
+        <strong>Big idea:</strong> Without sampling distributions, we'd have no way to know if our sample is close to the truth or way off. With them, we can put a number on our trust.
+      </div>
+    </div>
+
+    <!-- HOW -->
+    <div class="concept-block">
+      <div class="sub-section-marker">How to use it</div>
+      <h3>How to Build a Sampling Distribution — Step by Step</h3>
+      <p>The process is the same every time:</p>
+      <ul>
+        <li><strong>Step 1:</strong> Decide what you're measuring (e.g., average height, percentage of voters who like a candidate).</li>
+        <li><strong>Step 2:</strong> Pick a sample size — how many people each time? (e.g., n = 50)</li>
+        <li><strong>Step 3:</strong> Take many random samples from the population. Each sample has n people.</li>
+        <li><strong>Step 4:</strong> For each sample, compute your statistic (e.g., the mean).</li>
+        <li><strong>Step 5:</strong> Collect all those statistics. Plot them on a chart.</li>
+        <li><strong>Step 6:</strong> That chart <em>is</em> your sampling distribution.</li>
+      </ul>
+      <p>In real life, you don't actually take thousands of samples — that would be too expensive. Instead, we use math (and the rules we'll learn in Topic 2) to <em>predict</em> what the sampling distribution would look like, based on just one sample.</p>
+    </div>
+
+    <!-- WHEN -->
+    <div class="concept-block">
+      <div class="sub-section-marker">When to use it</div>
+      <h3>When Should You Think About Sampling Distributions?</h3>
+      <ul>
+        <li>You're conducting a <strong>survey</strong> and want to estimate something about a population.</li>
+        <li>You're doing <strong>quality testing</strong> on a factory line and can only test a few items.</li>
+        <li>You're running an <strong>A/B test</strong> on a website and want to know if your results are real or just random luck.</li>
+        <li>You're working in <strong>science research</strong> and need to publish results with proper margins.</li>
+        <li>You're building a <strong>machine learning model</strong> with limited training data.</li>
+      </ul>
+      <div class="highlight-box">
+        Basically: <strong>any time you have a sample and want to say something about the bigger group it came from</strong>, sampling distributions help you do that with confidence.
+      </div>
+    </div>
+
+    <!-- REAL LIFE EXAMPLES -->
+    <div class="concept-block">
+      <div class="sub-section-marker">Real-life examples</div>
+      <h3>Where You See Sampling in Real Life</h3>
+      <div class="real-grid">
+        <div class="real-card">
+          <h4>🗳️ Election Polls</h4>
+          <p>Pollsters call 1,000 voters out of 100 million. The sample's percentage who like Candidate A is reported with a "margin of error" — that margin comes from the sampling distribution.</p>
+        </div>
+        <div class="real-card">
+          <h4>🏭 Factory Quality Check</h4>
+          <p>A factory makes 50,000 phones daily. They test 100 random phones each day. Sampling distributions tell them how many defects they'd expect, and when to worry.</p>
+        </div>
+        <div class="real-card">
+          <h4>🩺 Drug Testing</h4>
+          <p>A new medicine is tested on 500 patients out of millions who'd use it. Sampling distributions help researchers say "this drug works 80% of the time, plus or minus 3%."</p>
+        </div>
+        <div class="real-card">
+          <h4>📱 App User Surveys</h4>
+          <p>Netflix can't ask all 250 million users their opinions, so they survey 5,000. Sampling distributions let them confidently report "users like this feature" without asking everyone.</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- REAL LIFE USE -->
+    <div class="concept-block">
+      <div class="sub-section-marker">Real-life use</div>
+      <h3>How Companies and Scientists Actually Use This</h3>
+      <p>Behind the scenes, this is what's happening when you see numbers like "approval rating is 52% ± 3%":</p>
+      <ul>
+        <li>A company or pollster took one sample (e.g., 1,000 people).</li>
+        <li>They calculated their statistic (e.g., 52% said yes).</li>
+        <li>Using the rules of sampling distributions, they computed how much their answer could "wiggle" if they took different samples.</li>
+        <li>The "± 3%" is the margin of error — the typical wiggle.</li>
+        <li>The wider the wiggle, the less certain you should be.</li>
+      </ul>
+      <p>Every news article, scientific study, or A/B test you'll ever read uses this idea — usually without saying so. Sampling distributions are the invisible foundation of modern decision-making with data.</p>
+    </div>
+
+    <!-- WORKED EXAMPLE -->
+    <div class="deep-dive">
+      <div class="dd-label">⟁ Worked Example</div>
+      <h4>Example: Heights of Students</h4>
+      <p>Suppose the <strong>true average height</strong> of all students at a school is 170 cm, with some natural variation. We'll pretend (because we can't measure everyone) and run a thought experiment.</p>
+      <p><strong>Round 1:</strong> Pick 5 random students. Their heights: 168, 172, 169, 174, 167. Average = 170 cm. 👍</p>
+      <p><strong>Round 2:</strong> Pick another 5. Their heights: 175, 168, 171, 170, 166. Average = 170 cm. 👍</p>
+      <p><strong>Round 3:</strong> Pick another 5. Heights: 165, 168, 172, 169, 172. Average = 169.2 cm.</p>
+      <p><strong>Round 4:</strong> Heights: 173, 175, 168, 170, 174. Average = 172 cm.</p>
+      <p>After 1,000 rounds, our averages look something like:</p>
+      <ul>
+        <li>Most averages fall between 168 and 172 cm.</li>
+        <li>The middle of all averages is right at 170 cm — the true value!</li>
+        <li>Very few averages go below 165 or above 175.</li>
+        <li>The shape looks like a bell curve.</li>
+      </ul>
+      <div class="success-box">
+        <strong>The lesson:</strong> Even though individual students vary widely (160 cm to 190 cm), the <em>averages</em> of small groups stay close to the truth. The sampling distribution shows us this pattern — and it's the foundation for everything coming next.
+      </div>
+    </div>
+
+    <!-- INTERACTIVE: SAMPLING SIMULATOR -->
+    <div class="viz-wrap">
+      <div class="viz-title">⟁ Live Sampling Simulator</div>
+      <div class="viz-desc">Watch sampling happen in real time. The blue chart at the top is the original population (a wide spread of heights). The cyan chart at the bottom is your sampling distribution — the chart of sample averages. Click the buttons to take samples and watch the bottom chart fill in.</div>
+      <div class="slider-row">
+        <div class="slider-cell">
+          <div class="slider-label"><span>Sample size (n)</span><span id="sampNVal">5</span></div>
+          <input type="range" id="sampNSlider" min="1" max="50" value="5">
+        </div>
+      </div>
+      <div class="btn-row">
+        <button class="btn" onclick="takeSample(1)">Take 1 Sample</button>
+        <button class="btn purple" onclick="takeSample(50)">Take 50 Samples</button>
+        <button class="btn magenta" onclick="takeSample(500)">Take 500 Samples</button>
+        <button class="btn" onclick="resetSampling()">Reset</button>
+      </div>
+      <canvas id="sampCanvas" class="viz-canvas" width="900" height="500"></canvas>
+      <div class="stat-grid">
+        <div class="stat-box">
+          <div class="stat-label">Population mean (truth)</div>
+          <div class="stat-value">170.0</div>
+        </div>
+        <div class="stat-box">
+          <div class="stat-label">Samples taken</div>
+          <div class="stat-value purple" id="numSamples">0</div>
+        </div>
+        <div class="stat-box">
+          <div class="stat-label">Avg of sample means</div>
+          <div class="stat-value magenta" id="avgMean">—</div>
+        </div>
+        <div class="stat-box">
+          <div class="stat-label">Spread of sample means</div>
+          <div class="stat-value amber" id="spreadMean">—</div>
+        </div>
+      </div>
+      <div class="highlight-box" style="margin-top:18px;" id="sampInsight">
+        <strong>Click "Take 500 Samples"</strong> to see the magic. The bottom chart will fill into a beautiful bell curve centered at the true mean (170). Even though the population is messy, the sample means are well-behaved.
+      </div>
+    </div>
+  </section>
+
+  <!-- ═══════════════════ TOPIC 2 — SAMPLE MEAN DISTRIBUTION ═══════════════════ -->
+  <section class="section reveal">
+    <div class="section-header">
+      <div class="section-num">TOPIC 2</div>
+      <h2 class="section-title">Sample Mean Distribution</h2>
+      <div class="section-line"></div>
+    </div>
+
+    <!-- WHAT -->
+    <div class="concept-block">
+      <div class="sub-section-marker">What it is</div>
+      <h3>What is the Sample Mean Distribution?</h3>
+      <p>You already saw it in action in Topic 1 — but let's give it a proper name and unpack it.</p>
+      <p>The <strong>sample mean distribution</strong> is just a special name for the sampling distribution when the statistic you're tracking is the <em>average</em> (also called the <em>mean</em>).</p>
+      <p>If you take many random samples of size n and find each sample's average, those averages have their own pattern. This pattern is the sample mean distribution. We write the sample mean as <strong>x̄</strong> (read as "x-bar").</p>
+      <div class="highlight-box">
+        <strong>Plain English:</strong> The sample mean distribution is the chart of "what averages you'd see if you took many small groups from a big group." It tells you how averages from small samples behave.
+      </div>
+    </div>
+
+    <!-- WHY -->
+    <div class="concept-block">
+      <div class="sub-section-marker">Why it's so important</div>
+      <h3>Why the Sample Mean Distribution is a Superhero</h3>
+      <p>The sample mean distribution has <strong>two magical properties</strong> that make it the most important tool in all of statistics:</p>
+      <div class="dual-grid">
+        <div class="dual-cell magenta">
+          <h4>✨ Property 1: It's Centered at the Truth</h4>
+          <ul>
+            <li>If the true population mean is μ</li>
+            <li>The middle of the sample mean distribution is also μ</li>
+            <li>So on average, samples don't lie</li>
+            <li>They sit right around the real answer</li>
+          </ul>
+        </div>
+        <div class="dual-cell green">
+          <h4>✨ Property 2: It's Always Bell-Shaped (eventually)</h4>
+          <ul>
+            <li>Even if the population is messy</li>
+            <li>Even if it's lopsided or weird</li>
+            <li>The sample averages still form a bell curve</li>
+            <li>This is the <em>Central Limit Theorem</em></li>
+          </ul>
+        </div>
+      </div>
+      <p style="margin-top:18px;">These two properties together give us a way to predict how averages will behave — even when individual measurements are wild and unpredictable.</p>
+    </div>
+
+    <!-- MATH FORMULA EXPLAINED -->
+    <div class="formula-card">
+      <div class="formula-label">⟁ Sample Mean — The Two Key Numbers</div>
+      <div class="formula">Mean of x̄ = μ</div>
+      <div class="formula">Spread of x̄ = σ / √n</div>
+      <p class="formula-explain"><strong>Reading the formulas:</strong></p>
+      <ul style="list-style:none; padding:0; margin-top:10px;">
+        <li style="padding:5px 0;">▸ The <strong>center</strong> (mean) of the sample mean distribution = μ (the true population mean)</li>
+        <li style="padding:5px 0;">▸ The <strong>spread</strong> (standard deviation) of the sample mean distribution = σ divided by the square root of sample size n</li>
+      </ul>
+      <div class="var-list">
+        <div class="var-item"><code>μ</code> — the true average of the whole population</div>
+        <div class="var-item"><code>σ</code> — the spread of individual values in the population</div>
+        <div class="var-item"><code>n</code> — the size of each sample</div>
+        <div class="var-item"><code>x̄</code> — a sample average (one value)</div>
+      </div>
+      <p class="formula-explain"><strong>What the formula tells us in plain words:</strong></p>
+      <p class="formula-explain">"If individual people vary by σ, then averages of groups of n people vary by σ ÷ √n. The bigger the group, the less the averages wiggle around."</p>
+      <p class="formula-explain"><strong>Example:</strong> If individual heights vary by σ = 10 cm, and we take samples of n = 100, then sample averages vary by only 10 / √100 = 10 / 10 = <strong>1 cm</strong>. Tiny! That's the power of averaging.</p>
+    </div>
+
+    <div class="concept-block">
+      <div class="sub-section-marker">Why dividing by √n?</div>
+      <h3>The Magic of √n — Why Bigger Samples Are More Stable</h3>
+      <p>This formula tells us a deep truth: <strong>averages of bigger groups wiggle less</strong>. But why √n and not just n?</p>
+      <p>Think of it this way:</p>
+      <ul>
+        <li>If sample size is 1 (n = 1), the "average" is just one value — varies by full σ.</li>
+        <li>If sample size is 4 (n = 4), the average varies by σ / 2 (since √4 = 2). Half the wiggle!</li>
+        <li>If sample size is 100, the average varies by σ / 10. Just 10% of original wiggle.</li>
+        <li>If sample size is 10,000, the average varies by σ / 100. Just 1% of original wiggle.</li>
+      </ul>
+      <p>To <em>halve</em> the wiggle, you need to <em>quadruple</em> the sample size. So bigger samples really do help — but they help less and less the bigger they get. This is called the <strong>diminishing returns</strong> of sampling. It's also why companies don't survey 10 million people when 1,000 is usually enough.</p>
+    </div>
+
+    <!-- HOW TO USE -->
+    <div class="concept-block">
+      <div class="sub-section-marker">How to use it</div>
+      <h3>How to Use the Sample Mean Distribution in Practice</h3>
+      <p>Here's the typical workflow when you're working with real data:</p>
+      <ul>
+        <li><strong>Step 1:</strong> Collect one sample of size n.</li>
+        <li><strong>Step 2:</strong> Calculate the sample mean x̄.</li>
+        <li><strong>Step 3:</strong> Estimate σ from the sample (or use a known value).</li>
+        <li><strong>Step 4:</strong> Compute the spread of sample means as σ / √n.</li>
+        <li><strong>Step 5:</strong> Use that spread to build a "confidence interval" — a range you're fairly sure contains the true μ.</li>
+      </ul>
+      <p>You don't need to take 1,000 samples in real life. Once you understand the sample mean distribution, you can predict everything from just one sample.</p>
+    </div>
+
+    <!-- WHEN TO USE -->
+    <div class="concept-block">
+      <div class="sub-section-marker">When to use it</div>
+      <h3>When the Sample Mean Distribution Applies</h3>
+      <p>The formulas above work well when:</p>
+      <ul>
+        <li>Your <strong>sample size is reasonable</strong> — typically n ≥ 30 for messy populations.</li>
+        <li>Your <strong>population is already bell-shaped</strong> (then any n works).</li>
+        <li>Samples are <strong>random</strong> — every person had an equal chance of being picked.</li>
+        <li>Samples are <strong>independent</strong> — one person's value doesn't affect another's.</li>
+      </ul>
+      <div class="warning-box">
+        <strong>Watch out:</strong> If you only have a tiny sample (n &lt; 30) AND the population is very skewed or weird, the bell-shape approximation might not work well. In those cases, statisticians use special tools like the t-distribution (we'll see this in a future module).
+      </div>
+    </div>
+
+    <!-- WORKED EXAMPLE -->
+    <div class="deep-dive">
+      <div class="dd-label">⟁ Worked Example</div>
+      <h4>Example: Light Bulb Lifespans</h4>
+      <p>A factory makes light bulbs. The true population stats are:</p>
+      <ul>
+        <li>Population mean lifespan: μ = 1,000 hours</li>
+        <li>Population spread: σ = 80 hours</li>
+        <li>(Some bulbs die at 800 hours, some last 1,200 hours — wide range)</li>
+      </ul>
+      <p>The factory tests samples of n = 16 bulbs at a time.</p>
+      <p><strong>Question:</strong> If we test 16 bulbs and find their average lifespan, what should we expect?</p>
+      <p><strong>Step 1 — Apply the formulas:</strong></p>
+      <ul>
+        <li>Mean of sample averages: μ = <strong>1,000 hours</strong></li>
+        <li>Spread of sample averages: σ / √n = 80 / √16 = 80 / 4 = <strong>20 hours</strong></li>
+      </ul>
+      <p><strong>Step 2 — Interpret using the empirical rule (68-95-99.7):</strong></p>
+      <ul>
+        <li>About 68% of sample averages will fall between 980 and 1,020 hours (within 1 σ of mean)</li>
+        <li>About 95% will fall between 960 and 1,040 hours</li>
+        <li>About 99.7% will fall between 940 and 1,060 hours</li>
+      </ul>
+      <div class="success-box">
+        <strong>Key insight:</strong> Notice how the sample averages are much more tightly packed than individual bulbs! Individual bulbs vary by 80 hours. Averages of 16 bulbs vary by only 20 hours. Averages of 100 bulbs would vary by only 8 hours. Bigger samples = tighter, more reliable averages.
+      </div>
+    </div>
+
+    <!-- INTERACTIVE: SAMPLE SIZE EFFECT -->
+    <div class="viz-wrap">
+      <div class="viz-title">⟁ Sample Size Effect — Watch the Bell Get Tighter</div>
+      <div class="viz-desc">This shows three sample mean distributions for n = 1, n = 5, and n = 30. All come from the same wide population. Notice how the bell curves get narrower as n grows — the bigger your sample, the more reliable your average.</div>
+      <canvas id="effectCanvas" class="viz-canvas" width="900" height="380"></canvas>
+      <div class="highlight-box" style="margin-top:18px;">
+        <strong>The visual lesson:</strong> n = 1 gives a wide curve (just one value). n = 5 starts to tighten. n = 30 is much narrower — the bigger samples are way more reliable. This is exactly what σ/√n predicts.
+      </div>
+    </div>
+
+    <!-- REAL LIFE EXAMPLES -->
+    <div class="concept-block">
+      <div class="sub-section-marker">Real-life examples</div>
+      <h3>Where Sample Mean Distributions Show Up</h3>
+      <div class="real-grid">
+        <div class="real-card">
+          <h4>🏃 Sports Analytics</h4>
+          <p>"What's a player's true average score?" Their per-game scores wiggle. But average over many games is stable. This is the sample mean distribution at work.</p>
+        </div>
+        <div class="real-card">
+          <h4>🏥 Hospital Wait Times</h4>
+          <p>One patient might wait 5 minutes, another 60. But the daily average wait stays consistent. Hospitals use this to staff properly.</p>
+        </div>
+        <div class="real-card">
+          <h4>💰 Stock Market Returns</h4>
+          <p>Daily stock returns are wild. But monthly average returns are much smoother. Long-term investors rely on this stability.</p>
+        </div>
+        <div class="real-card">
+          <h4>🎓 Class Test Averages</h4>
+          <p>Individual student scores vary a lot. But the class average from year to year is fairly stable. Teachers track class averages, not single scores.</p>
+        </div>
+        <div class="real-card">
+          <h4>🌡️ Weather Forecasting</h4>
+          <p>One day's temperature is unpredictable. But the average temperature over a week is much more reliable. Climate scientists use averages, not single readings.</p>
+        </div>
+        <div class="real-card">
+          <h4>📦 E-commerce Delivery</h4>
+          <p>Amazon can't promise exact delivery time per package. But they can say "average is 2 days." The sample mean distribution lets them set delivery promises.</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- REAL LIFE USE -->
+    <div class="concept-block">
+      <div class="sub-section-marker">Real-life use</div>
+      <h3>Why This Matters for Your Career</h3>
+      <p>If you ever do any of these things, you'll use the sample mean distribution every day:</p>
+      <ul>
+        <li><strong>Data analysis:</strong> reporting averages with margins of error</li>
+        <li><strong>A/B testing:</strong> deciding whether feature A is better than B</li>
+        <li><strong>Marketing:</strong> measuring campaign performance</li>
+        <li><strong>Quality control:</strong> checking if products meet standards</li>
+        <li><strong>Scientific research:</strong> publishing reliable findings</li>
+        <li><strong>Business decisions:</strong> using customer survey data</li>
+      </ul>
+      <p>The sample mean distribution is the workhorse of statistics. Master it now, and you'll use it for decades.</p>
+    </div>
+  </section>
+
+  <!-- ═══════════════════ QUIZ ═══════════════════ -->
+  <section class="section reveal">
+    <div class="section-header">
+      <div class="section-num">QUIZ</div>
+      <h2 class="section-title">Test Your Understanding — Part 1</h2>
+      <div class="section-line"></div>
+    </div>
+
+    <div class="quiz-card">
+      <div class="quiz-q"><span class="qnum">Q1</span>What is a sampling distribution?<span class="qlevel easy">EASY</span></div>
+      <div class="quiz-options">
+        <div class="quiz-opt" onclick="checkQ(this, false)">A list of every value in a population</div>
+        <div class="quiz-opt" onclick="checkQ(this, true)">A chart of statistics (like averages) from many samples taken from the same population</div>
+        <div class="quiz-opt" onclick="checkQ(this, false)">Just another name for a histogram</div>
+        <div class="quiz-opt" onclick="checkQ(this, false)">The shape of a single sample's data</div>
+      </div>
+      <div class="quiz-feedback"></div>
+    </div>
+
+    <div class="quiz-card">
+      <div class="quiz-q"><span class="qnum">Q2</span>Why do we use samples instead of measuring the entire population?<span class="qlevel easy">EASY</span></div>
+      <div class="quiz-options">
+        <div class="quiz-opt" onclick="checkQ(this, false)">Samples are always more accurate</div>
+        <div class="quiz-opt" onclick="checkQ(this, true)">Measuring everyone is usually too expensive, slow, or impossible</div>
+        <div class="quiz-opt" onclick="checkQ(this, false)">Statisticians prefer small datasets</div>
+        <div class="quiz-opt" onclick="checkQ(this, false)">Samples never wiggle</div>
+      </div>
+      <div class="quiz-feedback"></div>
+    </div>
+
+    <div class="quiz-card">
+      <div class="quiz-q"><span class="qnum">Q3</span>The sample mean distribution is always centered at…<span class="qlevel easy">EASY</span></div>
+      <div class="quiz-options">
+        <div class="quiz-opt" onclick="checkQ(this, false)">Zero</div>
+        <div class="quiz-opt" onclick="checkQ(this, false)">The sample size n</div>
+        <div class="quiz-opt" onclick="checkQ(this, true)">The true population mean μ</div>
+        <div class="quiz-opt" onclick="checkQ(this, false)">The standard deviation σ</div>
+      </div>
+      <div class="quiz-feedback"></div>
+    </div>
+
+    <div class="quiz-card">
+      <div class="quiz-q"><span class="qnum">Q4</span>If the population standard deviation is σ = 20 and the sample size is n = 25, what is the spread of the sample means (σ / √n)?<span class="qlevel mod">MODERATE</span></div>
+      <div class="quiz-options">
+        <div class="quiz-opt" onclick="checkQ(this, false)">20</div>
+        <div class="quiz-opt" onclick="checkQ(this, false)">5</div>
+        <div class="quiz-opt" onclick="checkQ(this, true)">4</div>
+        <div class="quiz-opt" onclick="checkQ(this, false)">25</div>
+      </div>
+      <div class="quiz-feedback"></div>
+    </div>
+
+    <div class="quiz-card">
+      <div class="quiz-q"><span class="qnum">Q5</span>If you quadruple the sample size (n × 4), what happens to the spread of sample means?<span class="qlevel mod">MODERATE</span></div>
+      <div class="quiz-options">
+        <div class="quiz-opt" onclick="checkQ(this, false)">It quadruples too</div>
+        <div class="quiz-opt" onclick="checkQ(this, true)">It is cut in half (divided by 2)</div>
+        <div class="quiz-opt" onclick="checkQ(this, false)">It stays the same</div>
+        <div class="quiz-opt" onclick="checkQ(this, false)">It becomes zero</div>
+      </div>
+      <div class="quiz-feedback"></div>
+    </div>
+  </section>
+
+  <!-- ═══════════════════ PART 1 RECAP ═══════════════════ -->
+  <section class="section reveal">
+    <div class="section-header">
+      <div class="section-num">PART 1 RECAP</div>
+      <h2 class="section-title">AI Synthesis Panel</h2>
+      <div class="section-line"></div>
+    </div>
+    <div class="ai-panel">
+      <div class="ai-head">
+        <div class="ai-avatar">Ξ</div>
+        <div class="ai-meta">
+          <div class="ai-name">QNA-Σ // Synthesis Core</div>
+          <div class="ai-role">Sampling Analyst — Stage 1</div>
+        </div>
+      </div>
+      <div>
+        <div class="takeaway">
+          <div class="takeaway-num">01</div>
+          <div class="takeaway-text"><strong>A sampling distribution</strong> is the chart of statistics (like averages) you'd see if you took many samples from the same population. It tells you how much your sample numbers wiggle around.</div>
+        </div>
+        <div class="takeaway">
+          <div class="takeaway-num">02</div>
+          <div class="takeaway-text"><strong>We use samples</strong> because measuring everyone is usually too slow, too expensive, or impossible. Sampling distributions let us trust samples to represent the bigger group.</div>
+        </div>
+        <div class="takeaway">
+          <div class="takeaway-num">03</div>
+          <div class="takeaway-text"><strong>The sample mean distribution</strong> is the special case where the statistic is the average (x̄). It's the most important sampling distribution.</div>
+        </div>
+        <div class="takeaway">
+          <div class="takeaway-num">04</div>
+          <div class="takeaway-text"><strong>Property 1:</strong> The sample mean distribution is centered at the true mean μ. Averages don't lie on average.</div>
+        </div>
+        <div class="takeaway">
+          <div class="takeaway-num">05</div>
+          <div class="takeaway-text"><strong>Property 2:</strong> The sample mean distribution becomes bell-shaped as n grows — even if the population is messy. This is the Central Limit Theorem.</div>
+        </div>
+        <div class="takeaway">
+          <div class="takeaway-num">06</div>
+          <div class="takeaway-text"><strong>The key formula:</strong> the spread of sample means is σ / √n. Bigger samples → tighter, more reliable averages.</div>
+        </div>
+        <div class="takeaway">
+          <div class="takeaway-num">07</div>
+          <div class="takeaway-text"><strong>Diminishing returns:</strong> to halve the wiggle in your average, you need to quadruple your sample size. That's why most surveys use 1,000 people, not 1,000,000.</div>
+        </div>
+        <div class="takeaway">
+          <div class="takeaway-num">08</div>
+          <div class="takeaway-text"><strong>Real-world uses:</strong> election polls, factory quality testing, drug trials, A/B testing, sports stats, weather averages, stock returns — sampling distributions are everywhere.</div>
+        </div>
+        <div class="takeaway">
+          <div class="takeaway-num">09</div>
+          <div class="takeaway-text"><strong>Coming in Part 2:</strong> the <em>standard error</em> — a special name for the spread of sample means, and the most important number in inferential statistics. Plus a deep look at <em>why</em> samples never exactly match the population.</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <div class="part-nav">
+    <div class="part-nav-item done">
+      <div class="part-nav-label">✓ PART 1 — Complete</div>
+      <div class="part-nav-title">Sampling · Sample Mean Distribution</div>
+    </div>
+    <div class="part-nav-item current">
+      <div class="part-nav-label">⟁ PART 2 — Up Next</div>
+      <div class="part-nav-title">Standard Error · Why Samples Differ</div>
+    </div>
+  </div>
+
+  <div class="module-footer">⟁ END OF MODULE 3.5 — PART 1 // Sampling foundations calibrated. Continue → Part 2: Standard Error &amp; Why Samples Differ ⟁</div>
+</div>
+
+<script>
+/* PARTICLE BACKGROUND */
+const canvas = document.getElementById('particle-canvas');
+const ctx = canvas.getContext('2d');
+let particles = [];
+function sizeCanvas() { canvas.width = window.innerWidth; canvas.height = window.innerHeight; }
+sizeCanvas();
+window.addEventListener('resize', sizeCanvas);
+function initParticles() {
+  particles = [];
+  const count = Math.min(60, Math.floor(window.innerWidth / 25));
+  for (let i = 0; i < count; i++) {
+    particles.push({ x: Math.random()*canvas.width, y: Math.random()*canvas.height, vx: (Math.random()-0.5)*0.4, vy: (Math.random()-0.5)*0.4, r: Math.random()*1.6+0.5, hue: Math.random()<0.5?'0,240,255':'177,77,255' });
+  }
+}
+initParticles();
+window.addEventListener('resize', initParticles);
+function drawParticles() {
+  ctx.clearRect(0,0,canvas.width,canvas.height);
+  particles.forEach(p => {
+    p.x += p.vx; p.y += p.vy;
+    if (p.x<0||p.x>canvas.width) p.vx*=-1;
+    if (p.y<0||p.y>canvas.height) p.vy*=-1;
+    ctx.beginPath();
+    ctx.fillStyle = `rgba(${p.hue},0.7)`;
+    ctx.shadowColor = `rgba(${p.hue},1)`;
+    ctx.shadowBlur = 12;
+    ctx.arc(p.x,p.y,p.r,0,Math.PI*2);
+    ctx.fill();
+  });
+  ctx.shadowBlur = 0;
+  for (let i=0;i<particles.length;i++) {
+    for (let j=i+1;j<particles.length;j++) {
+      const dx = particles[i].x-particles[j].x;
+      const dy = particles[i].y-particles[j].y;
+      const d = Math.sqrt(dx*dx+dy*dy);
+      if (d<130) {
+        ctx.strokeStyle = `rgba(0,240,255,${0.12*(1-d/130)})`;
+        ctx.lineWidth = 0.5;
+        ctx.beginPath();
+        ctx.moveTo(particles[i].x,particles[i].y);
+        ctx.lineTo(particles[j].x,particles[j].y);
+        ctx.stroke();
+      }
+    }
+  }
+  requestAnimationFrame(drawParticles);
+}
+drawParticles();
+
+/* HELPER */
+function normalPdf(x, mu, sigma) {
+  return (1 / (sigma * Math.sqrt(2*Math.PI))) * Math.exp(-((x-mu)**2) / (2*sigma*sigma));
+}
+function gaussRand() {
+  let u = 0, v = 0;
+  while (u === 0) u = Math.random();
+  while (v === 0) v = Math.random();
+  return Math.sqrt(-2*Math.log(u)) * Math.cos(2*Math.PI*v);
+}
+
+/* SAMPLING SIMULATOR */
+const sampCanvas = document.getElementById('sampCanvas');
+const sampCtx = sampCanvas.getContext('2d');
+const popMean = 170, popSD = 10;
+let sampleMeans = [];
+
+function takeSample(count) {
+  const n = +document.getElementById('sampNSlider').value;
+  for (let s = 0; s < count; s++) {
+    let sum = 0;
+    for (let i = 0; i < n; i++) {
+      sum += popMean + gaussRand() * popSD;
+    }
+    sampleMeans.push(sum / n);
+  }
+  drawSampling();
+}
+function resetSampling() {
+  sampleMeans = [];
+  drawSampling();
+}
+function drawSampling() {
+  const w = sampCanvas.width, h = sampCanvas.height;
+  sampCtx.clearRect(0,0,w,h);
+  const padL = 60, padR = 30, padT = 30, padB = 40;
+  const topH = (h - padT - padB - 30) / 2;
+  const botH = topH;
+  const plotW = w - padL - padR;
+  const xLo = 140, xHi = 200;
+  const xToPx = v => padL + ((v-xLo)/(xHi-xLo)) * plotW;
+
+  // Top: population
+  sampCtx.fillStyle = '#00f0ff';
+  sampCtx.font = 'bold 13px JetBrains Mono';
+  sampCtx.textAlign = 'left';
+  sampCtx.fillText('Population (individual values, spread σ=10)', padL, padT - 8);
+
+  sampCtx.fillStyle = 'rgba(0,240,255,0.18)';
+  const popYMax = normalPdf(popMean, popMean, popSD) * 1.1;
+  sampCtx.beginPath();
+  sampCtx.moveTo(padL, padT + topH);
+  for (let i = 0; i <= 200; i++) {
+    const xv = xLo + (i/200)*(xHi-xLo);
+    const y = normalPdf(xv, popMean, popSD);
+    sampCtx.lineTo(xToPx(xv), padT + topH - (y/popYMax)*topH);
+  }
+  sampCtx.lineTo(padL+plotW, padT + topH);
+  sampCtx.closePath();
+  sampCtx.fill();
+
+  sampCtx.strokeStyle = '#00f0ff';
+  sampCtx.lineWidth = 2.5;
+  sampCtx.shadowColor = '#00f0ff'; sampCtx.shadowBlur = 6;
+  sampCtx.beginPath();
+  for (let i = 0; i <= 300; i++) {
+    const xv = xLo + (i/300)*(xHi-xLo);
+    const y = normalPdf(xv, popMean, popSD);
+    const px = xToPx(xv); const py = padT + topH - (y/popYMax)*topH;
+    if (i === 0) sampCtx.moveTo(px, py); else sampCtx.lineTo(px, py);
+  }
+  sampCtx.stroke();
+  sampCtx.shadowBlur = 0;
+
+  sampCtx.strokeStyle = '#9fb4d6'; sampCtx.lineWidth = 1.5;
+  sampCtx.beginPath();
+  sampCtx.moveTo(padL, padT);
+  sampCtx.lineTo(padL, padT + topH);
+  sampCtx.lineTo(padL+plotW, padT + topH);
+  sampCtx.stroke();
+
+  // mean line on population
+  sampCtx.strokeStyle = '#ff2bd6'; sampCtx.lineWidth = 1.5; sampCtx.setLineDash([5,4]);
+  sampCtx.beginPath();
+  sampCtx.moveTo(xToPx(popMean), padT);
+  sampCtx.lineTo(xToPx(popMean), padT + topH);
+  sampCtx.stroke();
+  sampCtx.setLineDash([]);
+  sampCtx.fillStyle = '#ff2bd6'; sampCtx.font = 'bold 11px JetBrains Mono'; sampCtx.textAlign = 'center';
+  sampCtx.fillText('μ=170', xToPx(popMean), padT - 4);
+
+  // Bottom: sample means histogram
+  const botPadT = padT + topH + 50;
+  sampCtx.fillStyle = '#b14dff';
+  sampCtx.font = 'bold 13px JetBrains Mono';
+  sampCtx.textAlign = 'left';
+  sampCtx.fillText('Sample Means Distribution (n='+document.getElementById('sampNSlider').value+', '+sampleMeans.length+' samples)', padL, botPadT - 8);
+
+  const numBins = 40;
+  const bins = new Array(numBins).fill(0);
+  sampleMeans.forEach(m => {
+    if (m >= xLo && m <= xHi) {
+      const idx = Math.min(numBins-1, Math.floor((m - xLo) / (xHi - xLo) * numBins));
+      bins[idx]++;
+    }
+  });
+  const maxBin = Math.max(...bins, 1);
+  const binW = plotW / numBins;
+  for (let i = 0; i < numBins; i++) {
+    if (bins[i] === 0) continue;
+    const barH = (bins[i] / maxBin) * botH;
+    const x = padL + i * binW;
+    const y = botPadT + botH - barH;
+    const grad = sampCtx.createLinearGradient(0, y, 0, y + barH);
+    grad.addColorStop(0, 'rgba(177,77,255,1)');
+    grad.addColorStop(1, 'rgba(0,240,255,0.4)');
+    sampCtx.fillStyle = grad;
+    sampCtx.shadowColor = '#b14dff'; sampCtx.shadowBlur = 4;
+    sampCtx.fillRect(x+1, y, binW-2, barH);
+    sampCtx.shadowBlur = 0;
+  }
+
+  // overlay theoretical normal for sample means
+  if (sampleMeans.length > 5) {
+    const n = +document.getElementById('sampNSlider').value;
+    const sdMean = popSD / Math.sqrt(n);
+    const tYMax = normalPdf(popMean, popMean, sdMean) * 1.05;
+    const scale = botH / Math.max(maxBin / sampleMeans.length / ((xHi - xLo)/numBins), 0.0001);
+    sampCtx.strokeStyle = '#ff2bd6'; sampCtx.lineWidth = 2.5;
+    sampCtx.shadowColor = '#ff2bd6'; sampCtx.shadowBlur = 6;
+    sampCtx.beginPath();
+    for (let i = 0; i <= 300; i++) {
+      const xv = xLo + (i/300)*(xHi-xLo);
+      const y = normalPdf(xv, popMean, sdMean);
+      // approximate scaling
+      const expectedHeight = y * sampleMeans.length * ((xHi - xLo) / numBins);
+      const barH = (expectedHeight / maxBin) * botH;
+      const px = xToPx(xv); const py = botPadT + botH - barH;
+      if (i === 0) sampCtx.moveTo(px, py); else sampCtx.lineTo(px, py);
+    }
+    sampCtx.stroke();
+    sampCtx.shadowBlur = 0;
+  }
+
+  sampCtx.strokeStyle = '#9fb4d6'; sampCtx.lineWidth = 1.5;
+  sampCtx.beginPath();
+  sampCtx.moveTo(padL, botPadT);
+  sampCtx.lineTo(padL, botPadT + botH);
+  sampCtx.lineTo(padL+plotW, botPadT + botH);
+  sampCtx.stroke();
+
+  // axis
+  sampCtx.fillStyle = '#9fb4d6'; sampCtx.font = '10px JetBrains Mono'; sampCtx.textAlign = 'center';
+  for (let v = 150; v <= 190; v += 10) {
+    sampCtx.fillText(v, xToPx(v), botPadT + botH + 15);
+  }
+
+  // mean line on samples
+  sampCtx.strokeStyle = '#ff2bd6'; sampCtx.lineWidth = 1.5; sampCtx.setLineDash([5,4]);
+  sampCtx.beginPath();
+  sampCtx.moveTo(xToPx(popMean), botPadT);
+  sampCtx.lineTo(xToPx(popMean), botPadT + botH);
+  sampCtx.stroke();
+  sampCtx.setLineDash([]);
+
+  // update stats
+  document.getElementById('sampNVal').textContent = document.getElementById('sampNSlider').value;
+  document.getElementById('numSamples').textContent = sampleMeans.length;
+  if (sampleMeans.length > 0) {
+    const avg = sampleMeans.reduce((a,b)=>a+b,0)/sampleMeans.length;
+    const variance = sampleMeans.reduce((s,m)=>s+(m-avg)*(m-avg),0)/sampleMeans.length;
+    const sd = Math.sqrt(variance);
+    document.getElementById('avgMean').textContent = avg.toFixed(2);
+    document.getElementById('spreadMean').textContent = sd.toFixed(2);
+    const n = +document.getElementById('sampNSlider').value;
+    const expected = popSD / Math.sqrt(n);
+    const ins = document.getElementById('sampInsight');
+    if (sampleMeans.length < 30) {
+      ins.innerHTML = `<strong>${sampleMeans.length} samples so far.</strong> Take more samples to see the bell shape form clearly. Theoretical spread for n=${n}: ${expected.toFixed(2)}.`;
+    } else {
+      ins.innerHTML = `<strong>${sampleMeans.length} samples taken.</strong> Sample means cluster around 170 (the truth) with spread ≈ ${sd.toFixed(2)}. Theory predicts σ/√n = ${expected.toFixed(2)}. The bell curve is the predicted shape — and the histogram is matching it. 🔔`;
+    }
+  } else {
+    document.getElementById('avgMean').textContent = '—';
+    document.getElementById('spreadMean').textContent = '—';
+  }
+}
+document.getElementById('sampNSlider').addEventListener('input', () => { resetSampling(); });
+drawSampling();
+
+/* SAMPLE SIZE EFFECT */
+const effectCanvas = document.getElementById('effectCanvas');
+const effectCtx = effectCanvas.getContext('2d');
+function drawEffect() {
+  const w = effectCanvas.width, h = effectCanvas.height;
+  effectCtx.clearRect(0,0,w,h);
+  const padL = 60, padR = 30, padT = 40, padB = 50;
+  const plotW = w - padL - padR;
+  const plotH = h - padT - padB;
+  const mu = 170;
+  const xLo = 140, xHi = 200;
+  const xToPx = v => padL + ((v-xLo)/(xHi-xLo))*plotW;
+
+  const cases = [
+    { n: 1,  sigma: popSD / Math.sqrt(1),  color: '#00f0ff', label: 'n = 1' },
+    { n: 5,  sigma: popSD / Math.sqrt(5),  color: '#b14dff', label: 'n = 5' },
+    { n: 30, sigma: popSD / Math.sqrt(30), color: '#ff2bd6', label: 'n = 30' }
+  ];
+  // find max for scaling
+  let yMax = 0;
+  cases.forEach(c => { yMax = Math.max(yMax, normalPdf(mu, mu, c.sigma)); });
+  yMax *= 1.05;
+  const yToPx = v => padT + plotH - (v/yMax)*plotH;
+
+  // axes
+  effectCtx.strokeStyle = '#9fb4d6'; effectCtx.lineWidth = 1.5;
+  effectCtx.beginPath();
+  effectCtx.moveTo(padL, padT);
+  effectCtx.lineTo(padL, padT+plotH);
+  effectCtx.lineTo(padL+plotW, padT+plotH);
+  effectCtx.stroke();
+
+  // tick labels
+  effectCtx.fillStyle = '#9fb4d6'; effectCtx.font = '10px JetBrains Mono'; effectCtx.textAlign = 'center';
+  for (let v = 150; v <= 200; v += 10) {
+    effectCtx.fillText(v, xToPx(v), padT+plotH+18);
+  }
+
+  // mean line
+  effectCtx.strokeStyle = '#ff2bd6'; effectCtx.lineWidth = 1.5; effectCtx.setLineDash([5,4]);
+  effectCtx.beginPath();
+  effectCtx.moveTo(xToPx(mu), padT);
+  effectCtx.lineTo(xToPx(mu), padT+plotH);
+  effectCtx.stroke();
+  effectCtx.setLineDash([]);
+  effectCtx.fillStyle = '#ff2bd6'; effectCtx.font = 'bold 11px JetBrains Mono'; effectCtx.textAlign = 'center';
+  effectCtx.fillText('μ=170', xToPx(mu), padT-6);
+
+  cases.forEach((c, idx) => {
+    effectCtx.strokeStyle = c.color;
+    effectCtx.lineWidth = 2.5;
+    effectCtx.shadowColor = c.color; effectCtx.shadowBlur = 6;
+    effectCtx.beginPath();
+    for (let i = 0; i <= 300; i++) {
+      const xv = xLo + (i/300)*(xHi-xLo);
+      const yv = normalPdf(xv, mu, c.sigma);
+      if (i === 0) effectCtx.moveTo(xToPx(xv), yToPx(yv));
+      else effectCtx.lineTo(xToPx(xv), yToPx(yv));
+    }
+    effectCtx.stroke();
+    effectCtx.shadowBlur = 0;
+    // legend
+    effectCtx.fillStyle = c.color;
+    effectCtx.font = 'bold 12px JetBrains Mono';
+    effectCtx.textAlign = 'left';
+    effectCtx.fillText(`${c.label} → σ/√n = ${c.sigma.toFixed(2)}`, padL + 30 + idx * 200, padT + 20);
+  });
+
+  effectCtx.fillStyle = '#00f0ff';
+  effectCtx.font = 'bold 13px JetBrains Mono';
+  effectCtx.textAlign = 'left';
+  effectCtx.fillText('How sample size affects the spread of sample means (population σ=10)', padL, padT - 20);
+}
+drawEffect();
+
+/* QUIZ */
+function checkQ(el, correct) {
+  const opts = el.parentElement.querySelectorAll('.quiz-opt');
+  opts.forEach(o => o.classList.remove('correct','wrong'));
+  const fb = el.parentElement.parentElement.querySelector('.quiz-feedback');
+  if (correct) {
+    el.classList.add('correct');
+    fb.className = 'quiz-feedback show ok';
+    fb.textContent = '✓ Correct! Sampling reasoning confirmed.';
+  } else {
+    el.classList.add('wrong');
+    fb.className = 'quiz-feedback show no';
+    fb.textContent = '✗ Not quite — review the relevant section and try again.';
+  }
+}
+
+/* â”€â”€ SCROLL REVEAL OBSERVER â”€â”€ */
+(function() {
+  const reveals = document.querySelectorAll('.reveal');
+  if (!reveals.length) return;
+  const obs = new IntersectionObserver((entries) => {
+    entries.forEach(e => { if (e.isIntersecting) { e.target.classList.add('visible'); obs.unobserve(e.target); } });
+  }, { threshold: 0, rootMargin: '0px 0px -40px 0px' });
+  reveals.forEach(r => obs.observe(r));
+})();
+</script>
+</body>
+</html>

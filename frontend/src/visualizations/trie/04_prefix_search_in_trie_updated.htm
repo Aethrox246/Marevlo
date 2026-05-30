@@ -1,0 +1,419 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Prefix Search in Trie</title>
+    <style>
+        :root {
+            --bg-page: #0d1117;
+            --bg-surface: #161b22;
+            --border-main: #30363d;
+            --btn-bg: #21262d;
+            --btn-hover: #2d333b;
+            --text-main: #c9d1d9;
+            --text-dim: #8b949e;
+            --accent-purple: #a371f7;
+            --accent-blue: #388bfd;
+            --accent-green: #3fb950;
+            --accent-orange: #e3b341;
+            --accent-red: #f85149;
+        }
+
+        * { box-sizing: border-box; }
+        body {
+            background-color: var(--bg-page);
+            color: var(--text-main);
+            font-family: system-ui, -apple-system, sans-serif;
+            margin: 0;
+            padding: 20px 0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        h1 { color: var(--accent-purple); margin: 0 0 8px 0; }
+
+        .input-bar {
+            width: 100%;
+            max-width: 1100px;
+            background: var(--bg-surface);
+            padding: 12px;
+            display: flex;
+            gap: 12px;
+            flex-wrap: wrap;
+            justify-content: center;
+            border-bottom: 1px solid var(--border-main);
+            margin-bottom: 20px;
+        }
+        button {
+            padding: 8px 16px;
+            background: var(--btn-bg);
+            border: 1px solid var(--border-main);
+            color: var(--text-main);
+            border-radius: 6px;
+            cursor: pointer;
+        }
+        button:hover { background: var(--btn-hover); }
+
+        .viz {
+            display: flex;
+            gap: 50px;
+            width: 100%;
+            max-width: 1200px;
+            flex-wrap: wrap;
+            justify-content: center;
+        }
+
+        .words {
+            text-align: center;
+        }
+
+        .label {
+            color: var(--accent-purple);
+            font-weight: bold;
+            margin-bottom: 8px;
+        }
+
+        .words-list {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            padding: 12px;
+            background: #21262d;
+            border-radius: 10px;
+            max-width: 380px;
+        }
+
+        .tile {
+            padding: 8px 14px;
+            border-radius: 6px;
+            font-family: monospace;
+            font-size: 15px;
+            background: #21262d;
+            border: 2px solid var(--accent-orange);
+        }
+
+        .trie-container {
+            text-align: center;
+        }
+
+        .trie {
+            background: #21262d;
+            border: 3px solid var(--accent-blue);
+            border-radius: 12px;
+            padding: 20px;
+            min-height: 420px;
+            width: 580px;
+            position: relative;
+            overflow: auto;
+            font-family: monospace;
+        }
+
+        .trie-node {
+            display: inline-block;
+            padding: 10px 16px;
+            border-radius: 10px;
+            background: #30363d;
+            border: 3px solid #58a6ff;
+            margin: 12px;
+            text-align: center;
+            position: relative;
+            min-width: 68px;
+        }
+
+        .trie-node.current {
+            border-color: var(--accent-orange);
+            box-shadow: 0 0 0 4px rgba(227, 179, 65, 0.5);
+        }
+
+        .trie-node.end {
+            border-color: var(--accent-green);
+        }
+
+        .children-container {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            justify-content: center;
+            margin-top: 12px;
+        }
+
+        .info {
+            margin: 20px 0;
+            text-align: center;
+            font-family: monospace;
+            font-size: 22px;
+        }
+
+        .action-panel {
+            background: var(--bg-surface);
+            border: 1px solid var(--border-main);
+            border-radius: 10px;
+            padding: 18px;
+            width: 100%;
+            max-width: 1000px;
+            min-height: 140px;
+            margin: 20px 0;
+            font-family: monospace;
+        }
+
+        .controls {
+            margin: 20px 0;
+            display: flex;
+            align-items: center;
+            gap: 16px;
+            flex-wrap: wrap;
+            justify-content: center;
+        }
+
+        .log-panel {
+            background: var(--bg-page);
+            border: 1px solid var(--border-main);
+            border-radius: 10px;
+            padding: 16px;
+            width: 100%;
+            max-width: 1000px;
+            height: 260px;
+            overflow-y: auto;
+            font-family: 'Courier New', monospace;
+            font-size: 14px;
+        }
+    </style>
+</head>
+<body>
+
+    <h1>Prefix Search in Trie</h1>
+    <p style="color:var(--text-dim);margin-bottom:20px;">Trie Traversal • startsWith Operation</p>
+
+    <div class="input-bar">
+        <button onclick="loadExample(0)">Example 1: "app"</button>
+        <button onclick="loadExample(1)">Example 2: "app" (fail)</button>
+        <button onclick="resetSim()">Reset</button>
+    </div>
+
+    <div class="viz">
+        <div class="words">
+            <div class="label">Inserted Words</div>
+            <div class="words-list" id="words-vis"></div>
+        </div>
+
+        <div class="trie-container">
+            <div class="label">Trie Structure (Traversal Highlighted)</div>
+            <div class="trie" id="trie-vis"></div>
+        </div>
+    </div>
+
+    <div class="info" id="info">
+        Prefix Exists: <span id="result-val" style="font-size:24px;">—</span>
+    </div>
+
+    <div class="action-panel" id="action">Click an example to begin</div>
+
+    <div class="controls">
+        <button onclick="prevStep()">← Prev</button>
+        <button onclick="togglePlay()" id="play-btn">▶ Play</button>
+        <button onclick="nextStep()">Next →</button>
+        <label>Speed <input type="range" id="speed" min="0" max="2" value="1"></label>
+    </div>
+
+    <div class="log-panel" id="log"></div>
+
+    <script>
+        let insertedWords = [];
+        let root = null;
+        let steps = [];
+        let stepIdx = 0;
+        let timer = null;
+        let isPlaying = false;
+        const delays = [1650, 850, 380];
+
+        class TrieNode {
+            constructor() {
+                this.children = new Array(26).fill(null);
+                this.isEnd = false;
+            }
+        }
+
+        function createTrie() {
+            return new TrieNode();
+        }
+
+        function insert(word) {
+            let node = root;
+            for (let char of word) {
+                const idx = char.charCodeAt(0) - 97;
+                if (!node.children[idx]) {
+                    node.children[idx] = new TrieNode();
+                }
+                node = node.children[idx];
+            }
+            node.isEnd = true;
+        }
+
+        function startsWith(prefix) {
+            let node = root;
+            const path = [];
+            for (let char of prefix) {
+                const idx = char.charCodeAt(0) - 97;
+                path.push(char);
+                if (!node.children[idx]) {
+                    return {exists: false, path};
+                }
+                node = node.children[idx];
+            }
+            return {exists: true, path};
+        }
+
+        function generateSteps(words, prefixes) {
+            root = createTrie();
+            insertedWords = [];
+            steps = [];
+
+            steps.push({
+                action: "Initialize Trie",
+                panel: "Empty Trie (root node)",
+                log: "Trie initialized",
+                words: [],
+                result: null,
+                highlightPath: [],
+                prefix: null
+            });
+
+            // Insert words
+            for (let word of words) {
+                insert(word);
+                insertedWords.push(word);
+                steps.push({
+                    action: `Insert "${word}"`,
+                    panel: `Inserted "${word}"`,
+                    log: `Insert "${word}"`,
+                    words: [...insertedWords],
+                    result: null,
+                    highlightPath: word.split(''),
+                    prefix: null
+                });
+            }
+
+            // Prefix searches
+            for (let prefix of prefixes) {
+                const res = startsWith(prefix);
+                steps.push({
+                    action: `startsWith "${prefix}"`,
+                    panel: `startsWith "${prefix}" → <span style="color:${res.exists ? '#3fb950' : '#f85149'}">${res.exists}</span>`,
+                    log: `startsWith "${prefix}" = ${res.exists}`,
+                    words: [...insertedWords],
+                    result: res.exists,
+                    highlightPath: res.path,
+                    prefix: prefix
+                });
+            }
+        }
+
+        function renderWords(words) {
+            const cont = document.getElementById('words-vis');
+            cont.innerHTML = '';
+            words.forEach(w => {
+                const t = document.createElement('div');
+                t.className = 'tile';
+                t.textContent = `"${w}"`;
+                cont.appendChild(t);
+            });
+        }
+
+        function renderTrie(highlightPath = []) {
+            const cont = document.getElementById('trie-vis');
+            cont.innerHTML = '';
+
+            function build(node, depth = 0, prefix = '') {
+                if (!node) return '';
+                let html = `<div class="trie-node ${node.isEnd ? 'end' : ''}" style="margin-left:${depth * 32}px">`;
+                html += `<div class="label">${prefix || 'ROOT'}</div>`;
+
+                let childHtml = '<div class="children-container">';
+                let hasChild = false;
+                for (let i = 0; i < 26; i++) {
+                    if (node.children[i]) {
+                        hasChild = true;
+                        const ch = String.fromCharCode(97 + i);
+                        childHtml += `<div style="padding:4px 8px;background:#21262d;border:1px solid #58a6ff;border-radius:4px;">${ch}</div>`;
+                    }
+                }
+                childHtml += '</div>';
+                if (hasChild) html += childHtml;
+                html += '</div>';
+                return html;
+            }
+
+            cont.innerHTML = build(root);
+        }
+
+        function renderStep(idx) {
+            stepIdx = idx;
+            const step = steps[idx];
+            if (!step) return;
+
+            document.getElementById('action').innerHTML = step.panel;
+            renderWords(step.words);
+            renderTrie(step.highlightPath);
+
+            const resultEl = document.getElementById('result-val');
+            resultEl.textContent = step.result !== null ? (step.result ? '✅ Yes' : '❌ No') : '—';
+            resultEl.style.color = step.result ? 'var(--accent-green)' : 'var(--accent-red)';
+
+            const logEl = document.getElementById('log');
+            logEl.innerHTML = steps.slice(0, idx + 1).map(s => 
+                `<div style="margin:5px 0;">${s.log}</div>`
+            ).join('');
+            logEl.scrollTop = logEl.scrollHeight;
+        }
+
+        function nextStep() {
+            if (stepIdx < steps.length - 1) renderStep(stepIdx + 1);
+            else pause();
+        }
+
+        function prevStep() {
+            if (stepIdx > 0) renderStep(stepIdx - 1);
+        }
+
+        function togglePlay() {
+            const btn = document.getElementById('play-btn');
+            if (isPlaying) {
+                pause();
+            } else {
+                isPlaying = true;
+                btn.textContent = '❚❚ Pause';
+                timer = setInterval(() => {
+                    if (stepIdx < steps.length - 1) nextStep();
+                    else pause();
+                }, delays[document.getElementById('speed').value]);
+            }
+        }
+
+        function pause() {
+            clearInterval(timer);
+            isPlaying = false;
+            document.getElementById('play-btn').textContent = '▶ Play';
+        }
+
+        function resetSim() {
+            pause();
+            stepIdx = 0;
+            renderStep(0);
+        }
+
+        function loadExample(n) {
+            const examples = [
+                {words: ["apple", "application", "banana", "app"], prefixes: ["app"]},
+                {words: ["cat", "dog", "bird"], prefixes: ["app"]}
+            ];
+            const ex = examples[n];
+            generateSteps(ex.words, ex.prefixes);
+            resetSim();
+        }
+
+        window.onload = () => loadExample(0);
+    </script>
+</body>
+</html>
