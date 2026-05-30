@@ -19,7 +19,35 @@ export default function Navigation() {
     const navigate = useNavigate();
     const [showProfileMenu, setShowProfileMenu] = useState(false);
     const [showBugReport, setShowBugReport] = useState(false);
+    const [showHeardFromModal, setShowHeardFromModal] = useState(false);
+    const [heardFrom, setHeardFrom] = useState('');
     const profileMenuRef = useRef(null);
+
+    const heardFromOptions = [
+        'Friend or colleague',
+        'Google Search',
+        'YouTube',
+        'Instagram',
+        'LinkedIn',
+        'College or university',
+        'Teacher or mentor',
+        'Hackathon or event',
+        'Blog or article',
+        'GitHub',
+        'Other',
+    ];
+
+    const handleGetStartedClick = () => {
+        setHeardFrom('');
+        setShowHeardFromModal(true);
+    };
+
+    const handleHeardFromContinue = () => {
+        if (!heardFrom) return;
+        localStorage.setItem('heardFrom', heardFrom);
+        setShowHeardFromModal(false);
+        navigate('/signup');
+    };
 
     useEffect(() => {
         if (!showProfileMenu) return;
@@ -121,7 +149,7 @@ export default function Navigation() {
                                     Sign in
                                 </button>
                                 <button
-                                    onClick={() => navigate('/signup')}
+                                    onClick={handleGetStartedClick}
                                     className="px-5 py-2.5 rounded-xl text-sm font-bold transition-all shadow-lg hover:-translate-y-0.5"
                                     style={{ backgroundColor: isDark ? '#ffffff' : '#000000', color: isDark ? '#000000' : '#ffffff' }}
                                 >
@@ -134,6 +162,53 @@ export default function Navigation() {
             </nav>
 
             {showBugReport && <BugReportModal isDark={isDark} onClose={() => setShowBugReport(false)} />}
+
+            {showHeardFromModal && (
+                <div className="fixed inset-0 z-[70] flex items-center justify-center p-4">
+                    <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" />
+                    <div
+                        className="relative w-full max-w-md rounded-2xl p-6 shadow-2xl"
+                        style={{ backgroundColor: 'var(--color-surface)', border: '1px solid var(--color-border)' }}
+                    >
+                        <h2 className="text-xl font-bold mb-4" style={{ color: 'var(--color-primary-text)' }}>
+                            How did you hear about us?
+                        </h2>
+
+                        <div className="space-y-2 max-h-72 overflow-y-auto pr-1">
+                            {heardFromOptions.map((option) => (
+                                <label
+                                    key={option}
+                                    className="flex items-center gap-3 rounded-lg px-3 py-2 cursor-pointer"
+                                    style={{ backgroundColor: 'var(--color-surface-hover)' }}
+                                >
+                                    <input
+                                        type="radio"
+                                        name="heardFrom"
+                                        value={option}
+                                        checked={heardFrom === option}
+                                        onChange={(event) => setHeardFrom(event.target.value)}
+                                    />
+                                    <span className="text-sm" style={{ color: 'var(--color-primary-text)' }}>
+                                        {option}
+                                    </span>
+                                </label>
+                            ))}
+                        </div>
+
+                        <button
+                            onClick={handleHeardFromContinue}
+                            disabled={!heardFrom}
+                            className="mt-6 w-full px-4 py-2.5 rounded-xl text-sm font-semibold transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                            style={{
+                                backgroundColor: isDark ? '#ffffff' : '#000000',
+                                color: isDark ? '#000000' : '#ffffff',
+                            }}
+                        >
+                            Continue
+                        </button>
+                    </div>
+                </div>
+            )}
 
             <style>{`
                 .nav-dropdown-item {

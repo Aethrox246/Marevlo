@@ -46,6 +46,7 @@ def signup(
         email=payload.email,
         username=payload.username,
         password=payload.password,
+        heard_from=payload.heard_from,
     )
     return user
 
@@ -76,6 +77,7 @@ def google_login(
     return auth_service.google_login(
         db,
         id_token=body.id_token,
+        heard_from=body.heard_from,
         ip=_client_ip(request),
         user_agent=request.headers.get("user-agent"),
     )
