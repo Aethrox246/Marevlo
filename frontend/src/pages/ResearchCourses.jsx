@@ -117,66 +117,8 @@ export default function ResearchCourses() {
 
     return (
         <>
-            <style>{`
-                @keyframes rcOrb {
-                    0%,100% { transform: translate(0,0) scale(1); }
-                    33%     { transform: translate(30px,-40px) scale(1.2); }
-                    66%     { transform: translate(-20px,20px) scale(0.85); }
-                }
-                @keyframes rcShimmer {
-                    0%   { transform: translateX(-120%) skewX(-15deg); }
-                    100% { transform: translateX(320%) skewX(-15deg); }
-                }
-                @keyframes rcScan {
-                    0%   { transform: translateY(-100%); opacity: 0; }
-                    10%  { opacity: 1; }
-                    90%  { opacity: 1; }
-                    100% { transform: translateY(800%); opacity: 0; }
-                }
-                @keyframes rcFloat {
-                    0%,100% { transform: translateY(0); }
-                    50%     { transform: translateY(-8px); }
-                }
-                .rc-card {
-                    transition: transform 0.45s cubic-bezier(.34,1.56,.64,1), box-shadow 0.45s ease;
-                    cursor: pointer;
-                }
-                .rc-card-1:hover {
-                    transform: translateY(-8px) scale(1.005);
-                    box-shadow: 0 40px 100px rgba(99,102,241,0.45) !important;
-                }
-                .rc-card-2:hover {
-                    transform: translateY(-8px) scale(1.005);
-                    box-shadow: 0 40px 100px rgba(139,92,246,0.45) !important;
-                }
-                .rc-card-3:hover {
-                    transform: translateY(-8px) scale(1.005);
-                    box-shadow: 0 40px 100px rgba(124,58,237,0.42) !important;
-                }
-                .rc-card:hover .rc-shimmer {
-                    animation: rcShimmer 0.75s ease forwards;
-                }
-                .rc-part-label {
-                    font-size: 10px; font-weight: 700; letter-spacing: 0.2em;
-                    text-transform: uppercase; display: flex; align-items: center; gap: 8px;
-                    margin-bottom: 12px;
-                }
-                .rc-part-label::after {
-                    content: ''; flex: 1; height: 1px;
-                    background: linear-gradient(90deg, currentColor, transparent);
-                    opacity: 0.25;
-                }
-                .rc-module-row {
-                    transition: all 0.25s ease;
-                    cursor: pointer;
-                }
-                .rc-module-row:hover {
-                    background: rgba(255,255,255,0.04) !important;
-                    transform: translateX(4px);
-                }
-            `}</style>
 
-            <div className="overflow-y-auto h-full" style={{ backgroundColor: 'var(--color-app-bg)', color: 'var(--color-primary-text)' }}>
+            <div className="overflow-y-auto h-full text-foreground" style={{ backgroundColor: 'var(--color-app-bg)' }}>
                 <div style={{ maxWidth: '1160px', margin: '0 auto', padding: '40px 24px 96px' }}>
 
                     {/* Back button */}
@@ -216,14 +158,14 @@ export default function ResearchCourses() {
                                 Research Curriculum
                             </span>
                         </div>
-                        <h1 style={{
+                        <h1 className="text-foreground" style={{
                             fontSize: 'clamp(2.2rem,5vw,3.8rem)', fontWeight: 900,
                             lineHeight: 1.06, letterSpacing: '-0.03em',
-                            marginBottom: '16px', color: 'var(--color-primary-text)'
+                            marginBottom: '16px'
                         }}>
                             Research Courses
                         </h1>
-                        <p style={{ color: 'var(--color-muted-text)', fontSize: '1.05rem', maxWidth: '520px', lineHeight: 1.7 }}>
+                        <p className="text-muted-foreground" style={{ fontSize: '1.05rem', maxWidth: '520px', lineHeight: 1.7 }}>
                             Deep, focused courses tied to the research that's reshaping how we build AI systems. Each course is self-contained and hands-on.
                         </p>
                     </div>

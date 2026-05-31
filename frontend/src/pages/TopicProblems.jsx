@@ -14,7 +14,7 @@ const DIFFICULTY_ORDER = { Easy: 0, Medium: 1, Hard: 2 };
 
 function SkeletonRow() {
     return (
-        <div className="flex items-center justify-between px-6 py-4 animate-pulse border-b" style={{ borderColor: 'var(--color-border)' }}>
+        <div className="flex items-center justify-between px-6 py-4 animate-pulse border-b border-border">
             <div className="flex items-center gap-4">
                 <div className="w-8 h-8 rounded-full bg-neutral-200 dark:bg-neutral-700" />
                 <div className="w-48 h-4 rounded-full bg-neutral-200 dark:bg-neutral-700" />
@@ -64,7 +64,7 @@ export default function TopicProblems() {
     };
 
     return (
-        <div className="flex-1 overflow-y-auto custom-scrollbar" style={{ backgroundColor: 'var(--color-app-bg)', color: 'var(--color-primary-text)' }}>
+        <div className="flex-1 overflow-y-auto custom-scrollbar text-foreground" style={{ backgroundColor: 'var(--color-app-bg)' }}>
 
             {/* Header bar */}
             <div
@@ -76,14 +76,13 @@ export default function TopicProblems() {
             >
                 <button
                     onClick={() => navigate('/problems')}
-                    className="flex items-center gap-2 text-sm font-semibold transition-colors hover:opacity-70"
-                    style={{ color: 'var(--color-muted-text)' }}
+                    className="flex items-center gap-2 text-sm font-semibold transition-colors hover:opacity-70 text-muted-foreground"
                 >
                     <ArrowLeft size={16} />
                     All Topics
                 </button>
                 <span style={{ color: 'var(--color-border)' }}>/</span>
-                <span className="text-sm font-bold" style={{ color: 'var(--color-primary-text)' }}>
+                <span className="text-sm font-bold text-foreground">
                     {loading ? '…' : (topic?.icon + ' ' + topic?.name)}
                 </span>
             </div>
@@ -95,10 +94,10 @@ export default function TopicProblems() {
                     <div className="flex items-center gap-3 mb-2">
                         <span style={{ fontSize: 36 }}>{topic?.icon}</span>
                         <div>
-                            <h1 className="text-3xl font-black tracking-tight" style={{ color: 'var(--color-primary-text)' }}>
+                            <h1 className="text-3xl font-black tracking-tight text-foreground">
                                 {loading ? 'Loading…' : topic?.name}
                             </h1>
-                            <p className="text-sm mt-0.5" style={{ color: 'var(--color-muted-text)' }}>
+                            <p className="text-sm mt-0.5 text-muted-foreground">
                                 {counts.All} problems · {counts.Easy} easy · {counts.Medium} medium · {counts.Hard} hard
                             </p>
                         </div>
@@ -144,10 +143,9 @@ export default function TopicProblems() {
                 >
                     {/* Table header */}
                     <div
-                        className="grid px-6 py-3 text-xs font-bold uppercase tracking-wider"
+                        className="grid px-6 py-3 text-xs font-bold uppercase tracking-wider text-muted-foreground"
                         style={{
                             gridTemplateColumns: '48px 1fr 110px 60px',
-                            color: 'var(--color-muted-text)',
                             borderBottom: '1px solid var(--color-border)',
                             background: isDark ? 'rgba(255,255,255,0.03)' : 'rgba(0,0,0,0.02)',
                         }}
@@ -162,7 +160,7 @@ export default function TopicProblems() {
                         ? Array.from({ length: 8 }).map((_, i) => <SkeletonRow key={i} />)
                         : filtered.length === 0
                             ? (
-                                <div className="text-center py-16" style={{ color: 'var(--color-muted-text)' }}>
+                                <div className="text-center py-16 text-muted-foreground">
                                     <div className="text-4xl mb-3">🔍</div>
                                     <p className="text-sm font-semibold">No {filter} problems yet</p>
                                 </div>
@@ -183,10 +181,9 @@ export default function TopicProblems() {
                                     >
                                         {/* Number */}
                                         <span
-                                            className="w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold flex-shrink-0"
+                                            className="w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold flex-shrink-0 text-muted-foreground"
                                             style={{
                                                 background: 'var(--color-surface-hover)',
-                                                color: 'var(--color-muted-text)',
                                                 border: '1px solid var(--color-border)',
                                             }}
                                         >
@@ -194,7 +191,7 @@ export default function TopicProblems() {
                                         </span>
 
                                         {/* Title */}
-                                        <span className="font-medium text-sm pr-4" style={{ color: 'var(--color-primary-text)' }}>
+                                        <span className="font-medium text-sm pr-4 text-foreground">
                                             {problem.title}
                                         </span>
 
@@ -206,8 +203,7 @@ export default function TopicProblems() {
                                         {/* Arrow */}
                                         <ArrowRight
                                             size={15}
-                                            className="transition-transform duration-200 group-hover:translate-x-1 ml-auto"
-                                            style={{ color: 'var(--color-muted-text)' }}
+                                            className="transition-transform duration-200 group-hover:translate-x-1 ml-auto text-muted-foreground"
                                         />
                                     </button>
                                 );
@@ -216,7 +212,7 @@ export default function TopicProblems() {
                 </div>
 
                 {!loading && filtered.length > 0 && (
-                    <p className="text-xs mt-4 text-center" style={{ color: 'var(--color-muted-text)' }}>
+                    <p className="text-xs mt-4 text-center text-muted-foreground">
                         Showing {filtered.length} of {counts.All} problems
                     </p>
                 )}
