@@ -79,8 +79,16 @@ export default function Messages() {
     const refetchTimerRef = useRef(null);
 
     const fetchChats = useCallback(async () => {
+        if (!user || !token) {
+            setChats([]);
+            setError(null);
+            setLoading(false);
+            return;
+        }
+
         try {
             setLoading(true);
+            setError(null);
             const response = await fetch(
                 `${API_BASE}/chat/chats?page=${page}&limit=20`,
                 {
@@ -90,18 +98,25 @@ export default function Messages() {
                     }
                 }
             );
-            if (response.ok) {
-                const data = await response.json();
-                setChats(data.chats);
+
+            if (response.status === 401 || response.status === 403) {
+                setChats([]);
                 setError(null);
+                return;
             }
-        } catch (err) {
+
+            if (!response.ok) {
+                throw new Error(`HTTP ${response.status}`);
+            }
+
+            const data = await response.json();
+            setChats(data.chats ?? []);
+        } catch {
             setError('Failed to load chats');
-            console.error(err);
         } finally {
             setLoading(false);
         }
-    }, [page, token]);
+    }, [page, token, user]);
 
     // Fetch chats on mount and when page changes
     useEffect(() => {
@@ -242,10 +257,9 @@ export default function Messages() {
 
     return (
         <div
-            className="h-full w-full flex overflow-hidden relative"
+            className="h-full w-full flex overflow-hidden relative text-foreground"
             style={{
                 backgroundColor: 'var(--color-app-bg)',
-                color: 'var(--color-primary-text)',
                 transition: 'background-color 0.3s ease'
             }}
         >
@@ -253,7 +267,7 @@ export default function Messages() {
             <div className="absolute inset-0 z-0 pointer-events-none overflow-hidden">
                 <div className="feed-orb feed-orb-1" />
                 <div className="feed-orb feed-orb-2" />
-                <div className="feed-orb feed-orb-3" />
+                <div className="feed-orb msg-orb-3" />
             </div>
 
             <div className="relative z-10 w-full h-full overflow-hidden">
@@ -261,16 +275,12 @@ export default function Messages() {
 
                     {/* ─────────────── CHATS LIST PANEL ─────────────── */}
                     <aside
-                        className={`flex flex-col h-full min-h-0 border-r ${showChatPanel ? 'hidden lg:flex' : 'flex'}`}
-                        style={{
-                            borderColor: 'var(--color-border)',
-                            background: 'var(--color-surface)',
-                        }}
+                        className={`flex flex-col h-full min-h-0 border-r border-border bg-card ${showChatPanel ? 'hidden lg:flex' : 'flex'}`}
                     >
                         {/* ── Messaging Header ── */}
                         <div
-                            className="flex-shrink-0 relative overflow-hidden"
-                            style={{ borderBottom: '1px solid var(--color-border)', background: 'var(--color-surface)' }}
+                            className="flex-shrink-0 relative overflow-hidden bg-card"
+                            style={{ borderBottom: '1px solid var(--color-border)' }}
                         >
                             {/* Top gradient accent line */}
                             <span
@@ -288,7 +298,7 @@ export default function Messages() {
                                         <h1
                                             className="text-xl font-bold tracking-tight"
                                             style={{
-                                                background: 'linear-gradient(135deg, var(--color-primary-text) 50%, #6366f1 100%)',
+                                                background: 'linear-gradient(135deg, var(--foreground) 50%, #6366f1 100%)',
                                                 WebkitBackgroundClip: 'text',
                                                 WebkitTextFillColor: 'transparent',
                                                 backgroundClip: 'text',
@@ -309,11 +319,12 @@ export default function Messages() {
                                         )}
                                     </div>
                                     <button
-                                        onClick={() => setShowUserSearch(true)}
+                                        onClick={() => { if (user) setShowUserSearch(true); }}
+                                        disabled={!user}
                                         aria-label="New chat"
                                         className="p-2 rounded-xl transition-all duration-200"
-                                        style={{ color: 'var(--color-muted-text)', border: '1px solid var(--color-border)' }}
-                                        title="New message"
+                                        style={{ color: 'var(--muted-foreground)', border: '1px solid var(--color-border)', cursor: user ? 'pointer' : 'not-allowed', opacity: user ? 1 : 0.55 }}
+                                        title={user ? 'New message' : 'Sign in to start a message'}
                                         onMouseEnter={e => {
                                             e.currentTarget.style.backgroundColor = 'rgba(99,102,241,0.08)';
                                             e.currentTarget.style.borderColor = 'rgba(99,102,241,0.3)';
@@ -323,7 +334,7 @@ export default function Messages() {
                                         onMouseLeave={e => {
                                             e.currentTarget.style.backgroundColor = 'transparent';
                                             e.currentTarget.style.borderColor = 'var(--color-border)';
-                                            e.currentTarget.style.color = 'var(--color-muted-text)';
+                                            e.currentTarget.style.color = 'var(--muted-foreground)';
                                             e.currentTarget.style.transform = 'rotate(0) scale(1)';
                                         }}
                                     >
@@ -336,7 +347,7 @@ export default function Messages() {
                                     <Search
                                         size={14}
                                         className="absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none transition-colors duration-200"
-                                        style={{ color: searchQuery ? '#6366f1' : 'var(--color-muted-text)' }}
+                                        style={{ color: searchQuery ? '#6366f1' : 'var(--muted-foreground)' }}
                                     />
                                     <input
                                         type="text"
@@ -346,7 +357,7 @@ export default function Messages() {
                                         className="w-full pl-9 pr-8 py-2.5 rounded-xl text-sm focus:outline-none transition-all duration-200"
                                         style={{
                                             backgroundColor: 'var(--color-surface-hover)',
-                                            color: 'var(--color-primary-text)',
+                                            color: 'var(--foreground)',
                                             border: `1px solid ${searchQuery ? 'rgba(99,102,241,0.4)' : 'var(--color-border)'}`,
                                             boxShadow: searchQuery ? '0 0 0 3px rgba(99,102,241,0.08)' : 'none',
                                         }}
@@ -356,7 +367,7 @@ export default function Messages() {
                                             onClick={() => setSearchQuery('')}
                                             aria-label="Clear search"
                                             className="absolute right-2.5 top-1/2 -translate-y-1/2 p-1 rounded-lg transition-colors"
-                                            style={{ color: 'var(--color-muted-text)' }}
+                                            style={{ color: 'var(--muted-foreground)' }}
                                             onMouseEnter={e => { e.currentTarget.style.backgroundColor = 'var(--color-surface)'; }}
                                             onMouseLeave={e => { e.currentTarget.style.backgroundColor = 'transparent'; }}
                                         >
@@ -380,7 +391,7 @@ export default function Messages() {
                                                 background: activeFilter === tab.id
                                                     ? 'linear-gradient(135deg, #6366f1, #7c3aed)'
                                                     : 'var(--color-surface-hover)',
-                                                color: activeFilter === tab.id ? '#fff' : 'var(--color-muted-text)',
+                                                color: activeFilter === tab.id ? '#fff' : 'var(--muted-foreground)',
                                                 border: `1px solid ${activeFilter === tab.id ? 'transparent' : 'var(--color-border)'}`,
                                                 boxShadow: activeFilter === tab.id ? '0 2px 12px rgba(99,102,241,0.35)' : 'none',
                                             }}
@@ -435,15 +446,17 @@ export default function Messages() {
                                             <span className="absolute -top-2 -right-2 text-xl animate-bounce">✨</span>
                                         )}
                                     </div>
-                                    <h3 className="font-bold text-sm mb-1.5" style={{ color: 'var(--color-primary-text)' }}>
-                                        {searchQuery ? `No results for "${searchQuery}"` : 'No conversations yet'}
+                                    <h3 className="font-bold text-sm mb-1.5 text-foreground">
+                                        {!user ? 'Sign in to view messages' : searchQuery ? `No results for "${searchQuery}"` : 'No conversations yet'}
                                     </h3>
-                                    <p className="text-xs leading-relaxed mb-4" style={{ color: 'var(--color-muted-text)' }}>
-                                        {searchQuery
+                                    <p className="text-xs leading-relaxed mb-4 text-muted-foreground">
+                                        {!user
+                                            ? 'Your conversations are private and require an active session.'
+                                            : searchQuery
                                             ? 'Try a different name or username'
                                             : 'Connect with classmates and start chatting!'}
                                     </p>
-                                    {!searchQuery && (
+                                    {user && !searchQuery && (
                                         <button
                                             onClick={() => setShowUserSearch(true)}
                                             className="px-4 py-2 rounded-xl text-xs font-semibold text-white transition-all hover:scale-105"
@@ -548,7 +561,7 @@ export default function Messages() {
                                                         <h3
                                                             className="text-sm truncate"
                                                             style={{
-                                                                color: 'var(--color-primary-text)',
+                                                                color: 'var(--foreground)',
                                                                 fontWeight: hasUnread ? 700 : 600,
                                                             }}
                                                         >
@@ -557,7 +570,7 @@ export default function Messages() {
                                                         <span
                                                             className="text-[10px] flex-shrink-0"
                                                             style={{
-                                                                color: hasUnread ? '#6366f1' : 'var(--color-muted-text)',
+                                                                color: hasUnread ? '#6366f1' : 'var(--muted-foreground)',
                                                                 fontWeight: hasUnread ? 600 : 400,
                                                             }}
                                                         >
@@ -576,7 +589,7 @@ export default function Messages() {
                                                             <p
                                                                 className="text-xs truncate"
                                                                 style={{
-                                                                    color: hasUnread ? 'var(--color-primary-text)' : 'var(--color-muted-text)',
+                                                                    color: hasUnread ? 'var(--foreground)' : 'var(--muted-foreground)',
                                                                     fontWeight: hasUnread ? 500 : 400,
                                                                     fontStyle: isDeletedPreview ? 'italic' : 'normal',
                                                                     opacity: isDeletedPreview ? 0.6 : 1,
@@ -664,7 +677,7 @@ export default function Messages() {
                                     <h2
                                         className="text-2xl font-bold mb-2.5 tracking-tight"
                                         style={{
-                                            background: 'linear-gradient(135deg, var(--color-primary-text) 0%, #6366f1 100%)',
+                                            background: 'linear-gradient(135deg, var(--foreground) 0%, #6366f1 100%)',
                                             WebkitBackgroundClip: 'text',
                                             WebkitTextFillColor: 'transparent',
                                             backgroundClip: 'text',
@@ -672,11 +685,12 @@ export default function Messages() {
                                     >
                                         Your inbox
                                     </h2>
-                                    <p className="text-sm max-w-[240px] leading-relaxed mx-auto" style={{ color: 'var(--color-muted-text)' }}>
+                                    <p className="text-sm max-w-[240px] leading-relaxed mx-auto text-muted-foreground">
                                         Select a conversation or start a new one to connect with a classmate.
                                     </p>
                                 </div>
 
+                                {user && (
                                 <div className="flex gap-3 mt-8 z-10">
                                     <button
                                         onClick={() => setShowUserSearch(true)}
@@ -690,13 +704,13 @@ export default function Messages() {
                                         New conversation
                                     </button>
                                 </div>
+                                )}
 
                                 <div
-                                    className="mt-6 px-4 py-2 rounded-xl text-xs flex items-center gap-1.5 z-10"
+                                    className="mt-6 px-4 py-2 rounded-xl text-xs flex items-center gap-1.5 z-10 text-muted-foreground"
                                     style={{
                                         background: 'rgba(99,102,241,0.06)',
                                         border: '1px solid rgba(99,102,241,0.12)',
-                                        color: 'var(--color-muted-text)',
                                     }}
                                 >
                                     <span style={{ opacity: 0.7 }}>🔒</span>
@@ -707,79 +721,6 @@ export default function Messages() {
                     </main>
                 </div>
             </div>
-
-            <style>{`
-                @keyframes feedOrbFloat {
-                    0%, 100% { transform: translate(0, 0) scale(1); }
-                    33% { transform: translate(30px, -40px) scale(1.08); }
-                    66% { transform: translate(-20px, 20px) scale(0.94); }
-                }
-                .feed-orb {
-                    position: absolute;
-                    border-radius: 50%;
-                    filter: blur(80px);
-                    pointer-events: none;
-                    animation: feedOrbFloat 10s ease-in-out infinite;
-                }
-                .feed-orb-1 {
-                    width: 400px; height: 400px;
-                    background: radial-gradient(circle, rgba(99,102,241,0.18), transparent 70%);
-                    top: -100px; left: -100px;
-                    animation-delay: 0s;
-                }
-                .feed-orb-2 {
-                    width: 350px; height: 350px;
-                    background: radial-gradient(circle, rgba(6,182,212,0.15), transparent 70%);
-                    bottom: 10%; right: -80px;
-                    animation-delay: -4s;
-                }
-                .feed-orb-3 {
-                    width: 250px; height: 250px;
-                    background: radial-gradient(circle, rgba(244,63,94,0.12), transparent 70%);
-                    top: 40%; left: 40%;
-                    animation-delay: -7s;
-                }
-
-                @keyframes msgShimmer {
-                    0%   { background-position: -300px 0; }
-                    100% { background-position:  300px 0; }
-                }
-                .msg-shimmer {
-                    background: linear-gradient(
-                        90deg,
-                        var(--color-surface-hover) 0%,
-                        rgba(255,255,255,0.07) 50%,
-                        var(--color-surface-hover) 100%
-                    );
-                    background-size: 300px 100%;
-                    animation: msgShimmer 1.5s linear infinite;
-                }
-
-                @keyframes emptyPulse {
-                    0%, 100% { transform: translate(-50%,-50%) scale(1);   opacity: 0.3; }
-                    50%       { transform: translate(-50%,-50%) scale(1.18); opacity: 0.15; }
-                }
-
-                @keyframes typingBounce {
-                    0%, 60%, 100% { opacity: 0.45; transform: translateY(0); }
-                    30%           { opacity: 1;    transform: translateY(-4px); }
-                }
-                .typing-dot-sm {
-                    display: inline-block;
-                    width: 4px;
-                    height: 4px;
-                    border-radius: 50%;
-                    background: currentColor;
-                }
-
-                @keyframes chatRowIn {
-                    from { opacity: 0; transform: translateX(-10px); }
-                    to   { opacity: 1; transform: translateX(0); }
-                }
-                .chat-row-enter {
-                    animation: chatRowIn 0.22s ease-out both;
-                }
-            `}</style>
         </div>
     );
 }

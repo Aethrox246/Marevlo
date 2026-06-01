@@ -1,21 +1,23 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { motion, useInView, useReducedMotion, useMotionValue, useSpring, useTransform } from 'framer-motion';
 import { ChevronRight, Layers, Users, Briefcase, Code, Terminal, Globe, ArrowUpRight, CheckCircle2, Zap, MessageSquare, Brain, Cpu, GitBranch } from 'lucide-react';
 import { useTheme } from '../context/ThemeContext';
+import { MiraAvatar } from '../components/mira/MiraAvatar';
 
 // Animated Typing Terminal
 const CODE_SNIPPETS = [
     {
-        label: 'DSA · Two Pointers',
-        file: 'two_sum.py',
-        color: '#6366f1',
+        label: 'DSA · Best Time to Buy/Sell',
+        file: 'best_time_to_buy_sell.py',
+        color: '#22c55e',
         lines: [
-            { indent: 0, tokens: [{ t: 'comment', v: '# Two Sum — classic DSA problem' }] },
-            { indent: 0, tokens: [{ t: 'keyword', v: 'def' }, { t: 'plain', v: ' ' }, { t: 'fn', v: 'two_sum' }, { t: 'plain', v: '(nums, target):' }] },
-            { indent: 1, tokens: [{ t: 'plain', v: 'seen = {}' }] },
-            { indent: 1, tokens: [{ t: 'keyword', v: 'for' }, { t: 'plain', v: ' i, n ' }, { t: 'keyword', v: 'in' }, { t: 'plain', v: ' ' }, { t: 'fn', v: 'enumerate' }, { t: 'plain', v: '(nums):' }] },
-            { indent: 2, tokens: [{ t: 'plain', v: 'diff = target - n' }] },
-            { indent: 2, tokens: [{ t: 'keyword', v: 'if' }, { t: 'plain', v: ' diff ' }, { t: 'keyword', v: 'in' }, { t: 'plain', v: ' seen:' }] },
-            { indent: 3, tokens: [{ t: 'keyword', v: 'return' }, { t: 'plain', v: ' [seen[diff], i]' }] },
+            { indent: 0, tokens: [{ t: 'comment', v: '# Best Time to Buy & Sell — one pass' }] },
+            { indent: 0, tokens: [{ t: 'keyword', v: 'def' }, { t: 'plain', v: ' ' }, { t: 'fn', v: 'max_profit' }, { t: 'plain', v: '(prices):' }] },
+            { indent: 1, tokens: [{ t: 'plain', v: 'low, best = prices[0], 0' }] },
+            { indent: 1, tokens: [{ t: 'keyword', v: 'for' }, { t: 'plain', v: ' p ' }, { t: 'keyword', v: 'in' }, { t: 'plain', v: ' prices[1:]:' }] },
+            { indent: 2, tokens: [{ t: 'plain', v: 'low  = ' }, { t: 'fn', v: 'min' }, { t: 'plain', v: '(low, p)' }] },
+            { indent: 2, tokens: [{ t: 'plain', v: 'best = ' }, { t: 'fn', v: 'max' }, { t: 'plain', v: '(best, p - low)' }] },
+            { indent: 1, tokens: [{ t: 'keyword', v: 'return' }, { t: 'plain', v: ' best' }] },
         ],
     },
     {
@@ -57,7 +59,7 @@ function tokenColor(type) {
     }
 }
 
-function BackgroundFx({ variant = 'hero' }) {
+const BackgroundFx = React.memo(function BackgroundFx({ variant = 'hero' }) {
     const canvasRef = useRef(null);
 
     useEffect(() => {
@@ -67,9 +69,17 @@ function BackgroundFx({ variant = 'hero' }) {
         const context = canvas.getContext('2d');
         if (!context) return;
 
-        const getHostRect = () => {
+        // Respect the OS "reduce motion" setting: skip the particle field
+        // entirely — no requestAnimationFrame loop, no listeners.
+        if (typeof window !== 'undefined' && window.matchMedia
+            && window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+            return;
+        }
+
+        let cachedRect = { left: 0, top: 0, width: window.innerWidth, height: window.innerHeight };
+        const updateRect = () => {
             const host = canvas.parentElement;
-            return host ? host.getBoundingClientRect() : { left: 0, top: 0, width: window.innerWidth, height: window.innerHeight };
+            if (host) cachedRect = host.getBoundingClientRect();
         };
 
         const particleCount = variant === 'hero' ? 22 : 16;
@@ -114,9 +124,9 @@ function BackgroundFx({ variant = 'hero' }) {
         document.addEventListener('visibilitychange', handleVisibility);
 
         const resize = () => {
-            const rect = getHostRect();
-            width = Math.max(1, rect.width);
-            height = Math.max(1, rect.height);
+            updateRect();
+            width = Math.max(1, cachedRect.width);
+            height = Math.max(1, cachedRect.height);
             const dpr = Math.min(window.devicePixelRatio || 1, 1.5);
 
             canvas.width = Math.floor(width * dpr);
@@ -139,9 +149,8 @@ function BackgroundFx({ variant = 'hero' }) {
             lastTime = time;
             frameCount += 1;
 
-            const rect = getHostRect();
-            const mouseX = mouse.x - rect.left;
-            const mouseY = mouse.y - rect.top;
+            const mouseX = mouse.x - cachedRect.left;
+            const mouseY = mouse.y - cachedRect.top;
 
             context.clearRect(0, 0, width, height);
 
@@ -194,6 +203,10 @@ function BackgroundFx({ variant = 'hero' }) {
         frame = requestAnimationFrame(draw);
 
         window.addEventListener('resize', resize);
+        // NOTE: intentionally NOT listening to 'scroll' — updateRect calls
+        // getBoundingClientRect, and running that on every scroll event forces a
+        // layout reflow per frame (major scroll jank). The hero canvas sits at
+        // the top of the page, so a stale rect after scrolling is harmless.
 
         return () => {
             cancelAnimationFrame(frame);
@@ -207,12 +220,12 @@ function BackgroundFx({ variant = 'hero' }) {
     const orbPalette = variant === 'hero'
         ? [
             'radial-gradient(circle, rgba(56,189,248,0.26), rgba(56,189,248,0))',
-            'radial-gradient(circle, rgba(99,102,241,0.2), rgba(99,102,241,0))',
+            'radial-gradient(circle, rgba(var(--primary-rgb),0.2), rgba(var(--primary-rgb),0))',
             'radial-gradient(circle, rgba(168,85,247,0.16), rgba(168,85,247,0))',
         ]
         : [
             'radial-gradient(circle, rgba(59,130,246,0.18), rgba(59,130,246,0))',
-            'radial-gradient(circle, rgba(99,102,241,0.16), rgba(99,102,241,0))',
+            'radial-gradient(circle, rgba(var(--primary-rgb),0.16), rgba(var(--primary-rgb),0))',
             'radial-gradient(circle, rgba(139,92,246,0.12), rgba(139,92,246,0))',
         ];
 
@@ -252,111 +265,109 @@ function BackgroundFx({ variant = 'hero' }) {
             />
         </>
     );
-}
+});
 
-// Two Sum Live Visualization
-function TwoSumViz({ step, color }) {
-    const arr = [2, 7, 11, 15];
-    const target = 9;
-    const scanning = step >= 4 ? Math.min(step - 3, arr.length) : 0;
-    const found = step >= 7;
-    const hashMap = [];
-    for (let i = 0; i < Math.min(scanning, arr.length); i++) {
-        if (!found || i < 1) hashMap.push({ k: arr[i], v: i });
-    }
+// Dijkstra Live Visualization
+const DijkstraViz = React.memo(function DijkstraViz({ step, color }) {
+    const nodes = [
+        { id: 'A', x: 36, y: 40 },
+        { id: 'B', x: 118, y: 10 },
+        { id: 'C', x: 118, y: 70 },
+        { id: 'D', x: 200, y: 40 },
+    ];
+    const edges = [
+        { a: 'A', b: 'B', w: 1, mx: 72, my: 18 },
+        { a: 'A', b: 'C', w: 4, mx: 72, my: 62 },
+        { a: 'B', b: 'C', w: 2, mx: 118, my: 42 },
+        { a: 'B', b: 'D', w: 5, mx: 162, my: 18 },
+        { a: 'C', b: 'D', w: 1, mx: 162, my: 62 },
+    ];
+    const visitOrder = ['A', 'B', 'C', 'D'];
+    const visited = step >= 4 ? visitOrder.slice(0, Math.min(step - 3, 4)) : [];
+    const current = visited.length > 0 ? visited[visited.length - 1] : null;
+    const allDone = visited.length === 4;
+    const distMap = {};
+    if (step >= 4) distMap['A'] = 0;
+    if (step >= 5) distMap['B'] = 1;
+    if (step >= 6) distMap['C'] = 3;
+    if (step >= 7) distMap['D'] = 4;
+    const spEdges = new Set(['A-B', 'B-C', 'C-D']);
 
     return (
-        <div className="flex flex-col gap-3">
-            <style>{`
-                @keyframes vizSlideUp { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: translateY(0); } }
-                @keyframes vizPopIn { from { opacity: 0; transform: scale(0.5); } to { opacity: 1; transform: scale(1); } }
-                @keyframes vizGlowPulse { 0%, 100% { box-shadow: 0 0 8px var(--glow-color); } 50% { box-shadow: 0 0 24px var(--glow-color); } }
-                @keyframes vizScanLine { 0% { left: -2px; opacity: 0; } 20% { opacity: 1; } 100% { left: calc(100% + 2px); opacity: 0; } }
-                @keyframes vizCheckPop { 0% { transform: scale(0) rotate(-180deg); } 60% { transform: scale(1.3) rotate(10deg); } 100% { transform: scale(1) rotate(0deg); } }
-                @keyframes vizHashSlide { from { opacity: 0; transform: translateX(-8px) scale(0.8); } to { opacity: 1; transform: translateX(0) scale(1); } }
-                @keyframes vizResultReveal { from { opacity: 0; transform: scaleX(0.3); } to { opacity: 1; transform: scaleX(1); } }
-                @keyframes vizBounce { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-4px); } }
-            `}</style>
-            {/* Array */}
-            <div className="flex items-center gap-1.5" style={{ animation: step >= 1 ? 'vizSlideUp 0.4s ease-out forwards' : 'none', opacity: step >= 1 ? 1 : 0 }}>
-                <span className="text-[10px] text-neutral-500 font-mono w-12">arr =</span>
-                <div className="flex gap-1 relative">
-                    {/* Scanning pointer */}
-                    {scanning > 0 && scanning <= arr.length && !found && (
-                        <div className="absolute -top-4 transition-all duration-500 ease-out flex flex-col items-center"
-                            style={{ left: `${(scanning - 1) * 44 + 16}px` }}>
-                            <span className="text-[8px] font-bold" style={{ color }}>i={scanning - 1}</span>
-                            <span style={{ color, fontSize: 8 }}>▼</span>
-                        </div>
-                    )}
-                    {arr.map((n, i) => {
-                        const isActive = i < scanning;
-                        const isMatch = found && (i === 0 || i === 1);
+        <div className="flex flex-col gap-2.5">
+            <svg viewBox="0 0 236 82" className="w-full" style={{ maxHeight: 82 }}>
+                {edges.map(({ a, b, w, mx, my }) => {
+                    const nA = nodes.find(n => n.id === a);
+                    const nB = nodes.find(n => n.id === b);
+                    const key = `${a}-${b}`;
+                    const isPath = allDone && spEdges.has(key);
+                    const isActive = visited.includes(a) && visited.includes(b);
+                    return (
+                        <g key={key}>
+                            <line x1={nA.x} y1={nA.y} x2={nB.x} y2={nB.y}
+                                stroke={isPath ? color : isActive ? `${color}45` : 'rgba(255,255,255,0.08)'}
+                                strokeWidth={isPath ? 2.5 : 1.5}
+                                strokeDasharray={isPath ? '120' : 'none'}
+                                style={{ animation: isPath ? 'dijkEdgeLight 0.6s ease-out forwards, dijkPathPulse 2s ease-in-out infinite 0.6s' : 'none', transition: 'stroke 0.5s' }} />
+                            {step >= 2 && (
+                                <text x={mx} y={my} textAnchor="middle" fill="#4b5563" fontSize="7.5" fontFamily="monospace">{w}</text>
+                            )}
+                        </g>
+                    );
+                })}
+                {nodes.map(({ id, x, y }, ni) => {
+                    const isVisited = visited.includes(id);
+                    const isCurrent = id === current;
+                    const fill = isCurrent ? color : isVisited ? '#22c55e' : 'rgba(255,255,255,0.05)';
+                    const strokeC = isCurrent ? color : isVisited ? '#22c55e' : 'rgba(255,255,255,0.1)';
+                    return (
+                        <g key={id} style={{ animation: step >= 1 ? `dijkNodePop 0.35s cubic-bezier(0.34,1.56,0.64,1) ${ni * 80}ms both` : 'none' }}>
+                            {isCurrent && (
+                                <circle cx={x} cy={y} r={13} fill="none" stroke={color} strokeWidth={1.5} opacity={0.6}
+                                    style={{ animation: 'dijkRipple 1.2s ease-out infinite' }} />
+                            )}
+                            <circle cx={x} cy={y} r={13} fill={fill} stroke={strokeC} strokeWidth={2}
+                                style={{ transition: 'fill 0.4s, stroke 0.4s' }} />
+                            <text x={x} y={y + 4} textAnchor="middle" fill={isVisited || isCurrent ? '#fff' : '#6b7280'}
+                                fontSize="10" fontWeight="800" style={{ transition: 'fill 0.3s' }}>{id}</text>
+                        </g>
+                    );
+                })}
+            </svg>
+            <div className="flex items-center gap-1.5" style={{ animation: step >= 3 ? 'dijkDistSlide 0.4s ease-out forwards' : 'none', opacity: step >= 3 ? 1 : 0 }}>
+                <span className="text-[9px] text-neutral-500 font-mono w-10">dist:</span>
+                <div className="flex gap-1.5">
+                    {['A', 'B', 'C', 'D'].map(id => {
+                        const d = distMap[id];
                         return (
-                            <div key={i} className="relative flex flex-col items-center"
-                                style={{ animation: `vizPopIn 0.3s ease-out ${i * 80}ms both` }}>
-                                <div
-                                    className="w-10 h-10 rounded-lg flex items-center justify-center text-sm font-bold border"
+                            <div key={id} className="flex flex-col items-center gap-0.5">
+                                <span className="text-[8px] text-neutral-600 font-mono">{id}</span>
+                                <span className="text-[10px] font-bold font-mono px-1.5 py-0.5 rounded"
                                     style={{
-                                        background: isMatch ? `${color}30` : isActive ? 'rgba(255,255,255,0.08)' : 'rgba(255,255,255,0.03)',
-                                        borderColor: isMatch ? color : isActive ? 'rgba(255,255,255,0.15)' : 'rgba(255,255,255,0.06)',
-                                        color: isMatch ? '#fff' : isActive ? '#e2e8f0' : '#4b5563',
-                                        '--glow-color': `${color}50`,
-                                        animation: isMatch ? 'vizGlowPulse 1.5s ease-in-out infinite' : 'none',
-                                        transform: isMatch ? 'scale(1.15)' : isActive ? 'scale(1.05)' : 'scale(1)',
-                                        transition: 'all 0.4s cubic-bezier(0.34, 1.56, 0.64, 1)',
-                                    }}
-                                >
-                                    {n}
-                                </div>
-                                <span className="text-[8px] text-neutral-600 mt-0.5 font-mono">[{i}]</span>
-                                {isMatch && (
-                                    <div className="absolute -top-1.5 -right-1.5 w-4 h-4 rounded-full flex items-center justify-center text-[7px] text-white"
-                                        style={{ background: '#22c55e', animation: 'vizCheckPop 0.5s ease-out forwards', boxShadow: '0 0 8px rgba(34,197,94,0.6)' }}>✓</div>
-                                )}
+                                        background: d !== undefined ? `${color}20` : 'rgba(255,255,255,0.03)',
+                                        color: d !== undefined ? color : '#374151',
+                                        border: `1px solid ${d !== undefined ? color + '40' : 'rgba(255,255,255,0.06)'}`,
+                                        transition: 'all 0.4s',
+                                    }}>
+                                    {d !== undefined ? d : '∞'}
+                                </span>
                             </div>
                         );
                     })}
-                    <div className="flex items-center ml-2 px-2 py-1 rounded-lg text-[10px] font-bold"
-                        style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)', color: '#f59e0b', animation: 'vizBounce 2s ease-in-out infinite' }}>
-                        target={target}
+                </div>
+                {allDone && (
+                    <div className="ml-auto flex items-center gap-1 px-2 py-0.5 rounded-full"
+                        style={{ background: 'rgba(34,197,94,0.12)', border: '1px solid rgba(34,197,94,0.3)', animation: 'dijkDistSlide 0.4s ease-out forwards' }}>
+                        <span className="text-[9px] font-bold text-green-400">A→B→C→D = 4</span>
                     </div>
-                </div>
+                )}
             </div>
-
-            {/* Hash Map */}
-            <div className="flex items-start gap-1.5" style={{ animation: step >= 3 ? 'vizSlideUp 0.4s ease-out forwards' : 'none', opacity: step >= 3 ? 1 : 0 }}>
-                <span className="text-[10px] text-neutral-500 font-mono w-12 pt-1">seen =</span>
-                <div className="flex-1 rounded-lg px-3 py-2 min-h-[32px] transition-all duration-300" style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.06)' }}>
-                    {hashMap.length === 0
-                        ? <span className="text-[10px] text-neutral-600 font-mono">{'{}'}</span>
-                        : <div className="flex gap-2 flex-wrap">
-                            {hashMap.map(({ k, v }, i) => (
-                                <span key={i} className="text-[10px] font-mono px-1.5 py-0.5 rounded"
-                                    style={{ background: `${color}15`, color: '#e2e8f0', animation: `vizHashSlide 0.35s ease-out ${i * 120}ms both`, boxShadow: `0 0 6px ${color}20` }}>
-                                    {k}→{v}
-                                </span>
-                            ))}
-                        </div>
-                    }
-                </div>
-            </div>
-
-            {/* Result */}
-            {found && (
-                <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg origin-left"
-                    style={{ background: 'rgba(34,197,94,0.1)', border: '1px solid rgba(34,197,94,0.3)', animation: 'vizResultReveal 0.5s ease-out forwards', boxShadow: '0 0 20px rgba(34,197,94,0.15)' }}>
-                    <span className="text-xs" style={{ animation: 'vizBounce 1s ease-in-out infinite' }}>✅</span>
-                    <span className="text-[11px] font-bold text-green-400 font-mono">return [0, 1]</span>
-                    <span className="text-[9px] text-green-400/60 ml-auto">nums[0]+nums[1] = 9</span>
-                </div>
-            )}
         </div>
     );
-}
+});
 
 // Binary Tree Live Visualization
-function TreeViz({ step, color }) {
+const TreeViz = React.memo(function TreeViz({ step, color }) {
     const nodes = [
         { id: 'root', val: 10, x: 130, y: 18 },
         { id: 'left', val: 5, x: 65, y: 62 },
@@ -367,13 +378,6 @@ function TreeViz({ step, color }) {
 
     return (
         <div className="flex flex-col items-center gap-2">
-            <style>{`
-                @keyframes treeNodeDrop { from { opacity: 0; transform: translateY(-18px) scale(0.4); } to { opacity: 1; transform: translateY(0) scale(1); } }
-                @keyframes treeEdgeGrow { from { stroke-dashoffset: 80; } to { stroke-dashoffset: 0; } }
-                @keyframes treeNodeGlow { 0%, 100% { filter: drop-shadow(0 0 6px var(--node-glow)); } 50% { filter: drop-shadow(0 0 16px var(--node-glow)); } }
-                @keyframes treeLabelFade { from { opacity: 0; } to { opacity: 1; } }
-                @keyframes treeBadgeSlide { from { opacity: 0; transform: translateY(4px) scale(0.8); } to { opacity: 1; transform: translateY(0) scale(1); } }
-            `}</style>
             <svg viewBox="0 0 260 95" className="w-full" style={{ maxHeight: 95 }}>
                 {/* Edges - animated draw */}
                 {edges.slice(0, Math.max(0, visibleNodes - 1)).map(([a, b], ei) => {
@@ -414,10 +418,10 @@ function TreeViz({ step, color }) {
             )}
         </div>
     );
-}
+});
 
 // BFS Live Visualization
-function BFSViz({ step, color }) {
+const BFSViz = React.memo(function BFSViz({ step, color }) {
     const gNodes = [
         { id: 'A', x: 40, y: 40 }, { id: 'B', x: 110, y: 15 },
         { id: 'C', x: 110, y: 65 }, { id: 'D', x: 180, y: 40 },
@@ -430,14 +434,6 @@ function BFSViz({ step, color }) {
 
     return (
         <div className="flex flex-col gap-2.5">
-            <style>{`
-                @keyframes bfsRipple { 0% { r: 14; opacity: 0.6; } 100% { r: 30; opacity: 0; } }
-                @keyframes bfsNodeReveal { from { opacity: 0; transform: scale(0); } to { opacity: 1; transform: scale(1); } }
-                @keyframes bfsEdgeFlow { from { stroke-dashoffset: 100; } to { stroke-dashoffset: 0; } }
-                @keyframes bfsBadgePop { from { opacity: 0; transform: scale(0.5) translateY(4px); } to { opacity: 1; transform: scale(1) translateY(0); } }
-                @keyframes bfsQueueSlide { from { opacity: 0; transform: translateX(8px); } to { opacity: 1; transform: translateX(0); } }
-                @keyframes bfsNodeBreathe { 0%, 100% { filter: drop-shadow(0 0 4px var(--breathe-color)); transform: scale(1); } 50% { filter: drop-shadow(0 0 14px var(--breathe-color)); transform: scale(1.08); } }
-            `}</style>
             <svg viewBox="0 0 220 80" className="w-full" style={{ maxHeight: 80 }}>
                 {/* Edges with animated flow */}
                 {gEdges.map(([a, b]) => {
@@ -502,13 +498,136 @@ function BFSViz({ step, color }) {
             </div>
         </div>
     );
-}
+});
+
+// Best Time to Buy & Sell — box-array visualization (matches old Two Sum card)
+const StockViz = React.memo(function StockViz({ step, color }) {
+    const prices = [7, 1, 5, 3, 6, 4];
+    const buyIdx = 1;   // price 1 (lowest before the peak)
+    const sellIdx = 4;  // price 6 (best sell)
+    const profit = prices[sellIdx] - prices[buyIdx];
+    // reveal boxes as the code "types", mark buy/sell once far enough in
+    const revealed = Math.max(0, Math.min(step - 1, prices.length));
+    const marked = step >= 6;
+    const solved = step >= 7;
+
+    return (
+        <div className="flex flex-col gap-2.5">
+            <div className="flex items-center gap-2">
+                <span className="text-[9px] text-neutral-500 font-mono w-9">prices</span>
+                <div className="flex gap-1.5">
+                    {prices.map((p, i) => {
+                        const isBuy = marked && i === buyIdx;
+                        const isSell = marked && i === sellIdx;
+                        const active = isBuy || isSell;
+                        const accent = isBuy ? '#06b6d4' : isSell ? color : null;
+                        return (
+                            <div key={i} className="flex flex-col items-center gap-0.5"
+                                style={{ animation: i < revealed ? `bfsBadgePop 0.3s ease-out ${i * 70}ms both` : 'none', opacity: i < revealed ? 1 : 0 }}>
+                                <div className="rounded-lg flex items-center justify-center font-mono font-bold relative"
+                                    style={{
+                                        width: 30, height: 32, fontSize: 13,
+                                        background: active ? `${accent}22` : 'rgba(255,255,255,0.04)',
+                                        color: active ? accent : '#cbd5e1',
+                                        border: `1.5px solid ${active ? accent : 'rgba(255,255,255,0.1)'}`,
+                                        transition: 'all 0.4s',
+                                    }}>
+                                    {p}
+                                    {isBuy && <span className="absolute -top-1.5 -right-1.5 text-[8px] w-3.5 h-3.5 rounded-full flex items-center justify-center font-black" style={{ background: '#06b6d4', color: '#06121a' }}>↓</span>}
+                                    {isSell && <span className="absolute -top-1.5 -right-1.5 text-[8px] w-3.5 h-3.5 rounded-full flex items-center justify-center font-black" style={{ background: color, color: '#06210f' }}>↑</span>}
+                                </div>
+                                <span className="text-[8px] text-neutral-600 font-mono">[{i}]</span>
+                            </div>
+                        );
+                    })}
+                </div>
+            </div>
+
+            <div className="flex items-center gap-2" style={{ opacity: marked ? 1 : 0, transition: 'opacity 0.4s' }}>
+                <span className="text-[9px] text-neutral-500 font-mono w-9">trade</span>
+                <span className="text-[10px] font-mono px-2 py-0.5 rounded" style={{ background: '#06b6d420', color: '#06b6d4', border: '1px solid #06b6d440' }}>buy @ {prices[buyIdx]}</span>
+                <span className="text-[10px] font-mono px-2 py-0.5 rounded" style={{ background: `${color}20`, color, border: `1px solid ${color}40` }}>sell @ {prices[sellIdx]}</span>
+            </div>
+
+            {solved && (
+                <div className="flex items-center gap-2 px-2.5 py-1.5 rounded-lg"
+                    style={{ background: 'rgba(34,197,94,0.12)', border: '1px solid rgba(34,197,94,0.3)', animation: 'dijkDistSlide 0.4s ease-out forwards' }}>
+                    <span className="text-[10px]">✅</span>
+                    <span className="text-[11px] font-bold font-mono text-green-400">return {profit}</span>
+                    <span className="ml-auto text-[9px] font-mono text-neutral-500">max profit = 6 − 1 = {profit}</span>
+                </div>
+            )}
+        </div>
+    );
+});
 
 // Snippet Visualizer Picker
-function SnippetViz({ snippetIdx, step, color }) {
-    if (snippetIdx === 0) return <TwoSumViz step={step} color={color} />;
+const SnippetViz = React.memo(function SnippetViz({ snippetIdx, step, color }) {
+    if (snippetIdx === 0) return <StockViz step={step} color={color} />;
     if (snippetIdx === 1) return <TreeViz step={step} color={color} />;
     return <BFSViz step={step} color={color} />;
+});
+
+// ── Hero: floating code-block 3D stage (CSS perspective + framer-motion) ──
+const HERO_CHIPS = [
+    { code: 'O(n log n)',   tag: 'optimal', color: '#8b5cf6', left: '-20%', top: '14%', z: 60, delay: 0.8 },
+    { code: '{ }',          tag: 'hashmap', color: '#6366f1', left: '-15%', top: '70%', z: 40, delay: 1.4 },
+    { code: '[ i, j ]',     tag: 'return',  color: '#f59e0b', left: '103%', top: '10%', z: 56, delay: 1.1 },
+    { code: 'git push',     tag: 'main',    color: '#22c55e', left: '101%', top: '74%', z: 38, delay: 0.4 },
+];
+
+function HeroCodeStage({ children }) {
+    const reduce = useReducedMotion();
+    const px = useMotionValue(0);
+    const py = useMotionValue(0);
+    const rotateY = useSpring(useTransform(px, [-0.5, 0.5], [14, -14]), { stiffness: 120, damping: 18 });
+    const rotateX = useSpring(useTransform(py, [-0.5, 0.5], [-11, 11]), { stiffness: 120, damping: 18 });
+
+    // Cache the bounding rect on hover-enter instead of measuring on every
+    // mousemove — reading getBoundingClientRect per move forces a sync layout
+    // reflow (the main cause of hero hover-lag).
+    const rectRef = useRef(null);
+    const cacheRect = (e) => { rectRef.current = e.currentTarget.getBoundingClientRect(); };
+    const onMove = (e) => {
+        if (reduce) return;
+        const r = rectRef.current;
+        if (!r) return;
+        px.set((e.clientX - r.left) / r.width - 0.5);
+        py.set((e.clientY - r.top) / r.height - 0.5);
+    };
+    const onLeave = () => { px.set(0); py.set(0); };
+
+    return (
+        <div className="relative" style={{ perspective: 1200 }} onMouseEnter={cacheRect} onMouseMove={onMove} onMouseLeave={onLeave}>
+            <motion.div
+                className="relative mx-auto"
+                style={{ transformStyle: 'preserve-3d', scale: 0.82, rotateX: reduce ? 0 : rotateX, rotateY: reduce ? 0 : rotateY }}
+            >
+                {/* depth glow, pushed back on the Z axis */}
+                <div className="absolute inset-0 rounded-3xl blur-3xl opacity-30 pointer-events-none"
+                    style={{ background: 'linear-gradient(135deg, var(--primary), var(--secondary))', transform: 'translateZ(-80px)' }} />
+
+                {/* the code terminal on the front plane */}
+                <div style={{ transform: 'translateZ(24px)' }}>
+                    {children}
+                </div>
+
+                {/* glassy code chips floating at varied depths */}
+                {HERO_CHIPS.map((c) => (
+                    <div key={c.code} className="absolute pointer-events-none select-none"
+                        style={{ left: c.left, top: c.top, transform: `translateZ(${c.z}px)` }}>
+                        <div style={{ animation: reduce ? 'none' : `float ${5 + c.z / 30}s ease-in-out ${c.delay}s infinite` }}>
+                            <div className="rounded-lg px-2.5 py-1.5 border shadow-xl"
+                                style={{ background: `${c.color}1a`, borderColor: `${c.color}55`, boxShadow: `0 10px 28px ${c.color}2b` }}>
+                                <div className="font-mono text-xs font-bold leading-none" style={{ color: c.color }}>{c.code}</div>
+                                <div className="font-mono text-[9px] text-neutral-400 mt-0.5 leading-none">{c.tag}</div>
+                            </div>
+                        </div>
+                    </div>
+                ))}
+            </motion.div>
+        </div>
+    );
 }
 
 function TypingTerminal() {
@@ -543,14 +662,6 @@ function TypingTerminal() {
                 boxShadow: `0 0 60px ${snippet.color}22, 0 25px 50px rgba(0,0,0,0.5)`,
             }}
         >
-            <style>{`
-                @keyframes codeLineSlide { from { opacity: 0; transform: translateX(-16px); } to { opacity: 1; transform: translateX(0); } }
-                @keyframes lineNumFade { from { opacity: 0; } to { opacity: 1; } }
-                @keyframes cursorBlink { 0%, 100% { opacity: 1; } 50% { opacity: 0; } }
-                @keyframes glowOrbPulse { 0%, 100% { opacity: 0.35; transform: scale(1); } 50% { opacity: 0.55; transform: scale(1.1); } }
-                @keyframes outputPanelReveal { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
-                @keyframes shimmerLine { 0% { background-position: -200% center; } 100% { background-position: 200% center; } }
-            `}</style>
 
             {/* Glow orb */}
             <div style={{
@@ -574,6 +685,7 @@ function TypingTerminal() {
                 <div className="flex gap-1.5">
                     {CODE_SNIPPETS.map((s, i) => (
                         <button key={i} onClick={() => setSnippetIdx(i)}
+                            aria-label={`Show ${s.label} example`}
                             className="rounded-full transition-all duration-300 cursor-pointer hover:scale-150"
                             style={{ width: i === snippetIdx ? 18 : 7, height: 7, background: i === snippetIdx ? s.color : '#374151' }} />
                     ))}
@@ -637,39 +749,6 @@ function TypingTerminal() {
 }
 
 // Animated Stat Counter
-function StatCounter({ end, suffix, label, color }) {
-    const [count, setCount] = useState(0);
-    const ref = useRef(null);
-    const started = useRef(false);
-
-    useEffect(() => {
-        const observer = new IntersectionObserver(([entry]) => {
-            if (entry.isIntersecting && !started.current) {
-                started.current = true;
-                let start = 0;
-                const duration = 1800;
-                const step = Math.ceil(end / (duration / 16));
-                const timer = setInterval(() => {
-                    start = Math.min(start + step, end);
-                    setCount(start);
-                    if (start >= end) clearInterval(timer);
-                }, 16);
-            }
-        }, { threshold: 0.3 });
-        if (ref.current) observer.observe(ref.current);
-        return () => observer.disconnect();
-    }, [end]);
-
-    return (
-        <div ref={ref} className="flex flex-col items-center gap-1 px-6 py-4 rounded-xl border" style={{ background: `${color}08`, borderColor: `${color}25` }}>
-            <span className="text-3xl font-extrabold tracking-tighter" style={{ color }}>
-                {count.toLocaleString()}{suffix}
-            </span>
-            <span className="text-xs font-semibold text-neutral-500 uppercase tracking-widest">{label}</span>
-        </div>
-    );
-}
-
 // BFS Visualizer Component
 const BFS_NODES = [
     { id: 'A', x: 60, y: 75 },
@@ -691,17 +770,19 @@ const BFS_STEPS = [
 function BFSVisualizer({ isDark = false }) {
     const [step, setStep] = useState(0);
     const [paused, setPaused] = useState(false);
+    const [rootRef, active] = useActiveInView();
 
     const cur = BFS_STEPS[step];
 
-    // Infinite loop: advances every 1.1s, wraps with %
+    // Infinite loop: advances every 1.1s, wraps with %.
+    // Gated on `active` so it stops when the card is off-screen / tab hidden.
     useEffect(() => {
-        if (paused) return;
+        if (paused || !active) return;
         const id = setInterval(() => {
             setStep(s => (s + 1) % BFS_STEPS.length);
         }, 1100);
         return () => clearInterval(id);
-    }, [paused]);
+    }, [paused, active]);
 
     const nodeState = (id) => {
         if (cur.current === id) return 'current';
@@ -714,23 +795,23 @@ function BFSVisualizer({ isDark = false }) {
     const nodeText = { current: '#fff', visited: '#fff', queued: '#fff', idle: 'rgba(255,255,255,0.35)' };
 
     return (
-        <div className="lg:col-span-5 rounded-3xl border overflow-hidden relative"
+        <div ref={rootRef} className="lg:col-span-5 rounded-3xl border overflow-hidden relative"
             style={{
                 background: isDark ? '#0d0d0d' : 'linear-gradient(145deg, #17223a, #222f4f)',
-                borderColor: isDark ? 'rgba(6,182,212,0.35)' : 'rgba(59,130,246,0.28)'
+                borderColor: isDark ? 'rgba(var(--secondary-rgb),0.35)' : 'rgba(59,130,246,0.28)'
             }}>
             <div className="absolute -top-10 -left-10 w-48 h-48 rounded-full blur-[60px] opacity-12 pointer-events-none"
-                style={{ background: 'radial-gradient(circle, #06b6d4, transparent)' }} />
+                style={{ background: 'radial-gradient(circle, var(--secondary), transparent)' }} />
             <div className="p-6 relative z-10">
 
                 {/* Header */}
                 <div className="flex items-center gap-2 mb-4">
                     <div className="w-7 h-7 rounded-lg flex items-center justify-center text-sm"
-                        style={{ background: 'rgba(6,182,212,0.15)', border: '1px solid rgba(6,182,212,0.4)' }}>👁️</div>
-                    <span className="text-xs font-bold tracking-widest uppercase" style={{ color: '#06b6d4' }}>Live Visualization</span>
+                        style={{ background: 'rgba(var(--secondary-rgb),0.15)', border: '1px solid rgba(var(--secondary-rgb),0.4)' }}>👁️</div>
+                    <span className="text-xs font-bold tracking-widest uppercase" style={{ color: 'var(--secondary)' }}>Live Visualization</span>
                     <div className="ml-auto flex items-center gap-1.5">
-                        <div className="w-1.5 h-1.5 rounded-full animate-pulse" style={{ background: paused ? '#f59e0b' : '#06b6d4' }} />
-                        <span className="text-[10px] font-semibold" style={{ color: paused ? '#f59e0b' : '#06b6d4' }}>
+                        <div className="w-1.5 h-1.5 rounded-full animate-pulse" style={{ background: paused ? '#f59e0b' : 'var(--secondary)' }} />
+                        <span className="text-[10px] font-semibold" style={{ color: paused ? '#f59e0b' : 'var(--secondary)' }}>
                             {paused ? 'paused' : 'live'}
                         </span>
                     </div>
@@ -746,13 +827,13 @@ function BFSVisualizer({ isDark = false }) {
 
                 {/* Step description */}
                 <div className="px-3 py-2 rounded-xl mb-3 text-xs font-semibold transition-all duration-300"
-                    style={{ background: 'rgba(6,182,212,0.08)', border: '1px solid rgba(6,182,212,0.2)', color: '#67e8f9' }}>
+                    style={{ background: 'rgba(var(--secondary-rgb),0.08)', border: '1px solid rgba(var(--secondary-rgb),0.2)', color: '#67e8f9' }}>
                     {cur.label}
                 </div>
 
                 {/* Graph SVG */}
                 <div className="relative rounded-2xl overflow-hidden mb-3"
-                    style={{ background: '#0d0d0d', border: '1px solid rgba(6,182,212,0.15)', height: 158 }}>
+                    style={{ background: '#0d0d0d', border: '1px solid rgba(var(--secondary-rgb),0.15)', height: 158 }}>
                     <svg viewBox="0 0 310 158" className="w-full h-full">
                         {/* Edges */}
                         {BFS_EDGES.map(([a, b]) => {
@@ -762,7 +843,7 @@ function BFSVisualizer({ isDark = false }) {
                             return (
                                 <line key={a + b}
                                     x1={nA.x} y1={nA.y} x2={nB.x} y2={nB.y}
-                                    stroke={active ? 'rgba(6,182,212,0.55)' : 'rgba(255,255,255,0.07)'}
+                                    stroke={active ? 'rgba(var(--secondary-rgb),0.55)' : 'rgba(255,255,255,0.07)'}
                                     strokeWidth={active ? 2 : 1.5}
                                     style={{ transition: 'stroke 0.5s' }}
                                 />
@@ -813,7 +894,7 @@ function BFSVisualizer({ isDark = false }) {
                     <span className="text-[10px] font-bold uppercase tracking-widest" style={{ color: '#6366f150' }}>Queue:</span>
                     <div className="flex gap-1.5 flex-wrap flex-1">
                         {cur.queue.length === 0
-                            ? <span className="text-[10px] text-neutral-600 italic">empty</span>
+                            ? <span className="text-[10px] text-neutral-400 italic">empty</span>
                             : cur.queue.map((q, i) => (
                                 <span key={q + i} className="text-[10px] font-bold px-2 py-0.5 rounded-full"
                                     style={{ background: 'rgba(139,92,246,0.2)', color: '#a78bfa', border: '1px solid rgba(139,92,246,0.3)' }}>
@@ -826,7 +907,7 @@ function BFSVisualizer({ isDark = false }) {
                         {[['Visited', '#22c55e'], ['Current', '#06b6d4'], ['Queued', '#8b5cf6']].map(([l, c]) => (
                             <div key={l} className="flex items-center gap-1">
                                 <div className="w-2 h-2 rounded-full" style={{ background: c }} />
-                                <span className="text-[9px] text-neutral-600">{l}</span>
+                                <span className="text-[9px] text-neutral-400">{l}</span>
                             </div>
                         ))}
                     </div>
@@ -835,16 +916,19 @@ function BFSVisualizer({ isDark = false }) {
                 {/* Controls: just prev / pause-play / next + step dots */}
                 <div className="flex items-center gap-2">
                     <button onClick={() => { setPaused(true); setStep(s => Math.max(0, s - 1)); }}
+                        aria-label="Previous step"
                         className="w-7 h-7 rounded-lg flex items-center justify-center text-neutral-400 hover:text-white transition-colors text-sm"
                         style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.08)' }}>◀</button>
 
                     <button onClick={() => setPaused(p => !p)}
+                        aria-label={paused ? 'Play animation' : 'Pause animation'}
                         className="flex items-center gap-1.5 px-4 py-1.5 rounded-xl text-xs font-bold"
-                        style={{ background: 'linear-gradient(135deg,#6366f1,#06b6d4)', color: '#fff', boxShadow: '0 0 14px rgba(6,182,212,0.35)' }}>
+                        style={{ background: 'linear-gradient(135deg,var(--primary),var(--secondary))', color: '#fff', boxShadow: '0 0 14px rgba(var(--secondary-rgb),0.35)' }}>
                         {paused ? '▶ Play' : '⏸ Pause'}
                     </button>
 
                     <button onClick={() => { setPaused(true); setStep(s => Math.min(BFS_STEPS.length - 1, s + 1)); }}
+                        aria-label="Next step"
                         className="w-7 h-7 rounded-lg flex items-center justify-center text-neutral-400 hover:text-white transition-colors text-sm"
                         style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.08)' }}>▶</button>
 
@@ -852,6 +936,7 @@ function BFSVisualizer({ isDark = false }) {
                     <div className="ml-auto flex gap-1.5 items-center">
                         {BFS_STEPS.map((_, i) => (
                             <button key={i}
+                                aria-label={`Go to step ${i + 1}`}
                                 onClick={() => { setPaused(true); setStep(i); }}
                                 className="rounded-full transition-all duration-300"
                                 style={{
@@ -892,6 +977,111 @@ const AI_LEVELS = [
     }
 ];
 
+// Research Lab Card — cycles through Marevlo's research tracks (paper → implementation)
+const RESEARCH_TRACKS = [
+    {
+        tag: 'Recommender Systems',
+        color: '#6366f1',
+        paper: 'Deep Collaborative Filtering',
+        venue: 'Track · Paper → Code',
+        points: ['Sequential & session-based models', 'Context-aware CTR prediction'],
+    },
+    {
+        tag: 'Agentic Search',
+        color: '#06b6d4',
+        paper: 'Multi-Step Retrieval Planning',
+        venue: 'Track · Paper → Code',
+        points: ['Search-tool design', 'Web-search integration'],
+    },
+    {
+        tag: 'Context Engineering',
+        color: '#8b5cf6',
+        paper: 'Dynamic Context Assembly',
+        venue: 'Track · Paper → Code',
+        points: ['System-prompt engineering', 'Few-shot & in-context learning'],
+    },
+];
+
+function ResearchCard({ isDark = false }) {
+    const [idx, setIdx] = useState(0);
+    const [rootRef, active] = useActiveInView();
+
+    useEffect(() => {
+        if (!active) return;
+        const id = setInterval(() => setIdx(i => (i + 1) % RESEARCH_TRACKS.length), 4000);
+        return () => clearInterval(id);
+    }, [active]);
+
+    const cur = RESEARCH_TRACKS[idx];
+
+    return (
+        <div ref={rootRef} className="lg:col-span-3 rounded-3xl border overflow-hidden relative transition-all duration-500"
+            style={{
+                background: isDark ? '#0d0d0d' : 'linear-gradient(145deg, #1a2440, #253255)',
+                borderColor: `${cur.color}59`,
+            }}>
+
+            <div className="absolute -bottom-10 -right-10 w-48 h-48 rounded-full blur-[60px] opacity-20 pointer-events-none transition-all duration-700"
+                style={{ background: `radial-gradient(circle, ${cur.color}, #6366f1)` }} />
+
+            <div className="p-5 relative z-10 flex flex-col h-full">
+                {/* Header */}
+                <div className="flex items-center gap-2 mb-4">
+                    <div className="w-7 h-7 rounded-lg flex items-center justify-center transition-all duration-500"
+                        style={{ background: `${cur.color}26`, border: `1px solid ${cur.color}59` }}>
+                        <Brain size={15} style={{ color: cur.color }} />
+                    </div>
+                    <span className="text-xs font-bold tracking-widest uppercase transition-colors duration-500" style={{ color: cur.color }}>
+                        Research Lab
+                    </span>
+                    <span className="ml-auto flex items-center gap-1.5 px-2 py-1 rounded-md bg-white/5 border border-white/10 text-[9px] font-bold text-white/80">
+                        {RESEARCH_TRACKS.length} tracks
+                    </span>
+                </div>
+
+                {/* Cycling research track "paper card" */}
+                <div className="flex-1 mb-3 relative min-h-[145px]">
+                    <div key={cur.tag} className="rounded-2xl p-4 h-full flex flex-col"
+                        style={{
+                            animation: 'slideUpFade 0.4s ease-out forwards',
+                            background: `${cur.color}14`,
+                            border: `1px solid ${cur.color}3d`,
+                        }}>
+                        <span className="inline-flex items-center gap-1.5 self-start px-2 py-0.5 rounded-full text-[9px] font-bold uppercase tracking-wider mb-2.5"
+                            style={{ background: `${cur.color}26`, color: cur.color, border: `1px solid ${cur.color}4d` }}>
+                            <span className="w-1.5 h-1.5 rounded-full" style={{ background: cur.color }} />
+                            {cur.tag}
+                        </span>
+
+                        <div className="text-sm font-extrabold text-white leading-snug">{cur.paper}</div>
+                        <div className="text-[10px] text-neutral-400 font-mono mt-1 mb-3">{cur.venue}</div>
+
+                        <div className="space-y-1.5 mt-auto">
+                            {cur.points.map(p => (
+                                <div key={p} className="flex items-center gap-2 text-[11px] text-neutral-300">
+                                    <svg width="10" height="8" viewBox="0 0 10 8" fill="none" className="flex-shrink-0">
+                                        <path d="M1 4L3.5 6.5L9 1" stroke={cur.color} strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
+                                    </svg>
+                                    {p}
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+                </div>
+
+                {/* Footer — paper → implementation */}
+                <div className="flex items-center gap-2 px-3 py-2 rounded-xl mt-auto"
+                    style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)' }}>
+                    <span className="text-[11px] text-neutral-400 flex-1">From paper to implementation</span>
+                    <div className="w-5 h-5 rounded-full flex items-center justify-center transition-colors duration-500" style={{ background: cur.color }}>
+                        <ArrowUpRight size={10} className="text-white" />
+                    </div>
+                </div>
+            </div>
+        </div>
+    );
+}
+
 function AITutorCard({ isDark = false }) {
     const [levelIdx, setLevelIdx] = useState(0);
     const [isPremium, setIsPremium] = useState(true);
@@ -915,28 +1105,8 @@ function AITutorCard({ isDark = false }) {
         <div className="lg:col-span-3 rounded-3xl border overflow-hidden relative transition-all duration-500"
             style={{
                 background: isDark ? '#0d0d0d' : 'linear-gradient(145deg, #1a2440, #253255)',
-                borderColor: isPremium ? 'rgba(139,92,246,0.35)' : 'rgba(6,182,212,0.3)'
+                borderColor: isPremium ? 'rgba(139,92,246,0.35)' : 'rgba(var(--secondary-rgb),0.3)'
             }}>
-            <style>{`
-                @keyframes slideUpFade {
-                    from { opacity: 0; transform: translateY(8px); }
-                    to { opacity: 1; transform: translateY(0); }
-                }
-                @keyframes bounceDot {
-                    0%, 100% { transform: translateY(0); opacity: 0.5; }
-                    50% { transform: translateY(-3px); opacity: 1; }
-                }
-                @keyframes pulseRingPrem {
-                    0% { box-shadow: 0 0 0 0 rgba(139,92,246,0.5); }
-                    70% { box-shadow: 0 0 0 10px rgba(139,92,246,0); }
-                    100% { box-shadow: 0 0 0 0 rgba(139,92,246,0); }
-                }
-                @keyframes pulseRingStd {
-                    0% { box-shadow: 0 0 0 0 rgba(6,182,212,0.5); }
-                    70% { box-shadow: 0 0 0 10px rgba(6,182,212,0); }
-                    100% { box-shadow: 0 0 0 0 rgba(6,182,212,0); }
-                }
-            `}</style>
 
             <div className="absolute -bottom-10 -right-10 w-48 h-48 rounded-full blur-[60px] opacity-20 pointer-events-none transition-colors duration-700 delay-100"
                 style={{ background: isPremium ? 'radial-gradient(circle, #8b5cf6, #6366f1)' : 'radial-gradient(circle, #06b6d4, #3b82f6)', transform: isThinking ? 'scale(1.2)' : 'scale(1)' }} />
@@ -946,14 +1116,14 @@ function AITutorCard({ isDark = false }) {
                 <div className="flex items-center gap-2 mb-4">
                     <div className="w-7 h-7 rounded-lg flex items-center justify-center text-sm transition-all duration-500 relative"
                         style={{
-                            background: isPremium ? 'rgba(139,92,246,0.15)' : 'rgba(6,182,212,0.15)',
-                            border: `1px solid ${isPremium ? 'rgba(139,92,246,0.35)' : 'rgba(6,182,212,0.35)'}`,
+                            background: isPremium ? 'rgba(139,92,246,0.15)' : 'rgba(var(--secondary-rgb),0.15)',
+                            border: `1px solid ${isPremium ? 'rgba(139,92,246,0.35)' : 'rgba(var(--secondary-rgb),0.35)'}`,
                             animation: isThinking ? (isPremium ? 'pulseRingPrem 1.5s infinite' : 'pulseRingStd 1.5s infinite') : 'none'
                         }}>
                         {isPremium ? '✨' : '🤖'}
                     </div>
                     <span className="text-xs font-bold tracking-widest uppercase transition-colors duration-500"
-                        style={{ color: isPremium ? '#a78bfa' : '#06b6d4' }}>
+                        style={{ color: isPremium ? '#a78bfa' : 'var(--secondary)' }}>
                         {isPremium ? 'Premium AI' : 'Standard AI'}
                     </span>
 
@@ -979,8 +1149,8 @@ function AITutorCard({ isDark = false }) {
                         {isThinking ? (
                             <div key="thinking" className="rounded-2xl rounded-tl-sm px-3 py-2.5 flex items-center gap-1"
                                 style={{
-                                    background: isPremium ? 'rgba(139,92,246,0.1)' : 'rgba(6,182,212,0.05)',
-                                    border: `1px solid ${isPremium ? 'rgba(139,92,246,0.2)' : 'rgba(6,182,212,0.15)'}`
+                                    background: isPremium ? 'rgba(139,92,246,0.1)' : 'rgba(var(--secondary-rgb),0.05)',
+                                    border: `1px solid ${isPremium ? 'rgba(139,92,246,0.2)' : 'rgba(var(--secondary-rgb),0.15)'}`
                                 }}>
                                 <div className="w-1.5 h-1.5 rounded-full" style={{ background: isPremium ? '#a78bfa' : '#67e8f9', animation: 'bounceDot 1s infinite' }} />
                                 <div className="w-1.5 h-1.5 rounded-full" style={{ background: isPremium ? '#a78bfa' : '#67e8f9', animation: 'bounceDot 1s infinite 0.2s' }} />
@@ -990,8 +1160,8 @@ function AITutorCard({ isDark = false }) {
                             <div key={cur.id + isPremium + "resp"} className="rounded-2xl rounded-tl-sm px-3 py-2 text-[11px] max-w-[95%] leading-relaxed"
                                 style={{
                                     animation: 'slideUpFade 0.4s ease-out forwards',
-                                    background: isPremium ? 'rgba(139,92,246,0.15)' : 'rgba(6,182,212,0.1)',
-                                    border: `1px solid ${isPremium ? 'rgba(139,92,246,0.3)' : 'rgba(6,182,212,0.25)'}`,
+                                    background: isPremium ? 'rgba(139,92,246,0.15)' : 'rgba(var(--secondary-rgb),0.1)',
+                                    border: `1px solid ${isPremium ? 'rgba(139,92,246,0.3)' : 'rgba(var(--secondary-rgb),0.25)'}`,
                                     color: isPremium ? '#fff' : '#e2e8f0',
                                     boxShadow: isPremium ? '0 4px 20px rgba(139,92,246,0.15)' : 'none'
                                 }}
@@ -1011,7 +1181,7 @@ function AITutorCard({ isDark = false }) {
                     style={{ background: isThinking ? 'rgba(255,255,255,0.02)' : 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)' }}>
                     <span className="text-[11px] text-neutral-500 flex-1">{isThinking ? 'AI is typing...' : 'Ask anything...'}</span>
                     <div className="w-5 h-5 rounded-full flex items-center justify-center transition-all duration-500"
-                        style={{ background: isPremium ? '#8b5cf6' : '#06b6d4', transform: isThinking ? 'scale(0.8)' : 'scale(1)' }}>
+                        style={{ background: isPremium ? '#8b5cf6' : 'var(--secondary)', transform: isThinking ? 'scale(0.8)' : 'scale(1)' }}>
                         <ArrowUpRight size={10} className="text-white" />
                     </div>
                 </div>
@@ -1096,21 +1266,23 @@ function ApproachesCard({ isDark = false }) {
     const [activeIdx, setActiveIdx] = useState(1);
     const [animKey, setAnimKey] = useState(0);
     const ap = APPROACHES[activeIdx];
+    const [rootRef, active] = useActiveInView();
 
     useEffect(() => {
+        if (!active) return;
         const id = setInterval(() => {
             setActiveIdx(i => (i + 1) % APPROACHES.length);
             setAnimKey(k => k + 1);
         }, 4200);
         return () => clearInterval(id);
-    }, []);
+    }, [active]);
 
     const handleTab = (i) => { setActiveIdx(i); setAnimKey(k => k + 1); };
 
     const tokColor = (t) => ({ keyword: '#c084fc', fn: '#67e8f9', str: '#fcd34d', comment: '#4b5563', plain: '#e2e8f0' }[t] ?? '#e2e8f0');
 
     return (
-        <div className="lg:col-span-5 rounded-3xl relative overflow-hidden"
+        <div ref={rootRef} className="lg:col-span-5 rounded-3xl relative overflow-hidden"
             style={{
                 background: isDark ? '#0d0d0d' : 'linear-gradient(145deg, #16213a, #1f2c49)',
                 border: '1px solid rgba(255,255,255,0.07)'
@@ -1136,7 +1308,7 @@ function ApproachesCard({ isDark = false }) {
                     <div className="ml-auto flex items-center gap-1.5 px-2 py-0.5 rounded-md"
                         style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)' }}>
                         <div className="w-1.5 h-1.5 rounded-full animate-pulse" style={{ background: ap.accentFrom }} />
-                        <span className="text-[9px] font-mono text-white/30">two_sum.py</span>
+                        <span className="text-[9px] font-mono text-white/30">dijkstra.py</span>
                     </div>
                 </div>
 
@@ -1145,7 +1317,7 @@ function ApproachesCard({ isDark = false }) {
                     How would you solve <span className="font-extrabold" style={{
                         background: `linear-gradient(135deg, ${ap.accentFrom}, ${ap.accentTo})`,
                         WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', backgroundClip: 'text'
-                    }}>Two Sum</span>?
+                    }}>Dijkstra's</span>?
                 </p>
 
                 {/* Tab Selector */}
@@ -1256,6 +1428,7 @@ function ApproachesCard({ isDark = false }) {
                 <div className="flex justify-center items-center gap-2 mt-4">
                     {APPROACHES.map((a, i) => (
                         <button key={i} onClick={() => handleTab(i)}
+                            aria-label={`Show approach ${i + 1}`}
                             className="rounded-full cursor-pointer transition-all duration-400"
                             style={{
                                 width: i === activeIdx ? 20 : 5,
@@ -1281,25 +1454,28 @@ const LADDER_LEVELS = [
 ];
 
 const LADDER_EXAMPLE = [
-    { level: 0, title: 'Look up in dict', hint: 'if key in d: ...', locked: false },
-    { level: 1, title: 'One-pass scan', hint: 'for i, n in enumerate(nums): ...', locked: false },
-    { level: 2, title: 'Track complement', hint: 'diff = target - n; if diff in seen', locked: false },
-    { level: 3, title: 'Wrap into helper fn', hint: 'def find_pair(nums, target): ...', locked: true },
-    { level: 4, title: 'Full Two Sum solution', hint: 'seen = {}; for i, n in enum...', locked: true },
-    { level: 5, title: 'Handle duplicates & edge', hint: 'if not nums or len < 2: return []', locked: true },
+    { level: 0, title: 'Represent the graph', hint: 'graph = {"A": [("B",1), ("C",4)]}', locked: false },
+    { level: 1, title: 'BFS — no weights', hint: 'queue = deque([src]); visited = {src}', locked: false },
+    { level: 2, title: 'Add priority queue', hint: 'heap = [(0, src)]; dist = {src: 0}', locked: false },
+    { level: 3, title: 'Relax each edge', hint: 'if d+w < dist.get(v, inf): update', locked: true },
+    { level: 4, title: 'Full Dijkstra solution', hint: 'heapq.heappush(heap, (dist[v], v))', locked: true },
+    { level: 5, title: 'Handle negative weights', hint: 'use Bellman-Ford for neg. edges', locked: true },
 ];
 
 function LaddersCard({ isDark = false }) {
     const [activeLevel, setActiveLevel] = useState(2);
     const [unlocked, setUnlocked] = useState(3); // 0-2 unlocked (indices 0,1,2)
 
-    // auto-cycle through unlocked levels
+    const [rootRef, active] = useActiveInView();
+
+    // auto-cycle through unlocked levels (paused when off-screen / tab hidden)
     useEffect(() => {
+        if (!active) return;
         const id = setInterval(() => {
             setActiveLevel(l => l < unlocked - 1 ? l + 1 : 0);
         }, 2200);
         return () => clearInterval(id);
-    }, [unlocked]);
+    }, [unlocked, active]);
 
     const handleUnlock = () => {
         if (unlocked < LADDER_LEVELS.length) setUnlocked(u => u + 1);
@@ -1309,7 +1485,7 @@ function LaddersCard({ isDark = false }) {
     const ex = LADDER_EXAMPLE[activeLevel];
 
     return (
-        <div className="lg:col-span-7 rounded-3xl relative overflow-hidden"
+        <div ref={rootRef} className="lg:col-span-7 rounded-3xl relative overflow-hidden"
             style={{
                 background: isDark ? '#0d0d0d' : 'linear-gradient(145deg, #151f37, #1d2a48)',
                 border: '1px solid rgba(255,255,255,0.07)'
@@ -1490,14 +1666,266 @@ function LaddersCard({ isDark = false }) {
     );
 }
 
+// ─── useScrollReveal ────────────────────────────────────────────────────────
+function useScrollReveal(threshold = 0.12) {
+    const ref = useRef(null);
+    const visible = useInView(ref, { once: true, amount: threshold });
+    return [ref, visible];
+}
+
+// Returns [ref, active] — `active` is true only while the element is on-screen
+// AND the tab is visible. Used to pause the auto-cycling card timers so they
+// stop re-rendering (and burning CPU) when scrolled out of view / tab hidden.
+function useActiveInView(threshold = 0.15) {
+    const ref = useRef(null);
+    const [active, setActive] = useState(false);
+    useEffect(() => {
+        const el = ref.current;
+        if (!el) return;
+        let inView = false;
+        const apply = () => setActive(inView && !document.hidden);
+        const obs = new IntersectionObserver(([e]) => { inView = e.isIntersecting; apply(); }, { threshold });
+        obs.observe(el);
+        const onVis = () => apply();
+        document.addEventListener('visibilitychange', onVis);
+        return () => { obs.disconnect(); document.removeEventListener('visibilitychange', onVis); };
+    }, [threshold]);
+    return [ref, active];
+}
+
+// ─── FeaturesSection ────────────────────────────────────────────────────────
+const FEATURES = [
+    { emoji: '⌨️', title: 'Interactive In-Browser IDE',    desc: 'Write, run, and debug Python, JS, C++ and more — zero setup. Instant feedback with syntax highlighting.', color: '#6366f1', tags: ['Multi-language', 'Real-time output', 'Auto-complete'] },
+    { emoji: '🧠', title: 'MIRA — Your AI Tutor',         desc: 'Ask anything. MIRA adapts to your skill level, explains step-by-step, and never just hands you the answer.', color: '#8b5cf6', tags: ['Adaptive', 'Socratic method', '24/7 available'] },
+    { emoji: '🎬', title: 'Live Algorithm Visualizer',     desc: 'Watch BFS, DFS, sorting, and DP animate in real time — pause, step, rewind. Concepts click instantly.', color: '#06b6d4', tags: ['Step-by-step', 'Interactive', '50+ algorithms'] },
+    { emoji: '🤝', title: 'Community & Social Feed',       desc: 'Share solutions, get peer code reviews, follow top solvers, and celebrate milestones together.', color: '#10b981', tags: ['Code reviews', 'Discussions', 'Leaderboard'] },
+    { emoji: '🗺️', title: 'Structured Learning Paths',    desc: 'Follow expert-curated paths: DSA → System Design → ML. No more guessing what to study next.', color: '#f59e0b', tags: ['Curated', 'Progressive', 'Certified'] },
+    { emoji: '💼', title: 'Job Board',                     desc: 'Exclusive listings for junior-to-mid developers. Your Marevlo profile IS your portfolio.', color: '#ec4899', tags: ['Junior-friendly', 'Portfolio', 'Direct apply'] },
+];
+
+function FeaturesSection({ isDark }) {
+    const [ref, visible] = useScrollReveal(0.08);
+    return (
+        <section ref={ref} className="py-32 px-4 relative overflow-hidden" style={{ background: isDark ? 'transparent' : 'var(--muted)' }}>
+            <div className="absolute inset-0 pointer-events-none" style={{ background: `radial-gradient(ellipse 80% 50% at 50% 0%, ${isDark ? 'rgba(var(--primary-rgb),0.07)' : 'rgba(var(--primary-rgb),0.04)'}, transparent)` }} />
+            <div className="max-w-7xl mx-auto relative z-10">
+                <div className="text-center mb-16"
+                    style={{ opacity: visible ? 1 : 0, transform: visible ? 'translateY(0)' : 'translateY(30px)', transition: 'all 0.7s ease' }}>
+                    <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full border mb-5"
+                        style={{ background: 'rgba(var(--primary-rgb),0.06)', borderColor: 'rgba(var(--primary-rgb),0.2)' }}>
+                        <Zap className="w-3.5 h-3.5" style={{ color: 'var(--primary)' }} />
+                        <span className="text-xs font-bold tracking-widest uppercase" style={{ color: 'var(--primary)' }}>Everything you need</span>
+                    </div>
+                    <h2 className="text-5xl font-extrabold tracking-tighter mb-4 text-foreground">
+                        Built for how{' '}
+                        <span style={{ background: 'linear-gradient(135deg,var(--primary),var(--secondary))', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', backgroundClip: 'text' }}>
+                            developers actually learn
+                        </span>
+                    </h2>
+                    <p className="max-w-xl mx-auto text-lg text-muted-foreground">
+                        Six tools, one platform. No tab-switching between YouTube, coding judges, Stack Overflow, and Discord.
+                    </p>
+                </div>
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+                    {FEATURES.map((feat, i) => (
+                        <motion.div key={feat.title}
+                            className="group relative p-6 rounded-3xl border overflow-hidden cursor-default"
+                            style={{
+                                background: isDark ? 'linear-gradient(145deg,#0d0d0d,#111118)' : 'var(--card)',
+                                borderColor: isDark ? 'rgba(255,255,255,0.07)' : 'var(--border)',
+                            }}
+                            initial={{ opacity: 0, y: 40 }}
+                            whileInView={{ opacity: 1, y: 0 }}
+                            viewport={{ once: true, amount: 0.1 }}
+                            whileHover={{ y: -8, transition: { type: 'spring', stiffness: 300, damping: 20 } }}
+                            transition={{ duration: 0.6, ease: [0.22, 1, 0.36, 1], delay: i * 0.09 }}
+                            onMouseEnter={e => e.currentTarget.style.boxShadow = `0 20px 60px -10px ${feat.color}25`}
+                            onMouseLeave={e => e.currentTarget.style.boxShadow = '0 0 0 transparent'}>
+                            <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none rounded-3xl"
+                                style={{ background: `radial-gradient(ellipse at top left, ${feat.color}10, transparent 60%)` }} />
+                            <div className="absolute top-0 left-0 right-0 h-px opacity-0 group-hover:opacity-100 transition-opacity duration-500"
+                                style={{ background: `linear-gradient(90deg, transparent, ${feat.color}, transparent)` }} />
+                            <div className="w-12 h-12 rounded-2xl flex items-center justify-center text-2xl mb-4 transition-transform duration-500 group-hover:scale-110 group-hover:rotate-3"
+                                style={{ background: `${feat.color}15`, border: `1px solid ${feat.color}30` }}>
+                                {feat.emoji}
+                            </div>
+                            <h3 className="text-lg font-bold mb-2 text-foreground">{feat.title}</h3>
+                            <p className="text-sm leading-relaxed mb-4 text-muted-foreground">{feat.desc}</p>
+                            <div className="flex flex-wrap gap-1.5">
+                                {feat.tags.map(tag => (
+                                    <span key={tag} className="text-[10px] font-bold px-2.5 py-1 rounded-full"
+                                        style={{ background: `${feat.color}12`, color: feat.color, border: `1px solid ${feat.color}25` }}>
+                                        {tag}
+                                    </span>
+                                ))}
+                            </div>
+                        </motion.div>
+                    ))}
+                </div>
+            </div>
+        </section>
+    );
+}
+
+// ─── MiraShowcaseSection ────────────────────────────────────────────────────
+const MIRA_CHAT = [
+    { role: 'user', text: "I don't understand recursion at all. Can you help?" },
+    { role: 'mira', text: "Of course! Think of recursion like Russian dolls 🪆 — each doll contains a smaller version of itself. A function that calls *itself* is the same idea. Want to see it with factorial?" },
+    { role: 'user', text: "Yes! Show me with factorial." },
+    { role: 'mira', text: "`factorial(n)` = n × `factorial(n-1)`. The key is the **base case**: when n = 0, return 1 — otherwise it calls forever. Try writing it — I'll give hints, not answers 😊" },
+];
+
+function MiraShowcaseSection() {
+    // Theme-aware like the hero: dark in dark mode, light in light mode.
+    const { isDark } = useTheme();
+    const [ref, visible] = useScrollReveal(0.1);
+    const [chatIdx, setChatIdx] = useState(0);
+    const [isThinking, setIsThinking] = useState(false);
+
+    useEffect(() => {
+        if (!visible) return;
+        if (chatIdx >= MIRA_CHAT.length - 1) {
+            const reset = setTimeout(() => { setChatIdx(0); setIsThinking(false); }, 3500);
+            return () => clearTimeout(reset);
+        }
+        const thinkDelay = MIRA_CHAT[chatIdx].role === 'user' ? 1200 : 1800;
+        const t = setTimeout(() => {
+            if (MIRA_CHAT[chatIdx + 1]?.role === 'mira') setIsThinking(true);
+            setTimeout(() => { setIsThinking(false); setChatIdx(i => i + 1); }, 900);
+        }, thinkDelay);
+        return () => clearTimeout(t);
+    }, [chatIdx, visible]);
+
+    return (
+        <section ref={ref} className="py-32 px-4 relative overflow-hidden" style={{ background: isDark ? '#08080f' : '#faf5ff' }}>
+            <div className="absolute inset-0 pointer-events-none" style={{ background: isDark ? 'radial-gradient(ellipse 70% 60% at 50% 50%, rgba(139,92,246,0.07), transparent)' : 'radial-gradient(ellipse 70% 60% at 50% 50%, rgba(139,92,246,0.04), transparent)' }} />
+            <div className="max-w-7xl mx-auto relative z-10">
+                <div className="grid lg:grid-cols-2 gap-16 items-center">
+
+                    {/* Left: live chat UI */}
+                    <div style={{ opacity: visible ? 1 : 0, transform: visible ? 'translateX(0)' : 'translateX(-40px)', transition: 'all 0.8s ease' }}>
+                        <div className="rounded-3xl overflow-hidden border"
+                            style={{ background: isDark ? '#0c0c12' : '#111128', borderColor: 'rgba(139,92,246,0.3)', animation: visible ? 'miraGlowPulse 4s ease-in-out infinite' : 'none' }}>
+                            {/* Header */}
+                            <div className="flex items-center gap-3 px-5 py-4 border-b" style={{ borderColor: 'rgba(139,92,246,0.18)', background: 'rgba(139,92,246,0.06)' }}>
+                                <div className="relative">
+                                    <MiraAvatar size={40} mood="happy" bob />
+                                    <div className="absolute -bottom-0.5 -right-0.5 w-3 h-3 rounded-full bg-green-400 border-2 border-[#0c0c12]" />
+                                </div>
+                                <div>
+                                    <div className="text-sm font-bold text-white">MIRA</div>
+                                    <div className="text-[10px] text-green-400 font-semibold">● Online · Adaptive AI Tutor</div>
+                                </div>
+                                <div className="ml-auto px-2.5 py-1 rounded-full text-[9px] font-bold" style={{ background: 'rgba(139,92,246,0.2)', color: '#a78bfa', border: '1px solid rgba(139,92,246,0.3)' }}>Premium ✨</div>
+                            </div>
+
+                            {/* Chat area */}
+                            <div className="p-5 space-y-3 min-h-[260px] flex flex-col justify-end">
+                                {MIRA_CHAT.slice(0, chatIdx + 1).map((msg, i) => (
+                                    <div key={i} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}
+                                        style={{ animation: 'chatBubble 0.35s ease-out forwards' }}>
+                                        {msg.role === 'mira' && (
+                                            <div className="mr-2 flex-shrink-0 mt-1">
+                                                <MiraAvatar size={28} mood="idle" />
+                                            </div>
+                                        )}
+                                        <div className="max-w-[82%] px-4 py-2.5 text-[12px] leading-relaxed"
+                                            style={{
+                                                background: msg.role === 'user' ? 'rgba(var(--primary-rgb),0.22)' : 'rgba(139,92,246,0.14)',
+                                                border: msg.role === 'user' ? '1px solid rgba(var(--primary-rgb),0.3)' : '1px solid rgba(139,92,246,0.22)',
+                                                borderRadius: msg.role === 'user' ? '18px 18px 4px 18px' : '18px 18px 18px 4px',
+                                                color: '#e2e8f0',
+                                            }}
+                                            dangerouslySetInnerHTML={{
+                                                __html: msg.text
+                                                    .replace(/`([^`]+)`/g, '<code style="background:rgba(255,255,255,0.1);padding:1px 5px;border-radius:4px;font-family:monospace;color:#c084fc;font-size:11px">$1</code>')
+                                                    .replace(/\*\*([^*]+)\*\*/g, '<strong style="color:#a78bfa">$1</strong>')
+                                                    .replace(/\*([^*]+)\*/g, '<em style="color:#c4b5fd">$1</em>')
+                                            }}
+                                        />
+                                    </div>
+                                ))}
+                                {isThinking && (
+                                    <div className="flex justify-start">
+                                        <div className="mr-2 flex-shrink-0">
+                                            <MiraAvatar size={28} mood="thinking" />
+                                        </div>
+                                        <div className="px-4 py-3 rounded-2xl rounded-tl-sm flex items-center gap-1.5"
+                                            style={{ background: 'rgba(139,92,246,0.1)', border: '1px solid rgba(139,92,246,0.2)' }}>
+                                            {[0, 1, 2].map(d => (
+                                                <div key={d} className="w-1.5 h-1.5 rounded-full"
+                                                    style={{ background: '#a78bfa', animation: `typingBounce 1.1s ease-in-out ${d * 0.18}s infinite` }} />
+                                            ))}
+                                        </div>
+                                    </div>
+                                )}
+                            </div>
+
+                            {/* Input bar */}
+                            <div className="px-5 pb-5">
+                                <div className="flex items-center gap-3 px-4 py-2.5 rounded-2xl"
+                                    style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)' }}>
+                                    <span className="text-xs text-neutral-500 flex-1">Ask MIRA anything...</span>
+                                    <div className="w-7 h-7 rounded-full flex items-center justify-center flex-shrink-0"
+                                        style={{ background: 'linear-gradient(135deg,#8b5cf6,var(--primary))' }}>
+                                        <ArrowUpRight size={12} className="text-white" />
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* Right: copy */}
+                    <div style={{ opacity: visible ? 1 : 0, transform: visible ? 'translateX(0)' : 'translateX(40px)', transition: 'all 0.8s ease 0.2s' }}>
+                        <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full border mb-6"
+                            style={{ background: 'rgba(139,92,246,0.08)', borderColor: 'rgba(139,92,246,0.25)' }}>
+                            <Brain className="w-3.5 h-3.5" style={{ color: '#8b5cf6' }} />
+                            <span className="text-xs font-bold tracking-widest uppercase" style={{ color: '#8b5cf6' }}>Meet MIRA</span>
+                        </div>
+                        <h2 className="text-5xl font-extrabold tracking-tighter mb-6 leading-tight text-foreground">
+                            An AI tutor that{' '}
+                            <span style={{ background: 'linear-gradient(135deg,#8b5cf6,var(--primary))', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', backgroundClip: 'text' }}>
+                                thinks like a teacher
+                            </span>
+                        </h2>
+                        <p className="text-lg mb-8 leading-relaxed text-muted-foreground">
+                            MIRA doesn't just give answers — it guides you toward them. Using the Socratic method and cognitive learning science, it meets you at your level and adapts in real time.
+                        </p>
+                        <div className="space-y-4">
+                            {[
+                                { icon: '🧩', title: 'Adapts to your level',   desc: 'Beginner-friendly or expert-mode — MIRA detects where you are and adjusts instantly.' },
+                                { icon: '💡', title: 'Hints, not answers',      desc: 'Builds genuine understanding so you can solve the next hard problem on your own.' },
+                                { icon: '📈', title: 'Tracks your progress',    desc: 'Identifies weak patterns and nudges you toward them before your next interview.' },
+                            ].map(({ icon, title, desc }) => (
+                                <div key={title} className="flex items-start gap-4 p-4 rounded-2xl border transition-all duration-300 hover:-translate-y-0.5"
+                                    style={{ background: isDark ? 'rgba(139,92,246,0.05)' : 'rgba(139,92,246,0.04)', borderColor: 'rgba(139,92,246,0.14)' }}>
+                                    <span className="text-2xl flex-shrink-0">{icon}</span>
+                                    <div>
+                                        <div className="font-bold text-sm mb-1 text-foreground">{title}</div>
+                                        <div className="text-sm text-muted-foreground">{desc}</div>
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+    );
+}
+
+// ─── Main LandingPage ────────────────────────────────────────────────────────
 export default function LandingPage({ onStart, onExplore }) {
     const { isDark } = useTheme();
+
     return (
         <div className="overflow-y-auto h-full text-primary-text scroll-smooth bg-app-bg">
+
             {/* Background Blobs */}
             <div className="fixed inset-0 overflow-hidden pointer-events-none -z-10">
-                <div className="absolute -top-[10%] -left-[10%] w-[40%] h-[40%] rounded-full blur-[160px] opacity-[0.10] animate-blob" style={{ background: 'radial-gradient(circle, #6366f1, transparent)' }} />
-                <div className="absolute top-[30%] -right-[8%] w-[32%] h-[32%] rounded-full blur-[140px] opacity-[0.07] animate-blob animation-delay-2000" style={{ background: 'radial-gradient(circle, #06b6d4, transparent)' }} />
+                <div className="absolute -top-[10%] -left-[10%] w-[40%] h-[40%] rounded-full blur-[100px]" style={{ background: 'radial-gradient(circle,var(--primary),transparent)', animation: 'blob 12s ease-in-out infinite', opacity: isDark ? 0.10 : 0.05, willChange: 'transform' }} />
+                <div className="absolute top-[30%] -right-[8%] w-[32%] h-[32%] rounded-full blur-[90px]" style={{ background: 'radial-gradient(circle,var(--secondary),transparent)', animation: 'blob 15s ease-in-out 2s infinite', opacity: isDark ? 0.07 : 0.04, willChange: 'transform' }} />
+                <div className="absolute bottom-[10%] left-[20%] w-[28%] h-[28%] rounded-full blur-[80px]" style={{ background: 'radial-gradient(circle,#8b5cf6,transparent)', animation: 'blob 11s ease-in-out 4s infinite', opacity: isDark ? 0.05 : 0.03, willChange: 'transform' }} />
             </div>
 
             {/* HERO */}
@@ -1505,127 +1933,155 @@ export default function LandingPage({ onStart, onExplore }) {
                 <BackgroundFx variant="hero" />
                 <div className="max-w-7xl mx-auto grid lg:grid-cols-2 gap-16 items-center relative z-10">
 
-                    {/* Left: Copy */}
+                    {/* Left: Copy — staggered entrance */}
                     <div>
                         {/* Badge */}
-                        <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full mb-6 border" style={{ background: 'rgba(99,102,241,0.08)', borderColor: 'rgba(99,102,241,0.25)' }}>
-                            <Code className="w-3.5 h-3.5" style={{ color: '#6366f1' }} />
-                            <span className="text-xs font-bold tracking-widest uppercase" style={{ color: '#6366f1' }}>DSA · Courses · Visualize · Community</span>
-                        </div>
+                        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.6, ease: [0.22, 1, 0.36, 1], delay: 0.05 }}>
+                            <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full mb-6 border" style={{ background: 'rgba(var(--primary-rgb),0.08)', borderColor: 'rgba(var(--primary-rgb),0.25)' }}>
+                                <Code className="w-3.5 h-3.5" style={{ color: 'var(--primary)' }} />
+                                <span className="text-xs font-bold tracking-widest uppercase" style={{ color: 'var(--primary)' }}>DSA · Courses · Visualize · AI Tutor</span>
+                            </div>
+                        </motion.div>
 
                         {/* Headline */}
-                        <h1 className={`text-6xl md:text-7xl font-extrabold leading-tight mb-6 tracking-tighter ${isDark ? 'text-white' : 'text-gray-900'}`}>
-                            Learn. Solve.
-                            <br />
-                            <span style={{
-                                background: 'linear-gradient(135deg, #6366f1 0%, #06b6d4 100%)',
-                                WebkitBackgroundClip: 'text',
-                                WebkitTextFillColor: 'transparent',
-                                backgroundClip: 'text',
-                            }}>
-                                Actually understand it.
-                            </span>
-                        </h1>
+                        <motion.div initial={{ opacity: 0, y: 28 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.7, ease: [0.22, 1, 0.36, 1], delay: 0.15 }}>
+                            <h1 className="text-6xl md:text-7xl font-extrabold leading-tight mb-6 tracking-tighter text-foreground">
+                                Learn. Solve.
+                                <br />
+                                <span style={{
+                                    background: 'linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%)',
+                                    backgroundSize: '200% 200%',
+                                    WebkitBackgroundClip: 'text',
+                                    WebkitTextFillColor: 'transparent',
+                                    backgroundClip: 'text',
+                                    animation: 'gradientShift 5s ease infinite',
+                                }}>
+                                    Actually understand it.
+                                </span>
+                            </h1>
+                        </motion.div>
 
                         {/* Subtext */}
-                        <p className={`text-xl mb-8 max-w-lg leading-relaxed font-medium ${isDark ? 'text-neutral-400' : 'text-neutral-600'}`}>
-                            Marevlo gives you the{' '}
-                            <strong className="font-semibold" style={{ color: '#6366f1' }}>curriculum</strong>
-                            , the{' '}
-                            <strong className="font-semibold" style={{ color: '#6366f1' }}>tools</strong>
-                            , and the{' '}
-                            <strong className="font-semibold" style={{ color: '#06b6d4' }}>community</strong>
-                            {' '}to go from complete beginner to a confident problem solver one concept at a time.
-                        </p>
+                        <motion.div initial={{ opacity: 0, y: 24 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.7, ease: [0.22, 1, 0.36, 1], delay: 0.25 }}>
+                            <p className="text-xl mb-8 max-w-lg leading-relaxed font-medium text-muted-foreground">
+                                Marevlo gives you the{' '}
+                                <strong className="font-semibold" style={{ color: 'var(--primary)' }}>curriculum</strong>
+                                , the{' '}
+                                <strong className="font-semibold" style={{ color: 'var(--primary)' }}>tools</strong>
+                                , and the{' '}
+                                <strong className="font-semibold" style={{ color: 'var(--secondary)' }}>community</strong>
+                                {' '}to go from complete beginner to a confident problem solver — one concept at a time.
+                            </p>
+                        </motion.div>
 
                         {/* CTAs */}
-                        <div className="flex flex-col sm:flex-row gap-4 mb-8">
-                            <button
-                                onClick={onStart}
-                                className="px-8 py-4 text-white rounded-xl font-bold text-lg transition-all flex items-center justify-center hover:-translate-y-0.5 hover:shadow-2xl"
-                                style={{
-                                    background: 'linear-gradient(135deg, #6366f1, #06b6d4)',
-                                    boxShadow: '0 8px 32px rgba(99,102,241,0.30)',
-                                }}
-                            >
-                                Start Learning <ChevronRight className="ml-2 w-5 h-5" />
-                            </button>
-                            <button
-                                onClick={onExplore}
-                                className={`px-8 py-4 rounded-xl font-bold text-lg transition-all flex items-center justify-center hover:-translate-y-0.5 ${isDark ? 'hover:bg-white/10' : 'bg-white text-gray-900 border-2 border-neutral-200 hover:border-indigo-300 hover:bg-neutral-50 shadow-md hover:shadow-lg'}`}
-                                style={isDark ? { background: 'rgba(255,255,255,0.06)', border: '1.5px solid rgba(255,255,255,0.12)', color: '#ffffff' } : {}}
-                            >
-                                Explore Community
-                            </button>
-                        </div>
+                        <motion.div initial={{ opacity: 0, y: 24 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.7, ease: [0.22, 1, 0.36, 1], delay: 0.35 }}>
+                            <div className="flex flex-col sm:flex-row gap-4 mb-8">
+                                <motion.button
+                                    onClick={onStart}
+                                    whileHover={{ y: -4, scale: 1.02 }}
+                                    whileTap={{ scale: 0.97 }}
+                                    transition={{ type: 'spring', stiffness: 400, damping: 17 }}
+                                    className="group px-8 py-4 text-white rounded-xl font-bold text-lg flex items-center justify-center relative overflow-hidden"
+                                    style={{ background: 'linear-gradient(135deg, var(--primary), var(--secondary))', boxShadow: '0 8px 32px rgba(var(--primary-rgb),0.35)' }}
+                                >
+                                    <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-400"
+                                        style={{ background: 'linear-gradient(135deg, #4f46e5, #0891b2)' }} />
+                                    <span className="relative z-10 flex items-center">
+                                        Start Learning Free <ChevronRight className="ml-2 w-5 h-5 group-hover:translate-x-1 transition-transform" />
+                                    </span>
+                                </motion.button>
+                                <motion.button
+                                    onClick={onExplore}
+                                    whileHover={{ y: -4, scale: 1.02 }}
+                                    whileTap={{ scale: 0.97 }}
+                                    transition={{ type: 'spring', stiffness: 400, damping: 17 }}
+                                    className="px-8 py-4 rounded-xl font-bold text-lg flex items-center justify-center transition-colors duration-200 hover:bg-muted"
+                                    style={{ background: 'transparent', border: '1.5px solid var(--border)', color: 'var(--foreground)' }}
+                                >
+                                    Explore Community
+                                </motion.button>
+                            </div>
+                        </motion.div>
 
                         {/* Tags */}
-                        <div className="flex flex-wrap gap-2 mb-10">
-                            {[
-                                { l: 'DSA', c: '#6366f1' },
-                                { l: 'Algorithms', c: '#6366f1' },
-                                { l: 'Data Structures', c: '#06b6d4' },
-                                { l: 'System Design', c: '#6366f1' },
-                                { l: 'Visualization', c: '#06b6d4' },
-                                { l: 'Courses', c: '#06b6d4' },
-                            ].map(({ l, c }) => (
-                                <span
-                                    key={l}
-                                    className="px-3 py-1 rounded-full text-xs font-semibold border transition-all hover:-translate-y-0.5"
-                                    style={{ background: `${c}10`, borderColor: `${c}30`, color: c }}
-                                >{l}</span>
-                            ))}
-                        </div>
+                        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.7, ease: [0.22, 1, 0.36, 1], delay: 0.45 }}>
+                            <div className="flex flex-wrap gap-2 mb-10">
+                                {[
+                                    { l: 'DSA', c: '#6366f1' },
+                                    { l: 'Algorithms', c: '#6366f1' },
+                                    { l: 'Data Structures', c: '#06b6d4' },
+                                    { l: 'System Design', c: '#6366f1' },
+                                    { l: 'Visualization', c: '#06b6d4' },
+                                    { l: 'Courses', c: '#06b6d4' },
+                                ].map(({ l, c }, i) => (
+                                    <span
+                                        key={l}
+                                        className="px-3 py-1 rounded-full text-xs font-semibold border transition-all hover:-translate-y-0.5 cursor-default"
+                                        style={{ background: `${c}10`, borderColor: `${c}30`, color: c, animation: `tagWobble ${3 + i * 0.4}s ease-in-out ${i * 0.2}s infinite` }}
+                                    >{l}</span>
+                                ))}
+                            </div>
+                        </motion.div>
 
                         {/* Feature Promises */}
-                        <div className="flex flex-wrap gap-2 opacity-80">
-                            {[
-                                { label: 'Solve DSA like LeetCode', color: '#6366f1' },
-                                { label: 'Visualize every concept', color: '#6366f1' },
-                                { label: 'Learn with a community', color: '#06b6d4' },
-                            ].map(({ label, color }) => (
-                                <div
-                                    key={label}
-                                    className="flex items-center gap-2 px-3 py-2 rounded-full border transition-all hover:-translate-y-0.5 hover:opacity-100"
-                                    style={{ background: `${color}05`, borderColor: `${color}20` }}
-                                >
-                                    <svg width="10" height="8" viewBox="0 0 10 8" fill="none" className="flex-shrink-0">
-                                        <path d="M1 4L3.5 6.5L9 1" stroke={color} strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
-                                    </svg>
-                                    <span className="text-xs font-semibold whitespace-nowrap" style={{ color: `${color}CC` }}>{label}</span>
-                                </div>
-                            ))}
-                        </div>
+                        <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.7, ease: [0.22, 1, 0.36, 1], delay: 0.55 }}>
+                            <div className="flex flex-wrap gap-2">
+                                {[
+                                    { label: 'Solve DSA the smart way', color: '#6366f1' },
+                                    { label: 'Visualize every concept', color: '#6366f1' },
+                                    { label: 'AI tutor available 24/7', color: '#8b5cf6' },
+                                    { label: 'Learn with a community', color: '#06b6d4' },
+                                ].map(({ label, color }) => (
+                                    <div
+                                        key={label}
+                                        className="flex items-center gap-2 px-3 py-2 rounded-full border transition-all hover:-translate-y-0.5"
+                                        style={{ background: `${color}05`, borderColor: `${color}20` }}
+                                    >
+                                        <svg width="10" height="8" viewBox="0 0 10 8" fill="none" className="flex-shrink-0">
+                                            <path d="M1 4L3.5 6.5L9 1" stroke={color} strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
+                                        </svg>
+                                        <span className="text-xs font-semibold whitespace-nowrap" style={{ color: `${color}CC` }}>{label}</span>
+                                    </div>
+                                ))}
+                            </div>
+                        </motion.div>
                     </div>
 
                     {/* Right: Animated Typing Terminal */}
-                    <div className="relative hidden lg:block">
-                        {/* Soft glow behind card */}
+                    <motion.div
+                        className="relative hidden lg:block"
+                        initial={{ opacity: 0, y: 30, scale: 0.97 }}
+                        animate={{ opacity: 1, y: 0, scale: 1 }}
+                        transition={{ duration: 0.9, ease: [0.22, 1, 0.36, 1], delay: 0.4 }}
+                    >
                         <div className="absolute inset-0 rounded-3xl blur-3xl opacity-30 -z-10"
-                            style={{ background: 'linear-gradient(135deg, #6366f1, #06b6d4)' }} />
-                        <TypingTerminal />
-                    </div>
+                            style={{ background: 'linear-gradient(135deg, var(--primary), var(--secondary))', animation: 'float 8s ease-in-out infinite' }} />
+                        <HeroCodeStage>
+                            <TypingTerminal />
+                        </HeroCodeStage>
+                    </motion.div>
                 </div>
             </section>
 
             {/* MAREVLO ECOSYSTEM: PLATFORM IN ACTION */}
-            <section className="relative pt-32 pb-36 px-4 overflow-hidden">
+            <section className="relative pt-32 pb-36 px-4 overflow-hidden" style={{ background: isDark ? 'transparent' : 'var(--muted)' }}>
                 <div className="max-w-7xl mx-auto px-4 relative z-10">
 
                     {/* Header */}
-                    <div className="text-center mb-16">
+                    <div className="text-center mb-16" style={{ animation: 'heroFadeUp 0.7s ease both', animationPlayState: 'running' }}>
                         <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full border mb-5"
-                            style={{ background: 'rgba(99,102,241,0.06)', borderColor: 'rgba(99,102,241,0.2)' }}>
-                            <span className="text-xs font-bold tracking-widest uppercase" style={{ color: '#6366f1' }}>Platform in Action</span>
+                            style={{ background: 'rgba(var(--primary-rgb),0.06)', borderColor: 'rgba(var(--primary-rgb),0.2)' }}>
+                            <span className="text-xs font-bold tracking-widest uppercase" style={{ color: 'var(--primary)' }}>Platform in Action</span>
                         </div>
-                        <h2 className={`text-5xl font-extrabold tracking-tighter mb-4 ${isDark ? 'text-white' : 'text-gray-900'}`}>
+                        <h2 className="text-5xl font-extrabold tracking-tighter mb-4 text-foreground">
                             Everything you need,{' '}
                             <span style={{
-                                background: 'linear-gradient(135deg, #6366f1, #06b6d4)',
+                                background: 'linear-gradient(135deg, var(--primary), var(--secondary))',
                                 WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', backgroundClip: 'text',
                             }}>built inside one platform</span>
                         </h2>
-                        <p className={`max-w-xl mx-auto text-lg ${isDark ? 'text-neutral-400' : 'text-neutral-600'}`}>
+                        <p className="max-w-xl mx-auto text-lg text-muted-foreground">
                             Not a collection of random resources. A tightly integrated system — courses, problems, approaches, visualizations, and an AI assistant, all working together.
                         </p>
                     </div>
@@ -1650,15 +2106,15 @@ export default function LandingPage({ onStart, onExplore }) {
                         <div className="lg:col-span-4 rounded-3xl border overflow-hidden relative group hover:scale-[1.01] transition-transform duration-300"
                             style={{
                                 background: isDark ? '#0d0d0d' : 'linear-gradient(145deg, #1a2440, #263457)',
-                                borderColor: 'rgba(99,102,241,0.3)'
+                                borderColor: 'rgba(var(--primary-rgb),0.3)'
                             }}>
                             <div className="absolute -bottom-16 -right-16 w-48 h-48 rounded-full blur-[60px] opacity-15 pointer-events-none"
-                                style={{ background: 'radial-gradient(circle, #6366f1, transparent)' }} />
+                                style={{ background: 'radial-gradient(circle, var(--primary), transparent)' }} />
                             <div className="p-6 relative z-10">
                                 <div className="flex items-center gap-2 mb-5">
                                     <div className="w-7 h-7 rounded-lg flex items-center justify-center text-sm"
-                                        style={{ background: 'rgba(99,102,241,0.2)', border: '1px solid rgba(99,102,241,0.4)' }}>🎓</div>
-                                    <span className="text-xs font-bold tracking-widest uppercase" style={{ color: '#6366f1' }}>Our Courses</span>
+                                        style={{ background: 'rgba(var(--primary-rgb),0.2)', border: '1px solid rgba(var(--primary-rgb),0.4)' }}>🎓</div>
+                                    <span className="text-xs font-bold tracking-widest uppercase" style={{ color: 'var(--primary)' }}>Our Courses</span>
                                     <div className="ml-auto text-[10px] font-semibold text-neutral-500">4 tracks</div>
                                 </div>
 
@@ -1669,7 +2125,7 @@ export default function LandingPage({ onStart, onExplore }) {
                                         { title: 'Data Science', emoji: '📊', tag: 'New 🌟', lessons: 34, bar: 'linear-gradient(135deg,#06b6d4,#0891b2)', tagC: '#06b6d4', glow: '#06b6d412' },
                                         { title: 'Clustering', emoji: '🔵', tag: 'New ✨', lessons: 12, bar: 'linear-gradient(135deg,#818cf8,#6366f1)', tagC: '#818cf8', glow: '#6366f10c' },
                                         { title: 'LangGraph', emoji: '⚡', tag: 'New 🌟', lessons: 8, bar: 'linear-gradient(135deg,#22d3ee,#06b6d4)', tagC: '#22d3ee', glow: '#06b6d40c' },
-                                    ].map(({ title, emoji, tag, lessons, bar, tagC, glow }) => (
+                                    ].map(({ title, tag, lessons, bar, tagC, glow }) => (
                                         <div key={title}
                                             className="relative flex items-center gap-3 px-3 py-3 rounded-2xl cursor-pointer transition-all duration-200 hover:-translate-y-0.5"
                                             style={{ background: glow, border: `1px solid ${tagC}20` }}>
@@ -1677,14 +2133,10 @@ export default function LandingPage({ onStart, onExplore }) {
                                             {/* Left gradient bar */}
                                             <div className="w-1 h-9 rounded-full flex-shrink-0" style={{ background: bar, boxShadow: `0 0 8px ${tagC}60` }} />
 
-                                            {/* Emoji icon */}
-                                            <div className="w-8 h-8 rounded-xl flex items-center justify-center text-base flex-shrink-0"
-                                                style={{ background: `${tagC}15` }}>{emoji}</div>
-
                                             {/* Text */}
                                             <div className="flex-1 min-w-0">
                                                 <div className="text-xs font-bold text-white truncate">{title}</div>
-                                                <div className="text-[10px] text-neutral-500">{lessons} lessons</div>
+                                                <div className="text-[10px] text-neutral-400">{lessons} lessons</div>
                                             </div>
 
                                             {/* Tag */}
@@ -1697,14 +2149,14 @@ export default function LandingPage({ onStart, onExplore }) {
                                 {/* Footer hint */}
                                 <div className="mt-4 flex items-center gap-1.5">
                                     <div className="flex-1 h-px" style={{ background: 'rgba(255,255,255,0.06)' }} />
-                                    <span className="text-[10px] font-semibold px-2" style={{ color: '#6366f1' }}>+ more coming soon</span>
+                                    <span className="text-[10px] font-semibold px-2" style={{ color: 'var(--primary)' }}>+ more coming soon</span>
                                     <div className="flex-1 h-px" style={{ background: 'rgba(255,255,255,0.06)' }} />
                                 </div>
                             </div>
                         </div>
 
-                        {/* [5] Personalized AI Tutor — MEDIUM (col 3) */}
-                        <AITutorCard isDark={isDark} />
+                        {/* [5] Research Lab — MEDIUM (col 3) */}
+                        <ResearchCard isDark={isDark} />
 
                         {/* ROW 3: ALL PROBLEMS */}
 
@@ -1712,14 +2164,14 @@ export default function LandingPage({ onStart, onExplore }) {
                         <div className="lg:col-span-12 rounded-[2rem] border overflow-hidden relative group hover:scale-[1.01] transition-transform duration-500 shadow-2xl"
                             style={{
                                 background: isDark ? 'linear-gradient(145deg, #090914, #12122a)' : 'linear-gradient(145deg, #18243d, #243255)',
-                                borderColor: 'rgba(99,102,241,0.5)',
-                                boxShadow: isDark ? '0 20px 40px -10px rgba(99,102,241,0.15)' : '0 18px 36px -12px rgba(37,99,235,0.2)'
+                                borderColor: 'rgba(var(--primary-rgb),0.5)',
+                                boxShadow: isDark ? '0 20px 40px -10px rgba(var(--primary-rgb),0.15)' : '0 18px 36px -12px rgba(37,99,235,0.2)'
                             }}>
                             {/* Animated Background Gradients & Grids */}
-                            <div className="absolute inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-[0.03] mix-blend-overlay"></div>
+                            <div className="absolute inset-0 bg-[url('/noise.svg')] opacity-[0.03] mix-blend-overlay"></div>
                             <div className="absolute top-0 right-0 w-full h-full bg-[radial-gradient(ellipse_at_top_right,_var(--tw-gradient-stops))] from-indigo-500/20 via-indigo-500/5 hover:via-indigo-500/10 to-transparent transition-colors duration-700"></div>
                             <div className="absolute top-1/2 left-1/4 -translate-x-1/2 -translate-y-1/2 w-[600px] h-64 rounded-full blur-[100px] opacity-20 pointer-events-none animate-pulse"
-                                style={{ background: 'radial-gradient(circle, #6366f1, transparent)' }} />
+                                style={{ background: 'radial-gradient(circle, var(--primary), transparent)' }} />
 
                             <div className="p-8 md:p-12 relative z-10 flex flex-col md:flex-row gap-12 items-center">
                                 {/* Left desc */}
@@ -1727,7 +2179,7 @@ export default function LandingPage({ onStart, onExplore }) {
                                     <div className="absolute -left-4 -top-4 w-20 h-20 bg-indigo-500/20 rounded-full blur-2xl"></div>
                                     <div className="flex items-center gap-3 mb-6">
                                         <div className="w-9 h-9 rounded-xl flex items-center justify-center text-sm shadow-inner overflow-hidden relative"
-                                            style={{ background: 'rgba(99,102,241,0.2)', border: '1px solid rgba(99,102,241,0.5)' }}>
+                                            style={{ background: 'rgba(var(--primary-rgb),0.2)', border: '1px solid rgba(var(--primary-rgb),0.5)' }}>
                                             <div className="absolute inset-0 bg-gradient-to-tr from-indigo-500/40 to-transparent"></div>
                                             <span className="relative z-10 text-lg">🚀</span>
                                         </div>
@@ -1741,7 +2193,7 @@ export default function LandingPage({ onStart, onExplore }) {
 
                                     <div className="flex flex-wrap gap-3">
                                         {[['1000+ Questions', '#6366f1'], ['Interactive IDE', '#06b6d4'], ['Visualizers', '#6366f1']].map(([text, color]) => (
-                                            <div key={text} className="flex items-center gap-2 text-xs font-bold px-4 py-2 rounded-xl backdrop-blur-md transition-all hover:-translate-y-1 cursor-default"
+                                            <div key={text} className="flex items-center gap-2 text-xs font-bold px-4 py-2 rounded-xl transition-all hover:-translate-y-1 cursor-default"
                                                 style={{ background: `${color}15`, color: color, border: `1px solid ${color}40`, boxShadow: `0 4px 12px ${color}10` }}>
                                                 <div className="w-1.5 h-1.5 rounded-full animate-pulse" style={{ backgroundColor: color }}></div>
                                                 {text}
@@ -1769,7 +2221,7 @@ export default function LandingPage({ onStart, onExplore }) {
                                                     {done && <div className="w-2 h-2 rounded-full bg-indigo-400" />}
                                                     {!done && <div className="w-1.5 h-1.5 rounded-full bg-white/10 group-hover:bg-white/30 transition-colors" />}
                                                 </div>
-                                                <span className="text-neutral-500 text-xs font-mono w-8">{num}</span>
+                                                <span className="text-neutral-400 text-xs font-mono w-8">{num}</span>
                                                 <span className="text-neutral-200 text-sm font-semibold flex-1 tracking-wide">{name}</span>
 
                                                 <div className="flex items-center gap-4">
@@ -1780,7 +2232,7 @@ export default function LandingPage({ onStart, onExplore }) {
                                         ))}
                                     </div>
                                     <div className="text-center pt-8 relative z-20">
-                                        <button className="group inline-flex items-center gap-2 px-6 py-3 rounded-full bg-indigo-500/10 border border-indigo-500/30 text-indigo-300 text-sm font-bold tracking-wide hover:bg-indigo-500/20 hover:text-white transition-all hover:scale-105 shadow-[0_0_20px_rgba(99,102,241,0.2)]">
+                                        <button className="group inline-flex items-center gap-2 px-6 py-3 rounded-full bg-indigo-500/10 border border-indigo-500/30 text-indigo-300 text-sm font-bold tracking-wide hover:bg-indigo-500/20 hover:text-white transition-all hover:scale-105 shadow-[0_0_20px_rgba(var(--primary-rgb),0.2)]">
                                             <span>Explore All 1000+ Problems</span>
                                             <svg className="w-4 h-4 group-hover:translate-x-1 transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17 8l4 4m0 0l-4 4m4-4H3"></path></svg>
                                         </button>
@@ -1793,36 +2245,25 @@ export default function LandingPage({ onStart, onExplore }) {
                 </div>
             </section>
 
+            <FeaturesSection isDark={isDark} />
+            <MiraShowcaseSection />
+
             {/* HOW IT WORKS - REDESIGNED */}
-            <section className="py-32 relative overflow-hidden bg-black">
+            <section className={`py-32 relative overflow-hidden ${isDark ? 'bg-black' : 'bg-primary/5'}`}>
                 {/* Background glow effects */}
-                <div className="absolute inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-[0.02] mix-blend-overlay"></div>
-                <div className="absolute top-0 right-1/4 w-[500px] h-[500px] rounded-full blur-[120px] pointer-events-none bg-indigo-600/10"></div>
-                <div className="absolute bottom-0 left-1/4 w-[600px] h-[600px] rounded-full blur-[150px] pointer-events-none bg-indigo-500/6"></div>
+                <div className="absolute inset-0 bg-[url('/noise.svg')] opacity-[0.02] mix-blend-overlay"></div>
+                <div className="absolute top-0 right-1/4 w-[500px] h-[500px] rounded-full blur-[90px] pointer-events-none bg-indigo-600/10"></div>
+                <div className="absolute bottom-0 left-1/4 w-[600px] h-[600px] rounded-full blur-[100px] pointer-events-none bg-indigo-500/6"></div>
 
                 <div className="max-w-7xl mx-auto px-4 relative z-10">
                     <div className="text-center mb-24">
-                        <h2 className="text-4xl md:text-5xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r mb-6 tracking-tight from-white via-indigo-100 to-indigo-300">Your Path to Mastery</h2>
-                        <p className="text-lg max-w-2xl mx-auto leading-relaxed text-neutral-400">
+                        <h2 className={`text-4xl md:text-5xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r mb-6 tracking-tight ${isDark ? 'from-white via-indigo-100 to-indigo-300' : 'from-gray-900 via-indigo-700 to-indigo-500'}`}>Your Path to Mastery</h2>
+                        <p className="text-lg max-w-2xl mx-auto leading-relaxed text-muted-foreground">
                             A structured, scientifically-backed workflow designed to take you from novice to expert through consistent practice and AI-driven feedback.
                         </p>
                     </div>
 
                     <div className="relative pt-10 pb-20">
-                        {/* CSS Keyframes for continuous animatonic floating */}
-                        <style dangerouslySetInnerHTML={{
-                            __html: `
-                                @keyframes floatCard1 { 0%, 100% { transform: translateY(0px) scale(1) rotate(0deg); } 50% { transform: translateY(-20px) scale(1.02) rotate(-1deg); } }
-                                @keyframes floatCard2 { 0%, 100% { transform: translateY(0px) scale(1) rotate(0deg); } 50% { transform: translateY(25px) scale(1.03) rotate(1.5deg); } }
-                                @keyframes floatCard3 { 0%, 100% { transform: translateY(0px) scale(1) rotate(0deg); } 50% { transform: translateY(-25px) scale(1.01) rotate(-1.5deg); } }
-                                @keyframes floatCard4 { 0%, 100% { transform: translateY(0px) scale(1) rotate(0deg); } 50% { transform: translateY(30px) scale(1.04) rotate(1deg); } }
-                                @keyframes spinSlow { 100% { transform: rotate(360deg); } }
-                                .animate-float-1 { animation: floatCard1 6s ease-in-out infinite; }
-                                .animate-float-2 { animation: floatCard2 7s ease-in-out infinite; }
-                                .animate-float-3 { animation: floatCard3 6.5s ease-in-out infinite; }
-                                .animate-float-4 { animation: floatCard4 7.5s ease-in-out infinite; }
-                            ` }} />
-
                         {/* Staggered, overlapping animated floating cards */}
                         <div className="flex flex-col md:flex-row justify-center items-center gap-12 md:gap-0 relative z-10 md:h-[450px]">
                             {[
@@ -1831,11 +2272,15 @@ export default function LandingPage({ onStart, onExplore }) {
                                 { step: "03", title: "Collaborate", desc: "Review multi-approach code with community peers.", icon: "🤝", color: "#3b82f6", anim: "animate-float-3", offset: "md:-mt-24 md:-ml-8 md:z-30" },
                                 { step: "04", title: "Succeed", desc: "Crush those hard interviews and get verified.", icon: "🚀", color: "#06b6d4", anim: "animate-float-4", offset: "md:mt-40 md:-ml-8 md:z-40" }
                             ].map((item, i) => (
-                                <div key={i} className={`relative group w-full max-w-[300px] md:w-[280px] p-8 md:p-10 rounded-[2.5rem] transition-all duration-700 hover:scale-[1.15] hover:z-50 ${item.anim} ${item.offset} backdrop-blur-2xl`}
+                                <div key={i} className={`relative group w-full max-w-[300px] md:w-[280px] p-8 md:p-10 rounded-[2.5rem] transition-all duration-700 hover:scale-[1.15] hover:z-50 ${item.anim} ${item.offset}`}
                                     style={{
-                                        background: 'linear-gradient(145deg, rgba(20,20,20,0.8) 0%, rgba(0,0,0,0.95) 100%)',
-                                        border: `1px solid ${item.color}50`,
-                                        boxShadow: `0 30px 60px -20px rgba(0,0,0,0.8), inset 0 0 20px ${item.color}15`
+                                        background: isDark
+                                            ? 'linear-gradient(145deg, rgba(20,20,20,0.8) 0%, rgba(0,0,0,0.95) 100%)'
+                                            : 'var(--card)',
+                                        border: `1px solid ${item.color}${isDark ? '50' : '40'}`,
+                                        boxShadow: isDark
+                                            ? `0 30px 60px -20px rgba(0,0,0,0.8), inset 0 0 20px ${item.color}15`
+                                            : `0 24px 50px -20px ${item.color}40, inset 0 0 20px ${item.color}0d`
                                     }}>
 
                                     {/* Intense Hover Aura */}
@@ -1843,15 +2288,15 @@ export default function LandingPage({ onStart, onExplore }) {
                                     <div className="absolute -inset-[2px] rounded-[2.6rem] opacity-0 group-hover:opacity-100 transition-opacity duration-1000 -z-10 blur-xl block" style={{ background: `linear-gradient(45deg, ${item.color}, transparent, ${item.color})`, animation: 'spinSlow 10s linear infinite' }}></div>
 
                                     {/* Number Badge */}
-                                    <div className="absolute -top-6 -right-6 w-16 h-16 rounded-full flex flex-col items-center justify-center font-black text-xl text-white shadow-2xl border-4 border-black group-hover:rotate-[360deg] transition-transform duration-[1.5s] ease-in-out"
-                                        style={{ background: `linear-gradient(135deg, ${item.color}, #000)`, boxShadow: `0 10px 40px -5px ${item.color}` }}>
+                                    <div className={`absolute -top-6 -right-6 w-16 h-16 rounded-full flex flex-col items-center justify-center font-black text-xl text-white shadow-2xl border-4 ${isDark ? 'border-black' : 'border-white'} group-hover:rotate-[360deg] transition-transform duration-[1.5s] ease-in-out`}
+                                        style={{ background: `linear-gradient(135deg, ${item.color}, ${isDark ? '#000' : item.color + '99'})`, boxShadow: `0 10px 40px -5px ${item.color}` }}>
                                         {item.step}
                                     </div>
 
                                     {/* Icon & Content */}
                                     <div className="text-6xl mb-6 group-hover:-translate-y-4 group-hover:scale-125 transition-transform duration-500 drop-shadow-[0_10px_20px_rgba(0,0,0,0.5)]">{item.icon}</div>
-                                    <h3 className="text-2xl font-black mb-3 tracking-tighter text-white" style={{ textShadow: `0 0 20px ${item.color}40` }}>{item.title}</h3>
-                                    <p className="text-sm leading-relaxed font-medium transition-colors text-neutral-300 group-hover:text-white">{item.desc}</p>
+                    <h3 className="text-2xl font-black mb-3 tracking-tighter text-foreground" style={{ textShadow: isDark ? `0 0 20px ${item.color}40` : 'none' }}>{item.title}</h3>
+                                    <p className="text-sm leading-relaxed font-medium transition-colors text-muted-foreground group-hover:text-foreground">{item.desc}</p>
                                 </div>
                             ))}
                         </div>
@@ -1860,32 +2305,37 @@ export default function LandingPage({ onStart, onExplore }) {
             </section>
 
             {/* "Start Building" Footer Banner - REDESIGNED */}
-            <section className={`py-32 relative overflow-hidden flex items-center justify-center border-t ${isDark ? 'border-white/5' : 'border-gray-200'}`}
+            <section className={`py-32 relative overflow-hidden flex items-center justify-center border-t border-border`}
                 style={{ background: isDark
                     ? 'radial-gradient(ellipse at bottom, #1B1B3A 0%, #05050A 100%)'
                     : 'radial-gradient(ellipse at bottom, #eef2ff 0%, #f8fafc 100%)'
                 }}>
-                <div className="absolute inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-[0.03]"></div>
+                <div className="absolute inset-0 bg-[url('/noise.svg')] opacity-[0.03]"></div>
 
                 {/* Glowing Grid Background */}
                 <div className={`absolute inset-0 bg-[size:40px_40px] [mask-image:radial-gradient(ellipse_60%_60%_at_50%_50%,#000_20%,transparent_100%)] pointer-events-none ${isDark ? 'bg-[linear-gradient(rgba(255,255,255,0.03)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.03)_1px,transparent_1px)]' : 'bg-[linear-gradient(rgba(0,0,0,0.04)_1px,transparent_1px),linear-gradient(90deg,rgba(0,0,0,0.04)_1px,transparent_1px)]'}`}></div>
 
                 <div className="max-w-4xl mx-auto px-6 relative z-10 text-center flex flex-col items-center">
 
-                    <h2 className={`text-5xl md:text-7xl font-black mb-10 tracking-tighter leading-[1.1] ${isDark ? 'text-white drop-shadow-2xl' : 'text-gray-900'}`}>
+                    <h2 className="text-5xl md:text-7xl font-black mb-10 tracking-tighter leading-[1.1] text-foreground">
                         Ready to level up? <br />
                         <span className={`text-transparent bg-clip-text bg-gradient-to-r ${isDark ? 'from-indigo-400 via-purple-400 to-cyan-400' : 'from-indigo-600 via-purple-600 to-cyan-600'}`}>Start coding today.</span>
                     </h2>
 
-                    <button onClick={onStart} className={`group relative inline-flex items-center justify-center px-10 py-5 text-xl md:text-2xl font-bold rounded-full overflow-hidden transition-all duration-300 hover:scale-105 ${isDark ? 'bg-white text-black shadow-[0_0_40px_rgba(255,255,255,0.15)] hover:shadow-[0_0_60px_rgba(99,102,241,0.4)]' : 'bg-indigo-600 text-white shadow-[0_0_40px_rgba(99,102,241,0.2)] hover:shadow-[0_0_60px_rgba(99,102,241,0.4)]'}`}>
+                    <motion.button
+                        onClick={onStart}
+                        whileHover={{ scale: 1.06, y: -3 }}
+                        whileTap={{ scale: 0.97 }}
+                        transition={{ type: 'spring', stiffness: 350, damping: 18 }}
+                        className={`group relative inline-flex items-center justify-center px-10 py-5 text-xl md:text-2xl font-bold rounded-full overflow-hidden ${isDark ? 'bg-white text-black shadow-[0_0_40px_rgba(255,255,255,0.15)] hover:shadow-[0_0_60px_rgba(var(--primary-rgb),0.4)]' : 'bg-indigo-600 text-white shadow-[0_0_40px_rgba(var(--primary-rgb),0.2)] hover:shadow-[0_0_60px_rgba(var(--primary-rgb),0.4)]'}`}>
                         <div className={`absolute inset-0 bg-gradient-to-r opacity-0 group-hover:opacity-100 transition-opacity duration-500 ${isDark ? 'from-indigo-100 via-white to-purple-100' : 'from-indigo-500 via-indigo-600 to-purple-600'}`}></div>
                         <span className="relative z-10 flex items-center gap-3">
                             Start building for free
                             <svg className="w-6 h-6 group-hover:translate-x-1 group-hover:-translate-y-1 transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17 8l4 4m0 0l-4 4m4-4H3"></path></svg>
                         </span>
-                    </button>
+                    </motion.button>
 
-                    <p className={`mt-8 text-sm font-medium ${isDark ? 'text-neutral-500' : 'text-neutral-500'}`}>Join thousands of developers mastering algorithms.</p>
+                        <p className="mt-8 text-sm font-medium text-muted-foreground">Join thousands of developers mastering algorithms.</p>
                 </div>
             </section>
         </div>

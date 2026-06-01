@@ -842,16 +842,6 @@ const DiscussionSection = memo(({ problem }) => {
 
     return (
         <div style={{ display: 'flex', flexDirection: 'column', height: '100%', background: 'var(--color-surface)', position: 'relative' }}>
-            <style>{`
-                @keyframes dsSlideUp   { from{opacity:0;transform:translateX(-50%) translateY(14px)} to{opacity:1;transform:translateX(-50%) translateY(0)} }
-                @keyframes dsSlideDown { from{opacity:0;transform:translateY(-8px)} to{opacity:1;transform:translateY(0)} }
-                @keyframes dsPulse     { 0%,100%{opacity:1} 50%{opacity:0.45} }
-                @keyframes dsHintIn    { from{opacity:0;transform:translateX(-50%) translateY(8px)} to{opacity:1;transform:translateX(-50%) translateY(0)} }
-                .ds-scroll::-webkit-scrollbar{width:5px}
-                .ds-scroll::-webkit-scrollbar-track{background:transparent}
-                .ds-scroll::-webkit-scrollbar-thumb{background:var(--color-border);border-radius:6px}
-                .ds-scroll::-webkit-scrollbar-thumb:hover{background:var(--color-muted-text)}
-            `}</style>
 
             {/* ── Header ── */}
             <div style={{

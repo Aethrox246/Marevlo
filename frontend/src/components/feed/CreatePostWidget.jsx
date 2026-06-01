@@ -72,7 +72,7 @@ export default function CreatePostWidget({ onPost, onOpenEventModal, onOpenArtic
     const canSubmit = !uploading && (content.trim() || images.length > 0);
 
     return (
-        <div className="bg-surface border border-neutral-200 p-4 rounded-xl shadow-sm relative overflow-hidden group hover:border-neutral-300 transition-all duration-300">
+        <div className="bg-card border border-border p-4 rounded-xl shadow-sm relative overflow-hidden group hover:border-border transition-all duration-300">
             <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-transparent via-neutral-500/50 to-transparent opacity-0 group-hover:opacity-100 transition-opacity"></div>
 
             <div className="flex gap-4 mb-4">
@@ -84,7 +84,7 @@ export default function CreatePostWidget({ onPost, onOpenEventModal, onOpenArtic
                         value={content}
                         onChange={(e) => setContent(e.target.value)}
                         placeholder="What's on your mind?"
-                        className="w-full bg-transparent border border-neutral-200 rounded-xl px-4 py-3 text-sm text-primary-text focus:ring-1 focus:ring-black focus:border-black outline-none placeholder-muted-text min-h-[80px] resize-none transition-all focus:bg-neutral-50"
+                        className="w-full bg-transparent border border-border rounded-xl px-4 py-3 text-sm text-foreground focus:ring-1 focus:ring-black focus:border-black outline-none placeholder-muted-text min-h-[80px] resize-none transition-all focus:bg-muted"
                     />
                 </div>
             </div>
@@ -110,14 +110,14 @@ export default function CreatePostWidget({ onPost, onOpenEventModal, onOpenArtic
                 </div>
             )}
 
-            <div className="flex justify-between items-center px-2 pt-2 border-t border-neutral-100">
+            <div className="flex justify-between items-center px-2 pt-2 border-t border-border">
                 <div className="flex gap-1 md:gap-2">
                     <button
                         onClick={() => fileInputRef.current?.click()}
                         disabled={uploading || images.length >= MAX_IMAGES}
-                        className="flex items-center gap-2 px-3 py-2 text-muted-text hover:bg-neutral-100 rounded-lg transition-colors group hover:text-primary-text disabled:opacity-50 disabled:cursor-not-allowed"
+                        className="flex items-center gap-2 px-3 py-2 text-muted-foreground hover:bg-muted rounded-lg transition-colors group hover:text-foreground disabled:opacity-50 disabled:cursor-not-allowed"
                     >
-                        <Image size={18} className="text-neutral-500 group-hover:text-black group-hover:scale-110 transition-transform" />
+                        <Image size={18} className="text-muted-foreground group-hover:text-foreground group-hover:scale-110 transition-transform" />
                         <span className="text-xs font-bold hidden md:inline">
                             Media{images.length > 0 ? ` (${images.length}/${MAX_IMAGES})` : ''}
                         </span>
@@ -133,17 +133,17 @@ export default function CreatePostWidget({ onPost, onOpenEventModal, onOpenArtic
 
                     <button
                         onClick={onOpenEventModal}
-                        className="flex items-center gap-2 px-3 py-2 text-muted-text hover:bg-neutral-100 rounded-lg transition-colors group hover:text-primary-text"
+                        className="flex items-center gap-2 px-3 py-2 text-muted-foreground hover:bg-muted rounded-lg transition-colors group hover:text-foreground"
                     >
-                        <Calendar size={18} className="text-neutral-500 group-hover:text-black group-hover:scale-110 transition-transform" />
+                        <Calendar size={18} className="text-muted-foreground group-hover:text-foreground group-hover:scale-110 transition-transform" />
                         <span className="text-xs font-bold hidden md:inline">Event</span>
                     </button>
 
                     <button
                         onClick={onOpenArticleModal}
-                        className="flex items-center gap-2 px-3 py-2 text-muted-text hover:bg-neutral-100 rounded-lg transition-colors group hover:text-primary-text"
+                        className="flex items-center gap-2 px-3 py-2 text-muted-foreground hover:bg-muted rounded-lg transition-colors group hover:text-foreground"
                     >
-                        <Newspaper size={18} className="text-neutral-500 group-hover:text-black group-hover:scale-110 transition-transform" />
+                        <Newspaper size={18} className="text-muted-foreground group-hover:text-foreground group-hover:scale-110 transition-transform" />
                         <span className="text-xs font-bold hidden md:inline">Article</span>
                     </button>
                 </div>
@@ -153,7 +153,7 @@ export default function CreatePostWidget({ onPost, onOpenEventModal, onOpenArtic
                     disabled={!canSubmit}
                     className={`px-6 py-2 rounded-full font-bold text-sm transition-all duration-300 ${canSubmit
                         ? 'bg-black text-white hover:bg-neutral-800 shadow-md hover:-translate-y-0.5'
-                        : 'bg-neutral-100 text-neutral-400 cursor-not-allowed'
+                        : 'bg-muted text-muted-foreground/70 cursor-not-allowed'
                         }`}
                 >
                     {uploading ? 'Uploading…' : 'Post'}

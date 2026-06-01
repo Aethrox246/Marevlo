@@ -16,14 +16,6 @@ export default function BugReportModal({ onClose, isDark }) {
     const [errorMsg, setErrorMsg] = useState('');
     const abortRef = useRef(null);
 
-    const dark = isDark ?? (document.documentElement.classList.contains('dark'));
-
-    const surface = dark ? '#18181f' : '#ffffff';
-    const border  = dark ? 'rgba(255,255,255,0.08)' : '#e5e7eb';
-    const text     = dark ? '#f1f1f3' : '#111827';
-    const muted    = dark ? 'rgba(255,255,255,0.45)' : '#6b7280';
-    const inputBg  = dark ? 'rgba(255,255,255,0.04)' : '#f9fafb';
-    const accent   = '#3b82f6';
 
     // Abort any in-flight request when the modal is closed/unmounted.
     useEffect(() => {
@@ -86,8 +78,8 @@ export default function BugReportModal({ onClose, isDark }) {
                 aria-label="Report a bug"
                 style={{
                     width: '100%', maxWidth: 520,
-                    background: surface,
-                    border: `1px solid ${border}`,
+                    background: 'var(--card)',
+                    border: '1px solid var(--border)',
                     borderRadius: 20,
                     boxShadow: '0 24px 64px rgba(0,0,0,0.35)',
                     overflow: 'hidden',
@@ -98,7 +90,7 @@ export default function BugReportModal({ onClose, isDark }) {
                 <div style={{
                     display: 'flex', alignItems: 'center', gap: 12,
                     padding: '20px 24px 16px',
-                    borderBottom: `1px solid ${border}`,
+                    borderBottom: '1px solid var(--border)',
                 }}>
                     <div style={{
                         width: 36, height: 36, borderRadius: 10,
@@ -109,10 +101,10 @@ export default function BugReportModal({ onClose, isDark }) {
                         <Bug size={18} color="#ef4444" />
                     </div>
                     <div style={{ flex: 1 }}>
-                        <h2 style={{ margin: 0, fontSize: '1rem', fontWeight: 700, color: text }}>
+                        <h2 style={{ margin: 0, fontSize: '1rem', fontWeight: 700, color: 'var(--foreground)' }}>
                             Report a Bug
                         </h2>
-                        <p style={{ margin: 0, fontSize: '0.75rem', color: muted }}>
+                        <p style={{ margin: 0, fontSize: '0.75rem', color: 'var(--muted-foreground)' }}>
                             Help us improve Marevlo
                         </p>
                     </div>
@@ -120,7 +112,7 @@ export default function BugReportModal({ onClose, isDark }) {
                         onClick={onClose}
                         style={{
                             background: 'transparent', border: 'none', cursor: 'pointer',
-                            color: muted, padding: 6, borderRadius: 8,
+                            color: 'var(--muted-foreground)', padding: 6, borderRadius: 8,
                             display: 'flex', alignItems: 'center', justifyContent: 'center',
                         }}
                         aria-label="Close"
@@ -136,17 +128,17 @@ export default function BugReportModal({ onClose, isDark }) {
                         display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 12,
                     }}>
                         <CheckCircle size={48} color="#10b981" />
-                        <p style={{ margin: 0, fontSize: '1rem', fontWeight: 700, color: text }}>
+                        <p style={{ margin: 0, fontSize: '1rem', fontWeight: 700, color: 'var(--foreground)' }}>
                             Bug reported — thank you!
                         </p>
-                        <p style={{ margin: 0, fontSize: '0.82rem', color: muted, textAlign: 'center' }}>
+                        <p style={{ margin: 0, fontSize: '0.82rem', color: 'var(--muted-foreground)', textAlign: 'center' }}>
                             We've received your report and will look into it.
                         </p>
                         <button
                             onClick={onClose}
                             style={{
                                 marginTop: 12, padding: '10px 28px',
-                                background: accent, color: '#fff',
+                                background: 'var(--primary)', color: '#fff',
                                 border: 'none', borderRadius: 10,
                                 fontSize: '0.85rem', fontWeight: 700, cursor: 'pointer',
                             }}
@@ -160,7 +152,7 @@ export default function BugReportModal({ onClose, isDark }) {
 
                             {/* Title */}
                             <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-                                <label style={{ fontSize: '0.78rem', fontWeight: 600, color: text }}>
+                                <label style={{ fontSize: '0.78rem', fontWeight: 600, color: 'var(--foreground)' }}>
                                     Title <span style={{ color: '#ef4444' }}>*</span>
                                 </label>
                                 <input
@@ -171,11 +163,11 @@ export default function BugReportModal({ onClose, isDark }) {
                                     placeholder="Short summary of the issue"
                                     style={{
                                         padding: '10px 14px',
-                                        background: inputBg,
-                                        border: `1px solid ${border}`,
+                                        background: 'var(--muted)',
+                                        border: '1px solid var(--border)',
                                         borderRadius: 10,
                                         fontSize: '0.875rem',
-                                        color: text,
+                                        color: 'var(--foreground)',
                                         outline: 'none',
                                     }}
                                     required
@@ -184,7 +176,7 @@ export default function BugReportModal({ onClose, isDark }) {
 
                             {/* Description */}
                             <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-                                <label style={{ fontSize: '0.78rem', fontWeight: 600, color: text }}>
+                                <label style={{ fontSize: '0.78rem', fontWeight: 600, color: 'var(--foreground)' }}>
                                     Description <span style={{ color: '#ef4444' }}>*</span>
                                 </label>
                                 <textarea
@@ -195,11 +187,11 @@ export default function BugReportModal({ onClose, isDark }) {
                                     placeholder="Steps to reproduce, what you expected, what actually happened…"
                                     style={{
                                         padding: '10px 14px',
-                                        background: inputBg,
-                                        border: `1px solid ${border}`,
+                                        background: 'var(--muted)',
+                                        border: '1px solid var(--border)',
                                         borderRadius: 10,
                                         fontSize: '0.875rem',
-                                        color: text,
+                                        color: 'var(--foreground)',
                                         resize: 'vertical',
                                         outline: 'none',
                                         lineHeight: 1.6,
@@ -207,7 +199,7 @@ export default function BugReportModal({ onClose, isDark }) {
                                     }}
                                     required
                                 />
-                                <span style={{ fontSize: '0.7rem', color: muted, alignSelf: 'flex-end' }}>
+                                <span style={{ fontSize: '0.7rem', color: 'var(--muted-foreground)', alignSelf: 'flex-end' }}>
                                     {description.length} / 5000
                                 </span>
                             </div>
@@ -232,7 +224,7 @@ export default function BugReportModal({ onClose, isDark }) {
                         {/* Footer */}
                         <div style={{
                             padding: '16px 24px',
-                            borderTop: `1px solid ${border}`,
+                            borderTop: '1px solid var(--border)',
                             display: 'flex', justifyContent: 'flex-end', gap: 10,
                         }}>
                             <button
@@ -241,10 +233,10 @@ export default function BugReportModal({ onClose, isDark }) {
                                 style={{
                                     padding: '9px 20px',
                                     background: 'transparent',
-                                    border: `1px solid ${border}`,
+                                    border: '1px solid var(--border)',
                                     borderRadius: 10,
                                     fontSize: '0.85rem', fontWeight: 600,
-                                    color: muted, cursor: 'pointer',
+                                    color: 'var(--muted-foreground)', cursor: 'pointer',
                                 }}
                             >
                                 Cancel
@@ -254,7 +246,8 @@ export default function BugReportModal({ onClose, isDark }) {
                                 disabled={status === 'submitting'}
                                 style={{
                                     padding: '9px 22px',
-                                    background: status === 'submitting' ? `${accent}80` : accent,
+                                    background: 'var(--primary)',
+                                    opacity: status === 'submitting' ? 0.5 : 1,
                                     border: 'none', borderRadius: 10,
                                     fontSize: '0.85rem', fontWeight: 700,
                                     color: '#fff', cursor: status === 'submitting' ? 'wait' : 'pointer',

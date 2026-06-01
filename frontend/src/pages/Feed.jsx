@@ -360,10 +360,9 @@ export default function Feed() {
 
     return (
         <div
-            className="flex-1 h-full w-full overflow-y-auto custom-scrollbar"
+            className="flex-1 h-full w-full overflow-y-auto custom-scrollbar text-foreground"
             style={{
                 backgroundColor: 'var(--color-app-bg)',
-                color: 'var(--color-primary-text)',
                 transition: 'background-color 0.3s ease'
             }}
         >
@@ -443,14 +442,14 @@ export default function Feed() {
                                     width: 3, height: 18, borderRadius: 999,
                                     background: 'linear-gradient(180deg, #6366f1, #06b6d4)'
                                 }} />
-                                <h6 className="text-xs font-bold uppercase tracking-widest" style={{ color: 'var(--color-muted-text)' }}>
+                                <h6 className="text-xs font-bold uppercase tracking-widest text-muted-foreground">
                                     Recent Posts
                                 </h6>
                             </div>
 
                             {/* Segmented sort control */}
                             <div className="flex items-center gap-1 p-1 rounded-full" style={{
-                                backgroundColor: 'var(--color-surface)',
+                                backgroundColor: 'var(--card)',
                                 border: '1px solid var(--color-border)',
                                 boxShadow: '0 2px 8px rgba(99,102,241,0.08)'
                             }}>
@@ -466,7 +465,7 @@ export default function Feed() {
                                             background: sortBy === key
                                                 ? 'linear-gradient(135deg, #6366f1, #06b6d4)'
                                                 : 'transparent',
-                                            color: sortBy === key ? '#fff' : 'var(--color-muted-text)',
+                                            color: sortBy === key ? '#fff' : 'var(--muted-foreground)',
                                             boxShadow: sortBy === key ? '0 2px 10px rgba(99,102,241,0.4)' : 'none',
                                             border: 'none',
                                         }}
@@ -506,10 +505,10 @@ export default function Feed() {
                                             </div>
                                         ))}
                                     </div>
-                                    <h3 className="text-xl sm:text-2xl font-bold mb-2" style={{ color: 'var(--color-primary-text)' }}>
+                                    <h3 className="text-xl sm:text-2xl font-bold mb-2 text-foreground">
                                         Your feed is empty
                                     </h3>
-                                    <p style={{ color: 'var(--color-muted-text)', maxWidth: 340, margin: '0 auto', fontSize: '0.9rem' }}>
+                                    <p className="text-muted-foreground" style={{ maxWidth: 340, margin: '0 auto', fontSize: '0.9rem' }}>
                                         Be the first to share something amazing with the community!
                                     </p>
                                     <div className="flex flex-col sm:flex-row gap-3 justify-center mt-6">
@@ -571,9 +570,8 @@ export default function Feed() {
 
                         {/* Suggested People Card (Empty State for Backend) */}
                         <TiltCard>
-                            <div className="rounded-2xl overflow-hidden transition-all duration-300 hover:shadow-xl h-full" style={{
+                            <div className="rounded-2xl overflow-hidden transition-all duration-300 hover:shadow-xl h-full bg-card" style={{
                                 border: '1px solid var(--color-border)',
-                                backgroundColor: 'var(--color-surface)',
                             }}>
                                 <div style={{ height: 4, background: 'linear-gradient(90deg, #6366f1, #06b6d4)' }} />
                                 <div className="p-5 sm:p-6">
@@ -586,9 +584,9 @@ export default function Feed() {
                                         }}>
                                             <Users size={15} />
                                         </span>
-                                        <span style={{ color: 'var(--color-primary-text)' }}>People You May Know</span>
+                                        <span className="text-foreground">People You May Know</span>
                                     </h3>
-                                    <div className="text-center py-4" style={{ color: 'var(--color-muted-text)' }}>
+                                    <div className="text-center py-4 text-muted-foreground">
                                         <p className="text-xs italic">Sync suggestions will appear here soon.</p>
                                     </div>
                                 </div>
@@ -597,9 +595,8 @@ export default function Feed() {
 
                         {/* Quick Actions Card */}
                         <TiltCard>
-                            <div className="rounded-2xl overflow-hidden transition-all duration-300 hover:shadow-xl h-full" style={{
+                            <div className="rounded-2xl overflow-hidden transition-all duration-300 hover:shadow-xl h-full bg-card" style={{
                                 border: '1px solid var(--color-border)',
-                                backgroundColor: 'var(--color-surface)',
                             }}>
                                 <div style={{ height: 4, background: 'linear-gradient(90deg, #6366f1, #06b6d4)' }} />
                                 <div className="p-5 sm:p-6">
@@ -612,7 +609,7 @@ export default function Feed() {
                                         }}>
                                             <Zap size={15} />
                                         </span>
-                                        <span style={{ color: 'var(--color-primary-text)' }}>Quick Actions</span>
+                                        <span className="text-foreground">Quick Actions</span>
                                     </h3>
                                     <div className="flex flex-col gap-2">
                                         <button
@@ -643,13 +640,12 @@ export default function Feed() {
                             {['About', 'Accessibility', 'Help Center', 'Privacy & Terms'].map((link) => (
                                 <span
                                     key={link}
-                                    className="cursor-pointer hover:underline transition-colors duration-200"
-                                    style={{ color: 'var(--color-muted-text)' }}
+                                    className="cursor-pointer hover:underline transition-colors duration-200 text-muted-foreground"
                                 >
                                     {link}
                                 </span>
                             ))}
-                            <div style={{ color: 'var(--color-muted-text)', opacity: 0.6 }} className="text-[11px]">
+                            <div className="text-[11px] text-muted-foreground" style={{ opacity: 0.6 }}>
                                 © 2026 Marevlo
                             </div>
                         </div>
@@ -685,9 +681,8 @@ export default function Feed() {
                 <div className="fixed inset-0 z-50 flex items-center justify-center p-4 backdrop-blur-md"
                     style={{ backgroundColor: 'rgba(0, 0, 0, 0.5)' }}>
                     <div
-                        className="w-full max-w-2xl shadow-2xl flex flex-col max-h-[90vh]"
+                        className="w-full max-w-2xl shadow-2xl flex flex-col max-h-[90vh] bg-card"
                         style={{
-                            backgroundColor: 'var(--color-surface)',
                             border: '1px solid var(--color-border)',
                             borderRadius: '1.5rem',
                             animation: 'feedModalIn 0.3s cubic-bezier(0.34,1.56,0.64,1)'
@@ -696,7 +691,7 @@ export default function Feed() {
                         {/* Modal header with gradient */}
                         <div style={{ height: 4, background: 'linear-gradient(90deg, #6366f1, #06b6d4)', borderRadius: '1.5rem 1.5rem 0 0' }} />
                         <div className="p-5 sm:p-6 flex justify-between items-center" style={{ borderBottom: '1px solid var(--color-border)' }}>
-                            <h2 className="text-xl font-bold flex items-center gap-2.5" style={{ color: 'var(--color-primary-text)' }}>
+                            <h2 className="text-xl font-bold flex items-center gap-2.5 text-foreground">
                                 <span style={{
                                     display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
                                     width: 36, height: 36, borderRadius: '50%',
@@ -711,14 +706,14 @@ export default function Feed() {
                                 className="p-2 rounded-xl hover:opacity-70 transition-opacity"
                                 style={{ backgroundColor: 'var(--color-surface-hover)' }}
                             >
-                                <X size={20} style={{ color: 'var(--color-primary-text)' }} />
+                                <X size={20} className="text-foreground" />
                             </button>
                         </div>
 
                         <div className="p-6 overflow-y-auto space-y-5">
                             {/* Cover Image */}
                             <div>
-                                <label className="block text-xs font-bold mb-2 uppercase tracking-wide" style={{ color: 'var(--color-muted-text)' }}>
+                                <label className="block text-xs font-bold mb-2 uppercase tracking-wide text-muted-foreground">
                                     Cover Image
                                 </label>
                                 {articleImage ? (
@@ -756,7 +751,7 @@ export default function Feed() {
 
                             {/* Title */}
                             <div>
-                                <label className="block text-xs font-bold mb-2 uppercase tracking-wide" style={{ color: 'var(--color-muted-text)' }}>
+                                <label className="block text-xs font-bold mb-2 uppercase tracking-wide text-muted-foreground">
                                     Title <span style={{ color: '#f43f5e' }}>*</span>
                                 </label>
                                 <input
@@ -764,10 +759,9 @@ export default function Feed() {
                                     placeholder="Enter your headline..."
                                     value={articleTitle}
                                     onChange={(e) => setArticleTitle(e.target.value)}
-                                    className="w-full py-3 text-lg font-bold focus:outline-none transition-colors"
+                                    className="w-full py-3 text-lg font-bold focus:outline-none transition-colors text-foreground"
                                     style={{
                                         background: 'transparent',
-                                        color: 'var(--color-primary-text)',
                                         borderBottom: `2px solid ${articleTitle ? '#6366f1' : 'var(--color-border)'}`
                                     }}
                                 />
@@ -775,16 +769,15 @@ export default function Feed() {
 
                             {/* Content */}
                             <div>
-                                <label className="block text-xs font-bold mb-2 uppercase tracking-wide" style={{ color: 'var(--color-muted-text)' }}>
+                                <label className="block text-xs font-bold mb-2 uppercase tracking-wide text-muted-foreground">
                                     Content <span style={{ color: '#f43f5e' }}>*</span>
                                 </label>
                                 <textarea
                                     placeholder="Write your thoughts..."
                                     value={articleContent}
                                     onChange={(e) => setArticleContent(e.target.value)}
-                                    className="w-full rounded-2xl p-4 min-h-[200px] focus:outline-none transition-all resize-none"
+                                    className="w-full rounded-2xl p-4 min-h-[200px] focus:outline-none transition-all resize-none text-foreground"
                                     style={{
-                                        color: 'var(--color-primary-text)',
                                         backgroundColor: 'var(--color-surface-hover)',
                                         border: `1.5px solid ${articleContent ? '#6366f1' : 'var(--color-border)'}`,
                                     }}
@@ -796,7 +789,7 @@ export default function Feed() {
                             <button
                                 onClick={() => setIsArticleModalOpen(false)}
                                 className="px-5 py-2.5 rounded-xl text-sm font-semibold transition-all duration-200"
-                                style={{ color: 'var(--color-muted-text)', background: 'var(--color-surface-hover)' }}
+                                style={{ color: 'var(--muted-foreground)', background: 'var(--color-surface-hover)' }}
                             >
                                 Cancel
                             </button>
@@ -827,9 +820,8 @@ export default function Feed() {
                 <div className="fixed inset-0 z-50 flex items-center justify-center p-4 backdrop-blur-md"
                     style={{ backgroundColor: 'rgba(0, 0, 0, 0.5)' }}>
                     <div
-                        className="w-full max-w-lg shadow-2xl flex flex-col"
+                        className="w-full max-w-lg shadow-2xl flex flex-col bg-card"
                         style={{
-                            backgroundColor: 'var(--color-surface)',
                             border: '1px solid var(--color-border)',
                             borderRadius: '1.5rem',
                             animation: 'feedModalIn 0.3s cubic-bezier(0.34,1.56,0.64,1)'
@@ -837,7 +829,7 @@ export default function Feed() {
                     >
                         <div style={{ height: 4, background: 'linear-gradient(90deg, #f43f5e, #ec4899)', borderRadius: '1.5rem 1.5rem 0 0' }} />
                         <div className="p-5 sm:p-6 flex justify-between items-center" style={{ borderBottom: '1px solid var(--color-border)' }}>
-                            <h2 className="text-xl font-bold flex items-center gap-2.5" style={{ color: 'var(--color-primary-text)' }}>
+                            <h2 className="text-xl font-bold flex items-center gap-2.5 text-foreground">
                                 <span style={{
                                     display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
                                     width: 36, height: 36, borderRadius: '50%',
@@ -852,7 +844,7 @@ export default function Feed() {
                                 className="p-2 rounded-xl hover:opacity-70 transition-opacity"
                                 style={{ backgroundColor: 'var(--color-surface-hover)' }}
                             >
-                                <X size={20} style={{ color: 'var(--color-primary-text)' }} />
+                                <X size={20} className="text-foreground" />
                             </button>
                         </div>
 
@@ -861,9 +853,8 @@ export default function Feed() {
                                 placeholder="Event title *"
                                 value={eventTitle}
                                 onChange={(e) => setEventTitle(e.target.value)}
-                                className="w-full rounded-xl px-4 py-3 text-sm focus:outline-none transition-all"
+                                className="w-full rounded-xl px-4 py-3 text-sm focus:outline-none transition-all text-foreground"
                                 style={{
-                                    color: 'var(--color-primary-text)',
                                     backgroundColor: 'var(--color-surface-hover)',
                                     border: `1.5px solid ${eventTitle ? '#f43f5e' : 'var(--color-border)'}`
                                 }}
@@ -871,29 +862,27 @@ export default function Feed() {
 
                             <div className="grid grid-cols-2 gap-3">
                                 <div>
-                                    <label className="block text-xs font-bold mb-1 uppercase tracking-wide" style={{ color: 'var(--color-muted-text)' }}>Date & Time</label>
+                                    <label className="block text-xs font-bold mb-1 uppercase tracking-wide text-muted-foreground">Date & Time</label>
                                     <input
                                         type="datetime-local"
                                         value={eventDate}
                                         onChange={(e) => setEventDate(e.target.value)}
-                                        className="w-full rounded-xl px-3 py-2.5 text-sm focus:outline-none transition-all"
+                                        className="w-full rounded-xl px-3 py-2.5 text-sm focus:outline-none transition-all text-foreground"
                                         style={{
-                                            color: 'var(--color-primary-text)',
                                             backgroundColor: 'var(--color-surface-hover)',
                                             border: `1.5px solid ${eventDate ? '#f43f5e' : 'var(--color-border)'}`
                                         }}
                                     />
                                 </div>
                                 <div>
-                                    <label className="block text-xs font-bold mb-1 uppercase tracking-wide" style={{ color: 'var(--color-muted-text)' }}>Location</label>
+                                    <label className="block text-xs font-bold mb-1 uppercase tracking-wide text-muted-foreground">Location</label>
                                     <input
                                         type="text"
                                         placeholder="e.g. Remote / NYC"
                                         value={eventLocation}
                                         onChange={(e) => setEventLocation(e.target.value)}
-                                        className="w-full rounded-xl px-3 py-2.5 text-sm focus:outline-none transition-all"
+                                        className="w-full rounded-xl px-3 py-2.5 text-sm focus:outline-none transition-all text-foreground"
                                         style={{
-                                            color: 'var(--color-primary-text)',
                                             backgroundColor: 'var(--color-surface-hover)',
                                             border: '1.5px solid var(--color-border)'
                                         }}
@@ -905,9 +894,8 @@ export default function Feed() {
                                 placeholder="Event details (optional)..."
                                 value={eventDescription}
                                 onChange={(e) => setEventDescription(e.target.value)}
-                                className="w-full rounded-xl p-3.5 min-h-[100px] text-sm focus:outline-none transition-all resize-none"
+                                className="w-full rounded-xl p-3.5 min-h-[100px] text-sm focus:outline-none transition-all resize-none text-foreground"
                                 style={{
-                                    color: 'var(--color-primary-text)',
                                     backgroundColor: 'var(--color-surface-hover)',
                                     border: '1.5px solid var(--color-border)'
                                 }}
@@ -918,7 +906,7 @@ export default function Feed() {
                             <button
                                 onClick={() => setIsEventModalOpen(false)}
                                 className="px-5 py-2.5 rounded-xl text-sm font-semibold transition-all duration-200"
-                                style={{ color: 'var(--color-muted-text)', background: 'var(--color-surface-hover)' }}
+                                style={{ color: 'var(--muted-foreground)', background: 'var(--color-surface-hover)' }}
                             >
                                 Cancel
                             </button>
@@ -945,47 +933,6 @@ export default function Feed() {
             )}
 
             <MessengerWidget />
-
-            <style>{`
-                @keyframes feedSlideIn {
-                    from { transform: translateY(120%) scale(0.9); opacity: 0; }
-                    to   { transform: translateY(0) scale(1); opacity: 1; }
-                }
-                @keyframes feedModalIn {
-                    from { transform: scale(0.85) translateY(20px); opacity: 0; }
-                    to   { transform: scale(1) translateY(0); opacity: 1; }
-                }
-                @keyframes feedOrbFloat {
-                    0%, 100% { transform: translate(0, 0) scale(1); }
-                    33% { transform: translate(30px, -40px) scale(1.08); }
-                    66% { transform: translate(-20px, 20px) scale(0.94); }
-                }
-                .feed-orb {
-                    position: absolute;
-                    border-radius: 50%;
-                    filter: blur(80px);
-                    pointer-events: none;
-                    animation: feedOrbFloat 10s ease-in-out infinite;
-                }
-                .feed-orb-1 {
-                    width: 400px; height: 400px;
-                    background: radial-gradient(circle, rgba(99,102,241,0.18), transparent 70%);
-                    top: -100px; left: -100px;
-                    animation-delay: 0s;
-                }
-                .feed-orb-2 {
-                    width: 350px; height: 350px;
-                    background: radial-gradient(circle, rgba(6,182,212,0.15), transparent 70%);
-                    bottom: 10%; right: -80px;
-                    animation-delay: -4s;
-                }
-                .feed-orb-3 {
-                    width: 250px; height: 250px;
-                    background: radial-gradient(circle, rgba(99,102,241,0.10), transparent 70%);
-                    top: 40%; left: 40%;
-                    animation-delay: -7s;
-                }
-            `}</style>
         </div>
     );
 }

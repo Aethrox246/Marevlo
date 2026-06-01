@@ -117,45 +117,6 @@ const CodeEditor = ({ code, onChange, language }) => {
             </div>
 
             {/* Some CSS overrides to ensure the editor spans full height seamlessly */}
-            <style>{`
-                .editor-container-fullscreen {
-                    position: fixed !important;
-                    top: 0 !important;
-                    left: 0 !important;
-                    right: 0 !important;
-                    bottom: 0 !important;
-                    width: 100vw !important;
-                    height: 100vh !important;
-                    z-index: 9999 !important;
-                    border-radius: 0 !important;
-                }
-                .premium-editor.cm-theme-light, .premium-editor.cm-theme-dark {
-                    height: 100%;
-                }
-                .premium-editor .cm-scroller {
-                    font-family: 'JetBrains Mono', 'Fira Code', Consolas, Monaco, monospace !important;
-                    line-height: 1.6;
-                }
-                .premium-editor .cm-gutters {
-                    background-color: transparent !important;
-                    color: var(--color-muted-text) !important;
-                    border-right: 1px solid var(--color-border) !important;
-                }
-                .premium-editor .cm-activeLineGutter {
-                    background-color: rgba(255, 255, 255, 0.05) !important;
-                    color: var(--color-primary-text) !important;
-                }
-                .premium-editor .cm-activeLine {
-                    background-color: transparent !important;
-                }
-                .expand-button:hover {
-                    background-color: var(--color-hover-bg-active) !important;
-                    border-color: var(--color-primary) !important;
-                }
-                .expand-button:active {
-                    transform: scale(0.95);
-                }
-            `}</style>
         </div>
     );
 };

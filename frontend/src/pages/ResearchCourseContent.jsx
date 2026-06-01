@@ -1,4 +1,4 @@
-import React, { useState, useEffect, memo } from 'react';
+import React, { useState, useEffect, useRef, useCallback, memo } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import {
     BookOpen, ChevronLeft, ChevronRight, ChevronDown,
@@ -7,6 +7,7 @@ import {
 } from 'lucide-react';
 import ReactDOM from 'react-dom';
 import parse from 'html-react-parser';
+import { useTheme } from '../context/ThemeContext';
 
 //  HTML FILE MAP
 //  Maps lesson ID → public path to HTML file
@@ -475,6 +476,31 @@ ProseContent.displayName = 'ProseContent';
 export default function ResearchCourseContent() {
     const { id } = useParams();
     const navigate = useNavigate();
+    const { isDark } = useTheme();
+    const iframeRef = useRef(null);
+    const inlineIframeRef = useRef(null);
+
+    const injectThemeCSS = useCallback((iframe, dark) => {
+        try {
+            const doc = iframe.contentDocument || iframe.contentWindow?.document;
+            if (!doc || !doc.head) return;
+            let tag = doc.getElementById('__marevlo-theme');
+            if (!tag) {
+                tag = doc.createElement('style');
+                tag.id = '__marevlo-theme';
+                doc.head.appendChild(tag);
+            }
+            tag.textContent = dark ? '' : `
+                html { filter: invert(1) hue-rotate(180deg) !important; }
+                img, video, canvas, picture, .no-invert { filter: invert(1) hue-rotate(180deg) !important; }
+            `;
+        } catch (_) {}
+    }, []);
+
+    useEffect(() => {
+        if (iframeRef.current) injectThemeCSS(iframeRef.current, isDark);
+        if (inlineIframeRef.current) injectThemeCSS(inlineIframeRef.current, isDark);
+    }, [isDark, injectThemeCSS]);
 
     const config = RESEARCH_COURSE_CONFIGS[id];
     const htmlPath = RESEARCH_HTML_MAP[id];
@@ -516,7 +542,7 @@ export default function ResearchCourseContent() {
 
     if (!config) {
         return (
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', flexDirection: 'column', gap: 16, color: 'var(--color-muted-text)' }}>
+            <div className="text-muted-foreground" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', flexDirection: 'column', gap: 16 }}>
                 <BookOpen size={48} style={{ opacity: 0.3 }} />
                 <p>Module not found.</p>
                 <button onClick={() => navigate('/research/courses')} style={{ color: '#818cf8', fontWeight: 600, textDecoration: 'underline', cursor: 'pointer', background: 'none', border: 'none' }}>← Back to Research Courses</button>
@@ -535,13 +561,15 @@ export default function ResearchCourseContent() {
         return (
             <div style={{ width: '100%', height: '100%', overflow: 'hidden', position: 'relative' }}>
                 <iframe
+                    ref={iframeRef}
                     src={htmlPath}
                     title={config.title}
+                    onLoad={() => injectThemeCSS(iframeRef.current, isDark)}
                     style={{
                         width: '100%',
                         height: '100%',
                         border: 'none',
-                        background: '#08090b',
+                        background: isDark ? '#08090b' : '#ffffff',
                     }}
                 />
             </div>
@@ -549,17 +577,17 @@ export default function ResearchCourseContent() {
     }
 
     return (
-        <div className="flex h-full overflow-hidden" style={{ backgroundColor: 'var(--color-app-bg)', color: 'var(--color-primary-text)' }}>
+        <div className="flex h-full overflow-hidden text-foreground" style={{ backgroundColor: 'var(--color-app-bg)' }}>
 
             {/* Sidebar */}
             <aside
+                className="bg-card"
                 style={{
                     width: sidebarOpen ? 280 : 0,
                     minWidth: sidebarOpen ? 280 : 0,
                     overflow: 'hidden',
                     transition: 'width 0.3s ease, min-width 0.3s ease',
                     borderRight: '1px solid var(--color-border)',
-                    backgroundColor: 'var(--color-surface)',
                     display: 'flex',
                     flexDirection: 'column',
                     flexShrink: 0,
@@ -568,17 +596,17 @@ export default function ResearchCourseContent() {
                 <div style={{ padding: '20px 16px 12px', borderBottom: '1px solid var(--color-border)' }}>
                     <button
                         onClick={() => navigate('/research/courses')}
-                        className="flex items-center gap-2 text-xs font-semibold mb-4 transition-colors duration-200"
-                        style={{ color: 'var(--color-muted-text)', background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}
+                        className="flex items-center gap-2 text-xs font-semibold mb-4 transition-colors duration-200 text-muted-foreground"
+                        style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}
                         onMouseEnter={e => e.currentTarget.style.color = '#818cf8'}
                         onMouseLeave={e => e.currentTarget.style.color = 'var(--color-muted-text)'}
                     >
                         <ArrowLeft size={14} /> Research Courses
                     </button>
-                    <div style={{ fontSize: '0.62rem', fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--color-muted-text)', marginBottom: 4 }}>
+                    <div className="text-muted-foreground" style={{ fontSize: '0.62rem', fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', marginBottom: 4 }}>
                         {config.courseLabel}
                     </div>
-                    <div style={{ fontSize: '0.8rem', fontWeight: 700, color: 'var(--color-primary-text)', lineHeight: 1.3 }}>
+                    <div className="text-foreground" style={{ fontSize: '0.8rem', fontWeight: 700, lineHeight: 1.3 }}>
                         {config.title}
                     </div>
                 </div>
@@ -619,7 +647,7 @@ export default function ResearchCourseContent() {
 
                 {/* Progress footer */}
                 <div style={{ padding: '12px 16px', borderTop: '1px solid var(--color-border)' }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.7rem', color: 'var(--color-muted-text)', marginBottom: 6 }}>
+                    <div className="text-muted-foreground" style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.7rem', marginBottom: 6 }}>
                         <span>Progress</span>
                         <span>{Object.values(completed).filter(Boolean).length} / {siblings.length}</span>
                     </div>
@@ -638,26 +666,26 @@ export default function ResearchCourseContent() {
             <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
 
                 {/* Topbar */}
-                <div style={{
+                <div className="bg-card" style={{
                     display: 'flex', alignItems: 'center', gap: 12,
                     padding: '12px 20px',
                     borderBottom: '1px solid var(--color-border)',
-                    backgroundColor: 'var(--color-surface)',
                     flexShrink: 0,
                 }}>
                     <button
                         onClick={() => setSidebarOpen(o => !o)}
-                        style={{ padding: 6, borderRadius: 8, background: 'var(--color-surface-hover)', border: 'none', cursor: 'pointer', color: 'var(--color-muted-text)', display: 'flex' }}
+                        className="text-muted-foreground"
+                        style={{ padding: 6, borderRadius: 8, background: 'var(--color-surface-hover)', border: 'none', cursor: 'pointer', display: 'flex' }}
                         title={sidebarOpen ? 'Hide sidebar' : 'Show sidebar'}
                     >
                         <Menu size={16} />
                     </button>
 
                     <div style={{ flex: 1, minWidth: 0 }}>
-                        <div style={{ fontSize: '0.65rem', fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--color-muted-text)', marginBottom: 1 }}>
+                        <div className="text-muted-foreground" style={{ fontSize: '0.65rem', fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', marginBottom: 1 }}>
                             {config.courseLabel}
                         </div>
-                        <div style={{ fontSize: '0.9rem', fontWeight: 700, color: 'var(--color-primary-text)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                        <div className="text-foreground" style={{ fontSize: '0.9rem', fontWeight: 700, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                             {config.title}
                         </div>
                     </div>
@@ -666,7 +694,7 @@ export default function ResearchCourseContent() {
                         <span style={{ fontSize: '0.62rem', fontWeight: 700, letterSpacing: '0.05em', textTransform: 'uppercase', padding: '3px 9px', borderRadius: 999, background: lvl.bg, color: lvl.color }}>
                             {config.level}
                         </span>
-                        <span style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: '0.72rem', color: 'var(--color-muted-text)' }}>
+                        <span className="text-muted-foreground" style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: '0.72rem' }}>
                             <Clock size={12} /> {config.duration}
                         </span>
                     </div>
@@ -675,15 +703,14 @@ export default function ResearchCourseContent() {
                 {/* Scrollable content */}
                 <div style={{ flex: 1, overflowY: 'auto', padding: '32px 28px' }}>
                     {loading && (
-                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: 300, flexDirection: 'column', gap: 12, color: 'var(--color-muted-text)' }}>
+                        <div className="text-muted-foreground" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: 300, flexDirection: 'column', gap: 12 }}>
                             <div style={{ width: 36, height: 36, border: '3px solid rgba(99,102,241,0.2)', borderTopColor: '#6366f1', borderRadius: '50%', animation: 'spin 0.8s linear infinite' }} />
                             <span style={{ fontSize: '0.85rem' }}>Loading module…</span>
-                            <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
                         </div>
                     )}
 
                     {!loading && error && (
-                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: 300, flexDirection: 'column', gap: 12, color: 'var(--color-muted-text)' }}>
+                        <div className="text-muted-foreground" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: 300, flexDirection: 'column', gap: 12 }}>
                             <BookOpen size={40} style={{ opacity: 0.25 }} />
                             <p style={{ fontSize: '0.9rem' }}>Could not load content: {error}</p>
                         </div>
@@ -695,8 +722,8 @@ export default function ResearchCourseContent() {
                             <div style={{ width: 72, height: 72, borderRadius: '20px', background: 'rgba(99,102,241,0.1)', border: '1px solid rgba(99,102,241,0.25)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                                 <BookOpen size={32} style={{ color: '#818cf8', opacity: 0.7 }} />
                             </div>
-                            <h2 style={{ fontSize: '1.5rem', fontWeight: 800, color: 'var(--color-primary-text)', margin: 0 }}>Coming Soon</h2>
-                            <p style={{ color: 'var(--color-muted-text)', maxWidth: 360, lineHeight: 1.7, fontSize: '0.9rem' }}>
+                            <h2 className="text-foreground" style={{ fontSize: '1.5rem', fontWeight: 800, margin: 0 }}>Coming Soon</h2>
+                            <p className="text-muted-foreground" style={{ maxWidth: 360, lineHeight: 1.7, fontSize: '0.9rem' }}>
                                 This module is being prepared. Check back soon.
                             </p>
                         </div>
@@ -707,10 +734,10 @@ export default function ResearchCourseContent() {
                             <div style={{ marginBottom: '30px' }}>
                                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, marginBottom: '14px' }}>
                                     <div>
-                                        <div style={{ fontSize: '0.75rem', fontWeight: 700, letterSpacing: '0.14em', textTransform: 'uppercase', color: 'var(--color-muted-text)', marginBottom: 4 }}>
+                                        <div className="text-muted-foreground" style={{ fontSize: '0.75rem', fontWeight: 700, letterSpacing: '0.14em', textTransform: 'uppercase', marginBottom: 4 }}>
                                             Course Modules
                                         </div>
-                                        <div style={{ fontSize: '1.35rem', fontWeight: 800, color: 'var(--color-primary-text)' }}>
+                                        <div className="text-foreground" style={{ fontSize: '1.35rem', fontWeight: 800 }}>
                                             {config.courseLabel}
                                         </div>
                                     </div>
@@ -718,7 +745,7 @@ export default function ResearchCourseContent() {
                                         <span style={{ fontSize: '0.75rem', fontWeight: 700, letterSpacing: '0.04em', textTransform: 'uppercase', padding: '6px 12px', borderRadius: 999, background: lvl.bg, color: lvl.color }}>
                                             {config.level}
                                         </span>
-                                        <span style={{ fontSize: '0.8rem', color: 'var(--color-muted-text)' }}>
+                                        <span className="text-muted-foreground" style={{ fontSize: '0.8rem' }}>
                                             {config.duration}
                                         </span>
                                     </div>
@@ -743,8 +770,8 @@ export default function ResearchCourseContent() {
                                                     minHeight: 150,
                                                     padding: '20px',
                                                     borderRadius: 22,
-                                                    background: isActive ? 'rgba(99,102,241,0.16)' : 'rgba(255,255,255,0.04)',
-                                                    border: isActive ? '1px solid rgba(99,102,241,0.35)' : '1px solid rgba(255,255,255,0.08)',
+                                                    background: isActive ? 'rgba(99,102,241,0.16)' : 'var(--color-surface-hover)',
+                                                    border: isActive ? '1px solid rgba(99,102,241,0.35)' : '1px solid var(--color-border)',
                                                     boxShadow: isActive ? '0 14px 28px rgba(0,0,0,0.12)' : '0 10px 22px rgba(0,0,0,0.08)',
                                                     transition: 'transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease',
                                                 }}
@@ -769,18 +796,18 @@ export default function ResearchCourseContent() {
                                                             display: 'grid',
                                                             placeItems: 'center',
                                                             borderRadius: 14,
-                                                            background: 'rgba(255,255,255,0.08)',
+                                                            background: isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.06)',
                                                         }}>
-                                                            <span style={{ fontSize: '0.85rem', fontWeight: 800, color: '#fff' }}>
+                                                            <span style={{ fontSize: '0.85rem', fontWeight: 800, color: 'var(--foreground)' }}>
                                                                 {String(index).padStart(2, '0')}
                                                             </span>
                                                         </div>
                                                         <div style={{ minWidth: 0 }}>
-                                                            <div style={{ fontSize: '0.95rem', fontWeight: 800, color: isActive ? '#fff' : '#f4f4ff', lineHeight: 1.25, marginBottom: 6 }}>
+                                                            <div style={{ fontSize: '0.95rem', fontWeight: 800, color: 'var(--foreground)', lineHeight: 1.25, marginBottom: 6 }}>
                                                                 {cardLabel}
                                                             </div>
                                                             <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, alignItems: 'center' }}>
-                                                                <span style={{ fontSize: '0.72rem', color: 'rgba(255,255,255,0.75)' }}>
+                                                                <span style={{ fontSize: '0.72rem', color: 'var(--color-muted-text)' }}>
                                                                     {cardConfig.duration || config.duration}
                                                                 </span>
                                                             </div>
@@ -791,7 +818,7 @@ export default function ResearchCourseContent() {
                                                     </span>
                                                 </div>
                                                 <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
-                                                    <ArrowUpRight size={18} color={isActive ? '#fff' : '#818cf8'} />
+                                                    <ArrowUpRight size={18} color={isActive ? '#818cf8' : '#818cf8'} />
                                                 </div>
                                             </div>
                                         );
@@ -802,14 +829,16 @@ export default function ResearchCourseContent() {
                             {isFullDocumentModule && htmlPath && (
                                 <div style={{ maxWidth: 1100, margin: '0 auto' }}>
                                     <iframe
+                                        ref={inlineIframeRef}
                                         src={htmlPath}
                                         title={config.title}
+                                        onLoad={() => injectThemeCSS(inlineIframeRef.current, isDark)}
                                         style={{
                                             width: '100%',
                                             minHeight: '80vh',
                                             border: '1px solid var(--color-border)',
                                             borderRadius: 20,
-                                            background: '#08090b',
+                                            background: isDark ? '#08090b' : '#ffffff',
                                         }}
                                     />
                                 </div>
@@ -825,11 +854,10 @@ export default function ResearchCourseContent() {
                 </div>
 
                 {/* Bottom nav */}
-                <div style={{
+                <div className="bg-card" style={{
                     display: 'flex', alignItems: 'center', justifyContent: 'space-between',
                     padding: '12px 20px',
                     borderTop: '1px solid var(--color-border)',
-                    backgroundColor: 'var(--color-surface)',
                     flexShrink: 0,
                 }}>
                     <button

@@ -3,6 +3,7 @@ import { BrowserRouter as Router, Routes, Route, useNavigate, useParams, useLoca
 
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { ThemeProvider } from './context/ThemeContext';
+import { MotionConfig } from 'framer-motion';
 import { MiraContextProvider, MiraWidget } from './components/mira';
 import { ToastProvider, useToast } from './components/Toast';
 
@@ -48,12 +49,13 @@ export default function App() {
                                     <Route path="/signup" element={<SignupWrapper />} />
                                     <Route path="/problems" element={<ProblemWrapper />} />
                                     <Route path="/problems/:topicId" element={<TopicProblems />} />
+                                    <Route path="/problems/:topicId/:id" element={<IDEWrapper />} />
                                     <Route path="/ide" element={<IDEWrapper />} />
                                     <Route path="/ide/:id" element={<IDEWrapper />} />
                                     <Route path="/feed" element={<FeedWrapper />} />
                                     <Route path="/messages" element={<MessagesWrapper />} />
                                     <Route path="/project" element={<Project />} />
-                                    <Route path="/courses" element={<Courses />} />
+                                    <Route path="/courses/*" element={<Courses />} />
                                     <Route path="/course/:id" element={<CourseContent />} />
                                     <Route path="/jobs" element={<JobBoardGuard><JobBoard /></JobBoardGuard>} />
                                     <Route path="/plan" element={<Plan />} />
@@ -62,7 +64,7 @@ export default function App() {
                                     <Route path="/research" element={<Research />} />
                                     <Route path="/research/papers" element={<ResearchPapers />} />
                                     <Route path="/research/paper/:slug" element={<ResearchPaperContent />} />
-                                    <Route path="/research/courses" element={<ResearchCourses />} />
+                                    <Route path="/research/courses/*" element={<ResearchCourses />} />
                                     <Route path="/research/track/recommender-system" element={<T3TrackLanding />} />
                                     <Route path="/research/course/:id" element={<ResearchCourseContent />} />
                                 </Route>
@@ -85,7 +87,11 @@ function MiraRouteGate() {
 function HomeHandler() {
     const { user } = useAuth();
     const navigate = useNavigate();
-    return <LandingPage onStart={() => navigate(user ? '/problems' : '/signup')} onExplore={() => navigate(user ? '/feed' : '/signup')} />;
+    return (
+        <MotionConfig reducedMotion="user">
+            <LandingPage onStart={() => navigate(user ? '/problems' : '/signup')} onExplore={() => navigate(user ? '/feed' : '/signup')} />
+        </MotionConfig>
+    );
 }
 
 function LoginWrapper() {
@@ -157,7 +163,7 @@ function IDEWrapper() {
     }, [problem]);
 
     if (loading) {
-        return <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', color: 'var(--color-muted-text)' }}>Loading problem…</div>;
+        return <div className="text-muted-foreground" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%' }}>Loading problem…</div>;
     }
 
     return <IDE
@@ -167,90 +173,4 @@ function IDEWrapper() {
         onSolved={() => addPoints(50)}
         onNext={handleNext}
     />;
-}
-
-export default function App() {
-    return (
-        <ThemeProvider>
-            <AuthProvider>
-                <MiraContextProvider>
-                    <Router>
-                        <Routes>
-                            <Route element={<Layout />}>
-                                <Route path="/" element={<HomeHandler />} />
-                                <Route path="/login" element={<LoginWrapper />} />
-                                <Route path="/signup" element={<SignupWrapper />} />
-                                <Route path="/problems" element={<ProblemWrapper />} />
-                                <Route path="/problems/:topicId" element={<TopicProblems />} />
-                                <Route path="/problems/:topicId/:id" element={<IDEWrapper />} />
-                                <Route path="/ide" element={<IDEWrapper />} />
-                                <Route path="/ide/:id" element={<IDEWrapper />} />
-                                <Route path="/feed" element={<FeedWrapper />} />
-                                <Route path="/messages" element={<MessagesWrapper />} />
-                                <Route path="/project" element={<Project />} />
-                                <Route path="/courses/*" element={<Courses />} />
-                                <Route path="/course/:id" element={<CourseContent />} />
-                                <Route path="/jobs" element={<JobBoardGuard><JobBoard /></JobBoardGuard>} />
-                                <Route path="/plan" element={<Plan />} />
-                                <Route path="/profile" element={<Profile />} />
-                                <Route path="/about" element={<AboutUs />} />
-                                <Route path="/research" element={<Research />} />
-                                <Route path="/research/papers" element={<ResearchPapers />} />
-                                <Route path="/research/paper/:slug" element={<ResearchPaperContent />} />
-                                <Route path="/research/courses/*" element={<ResearchCourses />} />
-                                <Route path="/research/track/recommender-system" element={<T3TrackLanding />} />
-                                <Route path="/research/course/:id" element={<ResearchCourseContent />} />
-                            </Route>
-                        </Routes>
-                        <MiraRouteGate />
-                    </Router>
-                </MiraContextProvider>
-            </AuthProvider>
-        </ThemeProvider>
-    );
-}
-
-function MiraRouteGate() {
-    const { pathname } = useLocation();
-
-    if (pathname === '/' || pathname === '/feed' || pathname === '/messages') {
-        return null;
-    }
-
-    return <MiraWidget />;
-}
-
-// Helper components to bridge the gap between old props and new Router/Context
-function HomeHandler() {
-    const { user } = useAuth();
-    const navigate = useNavigate();
-
-    return <LandingPage
-        onStart={() => user ? navigate('/problems') : navigate('/signup')}
-        onExplore={() => user ? navigate('/feed') : navigate('/signup')}
-    />;
-}
-
-function LoginWrapper() {
-    const { login } = useAuth();
-    const navigate = useNavigate();
-    return <Login onLogin={(u) => { login(u); navigate('/feed'); }} onSignup={() => navigate('/signup')} />;
-}
-
-function SignupWrapper() {
-    const navigate = useNavigate();
-    return <Signup onLogin={() => navigate('/login')} onSignupSuccess={() => { alert('Signup successful! Please log in.'); navigate('/login'); }} />;
-}
-
-function FeedWrapper() {
-    const { user } = useAuth();
-    const navigate = useNavigate();
-    // Feed expected 'user' and 'setView'.
-    return <Feed user={user} setView={(view) => navigate('/' + view)} />;
-}
-
-function MessagesWrapper() {
-    const { user } = useAuth();
-    const navigate = useNavigate();
-    return <Messages user={user} setView={(view) => navigate('/' + view)} />;
 }

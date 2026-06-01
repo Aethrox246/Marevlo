@@ -7,8 +7,10 @@
  *   { id, name, icon, problems: [{ id, title, difficulty, category, ... }] }
  */
 
-// Eagerly import every JSON file nested under src/assets/
-const modules = import.meta.glob('../assets/**/*.json', { eager: true });
+// Lazily import every JSON file nested under src/assets/
+// Using lazy (non-eager) glob so the 750 JSON files are NOT bundled into the main chunk.
+// They are loaded on demand when loadAllTopics() is first called.
+const modules = import.meta.glob('../assets/**/*.json');
 
 // Map folder names (lowercase kebab-case) to display names + emoji icons.
 // Folder naming convention: all lowercase, words separated by hyphens.
@@ -41,15 +43,29 @@ function extractTopicKey(path) {
   return 'other';
 }
 
-/**
- * Loads all topics by grouping the eagerly-imported JSON modules by folder.
- * Returns a Promise so ProblemList can use .then() as expected.
- */
-export function loadAllTopics() {
-  const topicsMap = {};
+let cachedTopics = null;
+const LOAD_BATCH_SIZE = 24;
 
-  for (const [path, mod] of Object.entries(modules)) {
-    const problem = mod.default ?? mod;
+/**
+ * Loads all topics by grouping the lazily-imported JSON modules by folder.
+ * Results are cached after the first call — subsequent calls are instant.
+ */
+export async function loadAllTopics() {
+  if (cachedTopics) return cachedTopics;
+
+  const entries = Object.entries(modules);
+  const loaded = [];
+
+  for (let i = 0; i < entries.length; i += LOAD_BATCH_SIZE) {
+    const batch = entries.slice(i, i + LOAD_BATCH_SIZE);
+    const batchResults = await Promise.all(
+      batch.map(([path, loader]) => loader().then(mod => ({ path, problem: mod.default ?? mod })))
+    );
+    loaded.push(...batchResults);
+  }
+
+  const topicsMap = {};
+  for (const { path, problem } of loaded) {
     const topicKey = extractTopicKey(path);
 
     if (!topicsMap[topicKey]) {
@@ -85,9 +101,9 @@ export function loadAllTopics() {
   }
 
   // Sort topics alphabetically, then sort problems within each topic by filename order
-  const topics = Object.values(topicsMap).sort((a, b) =>
+  cachedTopics = Object.values(topicsMap).sort((a, b) =>
     a.name.localeCompare(b.name)
   );
 
-  return Promise.resolve(topics);
+  return cachedTopics;
 }

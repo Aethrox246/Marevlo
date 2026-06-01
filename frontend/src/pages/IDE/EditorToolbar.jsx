@@ -13,12 +13,12 @@ const EditorToolbar = ({
     copied
 }) => {
     return (
-        <div className="h-14 border-b border-neutral-200 flex items-center justify-between px-5 bg-gradient-to-r from-neutral-50 to-white shrink-0">
+        <div className="h-14 border-b border-border flex items-center justify-between px-5 bg-gradient-to-r from-muted to-card shrink-0">
             {/* Language Indicator */}
             <div className="flex items-center gap-3">
-                <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-white border border-neutral-200 shadow-sm">
-                    <Code2 size={14} className="text-neutral-700" />
-                    <span className="text-xs font-semibold text-neutral-900">Python 3</span>
+                <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-card border border-border shadow-sm">
+                    <Code2 size={14} className="text-foreground/80" />
+                    <span className="text-xs font-semibold text-foreground">Python 3</span>
                 </div>
             </div>
 
@@ -27,7 +27,7 @@ const EditorToolbar = ({
                 {/* Copy Button */}
                 <button
                     onClick={onCopy}
-                    className="flex items-center gap-2 px-3 py-2 rounded-lg bg-white hover:bg-neutral-50 text-neutral-600 hover:text-neutral-900 transition-all text-xs font-medium border border-neutral-200 shadow-sm hover:shadow"
+                    className="flex items-center gap-2 px-3 py-2 rounded-lg bg-card hover:bg-muted text-muted-foreground hover:text-foreground transition-all text-xs font-medium border border-border shadow-sm hover:shadow"
                     aria-label="Copy code"
                 >
                     {copied ? <Check size={14} className="text-emerald-600" /> : <Copy size={14} />}
@@ -37,7 +37,7 @@ const EditorToolbar = ({
                 {/* Reset Button */}
                 <button
                     onClick={onReset}
-                    className="flex items-center gap-2 px-3 py-2 rounded-lg bg-white hover:bg-neutral-50 text-neutral-600 hover:text-neutral-900 transition-all text-xs font-medium border border-neutral-200 shadow-sm hover:shadow"
+                    className="flex items-center gap-2 px-3 py-2 rounded-lg bg-card hover:bg-muted text-muted-foreground hover:text-foreground transition-all text-xs font-medium border border-border shadow-sm hover:shadow"
                     aria-label="Reset code"
                 >
                     <RotateCcw size={14} />
@@ -53,8 +53,8 @@ const EditorToolbar = ({
                     disabled={isRunning}
                     className={`flex items-center gap-2 px-4 py-2 rounded-lg font-semibold text-sm transition-all
                         ${isRunning
-                            ? 'bg-neutral-100 text-neutral-400 cursor-not-allowed border border-neutral-200'
-                            : 'bg-white hover:bg-neutral-50 text-neutral-900 border border-neutral-200 shadow-sm hover:shadow'
+                            ? 'bg-muted text-muted-foreground/70 cursor-not-allowed border border-border'
+                            : 'bg-card hover:bg-muted text-foreground border border-border shadow-sm hover:shadow'
                         }`}
                     aria-label="Run code"
                 >
@@ -68,7 +68,7 @@ const EditorToolbar = ({
                     disabled={isRunning}
                     className={`flex items-center gap-2 px-4 py-2 rounded-lg font-semibold text-sm transition-all
                         ${isRunning
-                            ? 'bg-neutral-200 text-neutral-400 cursor-not-allowed'
+                            ? 'bg-neutral-200 text-muted-foreground/70 cursor-not-allowed'
                             : 'bg-gradient-to-r from-neutral-900 to-neutral-700 hover:from-neutral-800 hover:to-neutral-600 text-white shadow-lg hover:shadow-xl'
                         }`}
                     aria-label="Submit solution"
