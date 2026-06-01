@@ -10,6 +10,7 @@ from __future__ import annotations
 import logging
 from datetime import datetime, timedelta, timezone
 from typing import Optional, Tuple
+import re
 
 from sqlalchemy import and_, case, func, select
 from sqlalchemy.orm import Session
@@ -283,14 +284,25 @@ class AuthService:
         db: Session,
         *,
         id_token: str,
+        display_name: Optional[str],
         ip: Optional[str],
         user_agent: Optional[str],
     ) -> TokenPair:
         claims = verify_google_id_token(id_token)
         google_uid = claims["uid"]
         email = (claims.get("email") or "").lower().strip()
+        print("DISPLAY NAME:", display_name)
+        print("CLAIMS:", claims)
         if not email:
             raise ValidationError("Google account must have an email address")
+
+        # Prefer explicit name claims, fall back to cleaned email local-part.
+        name = (display_name or "").strip()
+        
+        if not name:
+            name = email.split("@")[0]
+            
+        name = name.strip() or "user"
 
         # 1. by google_uid
         user = db.execute(
@@ -306,7 +318,7 @@ class AuthService:
 
         # 3. create new user (Google-only)
         if user is None:
-            user = self._create_google_user(db, email=email, google_uid=google_uid)
+            user = self._create_google_user(db, email=email, name=name, google_uid=google_uid)
 
         self._ensure_usable(user)
 
@@ -328,13 +340,18 @@ class AuthService:
         )
         return self._issue_token_pair(user=user, session=session)
 
-    def _create_google_user(self, db: Session, *, email: str, google_uid: str) -> User:
-        # Synthesize a username from the email. Loop until unique.
-        base = email.split("@")[0].replace(".", "_").replace("+", "_")[:40]
-        # Strip any chars that won't pass our pattern.
+    def _create_google_user(self, db: Session, *, email: str, name: str, google_uid: str) -> User:
+        # Build a safe, human-friendly base username from the provided name.
+        base = (name or "user").strip()
+
+        # Normalize separators to underscores, remove disallowed chars, collapse multiples.
+        base = re.sub(r'[\s\.\+]+', '_', base)
         base = "".join(c for c in base if c.isalnum() or c == "_")
+        base = re.sub(r'_+', '_', base).strip('_')[:40]
+
         if not base:
             base = "user"
+
         username = base
         suffix = 1
         while self._get_user_by_username(db, username):

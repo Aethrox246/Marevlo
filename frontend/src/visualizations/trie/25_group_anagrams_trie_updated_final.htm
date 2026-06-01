@@ -1,0 +1,401 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Group Anagrams - Trie</title>
+    <style>
+        :root {
+            --bg: #0d1117;
+            --surface: #161b22;
+            --border: #30363d;
+            --text: #c9d1d9;
+            --muted: #8b949e;
+            --purple: #a371f7;
+            --blue: #58a6ff;
+            --green: #3fb950;
+            --orange: #e3b341;
+        }
+        * { box-sizing: border-box; }
+        body {
+            margin: 0;
+            padding: 20px;
+            background: var(--bg);
+            color: var(--text);
+            font-family: system-ui, sans-serif;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+        h1 { color: var(--purple); margin: 0 0 8px 0; }
+        .subtitle { color: var(--muted); margin-bottom: 20px; }
+        .controls {
+            display: flex;
+            gap: 12px;
+            flex-wrap: wrap;
+            justify-content: center;
+            margin: 15px 0;
+        }
+        button {
+            background: #21262d;
+            color: var(--text);
+            border: 1px solid var(--border);
+            padding: 10px 18px;
+            border-radius: 8px;
+            cursor: pointer;
+        }
+        button:hover { background: #30363d; }
+        .main {
+            display: flex;
+            gap: 40px;
+            flex-wrap: wrap;
+            justify-content: center;
+            width: 100%;
+            max-width: 1350px;
+        }
+        .panel {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 18px;
+        }
+        .words-panel { width: 340px; }
+        .trie-panel { width: 620px; }
+        .label {
+            color: var(--purple);
+            font-weight: bold;
+            margin-bottom: 10px;
+            text-align: center;
+        }
+        .array-list {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            padding: 12px;
+            background: #21262d;
+            border-radius: 10px;
+        }
+        .tile {
+            padding: 10px 18px;
+            background: #30363d;
+            border: 2px solid var(--orange);
+            border-radius: 8px;
+            font-family: monospace;
+            font-size: 15px;
+        }
+        .trie {
+            background: #21262d;
+            border: 3px solid var(--blue);
+            border-radius: 12px;
+            padding: 20px;
+            min-height: 480px;
+            overflow: auto;
+            font-family: monospace;
+        }
+        .trie-node {
+            display: inline-block;
+            background: #30363d;
+            border: 3px solid #58a6ff;
+            border-radius: 10px;
+            padding: 14px 20px;
+            margin: 12px 8px;
+            text-align: center;
+            position: relative;
+        }
+        .trie-node.current {
+            border-color: var(--orange);
+            box-shadow: 0 0 0 5px rgba(227,179,65,0.3);
+        }
+        .trie-node .label {
+            font-size: 18px;
+            font-weight: bold;
+            color: var(--green);
+        }
+        .children {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 12px;
+            justify-content: center;
+            margin-top: 16px;
+        }
+        .info {
+            margin: 20px 0;
+            padding: 18px;
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            font-family: monospace;
+            min-height: 160px;
+        }
+        .action {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            padding: 18px;
+            width: 100%;
+            max-width: 1100px;
+            margin: 20px 0;
+            min-height: 110px;
+            font-family: monospace;
+        }
+        .log {
+            background: #0d1117;
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            padding: 14px;
+            width: 100%;
+            max-width: 1100px;
+            height: 260px;
+            overflow-y: auto;
+            font-family: 'Courier New', monospace;
+            font-size: 14px;
+        }
+        .group {
+            background: #21262d;
+            border: 1px solid var(--green);
+            border-radius: 8px;
+            padding: 8px;
+            margin: 8px 0;
+        }
+    </style>
+</head>
+<body>
+    <h1>Group Anagrams - Trie</h1>
+    <p class="subtitle">Group anagrams using Trie with sorted keys</p>
+
+    <div class="controls">
+        <button onclick="loadExample(0)">Example 1: eat/tea/tan...</button>
+        <button onclick="loadExample(1)">Example 2: Empty strings</button>
+        <button onclick="resetViz()">Reset</button>
+    </div>
+
+    <div class="main">
+        <div class="panel words-panel">
+            <div class="label">Input Words</div>
+            <div class="array-list" id="words-list"></div>
+        </div>
+
+        <div class="panel trie-panel">
+            <div class="label">Trie (using sorted keys)</div>
+            <div class="trie" id="trie"></div>
+        </div>
+    </div>
+
+    <div class="info">
+        <strong>Processing:</strong> <span id="current-word" style="color:var(--orange)"></span><br>
+        <strong>Sorted Key:</strong> <span id="sorted-key" style="color:var(--blue)"></span><br>
+        <strong>Group:</strong> <span id="group-info" style="color:var(--green)"></span>
+    </div>
+
+    <div class="action" id="action">Click example to start</div>
+
+    <div class="controls">
+        <button onclick="prevStep()">← Prev</button>
+        <button onclick="togglePlay()" id="play-btn">▶ Play</button>
+        <button onclick="nextStep()">Next →</button>
+        <label>Speed <input type="range" id="speed" min="0" max="2" value="1"></label>
+    </div>
+
+    <div class="log" id="log"></div>
+
+    <div style="margin-top:30px; width:100%; max-width:1100px;">
+        <div class="label">Final Groups</div>
+        <div id="final-groups" style="display:flex; flex-wrap:wrap; gap:15px; justify-content:center;"></div>
+    </div>
+
+    <script>
+        let root = null;
+        let steps = [];
+        let stepIdx = 0;
+        let timer = null;
+        let isPlaying = false;
+        let words = [];
+        let groups = {};
+
+        class TrieNode {
+            constructor() {
+                this.children = {};
+                this.anagrams = [];
+            }
+        }
+
+        function createTrie() {
+            return new TrieNode();
+        }
+
+        function getSortedKey(str) {
+            return str.split('').sort().join('');
+        }
+
+        function insert(word) {
+            const key = getSortedKey(word);
+            let node = root;
+            const path = [];
+            for (let ch of key) {
+                path.push(ch);
+                if (!node.children[ch]) {
+                    node.children[ch] = new TrieNode();
+                }
+                node = node.children[ch];
+            }
+            node.anagrams.push(word);
+            return {key, path, node};
+        }
+
+        function generateSteps(inputWords) {
+            words = [...inputWords];
+            root = createTrie();
+            steps = [];
+            groups = {};
+
+            steps.push({
+                action: "Initialize Trie",
+                log: "Root node created",
+                word: "",
+                sorted: "",
+                group: "",
+                highlight: [],
+                finalGroups: false
+            });
+
+            for (let word of words) {
+                const res = insert(word);
+                const groupKey = res.key;
+                if (!groups[groupKey]) groups[groupKey] = [];
+                groups[groupKey].push(word);
+
+                steps.push({
+                    action: `Process "${word}"`,
+                    log: `Sorted → "${res.key}" | Added to group`,
+                    word: word,
+                    sorted: res.key,
+                    group: `Group of "${res.key}"`,
+                    highlight: res.path,
+                    finalGroups: false
+                });
+            }
+
+            // Final groups step
+            steps.push({
+                action: "Final Groups",
+                log: "All anagrams grouped",
+                word: "",
+                sorted: "",
+                group: "Complete",
+                highlight: [],
+                finalGroups: true
+            });
+        }
+
+        function buildTrieHTML(node, prefix = "", highlight = [], depth = 0) {
+            if (!node) return '';
+            const isCurrent = highlight.length > depth;
+            let html = `<div class="trie-node ${isCurrent ? 'current' : ''}">`;
+            html += `<div class="label">${prefix || 'ROOT'}</div>`;
+
+            let chHTML = '<div class="children">';
+            let hasCh = false;
+            Object.keys(node.children).sort().forEach(ch => {
+                hasCh = true;
+                chHTML += buildTrieHTML(node.children[ch], prefix + ch, highlight, depth + 1);
+            });
+            chHTML += '</div>';
+
+            if (hasCh) html += chHTML;
+            if (node.anagrams.length > 0) {
+                html += `<div style="color:#3fb950; font-size:13px; margin-top:8px;">${node.anagrams.join(', ')}</div>`;
+            }
+            html += '</div>';
+            return html;
+        }
+
+        function renderTrie(highlight = []) {
+            document.getElementById('trie').innerHTML = buildTrieHTML(root, "", highlight);
+        }
+
+        function renderWords() {
+            const cont = document.getElementById('words-list');
+            cont.innerHTML = words.map(w => `<div class="tile">${w}</div>`).join('');
+        }
+
+        function renderFinalGroups() {
+            const cont = document.getElementById('final-groups');
+            let html = '';
+            Object.values(groups).forEach(group => {
+                html += `<div class="group"><strong>Group:</strong> [${group.join(', ')}]</div>`;
+            });
+            cont.innerHTML = html || '<div style="color:var(--muted)">No groups yet</div>';
+        }
+
+        function renderStep(idx) {
+            stepIdx = Math.max(0, Math.min(idx, steps.length - 1));
+            const step = steps[stepIdx];
+
+            document.getElementById('current-word').textContent = step.word || '—';
+            document.getElementById('sorted-key').textContent = step.sorted || '—';
+            document.getElementById('group-info').textContent = step.group || '—';
+            document.getElementById('action').innerHTML = `<strong>${step.action}</strong>`;
+
+            renderWords();
+            renderTrie(step.highlight || []);
+
+            if (step.finalGroups) {
+                renderFinalGroups();
+            }
+
+            const logEl = document.getElementById('log');
+            logEl.innerHTML = steps.slice(0, stepIdx + 1).map(s => `<div>${s.log}</div>`).join('');
+            logEl.scrollTop = logEl.scrollHeight;
+        }
+
+        function nextStep() {
+            if (stepIdx < steps.length - 1) renderStep(stepIdx + 1);
+            else pause();
+        }
+
+        function prevStep() {
+            if (stepIdx > 0) renderStep(stepIdx - 1);
+        }
+
+        function togglePlay() {
+            const btn = document.getElementById('play-btn');
+            if (isPlaying) {
+                pause();
+            } else {
+                isPlaying = true;
+                btn.textContent = '❚❚ Pause';
+                const speeds = [850, 420, 160];
+                timer = setInterval(() => {
+                    if (stepIdx < steps.length - 1) nextStep();
+                    else pause();
+                }, speeds[parseInt(document.getElementById('speed').value)]);
+            }
+        }
+
+        function pause() {
+            clearInterval(timer);
+            isPlaying = false;
+            document.getElementById('play-btn').textContent = '▶ Play';
+        }
+
+        function resetViz() {
+            pause();
+            stepIdx = 0;
+            renderStep(0);
+        }
+
+        function loadExample(n) {
+            let inputWords = [];
+            if (n === 0) {
+                inputWords = ["eat","tea","tan","ate","nat","bat"];
+            } else {
+                inputWords = ["",""];
+            }
+            generateSteps(inputWords);
+            resetViz();
+        }
+
+        window.onload = () => loadExample(0);
+    </script>
+</body>
+</html>

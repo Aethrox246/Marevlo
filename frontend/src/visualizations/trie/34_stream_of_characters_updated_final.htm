@@ -1,0 +1,470 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport"
+      content="width=device-width, initial-scale=1.0">
+
+<title>Stream of Characters</title>
+
+<style>
+
+:root{
+    --bg:#0d1117;
+    --surface:#161b22;
+    --border:#30363d;
+    --text:#c9d1d9;
+    --muted:#8b949e;
+    --purple:#a371f7;
+    --blue:#58a6ff;
+    --green:#3fb950;
+    --orange:#e3b341;
+    --red:#ff7b72;
+}
+
+*{
+    box-sizing:border-box;
+}
+
+body{
+    margin:0;
+    padding:20px;
+    background:var(--bg);
+    color:var(--text);
+    font-family:Arial,sans-serif;
+}
+
+h1{
+    text-align:center;
+    color:var(--purple);
+}
+
+.subtitle{
+    text-align:center;
+    color:var(--muted);
+    margin-bottom:20px;
+}
+
+.controls{
+    display:flex;
+    justify-content:center;
+    gap:12px;
+    flex-wrap:wrap;
+    margin:15px 0;
+}
+
+button{
+    background:#21262d;
+    color:white;
+    border:none;
+    padding:10px 18px;
+    border-radius:8px;
+    cursor:pointer;
+}
+
+button:hover{
+    background:#30363d;
+}
+
+.main{
+    display:flex;
+    gap:30px;
+    flex-wrap:wrap;
+    justify-content:center;
+}
+
+.panel{
+    background:var(--surface);
+    border:1px solid var(--border);
+    border-radius:12px;
+    padding:20px;
+}
+
+.words-panel{
+    width:320px;
+}
+
+.stream-panel{
+    width:520px;
+}
+
+.label{
+    color:var(--blue);
+    margin-bottom:10px;
+    font-weight:bold;
+}
+
+.array-list{
+    display:flex;
+    flex-wrap:wrap;
+    gap:10px;
+}
+
+.tile{
+    background:#30363d;
+    border:2px solid var(--orange);
+    padding:10px 18px;
+    border-radius:8px;
+    font-family:monospace;
+}
+
+.info{
+    background:#21262d;
+    padding:15px;
+    border-radius:10px;
+    margin-top:15px;
+    font-family:monospace;
+}
+
+.result{
+    font-size:26px;
+    color:var(--green);
+    font-weight:bold;
+}
+
+.log{
+    background:#0b0f14;
+    border-radius:10px;
+    padding:15px;
+    height:320px;
+    overflow:auto;
+    font-family:monospace;
+    line-height:1.8;
+}
+
+</style>
+</head>
+
+<body>
+
+<h1>Stream of Characters</h1>
+
+<div class="subtitle">
+Reverse Trie Suffix Matching Visualization
+</div>
+
+<div class="controls">
+
+<button onclick="loadExample1()">
+Example 1
+</button>
+
+<button onclick="loadExample2()">
+Example 2
+</button>
+
+</div>
+
+<div class="controls">
+
+<button onclick="prevStep()">
+← Prev
+</button>
+
+<button onclick="togglePlay()"
+        id="playBtn">
+▶ Play
+</button>
+
+<button onclick="nextStep()">
+Next →
+</button>
+
+</div>
+
+<div class="main">
+
+<div class="panel words-panel">
+
+<div class="label">
+Dictionary Words
+</div>
+
+<div id="words"
+     class="array-list">
+</div>
+
+</div>
+
+<div class="panel stream-panel">
+
+<div class="label">
+Current Stream
+</div>
+
+<div id="stream"
+     class="array-list">
+</div>
+
+<br>
+
+<div class="label">
+Current Result Array
+</div>
+
+<div id="result"
+     class="result">
+</div>
+
+</div>
+
+</div>
+
+<br>
+
+<div class="panel">
+
+<div class="label">
+Execution Logs
+</div>
+
+<div id="logs"
+     class="log">
+</div>
+
+</div>
+
+<script>
+
+let steps = [];
+
+let currentStep = 0;
+
+let timer = null;
+
+let isPlaying = false;
+
+function renderWords(words){
+
+    document.getElementById(
+        "words"
+    ).innerHTML =
+
+        words.map(
+            w =>
+            `
+            <div class="tile">
+                ${w}
+            </div>
+            `
+        ).join("");
+}
+
+function renderStream(stream){
+
+    document.getElementById(
+        "stream"
+    ).innerHTML =
+
+        stream.map(
+            ch =>
+            `
+            <div class="tile">
+                ${ch}
+            </div>
+            `
+        ).join("");
+}
+
+function renderStep(){
+
+    const step =
+        steps[currentStep];
+
+    renderStream(step.stream);
+
+    document.getElementById(
+        "result"
+    ).innerHTML =
+        `[${step.results.join(", ")}]`;
+
+    document.getElementById(
+        "logs"
+    ).innerHTML =
+        step.logs.join("<br>");
+}
+
+function nextStep(){
+
+    if(currentStep < steps.length - 1){
+
+        currentStep++;
+
+        renderStep();
+    }
+    else{
+
+        pausePlay();
+    }
+}
+
+function prevStep(){
+
+    if(currentStep > 0){
+
+        currentStep--;
+
+        renderStep();
+    }
+}
+
+function togglePlay(){
+
+    if(isPlaying){
+
+        pausePlay();
+    }
+    else{
+
+        startPlay();
+    }
+}
+
+function startPlay(){
+
+    isPlaying = true;
+
+    document.getElementById(
+        "playBtn"
+    ).innerHTML =
+        "⏸ Pause";
+
+    timer = setInterval(() => {
+
+        if(currentStep < steps.length - 1){
+
+            nextStep();
+        }
+        else{
+
+            pausePlay();
+        }
+
+    }, 1400);
+}
+
+function pausePlay(){
+
+    clearInterval(timer);
+
+    isPlaying = false;
+
+    document.getElementById(
+        "playBtn"
+    ).innerHTML =
+        "▶ Play";
+}
+
+function generateSteps(words, queries){
+
+    steps = [];
+
+    renderWords(words);
+
+    let stream = [];
+
+    let logs = [];
+
+    let results = [];
+
+    logs.push(
+        "Trie created with reversed words"
+    );
+
+    for(let word of words){
+
+        const reversed =
+            word.split("")
+                .reverse()
+                .join("");
+
+        logs.push(
+            `Inserted reversed "${reversed}"`
+        );
+    }
+
+    steps.push({
+
+        stream: [],
+        results: [],
+        logs: [...logs]
+    });
+
+    for(let ch of queries){
+
+        stream.push(ch);
+
+        const current =
+            stream.join("");
+
+        let found = false;
+
+        let matched = "none";
+
+        for(let word of words){
+
+            if(current.endsWith(word)){
+
+                found = true;
+
+                matched = word;
+
+                break;
+            }
+        }
+
+        results.push(found);
+
+        logs.push(
+            `
+            Query '${ch}'
+            →
+            stream="${current}"
+            →
+            matched suffix:
+            ${matched}
+            →
+            ${found}
+            `
+        );
+
+        steps.push({
+
+            stream: [...stream],
+
+            results:
+                results.map(
+                    r => r ? "true" : "false"
+                ),
+
+            logs: [...logs]
+        });
+    }
+
+    currentStep = 0;
+
+    renderStep();
+}
+
+function loadExample1(){
+
+    generateSteps(
+        ["cd","f","kl"],
+        ["a","b","c","d","e","f"]
+    );
+}
+
+function loadExample2(){
+
+    generateSteps(
+        ["ab","bc","abc"],
+        ["a","a","b","c"]
+    );
+}
+
+loadExample1();
+
+</script>
+
+</body>
+</html>

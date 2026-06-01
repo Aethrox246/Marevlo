@@ -2,7 +2,7 @@ import React from 'react';
 import { Check, AlertCircle, ArrowRight } from 'lucide-react';
 
 /**
- * StatusNotification - Success/Error notification overlay (Dark Theme)
+ * StatusNotification - Success/Error notification overlay
  */
 const StatusNotification = ({
     status,
@@ -10,22 +10,35 @@ const StatusNotification = ({
     onNext,
     onDismiss
 }) => {
+    const cardStyle = {
+        background: 'var(--color-surface)',
+        border: '1px solid var(--color-border)',
+        boxShadow: '0 8px 32px rgba(0,0,0,0.18)',
+        borderRadius: 14,
+        padding: '20px 22px',
+        width: 300,
+        backdropFilter: 'blur(12px)',
+        WebkitBackdropFilter: 'blur(12px)',
+    };
+
     if (status === 'success') {
         return (
             <div className="absolute top-20 right-8 z-50 animate-in fade-in slide-in-from-right-10">
-                <div className="bg-neutral-800 border border-neutral-700 shadow-2xl rounded-xl p-6 w-80 backdrop-blur-md">
-                    <div className="flex items-start gap-4">
-                        <div className="p-3 rounded-full bg-emerald-500 text-white shrink-0 shadow-lg">
-                            <Check size={20} strokeWidth={3} />
+                <div style={cardStyle}>
+                    <div style={{ display: 'flex', alignItems: 'flex-start', gap: 14 }}>
+                        <div style={{ padding: 10, borderRadius: '50%', background: '#10b981', color: '#fff', flexShrink: 0, boxShadow: '0 2px 8px rgba(16,185,129,0.35)' }}>
+                            <Check size={18} strokeWidth={3} />
                         </div>
-                        <div className="flex-1">
-                            <h3 className="text-white font-bold text-lg mb-1">Accepted! 🎉</h3>
-                            <p className="text-muted-foreground/70 text-sm mb-4">Your solution passed all test cases.</p>
+                        <div style={{ flex: 1 }}>
+                            <h3 style={{ color: 'var(--color-primary-text)', fontWeight: 700, fontSize: 16, margin: '0 0 4px' }}>Accepted! 🎉</h3>
+                            <p style={{ color: 'var(--color-muted-text)', fontSize: 13, margin: '0 0 14px' }}>Your solution passed all test cases.</p>
                             <button
                                 onClick={onNext}
-                                className="w-full flex items-center justify-center gap-2 py-2.5 px-4 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg font-bold text-sm transition-all shadow-lg hover:shadow-xl"
+                                style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, padding: '9px 16px', background: '#10b981', color: '#fff', borderRadius: 9, fontWeight: 700, fontSize: 13, border: 'none', cursor: 'pointer', transition: 'background 0.18s ease' }}
+                                onMouseEnter={e => { e.currentTarget.style.background = '#059669'; }}
+                                onMouseLeave={e => { e.currentTarget.style.background = '#10b981'; }}
                             >
-                                Next Problem <ArrowRight size={16} />
+                                Next Problem <ArrowRight size={14} />
                             </button>
                         </div>
                     </div>
@@ -37,17 +50,19 @@ const StatusNotification = ({
     if (status === 'error' && attempts === 1) {
         return (
             <div className="absolute top-20 right-8 z-50 animate-in fade-in slide-in-from-right-10 duration-300">
-                <div className="bg-neutral-800 border border-neutral-700 shadow-2xl rounded-xl p-6 w-80 backdrop-blur-md">
-                    <div className="flex items-start gap-4">
-                        <div className="p-3 rounded-full bg-rose-500/20 text-rose-400 shrink-0">
-                            <AlertCircle size={20} strokeWidth={3} />
+                <div style={cardStyle}>
+                    <div style={{ display: 'flex', alignItems: 'flex-start', gap: 14 }}>
+                        <div style={{ padding: 10, borderRadius: '50%', background: 'rgba(244,63,94,0.15)', color: '#f43f5e', flexShrink: 0 }}>
+                            <AlertCircle size={18} strokeWidth={3} />
                         </div>
-                        <div className="flex-1">
-                            <h3 className="text-white font-bold text-lg mb-1">Wrong Answer</h3>
-                            <p className="text-muted-foreground/70 text-sm mb-3">Your code didn't produce the expected output. Try again!</p>
+                        <div style={{ flex: 1 }}>
+                            <h3 style={{ color: 'var(--color-primary-text)', fontWeight: 700, fontSize: 16, margin: '0 0 4px' }}>Wrong Answer</h3>
+                            <p style={{ color: 'var(--color-muted-text)', fontSize: 13, margin: '0 0 10px' }}>Your code didn't produce the expected output. Try again!</p>
                             <button
                                 onClick={onDismiss}
-                                className="text-xs font-semibold text-muted-foreground/70 hover:text-white transition-colors"
+                                style={{ fontSize: 12, fontWeight: 600, color: 'var(--color-muted-text)', background: 'none', border: 'none', cursor: 'pointer', padding: 0, transition: 'color 0.15s ease' }}
+                                onMouseEnter={e => { e.currentTarget.style.color = 'var(--color-primary-text)'; }}
+                                onMouseLeave={e => { e.currentTarget.style.color = 'var(--color-muted-text)'; }}
                             >
                                 Dismiss
                             </button>
@@ -61,24 +76,28 @@ const StatusNotification = ({
     if (status === 'error' && attempts > 1) {
         return (
             <div className="absolute top-20 right-8 z-50 animate-in fade-in slide-in-from-right-10 duration-300">
-                <div className="bg-neutral-800 border border-neutral-700 shadow-2xl rounded-xl p-6 w-80 backdrop-blur-md">
-                    <div className="flex items-start gap-4">
-                        <div className="p-3 rounded-full bg-rose-500/20 text-rose-400 shrink-0">
-                            <AlertCircle size={20} strokeWidth={3} />
+                <div style={cardStyle}>
+                    <div style={{ display: 'flex', alignItems: 'flex-start', gap: 14 }}>
+                        <div style={{ padding: 10, borderRadius: '50%', background: 'rgba(244,63,94,0.15)', color: '#f43f5e', flexShrink: 0 }}>
+                            <AlertCircle size={18} strokeWidth={3} />
                         </div>
-                        <div className="flex-1">
-                            <h3 className="text-white font-bold text-lg mb-1">Wrong Answer</h3>
-                            <p className="text-muted-foreground/70 text-sm mb-3">Still incorrect. Keep trying or skip to the next problem.</p>
-                            <div className="flex gap-2">
+                        <div style={{ flex: 1 }}>
+                            <h3 style={{ color: 'var(--color-primary-text)', fontWeight: 700, fontSize: 16, margin: '0 0 4px' }}>Wrong Answer</h3>
+                            <p style={{ color: 'var(--color-muted-text)', fontSize: 13, margin: '0 0 12px' }}>Still incorrect. Keep trying or skip to the next problem.</p>
+                            <div style={{ display: 'flex', gap: 8 }}>
                                 <button
                                     onClick={onDismiss}
-                                    className="flex-1 py-2 px-3 bg-neutral-700 hover:bg-neutral-600 text-white rounded-lg text-xs font-semibold transition-all"
+                                    style={{ flex: 1, padding: '8px 12px', background: 'var(--color-surface-hover)', border: '1px solid var(--color-border)', color: 'var(--color-primary-text)', borderRadius: 9, fontSize: 12, fontWeight: 600, cursor: 'pointer', transition: 'background 0.18s ease' }}
+                                    onMouseEnter={e => { e.currentTarget.style.background = 'var(--color-card-bg)'; }}
+                                    onMouseLeave={e => { e.currentTarget.style.background = 'var(--color-surface-hover)'; }}
                                 >
                                     Try Again
                                 </button>
                                 <button
                                     onClick={onNext}
-                                    className="flex-1 py-2 px-3 bg-neutral-700 hover:bg-neutral-600 text-white rounded-lg text-xs font-semibold transition-all flex items-center justify-center gap-1"
+                                    style={{ flex: 1, padding: '8px 12px', background: 'var(--color-surface-hover)', border: '1px solid var(--color-border)', color: 'var(--color-primary-text)', borderRadius: 9, fontSize: 12, fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 4, transition: 'background 0.18s ease' }}
+                                    onMouseEnter={e => { e.currentTarget.style.background = 'var(--color-card-bg)'; }}
+                                    onMouseLeave={e => { e.currentTarget.style.background = 'var(--color-surface-hover)'; }}
                                 >
                                     Skip <ArrowRight size={12} />
                                 </button>

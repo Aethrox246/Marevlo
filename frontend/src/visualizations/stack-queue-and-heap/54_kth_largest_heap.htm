@@ -1,0 +1,358 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Kth Largest (Min-Heap of Size K)</title>
+    <style>
+        :root {
+            --bg-page: #0d1117;
+            --bg-surface: #161b22;
+            --border-main: #30363d;
+            --btn-bg: #21262d;
+            --btn-hover: #2d333b;
+            --text-main: #c9d1d9;
+            --text-dim: #8b949e;
+            --accent-purple: #a371f7;
+            --accent-blue: #388bfd;
+            --accent-green: #3fb950;
+            --accent-orange: #e3b341;
+        }
+
+        * { box-sizing: border-box; }
+        body {
+            background-color: var(--bg-page);
+            color: var(--text-main);
+            font-family: system-ui, -apple-system, sans-serif;
+            margin: 0;
+            padding: 20px 0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        h1 { color: var(--accent-purple); margin: 0 0 8px 0; }
+
+        .input-bar {
+            width: 100%;
+            max-width: 1100px;
+            background: var(--bg-surface);
+            padding: 12px;
+            display: flex;
+            gap: 12px;
+            flex-wrap: wrap;
+            justify-content: center;
+            border-bottom: 1px solid var(--border-main);
+            margin-bottom: 20px;
+        }
+        button {
+            padding: 8px 16px;
+            background: var(--btn-bg);
+            border: 1px solid var(--border-main);
+            color: var(--text-main);
+            border-radius: 6px;
+            cursor: pointer;
+        }
+        button:hover { background: var(--btn-hover); }
+
+        .viz {
+            display: flex;
+            gap: 60px;
+            width: 100%;
+            max-width: 1000px;
+        }
+
+        .array-container, .heap-container {
+            text-align: center;
+        }
+
+        .label {
+            color: var(--accent-purple);
+            font-weight: bold;
+            margin-bottom: 8px;
+        }
+
+        .array {
+            display: flex;
+            gap: 6px;
+            padding: 16px;
+            background: #21262d;
+            border-radius: 10px;
+            flex-wrap: wrap;
+        }
+
+        .heap {
+            display: flex;
+            gap: 6px;
+            padding: 16px;
+            background: #21262d;
+            border-radius: 10px;
+            min-width: 300px;
+        }
+
+        .tile {
+            padding: 12px 18px;
+            border-radius: 8px;
+            font-family: monospace;
+            font-size: 17px;
+            min-width: 52px;
+            text-align: center;
+            border: 2px solid var(--accent-blue);
+            transition: all 0.3s;
+        }
+
+        .tile.root {
+            border-color: var(--accent-green);
+            box-shadow: 0 0 12px var(--accent-green);
+        }
+
+        .info {
+            margin: 20px 0;
+            text-align: center;
+            font-family: monospace;
+        }
+
+        .action-panel {
+            background: var(--bg-surface);
+            border: 1px solid var(--border-main);
+            border-radius: 10px;
+            padding: 18px;
+            width: 100%;
+            max-width: 1000px;
+            min-height: 140px;
+            margin: 20px 0;
+            font-family: monospace;
+        }
+
+        .controls {
+            margin: 20px 0;
+            display: flex;
+            align-items: center;
+            gap: 16px;
+            flex-wrap: wrap;
+            justify-content: center;
+        }
+
+        .log-panel {
+            background: var(--bg-page);
+            border: 1px solid var(--border-main);
+            border-radius: 10px;
+            padding: 16px;
+            width: 100%;
+            max-width: 1000px;
+            height: 240px;
+            overflow-y: auto;
+            font-family: 'Courier New', monospace;
+            font-size: 14px;
+        }
+    </style>
+</head>
+<body>
+
+    <h1>Kth Largest (Min-Heap of Size K)</h1>
+    <p style="color:var(--text-dim);margin-bottom:20px;">O(n log k) Min-Heap Solution</p>
+
+    <div class="input-bar">
+        <button onclick="loadExample(0)">Example 1</button>
+        <button onclick="loadExample(1)">Example 2</button>
+        <button onclick="resetSim()">Reset</button>
+    </div>
+
+    <div class="viz">
+        <div class="array-container">
+            <div class="label">Input Array</div>
+            <div class="array" id="input-vis"></div>
+        </div>
+        <div class="heap-container">
+            <div class="label">Min-Heap (size ≤ k)</div>
+            <div class="heap" id="heap-vis"></div>
+        </div>
+    </div>
+
+    <div class="info" id="info">
+        Processing: <span id="curr" style="color:var(--accent-orange)">—</span> | 
+        Heap Root: <span id="root-val" style="color:var(--accent-green)">—</span>
+    </div>
+
+    <div class="action-panel" id="action">Click an example to start</div>
+
+    <div class="controls">
+        <button onclick="prevStep()">← Back</button>
+        <button onclick="togglePlay()" id="play-btn">▶ Play</button>
+        <button onclick="nextStep()">Next →</button>
+        <label>Speed <input type="range" id="speed" min="0" max="2" value="1"></label>
+    </div>
+
+    <div class="log-panel" id="log"></div>
+
+    <script>
+        let inputArr = [];
+        let heap = [];
+        let steps = [];
+        let stepIdx = 0;
+        let timer = null;
+        let isPlaying = false;
+        const delays = [1650, 850, 380];
+
+        const examples = [
+            [3, 2, 1, 5, 6, 4],
+            [3, 2, 3, 1, 2, 4, 5, 5, 6]
+        ];
+        const ks = [2, 4];
+
+        function heapPush(h, val) {
+            h.push(val);
+            let i = h.length - 1;
+            while (i > 0) {
+                const parent = Math.floor((i - 1) / 2);
+                if (h[i] < h[parent]) {
+                    [h[i], h[parent]] = [h[parent], h[i]];
+                    i = parent;
+                } else break;
+            }
+        }
+
+        function heapPop(h) {
+            if (h.length === 0) return null;
+            const min = h[0];
+            h[0] = h[h.length - 1];
+            h.pop();
+            let i = 0;
+            while (true) {
+                let smallest = i;
+                const left = 2 * i + 1;
+                const right = 2 * i + 2;
+                if (left < h.length && h[left] < h[smallest]) smallest = left;
+                if (right < h.length && h[right] < h[smallest]) smallest = right;
+                if (smallest === i) break;
+                [h[i], h[smallest]] = [h[smallest], h[i]];
+                i = smallest;
+            }
+            return min;
+        }
+
+        function generateSteps(arr, k) {
+            inputArr = [...arr];
+            heap = [];
+            steps = [];
+
+            steps.push({
+                panel: `<b>Initialize</b><br>Min-heap of size k=${k}`,
+                log: `Start with empty min-heap`,
+                input: [...inputArr],
+                heap: [],
+                curr: null,
+                action: 'Initialize'
+            });
+
+            for (let num of inputArr) {
+                heapPush(heap, num);
+                let action = `Added ${num}, heap size=${heap.length}`;
+                if (heap.length > k) {
+                    const removed = heapPop(heap);
+                    action += ` → popped ${removed}`;
+                }
+                steps.push({
+                    panel: `Process ${num}<br>${action}<br>Heap: [${heap.join(', ')}]`,
+                    log: action,
+                    input: [...inputArr],
+                    heap: [...heap],
+                    curr: num,
+                    action: `Processed ${num}`
+                });
+            }
+
+            steps.push({
+                panel: `<b>FINAL</b><br>Kth largest = <span style="color:var(--accent-green)">${heap[0]}</span>`,
+                log: `Kth largest = ${heap[0]}`,
+                input: [...inputArr],
+                heap: [...heap],
+                curr: null,
+                action: 'Complete'
+            });
+        }
+
+        function renderInput(arr) {
+            const container = document.getElementById('input-vis');
+            container.innerHTML = '';
+            arr.forEach(val => {
+                const tile = document.createElement('div');
+                tile.className = 'tile';
+                tile.textContent = val;
+                container.appendChild(tile);
+            });
+        }
+
+        function renderHeap(h) {
+            const container = document.getElementById('heap-vis');
+            container.innerHTML = '';
+            h.forEach((val, i) => {
+                const tile = document.createElement('div');
+                tile.className = 'tile';
+                if (i === 0) tile.classList.add('root');
+                tile.textContent = val;
+                container.appendChild(tile);
+            });
+            document.getElementById('root-val').textContent = h.length > 0 ? h[0] : '—';
+        }
+
+        function renderStep(idx) {
+            stepIdx = idx;
+            const step = steps[idx];
+            if (!step) return;
+
+            document.getElementById('action').innerHTML = step.panel || '—';
+            renderInput(step.input);
+            renderHeap(step.heap);
+
+            const logEl = document.getElementById('log');
+            logEl.innerHTML = steps.slice(0, idx+1).map(s => 
+                `<div style="margin:5px 0;">${s.log}</div>`
+            ).join('');
+            logEl.scrollTop = logEl.scrollHeight;
+        }
+
+        function nextStep() {
+            if (stepIdx < steps.length - 1) renderStep(stepIdx + 1);
+            else pause();
+        }
+
+        function prevStep() {
+            if (stepIdx > 0) renderStep(stepIdx - 1);
+        }
+
+        function resetSim() {
+            pause();
+            stepIdx = 0;
+            renderStep(0);
+        }
+
+        function togglePlay() {
+            const btn = document.getElementById('play-btn');
+            if (isPlaying) {
+                pause();
+            } else {
+                isPlaying = true;
+                btn.textContent = '❚❚ Pause';
+                timer = setInterval(() => {
+                    if (stepIdx < steps.length - 1) nextStep();
+                    else pause();
+                }, delays[document.getElementById('speed').value]);
+            }
+        }
+
+        function pause() {
+            clearInterval(timer);
+            isPlaying = false;
+            document.getElementById('play-btn').textContent = '▶ Play';
+        }
+
+        function loadExample(n) {
+            generateSteps(examples[n], ks[n]);
+            resetSim();
+        }
+
+        window.onload = () => loadExample(0);
+    </script>
+</body>
+</html>

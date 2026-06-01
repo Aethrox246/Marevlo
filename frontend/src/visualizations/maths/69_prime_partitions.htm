@@ -1,0 +1,358 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Prime Partitions - Visualization</title>
+    <style>
+        :root {
+            --bg-page: #0d1117;
+            --bg-surface: #161b22;
+            --bg-input: #0d1117;
+            --border-main: #30363d;
+            --btn-bg: #21262d;
+            --btn-hover: #2d333b;
+            --text-main: #c9d1d9;
+            --text-dim: #8b949e;
+            --accent-orange: #e3b341;
+            --accent-blue: #388bfd;
+            --accent-green: #3fb950;
+            --accent-red: #f85149;
+            --accent-purple: #a371f7;
+        }
+
+        * { box-sizing: border-box; }
+        body {
+            background-color: var(--bg-page);
+            color: var(--text-main);
+            font-family: system-ui, -apple-system, sans-serif;
+            margin: 0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            min-height: 100vh;
+            padding-bottom: 40px;
+        }
+
+        .input-bar {
+            width: 100%;
+            background-color: var(--bg-surface);
+            padding: 12px 16px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 12px;
+            border-bottom: 1px solid var(--border-main);
+            flex-wrap: wrap;
+        }
+        label.ui-label { font-family: 'Courier New', monospace; font-size: 13px; color: var(--text-dim); }
+        input[type="number"] {
+            background: var(--bg-input);
+            border: 1px solid var(--border-main);
+            color: var(--text-main);
+            height: 32px;
+            border-radius: 6px;
+            padding: 0 10px;
+            font-size: 13px;
+            width: 110px;
+        }
+
+        button {
+            height: 32px; border-radius: 6px; padding: 0 14px; background: var(--btn-bg);
+            border: 1px solid var(--border-main); color: var(--text-main); font-size: 13px; cursor: pointer;
+            transition: background 0.2s ease;
+        }
+        button:hover { background: var(--btn-hover); }
+
+        .visual-container { margin-top: 30px; display: flex; flex-direction: column; align-items: center; gap: 20px; width: 100%; }
+        .primes-bar {
+            display: flex;
+            gap: 12px;
+            flex-wrap: wrap;
+            justify-content: center;
+        }
+        .prime-tile {
+            width: 68px; height: 68px; display: flex; align-items: center; justify-content: center;
+            border-radius: 12px; font-size: 22px; font-weight: 700; font-family: 'Courier New', monospace;
+            border: 3px solid var(--border-main); background: #21262d; color: var(--text-main);
+            transition: all 0.3s ease;
+        }
+        .prime-tile.used { background: #0f2a1a; border-color: var(--accent-green); color: var(--accent-green); }
+        .prime-tile.current { border-color: var(--accent-orange); color: var(--accent-orange); transform: scale(1.15); }
+
+        .action-panel {
+            margin-top: 20px; background: var(--bg-surface); border: 1px solid var(--border-main);
+            border-radius: 6px; padding: 16px 24px; width: 720px; text-align: center; font-family: monospace;
+            min-height: 110px; font-size: 15px; line-height: 1.5;
+        }
+
+        .info-panel { margin-top: 15px; display: flex; gap: 14px; flex-wrap: wrap; justify-content: center; }
+        .info-cell {
+            background: var(--bg-surface); border: 1px solid var(--border-main); border-radius: 6px;
+            padding: 10px 18px; display: flex; flex-direction: column; align-items: center; min-width: 120px;
+        }
+        .info-label { font-size: 11px; color: var(--text-dim); }
+        .info-value { font-family: monospace; font-size: 19px; font-weight: 700; }
+
+        .result-display { margin-top: 18px; text-align: center; }
+        #res-val { font-size: 42px; font-weight: bold; font-family: monospace; transition: all 0.4s; }
+        .pop { animation: popAnim 600ms ease; color: var(--accent-green) !important; }
+
+        @keyframes popAnim { 0%{transform:scale(0.6)} 50%{transform:scale(1.25)} 100%{transform:scale(1)} }
+
+        .status-bar { margin-top: 10px; font-size: 13.5px; color: var(--text-dim); height: 1.6em; text-align: center; width: 700px; }
+        .controls { margin-top: 28px; display: flex; align-items: center; gap: 12px; flex-wrap: wrap; justify-content: center; }
+        input[type="range"] { accent-color: var(--accent-blue); width: 160px; }
+
+        .legend { margin-top: 18px; display: flex; gap: 22px; flex-wrap: wrap; justify-content: center; max-width: 800px; }
+        .legend-item { display: flex; align-items: center; font-size: 13px; color: var(--text-dim); }
+
+        .log-panel {
+            margin-top: 22px; background: var(--bg-page); border: 1px solid var(--border-main);
+            border-radius: 6px; padding: 14px 20px; width: 720px; max-width: 95%; height: 170px;
+            overflow-y: auto; font-family: 'Courier New', monospace; font-size: 13.2px; line-height: 1.45;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="input-bar">
+        <label class="ui-label">n =</label>
+        <input type="number" id="n-input" value="5">
+        <button onclick="loadCustom()">Load</button>
+        <button onclick="loadExample(0)">Example 1</button>
+        <button onclick="loadExample(1)">Example 2</button>
+    </div>
+
+    <div class="visual-container">
+        <div class="ui-label">Primes ≤ n</div>
+        <div class="primes-bar" id="primes-bar"></div>
+    </div>
+
+    <div class="action-panel" id="main-panel">—</div>
+
+    <div class="info-panel">
+        <div class="info-cell">
+            <span class="info-label">Remainder</span>
+            <span class="info-value" id="val-rem" style="color: var(--accent-orange);">—</span>
+        </div>
+        <div class="info-cell">
+            <span class="info-label">Chosen Prime</span>
+            <span class="info-value" id="val-prime" style="color: var(--accent-purple);">—</span>
+        </div>
+        <div class="info-cell">
+            <span class="info-label">Ways So Far</span>
+            <span class="info-value" id="val-ways" style="color: var(--accent-green);">—</span>
+        </div>
+    </div>
+
+    <div class="result-display">
+        <span class="ui-label">Total Prime Partitions =</span>
+        <span id="res-val">—</span>
+    </div>
+
+    <div class="status-bar" id="status-text"></div>
+
+    <div class="controls">
+        <button onclick="reset()">↺ Reset</button>
+        <button onclick="back()">← Back</button>
+        <button onclick="togglePlay()" id="play-btn">Play</button>
+        <button onclick="next()">Next →</button>
+        <div>
+            <span class="ui-label" style="margin-right:6px; font-size:12px">Speed</span>
+            <input type="range" id="speed-slider" min="0" max="2" value="1">
+        </div>
+    </div>
+
+    <div class="legend">
+        <div class="legend-item"><span style="display:inline-block;width:16px;height:16px;background:var(--accent-green);border-radius:4px;margin-right:8px;"></span>Used in Path</div>
+        <div class="legend-item"><span style="display:inline-block;width:16px;height:16px;background:var(--accent-orange);border-radius:4px;margin-right:8px;"></span>Current Try</div>
+    </div>
+
+    <div class="log-panel" id="log"></div>
+
+    <script>
+        let currentN = 5;
+        let steps = [];
+        let stepIndex = 0;
+        let timer = null;
+        const delays = [1100, 550, 280];
+
+        const examples = [5, 10];
+
+        function loadCustom() {
+            currentN = parseInt(document.getElementById('n-input').value);
+            if (!isNaN(currentN) && currentN >= 1) generateAndReset();
+        }
+
+        function loadExample(idx) {
+            currentN = examples[idx];
+            document.getElementById('n-input').value = currentN;
+            generateAndReset();
+        }
+
+        function generatePrimes(n) {
+            if (n < 2) return [];
+            let isPrime = new Array(n+1).fill(true);
+            isPrime[0] = isPrime[1] = false;
+            for (let i = 2; i * i <= n; i++) {
+                if (isPrime[i]) {
+                    for (let j = i * i; j <= n; j += i) isPrime[j] = false;
+                }
+            }
+            return Array.from({length: n+1}, (_, i) => i).filter(i => isPrime[i]);
+        }
+
+        function generateSteps() {
+            steps = [];
+            let primes = generatePrimes(currentN);
+
+            function backtrack(remain, startIdx) {
+                if (remain === 0) {
+                    steps.push({
+                        type: 'success',
+                        remain: 0,
+                        prime: 0,
+                        ways: 1,
+                        panel: `Remainder = 0 → <b>Valid Partition Found</b>`,
+                        statusText: 'Valid partition',
+                        log: `→ Success!`,
+                        logColor: 'var(--accent-green)'
+                    });
+                    return 1;
+                }
+                if (remain < 0) return 0;
+
+                steps.push({
+                    type: 'explore',
+                    remain: remain,
+                    prime: 0,
+                    ways: 0,
+                    panel: `Remainder = <b>${remain}</b><br>Trying primes from index ${startIdx}`,
+                    statusText: `Exploring remainder ${remain}`,
+                    log: `Enter(remain=${remain}, start=${startIdx})`,
+                    logColor: 'var(--text-main)'
+                });
+
+                let count = 0;
+                for (let i = startIdx; i < primes.length; i++) {
+                    let p = primes[i];
+                    if (p > remain) break;
+
+                    steps.push({
+                        type: 'try',
+                        remain: remain,
+                        prime: p,
+                        ways: 0,
+                        panel: `Trying prime <b>${p}</b><br>New remainder = ${remain - p}`,
+                        statusText: `Try prime ${p}`,
+                        log: `  Try ${p} → ${remain - p}`,
+                        logColor: 'var(--accent-orange)'
+                    });
+
+                    let res = backtrack(remain - p, i);
+                    count += res;
+                }
+
+                steps.push({
+                    type: 'return',
+                    remain: remain,
+                    prime: 0,
+                    ways: count,
+                    panel: `For remainder ${remain} → <b>${count}</b> ways`,
+                    statusText: `${count} ways`,
+                    log: `Return ${count} for remain=${remain}`,
+                    logColor: 'var(--accent-green)'
+                });
+                return count;
+            }
+
+            let answer = backtrack(currentN, 0);
+
+            steps.push({
+                type: 'final',
+                remain: currentN,
+                prime: 0,
+                ways: answer,
+                panel: `Total prime partitions for <b>${currentN}</b> = <b>${answer}</b>`,
+                statusText: `Done! Answer = ${answer}`,
+                log: `\nFinal Answer = ${answer}`,
+                logColor: 'var(--accent-green)',
+                bold: true
+            });
+        }
+
+        function generateAndReset() {
+            generateSteps();
+            reset();
+        }
+
+        function renderStep(idx) {
+            const step = steps[idx];
+            if (!step) return;
+
+            const container = document.getElementById('primes-bar');
+            container.innerHTML = '';
+            let primes = generatePrimes(currentN);
+            for (let p of primes) {
+                const tile = document.createElement('div');
+                tile.className = 'prime-tile';
+                tile.innerText = p;
+                if (step.prime === p) tile.classList.add('current');
+                container.appendChild(tile);
+            }
+
+            document.getElementById('main-panel').innerHTML = step.panel;
+            document.getElementById('val-rem').innerText = step.remain !== undefined ? step.remain : '—';
+            document.getElementById('val-prime').innerText = step.prime || '—';
+            document.getElementById('val-ways').innerText = step.ways !== undefined ? step.ways : '—';
+
+            const resVal = document.getElementById('res-val');
+            if (step.type === 'final') {
+                resVal.innerText = step.ways;
+                resVal.classList.add('pop');
+            } else {
+                resVal.classList.remove('pop');
+            }
+
+            document.getElementById('status-text').innerText = step.statusText || '';
+
+            const logPanel = document.getElementById('log');
+            logPanel.innerHTML = '';
+            for (let k = 0; k <= idx; k++) {
+                if (steps[k].log) {
+                    const line = document.createElement('div');
+                    line.style.marginBottom = '4px';
+                    line.style.whiteSpace = 'pre-wrap';
+                    if (steps[k].logColor) line.style.color = steps[k].logColor;
+                    if (steps[k].bold) line.style.fontWeight = 'bold';
+                    line.innerText = steps[k].log;
+                    logPanel.appendChild(line);
+                }
+            }
+            logPanel.scrollTop = logPanel.scrollHeight;
+        }
+
+        function next() { if (stepIndex < steps.length-1) { stepIndex++; renderStep(stepIndex); } else pause(); }
+        function back() { if (stepIndex > 0) { stepIndex--; renderStep(stepIndex); } }
+        function reset() { pause(); stepIndex = 0; renderStep(0); }
+
+        function togglePlay() {
+            const btn = document.getElementById('play-btn');
+            if (timer) pause();
+            else {
+                btn.innerText = 'Pause';
+                if (stepIndex >= steps.length-1) stepIndex = 0;
+                timer = setInterval(next, delays[parseInt(document.getElementById('speed-slider').value)]);
+            }
+        }
+        function pause() {
+            clearInterval(timer);
+            timer = null;
+            document.getElementById('play-btn').innerText = 'Play';
+        }
+
+        window.onload = () => loadExample(0);
+    </script>
+</body>
+</html>

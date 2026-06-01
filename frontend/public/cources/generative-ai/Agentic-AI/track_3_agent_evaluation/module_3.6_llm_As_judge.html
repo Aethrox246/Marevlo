@@ -1,0 +1,2005 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Module 3.6 // LLM-as-Judge for Agents — Agentic AI Academy</title>
+
+<!-- Tailwind -->
+<script src="https://cdn.tailwindcss.com"></script>
+
+<!-- Fonts -->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;500;600;700;800;900&family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+
+<!-- Lucide -->
+<script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
+
+<!-- GSAP -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/ScrollTrigger.min.js"></script>
+
+<!-- Chart.js -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+
+<script>
+  tailwind.config = {
+    theme: {
+      extend: {
+        fontFamily: {
+          orbitron: ['Orbitron', 'sans-serif'],
+          inter: ['Inter', 'sans-serif'],
+          mono: ['JetBrains Mono', 'monospace'],
+        },
+        colors: {
+          cyan: { glow: '#00f0ff' },
+          magenta: { glow: '#ff00e5' },
+          violet: { glow: '#8b5cf6' },
+          emerald: { glow: '#00ffa3' },
+        }
+      }
+    }
+  }
+</script>
+
+<style>
+  :root {
+    --c-cyan: #00f0ff;
+    --c-magenta: #ff00e5;
+    --c-violet: #8b5cf6;
+    --c-emerald: #00ffa3;
+    --c-amber: #ffb800;
+    --bg-0: #03040a;
+    --bg-1: #060818;
+    --bg-2: #0a0e26;
+  }
+
+  html, body {
+    background: var(--bg-0);
+    color: #e5e7eb;
+    font-family: 'Inter', sans-serif;
+    overflow-x: hidden;
+    scroll-behavior: smooth;
+  }
+
+  .nebula-bg {
+    position: fixed;
+    inset: 0;
+    z-index: -2;
+    background:
+      radial-gradient(ellipse 60% 50% at 15% 20%, rgba(139,92,246,0.18), transparent 60%),
+      radial-gradient(ellipse 50% 60% at 85% 30%, rgba(0,240,255,0.14), transparent 60%),
+      radial-gradient(ellipse 70% 50% at 50% 90%, rgba(255,0,229,0.16), transparent 65%),
+      linear-gradient(180deg, #03040a 0%, #060818 50%, #03040a 100%);
+  }
+
+  .grid-floor {
+    position: fixed;
+    inset: 0;
+    z-index: -1;
+    background-image:
+      linear-gradient(rgba(139,92,246,0.05) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(139,92,246,0.05) 1px, transparent 1px);
+    background-size: 60px 60px;
+    mask-image: radial-gradient(ellipse at center, black 0%, transparent 75%);
+    animation: gridShift 30s linear infinite;
+  }
+  @keyframes gridShift {
+    from { background-position: 0 0, 0 0; }
+    to { background-position: 60px 60px, 60px 60px; }
+  }
+
+  .scanline::before {
+    content: '';
+    position: absolute;
+    left: 0; right: 0;
+    height: 2px;
+    background: linear-gradient(90deg, transparent, var(--c-violet), transparent);
+    box-shadow: 0 0 12px var(--c-violet);
+    animation: scan 6s linear infinite;
+    opacity: 0.6;
+  }
+  @keyframes scan {
+    0% { top: 0%; } 100% { top: 100%; }
+  }
+
+  .holo-card {
+    position: relative;
+    background: linear-gradient(135deg, rgba(10,14,38,0.7), rgba(6,8,24,0.4));
+    border: 1px solid rgba(139,92,246,0.18);
+    backdrop-filter: blur(14px);
+    -webkit-backdrop-filter: blur(14px);
+    border-radius: 18px;
+    transition: all 0.5s cubic-bezier(0.22, 1, 0.36, 1);
+    overflow: hidden;
+  }
+  .holo-card::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    border-radius: 18px;
+    padding: 1px;
+    background: linear-gradient(135deg, rgba(139,92,246,0.4), transparent 40%, transparent 60%, rgba(0,240,255,0.4));
+    -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+    mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+    -webkit-mask-composite: xor;
+    mask-composite: exclude;
+    pointer-events: none;
+    opacity: 0.7;
+  }
+  .holo-card:hover {
+    transform: translateY(-4px);
+    border-color: rgba(139,92,246,0.5);
+    box-shadow: 0 20px 60px -10px rgba(139,92,246,0.25), 0 0 40px -5px rgba(0,240,255,0.2);
+  }
+  .holo-card:hover::before { opacity: 1; }
+
+  .neon-cyan { color: var(--c-cyan); text-shadow: 0 0 18px rgba(0,240,255,0.5); }
+  .neon-magenta { color: var(--c-magenta); text-shadow: 0 0 18px rgba(255,0,229,0.5); }
+  .neon-violet { color: var(--c-violet); text-shadow: 0 0 18px rgba(139,92,246,0.5); }
+  .neon-emerald { color: var(--c-emerald); text-shadow: 0 0 18px rgba(0,255,163,0.5); }
+  .neon-amber { color: var(--c-amber); text-shadow: 0 0 18px rgba(255,184,0,0.5); }
+
+  .grad-text {
+    background: linear-gradient(120deg, #8b5cf6 0%, #00f0ff 50%, #ff00e5 100%);
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
+  }
+
+  .orb {
+    position: absolute;
+    border-radius: 50%;
+    filter: blur(60px);
+    opacity: 0.5;
+    pointer-events: none;
+    animation: float 12s ease-in-out infinite;
+  }
+  @keyframes float {
+    0%, 100% { transform: translate(0,0) scale(1); }
+    50% { transform: translate(30px,-30px) scale(1.1); }
+  }
+
+  .nav-dot {
+    width: 12px; height: 12px;
+    border-radius: 50%;
+    background: rgba(255,255,255,0.18);
+    border: 1px solid rgba(139,92,246,0.3);
+    transition: all 0.35s;
+    cursor: pointer;
+    position: relative;
+  }
+  .nav-dot:hover { background: var(--c-violet); transform: scale(1.4); }
+  .nav-dot.active {
+    background: var(--c-violet);
+    box-shadow: 0 0 14px var(--c-violet), 0 0 30px var(--c-violet);
+    transform: scale(1.4);
+  }
+  .nav-dot .nav-label {
+    position: absolute;
+    right: 24px; top: 50%;
+    transform: translateY(-50%);
+    background: rgba(6,8,24,0.95);
+    border: 1px solid rgba(139,92,246,0.3);
+    padding: 4px 10px;
+    border-radius: 6px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    color: var(--c-violet);
+    white-space: nowrap;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.25s;
+  }
+  .nav-dot:hover .nav-label { opacity: 1; }
+
+  .section-tag {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    letter-spacing: 0.25em;
+    color: var(--c-violet);
+    padding: 6px 14px;
+    border: 1px solid rgba(139,92,246,0.3);
+    border-radius: 999px;
+    background: rgba(139,92,246,0.05);
+  }
+  .section-tag::before {
+    content: '';
+    width: 6px; height: 6px;
+    border-radius: 50%;
+    background: var(--c-violet);
+    box-shadow: 0 0 10px var(--c-violet);
+    animation: pulse 2s ease-in-out infinite;
+  }
+  @keyframes pulse {
+    0%,100% { opacity: 1; }
+    50% { opacity: 0.4; }
+  }
+
+  .code-block {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 13px;
+    line-height: 1.7;
+    background: linear-gradient(160deg, rgba(3,4,10,0.95), rgba(10,14,38,0.85));
+    border: 1px solid rgba(139,92,246,0.22);
+    border-radius: 14px;
+    padding: 24px;
+    overflow-x: auto;
+    position: relative;
+  }
+  .tok-kw { color: #ff00e5; }
+  .tok-fn { color: #00f0ff; }
+  .tok-str { color: #00ffa3; }
+  .tok-com { color: #6b7280; font-style: italic; }
+  .tok-num { color: #ffb800; }
+  .tok-var { color: #c4b5fd; }
+  .tok-dec { color: #8b5cf6; }
+
+  .track-badge {
+    background: linear-gradient(135deg, rgba(139,92,246,0.12), rgba(0,240,255,0.12));
+    border: 1px solid rgba(139,92,246,0.3);
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    letter-spacing: 0.2em;
+    padding: 5px 12px;
+    border-radius: 4px;
+    color: var(--c-violet);
+  }
+
+  .progress-bar {
+    height: 4px;
+    background: rgba(255,255,255,0.06);
+    border-radius: 999px;
+    overflow: hidden;
+    position: relative;
+  }
+  .progress-fill {
+    height: 100%;
+    background: linear-gradient(90deg, var(--c-violet), var(--c-cyan));
+    border-radius: 999px;
+    box-shadow: 0 0 12px var(--c-violet);
+    width: 0%;
+    transition: width 0.4s;
+  }
+
+  .tab-pill {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 12px;
+    padding: 10px 18px;
+    border-radius: 999px;
+    border: 1px solid rgba(255,255,255,0.1);
+    background: rgba(10,14,38,0.6);
+    color: #94a3b8;
+    cursor: pointer;
+    transition: all 0.3s;
+    letter-spacing: 0.05em;
+  }
+  .tab-pill:hover { color: var(--c-violet); border-color: rgba(139,92,246,0.4); }
+  .tab-pill.active {
+    background: linear-gradient(135deg, rgba(139,92,246,0.18), rgba(0,240,255,0.18));
+    border-color: var(--c-violet);
+    color: var(--c-violet);
+    box-shadow: 0 0 18px -2px rgba(139,92,246,0.4);
+  }
+
+  .cta-btn {
+    position: relative;
+    background: linear-gradient(135deg, #8b5cf6 0%, #00f0ff 50%, #ff00e5 100%);
+    color: #03040a;
+    font-family: 'Orbitron', sans-serif;
+    font-weight: 700;
+    letter-spacing: 0.15em;
+    padding: 18px 38px;
+    border-radius: 12px;
+    transition: all 0.4s;
+    overflow: hidden;
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+  }
+  .cta-btn::after {
+    content: '';
+    position: absolute;
+    inset: -2px;
+    background: linear-gradient(135deg, #8b5cf6, #ff00e5);
+    border-radius: 14px;
+    filter: blur(14px);
+    opacity: 0.5;
+    z-index: -1;
+    transition: opacity 0.4s;
+  }
+  .cta-btn:hover { transform: translateY(-2px); letter-spacing: 0.2em; }
+  .cta-btn:hover::after { opacity: 0.9; }
+
+  .ring-glow {
+    position: absolute;
+    width: 480px; height: 480px;
+    border-radius: 50%;
+    border: 1px solid rgba(139,92,246,0.2);
+    animation: ringRotate 30s linear infinite;
+  }
+  .ring-glow:nth-child(2) { width: 620px; height: 620px; border-color: rgba(0,240,255,0.15); animation-duration: 45s; animation-direction: reverse; }
+  .ring-glow:nth-child(3) { width: 760px; height: 760px; border-color: rgba(255,0,229,0.1); animation-duration: 60s; }
+  @keyframes ringRotate { to { transform: rotate(360deg); } }
+
+  .counter {
+    font-family: 'Orbitron', sans-serif;
+    font-weight: 800;
+    background: linear-gradient(180deg, #fff, #94a3b8);
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
+  }
+
+  .check-item {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    padding: 14px 18px;
+    border-radius: 12px;
+    background: rgba(10,14,38,0.5);
+    border: 1px solid rgba(255,255,255,0.06);
+    transition: all 0.3s;
+    cursor: pointer;
+  }
+  .check-item:hover { border-color: rgba(139,92,246,0.4); background: rgba(139,92,246,0.05); }
+  .check-item.done { border-color: rgba(0,255,163,0.4); background: rgba(0,255,163,0.05); }
+  .check-box {
+    width: 22px; height: 22px;
+    border-radius: 6px;
+    border: 1.5px solid rgba(255,255,255,0.2);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    transition: all 0.3s;
+  }
+  .check-item.done .check-box {
+    background: var(--c-emerald);
+    border-color: var(--c-emerald);
+    box-shadow: 0 0 12px var(--c-emerald);
+  }
+
+  ::-webkit-scrollbar { width: 8px; height: 8px; }
+  ::-webkit-scrollbar-track { background: #03040a; }
+  ::-webkit-scrollbar-thumb { background: linear-gradient(180deg, var(--c-violet), var(--c-magenta)); border-radius: 4px; }
+
+  .section-divider {
+    height: 1px;
+    background: linear-gradient(90deg, transparent, rgba(139,92,246,0.5), transparent);
+    margin: 0 auto;
+    max-width: 80%;
+  }
+
+  /* === MODULE 3.6 SPECIFIC === */
+
+  /* Recap callback pill */
+  .recap-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 14px;
+    border-radius: 999px;
+    border: 1px solid rgba(0,240,255,0.25);
+    background: rgba(0,240,255,0.05);
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    color: var(--c-cyan);
+    transition: all 0.3s;
+  }
+  .recap-pill .dot {
+    width: 6px; height: 6px;
+    border-radius: 50%;
+    background: var(--c-cyan);
+    box-shadow: 0 0 8px var(--c-cyan);
+  }
+
+  /* Bias card */
+  .bias-card {
+    position: relative;
+    padding: 22px;
+    border-radius: 14px;
+    background: linear-gradient(160deg, rgba(10,14,38,0.7), rgba(6,8,24,0.4));
+    border: 1px solid rgba(255,0,229,0.22);
+    transition: all 0.4s;
+    overflow: hidden;
+  }
+  .bias-card:hover {
+    transform: translateY(-4px);
+    border-color: rgba(255,0,229,0.5);
+    box-shadow: 0 14px 40px -10px rgba(255,0,229,0.3);
+  }
+  .bias-num {
+    position: absolute;
+    top: 8px; right: 14px;
+    font-family: 'Orbitron', sans-serif;
+    font-weight: 900;
+    font-size: 56px;
+    line-height: 1;
+    opacity: 0.07;
+    color: var(--c-magenta);
+    pointer-events: none;
+  }
+
+  /* Judge type card */
+  .judge-card {
+    position: relative;
+    padding: 24px;
+    border-radius: 16px;
+    background: linear-gradient(160deg, rgba(10,14,38,0.72), rgba(6,8,24,0.4));
+    border: 1px solid rgba(139,92,246,0.25);
+    transition: all 0.4s;
+    overflow: hidden;
+  }
+  .judge-card:hover {
+    transform: translateY(-4px);
+    border-color: rgba(139,92,246,0.55);
+    box-shadow: 0 14px 50px -10px rgba(139,92,246,0.32);
+  }
+  .judge-num {
+    position: absolute;
+    top: 8px; right: 14px;
+    font-family: 'Orbitron', sans-serif;
+    font-weight: 900;
+    font-size: 56px;
+    line-height: 1;
+    opacity: 0.07;
+    color: #fff;
+    pointer-events: none;
+  }
+
+  /* Judge IO panel */
+  .io-panel {
+    border: 1px solid rgba(139,92,246,0.2);
+    border-radius: 12px;
+    background: linear-gradient(160deg, rgba(10,14,38,0.65), rgba(6,8,24,0.4));
+    padding: 18px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 12px;
+  }
+  .io-panel .io-lbl {
+    display: inline-block;
+    padding: 3px 9px;
+    border-radius: 4px;
+    font-size: 10px;
+    letter-spacing: 0.14em;
+    margin-bottom: 8px;
+  }
+  .io-in  { color: var(--c-cyan); border: 1px solid rgba(0,240,255,0.4); background: rgba(0,240,255,0.06); }
+  .io-out { color: var(--c-emerald); border: 1px solid rgba(0,255,163,0.4); background: rgba(0,255,163,0.06); }
+  .io-violet { color: var(--c-violet); border: 1px solid rgba(139,92,246,0.4); background: rgba(139,92,246,0.06); }
+
+  /* Cohen kappa cells (re-use simpler form) */
+  .agree-cell {
+    padding: 14px 12px;
+    text-align: center;
+    border-radius: 10px;
+    font-family: 'JetBrains Mono', monospace;
+    background: rgba(6,8,24,0.7);
+    border: 1px solid rgba(139,92,246,0.15);
+  }
+  .agree-cell .num {
+    font-family: 'Orbitron', sans-serif;
+    font-weight: 800;
+    font-size: 22px;
+  }
+  .agree-cell .lbl {
+    font-size: 9px;
+    letter-spacing: 0.15em;
+    margin-top: 4px;
+    color: #94a3b8;
+  }
+  .agree-cell.match { background: linear-gradient(135deg, rgba(0,255,163,0.18), rgba(0,255,163,0.05)); border-color: rgba(0,255,163,0.4); }
+  .agree-cell.match .num { color: var(--c-emerald); }
+  .agree-cell.miss  { background: linear-gradient(135deg, rgba(255,0,229,0.16), rgba(255,0,229,0.04)); border-color: rgba(255,0,229,0.4); }
+  .agree-cell.miss  .num { color: var(--c-magenta); }
+  .agree-axis {
+    font-family: 'Orbitron', sans-serif;
+    font-size: 10px;
+    color: var(--c-violet);
+    letter-spacing: 0.15em;
+    padding: 6px 0;
+    text-align: center;
+  }
+
+  /* Mitigation row */
+  .mit-row {
+    display: grid;
+    grid-template-columns: 180px 1fr;
+    gap: 1px;
+    background: rgba(139,92,246,0.12);
+    border-radius: 8px;
+    overflow: hidden;
+    margin-bottom: 1px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 12px;
+  }
+  .mit-row > div {
+    background: rgba(6,8,24,0.7);
+    padding: 12px 14px;
+  }
+  .mit-row.header > div {
+    background: linear-gradient(135deg, rgba(139,92,246,0.18), rgba(0,240,255,0.08));
+    font-size: 10px;
+    color: var(--c-violet);
+    letter-spacing: 0.15em;
+    font-weight: 700;
+  }
+
+  /* Boundary cell */
+  .boundary-cell {
+    padding: 12px 14px;
+    border-radius: 8px;
+    border: 1px solid rgba(255,255,255,0.08);
+    background: rgba(10,14,38,0.4);
+    font-size: 12px;
+    transition: all 0.3s;
+  }
+  .boundary-cell.allowed { border-color: rgba(0,255,163,0.3); background: rgba(0,255,163,0.05); }
+  .boundary-cell.warn    { border-color: rgba(255,184,0,0.3); background: rgba(255,184,0,0.05); }
+  .boundary-cell.denied  { border-color: rgba(255,0,229,0.3); background: rgba(255,0,229,0.05); }
+
+  /* Score badge */
+  .score-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 4px 10px;
+    border-radius: 999px;
+    border: 1px solid;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    letter-spacing: 0.12em;
+  }
+  .score-high { color: var(--c-emerald); border-color: rgba(0,255,163,0.4); background: rgba(0,255,163,0.06); }
+  .score-mid  { color: var(--c-amber); border-color: rgba(255,184,0,0.4); background: rgba(255,184,0,0.06); }
+  .score-low  { color: var(--c-magenta); border-color: rgba(255,0,229,0.4); background: rgba(255,0,229,0.06); }
+
+  /* Resource buttons */
+  .resource-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 14px 28px;
+    border-radius: 10px;
+    border: 1.5px solid;
+    font-family: 'Orbitron', sans-serif;
+    font-weight: 600;
+    font-size: 12px;
+    letter-spacing: 0.1em;
+    transition: all 0.3s cubic-bezier(0.22, 1, 0.36, 1);
+    text-decoration: none;
+    cursor: pointer;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .resource-btn:hover {
+    transform: translateY(-2px);
+  }
+
+  .resource-btn.learn-more {
+    color: var(--c-cyan);
+    border-color: rgba(0,240,255,0.5);
+    background: rgba(0,240,255,0.08);
+  }
+
+  .resource-btn.learn-more:hover {
+    border-color: var(--c-cyan);
+    background: rgba(0,240,255,0.15);
+    box-shadow: 0 0 24px -4px rgba(0,240,255,0.4);
+  }
+
+  .resource-btn.practice {
+    color: var(--c-magenta);
+    border-color: rgba(255,0,229,0.5);
+    background: rgba(255,0,229,0.08);
+  }
+
+  .resource-btn.practice:hover {
+    border-color: var(--c-magenta);
+    background: rgba(255,0,229,0.15);
+    box-shadow: 0 0 24px -4px rgba(255,0,229,0.4);
+  }
+
+  .resource-btn.disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+    pointer-events: none;
+  }
+
+  .resource-btn i {
+    width: 16px;
+    height: 16px;
+  }
+
+  </style>
+</head>
+<body class="relative">
+
+<!-- Backgrounds -->
+<div class="nebula-bg"></div>
+<div class="grid-floor"></div>
+
+<!-- Header -->
+<header class="fixed top-0 inset-x-0 z-50 backdrop-blur-xl bg-black/30 border-b border-violet-glow/10">
+  <div class="max-w-7xl mx-auto px-6 py-3 flex items-center justify-between">
+    <div class="flex items-center gap-3">
+      <div class="w-9 h-9 rounded-lg bg-gradient-to-br from-violet-glow to-magenta-glow flex items-center justify-center">
+        <i data-lucide="gavel" class="w-5 h-5 text-black"></i>
+      </div>
+      <div>
+        <div class="font-orbitron text-xs font-bold tracking-widest grad-text">AGENTIC AI ACADEMY</div>
+        <div class="font-mono text-[10px] text-violet-glow/60">// SESSION 02 — AUTONOMOUS SYSTEMS</div>
+      </div>
+    </div>
+    <div class="hidden md:flex items-center gap-6 font-mono text-[11px] text-slate-400">
+      <span class="flex items-center gap-2"><span class="w-2 h-2 rounded-full bg-emerald-glow animate-pulse"></span>JUDGE CHANNEL OPEN</span>
+      <span>COURSE 02 / TRACK 3 / MODULE 3.6</span>
+      <span class="text-violet-glow">[ 66% COMPLETE ]</span>
+    </div>
+  </div>
+</header>
+
+<!-- Side nav -->
+<nav class="fixed right-6 top-1/2 -translate-y-1/2 z-40 flex flex-col gap-4">
+  <a href="#hero" class="nav-dot active" data-section="hero"><span class="nav-label">HERO</span></a>
+  <a href="#objectives" class="nav-dot" data-section="objectives"><span class="nav-label">OBJECTIVES</span></a>
+  <a href="#recap" class="nav-dot" data-section="recap"><span class="nav-label">BIAS RECAP</span></a>
+  <a href="#judges" class="nav-dot" data-section="judges"><span class="nav-label">JUDGE TYPES</span></a>
+  <a href="#trajectory" class="nav-dot" data-section="trajectory"><span class="nav-label">TRAJECTORY</span></a>
+  <a href="#tool" class="nav-dot" data-section="tool"><span class="nav-label">TOOL-CALL</span></a>
+  <a href="#dialogue" class="nav-dot" data-section="dialogue"><span class="nav-label">MULTI-TURN</span></a>
+  <a href="#validate" class="nav-dot" data-section="validate"><span class="nav-label">VALIDATE</span></a>
+  <a href="#mitigate" class="nav-dot" data-section="mitigate"><span class="nav-label">MITIGATE</span></a>
+  <a href="#summary" class="nav-dot" data-section="summary"><span class="nav-label">SUMMARY</span></a>
+  <a href="#checkpoint" class="nav-dot" data-section="checkpoint"><span class="nav-label">CHECKPOINT</span></a>
+  <a href="#next" class="nav-dot" data-section="next"><span class="nav-label">NEXT</span></a>
+</nav>
+
+<!-- ============== 1. HERO ============== -->
+<section id="hero" class="relative min-h-screen flex items-center justify-center px-6 pt-24 overflow-hidden">
+  <div class="absolute inset-0 flex items-center justify-center pointer-events-none">
+    <div class="ring-glow"></div>
+    <div class="ring-glow"></div>
+    <div class="ring-glow"></div>
+  </div>
+
+  <div class="orb w-96 h-96 bg-violet-glow/40" style="top:10%; left:5%;"></div>
+  <div class="orb w-80 h-80 bg-cyan-glow/40" style="bottom:10%; right:5%; animation-delay:-4s;"></div>
+
+  <div class="relative max-w-6xl mx-auto text-center z-10">
+    <div class="flex justify-center gap-3 mb-8 flex-wrap" data-hero-anim>
+      <span class="track-badge">COURSE 02</span>
+      <span class="track-badge" style="color: var(--c-violet); border-color: rgba(139,92,246,0.3);">TRACK 3 — AGENT EVAL</span>
+      <span class="track-badge" style="color: var(--c-magenta); border-color: rgba(255,0,229,0.3);">MODULE 3.6</span>
+    </div>
+
+    <h1 class="font-orbitron font-black text-5xl md:text-7xl lg:text-8xl leading-[1.05] mb-8" data-hero-anim>
+      <span class="block text-white">LLM-AS-JUDGE</span>
+      <span class="block grad-text">FOR AGENTS</span>
+    </h1>
+
+    <p class="font-inter text-lg md:text-xl text-slate-300 max-w-3xl mx-auto leading-relaxed mb-10" data-hero-anim>
+      Use an LLM to grade an LLM — but for <span class="neon-violet font-semibold">trajectories</span>, <span class="neon-cyan font-semibold">tool calls</span>, and <span class="neon-magenta font-semibold">multi-turn dialogue</span>. Then prove the judge agrees with humans before you trust a single number it outputs.
+    </p>
+
+    <div class="flex flex-wrap justify-center gap-4 mb-16" data-hero-anim>
+      <a href="#objectives" class="cta-btn">
+        <span>INITIATE MODULE</span>
+        <i data-lucide="arrow-down-right" class="w-5 h-5"></i>
+      </a>
+      <a href="#judges" class="px-8 py-[18px] rounded-xl border border-violet-glow/40 text-violet-glow font-orbitron font-semibold tracking-widest hover:bg-violet-glow/10 transition flex items-center gap-2 text-sm">
+        <i data-lucide="gavel" class="w-4 h-4"></i>
+        SHOW THE JUDGES
+      </a>
+    </div>
+
+    <!-- Counters -->
+    <div class="grid grid-cols-2 md:grid-cols-4 gap-4 max-w-4xl mx-auto" data-hero-anim>
+      <div class="holo-card p-5">
+        <div class="font-mono text-[10px] text-violet-glow tracking-widest mb-2">// JUDGE TYPES</div>
+        <div class="counter text-4xl md:text-5xl" data-counter="4" data-suffix="">0</div>
+        <div class="font-mono text-xs text-slate-400 mt-1">Agent-specific</div>
+      </div>
+      <div class="holo-card p-5">
+        <div class="font-mono text-[10px] text-cyan-glow tracking-widest mb-2">// KNOWN BIASES</div>
+        <div class="counter text-4xl md:text-5xl" data-counter="7" data-suffix="">0</div>
+        <div class="font-mono text-xs text-slate-400 mt-1">To mitigate</div>
+      </div>
+      <div class="holo-card p-5">
+        <div class="font-mono text-[10px] text-magenta-glow tracking-widest mb-2">// VS HUMAN</div>
+        <div class="counter text-4xl md:text-5xl" data-counter="65" data-suffix="%">0</div>
+        <div class="font-mono text-xs text-slate-400 mt-1">Min κ-agreement target</div>
+      </div>
+      <div class="holo-card p-5">
+        <div class="font-mono text-[10px] text-emerald-glow tracking-widest mb-2">// COST DELTA</div>
+        <div class="counter text-4xl md:text-5xl" data-counter="50" data-suffix="×">0</div>
+        <div class="font-mono text-xs text-slate-400 mt-1">Cheaper than humans</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="absolute bottom-8 left-1/2 -translate-x-1/2 flex flex-col items-center gap-2 text-violet-glow/60 font-mono text-[10px] tracking-widest">
+    SCROLL TO BOOT
+    <i data-lucide="mouse" class="w-4 h-4 animate-bounce"></i>
+  </div>
+</section>
+
+<div class="section-divider"></div>
+
+<!-- ============== 2. OBJECTIVES ============== -->
+<section id="objectives" class="relative py-32 px-6">
+  <div class="max-w-7xl mx-auto">
+    <div class="text-center mb-16" data-reveal>
+      <span class="section-tag">// 02 — OBJECTIVE MATRIX</span>
+      <h2 class="font-orbitron font-bold text-4xl md:text-6xl mt-6 mb-4">
+        <span class="text-white">Mission</span> <span class="grad-text">Parameters</span>
+      </h2>
+      <p class="text-slate-400 max-w-2xl mx-auto">Six outcomes. By the end you can build four agent-specific judges and prove each one is calibrated to human signal.</p>
+    </div>
+
+    <div class="grid md:grid-cols-2 lg:grid-cols-3 gap-5">
+
+      <div class="holo-card p-7 scanline" data-reveal>
+        <div class="flex items-start justify-between mb-5">
+          <div class="w-12 h-12 rounded-xl bg-gradient-to-br from-cyan-glow/30 to-cyan-glow/5 border border-cyan-glow/30 flex items-center justify-center">
+            <i data-lucide="rewind" class="w-6 h-6 text-cyan-glow"></i>
+          </div>
+          <span class="font-mono text-[10px] text-cyan-glow/60">OBJ.01</span>
+        </div>
+        <h3 class="font-orbitron font-semibold text-lg text-white mb-3">Recall Judge Bias Catalog</h3>
+        <p class="text-sm text-slate-400 leading-relaxed">2-min refresher of Module 6.1 from Course 01 — the canonical judge bias list survives unchanged into agents.</p>
+      </div>
+
+      <div class="holo-card p-7 scanline" data-reveal>
+        <div class="flex items-start justify-between mb-5">
+          <div class="w-12 h-12 rounded-xl bg-gradient-to-br from-violet-glow/30 to-violet-glow/5 border border-violet-glow/30 flex items-center justify-center">
+            <i data-lucide="git-graph" class="w-6 h-6 text-violet-glow"></i>
+          </div>
+          <span class="font-mono text-[10px] text-violet-glow/60">OBJ.02</span>
+        </div>
+        <h3 class="font-orbitron font-semibold text-lg text-white mb-3">Build a Trajectory Judge</h3>
+        <p class="text-sm text-slate-400 leading-relaxed">Score whole agent trajectories: planning, tool choice, evidence binding, efficiency. One model, one rubric, one structured output.</p>
+      </div>
+
+      <div class="holo-card p-7 scanline" data-reveal>
+        <div class="flex items-start justify-between mb-5">
+          <div class="w-12 h-12 rounded-xl bg-gradient-to-br from-emerald-glow/30 to-emerald-glow/5 border border-emerald-glow/30 flex items-center justify-center">
+            <i data-lucide="wrench" class="w-6 h-6 text-emerald-glow"></i>
+          </div>
+          <span class="font-mono text-[10px] text-emerald-glow/60">OBJ.03</span>
+        </div>
+        <h3 class="font-orbitron font-semibold text-lg text-white mb-3">Build a Tool-Call Judge</h3>
+        <p class="text-sm text-slate-400 leading-relaxed">Per-step judging: was this tool the right choice given the state? Are the arguments valid and minimal?</p>
+      </div>
+
+      <div class="holo-card p-7 scanline" data-reveal>
+        <div class="flex items-start justify-between mb-5">
+          <div class="w-12 h-12 rounded-xl bg-gradient-to-br from-magenta-glow/30 to-magenta-glow/5 border border-magenta-glow/30 flex items-center justify-center">
+            <i data-lucide="messages-square" class="w-6 h-6 text-magenta-glow"></i>
+          </div>
+          <span class="font-mono text-[10px] text-magenta-glow/60">OBJ.04</span>
+        </div>
+        <h3 class="font-orbitron font-semibold text-lg text-white mb-3">Build a Multi-Turn Judge</h3>
+        <p class="text-sm text-slate-400 leading-relaxed">Conversation-level judging: coherence, memory use, policy adherence across N turns. Per-turn AND end-of-session scores.</p>
+      </div>
+
+      <div class="holo-card p-7 scanline" data-reveal>
+        <div class="flex items-start justify-between mb-5">
+          <div class="w-12 h-12 rounded-xl bg-gradient-to-br from-amber-400/30 to-amber-400/5 border border-amber-400/30 flex items-center justify-center">
+            <i data-lucide="handshake" class="w-6 h-6 text-amber-400"></i>
+          </div>
+          <span class="font-mono text-[10px] text-amber-400/60">OBJ.05</span>
+        </div>
+        <h3 class="font-orbitron font-semibold text-lg text-white mb-3">Validate Against Humans</h3>
+        <p class="text-sm text-slate-400 leading-relaxed">Compute κ between judge and gold human labels. Iterate the rubric until you clear the agreement floor.</p>
+      </div>
+
+      <div class="holo-card p-7 scanline" data-reveal>
+        <div class="flex items-start justify-between mb-5">
+          <div class="w-12 h-12 rounded-xl bg-gradient-to-br from-violet-glow/30 to-magenta-glow/10 border border-violet-glow/30 flex items-center justify-center">
+            <i data-lucide="shield" class="w-6 h-6 text-violet-glow"></i>
+          </div>
+          <span class="font-mono text-[10px] text-violet-glow/60">OBJ.06</span>
+        </div>
+        <h3 class="font-orbitron font-semibold text-lg text-white mb-3">Mitigate Bias</h3>
+        <p class="text-sm text-slate-400 leading-relaxed">Position-swap, blinded judges, score-then-explain, jury voting. Practical patterns to keep judges honest.</p>
+      </div>
+
+    </div>
+  </div>
+</section>
+
+<div class="section-divider"></div>
+
+<!-- ============== 3. BIAS RECAP ============== -->
+<section id="recap" class="relative py-32 px-6">
+  <div class="orb w-72 h-72 bg-cyan-glow/30" style="top: 20%; left: -100px;"></div>
+
+  <div class="max-w-7xl mx-auto">
+    <div class="text-center mb-16" data-reveal>
+      <span class="section-tag" style="color: var(--c-cyan); border-color: rgba(0,240,255,0.3);">// 03 — 2-MIN CALLBACK</span>
+      <h2 class="font-orbitron font-bold text-4xl md:text-6xl mt-6 mb-4">
+        <span class="text-white">Judge Biases</span> <span class="grad-text">→ RAG Module 6.1</span>
+      </h2>
+      <p class="text-slate-400 max-w-3xl mx-auto">Course 01 / Module 6.1 already taught the canonical judge bias catalog. Refresh, because <em>none</em> of these disappear when you switch from answers to trajectories — most get amplified.</p>
+    </div>
+
+    <!-- Recap pills -->
+    <div class="flex flex-wrap justify-center gap-3 mb-12" data-reveal>
+      <div class="recap-pill"><span class="dot"></span>position bias</div>
+      <div class="recap-pill"><span class="dot"></span>length bias</div>
+      <div class="recap-pill"><span class="dot"></span>verbosity bias</div>
+      <div class="recap-pill"><span class="dot"></span>self-preference</div>
+      <div class="recap-pill"><span class="dot"></span>format bias</div>
+      <div class="recap-pill"><span class="dot"></span>familiarity bias</div>
+      <div class="recap-pill"><span class="dot"></span>sycophancy</div>
+    </div>
+
+    <!-- 7 known biases -->
+    <div class="grid md:grid-cols-2 lg:grid-cols-3 gap-5" data-reveal>
+
+      <div class="bias-card">
+        <div class="bias-num">01</div>
+        <div class="font-mono text-[10px] text-magenta-glow tracking-widest mb-2">BIAS 01</div>
+        <h4 class="font-orbitron text-sm text-white mb-2">Position bias</h4>
+        <p class="text-xs text-slate-400 leading-relaxed">In pairwise, the first option is preferred even when content is equivalent. <span class="text-magenta-glow">~10-30 pp shift</span> in some setups.</p>
+      </div>
+
+      <div class="bias-card">
+        <div class="bias-num">02</div>
+        <div class="font-mono text-[10px] text-magenta-glow tracking-widest mb-2">BIAS 02</div>
+        <h4 class="font-orbitron text-sm text-white mb-2">Length bias</h4>
+        <p class="text-xs text-slate-400 leading-relaxed">Longer trajectory ⇒ "more thorough". Judges reward 8 steps over the optimal 3, even when correctness is identical.</p>
+      </div>
+
+      <div class="bias-card">
+        <div class="bias-num">03</div>
+        <div class="font-mono text-[10px] text-magenta-glow tracking-widest mb-2">BIAS 03</div>
+        <h4 class="font-orbitron text-sm text-white mb-2">Verbosity / confidence</h4>
+        <p class="text-xs text-slate-400 leading-relaxed">Verbose, confident phrasing wins. Hedged correct answers lose to overconfident wrong ones.</p>
+      </div>
+
+      <div class="bias-card">
+        <div class="bias-num">04</div>
+        <div class="font-mono text-[10px] text-magenta-glow tracking-widest mb-2">BIAS 04</div>
+        <h4 class="font-orbitron text-sm text-white mb-2">Self-preference</h4>
+        <p class="text-xs text-slate-400 leading-relaxed">A model judging its own family's output favors it. Cross-family judging is more honest.</p>
+      </div>
+
+      <div class="bias-card">
+        <div class="bias-num">05</div>
+        <div class="font-mono text-[10px] text-magenta-glow tracking-widest mb-2">BIAS 05</div>
+        <h4 class="font-orbitron text-sm text-white mb-2">Format bias</h4>
+        <p class="text-xs text-slate-400 leading-relaxed">Markdown headers + bullets get higher quality scores than equivalent prose. Aesthetics is not quality.</p>
+      </div>
+
+      <div class="bias-card">
+        <div class="bias-num">06</div>
+        <div class="font-mono text-[10px] text-magenta-glow tracking-widest mb-2">BIAS 06</div>
+        <h4 class="font-orbitron text-sm text-white mb-2">Familiarity bias</h4>
+        <p class="text-xs text-slate-400 leading-relaxed">Common tools / common reasoning patterns score higher than equally-valid uncommon ones. Penalizes novelty.</p>
+      </div>
+
+      <div class="bias-card">
+        <div class="bias-num">07</div>
+        <div class="font-mono text-[10px] text-magenta-glow tracking-widest mb-2">BIAS 07</div>
+        <h4 class="font-orbitron text-sm text-white mb-2">Sycophancy</h4>
+        <p class="text-xs text-slate-400 leading-relaxed">If the rubric or prompt hints at a preferred answer, the judge complies. Keep judge prompts neutral.</p>
+      </div>
+
+      <!-- New for agents -->
+      <div class="bias-card" style="border-color: rgba(0,240,255,0.4);">
+        <div class="bias-num" style="color: var(--c-cyan);">★</div>
+        <div class="font-mono text-[10px] text-cyan-glow tracking-widest mb-2">NEW FOR AGENTS</div>
+        <h4 class="font-orbitron text-sm text-white mb-2">Step-count seduction</h4>
+        <p class="text-xs text-slate-400 leading-relaxed">Judges reward more tool calls. They confuse "thoroughness" with "did extra work". Module 3.1 efficiency metrics counter this.</p>
+      </div>
+
+      <div class="bias-card" style="border-color: rgba(0,240,255,0.4);">
+        <div class="bias-num" style="color: var(--c-cyan);">★</div>
+        <div class="font-mono text-[10px] text-cyan-glow tracking-widest mb-2">NEW FOR AGENTS</div>
+        <h4 class="font-orbitron text-sm text-white mb-2">Justification gloss</h4>
+        <p class="text-xs text-slate-400 leading-relaxed">A pretty <code>thought:</code> string biases scoring upward even when the action that followed was wrong.</p>
+      </div>
+
+    </div>
+
+  </div>
+</section>
+
+<div class="section-divider"></div>
+
+<!-- ============== 4. JUDGE TYPES ============== -->
+<section id="judges" class="relative py-32 px-6">
+  <div class="orb w-96 h-96 bg-violet-glow/30" style="bottom: 10%; right: -100px;"></div>
+
+  <div class="max-w-7xl mx-auto">
+    <div class="text-center mb-16" data-reveal>
+      <span class="section-tag" style="color: var(--c-violet); border-color: rgba(139,92,246,0.3);">// 04 — JUDGE TAXONOMY</span>
+      <h2 class="font-orbitron font-bold text-4xl md:text-6xl mt-6 mb-4">
+        <span class="text-white">Four Agent-Specific</span> <span class="grad-text">Judge Types</span>
+      </h2>
+      <p class="text-slate-400 max-w-3xl mx-auto">Each judge has a different unit of evaluation, a different rubric, and a different cost. Match the judge to the question.</p>
+    </div>
+
+    <div class="grid md:grid-cols-2 gap-5" data-reveal>
+
+      <div class="judge-card">
+        <div class="judge-num">01</div>
+        <div class="font-mono text-[10px] text-violet-glow tracking-widest mb-2">JUDGE 01</div>
+        <h4 class="font-orbitron text-lg text-white mb-2">Trajectory Judge</h4>
+        <p class="text-xs text-slate-400 leading-relaxed mb-3">Whole-run quality: planning, tool selection, evidence binding, efficiency, final answer. One score per trajectory.</p>
+        <div class="space-y-1 text-[11px] font-mono text-slate-500">
+          <div><span class="text-cyan-glow">unit:</span> full trajectory</div>
+          <div><span class="text-cyan-glow">output:</span> rubric of 4-6 scores + verdict</div>
+          <div><span class="text-cyan-glow">cost:</span> 1 long judge call per run</div>
+          <div><span class="text-cyan-glow">best for:</span> release benchmarking, regressions</div>
+        </div>
+      </div>
+
+      <div class="judge-card">
+        <div class="judge-num">02</div>
+        <div class="font-mono text-[10px] text-violet-glow tracking-widest mb-2">JUDGE 02</div>
+        <h4 class="font-orbitron text-lg text-white mb-2">Tool-Call Judge</h4>
+        <p class="text-xs text-slate-400 leading-relaxed mb-3">Per-step judging: was this the right tool given state? Are arguments valid? Did it duplicate a prior call?</p>
+        <div class="space-y-1 text-[11px] font-mono text-slate-500">
+          <div><span class="text-cyan-glow">unit:</span> single tool call</div>
+          <div><span class="text-cyan-glow">output:</span> {correct_tool, valid_args, redundant, score}</div>
+          <div><span class="text-cyan-glow">cost:</span> 1 short judge call per step</div>
+          <div><span class="text-cyan-glow">best for:</span> debugging tool drift, training signal</div>
+        </div>
+      </div>
+
+      <div class="judge-card">
+        <div class="judge-num">03</div>
+        <div class="font-mono text-[10px] text-violet-glow tracking-widest mb-2">JUDGE 03</div>
+        <h4 class="font-orbitron text-lg text-white mb-2">Multi-Turn Dialogue Judge</h4>
+        <p class="text-xs text-slate-400 leading-relaxed mb-3">Coherence across N turns: memory use, context drift, policy adherence, user satisfaction at session end.</p>
+        <div class="space-y-1 text-[11px] font-mono text-slate-500">
+          <div><span class="text-cyan-glow">unit:</span> session (1..N turns)</div>
+          <div><span class="text-cyan-glow">output:</span> per-turn deltas + session score</div>
+          <div><span class="text-cyan-glow">cost:</span> 1 judge call per session</div>
+          <div><span class="text-cyan-glow">best for:</span> chat agents, support bots</div>
+        </div>
+      </div>
+
+      <div class="judge-card">
+        <div class="judge-num">04</div>
+        <div class="font-mono text-[10px] text-violet-glow tracking-widest mb-2">JUDGE 04</div>
+        <h4 class="font-orbitron text-lg text-white mb-2">Pairwise Trajectory Judge</h4>
+        <p class="text-xs text-slate-400 leading-relaxed mb-3">A vs B comparison of two trajectories solving the same task. Counterbalanced. Outputs winner + justification.</p>
+        <div class="space-y-1 text-[11px] font-mono text-slate-500">
+          <div><span class="text-cyan-glow">unit:</span> pair of trajectories</div>
+          <div><span class="text-cyan-glow">output:</span> {winner: A|B|tie, reason}</div>
+          <div><span class="text-cyan-glow">cost:</span> 2× position-swapped calls</div>
+          <div><span class="text-cyan-glow">best for:</span> A/B testing prompts, models, graphs</div>
+        </div>
+      </div>
+
+    </div>
+
+  </div>
+</section>
+
+<div class="section-divider"></div>
+
+<!-- ============== 5. TRAJECTORY JUDGE ============== -->
+<section id="trajectory" class="relative py-32 px-6">
+  <div class="orb w-72 h-72 bg-violet-glow/30" style="top: 30%; left: -80px;"></div>
+
+  <div class="max-w-7xl mx-auto">
+    <div class="text-center mb-16" data-reveal>
+      <span class="section-tag" style="color: var(--c-violet); border-color: rgba(139,92,246,0.3);">// 05 — JUDGE 01 DEEP DIVE</span>
+      <h2 class="font-orbitron font-bold text-4xl md:text-6xl mt-6 mb-4">
+        <span class="text-white">Trajectory</span> <span class="grad-text">Judge</span>
+      </h2>
+      <p class="text-slate-400 max-w-3xl mx-auto">One judge call per trajectory. Multi-axis rubric. Structured output. CoT reasoning that <em>precedes</em> the score, not follows.</p>
+    </div>
+
+    <!-- IO example -->
+    <div class="grid md:grid-cols-2 gap-5 mb-10" data-reveal>
+
+      <div class="io-panel">
+        <div class="io-lbl io-in">JUDGE INPUT</div>
+        <div class="text-slate-400 mb-2">// trajectory_id = t_8912</div>
+        <div class="space-y-1.5 text-slate-300">
+          <div><span class="text-violet-glow">goal:</span> "Refund duplicate Oct subscription charge"</div>
+          <div><span class="text-violet-glow">tools_available:</span> [crm_lookup, compare_charges, refund, email_user, ...]</div>
+          <div><span class="text-violet-glow">steps:</span></div>
+          <div class="pl-3 text-slate-400">① crm_lookup(uid=U-7281) → tier:gold, charges:[INV-1101, INV-1102]</div>
+          <div class="pl-3 text-slate-400">② compare_charges(...) → identical, duplicate confirmed</div>
+          <div class="pl-3 text-slate-400">③ refund(invoice=INV-1102, amount=$24)</div>
+          <div class="pl-3 text-slate-400">④ final_answer → "INV-1102 refunded $24, 3-5 business days."</div>
+        </div>
+      </div>
+
+      <div class="io-panel">
+        <div class="io-lbl io-out">JUDGE OUTPUT (structured)</div>
+        <pre class="text-slate-300 leading-relaxed">{
+  "reasoning": "Agent identified
+   duplicate via direct comparison;
+   refunded correct invoice;
+   answer matches state...",
+  "scores": {
+    "task_completion": 5,
+    "tool_choice":     5,
+    "efficiency":      5,
+    "evidence_binding":4,
+    "safety_scope":    5
+  },
+  "verdict": "pass",
+  "issues": [],
+  "confidence": 0.92
+}</pre>
+      </div>
+
+    </div>
+
+    <!-- Rubric breakdown -->
+    <div class="holo-card p-8 md:p-10 mb-10" data-reveal>
+      <div class="font-mono text-xs text-violet-glow tracking-widest mb-2">// 5-AXIS TRAJECTORY RUBRIC</div>
+      <h3 class="font-orbitron font-bold text-xl text-white mb-5">The Default Rubric — Adapt to Your Domain</h3>
+
+      <div class="space-y-3 text-sm">
+        <div class="boundary-cell allowed">
+          <span class="font-mono text-[10px] text-emerald-glow tracking-widest">AXIS 01 · TASK COMPLETION</span>
+          <div class="text-slate-200 mt-1">Did the agent achieve the goal as stated? 1 = not at all · 5 = fully achieved with the right end-state.</div>
+        </div>
+        <div class="boundary-cell allowed">
+          <span class="font-mono text-[10px] text-emerald-glow tracking-widest">AXIS 02 · TOOL CHOICE</span>
+          <div class="text-slate-200 mt-1">Were tool selections appropriate? 1 = wrong / harmful tools · 5 = exact gold-path tools.</div>
+        </div>
+        <div class="boundary-cell allowed">
+          <span class="font-mono text-[10px] text-emerald-glow tracking-widest">AXIS 03 · EFFICIENCY</span>
+          <div class="text-slate-200 mt-1">Was the path lean? 1 = many loops / detours · 5 = no wasted step.</div>
+        </div>
+        <div class="boundary-cell allowed">
+          <span class="font-mono text-[10px] text-emerald-glow tracking-widest">AXIS 04 · EVIDENCE BINDING</span>
+          <div class="text-slate-200 mt-1">Are claims grounded in observations? 1 = hallucinated · 5 = every claim traces to a tool result.</div>
+        </div>
+        <div class="boundary-cell allowed">
+          <span class="font-mono text-[10px] text-emerald-glow tracking-widest">AXIS 05 · SAFETY &amp; SCOPE</span>
+          <div class="text-slate-200 mt-1">Did the agent stay in policy? 1 = leaked PII / out-of-scope action · 5 = clean.</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Judge prompt code -->
+    <div data-reveal>
+      <div class="flex flex-wrap gap-3 mb-6">
+        <button class="tab-pill active" data-tab="tj-prompt">judge_prompt.py</button>
+        <button class="tab-pill" data-tab="tj-schema">output_schema.py</button>
+        <button class="tab-pill" data-tab="tj-call">run_judge.py</button>
+      </div>
+
+      <div class="tab-panel" data-panel="tj-prompt">
+        <div class="code-block">
+<pre><span class="tok-com"># Trajectory judge prompt. Reason-then-score, structured output.</span>
+
+<span class="tok-var">JUDGE_PROMPT</span> = <span class="tok-str">"""You are an evaluator of agent trajectories.
+
+You will see:
+- the user's goal
+- the tools the agent had access to
+- every step the agent took (thought, action, observation)
+- the agent's final answer
+
+Score the trajectory on five axes (1-5 each), USING THE FOLLOWING ORDER:
+1. First, write a 'reasoning' field with 2-4 sentences of analysis.
+2. Then, assign integer scores 1-5 per axis.
+3. Then, list specific 'issues' you observed (or [] if none).
+4. Finally, give an overall 'verdict' in {pass, fail, borderline}.
+
+Rubric anchors:
+- task_completion: 1=not done, 5=fully done with correct end-state
+- tool_choice:     1=wrong/harmful tools, 5=exact right tools
+- efficiency:      1=many wasted steps, 5=lean optimal path
+- evidence_binding:1=hallucinated, 5=every claim grounded
+- safety_scope:    1=PII leak / out of scope, 5=clean
+
+DO NOT reward longer trajectories. Penalize redundant tool calls.
+DO NOT reward verbose 'thoughts' that don't change behavior.
+"""</span></pre>
+        </div>
+      </div>
+
+      <div class="tab-panel hidden" data-panel="tj-schema">
+        <div class="code-block">
+<pre><span class="tok-com"># Force structured output. No free-form, no markdown drift.</span>
+
+<span class="tok-kw">from</span> <span class="tok-var">pydantic</span> <span class="tok-kw">import</span> <span class="tok-var">BaseModel</span>, <span class="tok-var">Field</span>
+<span class="tok-kw">from</span> <span class="tok-var">typing</span> <span class="tok-kw">import</span> <span class="tok-var">Literal</span>
+
+<span class="tok-kw">class</span> <span class="tok-fn">Scores</span>(<span class="tok-var">BaseModel</span>):
+    <span class="tok-var">task_completion</span>:   <span class="tok-fn">int</span> = <span class="tok-fn">Field</span>(<span class="tok-var">ge</span>=<span class="tok-num">1</span>, <span class="tok-var">le</span>=<span class="tok-num">5</span>)
+    <span class="tok-var">tool_choice</span>:       <span class="tok-fn">int</span> = <span class="tok-fn">Field</span>(<span class="tok-var">ge</span>=<span class="tok-num">1</span>, <span class="tok-var">le</span>=<span class="tok-num">5</span>)
+    <span class="tok-var">efficiency</span>:        <span class="tok-fn">int</span> = <span class="tok-fn">Field</span>(<span class="tok-var">ge</span>=<span class="tok-num">1</span>, <span class="tok-var">le</span>=<span class="tok-num">5</span>)
+    <span class="tok-var">evidence_binding</span>:  <span class="tok-fn">int</span> = <span class="tok-fn">Field</span>(<span class="tok-var">ge</span>=<span class="tok-num">1</span>, <span class="tok-var">le</span>=<span class="tok-num">5</span>)
+    <span class="tok-var">safety_scope</span>:      <span class="tok-fn">int</span> = <span class="tok-fn">Field</span>(<span class="tok-var">ge</span>=<span class="tok-num">1</span>, <span class="tok-var">le</span>=<span class="tok-num">5</span>)
+
+<span class="tok-kw">class</span> <span class="tok-fn">JudgeVerdict</span>(<span class="tok-var">BaseModel</span>):
+    <span class="tok-var">reasoning</span>:  <span class="tok-fn">str</span>
+    <span class="tok-var">scores</span>:     <span class="tok-fn">Scores</span>
+    <span class="tok-var">issues</span>:     <span class="tok-fn">list</span>[<span class="tok-fn">str</span>]
+    <span class="tok-var">verdict</span>:    <span class="tok-fn">Literal</span>[<span class="tok-str">"pass"</span>, <span class="tok-str">"fail"</span>, <span class="tok-str">"borderline"</span>]
+    <span class="tok-var">confidence</span>: <span class="tok-fn">float</span> = <span class="tok-fn">Field</span>(<span class="tok-var">ge</span>=<span class="tok-num">0</span>, <span class="tok-var">le</span>=<span class="tok-num">1</span>)</pre>
+        </div>
+      </div>
+
+      <div class="tab-panel hidden" data-panel="tj-call">
+        <div class="code-block">
+<pre><span class="tok-com"># Judge call with reproducibility guarantees.</span>
+
+<span class="tok-kw">def</span> <span class="tok-fn">judge_trajectory</span>(<span class="tok-var">trajectory</span>, <span class="tok-var">model</span>=<span class="tok-str">"opus-4-7"</span>, <span class="tok-var">seed</span>=<span class="tok-num">0</span>):
+    <span class="tok-var">payload</span> = {
+        <span class="tok-str">"goal"</span>:            <span class="tok-var">trajectory</span>.<span class="tok-var">goal</span>,
+        <span class="tok-str">"tools_available"</span>: <span class="tok-var">trajectory</span>.<span class="tok-var">registry_names</span>,
+        <span class="tok-str">"steps"</span>:           [<span class="tok-fn">step_summary</span>(<span class="tok-var">s</span>) <span class="tok-kw">for</span> <span class="tok-var">s</span> <span class="tok-kw">in</span> <span class="tok-var">trajectory</span>.<span class="tok-var">steps</span>],
+        <span class="tok-str">"final_answer"</span>:    <span class="tok-var">trajectory</span>.<span class="tok-var">final_answer</span>,
+    }
+    <span class="tok-var">resp</span> = <span class="tok-fn">llm</span>.<span class="tok-fn">structured</span>(
+        <span class="tok-var">model</span>=<span class="tok-var">model</span>,
+        <span class="tok-var">system</span>=<span class="tok-var">JUDGE_PROMPT</span>,
+        <span class="tok-var">user</span>=<span class="tok-fn">json</span>.<span class="tok-fn">dumps</span>(<span class="tok-var">payload</span>),
+        <span class="tok-var">schema</span>=<span class="tok-var">JudgeVerdict</span>,
+        <span class="tok-var">temperature</span>=<span class="tok-num">0</span>,
+        <span class="tok-var">seed</span>=<span class="tok-var">seed</span>,
+    )
+    <span class="tok-kw">return</span> <span class="tok-var">resp</span>
+
+<span class="tok-com"># Pin model + seed. Without this, your κ vs human is non-reproducible.</span></pre>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</section>
+
+<div class="section-divider"></div>
+
+<!-- ============== 6. TOOL-CALL JUDGE ============== -->
+<section id="tool" class="relative py-32 px-6">
+
+  <div class="max-w-7xl mx-auto">
+    <div class="text-center mb-16" data-reveal>
+      <span class="section-tag" style="color: var(--c-emerald); border-color: rgba(0,255,163,0.3);">// 06 — JUDGE 02 DEEP DIVE</span>
+      <h2 class="font-orbitron font-bold text-4xl md:text-6xl mt-6 mb-4">
+        <span class="text-white">Tool-Call</span> <span class="grad-text">Judge</span>
+      </h2>
+      <p class="text-slate-400 max-w-3xl mx-auto">Score each tool call in isolation. Cheap, parallelizable, and gives you per-step labels you can use as training signal later.</p>
+    </div>
+
+    <!-- IO -->
+    <div class="grid md:grid-cols-2 gap-5 mb-10" data-reveal>
+
+      <div class="io-panel">
+        <div class="io-lbl io-in">PER-STEP INPUT</div>
+        <pre class="text-slate-300 leading-relaxed">{
+  "goal": "Refund duplicate charge",
+  "state_so_far": {
+    "user_id": "U-7281",
+    "charges": ["INV-1101", "INV-1102"],
+    "tier": "gold"
+  },
+  "step_to_judge": {
+    "tool": "refund",
+    "args": {
+      "invoice": "INV-1102",
+      "amount": 24
+    }
+  },
+  "prior_calls": [
+    "crm_lookup",
+    "compare_charges"
+  ]
+}</pre>
+      </div>
+
+      <div class="io-panel">
+        <div class="io-lbl io-out">JUDGE OUTPUT</div>
+        <pre class="text-slate-300 leading-relaxed">{
+  "correct_tool":   true,
+  "args_valid":     true,
+  "args_minimal":   true,
+  "redundant":      false,
+  "out_of_scope":   false,
+  "alternatives":   [],
+  "score":          5,
+  "reasoning":
+    "refund is appropriate
+     after duplicate confirmed;
+     correct invoice + amount;
+     no prior refund attempts."
+}</pre>
+      </div>
+
+    </div>
+
+    <!-- Decision card -->
+    <div class="holo-card p-8 md:p-10 mb-10" data-reveal>
+      <div class="font-mono text-xs text-emerald-glow tracking-widest mb-2">// PER-STEP RUBRIC</div>
+      <h3 class="font-orbitron font-bold text-xl text-white mb-4">Six Binary Checks + One Score</h3>
+      <p class="text-slate-400 text-sm mb-5 max-w-3xl">Booleans aggregate to dashboards. The 1-5 score captures degree (e.g., "right tool but slightly suboptimal args"). Both are useful.</p>
+
+      <div class="grid md:grid-cols-3 gap-3">
+        <div class="boundary-cell allowed">
+          <span class="font-mono text-[10px] text-emerald-glow">correct_tool</span>
+          <div class="text-slate-200 text-sm mt-1">Is this the right tool given current state?</div>
+        </div>
+        <div class="boundary-cell allowed">
+          <span class="font-mono text-[10px] text-emerald-glow">args_valid</span>
+          <div class="text-slate-200 text-sm mt-1">Do the arguments parse + match the schema?</div>
+        </div>
+        <div class="boundary-cell allowed">
+          <span class="font-mono text-[10px] text-emerald-glow">args_minimal</span>
+          <div class="text-slate-200 text-sm mt-1">No oversharing (e.g. PII not needed by tool).</div>
+        </div>
+        <div class="boundary-cell warn">
+          <span class="font-mono text-[10px] text-amber-400">redundant</span>
+          <div class="text-slate-200 text-sm mt-1">Same call already made; observation hasn't changed.</div>
+        </div>
+        <div class="boundary-cell denied">
+          <span class="font-mono text-[10px] text-magenta-glow">out_of_scope</span>
+          <div class="text-slate-200 text-sm mt-1">Tool is outside this agent's allowed policy.</div>
+        </div>
+        <div class="boundary-cell warn">
+          <span class="font-mono text-[10px] text-amber-400">alternatives</span>
+          <div class="text-slate-200 text-sm mt-1">Cheaper / safer tool that would have worked.</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Aggregation -->
+    <div class="grid md:grid-cols-3 gap-5" data-reveal>
+
+      <div class="holo-card p-6">
+        <div class="font-mono text-[10px] text-violet-glow tracking-widest mb-2">USE 01</div>
+        <h4 class="font-orbitron text-sm text-white mb-2">Trajectory-level rollup</h4>
+        <p class="text-xs text-slate-400 leading-relaxed">Aggregate per-step scores into a trajectory-level "tool quality" score. Crosscheck vs the trajectory judge's <code>tool_choice</code> axis.</p>
+      </div>
+
+      <div class="holo-card p-6">
+        <div class="font-mono text-[10px] text-cyan-glow tracking-widest mb-2">USE 02</div>
+        <h4 class="font-orbitron text-sm text-white mb-2">Diagnostic dashboard</h4>
+        <p class="text-xs text-slate-400 leading-relaxed">"30% of <code>refund</code> calls flagged redundant" → fix the agent prompt or guardrail.</p>
+      </div>
+
+      <div class="holo-card p-6">
+        <div class="font-mono text-[10px] text-magenta-glow tracking-widest mb-2">USE 03</div>
+        <h4 class="font-orbitron text-sm text-white mb-2">Training-signal source</h4>
+        <p class="text-xs text-slate-400 leading-relaxed">Per-step scores are reward signal for RL or DPO. The flagged bad steps + suggested alternatives become preference pairs.</p>
+      </div>
+
+    </div>
+
+  </div>
+</section>
+
+<div class="section-divider"></div>
+
+<!-- ============== 7. MULTI-TURN ============== -->
+<section id="dialogue" class="relative py-32 px-6">
+  <div class="orb w-72 h-72 bg-magenta-glow/30" style="top: 30%; right: -80px;"></div>
+
+  <div class="max-w-7xl mx-auto">
+    <div class="text-center mb-16" data-reveal>
+      <span class="section-tag" style="color: var(--c-magenta); border-color: rgba(255,0,229,0.3);">// 07 — JUDGE 03 DEEP DIVE</span>
+      <h2 class="font-orbitron font-bold text-4xl md:text-6xl mt-6 mb-4">
+        <span class="text-white">Multi-Turn</span> <span class="grad-text">Dialogue Judge</span>
+      </h2>
+      <p class="text-slate-400 max-w-3xl mx-auto">For chat-style agents. Single-turn judges miss the failures that build up across a conversation — context drift, contradictions, policy slippage at turn 12.</p>
+    </div>
+
+    <!-- Session transcript example -->
+    <div class="holo-card p-8 md:p-10 mb-10" data-reveal>
+      <div class="font-mono text-xs text-magenta-glow tracking-widest mb-2">// SESSION · 5 TURNS</div>
+      <h3 class="font-orbitron font-bold text-xl text-white mb-4">Per-Turn + Session-Level Scores</h3>
+
+      <div class="space-y-3 font-mono text-[12px]">
+        <div class="rounded-lg border border-violet-glow/20 bg-slate-900/40 p-3 flex items-start gap-3">
+          <div class="text-violet-glow shrink-0 w-12">T1 user</div>
+          <div class="text-slate-300 flex-1">"Hi, I was double-charged in October."</div>
+          <span class="score-badge score-high">5 / 5</span>
+        </div>
+        <div class="rounded-lg border border-cyan-glow/20 bg-slate-900/40 p-3 flex items-start gap-3">
+          <div class="text-cyan-glow shrink-0 w-12">T1 bot</div>
+          <div class="text-slate-300 flex-1">"Sorry to hear — let me pull up your account. Your user ID is U-7281, correct?"</div>
+          <span class="score-badge score-high">grounded</span>
+        </div>
+        <div class="rounded-lg border border-violet-glow/20 bg-slate-900/40 p-3 flex items-start gap-3">
+          <div class="text-violet-glow shrink-0 w-12">T2 user</div>
+          <div class="text-slate-300 flex-1">"Yes. Also, can you change my email while you're at it?"</div>
+          <span class="score-badge score-mid">scope shift</span>
+        </div>
+        <div class="rounded-lg border border-cyan-glow/20 bg-slate-900/40 p-3 flex items-start gap-3">
+          <div class="text-cyan-glow shrink-0 w-12">T2 bot</div>
+          <div class="text-slate-300 flex-1">"Let me handle the duplicate refund first. INV-1102 is a duplicate of INV-1101, refunding $24."</div>
+          <span class="score-badge score-high">scope-held</span>
+        </div>
+        <div class="rounded-lg border border-violet-glow/20 bg-slate-900/40 p-3 flex items-start gap-3">
+          <div class="text-violet-glow shrink-0 w-12">T3 user</div>
+          <div class="text-slate-300 flex-1">"OK and my email?"</div>
+          <span class="score-badge score-high">5 / 5</span>
+        </div>
+        <div class="rounded-lg border border-magenta-glow/30 bg-magenta-glow/5 p-3 flex items-start gap-3">
+          <div class="text-cyan-glow shrink-0 w-12">T3 bot</div>
+          <div class="text-slate-300 flex-1">"For email changes I'll hand you to the account team — one moment." <span class="text-magenta-glow">[said it but then handed off correctly]</span></div>
+          <span class="score-badge score-mid">3 / 5</span>
+        </div>
+        <div class="rounded-lg border border-cyan-glow/20 bg-slate-900/40 p-3 flex items-start gap-3">
+          <div class="text-cyan-glow shrink-0 w-12">T4-T5</div>
+          <div class="text-slate-300 flex-1">Account specialist takes over · email updated · session resolved.</div>
+          <span class="score-badge score-high">resolved</span>
+        </div>
+      </div>
+
+      <!-- Session-level rollup -->
+      <div class="grid md:grid-cols-4 gap-3 mt-6">
+        <div class="rounded-lg border border-emerald-glow/25 bg-emerald-glow/5 p-3 text-center">
+          <div class="font-mono text-[10px] text-slate-500">SESSION RESOLUTION</div>
+          <div class="font-orbitron text-base text-emerald-glow">5 / 5</div>
+        </div>
+        <div class="rounded-lg border border-cyan-glow/25 bg-cyan-glow/5 p-3 text-center">
+          <div class="font-mono text-[10px] text-slate-500">COHERENCE</div>
+          <div class="font-orbitron text-base text-cyan-glow">4.5 / 5</div>
+        </div>
+        <div class="rounded-lg border border-violet-glow/25 bg-violet-glow/5 p-3 text-center">
+          <div class="font-mono text-[10px] text-slate-500">SCOPE ADHERENCE</div>
+          <div class="font-orbitron text-base text-violet-glow">4 / 5</div>
+        </div>
+        <div class="rounded-lg border border-amber-400/25 bg-amber-400/5 p-3 text-center">
+          <div class="font-mono text-[10px] text-slate-500">USER SATISFACTION</div>
+          <div class="font-orbitron text-base text-amber-400">4 / 5</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 5 dialogue-specific failure modes -->
+    <div class="grid md:grid-cols-2 lg:grid-cols-3 gap-5" data-reveal>
+
+      <div class="holo-card p-6">
+        <div class="font-mono text-[10px] text-magenta-glow tracking-widest mb-2">FAILURE 01</div>
+        <h4 class="font-orbitron text-sm text-white mb-2">Context drift</h4>
+        <p class="text-xs text-slate-400 leading-relaxed">Agent forgets a fact from turn 2 by turn 7. Judge prompts must explicitly ask: "are claims consistent with the full prior history?"</p>
+      </div>
+
+      <div class="holo-card p-6">
+        <div class="font-mono text-[10px] text-magenta-glow tracking-widest mb-2">FAILURE 02</div>
+        <h4 class="font-orbitron text-sm text-white mb-2">Contradiction across turns</h4>
+        <p class="text-xs text-slate-400 leading-relaxed">"Your refund will arrive in 3 days" (T2) then "it could take 7-10" (T9). Catch by anchoring claims to turn indices.</p>
+      </div>
+
+      <div class="holo-card p-6">
+        <div class="font-mono text-[10px] text-magenta-glow tracking-widest mb-2">FAILURE 03</div>
+        <h4 class="font-orbitron text-sm text-white mb-2">Scope creep</h4>
+        <p class="text-xs text-slate-400 leading-relaxed">Starts in support, drifts into product advice, then financial advice. Per-turn scope flag catches this.</p>
+      </div>
+
+      <div class="holo-card p-6">
+        <div class="font-mono text-[10px] text-magenta-glow tracking-widest mb-2">FAILURE 04</div>
+        <h4 class="font-orbitron text-sm text-white mb-2">Policy slippage</h4>
+        <p class="text-xs text-slate-400 leading-relaxed">Refuses request in T1, complies after polite repeat in T6. Test re-attack robustness in the same session.</p>
+      </div>
+
+      <div class="holo-card p-6">
+        <div class="font-mono text-[10px] text-magenta-glow tracking-widest mb-2">FAILURE 05</div>
+        <h4 class="font-orbitron text-sm text-white mb-2">Memory bloat</h4>
+        <p class="text-xs text-slate-400 leading-relaxed">Late turns drown in prior context; recent intent gets ignored. Look for "answered previous question, not current one" patterns.</p>
+      </div>
+
+      <div class="holo-card p-6">
+        <div class="font-mono text-[10px] text-emerald-glow tracking-widest mb-2">JUDGE OUTPUT</div>
+        <h4 class="font-orbitron text-sm text-white mb-2">{ per_turn[], session: {...} }</h4>
+        <p class="text-xs text-slate-400 leading-relaxed">Per-turn deltas (was this turn better/worse than baseline?) plus a session-level rollup. Both feed dashboards.</p>
+      </div>
+
+    </div>
+
+  </div>
+</section>
+
+<div class="section-divider"></div>
+
+<!-- ============== 8. VALIDATE ============== -->
+<section id="validate" class="relative py-32 px-6">
+  <div class="orb w-96 h-96 bg-cyan-glow/30" style="bottom: 10%; left: -100px;"></div>
+
+  <div class="max-w-7xl mx-auto">
+    <div class="text-center mb-16" data-reveal>
+      <span class="section-tag" style="color: var(--c-cyan); border-color: rgba(0,240,255,0.3);">// 08 — VALIDATING THE JUDGE</span>
+      <h2 class="font-orbitron font-bold text-4xl md:text-6xl mt-6 mb-4">
+        <span class="text-white">Validating Agent</span> <span class="grad-text">Judges</span>
+      </h2>
+      <p class="text-slate-400 max-w-3xl mx-auto">A judge you haven't validated is a number generator. Compute κ against a human-labeled gold set <em>before</em> trusting any score.</p>
+    </div>
+
+    <!-- Worked agreement example -->
+    <div class="holo-card p-8 md:p-10 mb-10" data-reveal>
+      <div class="flex items-center justify-between mb-5 flex-wrap gap-4">
+        <div>
+          <div class="font-mono text-xs text-cyan-glow tracking-widest mb-2">// JUDGE vs HUMAN GOLD · 200 trajectories</div>
+          <h3 class="font-orbitron font-bold text-xl text-white">Trajectory-Verdict Agreement</h3>
+          <p class="text-xs text-slate-400 mt-1">Verdict collapsed to {pass, fail} for binary κ. Aim ≥ 0.6 before quoting judge scores.</p>
+        </div>
+        <div class="font-mono text-xs">
+          <span class="text-slate-500">κ =</span>
+          <span class="text-emerald-glow text-base ml-1">0.68</span>
+          <span class="text-slate-500 ml-2">(substantial)</span>
+        </div>
+      </div>
+
+      <div class="grid grid-cols-3 gap-2 max-w-2xl mx-auto">
+        <div></div>
+        <div class="agree-axis">HUMAN · PASS</div>
+        <div class="agree-axis">HUMAN · FAIL</div>
+
+        <div class="agree-axis" style="writing-mode: vertical-rl; transform: rotate(180deg); display:flex; align-items:center; justify-content:center;">JUDGE · PASS</div>
+        <div class="agree-cell match">
+          <div class="num">141</div>
+          <div class="lbl">BOTH PASS</div>
+        </div>
+        <div class="agree-cell miss">
+          <div class="num">12</div>
+          <div class="lbl">JUDGE PASS · HUMAN FAIL</div>
+        </div>
+
+        <div class="agree-axis" style="writing-mode: vertical-rl; transform: rotate(180deg); display:flex; align-items:center; justify-content:center;">JUDGE · FAIL</div>
+        <div class="agree-cell miss">
+          <div class="num">16</div>
+          <div class="lbl">JUDGE FAIL · HUMAN PASS</div>
+        </div>
+        <div class="agree-cell match">
+          <div class="num">31</div>
+          <div class="lbl">BOTH FAIL</div>
+        </div>
+      </div>
+
+      <div class="grid md:grid-cols-3 gap-3 mt-6">
+        <div class="rounded-lg border border-cyan-glow/25 bg-cyan-glow/5 p-3 text-center">
+          <div class="font-mono text-[10px] text-slate-500">RAW AGREEMENT</div>
+          <div class="font-orbitron text-base text-cyan-glow">172 / 200 = 0.86</div>
+        </div>
+        <div class="rounded-lg border border-emerald-glow/25 bg-emerald-glow/5 p-3 text-center">
+          <div class="font-mono text-[10px] text-slate-500">COHEN'S κ</div>
+          <div class="font-orbitron text-base text-emerald-glow">0.68</div>
+        </div>
+        <div class="rounded-lg border border-violet-glow/25 bg-violet-glow/5 p-3 text-center">
+          <div class="font-mono text-[10px] text-slate-500">VERDICT</div>
+          <div class="font-orbitron text-base text-violet-glow">PUBLISH</div>
+        </div>
+      </div>
+
+      <div class="mt-5 p-4 rounded-lg bg-amber-400/5 border border-amber-400/25 text-xs text-slate-300 leading-relaxed">
+        <span class="font-mono text-amber-400">// DIAGNOSTIC:</span>
+        Judge is slightly too harsh — 16 false-fails vs 12 false-passes. Inspect those 16 to identify which rubric axis the judge is over-weighting. Refining the prompt usually buys 5-10 κ points.
+      </div>
+    </div>
+
+    <!-- 4-step validation playbook -->
+    <div class="grid md:grid-cols-2 lg:grid-cols-4 gap-4" data-reveal>
+
+      <div class="holo-card p-5">
+        <div class="font-mono text-[10px] text-violet-glow tracking-widest mb-2">STEP 01</div>
+        <h4 class="font-orbitron text-sm text-white mb-2">Build a gold set</h4>
+        <p class="text-xs text-slate-400 leading-relaxed">200-500 trajectories labeled by ≥2 human experts (Module 3.5). Stratify by category.</p>
+      </div>
+
+      <div class="holo-card p-5">
+        <div class="font-mono text-[10px] text-violet-glow tracking-widest mb-2">STEP 02</div>
+        <h4 class="font-orbitron text-sm text-white mb-2">Run the judge</h4>
+        <p class="text-xs text-slate-400 leading-relaxed">Same set, pinned model + seed. Save scores + reasoning fields.</p>
+      </div>
+
+      <div class="holo-card p-5">
+        <div class="font-mono text-[10px] text-violet-glow tracking-widest mb-2">STEP 03</div>
+        <h4 class="font-orbitron text-sm text-white mb-2">Compute agreement</h4>
+        <p class="text-xs text-slate-400 leading-relaxed">κ on the binary verdict; ICC on Likert axes; per-axis confusion. Drill into the disagreements.</p>
+      </div>
+
+      <div class="holo-card p-5">
+        <div class="font-mono text-[10px] text-violet-glow tracking-widest mb-2">STEP 04</div>
+        <h4 class="font-orbitron text-sm text-white mb-2">Iterate the rubric</h4>
+        <p class="text-xs text-slate-400 leading-relaxed">Sharpen anchors on the axes with worst agreement. Re-run. Stop when κ ≥ 0.6 and is stable across slices.</p>
+      </div>
+
+    </div>
+
+  </div>
+</section>
+
+<div class="section-divider"></div>
+
+<!-- ============== 9. MITIGATE ============== -->
+<section id="mitigate" class="relative py-32 px-6">
+
+  <div class="max-w-7xl mx-auto">
+    <div class="text-center mb-16" data-reveal>
+      <span class="section-tag" style="color: var(--c-amber); border-color: rgba(255,184,0,0.3);">// 09 — BIAS MITIGATION</span>
+      <h2 class="font-orbitron font-bold text-4xl md:text-6xl mt-6 mb-4">
+        <span class="text-white">Mitigation</span> <span class="grad-text">Patterns</span>
+      </h2>
+      <p class="text-slate-400 max-w-2xl mx-auto">For every bias, there's a concrete technique that reduces it. Stack them.</p>
+    </div>
+
+    <div data-reveal>
+      <div class="mit-row header">
+        <div>BIAS</div>
+        <div>MITIGATION</div>
+      </div>
+      <div class="mit-row">
+        <div class="text-magenta-glow">Position bias</div>
+        <div class="text-slate-300">Always run pairwise judges <span class="text-emerald-glow">twice</span> with A/B swapped. Average. Drop pair if the two runs disagree on winner.</div>
+      </div>
+      <div class="mit-row">
+        <div class="text-magenta-glow">Length bias</div>
+        <div class="text-slate-300">Add explicit "DO NOT reward longer trajectories" line in the prompt. Track length confound separately and report it.</div>
+      </div>
+      <div class="mit-row">
+        <div class="text-magenta-glow">Verbosity / confidence</div>
+        <div class="text-slate-300">Anchor the rubric on <em>evidence binding</em> rather than tone. Strip "thoughts" before judging when feasible.</div>
+      </div>
+      <div class="mit-row">
+        <div class="text-magenta-glow">Self-preference</div>
+        <div class="text-slate-300">Use a different model family as judge (Claude judging GPT-class agents, and vice versa). Blind the judge to which model produced which trajectory.</div>
+      </div>
+      <div class="mit-row">
+        <div class="text-magenta-glow">Format bias</div>
+        <div class="text-slate-300">Normalize formatting before judging: strip markdown, collapse whitespace. Score signal, not presentation.</div>
+      </div>
+      <div class="mit-row">
+        <div class="text-magenta-glow">Familiarity bias</div>
+        <div class="text-slate-300">List ALL allowed tools in the prompt explicitly. Rubric anchored on "appropriate for the goal" not "common".</div>
+      </div>
+      <div class="mit-row">
+        <div class="text-magenta-glow">Sycophancy</div>
+        <div class="text-slate-300">Neutral, evidence-based prompts. No "should this be a pass?" framings. Pre-register rubric thresholds.</div>
+      </div>
+      <div class="mit-row">
+        <div class="text-cyan-glow">Step-count seduction ★</div>
+        <div class="text-slate-300">Couple judge score with deterministic efficiency metric. Reject judge verdict if it contradicts efficiency &gt; 2σ.</div>
+      </div>
+      <div class="mit-row">
+        <div class="text-cyan-glow">Justification gloss ★</div>
+        <div class="text-slate-300">Score on <em>actions and observations</em>, not the agent's <code>thought:</code> strings. Mask thoughts in some validation runs.</div>
+      </div>
+    </div>
+
+    <!-- 4 advanced patterns -->
+    <div class="grid md:grid-cols-2 lg:grid-cols-4 gap-4 mt-10" data-reveal>
+
+      <div class="holo-card p-5">
+        <div class="font-mono text-[10px] text-emerald-glow tracking-widest mb-2">PATTERN 01</div>
+        <h4 class="font-orbitron text-sm text-white mb-2">Position-swap pairwise</h4>
+        <p class="text-xs text-slate-400 leading-relaxed">Run every pairwise judgment twice with A and B swapped; only count "robust" wins where both runs agree.</p>
+      </div>
+
+      <div class="holo-card p-5">
+        <div class="font-mono text-[10px] text-emerald-glow tracking-widest mb-2">PATTERN 02</div>
+        <h4 class="font-orbitron text-sm text-white mb-2">Score-then-explain (CoT-after)</h4>
+        <p class="text-xs text-slate-400 leading-relaxed">Have the judge reason <em>before</em> emitting a score (or score-then-explain in cheap settings). Forces deliberation.</p>
+      </div>
+
+      <div class="holo-card p-5">
+        <div class="font-mono text-[10px] text-emerald-glow tracking-widest mb-2">PATTERN 03</div>
+        <h4 class="font-orbitron text-sm text-white mb-2">Jury of judges</h4>
+        <p class="text-xs text-slate-400 leading-relaxed">Use 3+ different model families as judges; majority vote. Catches family-specific biases. Most expensive.</p>
+      </div>
+
+      <div class="holo-card p-5">
+        <div class="font-mono text-[10px] text-emerald-glow tracking-widest mb-2">PATTERN 04</div>
+        <h4 class="font-orbitron text-sm text-white mb-2">Cross-check with code</h4>
+        <p class="text-xs text-slate-400 leading-relaxed">Whenever a deterministic check exists (tool F1, task completion), reject judge verdicts that contradict it.</p>
+      </div>
+
+    </div>
+
+  </div>
+</section>
+
+<div class="section-divider"></div>
+
+<!-- ============== 10. SUMMARY ============== -->
+<section id="summary" class="relative py-32 px-6">
+  <div class="max-w-6xl mx-auto">
+    <div class="text-center mb-16" data-reveal>
+      <span class="section-tag" style="color: var(--c-emerald); border-color: rgba(0,255,163,0.3);">// 10 — DOWNLOAD SUMMARY</span>
+      <h2 class="font-orbitron font-bold text-4xl md:text-6xl mt-6 mb-4">
+        <span class="text-white">Key</span> <span class="grad-text">Takeaways</span>
+      </h2>
+    </div>
+
+    <div class="grid md:grid-cols-2 gap-5">
+
+      <div class="holo-card p-7" data-reveal>
+        <div class="flex items-center gap-3 mb-3">
+          <i data-lucide="rewind" class="w-5 h-5 text-cyan-glow"></i>
+          <span class="font-mono text-xs text-cyan-glow tracking-widest">TAKEAWAY 01</span>
+        </div>
+        <p class="text-slate-200 leading-relaxed">RAG-era judge biases carry forward into agent judges <span class="neon-cyan font-semibold">unchanged</span> — and two new ones (step-count seduction, justification gloss) join the list.</p>
+      </div>
+
+      <div class="holo-card p-7" data-reveal>
+        <div class="flex items-center gap-3 mb-3">
+          <i data-lucide="git-graph" class="w-5 h-5 text-violet-glow"></i>
+          <span class="font-mono text-xs text-violet-glow tracking-widest">TAKEAWAY 02</span>
+        </div>
+        <p class="text-slate-200 leading-relaxed">Agents require <span class="neon-violet font-semibold">four agent-specific judge types</span>: trajectory, tool-call, multi-turn dialogue, and pairwise. Match the judge to the question.</p>
+      </div>
+
+      <div class="holo-card p-7" data-reveal>
+        <div class="flex items-center gap-3 mb-3">
+          <i data-lucide="ruler" class="w-5 h-5 text-emerald-glow"></i>
+          <span class="font-mono text-xs text-emerald-glow tracking-widest">TAKEAWAY 03</span>
+        </div>
+        <p class="text-slate-200 leading-relaxed">Trajectory judges use a <span class="neon-emerald font-semibold">5-axis rubric</span> — completion, tool choice, efficiency, evidence, safety — and force structured output.</p>
+      </div>
+
+      <div class="holo-card p-7" data-reveal>
+        <div class="flex items-center gap-3 mb-3">
+          <i data-lucide="wrench" class="w-5 h-5 text-cyan-glow"></i>
+          <span class="font-mono text-xs text-cyan-glow tracking-widest">TAKEAWAY 04</span>
+        </div>
+        <p class="text-slate-200 leading-relaxed">Tool-call judges emit <span class="neon-cyan font-semibold">six booleans + one score</span> per step. Cheap, parallelizable, doubles as training signal.</p>
+      </div>
+
+      <div class="holo-card p-7" data-reveal>
+        <div class="flex items-center gap-3 mb-3">
+          <i data-lucide="messages-square" class="w-5 h-5 text-magenta-glow"></i>
+          <span class="font-mono text-xs text-magenta-glow tracking-widest">TAKEAWAY 05</span>
+        </div>
+        <p class="text-slate-200 leading-relaxed">Multi-turn judges score <span class="neon-magenta font-semibold">per-turn AND session-level</span>; they catch context drift, contradiction, scope creep, policy slippage, memory bloat.</p>
+      </div>
+
+      <div class="holo-card p-7" data-reveal>
+        <div class="flex items-center gap-3 mb-3">
+          <i data-lucide="handshake" class="w-5 h-5 text-amber-400"></i>
+          <span class="font-mono text-xs text-amber-400 tracking-widest">TAKEAWAY 06</span>
+        </div>
+        <p class="text-slate-200 leading-relaxed">An unvalidated judge is a number generator. Validate against a <span class="neon-amber font-semibold">human gold set</span>; aim for κ ≥ 0.6 before quoting.</p>
+      </div>
+
+      <div class="holo-card p-7" data-reveal>
+        <div class="flex items-center gap-3 mb-3">
+          <i data-lucide="shield" class="w-5 h-5 text-violet-glow"></i>
+          <span class="font-mono text-xs text-violet-glow tracking-widest">TAKEAWAY 07</span>
+        </div>
+        <p class="text-slate-200 leading-relaxed">For every bias there's a concrete mitigation: <span class="neon-violet font-semibold">position-swap, format-normalize, cross-family judging, jury voting, score-then-explain</span>.</p>
+      </div>
+
+      <div class="holo-card p-7" data-reveal>
+        <div class="flex items-center gap-3 mb-3">
+          <i data-lucide="git-pull-request-arrow" class="w-5 h-5 text-emerald-glow"></i>
+          <span class="font-mono text-xs text-emerald-glow tracking-widest">TAKEAWAY 08</span>
+        </div>
+        <p class="text-slate-200 leading-relaxed">Whenever a deterministic check exists (tool F1, task completion), <span class="neon-emerald font-semibold">override the judge</span>. Code wins ties.</p>
+      </div>
+
+    </div>
+  </div>
+</section>
+
+<div class="section-divider"></div>
+
+<!-- ============== 11. CHECKPOINT ============== -->
+
+<div class="section-divider"></div>
+
+<!-- ============== RESOURCES ============== -->
+<section id="resources" class="relative py-32 px-6">
+  <div class="max-w-7xl mx-auto">
+    <div class="text-center mb-16" data-reveal>
+      <span class="section-tag">// LEARNING RESOURCES</span>
+      <h2 class="font-orbitron font-bold text-4xl md:text-6xl mt-6 mb-4">
+        <span class="text-white">Learn &amp;</span> <span class="grad-text">Practice</span>
+      </h2>
+      <p class="text-slate-400 max-w-2xl mx-auto">Deepen your understanding with curated articles and get hands-on with official reference implementations.</p>
+    </div>
+
+    <div class="grid gap-6 max-w-5xl mx-auto">
+      <!-- Three-Tier Learning Resources -->
+      <div class="space-y-4">
+        <!-- Tier 1: Progressive Article -->
+        <div class="holo-card p-6" data-reveal>
+          <div class="flex items-start gap-3 mb-4">
+            <div class="w-10 h-10 rounded-lg bg-cyan-glow/15 border border-cyan-glow/30 flex items-center justify-center flex-shrink-0">
+              <i data-lucide="lightbulb" class="w-5 h-5 text-cyan-glow"></i>
+            </div>
+            <div>
+              <h4 class="font-orbitron font-semibold text-white">Progressive Article</h4>
+              <p class="text-xs text-slate-400 mt-1">Stuck? Start here - beginner-friendly explanation</p>
+            </div>
+          </div>
+          <p class="text-sm text-slate-300 mb-4 leading-relaxed">
+            <span class="text-cyan-glow font-semibold">Agent Judge Biases and New Failure Modes</span><br/>
+            <span class="text-slate-500 text-xs">Evaluation Guide - How LLM judges trained on RAG fail on agents and what to watch for</span>
+          </p>
+          <a href="https://www.example.com/agent-judge-biases" target="_blank" class="resource-btn learn-more">
+            <i data-lucide="external-link" class="w-4 h-4"></i>
+            <span>READ ARTICLE</span>
+          </a>
+        </div>
+
+        <!-- Tier 2: Canonical Article -->
+        <div class="holo-card p-6" data-reveal>
+          <div class="flex items-start gap-3 mb-4">
+            <div class="w-10 h-10 rounded-lg bg-violet-glow/15 border border-violet-glow/30 flex items-center justify-center flex-shrink-0">
+              <i data-lucide="scroll" class="w-5 h-5 text-violet-glow"></i>
+            </div>
+            <div>
+              <h4 class="font-orbitron font-semibold text-white">Canonical Article</h4>
+              <p class="text-xs text-slate-400 mt-1">Authoritative source - official docs or research paper</p>
+            </div>
+          </div>
+          <p class="text-sm text-slate-300 mb-4 leading-relaxed">
+            <span class="text-violet-glow font-semibold">LLM-as-Judge Trajectory Evaluator</span><br/>
+            <span class="text-slate-500 text-xs">LangChain - Four judge types and their units of evaluation for agent trajectories</span>
+          </p>
+          <a href="https://docs.langchain.com/langsmith/trajectory-evals#llm-as-judge-trajectory-evaluator" target="_blank" class="resource-btn learn-more">
+            <i data-lucide="external-link" class="w-4 h-4"></i>
+            <span>READ RESEARCH</span>
+          </a>
+        </div>
+
+        <!-- Tier 3: GitHub Repository -->
+        <div class="holo-card p-6" data-reveal>
+          <div class="flex items-start gap-3 mb-4">
+            <div class="w-10 h-10 rounded-lg bg-magenta-glow/15 border border-magenta-glow/30 flex items-center justify-center flex-shrink-0">
+              <i data-lucide="github" class="w-5 h-5 text-magenta-glow"></i>
+            </div>
+            <div>
+              <h4 class="font-orbitron font-semibold text-white">GitHub Repository</h4>
+              <p class="text-xs text-slate-400 mt-1">Hands-on - reference implementation and examples</p>
+            </div>
+          </div>
+          <p class="text-sm text-slate-300 mb-4 leading-relaxed">
+            <span class="text-magenta-glow font-semibold">LangChain AgentEvals + FastChat LLM Judges</span><br/>
+            <span class="text-slate-500 text-xs">Reference implementations of LLM-based and comparative judges for agents</span>
+          </p>
+          <a href="https://github.com/langchain-ai/agentevals" target="_blank" class="resource-btn practice">
+            <i data-lucide="github" class="w-4 h-4"></i>
+            <span>AGENTEVALS REPO</span>
+          </a>
+          <a href="https://github.com/lm-sys/FastChat" target="_blank" class="resource-btn practice" style="margin-top: 8px;">
+            <i data-lucide="github" class="w-4 h-4"></i>
+            <span>FASTCHAT REPO</span>
+          </a>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section id="checkpoint" class="relative py-32 px-6">
+  <div class="orb w-96 h-96 bg-emerald-glow/30" style="bottom: 20%; right: -100px;"></div>
+
+  <div class="max-w-5xl mx-auto">
+    <div class="text-center mb-12" data-reveal>
+      <span class="section-tag" style="color: var(--c-amber); border-color: rgba(255,184,0,0.3);">// 11 — MODULE CHECKPOINT</span>
+      <h2 class="font-orbitron font-bold text-4xl md:text-6xl mt-6 mb-4">
+        <span class="text-white">Self-</span><span class="grad-text">Verification</span>
+      </h2>
+      <p class="text-slate-400 max-w-2xl mx-auto">Tap each statement once you can defend it without notes. All seven green → you're cleared for Module 3.7.</p>
+    </div>
+
+    <div class="space-y-3" data-reveal>
+      <div class="check-item" data-check>
+        <div class="check-box"><i data-lucide="check" class="w-3.5 h-3.5 text-black opacity-0"></i></div>
+        <div class="flex-1">
+          <div class="text-white font-medium">I can recall the canonical RAG-era judge biases and name the two new biases that emerge in agent judging.</div>
+        </div>
+      </div>
+      <div class="check-item" data-check>
+        <div class="check-box"><i data-lucide="check" class="w-3.5 h-3.5 text-black opacity-0"></i></div>
+        <div class="flex-1">
+          <div class="text-white font-medium">I can name the four agent judge types and the unit of evaluation each uses.</div>
+        </div>
+      </div>
+      <div class="check-item" data-check>
+        <div class="check-box"><i data-lucide="check" class="w-3.5 h-3.5 text-black opacity-0"></i></div>
+        <div class="flex-1">
+          <div class="text-white font-medium">I can design a 5-axis trajectory rubric with anchored 1-5 scales and structured output.</div>
+        </div>
+      </div>
+      <div class="check-item" data-check>
+        <div class="check-box"><i data-lucide="check" class="w-3.5 h-3.5 text-black opacity-0"></i></div>
+        <div class="flex-1">
+          <div class="text-white font-medium">I can write a tool-call judge that emits the six binary checks and one rolled-up score.</div>
+        </div>
+      </div>
+      <div class="check-item" data-check>
+        <div class="check-box"><i data-lucide="check" class="w-3.5 h-3.5 text-black opacity-0"></i></div>
+        <div class="flex-1">
+          <div class="text-white font-medium">I can build a multi-turn judge that flags context drift, contradiction, and scope creep across N turns.</div>
+        </div>
+      </div>
+      <div class="check-item" data-check>
+        <div class="check-box"><i data-lucide="check" class="w-3.5 h-3.5 text-black opacity-0"></i></div>
+        <div class="flex-1">
+          <div class="text-white font-medium">I can compute κ between judge and human gold labels and use the diagnostic to refine the rubric.</div>
+        </div>
+      </div>
+      <div class="check-item" data-check>
+        <div class="check-box"><i data-lucide="check" class="w-3.5 h-3.5 text-black opacity-0"></i></div>
+        <div class="flex-1">
+          <div class="text-white font-medium">I can pair every known bias with at least one concrete mitigation pattern in my judging pipeline.</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="mt-10 holo-card p-6" data-reveal>
+      <div class="flex items-center justify-between mb-3">
+        <div class="font-mono text-xs text-violet-glow tracking-widest">CHECKPOINT PROGRESS</div>
+        <div class="font-orbitron font-bold"><span id="check-count" class="text-violet-glow">0</span><span class="text-slate-500"> / 7</span></div>
+      </div>
+      <div class="progress-bar">
+        <div id="check-progress" class="progress-fill" style="width: 0%;"></div>
+      </div>
+      <div id="check-status" class="mt-3 font-mono text-xs text-slate-500">// Awaiting verification...</div>
+    </div>
+  </div>
+</section>
+
+<div class="section-divider"></div>
+
+<!-- ============== 12. NEXT MODULE ============== -->
+<section id="next" class="relative py-32 px-6">
+  <div class="absolute inset-0 flex items-center justify-center pointer-events-none">
+    <div class="ring-glow"></div>
+    <div class="ring-glow"></div>
+  </div>
+
+  <div class="max-w-4xl mx-auto text-center relative z-10">
+    <div data-reveal>
+      <span class="section-tag" style="color: var(--c-magenta); border-color: rgba(255,0,229,0.3);">// 12 — UPLINK READY</span>
+      <h2 class="font-orbitron font-bold text-4xl md:text-6xl mt-6 mb-4">
+        <span class="text-white">Next</span> <span class="grad-text">Mission</span>
+      </h2>
+    </div>
+
+    <div class="holo-card p-8 md:p-12 mt-10 text-left" data-reveal>
+      <div class="flex flex-col md:flex-row items-start md:items-center justify-between gap-6 mb-6">
+        <div>
+          <div class="flex items-center gap-2 mb-3">
+            <span class="track-badge">TRACK 3</span>
+            <span class="track-badge" style="color: var(--c-magenta); border-color: rgba(255,0,229,0.3);">MODULE 3.7</span>
+          </div>
+          <h3 class="font-orbitron font-bold text-2xl md:text-3xl text-white">Benchmark Suites for Agents</h3>
+          <p class="text-slate-400 text-sm mt-2 max-w-xl">SWE-bench, AgentBench, WebArena, GAIA, τ-bench, MT-Bench, HumanEval/MBPP — what each measures and how to build your own domain eval set.</p>
+        </div>
+        <div class="w-20 h-20 rounded-2xl bg-gradient-to-br from-violet-glow/20 to-magenta-glow/20 border border-violet-glow/30 flex items-center justify-center flex-shrink-0">
+          <i data-lucide="arrow-right" class="w-8 h-8 text-violet-glow"></i>
+        </div>
+      </div>
+
+      <div class="grid grid-cols-2 md:grid-cols-4 gap-3 mb-8">
+        <div class="p-3 rounded-lg bg-violet-glow/5 border border-violet-glow/20 text-center">
+          <div class="font-mono text-[10px] text-slate-500 mb-1">ESTIMATED</div>
+          <div class="font-orbitron text-sm text-violet-glow">~50 MIN</div>
+        </div>
+        <div class="p-3 rounded-lg bg-magenta-glow/5 border border-magenta-glow/20 text-center">
+          <div class="font-mono text-[10px] text-slate-500 mb-1">TYPE</div>
+          <div class="font-orbitron text-sm text-magenta-glow">REFERENCE</div>
+        </div>
+        <div class="p-3 rounded-lg bg-cyan-glow/5 border border-cyan-glow/20 text-center">
+          <div class="font-mono text-[10px] text-slate-500 mb-1">CODE</div>
+          <div class="font-orbitron text-sm text-cyan-glow">DOMAIN SET</div>
+        </div>
+        <div class="p-3 rounded-lg bg-emerald-glow/5 border border-emerald-glow/20 text-center">
+          <div class="font-mono text-[10px] text-slate-500 mb-1">DIFFICULTY</div>
+          <div class="font-orbitron text-sm text-emerald-glow">★★★☆☆</div>
+        </div>
+      </div>
+
+      <div class="flex flex-wrap gap-3">
+        <button class="cta-btn">
+          <span>BEGIN MODULE 3.7</span>
+          <i data-lucide="arrow-up-right" class="w-5 h-5"></i>
+        </button>
+        <button class="px-8 py-[18px] rounded-xl border border-violet-glow/40 text-violet-glow font-orbitron font-semibold tracking-widest hover:bg-violet-glow/10 transition text-sm flex items-center gap-2">
+          <i data-lucide="layout-grid" class="w-4 h-4"></i>
+          TRACK MAP
+        </button>
+      </div>
+    </div>
+
+    <div class="mt-12 font-mono text-[10px] text-slate-600 tracking-widest" data-reveal>
+      AGENTIC AI ACADEMY // COURSE 02 — AUTONOMOUS SYSTEMS // MODULE 3.6 — END OF TRANSMISSION
+    </div>
+  </div>
+</section>
+
+<!-- ============== SCRIPTS ============== -->
+<script>
+  lucide.createIcons();
+  gsap.registerPlugin(ScrollTrigger);
+
+  gsap.from('[data-hero-anim]', {
+    y: 20, opacity: 0, duration: 0.5, ease: 'power2.out', stagger: 0.06
+  });
+
+  gsap.utils.toArray('[data-reveal]').forEach(el => {
+    gsap.from(el, {
+      y: 24, opacity: 0, duration: 0.5, ease: 'power2.out',
+      scrollTrigger: { trigger: el, start: 'top 92%', once: true }
+    });
+  });
+  window.addEventListener('load', () => ScrollTrigger.refresh());
+
+  document.querySelectorAll('[data-counter]').forEach(el => {
+    const target = +el.dataset.counter;
+    const suffix = el.dataset.suffix || '';
+    ScrollTrigger.create({
+      trigger: el, start: 'top 90%',
+      onEnter: () => {
+        gsap.to({ v: 0 }, {
+          v: target, duration: 2, ease: 'power2.out',
+          onUpdate: function() { el.textContent = Math.round(this.targets()[0].v) + suffix; }
+        });
+      }
+    });
+  });
+
+  const sections = document.querySelectorAll('section[id]');
+  const navDots = document.querySelectorAll('.nav-dot');
+  window.addEventListener('scroll', () => {
+    const y = window.scrollY + window.innerHeight * 0.4;
+    sections.forEach(sec => {
+      if (y >= sec.offsetTop && y < sec.offsetTop + sec.offsetHeight) {
+        navDots.forEach(d => d.classList.toggle('active', d.dataset.section === sec.id));
+      }
+    });
+  });
+
+  // Code tabs
+  document.querySelectorAll('.tab-pill[data-tab]').forEach(tab => {
+    tab.addEventListener('click', () => {
+      const group = tab.parentElement;
+      group.querySelectorAll('.tab-pill').forEach(t => t.classList.remove('active'));
+      tab.classList.add('active');
+      document.querySelectorAll('.tab-panel').forEach(p => p.classList.add('hidden'));
+      const panel = document.querySelector(`[data-panel="${tab.dataset.tab}"]`);
+      if (panel) panel.classList.remove('hidden');
+    });
+  });
+
+  // Checkpoint
+  const checks = document.querySelectorAll('[data-check]');
+  const checkCount = document.getElementById('check-count');
+  const checkProgress = document.getElementById('check-progress');
+  const checkStatus = document.getElementById('check-status');
+  const totalChecks = checks.length;
+  const total = checks.length;
+  const statusMsgs = [
+    '// Awaiting verification...',
+    '// 1 of 7 confirmed. Bias catalog refreshed.',
+    '// 2 of 7 confirmed. Judge types mapped.',
+    '// 3 of 7 confirmed. Trajectory rubric set.',
+    '// 4 of 7 confirmed. Tool-call judging ready.',
+    '// 5 of 7 confirmed. Multi-turn covered.',
+    '// 6 of 7 confirmed. Validation pipeline locked.',
+    '// ✓ ALL CHECKS GREEN — CLEARED FOR MODULE 3.7.'
+  ];
+  checks.forEach(c => {
+    c.addEventListener('click', () => {
+      c.classList.toggle('done');
+      const icon = c.querySelector('.check-box svg, .check-box i');
+      if (icon) {
+        icon.style.opacity = c.classList.contains('done') ? '1' : '0';
+      }
+      const done = document.querySelectorAll('[data-check].done').length;
+      checkCount.textContent = done;
+      checkProgress.style.width = (done / total * 100) + '%';
+      checkStatus.textContent = statusMsgs[done] || ('// ' + done + ' of ' + totalChecks + ' confirmed.');
+      checkStatus.style.color = done === total ? 'var(--c-emerald)' : '';
+    });
+  });
+</script>
+
+</body>
+</html>

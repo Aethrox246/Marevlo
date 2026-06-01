@@ -1,0 +1,453 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Miller-Rabin Primality Test - Visualization</title>
+    <style>
+        :root {
+            --bg-page: #0d1117;
+            --bg-surface: #161b22;
+            --bg-input: #0d1117;
+            --border-main: #30363d;
+            --btn-bg: #21262d;
+            --btn-hover: #2d333b;
+            --text-main: #c9d1d9;
+            --text-dim: #8b949e;
+            --accent-orange: #e3b341;
+            --accent-blue: #388bfd;
+            --accent-green: #3fb950;
+            --accent-red: #f85149;
+            --accent-purple: #a371f7;
+        }
+
+        * { box-sizing: border-box; }
+        body {
+            background-color: var(--bg-page);
+            color: var(--text-main);
+            font-family: system-ui, -apple-system, sans-serif;
+            margin: 0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            min-height: 100vh;
+            padding-bottom: 40px;
+        }
+
+        /* INPUT BAR */
+        .input-bar {
+            width: 100%;
+            background-color: var(--bg-surface);
+            padding: 12px 16px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 8px;
+            border-bottom: 1px solid var(--border-main);
+            flex-wrap: wrap;
+        }
+        label.ui-label { font-family: 'Courier New', monospace; font-size: 13px; color: var(--text-dim); }
+        input[type="number"] {
+            background: var(--bg-input);
+            border: 1px solid var(--border-main);
+            color: var(--text-main);
+            height: 32px;
+            border-radius: 6px;
+            padding: 0 10px;
+            width: 160px;
+            font-size: 13px;
+        }
+
+        button {
+            height: 32px; border-radius: 6px; padding: 0 14px; background: var(--btn-bg);
+            border: 1px solid var(--border-main); color: var(--text-main); font-size: 13px; cursor: pointer;
+            transition: background 0.2s ease;
+        }
+        button:hover { background: var(--btn-hover); }
+
+        /* VISUALIZATION */
+        .visual-container { margin-top: 30px; display: flex; flex-direction: column; align-items: center; gap: 20px; width: 100%; }
+        .tiles-wrapper { 
+            display: flex; gap: 16px; flex-wrap: wrap; justify-content: center; 
+            max-width: 900px; min-height: 110px; position: relative;
+        }
+        
+        .tile-unit { display: flex; flex-direction: column; align-items: center; gap: 6px; position: relative; }
+        .tile {
+            min-width: 62px; height: 62px; display: flex; align-items: center; justify-content: center;
+            border-radius: 8px; font-size: 23px; font-weight: 600; font-family: 'Courier New', monospace;
+            transition: all 0.3s ease; border: 2px solid var(--border-main); background: #21262d;
+            color: var(--text-main);
+        }
+        .tile-index { font-size: 11px; color: var(--text-dim); font-family: monospace; }
+
+        .tile.candidate { background: #2a1600; border-color: var(--accent-orange); color: var(--accent-orange); transform: scale(1.15); box-shadow: 0 0 14px rgba(227,179,65,0.5); }
+        .tile.winning { background: #0f2a1a; border-color: var(--accent-green); color: var(--accent-green); transform: scale(1.1); box-shadow: 0 0 12px var(--accent-green); }
+        .tile.failed { background: #2a0d0d; border-color: var(--accent-red); color: var(--accent-red); transform: scale(1.12); box-shadow: 0 0 12px var(--accent-red); }
+        .tile.done { opacity: 0.55; background: #161b22; border-color: var(--border-main); color: var(--text-dim); }
+
+        /* PANEL */
+        .action-panel {
+            margin-top: 40px; background: var(--bg-surface); border: 1px solid var(--border-main);
+            border-radius: 6px; padding: 16px 26px; width: 760px; text-align: center; 
+            font-family: monospace; min-height: 100px; line-height: 1.6;
+        }
+
+        /* INFO PANEL */
+        .info-panel { margin-top: 16px; display: flex; gap: 16px; flex-wrap: wrap; justify-content: center; }
+        .info-cell {
+            background: var(--bg-surface); border: 1px solid var(--border-main); border-radius: 6px;
+            padding: 11px 20px; display: flex; flex-direction: column; align-items: center; 
+            min-width: 135px; gap: 6px;
+        }
+        .info-label { font-size: 11px; color: var(--text-dim); }
+        .info-value { font-family: monospace; font-size: 17px; font-weight: 700; }
+
+        /* RESULT */
+        .result-display { margin-top: 16px; display: flex; flex-direction: column; align-items: center; }
+        #res-val { font-size: 24px; color: var(--text-dim); font-family: monospace; transition: all 0.3s; font-weight: bold; }
+        .pop { animation: popAnim 420ms ease; color: var(--accent-green) !important; font-size: 30px !important; text-shadow: 0 0 18px var(--accent-green); }
+        .pop-false { animation: popAnim 420ms ease; color: var(--accent-red) !important; font-size: 30px !important; text-shadow: 0 0 18px var(--accent-red); }
+
+        @keyframes popAnim { 0%{transform:scale(1)} 50%{transform:scale(1.22)} 100%{transform:scale(1)} }
+
+        .status-bar { margin-top: 12px; font-size: 13px; color: var(--text-dim); height: 1.5em; text-align: center; width: 720px; }
+
+        /* CONTROLS */
+        .controls { margin-top: 30px; display: flex; align-items: center; gap: 12px; }
+        input[type="range"] { accent-color: var(--accent-blue); width: 130px; cursor: pointer; }
+
+        /* LEGEND */
+        .legend { margin-top: 18px; display: flex; gap: 22px; flex-wrap: wrap; justify-content: center; max-width: 900px; }
+        .legend-item { display: flex; align-items: center; font-size: 12.5px; color: var(--text-dim); }
+        .dot { width: 13px; height: 13px; border-radius: 3px; margin-right: 8px; display: inline-block; }
+
+        /* LOG */
+        .log-panel {
+            margin-top: 18px; background: var(--bg-page); border: 1px solid var(--border-main);
+            border-radius: 6px; padding: 16px 22px; width: 780px; max-width: 95%; height: 150px;
+            overflow-y: auto; font-family: 'Courier New', monospace; font-size: 13px; line-height: 1.45;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="input-bar">
+        <label class="ui-label">n =</label>
+        <input type="number" id="num-input" value="29" min="2">
+        <button onclick="loadCustom()">Load</button>
+        <button onclick="loadExample(29)">Ex 1 (29 - Prime)</button>
+        <button onclick="loadExample(15)">Ex 2 (15 - Composite)</button>
+    </div>
+
+    <div class="visual-container">
+        <div class="ui-label">Miller-Rabin Primality Test</div>
+        <div class="tiles-wrapper" id="tiles-container"></div>
+    </div>
+
+    <div class="action-panel" id="main-panel">—</div>
+
+    <div class="info-panel">
+        <div class="info-cell">
+            <span class="info-label">Base a</span>
+            <span class="info-value" id="val-a" style="color: var(--accent-orange);">—</span>
+        </div>
+        <div class="info-cell">
+            <span class="info-label">s, d (n-1 = 2^s × d)</span>
+            <span class="info-value" id="val-sd" style="color: var(--accent-blue);">—</span>
+        </div>
+        <div class="info-cell">
+            <span class="info-label">Current x</span>
+            <span class="info-value" id="val-x" style="color: var(--accent-green);">—</span>
+        </div>
+    </div>
+
+    <div class="result-display">
+        <span class="ui-label" style="margin-bottom: 6px;">Is Prime?</span>
+        <span id="res-val">—</span>
+    </div>
+
+    <div class="status-bar" id="status-text"></div>
+
+    <div class="controls">
+        <button onclick="reset()">↺ Reset</button>
+        <button onclick="back()">← Back</button>
+        <button onclick="togglePlay()" id="play-btn">Play</button>
+        <button onclick="next()">Next →</button>
+        <div class="controls" style="margin-top:0">
+            <span class="ui-label" style="margin-right:5px; font-size:11px">Speed</span>
+            <input type="range" id="speed-slider" min="0" max="2" value="1">
+        </div>
+    </div>
+
+    <div class="legend">
+        <div class="legend-item"><span class="dot" style="background:var(--bg-surface); border:1px solid var(--accent-orange)"></span> Testing Base</div>
+        <div class="legend-item"><span class="dot" style="background:var(--accent-green); border:1px solid var(--accent-green)"></span> Passes</div>
+        <div class="legend-item"><span class="dot" style="background:var(--accent-red); border:1px solid var(--accent-red)"></span> Fails (Composite)</div>
+    </div>
+
+    <div class="log-panel" id="log"></div>
+
+    <script>
+        let inputN = 29;
+        let steps = [];
+        let stepIndex = 0;
+        let timer = null;
+        const delays = [1600, 800, 400];
+
+        function init() { loadExample(29); }
+
+        function loadExample(newN) {
+            inputN = parseInt(newN);
+            document.getElementById('num-input').value = inputN;
+            generateSteps();
+            reset();
+        }
+
+        function loadCustom() {
+            const val = parseInt(document.getElementById('num-input').value);
+            if (!isNaN(val) && val >= 2) {
+                loadExample(val);
+            } else {
+                alert("Please enter a valid integer ≥ 2");
+            }
+        }
+
+        function generateSteps() {
+            steps = [];
+            const n = inputN;
+
+            // INIT
+            steps.push({
+                type: 'init',
+                panel: `Miller-Rabin Primality Test<br>n = <b>${n}</b>`,
+                statusText: `Starting test on ${n}`,
+                log: `n = ${n}`,
+                logColor: 'var(--text-dim)',
+                a: '—',
+                sd: '—',
+                x: '—'
+            });
+
+            if (n < 2) {
+                steps.push({ type: 'final', panel: `<span style="color:var(--accent-red)">${n} ≤ 1 → Not prime</span>`, statusText: `False`, log: `n < 2 → False`, logColor: 'var(--accent-red)', bold: true, a: '—', sd: '—', x: '—' });
+                return;
+            }
+            if (n === 2 || n === 3) {
+                steps.push({ type: 'final', panel: `<span style="color:var(--accent-green)">${n} is prime</span>`, statusText: `True`, log: `n is 2 or 3 → True`, logColor: 'var(--accent-green)', bold: true, a: '—', sd: '—', x: '—' });
+                return;
+            }
+            if (n % 2 === 0) {
+                steps.push({ type: 'final', panel: `<span style="color:var(--accent-red)">${n} is even → Composite</span>`, statusText: `False`, log: `Even number > 2 → False`, logColor: 'var(--accent-red)', bold: true, a: '—', sd: '—', x: '—' });
+                return;
+            }
+
+            // Decompose n-1 = 2^s * d
+            let s = 0;
+            let d = n - 1;
+            while (d % 2 === 0) {
+                d = Math.floor(d / 2);
+                s++;
+            }
+
+            steps.push({
+                type: 'decompose',
+                panel: `n-1 = <b>2<sup>${s}</sup> × ${d}</b> (d odd)`,
+                statusText: `Decomposed: s=${s}, d=${d}`,
+                log: `n-1 = ${n-1} = 2^${s} * ${d}`,
+                logColor: 'var(--accent-blue)',
+                a: '—',
+                sd: `s=${s}, d=${d}`,
+                x: '—'
+            });
+
+            // Test with bases (for demo we use fixed small bases)
+            const bases = [2, 3, 5].filter(a => a < n-1);
+
+            let isPrime = true;
+
+            for (let a of bases) {
+                steps.push({
+                    type: 'base',
+                    panel: `Testing random base a = <b>${a}</b>`,
+                    statusText: `Base = ${a}`,
+                    log: `Testing a = ${a}`,
+                    logColor: 'var(--accent-orange)',
+                    a: a,
+                    sd: `s=${s}, d=${d}`,
+                    x: '—'
+                });
+
+                // Compute x = a^d mod n
+                let x = 1;
+                let basePow = a % n;
+                let exp = d;
+                while (exp > 0) {
+                    if (exp % 2 === 1) x = (x * basePow) % n;
+                    basePow = (basePow * basePow) % n;
+                    exp = Math.floor(exp / 2);
+                }
+
+                steps.push({
+                    type: 'power',
+                    panel: `x = a<sup>d</sup> mod n = <b>${x}</b>`,
+                    statusText: `x = ${x}`,
+                    log: `x = pow(${a}, ${d}, ${n}) = ${x}`,
+                    logColor: 'var(--text-main)',
+                    a: a,
+                    sd: `s=${s}, d=${d}`,
+                    x: x
+                });
+
+                if (x === 1 || x === n - 1) {
+                    steps.push({
+                        type: 'pass',
+                        panel: `x == 1 or x == n-1 → Pass for base ${a}`,
+                        statusText: `Base ${a} passes`,
+                        log: `✓ Base ${a} passes`,
+                        logColor: 'var(--accent-green)',
+                        a: a,
+                        sd: `s=${s}, d=${d}`,
+                        x: x
+                    });
+                    continue;
+                }
+
+                let passed = false;
+                let current = x;
+                for (let r = 1; r < s; r++) {
+                    current = (current * current) % n;
+
+                    steps.push({
+                        type: 'square',
+                        panel: `r=${r}: x² mod n = <b>${current}</b>`,
+                        statusText: `Squaring r=${r}`,
+                        log: `r=${r}: x = ${current}`,
+                        logColor: current === n-1 ? 'var(--accent-green)' : 'var(--text-main)',
+                        a: a,
+                        sd: `s=${s}, d=${d}`,
+                        x: current
+                    });
+
+                    if (current === n - 1) {
+                        passed = true;
+                        steps.push({
+                            type: 'pass',
+                            panel: `Found x == n-1 at r=${r} → Pass`,
+                            statusText: `Base ${a} passes`,
+                            log: `✓ Found x == n-1`,
+                            logColor: 'var(--accent-green)',
+                            a: a,
+                            sd: `s=${s}, d=${d}`,
+                            x: current
+                        });
+                        break;
+                    }
+                }
+
+                if (!passed) {
+                    isPrime = false;
+                    steps.push({
+                        type: 'fail',
+                        panel: `<span style="color:var(--accent-red)">No x == n-1 found → Composite!</span>`,
+                        statusText: `Base ${a} fails`,
+                        log: `✗ Failed for base ${a} → Composite`,
+                        logColor: 'var(--accent-red)',
+                        a: a,
+                        sd: `s=${s}, d=${d}`,
+                        x: current
+                    });
+                    break; // Early termination for visualization
+                }
+            }
+
+            // FINAL RESULT
+            steps.push({
+                type: 'final',
+                panel: isPrime 
+                    ? `<span style="color:var(--accent-green)"><b>${n}</b> passed all checks → Probably Prime</span>` 
+                    : `<span style="color:var(--accent-red)"><b>${n}</b> failed a check → Composite</span>`,
+                statusText: isPrime ? `Result: Probably Prime` : `Result: Composite`,
+                log: isPrime ? `All bases passed → Probably Prime` : `Failed → Composite`,
+                logColor: isPrime ? 'var(--accent-green)' : 'var(--accent-red)',
+                bold: true,
+                a: '—',
+                sd: `s=${s}, d=${n-1}`,
+                x: '—'
+            });
+        }
+
+        function renderStep(idx) {
+            const step = steps[idx];
+            if (!step) return;
+
+            const container = document.getElementById('tiles-container');
+            container.innerHTML = '';
+
+            const wrapper = document.createElement('div');
+            wrapper.className = 'tile-unit';
+
+            const tile = document.createElement('div');
+            tile.className = `tile ${step.type === 'final' ? (step.logColor.includes('green') ? 'winning' : 'failed') : 'candidate'}`;
+            tile.innerText = inputN;
+
+            const idxLabel = document.createElement('div');
+            idxLabel.className = 'tile-index';
+            idxLabel.innerText = `n=${inputN}`;
+
+            wrapper.append(tile, idxLabel);
+            container.appendChild(wrapper);
+
+            document.getElementById('main-panel').innerHTML = step.panel;
+            document.getElementById('val-a').innerText = step.a || '—';
+            document.getElementById('val-sd').innerText = step.sd || '—';
+            document.getElementById('val-x').innerText = step.x !== undefined ? step.x : '—';
+
+            const resVal = document.getElementById('res-val');
+            resVal.innerText = step.type === 'final' ? (step.logColor.includes('green') ? 'True' : 'False') : '—';
+            resVal.className = step.type === 'final' ? (step.logColor.includes('green') ? 'pop' : 'pop-false') : '';
+
+            document.getElementById('status-text').innerText = step.statusText || '';
+
+            // Log panel
+            const logPanel = document.getElementById('log');
+            logPanel.innerHTML = '';
+            for (let k = 0; k <= idx; k++) {
+                if (steps[k].log) {
+                    const line = document.createElement('div');
+                    line.style.marginBottom = '4px';
+                    line.style.whiteSpace = 'pre-wrap';
+                    if (steps[k].logColor) line.style.color = steps[k].logColor;
+                    if (steps[k].bold) line.style.fontWeight = 'bold';
+                    line.innerText = steps[k].log;
+                    logPanel.appendChild(line);
+                }
+            }
+            logPanel.scrollTop = logPanel.scrollHeight;
+        }
+
+        // Controls (same as before)
+        function next() { if (stepIndex < steps.length - 1) { stepIndex++; renderStep(stepIndex); } else pause(); }
+        function back() { if (stepIndex > 0) { stepIndex--; renderStep(stepIndex); } }
+        function reset() { pause(); stepIndex = 0; renderStep(0); }
+
+        function togglePlay() {
+            const btn = document.getElementById('play-btn');
+            if (timer) pause();
+            else {
+                btn.innerText = 'Pause';
+                if (stepIndex >= steps.length - 1) stepIndex = 0;
+                timer = setInterval(next, delays[document.getElementById('speed-slider').value]);
+            }
+        }
+
+        function pause() {
+            clearInterval(timer);
+            timer = null;
+            document.getElementById('play-btn').innerText = 'Play';
+        }
+
+        window.onload = init;
+    </script>
+</body>
+</html>

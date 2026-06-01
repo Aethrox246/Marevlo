@@ -1,11 +1,12 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import {
     ChevronRight, Play, BookOpen, Layers, Brain,
     Database, FileText, Search, Zap, Globe, Code2,
     Cpu, GitBranch, FlaskConical, Video, Image, ScanText,
     Hash, Network, ServerCog, Sparkles, Home, ArrowLeft,
-    Clock, Star, Lock, GraduationCap, Filter, X, ScanEye, MousePointer2
+    Clock, Star, Lock, GraduationCap, Filter, X, ScanEye, MousePointer2,
+    Shield, BookOpenCheck, Wrench, Award, AlertTriangle, Boxes
 } from 'lucide-react';
 
 //  COURSE DATA TREE
@@ -225,6 +226,153 @@ const COURSE_TREE_BASE = [
                             { id: 'quant-module-3', label: 'Module 3', description: 'Module 3 content.', icon: Database, isLeaf: true, duration: '30m', level: 'Intermediate' },
                         ],
                     },
+                    {
+                        id: 'rag-track-0-foundation',
+                        label: 'Track 0 — Foundation',
+                        description: 'Dev env, Python for AI, what is an LLM, first API call, streaming, what is RAG.',
+                        icon: BookOpen,
+                        isLeaf: false,
+                        duration: '3h',
+                        level: 'Beginner',
+                        children: [
+                            { id: 'rag-track0-0', label: '0.0 Welcome', description: 'Welcome to the RAG track.', icon: BookOpen, isLeaf: true, duration: '15m', level: 'Beginner' },
+                            { id: 'rag-track0-1', label: '0.1 Dev Environment', description: 'Set up the development environment.', icon: ServerCog, isLeaf: true, duration: '30m', level: 'Beginner' },
+                            { id: 'rag-track0-2', label: '0.2 Python for AI Engineer', description: 'Python essentials for the AI engineer.', icon: Code2, isLeaf: true, duration: '45m', level: 'Beginner' },
+                            { id: 'rag-track0-3', label: '0.3 What is an LLM?', description: 'Foundations of large language models.', icon: Brain, isLeaf: true, duration: '30m', level: 'Beginner' },
+                            { id: 'rag-track0-4', label: '0.4 First API Call', description: 'Make your first LLM API call.', icon: Zap, isLeaf: true, duration: '30m', level: 'Beginner' },
+                            { id: 'rag-track0-5', label: '0.5 Streaming & Async', description: 'Streaming responses and async patterns.', icon: Network, isLeaf: true, duration: '30m', level: 'Intermediate' },
+                            { id: 'rag-track0-6', label: '0.6 What is RAG?', description: 'Introduction to Retrieval-Augmented Generation.', icon: Database, isLeaf: true, duration: '30m', level: 'Beginner' },
+                        ],
+                    },
+                    {
+                        id: 'rag-track-1-representation',
+                        label: 'Track 1 — Representation',
+                        description: 'Embeddings and vector databases — the representation layer of RAG.',
+                        icon: Hash,
+                        isLeaf: false,
+                        duration: '1h',
+                        level: 'Beginner',
+                        children: [
+                            { id: 'rag-track1-0', label: '1.0 Embeddings', description: 'How text becomes vectors.', icon: Hash, isLeaf: true, duration: '30m', level: 'Beginner' },
+                            { id: 'rag-track1-1', label: '1.1 Vector Database', description: 'Storing and querying embeddings.', icon: Database, isLeaf: true, duration: '30m', level: 'Beginner' },
+                        ],
+                    },
+                    {
+                        id: 'rag-track-2-data-schema',
+                        label: 'Track 2 — Data & Schema',
+                        description: 'Data formats, JSON schema, Pydantic, structured output, ingestion pipelines, and chunking.',
+                        icon: Layers,
+                        isLeaf: false,
+                        duration: '3h',
+                        level: 'Intermediate',
+                        children: [
+                            { id: 'rag-track2-0', label: '2.0 Data Formats', description: 'Data formats for AI pipelines.', icon: FileText, isLeaf: true, duration: '30m', level: 'Intermediate' },
+                            { id: 'rag-track2-1', label: '2.1 JSON Schema & Structured Output', description: 'JSON schema and structured outputs from LLMs.', icon: Code2, isLeaf: true, duration: '30m', level: 'Intermediate' },
+                            { id: 'rag-track2-3', label: '2.3 Pydantic', description: 'Typed, validated outputs with Pydantic.', icon: Brain, isLeaf: true, duration: '30m', level: 'Intermediate' },
+                            { id: 'rag-track2-4', label: '2.4 Structured Output Across Providers', description: 'Structured outputs across LLM providers.', icon: Globe, isLeaf: true, duration: '30m', level: 'Intermediate' },
+                            { id: 'rag-track2-5', label: '2.5 Ingestion Pipeline', description: 'Build an end-to-end ingestion pipeline.', icon: ServerCog, isLeaf: true, duration: '30m', level: 'Intermediate' },
+                            { id: 'rag-track2-6', label: '2.6 Chunking Strategy', description: 'Strategies for chunking documents.', icon: Layers, isLeaf: true, duration: '30m', level: 'Intermediate' },
+                        ],
+                    },
+                    {
+                        id: 'rag-track-3-retrieval',
+                        label: 'Track 3 — Retrieval',
+                        description: 'BM25, dense retrieval, hybrid search & RRF, and re-rankers.',
+                        icon: Search,
+                        isLeaf: false,
+                        duration: '2h',
+                        level: 'Intermediate',
+                        children: [
+                            { id: 'rag-track3-0', label: '3.0 BM25', description: 'Sparse retrieval with BM25.', icon: BookOpen, isLeaf: true, duration: '30m', level: 'Intermediate' },
+                            { id: 'rag-track3-1', label: '3.1 Dense Retrieval', description: 'Bi-encoders and dense vector retrieval.', icon: Search, isLeaf: true, duration: '30m', level: 'Intermediate' },
+                            { id: 'rag-track3-2', label: '3.2 Hybrid Search & RRF', description: 'Hybrid search with Reciprocal Rank Fusion.', icon: GitBranch, isLeaf: true, duration: '30m', level: 'Intermediate' },
+                            { id: 'rag-track3-3', label: '3.3 Re-ranker', description: 'Cross-encoder re-rankers for precision.', icon: Filter, isLeaf: true, duration: '30m', level: 'Intermediate' },
+                        ],
+                    },
+                    {
+                        id: 'rag-track-4-generation',
+                        label: 'Track 4 — Generation',
+                        description: 'Grounded generation, XML/Markdown prompts, and Jinja prompt templates.',
+                        icon: Sparkles,
+                        isLeaf: false,
+                        duration: '1h 30m',
+                        level: 'Intermediate',
+                        children: [
+                            { id: 'rag-track4-0', label: '4.0 Grounded Generation', description: 'Grounding generation in retrieved context.', icon: BookOpen, isLeaf: true, duration: '30m', level: 'Intermediate' },
+                            { id: 'rag-track4-1', label: '4.1 XML & Markdown', description: 'XML and Markdown prompt patterns.', icon: FileText, isLeaf: true, duration: '30m', level: 'Intermediate' },
+                            { id: 'rag-track4-2', label: '4.2 Jinja Prompt Templates', description: 'Templating prompts with Jinja2.', icon: Code2, isLeaf: true, duration: '30m', level: 'Intermediate' },
+                        ],
+                    },
+                    {
+                        id: 'rag-track-5-advanced',
+                        label: 'Track 5 — Advanced RAG',
+                        description: 'Query transformation, structured RAG, and agentic RAG.',
+                        icon: FlaskConical,
+                        isLeaf: false,
+                        duration: '1h 30m',
+                        level: 'Advanced',
+                        children: [
+                            { id: 'rag-track5-0', label: '5.0 Query Transformation', description: 'Rewrite, decompose, and expand queries.', icon: Search, isLeaf: true, duration: '30m', level: 'Advanced' },
+                            { id: 'rag-track5-1', label: '5.1 Structured RAG', description: 'RAG over tables, SQL, and knowledge graphs.', icon: Database, isLeaf: true, duration: '30m', level: 'Advanced' },
+                            { id: 'rag-track5-2', label: '5.2 Agentic RAG', description: 'Autonomous reasoning and tool use over RAG.', icon: Cpu, isLeaf: true, duration: '30m', level: 'Advanced' },
+                        ],
+                    },
+                    {
+                        id: 'rag-track-6-evaluation',
+                        label: 'Track 6 — Evaluation',
+                        description: 'Evaluation foundations, RAG metrics, and evaluation in production.',
+                        icon: BookOpenCheck,
+                        isLeaf: false,
+                        duration: '1h 30m',
+                        level: 'Advanced',
+                        children: [
+                            { id: 'rag-track6-0', label: '6.0 Evaluation Foundations', description: 'Foundations of evaluating RAG systems.', icon: BookOpen, isLeaf: true, duration: '30m', level: 'Advanced' },
+                            { id: 'rag-track6-1', label: '6.1 RAG Metrics', description: 'Metrics that matter for RAG.', icon: FlaskConical, isLeaf: true, duration: '30m', level: 'Advanced' },
+                            { id: 'rag-track6-2', label: '6.2 Evaluation in Production', description: 'Continuous evaluation in production.', icon: Network, isLeaf: true, duration: '30m', level: 'Advanced' },
+                        ],
+                    },
+                    {
+                        id: 'rag-track-7-production',
+                        label: 'Track 7 — Production',
+                        description: 'Deployment, containerization, observability, caching, auth, security, cost, and CI/CD.',
+                        icon: ServerCog,
+                        isLeaf: false,
+                        duration: '3h 30m',
+                        level: 'Advanced',
+                        children: [
+                            { id: 'rag-track7-0', label: '7.0 Deployment Fundamentals', description: 'Deployment fundamentals for RAG.', icon: ServerCog, isLeaf: true, duration: '30m', level: 'Advanced' },
+                            { id: 'rag-track7-1', label: '7.1 Containerization & Orchestration', description: 'Containers and orchestration for AI services.', icon: Boxes, isLeaf: true, duration: '30m', level: 'Advanced' },
+                            { id: 'rag-track7-2', label: '7.2 Observability', description: 'Logs, metrics, and traces for AI.', icon: Search, isLeaf: true, duration: '30m', level: 'Advanced' },
+                            { id: 'rag-track7-3', label: '7.3 Caching', description: 'Caching strategies for RAG pipelines.', icon: Zap, isLeaf: true, duration: '30m', level: 'Advanced' },
+                            { id: 'rag-track7-4', label: '7.4 Auth & Rate Limiting', description: 'Authentication and rate limiting.', icon: Lock, isLeaf: true, duration: '30m', level: 'Advanced' },
+                            { id: 'rag-track7-5', label: '7.5 Security & Cost', description: 'Security posture and cost engineering.', icon: Shield, isLeaf: true, duration: '30m', level: 'Advanced' },
+                            { id: 'rag-track7-6', label: '7.6 CI/CD for AI Pipelines', description: 'CI/CD for AI pipelines.', icon: GitBranch, isLeaf: true, duration: '30m', level: 'Advanced' },
+                        ],
+                    },
+                    {
+                        id: 'rag-track-8-failure',
+                        label: 'Track 8 — RAG Failure Modes',
+                        description: 'Where RAG breaks and how to diagnose it.',
+                        icon: AlertTriangle,
+                        isLeaf: false,
+                        duration: '30m',
+                        level: 'Advanced',
+                        children: [
+                            { id: 'rag-track8-0', label: '8.0 RAG Failure', description: 'Common RAG failure modes.', icon: AlertTriangle, isLeaf: true, duration: '30m', level: 'Advanced' },
+                        ],
+                    },
+                    {
+                        id: 'rag-track-9-to-agent',
+                        label: 'Track 9 — RAG to Agent',
+                        description: 'The bridge from retrieval pipelines to autonomous agents.',
+                        icon: Cpu,
+                        isLeaf: false,
+                        duration: '30m',
+                        level: 'Advanced',
+                        children: [
+                            { id: 'rag-track9-0', label: '9.0 RAG to Agent', description: 'From RAG pipelines to agents.', icon: Cpu, isLeaf: true, duration: '30m', level: 'Advanced' },
+                        ],
+                    },
                     { id: 'rag-module-0', label: 'Module 0', description: 'Introduction to RAG fundamentals.', icon: BookOpen, isLeaf: true, duration: '30m', level: 'Beginner' },
                     { id: 'rag-module-1', label: 'Module 1', description: 'Core RAG concepts and architecture.', icon: Layers, isLeaf: true, duration: '30m', level: 'Beginner' },
                     { id: 'rag-module-2', label: 'Module 2', description: 'Embeddings: How text becomes vectors.', icon: Search, isLeaf: true, duration: '30m', level: 'Beginner' },
@@ -349,6 +497,254 @@ const COURSE_TREE_BASE = [
                             { id: 'eval-genai-reference', label: 'GenAI Evaluation Reference', description: 'Comprehensive reference for GenAI evaluation methodologies.', icon: Brain, isLeaf: true, duration: '30m', level: 'Advanced' },
                         ],
                     },
+                ],
+            },
+            {
+                id: 'transformers',
+                label: 'Transformers',
+                description: 'Master the Transformer architecture — attention, BERT, GPT, LLaMA, ViT, MoE, SSMs, and beyond.',
+                icon: Cpu,
+                gradient: 'linear-gradient(135deg, #f59e0b, #ef4444)',
+                lineGradient: 'from-amber-500 via-orange-500 to-red-500',
+                tag: 'Advanced',
+                tagColor: '#f59e0b',
+                duration: '12h',
+                isLeaf: false,
+                level: 'Advanced',
+                children: [
+                    {
+                        id: 'transformer-module-0', label: 'Module 0', description: 'Foundations — attention refresher and the core transformer block.', icon: BookOpen, isLeaf: false, duration: '1h', level: 'Intermediate',
+                        children: [
+                            { id: 'transformer-0-1', label: '0.1 Attention Refresher', description: 'Review of attention mechanisms before diving into transformers.', icon: BookOpen, isLeaf: true, duration: '30m', level: 'Intermediate' },
+                            { id: 'transformer-0-2', label: '0.2 Transformer Block', description: 'Anatomy of a single transformer block end-to-end.', icon: Layers, isLeaf: true, duration: '30m', level: 'Intermediate' },
+                        ],
+                    },
+                    {
+                        id: 'transformer-module-1', label: 'Module 1', description: 'Encoder models — BERT, RoBERTa, DistilBERT/ALBERT, and DeBERTa/ELECTRA.', icon: Brain, isLeaf: false, duration: '2h', level: 'Intermediate',
+                        children: [
+                            { id: 'transformer-1-1', label: '1.1 BERT', description: 'Bidirectional pre-training with masked language modelling.', icon: BookOpen, isLeaf: true, duration: '30m', level: 'Intermediate' },
+                            { id: 'transformer-1-2', label: '1.2 RoBERTa', description: 'Robustly optimised BERT pre-training approach.', icon: Layers, isLeaf: true, duration: '30m', level: 'Intermediate' },
+                            { id: 'transformer-1-3', label: '1.3 DistilBERT & ALBERT', description: 'Knowledge distillation and parameter-efficient BERT variants.', icon: Zap, isLeaf: true, duration: '30m', level: 'Intermediate' },
+                            { id: 'transformer-1-4', label: '1.4 DeBERTa & ELECTRA', description: 'Disentangled attention and replaced-token detection pre-training.', icon: Network, isLeaf: true, duration: '30m', level: 'Advanced' },
+                        ],
+                    },
+                    {
+                        id: 'transformer-module-2', label: 'Module 2', description: 'Decoder models — GPT-2, GPT-3/ICL, InstructGPT/RLHF, and GPT-4 scaling.', icon: Sparkles, isLeaf: false, duration: '2h', level: 'Advanced',
+                        children: [
+                            { id: 'transformer-2-1', label: '2.1 GPT-2', description: 'Autoregressive language modelling and zero-shot capabilities.', icon: BookOpen, isLeaf: true, duration: '30m', level: 'Advanced' },
+                            { id: 'transformer-2-2', label: '2.2 GPT-3 & ICL', description: 'In-context learning and few-shot prompting at scale.', icon: Layers, isLeaf: true, duration: '30m', level: 'Advanced' },
+                            { id: 'transformer-2-3', label: '2.3 InstructGPT & RLHF', description: 'Aligning language models with human feedback.', icon: Zap, isLeaf: true, duration: '30m', level: 'Advanced' },
+                            { id: 'transformer-2-4', label: '2.4 GPT-4 & Scaling', description: 'Scaling laws, multimodality, and frontier model design.', icon: Network, isLeaf: true, duration: '30m', level: 'Advanced' },
+                        ],
+                    },
+                    {
+                        id: 'transformer-module-3', label: 'Module 3', description: 'Open-weight LLMs — LLaMA, Mistral/Mixtral, and Qwen.', icon: Globe, isLeaf: false, duration: '1h 30m', level: 'Advanced',
+                        children: [
+                            { id: 'transformer-3-1', label: '3.1 LLaMA', description: 'Meta\'s open foundation model family and design choices.', icon: BookOpen, isLeaf: true, duration: '30m', level: 'Advanced' },
+                            { id: 'transformer-3-2', label: '3.2 Mistral & Mixtral', description: 'Sliding-window attention and mixture-of-experts decoding.', icon: Layers, isLeaf: true, duration: '30m', level: 'Advanced' },
+                            { id: 'transformer-3-3', label: '3.3 Qwen', description: 'Alibaba\'s multilingual open LLM series.', icon: Zap, isLeaf: true, duration: '30m', level: 'Advanced' },
+                        ],
+                    },
+                    {
+                        id: 'transformer-module-4', label: 'Module 4', description: 'Seq2seq models — T5/FLAN and BART.', icon: FileText, isLeaf: false, duration: '1h', level: 'Advanced',
+                        children: [
+                            { id: 'transformer-4-1', label: '4.1 T5 & FLAN', description: 'Text-to-text transfer transformer and instruction tuning.', icon: BookOpen, isLeaf: true, duration: '30m', level: 'Advanced' },
+                            { id: 'transformer-4-2', label: '4.2 BART', description: 'Denoising sequence-to-sequence pre-training for generation.', icon: Layers, isLeaf: true, duration: '30m', level: 'Advanced' },
+                        ],
+                    },
+                    {
+                        id: 'transformer-module-5', label: 'Module 5', description: 'Efficient attention — quadratic bottleneck, Longformer/BigBird, and linear attention.', icon: Zap, isLeaf: false, duration: '1h 30m', level: 'Advanced',
+                        children: [
+                            { id: 'transformer-5-1', label: '5.1 Quadratic Bottleneck', description: 'Understanding the O(n²) cost of standard self-attention.', icon: BookOpen, isLeaf: true, duration: '30m', level: 'Advanced' },
+                            { id: 'transformer-5-2', label: '5.2 Longformer & BigBird', description: 'Sparse attention patterns for long-sequence modelling.', icon: Layers, isLeaf: true, duration: '30m', level: 'Advanced' },
+                            { id: 'transformer-5-3', label: '5.3 Linear Attention', description: 'Kernel-based approximations for sub-quadratic attention.', icon: Zap, isLeaf: true, duration: '30m', level: 'Advanced' },
+                        ],
+                    },
+                    {
+                        id: 'transformer-module-6', label: 'Module 6', description: 'Vision transformers — ViT/DeiT, Swin, CLIP, and multimodal LLMs.', icon: Image, isLeaf: false, duration: '2h', level: 'Advanced',
+                        children: [
+                            { id: 'transformer-6-1', label: '6.1 ViT & DeiT', description: 'Applying transformers to image patches with distillation.', icon: BookOpen, isLeaf: true, duration: '30m', level: 'Advanced' },
+                            { id: 'transformer-6-2', label: '6.2 Swin', description: 'Hierarchical vision transformer with shifted windows.', icon: Layers, isLeaf: true, duration: '30m', level: 'Advanced' },
+                            { id: 'transformer-6-3', label: '6.3 CLIP', description: 'Contrastive language-image pre-training.', icon: Search, isLeaf: true, duration: '30m', level: 'Advanced' },
+                            { id: 'transformer-6-4', label: '6.4 Multimodal LLMs', description: 'Unified models over text, images, and beyond.', icon: Network, isLeaf: true, duration: '30m', level: 'Advanced' },
+                        ],
+                    },
+                    {
+                        id: 'transformer-module-7', label: 'Module 7', description: 'Advanced topics — MoE, SSMs, and production deployment.', icon: Cpu, isLeaf: false, duration: '1h 30m', level: 'Advanced',
+                        children: [
+                            { id: 'transformer-7-1', label: '7.1 Mixture of Experts', description: 'Sparse MoE routing for scalable model capacity.', icon: BookOpen, isLeaf: true, duration: '30m', level: 'Advanced' },
+                            { id: 'transformer-7-2', label: '7.2 SSMs', description: 'State space models as an alternative to attention.', icon: Layers, isLeaf: true, duration: '30m', level: 'Advanced' },
+                            { id: 'transformer-7-3', label: '7.3 Production Stack', description: 'Serving, quantisation, and deploying transformers at scale.', icon: Cpu, isLeaf: true, duration: '30m', level: 'Advanced' },
+                        ],
+                    },
+                ],
+            },
+            {
+                id: 'agentic-ai-pro',
+                label: 'Agentic AI',
+                description: 'End-to-end agentic AI — from RAG to agent, building agents, evaluation, and production.',
+                icon: Cpu,
+                gradient: 'linear-gradient(135deg, #6366f1, #ec4899)',
+                lineGradient: 'from-indigo-500 via-fuchsia-500 to-pink-500',
+                tag: 'New 🔥',
+                tagColor: '#ec4899',
+                isLeaf: false,
+                duration: '20h',
+                level: 'Advanced',
+                children: [
+                    {
+                        id: 'agent-atlas',
+                        label: 'The Agent Atlas',
+                        description: 'A chapter-by-chapter atlas of the agentic AI landscape.',
+                        icon: Globe,
+                        isLeaf: false,
+                        duration: '4h 30m',
+                        level: 'Intermediate',
+                        children: [
+                            { id: 'agent-atlas-ch1', label: 'Chapter 1', description: 'Chapter 1 of The Agent Atlas.', icon: BookOpen, isLeaf: true, duration: '30m', level: 'Beginner' },
+                            { id: 'agent-atlas-ch2', label: 'Chapter 2', description: 'Chapter 2 of The Agent Atlas.', icon: Layers, isLeaf: true, duration: '30m', level: 'Beginner' },
+                            { id: 'agent-atlas-ch3', label: 'Chapter 3', description: 'Chapter 3 of The Agent Atlas.', icon: Search, isLeaf: true, duration: '30m', level: 'Intermediate' },
+                            { id: 'agent-atlas-ch4', label: 'Chapter 4', description: 'Chapter 4 of The Agent Atlas.', icon: Brain, isLeaf: true, duration: '30m', level: 'Intermediate' },
+                            { id: 'agent-atlas-ch5', label: 'Chapter 5', description: 'Chapter 5 of The Agent Atlas.', icon: Network, isLeaf: true, duration: '30m', level: 'Intermediate' },
+                            { id: 'agent-atlas-ch6', label: 'Chapter 6', description: 'Chapter 6 of The Agent Atlas.', icon: GitBranch, isLeaf: true, duration: '30m', level: 'Intermediate' },
+                            { id: 'agent-atlas-ch7', label: 'Chapter 7', description: 'Chapter 7 of The Agent Atlas.', icon: Cpu, isLeaf: true, duration: '30m', level: 'Advanced' },
+                            { id: 'agent-atlas-ch8', label: 'Chapter 8', description: 'Chapter 8 of The Agent Atlas.', icon: Sparkles, isLeaf: true, duration: '30m', level: 'Advanced' },
+                            { id: 'agent-atlas-ch9', label: 'Chapter 9', description: 'Chapter 9 of The Agent Atlas.', icon: GraduationCap, isLeaf: true, duration: '30m', level: 'Advanced' },
+                        ],
+                    },
+                    {
+                        id: 'agentic-track-0',
+                        label: 'Track 0 — RAG Pipeline to Agent',
+                        description: 'From chatbot to agent — the path from RAG pipelines to function-calling agents.',
+                        icon: GitBranch,
+                        isLeaf: false,
+                        duration: '1h 30m',
+                        level: 'Intermediate',
+                        children: [
+                            { id: 'agentic-track0-0', label: '0.0 Welcome', description: 'Track introduction.', icon: BookOpen, isLeaf: true, duration: '15m', level: 'Beginner' },
+                            { id: 'agentic-track0-1', label: '0.1 Chatbot → Agent', description: 'From simple chatbot to agentic behavior.', icon: Brain, isLeaf: true, duration: '30m', level: 'Intermediate' },
+                            { id: 'agentic-track0-2', label: '0.2 Function Calling from Scratch', description: 'Build function-calling from the ground up.', icon: Code2, isLeaf: true, duration: '45m', level: 'Intermediate' },
+                        ],
+                    },
+                    {
+                        id: 'agentic-track-1',
+                        label: 'Track 1 — Agent Structure',
+                        description: 'Pydantic as the contract layer for agent tools and outputs.',
+                        icon: Layers,
+                        isLeaf: false,
+                        duration: '45m',
+                        level: 'Intermediate',
+                        children: [
+                            { id: 'agentic-track1-0', label: '1.0 Pydantic as Tool Schema', description: 'Pydantic as the schema and contract for agent tools.', icon: Brain, isLeaf: true, duration: '45m', level: 'Intermediate' },
+                        ],
+                    },
+                    {
+                        id: 'agentic-track-2',
+                        label: 'Track 2 — Building Agents',
+                        description: 'LangChain LCEL foundations, prompting frameworks, map-reduce, LangGraph, RAG-as-bridge, MCP, multi-agent systems, planning, memory, and design patterns.',
+                        icon: Wrench,
+                        isLeaf: false,
+                        duration: '6h 30m',
+                        level: 'Advanced',
+                        children: [
+                            { id: 'agentic-track2-0', label: '2.0 LangChain LCEL Foundations', description: 'LCEL foundations for composable chains.', icon: BookOpen, isLeaf: true, duration: '30m', level: 'Intermediate' },
+                            { id: 'agentic-track2-1', label: '2.1 Prompt Engineering Framework', description: 'A framework for agent prompt engineering.', icon: Sparkles, isLeaf: true, duration: '30m', level: 'Intermediate' },
+                            { id: 'agentic-track2-2', label: '2.2 Map-Reduce for Agents', description: 'Map-reduce patterns for agent workflows.', icon: Network, isLeaf: true, duration: '30m', level: 'Intermediate' },
+                            { id: 'agentic-track2-3', label: '2.3 Research Engine & Summarize', description: 'Build a research engine with summarization.', icon: Search, isLeaf: true, duration: '30m', level: 'Intermediate' },
+                            { id: 'agentic-track2-4', label: '2.4 LangGraph for Agentic Workflows', description: 'LangGraph for stateful agent workflows.', icon: GitBranch, isLeaf: true, duration: '30m', level: 'Advanced' },
+                            { id: 'agentic-track2-5', label: '2.5 RAG as a Bridge', description: 'RAG as the bridge between agents and knowledge.', icon: Database, isLeaf: true, duration: '30m', level: 'Advanced' },
+                            { id: 'agentic-track2-6', label: '2.6 MCP as a Tool', description: 'Using the Model Context Protocol as a tool.', icon: Cpu, isLeaf: true, duration: '30m', level: 'Advanced' },
+                            { id: 'agentic-track2-7', label: '2.7 Production AI Agents', description: 'Production-grade AI agents.', icon: ServerCog, isLeaf: true, duration: '30m', level: 'Advanced' },
+                            { id: 'agentic-track2-8', label: '2.8 Multi-Agent Systems', description: 'Designing multi-agent systems.', icon: Network, isLeaf: true, duration: '30m', level: 'Advanced' },
+                            { id: 'agentic-track2-9', label: '2.9 Agentic Frameworks', description: 'Survey of agentic frameworks.', icon: Boxes, isLeaf: true, duration: '30m', level: 'Advanced' },
+                            { id: 'agentic-track2-10', label: '2.10 Planning Pattern', description: 'The planning pattern for agents.', icon: GraduationCap, isLeaf: true, duration: '30m', level: 'Advanced' },
+                            { id: 'agentic-track2-11', label: '2.11 Memory & Guardrails', description: 'Memory architectures and guardrails.', icon: Lock, isLeaf: true, duration: '30m', level: 'Advanced' },
+                            { id: 'agentic-track2-12', label: '2.12 Design Pattern Reference', description: 'Reference of agentic design patterns.', icon: BookOpen, isLeaf: true, duration: '30m', level: 'Advanced' },
+                        ],
+                    },
+                    {
+                        id: 'agentic-track-3',
+                        label: 'Track 3 — Agent Evaluation',
+                        description: 'From RAG-to-agent eval to LLM-as-judge, benchmarks, safety, and decision guides.',
+                        icon: BookOpenCheck,
+                        isLeaf: false,
+                        duration: '4h 30m',
+                        level: 'Advanced',
+                        children: [
+                            { id: 'agentic-track3-0', label: '3.0 RAG → Agent Eval', description: 'Evaluation as we move from RAG to agents.', icon: BookOpen, isLeaf: true, duration: '30m', level: 'Advanced' },
+                            { id: 'agentic-track3-1', label: '3.1 Agentic AI Evaluation', description: 'Evaluating agentic AI systems.', icon: FlaskConical, isLeaf: true, duration: '30m', level: 'Advanced' },
+                            { id: 'agentic-track3-2', label: '3.2 Multi-Agent Evaluation', description: 'Evaluating multi-agent systems.', icon: Network, isLeaf: true, duration: '30m', level: 'Advanced' },
+                            { id: 'agentic-track3-3', label: '3.3 Safety & Guardrails', description: 'Safety and guardrails for agents.', icon: Shield, isLeaf: true, duration: '30m', level: 'Advanced' },
+                            { id: 'agentic-track3-4', label: '3.4 Cost & Latency', description: 'Cost and latency for agentic systems.', icon: Clock, isLeaf: true, duration: '30m', level: 'Advanced' },
+                            { id: 'agentic-track3-5', label: '3.5 Human Evaluation Protocol', description: 'Designing human evaluation protocols.', icon: GraduationCap, isLeaf: true, duration: '30m', level: 'Advanced' },
+                            { id: 'agentic-track3-6', label: '3.6 LLM-as-Judge', description: 'LLM-as-judge evaluation patterns.', icon: Award, isLeaf: true, duration: '30m', level: 'Advanced' },
+                            { id: 'agentic-track3-7', label: '3.7 Benchmarks for Agents', description: 'Benchmarks for agentic systems.', icon: Filter, isLeaf: true, duration: '30m', level: 'Advanced' },
+                            { id: 'agentic-track3-8', label: '3.8 Decision Guide', description: 'A decision guide for agent evaluation.', icon: BookOpen, isLeaf: true, duration: '30m', level: 'Advanced' },
+                        ],
+                    },
+                    {
+                        id: 'agentic-track-4',
+                        label: 'Track 4 — Agent Production',
+                        description: 'LangGraph platform, observability, cost engineering, memory architecture, versioning, sandboxing, HITL governance, and production readiness.',
+                        icon: ServerCog,
+                        isLeaf: false,
+                        duration: '4h 30m',
+                        level: 'Advanced',
+                        children: [
+                            { id: 'agentic-track4-0', label: '4.0 Agent Production', description: 'Foundations of agent production.', icon: BookOpen, isLeaf: true, duration: '30m', level: 'Advanced' },
+                            { id: 'agentic-track4-1', label: '4.1 LangGraph Platform', description: 'Deploying agents on LangGraph platform.', icon: GitBranch, isLeaf: true, duration: '30m', level: 'Advanced' },
+                            { id: 'agentic-track4-2', label: '4.2 Agent Observability', description: 'Tracing, logging, and metrics for agents.', icon: Search, isLeaf: true, duration: '30m', level: 'Advanced' },
+                            { id: 'agentic-track4-3', label: '4.3 Agent Cost Engineering', description: 'Cost engineering for agentic systems.', icon: Zap, isLeaf: true, duration: '30m', level: 'Advanced' },
+                            { id: 'agentic-track4-4', label: '4.4 Memory Architecture', description: 'Memory architectures for agents.', icon: Brain, isLeaf: true, duration: '30m', level: 'Advanced' },
+                            { id: 'agentic-track4-5', label: '4.5 Versioning & A/B', description: 'Versioning and A/B testing.', icon: Layers, isLeaf: true, duration: '30m', level: 'Advanced' },
+                            { id: 'agentic-track4-6', label: '4.6 Agent Sandbox', description: 'Sandboxing untrusted agent actions.', icon: Lock, isLeaf: true, duration: '30m', level: 'Advanced' },
+                            { id: 'agentic-track4-7', label: '4.7 HITL Governance', description: 'Human-in-the-loop governance.', icon: GraduationCap, isLeaf: true, duration: '30m', level: 'Advanced' },
+                            { id: 'agentic-track4-8', label: '4.8 Production Readiness', description: 'Production readiness checklist.', icon: Star, isLeaf: true, duration: '30m', level: 'Advanced' },
+                        ],
+                    },
+                ],
+            },
+            {
+                id: 'llmops',
+                label: 'LLMOps',
+                description: 'Production LLM operations — quantization, attention, KV cache, batching, distillation, MoE, and scale/cost.',
+                icon: ServerCog,
+                gradient: 'linear-gradient(135deg, #0ea5e9, #6366f1)',
+                lineGradient: 'from-sky-500 via-blue-500 to-indigo-500',
+                tag: 'Production',
+                tagColor: '#0ea5e9',
+                isLeaf: false,
+                duration: '6h',
+                level: 'Advanced',
+                children: [
+                    { id: 'llmops-00', label: '00 Master Index', description: 'Master index for the LLMOps track.', icon: BookOpen, isLeaf: true, duration: '15m', level: 'Intermediate' },
+                    { id: 'llmops-01', label: '01 Foundations', description: 'Foundations of LLMOps.', icon: Layers, isLeaf: true, duration: '45m', level: 'Intermediate' },
+                    { id: 'llmops-02', label: '02 Quantization', description: 'Quantization for efficient inference.', icon: Cpu, isLeaf: true, duration: '45m', level: 'Advanced' },
+                    { id: 'llmops-03', label: '03 Attention', description: 'Attention kernels and optimizations.', icon: MousePointer2, isLeaf: true, duration: '45m', level: 'Advanced' },
+                    { id: 'llmops-04', label: '04 KV Cache', description: 'KV cache sizing and paged KV.', icon: Database, isLeaf: true, duration: '45m', level: 'Advanced' },
+                    { id: 'llmops-05', label: '05 Batching', description: 'Continuous batching and throughput.', icon: Boxes, isLeaf: true, duration: '45m', level: 'Advanced' },
+                    { id: 'llmops-06', label: '06 Pruning, Distill & MoE', description: 'Pruning, distillation, and mixture-of-experts.', icon: Sparkles, isLeaf: true, duration: '45m', level: 'Advanced' },
+                    { id: 'llmops-07', label: '07 Production', description: 'Production deployment of LLM services.', icon: ServerCog, isLeaf: true, duration: '45m', level: 'Advanced' },
+                    { id: 'llmops-08', label: '08 Scale & Cost', description: 'Scaling and cost optimization.', icon: Zap, isLeaf: true, duration: '45m', level: 'Advanced' },
+                ],
+            },
+            {
+                id: 'prompt-engineering-improved',
+                label: 'Prompt Engineering (Advanced)',
+                description: 'A four-part deep dive into prompt engineering — from foundations to advanced patterns.',
+                icon: Sparkles,
+                gradient: 'linear-gradient(135deg, #f59e0b, #ec4899)',
+                lineGradient: 'from-amber-500 via-orange-500 to-pink-500',
+                tag: 'New ✨',
+                tagColor: '#f59e0b',
+                isLeaf: false,
+                duration: '4h',
+                level: 'Intermediate',
+                children: [
+                    { id: 'prompt-eng-improved-1', label: 'Part 1', description: 'Foundations of prompt engineering.', icon: BookOpen, isLeaf: true, duration: '1h', level: 'Beginner' },
+                    { id: 'prompt-eng-improved-2', label: 'Part 2', description: 'Patterns and structured prompting.', icon: Layers, isLeaf: true, duration: '1h', level: 'Intermediate' },
+                    { id: 'prompt-eng-improved-3', label: 'Part 3', description: 'Advanced prompt techniques.', icon: Sparkles, isLeaf: true, duration: '1h', level: 'Intermediate' },
+                    { id: 'prompt-eng-improved-4', label: 'Part 4', description: 'Production prompt engineering.', icon: ServerCog, isLeaf: true, duration: '1h', level: 'Advanced' },
                 ],
             },
             {
@@ -491,85 +887,6 @@ const COURSE_TREE_BASE = [
                     { id: 'ml-module-1', label: 'Module 1', description: 'Introduction to Machine Learning concepts and foundations.', icon: BookOpen, isLeaf: true, duration: '2h', level: 'Beginner' },
                     { id: 'ml-module-2', label: 'Module 2', description: 'Supervised Learning: Regression and Classification techniques.', icon: Search, isLeaf: true, duration: '3h', level: 'Intermediate' },
                     { id: 'ml-module-3', label: 'Module 3', description: 'Unsupervised Learning and Model Evaluation strategies.', icon: Network, isLeaf: true, duration: '3h', level: 'Intermediate' },
-                ],
-            },
-            {
-                id: 'transformer',
-                label: 'Transformer',
-                description: 'Master the Transformer architecture — attention, positional encoding, BERT, GPT, and beyond.',
-                icon: Cpu,
-                gradient: 'linear-gradient(135deg, #f59e0b, #ef4444)',
-                lineGradient: 'from-amber-500 via-orange-500 to-red-500',
-                tag: 'Advanced',
-                tagColor: '#f59e0b',
-                duration: '12h',
-                isLeaf: false,
-                children: [
-                    {
-                        id: 'transformer-module-0', label: 'Module 0', description: 'Foundations — attention refresher and the core transformer block.', icon: BookOpen, isLeaf: false, duration: '1h', level: 'Intermediate',
-                        children: [
-                            { id: 'transformer-0-1', label: '0.1 Attention Refresher', description: 'Review of attention mechanisms before diving into transformers.', icon: BookOpen, isLeaf: true, duration: '30m', level: 'Intermediate' },
-                            { id: 'transformer-0-2', label: '0.2 Transformer Block', description: 'Anatomy of a single transformer block end-to-end.', icon: Layers, isLeaf: true, duration: '30m', level: 'Intermediate' },
-                        ],
-                    },
-                    {
-                        id: 'transformer-module-1', label: 'Module 1', description: 'Encoder models — BERT, RoBERTa, DistilBERT/ALBERT, and DeBERTa/ELECTRA.', icon: Brain, isLeaf: false, duration: '2h', level: 'Intermediate',
-                        children: [
-                            { id: 'transformer-1-1', label: '1.1 BERT', description: 'Bidirectional pre-training with masked language modelling.', icon: BookOpen, isLeaf: true, duration: '30m', level: 'Intermediate' },
-                            { id: 'transformer-1-2', label: '1.2 RoBERTa', description: 'Robustly optimised BERT pre-training approach.', icon: Layers, isLeaf: true, duration: '30m', level: 'Intermediate' },
-                            { id: 'transformer-1-3', label: '1.3 DistilBERT & ALBERT', description: 'Knowledge distillation and parameter-efficient BERT variants.', icon: Zap, isLeaf: true, duration: '30m', level: 'Intermediate' },
-                            { id: 'transformer-1-4', label: '1.4 DeBERTa & ELECTRA', description: 'Disentangled attention and replaced-token detection pre-training.', icon: Network, isLeaf: true, duration: '30m', level: 'Advanced' },
-                        ],
-                    },
-                    {
-                        id: 'transformer-module-2', label: 'Module 2', description: 'Decoder models — GPT-2, GPT-3/ICL, InstructGPT/RLHF, and GPT-4 scaling.', icon: Sparkles, isLeaf: false, duration: '2h', level: 'Advanced',
-                        children: [
-                            { id: 'transformer-2-1', label: '2.1 GPT-2', description: 'Autoregressive language modelling and zero-shot capabilities.', icon: BookOpen, isLeaf: true, duration: '30m', level: 'Advanced' },
-                            { id: 'transformer-2-2', label: '2.2 GPT-3 & ICL', description: 'In-context learning and few-shot prompting at scale.', icon: Layers, isLeaf: true, duration: '30m', level: 'Advanced' },
-                            { id: 'transformer-2-3', label: '2.3 InstructGPT & RLHF', description: 'Aligning language models with human feedback.', icon: Zap, isLeaf: true, duration: '30m', level: 'Advanced' },
-                            { id: 'transformer-2-4', label: '2.4 GPT-4 & Scaling', description: 'Scaling laws, multimodality, and frontier model design.', icon: Network, isLeaf: true, duration: '30m', level: 'Advanced' },
-                        ],
-                    },
-                    {
-                        id: 'transformer-module-3', label: 'Module 3', description: 'Open-weight LLMs — LLaMA, Mistral/Mixtral, and Qwen.', icon: Globe, isLeaf: false, duration: '1h 30m', level: 'Advanced',
-                        children: [
-                            { id: 'transformer-3-1', label: '3.1 LLaMA', description: 'Meta\'s open foundation model family and design choices.', icon: BookOpen, isLeaf: true, duration: '30m', level: 'Advanced' },
-                            { id: 'transformer-3-2', label: '3.2 Mistral & Mixtral', description: 'Sliding-window attention and mixture-of-experts decoding.', icon: Layers, isLeaf: true, duration: '30m', level: 'Advanced' },
-                            { id: 'transformer-3-3', label: '3.3 Qwen', description: 'Alibaba\'s multilingual open LLM series.', icon: Zap, isLeaf: true, duration: '30m', level: 'Advanced' },
-                        ],
-                    },
-                    {
-                        id: 'transformer-module-4', label: 'Module 4', description: 'Seq2seq models — T5/FLAN and BART.', icon: FileText, isLeaf: false, duration: '1h', level: 'Advanced',
-                        children: [
-                            { id: 'transformer-4-1', label: '4.1 T5 & FLAN', description: 'Text-to-text transfer transformer and instruction tuning.', icon: BookOpen, isLeaf: true, duration: '30m', level: 'Advanced' },
-                            { id: 'transformer-4-2', label: '4.2 BART', description: 'Denoising sequence-to-sequence pre-training for generation.', icon: Layers, isLeaf: true, duration: '30m', level: 'Advanced' },
-                        ],
-                    },
-                    {
-                        id: 'transformer-module-5', label: 'Module 5', description: 'Efficient attention — quadratic bottleneck, Longformer/BigBird, and linear attention.', icon: Zap, isLeaf: false, duration: '1h 30m', level: 'Advanced',
-                        children: [
-                            { id: 'transformer-5-1', label: '5.1 Quadratic Bottleneck', description: 'Understanding the O(n²) cost of standard self-attention.', icon: BookOpen, isLeaf: true, duration: '30m', level: 'Advanced' },
-                            { id: 'transformer-5-2', label: '5.2 Longformer & BigBird', description: 'Sparse attention patterns for long-sequence modelling.', icon: Layers, isLeaf: true, duration: '30m', level: 'Advanced' },
-                            { id: 'transformer-5-3', label: '5.3 Linear Attention', description: 'Kernel-based approximations for sub-quadratic attention.', icon: Zap, isLeaf: true, duration: '30m', level: 'Advanced' },
-                        ],
-                    },
-                    {
-                        id: 'transformer-module-6', label: 'Module 6', description: 'Vision transformers — ViT/DeiT, Swin, CLIP, and multimodal LLMs.', icon: Image, isLeaf: false, duration: '2h', level: 'Advanced',
-                        children: [
-                            { id: 'transformer-6-1', label: '6.1 ViT & DeiT', description: 'Applying transformers to image patches with distillation.', icon: BookOpen, isLeaf: true, duration: '30m', level: 'Advanced' },
-                            { id: 'transformer-6-2', label: '6.2 Swin', description: 'Hierarchical vision transformer with shifted windows.', icon: Layers, isLeaf: true, duration: '30m', level: 'Advanced' },
-                            { id: 'transformer-6-3', label: '6.3 CLIP', description: 'Contrastive language-image pre-training.', icon: Search, isLeaf: true, duration: '30m', level: 'Advanced' },
-                            { id: 'transformer-6-4', label: '6.4 Multimodal LLMs', description: 'Unified models over text, images, and beyond.', icon: Network, isLeaf: true, duration: '30m', level: 'Advanced' },
-                        ],
-                    },
-                    {
-                        id: 'transformer-module-7', label: 'Module 7', description: 'Advanced topics — MoE, SSMs, and production deployment.', icon: Cpu, isLeaf: false, duration: '1h 30m', level: 'Advanced',
-                        children: [
-                            { id: 'transformer-7-1', label: '7.1 Mixture of Experts', description: 'Sparse MoE routing for scalable model capacity.', icon: BookOpen, isLeaf: true, duration: '30m', level: 'Advanced' },
-                            { id: 'transformer-7-2', label: '7.2 SSMs', description: 'State space models as an alternative to attention.', icon: Layers, isLeaf: true, duration: '30m', level: 'Advanced' },
-                            { id: 'transformer-7-3', label: '7.3 Production Stack', description: 'Serving, quantisation, and deploying transformers at scale.', icon: Cpu, isLeaf: true, duration: '30m', level: 'Advanced' },
-                        ],
-                    },
                 ],
             },
             {
@@ -718,6 +1035,27 @@ const COURSE_TREE_BASE = [
             { id: 'langgraph-module-8', label: 'Module 8', description: 'Module 8 — Capstone and deployment.', icon: Code2, isLeaf: true, duration: '55m', level: 'Advanced' },
         ],
     },
+    {
+        id: 'api-security',
+        label: 'API Security',
+        description: 'Secure your APIs end-to-end — auth, threat modeling, OWASP API Top 10, and production hardening.',
+        icon: Shield,
+        gradient: 'linear-gradient(135deg, #0ea5e9 0%, #6366f1 50%, #8b5cf6 100%)',
+        lineGradient: 'from-sky-500 via-indigo-500 to-violet-500',
+        shadow: 'rgba(14,165,233,0.3)',
+        tag: 'New 🛡️',
+        tagColor: '#0ea5e9',
+        children: [
+            { id: 'api-security-ch1', label: 'Chapter 1', description: 'API Security Chapter 1.', icon: BookOpen, isLeaf: true, duration: '45m', level: 'Beginner' },
+            { id: 'api-security-ch2', label: 'Chapter 2', description: 'API Security Chapter 2.', icon: Lock, isLeaf: true, duration: '45m', level: 'Beginner' },
+            { id: 'api-security-ch3', label: 'Chapter 3', description: 'API Security Chapter 3.', icon: Shield, isLeaf: true, duration: '45m', level: 'Intermediate' },
+            { id: 'api-security-ch4', label: 'Chapter 4', description: 'API Security Chapter 4.', icon: Search, isLeaf: true, duration: '45m', level: 'Intermediate' },
+            { id: 'api-security-ch5', label: 'Chapter 5', description: 'API Security Chapter 5.', icon: Network, isLeaf: true, duration: '45m', level: 'Intermediate' },
+            { id: 'api-security-ch6', label: 'Chapter 6', description: 'API Security Chapter 6.', icon: AlertTriangle, isLeaf: true, duration: '45m', level: 'Advanced' },
+            { id: 'api-security-ch7', label: 'Chapter 7', description: 'API Security Chapter 7.', icon: ServerCog, isLeaf: true, duration: '45m', level: 'Advanced' },
+            { id: 'api-security-ch8', label: 'Chapter 8', description: 'API Security Chapter 8.', icon: Award, isLeaf: true, duration: '45m', level: 'Advanced' },
+        ],
+    },
 ];
 
 //  HELPERS
@@ -725,7 +1063,6 @@ const COURSE_TREE_BASE = [
 const PROMOTED_DATA_SCIENCE_IDS = new Set([
     'ds-python',
     'statistics-probability',
-    'transformer',
     'deep-learning',
     'pytorch',
 ]);
@@ -1069,6 +1406,21 @@ export default function Courses() {
     const [showLevelFilters, setShowLevelFilters] = useState(false);
     const searchRef = useRef(null);
 
+    const urlPathIds = React.useMemo(() => {
+        const segments = location.pathname.split('/').filter(Boolean);
+        if (segments[0] !== 'courses' || segments.length < 2) return [];
+        return segments.slice(1);
+    }, [location.pathname]);
+
+    useEffect(() => {
+        if (urlPathIds.length > 0) {
+            setPathIds(urlPathIds);
+            return;
+        }
+
+        setPathIds(location.state?.pathIds || []);
+    }, [location.pathname, location.state, urlPathIds]);
+
     // Keyboard shortcut: Cmd/Ctrl+K → focus search
     React.useEffect(() => {
         const handler = e => {
@@ -1137,13 +1489,21 @@ export default function Courses() {
     // Root category node (for hero)
     const rootCatNode = pathIds.length ? findNode(COURSE_TREE, [pathIds[0]]) : null;
 
+    const syncCourseUrl = (ids) => {
+        const nextPath = ids.length ? `/courses/${ids.join('/')}` : '/courses';
+        navigate(nextPath, { state: { pathIds: ids } });
+    };
+
     const handleDrillDown = (node) => {
-        setPathIds(prev => [...prev, node.id]);
+        const nextIds = [...pathIds, node.id];
+        setPathIds(nextIds);
+        syncCourseUrl(nextIds);
         window.scrollTo({ top: 0, behavior: 'smooth' });
     };
 
     const handleNavigate = (ids) => {
         setPathIds(ids);
+        syncCourseUrl(ids);
         window.scrollTo({ top: 0, behavior: 'smooth' });
     };
 

@@ -1,0 +1,1706 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PyTorch Academy • Module 8 — Sequence Models</title>
+<link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@500;700&family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@2.47.0/tabler-icons.min.css">
+<style>
+:root {
+  --bg-deep: #0a0e1a;
+  --bg-panel: #0d1320;
+  --bg-card: rgba(20, 30, 50, 0.55);
+  --border-cyan: rgba(0, 229, 255, 0.35);
+  --border-cyan-strong: rgba(0, 229, 255, 0.65);
+  --border-pink: rgba(255, 92, 192, 0.45);
+  --cyan: #00e5ff;
+  --cyan-soft: #5cdcff;
+  --pink: #ff5cc0;
+  --pink-soft: #ff8fd6;
+  --text-primary: #e8f0ff;
+  --text-secondary: #9aa8c4;
+  --text-muted: #6b7896;
+  --warn: #ffb547;
+  --danger: #ff6b6b;
+  --success: #6bff9d;
+}
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body { background: var(--bg-deep); color: var(--text-primary); font-family: 'Inter', -apple-system, sans-serif; line-height: 1.7; overflow-x: hidden; min-height: 100vh; position: relative; }
+.starfield { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: radial-gradient(ellipse at top, rgba(0, 229, 255, 0.08), transparent 50%), radial-gradient(ellipse at bottom right, rgba(255, 92, 192, 0.06), transparent 50%), var(--bg-deep); z-index: -2; }
+.stars { position: fixed; top: 0; left: 0; width: 100%; height: 100%; z-index: -1; pointer-events: none; }
+.star { position: absolute; background: #fff; border-radius: 50%; opacity: 0.6; animation: twinkle var(--dur, 4s) ease-in-out infinite; }
+@keyframes twinkle { 0%, 100% { opacity: 0.3; } 50% { opacity: 1; } }
+
+.top-nav { position: sticky; top: 0; z-index: 100; background: rgba(10, 14, 26, 0.85); backdrop-filter: blur(12px); border-bottom: 1px solid var(--border-cyan); padding: 14px 32px; }
+.nav-inner { max-width: 1200px; margin: 0 auto; display: flex; align-items: center; justify-content: space-between; gap: 24px; }
+.brand { display: flex; align-items: center; gap: 12px; }
+.brand-logo { width: 42px; height: 42px; border-radius: 10px; background: linear-gradient(135deg, var(--cyan), var(--pink)); display: flex; align-items: center; justify-content: center; color: #0a0e1a; font-size: 22px; box-shadow: 0 0 20px rgba(0, 229, 255, 0.35); }
+.brand-text { font-family: 'Orbitron', sans-serif; font-weight: 700; font-size: 18px; letter-spacing: 1.5px; color: var(--cyan); line-height: 1; }
+.brand-sub { font-size: 10px; color: var(--text-secondary); letter-spacing: 1.5px; margin-top: 4px; }
+.nav-links { display: flex; gap: 28px; list-style: none; }
+.nav-links a { color: var(--text-secondary); text-decoration: none; font-size: 14px; font-weight: 500; transition: color 0.2s; position: relative; }
+.nav-links a:hover, .nav-links a.active { color: var(--cyan); }
+.nav-links a.active::after { content: ''; position: absolute; bottom: -6px; left: 0; right: 0; height: 2px; background: var(--cyan); border-radius: 2px; }
+.nav-actions { display: flex; gap: 12px; align-items: center; }
+.badge-mode { display: flex; align-items: center; gap: 8px; padding: 6px 14px; border: 1px solid var(--border-cyan); border-radius: 20px; font-size: 11px; letter-spacing: 1.5px; color: var(--cyan); font-weight: 600; }
+.badge-mode .dot { width: 8px; height: 8px; background: var(--success); border-radius: 50%; box-shadow: 0 0 8px var(--success); }
+.btn-primary { padding: 8px 18px; background: rgba(0, 229, 255, 0.1); border: 1px solid var(--border-cyan-strong); color: var(--cyan); border-radius: 8px; font-size: 13px; font-weight: 600; cursor: pointer; transition: all 0.2s; }
+.btn-primary:hover { background: rgba(0, 229, 255, 0.2); box-shadow: 0 0 15px rgba(0, 229, 255, 0.3); }
+
+.hero { text-align: center; padding: 80px 24px 40px; max-width: 900px; margin: 0 auto; }
+.continue-pill { display: inline-flex; align-items: center; gap: 8px; padding: 8px 20px; background: rgba(0, 229, 255, 0.08); border: 1px solid var(--border-cyan); border-radius: 20px; font-size: 12px; letter-spacing: 1.5px; color: var(--cyan); font-weight: 600; margin-bottom: 28px; }
+.hero h1 { font-family: 'Orbitron', sans-serif; font-size: 64px; font-weight: 700; line-height: 1.1; margin-bottom: 18px; letter-spacing: -1px; }
+.hero h1 .accent { background: linear-gradient(90deg, var(--pink), var(--pink-soft)); -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent; }
+.hero h1 .cyan-text { color: var(--text-primary); }
+.hero .subtitle { font-size: 17px; color: var(--text-secondary); max-width: 700px; margin: 0 auto; }
+.module-tag { display: inline-block; margin-top: 20px; padding: 6px 16px; background: rgba(255, 92, 192, 0.1); border: 1px solid var(--border-pink); border-radius: 16px; color: var(--pink-soft); font-size: 12px; letter-spacing: 1px; font-weight: 600; }
+
+.goal-callout { max-width: 1100px; margin: 20px auto 60px; padding: 28px 32px; background: var(--bg-card); border: 1px solid var(--border-cyan); border-radius: 16px; position: relative; }
+.goal-callout::before { content: ''; position: absolute; top: 0; left: 24px; right: 24px; height: 2px; background: linear-gradient(90deg, transparent, var(--cyan), transparent); }
+.goal-callout h3 { color: var(--cyan); font-size: 13px; letter-spacing: 2px; text-transform: uppercase; margin-bottom: 10px; display: flex; align-items: center; gap: 10px; }
+.goal-callout p { color: var(--text-primary); font-size: 15px; }
+
+.content { max-width: 1100px; margin: 0 auto; padding: 0 24px 80px; }
+.section { margin: 60px 0; scroll-margin-top: 100px; }
+.section-num { display: inline-block; font-family: 'Orbitron', sans-serif; font-size: 13px; letter-spacing: 3px; color: var(--pink); margin-bottom: 8px; }
+.section h2 { font-family: 'Orbitron', sans-serif; font-size: 32px; color: var(--text-primary); margin-bottom: 28px; letter-spacing: -0.5px; display: flex; align-items: center; gap: 14px; }
+.section h2::before { content: ''; width: 4px; height: 28px; background: linear-gradient(180deg, var(--cyan), var(--pink)); border-radius: 2px; }
+.section h3 { font-family: 'Inter', sans-serif; font-size: 20px; color: var(--cyan-soft); margin: 32px 0 14px; font-weight: 600; }
+.section h4 { font-size: 16px; color: var(--pink-soft); margin: 24px 0 10px; font-weight: 600; }
+.section p { color: var(--text-primary); font-size: 15px; margin-bottom: 14px; }
+.section ul, .section ol { margin: 12px 0 18px 22px; color: var(--text-primary); font-size: 15px; }
+.section ul li, .section ol li { margin-bottom: 6px; }
+.section code:not(pre code) { background: rgba(0, 229, 255, 0.1); color: var(--cyan-soft); padding: 2px 7px; border-radius: 4px; font-family: 'JetBrains Mono', monospace; font-size: 13px; border: 1px solid rgba(0, 229, 255, 0.18); }
+
+.code-block { background: #0a0f1c; border: 1px solid rgba(0, 229, 255, 0.2); border-radius: 10px; margin: 16px 0; overflow: hidden; position: relative; }
+.code-header { display: flex; justify-content: space-between; align-items: center; padding: 8px 14px; background: rgba(0, 229, 255, 0.05); border-bottom: 1px solid rgba(0, 229, 255, 0.15); }
+.code-lang { font-size: 11px; color: var(--cyan); font-family: 'JetBrains Mono', monospace; letter-spacing: 1px; }
+.code-copy { background: transparent; border: 1px solid var(--border-cyan); color: var(--cyan); padding: 4px 10px; border-radius: 5px; font-size: 11px; cursor: pointer; display: flex; align-items: center; gap: 4px; transition: all 0.2s; }
+.code-copy:hover { background: rgba(0, 229, 255, 0.15); }
+.code-block pre { padding: 16px 18px; overflow-x: auto; font-family: 'JetBrains Mono', monospace; font-size: 13px; line-height: 1.65; }
+.code-block pre code { color: #c9d1d9; background: none; padding: 0; border: none; }
+.kw { color: #ff79c6; } .fn { color: #58a6ff; } .st { color: #b5e890; } .co { color: #6a7588; font-style: italic; } .cls { color: #ffb86c; } .op { color: #ff7eb6; } .dec { color: #ffb86c; }
+
+.output { background: rgba(0, 0, 0, 0.35); border-left: 3px solid var(--pink); padding: 12px 16px; margin: 8px 0 16px; font-family: 'JetBrains Mono', monospace; font-size: 12.5px; color: var(--text-secondary); border-radius: 0 8px 8px 0; white-space: pre-wrap; overflow-x: auto; }
+.output::before { content: 'output'; display: block; font-size: 10px; color: var(--pink); letter-spacing: 1.5px; margin-bottom: 6px; text-transform: uppercase; }
+
+.callout { margin: 20px 0; padding: 16px 20px 16px 18px; border-radius: 10px; border-left: 4px solid; display: flex; gap: 14px; align-items: flex-start; }
+.callout i { font-size: 20px; margin-top: 2px; flex-shrink: 0; }
+.callout-content { flex: 1; }
+.callout-title { font-weight: 600; margin-bottom: 4px; font-size: 14px; letter-spacing: 0.5px; }
+.callout-tip { background: rgba(107, 255, 157, 0.06); border-color: var(--success); }
+.callout-tip i, .callout-tip .callout-title { color: var(--success); }
+.callout-warn { background: rgba(255, 181, 71, 0.08); border-color: var(--warn); }
+.callout-warn i, .callout-warn .callout-title { color: var(--warn); }
+.callout-info { background: rgba(0, 229, 255, 0.06); border-color: var(--cyan); }
+.callout-info i, .callout-info .callout-title { color: var(--cyan); }
+.callout-danger { background: rgba(255, 107, 107, 0.08); border-color: var(--danger); }
+.callout-danger i, .callout-danger .callout-title { color: var(--danger); }
+
+.table-wrap { overflow-x: auto; margin: 18px 0; }
+table { width: 100%; border-collapse: collapse; background: rgba(13, 19, 32, 0.55); border: 1px solid var(--border-cyan); border-radius: 10px; overflow: hidden; font-size: 14px; }
+thead { background: rgba(0, 229, 255, 0.08); }
+th { text-align: left; padding: 12px 14px; color: var(--cyan); font-weight: 600; letter-spacing: 0.3px; border-bottom: 1px solid var(--border-cyan); font-size: 13px; }
+td { padding: 11px 14px; border-bottom: 1px solid rgba(0, 229, 255, 0.1); color: var(--text-primary); vertical-align: top; }
+tr:last-child td { border-bottom: none; }
+tr:hover td { background: rgba(0, 229, 255, 0.03); }
+td code { font-size: 12px; }
+
+.widget { background: var(--bg-card); border: 1px solid var(--border-cyan); border-radius: 14px; padding: 24px; margin: 24px 0; position: relative; }
+.widget::before { content: 'INTERACTIVE'; position: absolute; top: -10px; left: 20px; background: var(--bg-deep); padding: 2px 10px; font-size: 10px; letter-spacing: 2px; color: var(--pink); border: 1px solid var(--border-pink); border-radius: 10px; font-weight: 600; }
+.widget-title { font-family: 'Orbitron', sans-serif; font-size: 16px; color: var(--cyan); margin-bottom: 6px; letter-spacing: 0.5px; }
+.widget-subtitle { font-size: 13px; color: var(--text-secondary); margin-bottom: 18px; }
+.controls { display: flex; flex-direction: column; gap: 14px; margin-bottom: 18px; }
+.ctrl-row { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; }
+.ctrl-label { font-size: 12px; color: var(--text-secondary); min-width: 130px; letter-spacing: 0.5px; }
+.ctrl-value { font-size: 13px; color: var(--cyan); font-family: 'JetBrains Mono', monospace; min-width: 70px; text-align: right; font-weight: 500; }
+input[type="range"] { flex: 1; accent-color: var(--cyan); height: 4px; background: rgba(0, 229, 255, 0.2); border-radius: 2px; appearance: none; outline: none; }
+input[type="range"]::-webkit-slider-thumb { appearance: none; width: 18px; height: 18px; background: var(--cyan); border-radius: 50%; cursor: pointer; box-shadow: 0 0 12px rgba(0, 229, 255, 0.6); }
+input[type="range"]::-moz-range-thumb { width: 18px; height: 18px; background: var(--cyan); border-radius: 50%; cursor: pointer; border: none; }
+.btn-row { display: flex; gap: 8px; flex-wrap: wrap; }
+.pill-btn { background: rgba(0, 229, 255, 0.08); color: var(--cyan-soft); border: 1px solid var(--border-cyan); padding: 7px 16px; border-radius: 8px; font-size: 12px; cursor: pointer; font-family: 'Inter', sans-serif; font-weight: 500; transition: all 0.2s; }
+.pill-btn:hover { background: rgba(0, 229, 255, 0.18); }
+.pill-btn.active { background: var(--cyan); color: var(--bg-deep); border-color: var(--cyan); box-shadow: 0 0 15px rgba(0, 229, 255, 0.4); font-weight: 600; }
+.viz-out { margin-top: 16px; font-family: 'JetBrains Mono', monospace; font-size: 12px; color: var(--cyan-soft); padding: 10px 14px; background: rgba(0, 0, 0, 0.3); border-radius: 6px; border-left: 2px solid var(--cyan); white-space: pre-wrap; }
+.chart-box { position: relative; height: 260px; margin: 16px 0 8px; background: rgba(0, 0, 0, 0.2); border-radius: 8px; padding: 8px; }
+.legend { display: flex; gap: 18px; font-size: 11px; color: var(--text-secondary); margin-top: 10px; flex-wrap: wrap; }
+.legend-dot { display: inline-block; width: 10px; height: 10px; border-radius: 50%; margin-right: 6px; vertical-align: middle; }
+.metric-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(110px, 1fr)); gap: 10px; margin: 14px 0; }
+.metric { background: rgba(0, 0, 0, 0.3); border: 1px solid rgba(0, 229, 255, 0.18); border-radius: 8px; padding: 12px; }
+.metric-label { font-size: 10px; color: var(--text-muted); text-transform: uppercase; letter-spacing: 1px; }
+.metric-value { font-family: 'JetBrains Mono', monospace; font-size: 18px; color: var(--cyan); margin-top: 4px; font-weight: 500; }
+
+/* LSTM cell diagram */
+.lstm-diagram {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 12px;
+  margin: 18px 0;
+}
+.gate-card {
+  background: rgba(0, 0, 0, 0.35);
+  border: 1px solid rgba(0, 229, 255, 0.2);
+  border-radius: 10px;
+  padding: 14px;
+  text-align: center;
+  transition: all 0.25s;
+}
+.gate-card.active {
+  border-color: var(--cyan);
+  background: rgba(0, 229, 255, 0.1);
+  box-shadow: 0 0 18px rgba(0, 229, 255, 0.2);
+}
+.gate-name {
+  font-family: 'Orbitron', sans-serif;
+  font-size: 12px;
+  color: var(--pink);
+  letter-spacing: 1px;
+  margin-bottom: 8px;
+}
+.gate-formula {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11px;
+  color: var(--cyan-soft);
+  margin-bottom: 8px;
+  line-height: 1.5;
+}
+.gate-vis {
+  width: 100%;
+  height: 60px;
+  background: rgba(0, 0, 0, 0.3);
+  border-radius: 5px;
+  display: flex;
+  align-items: flex-end;
+  padding: 4px;
+  gap: 2px;
+}
+.gate-bar {
+  flex: 1;
+  background: linear-gradient(180deg, var(--cyan), var(--cyan-soft));
+  border-radius: 2px;
+  transition: height 0.3s;
+}
+.gate-bar.f { background: linear-gradient(180deg, var(--warn), #ffd47a); }
+.gate-bar.i { background: linear-gradient(180deg, var(--success), #a4ffb9); }
+.gate-bar.o { background: linear-gradient(180deg, var(--pink), var(--pink-soft)); }
+.gate-desc {
+  font-size: 10px;
+  color: var(--text-muted);
+  margin-top: 8px;
+  letter-spacing: 0.3px;
+}
+
+/* Attention heatmap */
+.attn-heat {
+  display: grid;
+  gap: 2px;
+  background: rgba(0, 0, 0, 0.3);
+  padding: 8px;
+  border-radius: 8px;
+}
+.attn-cell {
+  aspect-ratio: 1;
+  border-radius: 2px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 9px;
+  color: rgba(255, 255, 255, 0.8);
+  position: relative;
+}
+.attn-label-x, .attn-label-y {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10px;
+  color: var(--text-muted);
+  text-align: center;
+}
+
+/* Positional encoding heatmap */
+.pe-heat {
+  display: grid;
+  gap: 1px;
+  background: rgba(0, 0, 0, 0.3);
+  padding: 8px;
+  border-radius: 8px;
+}
+.pe-cell {
+  min-width: 8px;
+  min-height: 8px;
+  aspect-ratio: 1;
+}
+
+/* Mask grid */
+.mask-grid {
+  display: grid;
+  gap: 2px;
+  background: rgba(0, 0, 0, 0.3);
+  padding: 8px;
+  border-radius: 8px;
+  max-width: 420px;
+  margin: 0 auto;
+}
+.mask-cell {
+  aspect-ratio: 1;
+  border-radius: 2px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10px;
+}
+.mask-cell.attend {
+  background: rgba(0, 229, 255, 0.45);
+  border: 1px solid var(--cyan);
+  color: #0a0e1a;
+}
+.mask-cell.blocked {
+  background: rgba(255, 92, 192, 0.15);
+  border: 1px solid rgba(255, 92, 192, 0.4);
+  color: rgba(255, 92, 192, 0.6);
+}
+.mask-cell.pad-blocked {
+  background: rgba(255, 181, 71, 0.15);
+  border: 1px solid rgba(255, 181, 71, 0.4);
+  color: rgba(255, 181, 71, 0.6);
+}
+
+/* Arch comparison */
+.arch-compare {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 12px;
+  margin: 16px 0;
+}
+.arch-card {
+  background: rgba(0, 0, 0, 0.3);
+  border: 1px solid rgba(0, 229, 255, 0.2);
+  border-radius: 10px;
+  padding: 14px;
+  transition: all 0.25s;
+  cursor: pointer;
+}
+.arch-card.recommended {
+  border-color: var(--success);
+  background: rgba(107, 255, 157, 0.08);
+  box-shadow: 0 0 18px rgba(107, 255, 157, 0.2);
+}
+.arch-card.deprio {
+  opacity: 0.5;
+}
+.arch-name {
+  font-family: 'Orbitron', sans-serif;
+  font-size: 14px;
+  color: var(--cyan);
+  margin-bottom: 8px;
+  text-align: center;
+}
+.arch-card.recommended .arch-name { color: var(--success); }
+.arch-rating-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin: 6px 0;
+  font-size: 11px;
+}
+.arch-rating-label { color: var(--text-muted); }
+.arch-rating-bar {
+  display: flex;
+  gap: 2px;
+}
+.arch-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: rgba(154, 168, 196, 0.2);
+}
+.arch-dot.filled { background: var(--cyan); box-shadow: 0 0 6px var(--cyan); }
+.arch-card.recommended .arch-dot.filled { background: var(--success); box-shadow: 0 0 6px var(--success); }
+
+@media (max-width: 768px) {
+  .lstm-diagram { grid-template-columns: 1fr; }
+  .arch-compare { grid-template-columns: 1fr; }
+}
+
+.references { max-width: 1100px; margin: 80px auto 60px; padding: 0 24px; }
+.refs-header { text-align: center; margin-bottom: 40px; }
+.refs-header h2 { font-family: 'Orbitron', sans-serif; font-size: 48px; font-weight: 700; margin-bottom: 12px; }
+.refs-header h2 .cyan-text { color: var(--text-primary); }
+.refs-header h2 .accent { background: linear-gradient(90deg, var(--pink), var(--pink-soft)); -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent; }
+.refs-header p { color: var(--text-secondary); font-size: 15px; }
+.ref-card { background: var(--bg-card); border: 1px solid var(--border-cyan); border-radius: 16px; padding: 28px 32px; margin-bottom: 22px; display: flex; gap: 24px; align-items: flex-start; transition: all 0.2s; }
+.ref-card:hover { border-color: var(--border-cyan-strong); box-shadow: 0 0 25px rgba(0, 229, 255, 0.12); }
+.ref-card.pink-card { border-color: var(--border-pink); }
+.ref-card.pink-card:hover { box-shadow: 0 0 25px rgba(255, 92, 192, 0.15); }
+.ref-icon { width: 56px; height: 56px; border-radius: 12px; background: rgba(0, 229, 255, 0.1); border: 1px solid var(--border-cyan); display: flex; align-items: center; justify-content: center; font-size: 28px; color: var(--cyan); flex-shrink: 0; }
+.ref-card.pink-card .ref-icon { background: rgba(255, 92, 192, 0.1); border-color: var(--border-pink); color: var(--pink); }
+.ref-body { flex: 1; }
+.ref-type { font-family: 'Orbitron', sans-serif; font-size: 22px; color: var(--text-primary); font-weight: 700; letter-spacing: 0.5px; margin-bottom: 4px; }
+.ref-tagline { font-size: 13px; color: var(--text-secondary); margin-bottom: 16px; }
+.ref-title { font-size: 17px; color: var(--cyan); font-weight: 600; margin-bottom: 12px; }
+.ref-card.pink-card .ref-title { color: var(--pink-soft); }
+.ref-btn { display: inline-flex; align-items: center; gap: 8px; padding: 9px 18px; background: transparent; border: 1px solid var(--border-cyan); color: var(--cyan); border-radius: 8px; font-size: 12px; font-weight: 600; letter-spacing: 1px; text-decoration: none; transition: all 0.2s; text-transform: uppercase; font-family: 'Inter', sans-serif; }
+.ref-btn:hover { background: rgba(0, 229, 255, 0.15); box-shadow: 0 0 12px rgba(0, 229, 255, 0.3); }
+.ref-card.pink-card .ref-btn { border-color: var(--border-pink); color: var(--pink); }
+.ref-card.pink-card .ref-btn:hover { background: rgba(255, 92, 192, 0.15); box-shadow: 0 0 12px rgba(255, 92, 192, 0.3); }
+
+.scroll-dots { position: fixed; right: 24px; top: 50%; transform: translateY(-50%); display: flex; flex-direction: column; gap: 10px; z-index: 50; }
+.scroll-dot { width: 9px; height: 9px; border-radius: 50%; background: rgba(0, 229, 255, 0.25); border: 1px solid var(--border-cyan); cursor: pointer; transition: all 0.2s; position: relative; }
+.scroll-dot:hover { background: var(--cyan-soft); transform: scale(1.3); }
+.scroll-dot.active { background: var(--cyan); box-shadow: 0 0 10px var(--cyan); transform: scale(1.4); }
+.scroll-dot::after { content: attr(data-label); position: absolute; right: 18px; top: 50%; transform: translateY(-50%); background: rgba(10, 14, 26, 0.95); border: 1px solid var(--border-cyan); padding: 4px 10px; border-radius: 6px; font-size: 11px; color: var(--cyan); white-space: nowrap; opacity: 0; pointer-events: none; transition: opacity 0.2s; }
+.scroll-dot:hover::after { opacity: 1; }
+
+.summary-box { background: var(--bg-card); border: 1px solid var(--border-cyan); border-radius: 14px; padding: 24px; margin: 20px 0; }
+.footer { text-align: center; padding: 40px 24px; border-top: 1px solid rgba(0, 229, 255, 0.15); color: var(--text-muted); font-size: 13px; }
+.footer .nav-row { display: flex; justify-content: center; gap: 12px; margin-top: 14px; flex-wrap: wrap; }
+.footer .nav-btn { display: inline-flex; align-items: center; gap: 8px; padding: 10px 22px; background: rgba(0, 229, 255, 0.08); border: 1px solid var(--border-cyan); color: var(--cyan); border-radius: 8px; text-decoration: none; font-weight: 600; transition: all 0.2s; }
+.footer .nav-btn:hover { background: rgba(0, 229, 255, 0.18); box-shadow: 0 0 15px rgba(0, 229, 255, 0.3); }
+
+@media (max-width: 768px) {
+  .hero h1 { font-size: 40px; }
+  .refs-header h2 { font-size: 32px; }
+  .nav-links { display: none; }
+  .scroll-dots { display: none; }
+  .section h2 { font-size: 24px; }
+  .ref-card { flex-direction: column; }
+  .top-nav { padding: 14px 16px; }
+}
+</style>
+</head>
+<body>
+
+<div class="starfield"></div>
+<div class="stars" id="stars"></div>
+
+<nav class="top-nav">
+  <div class="nav-inner">
+    <div class="brand">
+      <div class="brand-logo"><i class="ti ti-atom-2"></i></div>
+      <div>
+        <div class="brand-text">PYTORCH ACADEMY</div>
+        <div class="brand-sub">DATA SCIENCE TRACK • MODULE 08</div>
+      </div>
+    </div>
+    <ul class="nav-links">
+      <li><a href="#sec-1" class="active">Why Sequences</a></li>
+      <li><a href="#sec-2">LSTM / GRU</a></li>
+      <li><a href="#sec-3">Attention</a></li>
+      <li><a href="#sec-4">Transformer</a></li>
+      <li><a href="#sec-5">Masks</a></li>
+      <li><a href="#sec-project">Project</a></li>
+    </ul>
+    <div class="nav-actions">
+      <div class="badge-mode"><span class="dot"></span> LEARN MODE</div>
+      <button class="btn-primary">Save Progress</button>
+    </div>
+  </div>
+</nav>
+
+<section class="hero">
+  <div class="continue-pill"><i class="ti ti-player-play"></i> CONTINUE LEARNING</div>
+  <h1><span class="cyan-text">Sequence</span> <span class="accent">Models</span></h1>
+  <p class="subtitle">From recurrence to attention — LSTM, GRU, and Transformers applied to real log sequences with anomaly scoring at the end.</p>
+  <div class="module-tag">MODULE 08 • 13 PAGES • INTERMEDIATE</div>
+</section>
+
+<div class="goal-callout">
+  <h3><i class="ti ti-target"></i> MODULE GOAL</h3>
+  <p>Understand why sequence modelling requires special architectures. Build LSTM and Transformer models for log sequences, implement next-event prediction, and produce an anomaly scoring pipeline directly applicable to AIOps.</p>
+</div>
+
+<div class="content">
+
+  <!-- ============ SECTION 1 ============ -->
+  <section class="section" id="sec-1">
+    <div class="section-num">SECTION 01</div>
+    <h2>Why Sequence Modelling Matters in DS / AIOps</h2>
+
+    <h3>The Problem with Standard MLPs for Sequences</h3>
+    <p>An MLP treats each input independently. Feed it <code>[login, file_read, file_write]</code> and <code>[file_write, login, file_read]</code> — it doesn't know these have different temporal meaning.</p>
+    <p>In AIOps:</p>
+    <ul>
+      <li>A <code>permission_denied</code> after <code>sudo_attempt</code> is very different from <code>permission_denied</code> after <code>file_read</code>.</li>
+      <li>The order and context of events matters enormously for anomaly detection.</li>
+    </ul>
+
+    <h3>Three Architectures for Sequences</h3>
+
+    <!-- INTERACTIVE WIDGET 1: Architecture Decider -->
+    <div class="widget">
+      <div class="widget-title">Which Sequence Architecture Should You Use?</div>
+      <div class="widget-subtitle">Pick the constraint that matters most for your task — the architecture cards below light up the recommended choice and dim the others.</div>
+      <div class="btn-row" style="margin-bottom:14px;">
+        <button class="pill-btn active" data-need="balanced">Balanced task</button>
+        <button class="pill-btn" data-need="long-seq">Very long sequences (&gt;10k)</button>
+        <button class="pill-btn" data-need="streaming">Streaming / online</button>
+        <button class="pill-btn" data-need="long-range">Long-range dependencies</button>
+        <button class="pill-btn" data-need="tiny-data">Tiny dataset</button>
+        <button class="pill-btn" data-need="edge">Edge deployment</button>
+      </div>
+      <div class="arch-compare">
+        <div class="arch-card" id="arch-mlp">
+          <div class="arch-name">MLP</div>
+          <div class="arch-rating-row"><span class="arch-rating-label">Order-aware</span><span class="arch-rating-bar"><span class="arch-dot"></span><span class="arch-dot"></span><span class="arch-dot"></span><span class="arch-dot"></span><span class="arch-dot"></span></span></div>
+          <div class="arch-rating-row"><span class="arch-rating-label">Long-range</span><span class="arch-rating-bar"><span class="arch-dot"></span><span class="arch-dot"></span><span class="arch-dot"></span><span class="arch-dot"></span><span class="arch-dot"></span></span></div>
+          <div class="arch-rating-row"><span class="arch-rating-label">Parallel train</span><span class="arch-rating-bar"><span class="arch-dot filled"></span><span class="arch-dot filled"></span><span class="arch-dot filled"></span><span class="arch-dot filled"></span><span class="arch-dot filled"></span></span></div>
+        </div>
+        <div class="arch-card" id="arch-lstm">
+          <div class="arch-name">LSTM / GRU</div>
+          <div class="arch-rating-row"><span class="arch-rating-label">Order-aware</span><span class="arch-rating-bar"><span class="arch-dot filled"></span><span class="arch-dot filled"></span><span class="arch-dot filled"></span><span class="arch-dot filled"></span><span class="arch-dot filled"></span></span></div>
+          <div class="arch-rating-row"><span class="arch-rating-label">Long-range</span><span class="arch-rating-bar"><span class="arch-dot filled"></span><span class="arch-dot filled"></span><span class="arch-dot filled"></span><span class="arch-dot"></span><span class="arch-dot"></span></span></div>
+          <div class="arch-rating-row"><span class="arch-rating-label">Parallel train</span><span class="arch-rating-bar"><span class="arch-dot filled"></span><span class="arch-dot"></span><span class="arch-dot"></span><span class="arch-dot"></span><span class="arch-dot"></span></span></div>
+        </div>
+        <div class="arch-card" id="arch-tfm">
+          <div class="arch-name">Transformer</div>
+          <div class="arch-rating-row"><span class="arch-rating-label">Order-aware</span><span class="arch-rating-bar"><span class="arch-dot filled"></span><span class="arch-dot filled"></span><span class="arch-dot filled"></span><span class="arch-dot filled"></span><span class="arch-dot filled"></span></span></div>
+          <div class="arch-rating-row"><span class="arch-rating-label">Long-range</span><span class="arch-rating-bar"><span class="arch-dot filled"></span><span class="arch-dot filled"></span><span class="arch-dot filled"></span><span class="arch-dot filled"></span><span class="arch-dot filled"></span></span></div>
+          <div class="arch-rating-row"><span class="arch-rating-label">Parallel train</span><span class="arch-rating-bar"><span class="arch-dot filled"></span><span class="arch-dot filled"></span><span class="arch-dot filled"></span><span class="arch-dot filled"></span><span class="arch-dot filled"></span></span></div>
+        </div>
+      </div>
+      <div class="viz-out" id="arch-out"></div>
+    </div>
+
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>Architecture</th><th>Processes order?</th><th>Long-range deps?</th><th>Parallel training?</th></tr></thead>
+        <tbody>
+          <tr><td>MLP</td><td>No</td><td>No</td><td>Yes</td></tr>
+          <tr><td>LSTM / GRU</td><td>Yes</td><td>Partially</td><td>No (sequential)</td></tr>
+          <tr><td>Transformer</td><td>Yes</td><td>Yes</td><td>Yes</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <!-- ============ SECTION 2 ============ -->
+  <section class="section" id="sec-2">
+    <div class="section-num">SECTION 02</div>
+    <h2>LSTM &amp; GRU: When They Still Win</h2>
+
+    <h3>The LSTM Cell Intuition</h3>
+    <p>An LSTM maintains two states: <strong style="color:var(--cyan-soft);">cell state c_t</strong> — long-term memory (the "conveyor belt"); <strong style="color:var(--cyan-soft);">hidden state h_t</strong> — short-term working memory. Three gates control what to keep, forget, and write.</p>
+
+    <!-- INTERACTIVE WIDGET 2: LSTM Gates Visualizer -->
+    <div class="widget">
+      <div class="widget-title">LSTM Gates Visualiser</div>
+      <div class="widget-subtitle">An LSTM cell processes one timestep at a time. Each gate outputs a value between 0 (close) and 1 (open). Watch how the three gates and the cell state interact across a sequence.</div>
+      <div class="controls">
+        <div class="ctrl-row">
+          <span class="ctrl-label">Timestep</span>
+          <input type="range" id="lstm-t" min="0" max="9" value="0" step="1">
+          <span class="ctrl-value" id="lstm-t-v">0 / 9</span>
+        </div>
+        <div class="btn-row" style="justify-content:flex-end;">
+          <button class="pill-btn" id="lstm-play"><i class="ti ti-player-play"></i> Play sequence</button>
+        </div>
+      </div>
+      <div class="lstm-diagram">
+        <div class="gate-card" id="gate-f">
+          <div class="gate-name"><i class="ti ti-snowflake"></i> FORGET GATE</div>
+          <div class="gate-formula">f_t = σ(W_f · [h_{t-1}, x_t] + b_f)</div>
+          <div class="gate-vis"><div class="gate-bar f" style="height:30%"></div></div>
+          <div class="gate-desc">What to drop from cell state</div>
+        </div>
+        <div class="gate-card" id="gate-i">
+          <div class="gate-name"><i class="ti ti-arrow-down-to-arc"></i> INPUT GATE</div>
+          <div class="gate-formula">i_t = σ(W_i · [h_{t-1}, x_t] + b_i)</div>
+          <div class="gate-vis"><div class="gate-bar i" style="height:60%"></div></div>
+          <div class="gate-desc">What new info to write</div>
+        </div>
+        <div class="gate-card" id="gate-o">
+          <div class="gate-name"><i class="ti ti-arrow-up"></i> OUTPUT GATE</div>
+          <div class="gate-formula">o_t = σ(W_o · [h_{t-1}, x_t] + b_o)</div>
+          <div class="gate-vis"><div class="gate-bar o" style="height:70%"></div></div>
+          <div class="gate-desc">What to expose as output</div>
+        </div>
+      </div>
+      <div class="chart-box" style="height:200px;"><canvas id="lstm-chart"></canvas></div>
+      <div class="legend" style="justify-content:center;">
+        <span><span class="legend-dot" style="background:var(--warn);"></span>forget gate</span>
+        <span><span class="legend-dot" style="background:var(--success);"></span>input gate</span>
+        <span><span class="legend-dot" style="background:var(--pink);"></span>output gate</span>
+        <span><span class="legend-dot" style="background:var(--cyan);"></span>cell state c_t</span>
+      </div>
+    </div>
+
+    <div class="code-block">
+      <div class="code-header"><span class="code-lang">python</span><button class="code-copy"><i class="ti ti-copy"></i> Copy</button></div>
+<pre><code><span class="kw">import</span> torch
+<span class="kw">import</span> torch.nn <span class="kw">as</span> nn
+<span class="kw">import</span> numpy <span class="kw">as</span> np
+
+torch.<span class="fn">manual_seed</span>(<span class="st">42</span>)
+
+<span class="co"># Basic LSTM usage</span>
+lstm = nn.<span class="fn">LSTM</span>(
+    input_size=<span class="st">32</span>,        <span class="co"># Feature dim per timestep</span>
+    hidden_size=<span class="st">64</span>,       <span class="co"># Hidden state size</span>
+    num_layers=<span class="st">2</span>,         <span class="co"># Stacked LSTM</span>
+    batch_first=<span class="kw">True</span>,     <span class="co"># (B, T, features) — always use this</span>
+    dropout=<span class="st">0.2</span>,          <span class="co"># Between layers (not applied to final layer)</span>
+    bidirectional=<span class="kw">False</span>
+)
+
+<span class="co"># Input: (batch, seq_len, input_size)</span>
+x = torch.<span class="fn">randn</span>(<span class="st">8</span>, <span class="st">20</span>, <span class="st">32</span>)          <span class="co"># 8 sequences, 20 timesteps, 32 features</span>
+output, (h_n, c_n) = <span class="fn">lstm</span>(x)
+
+<span class="fn">print</span>(<span class="st">"Input shape: "</span>, x.shape)
+<span class="fn">print</span>(<span class="st">"Output shape:"</span>, output.shape)            <span class="co"># (8, 20, 64) — hidden state at each timestep</span>
+<span class="fn">print</span>(<span class="st">"h_n shape:   "</span>, h_n.shape)              <span class="co"># (num_layers, 8, 64) — final hidden state</span>
+<span class="fn">print</span>(<span class="st">"c_n shape:   "</span>, c_n.shape)              <span class="co"># (num_layers, 8, 64) — final cell state</span></code></pre>
+    </div>
+    <div class="output">Input shape:  torch.Size([8, 20, 32])
+Output shape: torch.Size([8, 20, 64])
+h_n shape:    torch.Size([2, 8, 64])
+c_n shape:    torch.Size([2, 8, 64])</div>
+
+    <div class="code-block">
+      <div class="code-header"><span class="code-lang">python</span><button class="code-copy"><i class="ti ti-copy"></i> Copy</button></div>
+<pre><code><span class="co"># GRU — simpler than LSTM (2 gates instead of 3), often comparable performance</span>
+gru = nn.<span class="fn">GRU</span>(
+    input_size=<span class="st">32</span>,
+    hidden_size=<span class="st">64</span>,
+    num_layers=<span class="st">2</span>,
+    batch_first=<span class="kw">True</span>,
+    dropout=<span class="st">0.2</span>
+)
+
+x       = torch.<span class="fn">randn</span>(<span class="st">8</span>, <span class="st">20</span>, <span class="st">32</span>)
+out, h  = <span class="fn">gru</span>(x)
+<span class="fn">print</span>(<span class="st">"GRU output:"</span>, out.shape)         <span class="co"># (8, 20, 64)</span>
+<span class="fn">print</span>(<span class="st">"GRU h_n:   "</span>, h.shape)           <span class="co"># (num_layers, 8, 64)</span></code></pre>
+    </div>
+    <div class="output">GRU output: torch.Size([8, 20, 64])
+GRU h_n:    torch.Size([2, 8, 64])</div>
+
+    <div class="callout callout-tip">
+      <i class="ti ti-bulb"></i>
+      <div class="callout-content">
+        <div class="callout-title">TIP — When LSTM/GRU Beat Transformers</div>
+        Sequences are very long (&gt; 10k tokens) and attention is prohibitively expensive. Online/streaming inference — process one token at a time with constant memory. Tiny datasets — Transformers need more data to generalise. Deployment constraints — LSTMs are simpler to export and run on edge devices.
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ SECTION 3 ============ -->
+  <section class="section" id="sec-3">
+    <div class="section-num">SECTION 03</div>
+    <h2>Attention Intuition</h2>
+
+    <h3>The Core Idea</h3>
+    <p>Instead of compressing the entire sequence into a fixed-size hidden state, attention lets the model look back at any position in the sequence when computing each output.</p>
+    <p><strong style="color:var(--pink-soft);">Real-World Analogy:</strong> Reading a log to detect an anomaly. Rather than summarising all 1000 events into a single vector, attention lets the model say: "To understand event 850, let me focus on events 10, 200, and 847 — they're the most relevant context."</p>
+
+    <!-- INTERACTIVE WIDGET 3: Attention Heatmap Explorer -->
+    <div class="widget">
+      <div class="widget-title">Attention Weights Heatmap</div>
+      <div class="widget-subtitle">A log sequence of 8 events. Each row shows where one position attends. Switch between attention patterns to see how different learned attention heads behave.</div>
+      <div class="controls">
+        <div class="ctrl-row">
+          <span class="ctrl-label">Pattern</span>
+          <div class="btn-row">
+            <button class="pill-btn active" data-pattern="local">Local (neighbours)</button>
+            <button class="pill-btn" data-pattern="global">Global anchor</button>
+            <button class="pill-btn" data-pattern="anomaly">Anomaly focus</button>
+            <button class="pill-btn" data-pattern="uniform">Uniform</button>
+          </div>
+        </div>
+        <div class="ctrl-row">
+          <span class="ctrl-label">Temperature (softmax)</span>
+          <input type="range" id="attn-temp" min="0.1" max="3" value="1.0" step="0.1">
+          <span class="ctrl-value" id="attn-temp-v">1.0</span>
+        </div>
+      </div>
+      <div id="attn-wrap" style="display:grid;grid-template-columns:90px 1fr;gap:8px;">
+        <div></div>
+        <div id="attn-x-labels" style="display:grid;grid-template-columns:repeat(8,1fr);gap:2px;font-family:JetBrains Mono,monospace;font-size:10px;color:var(--text-muted);text-align:center;padding:0 8px;"></div>
+        <div id="attn-y-labels" style="display:grid;grid-template-rows:repeat(8,1fr);font-family:JetBrains Mono,monospace;font-size:10px;color:var(--text-muted);align-items:center;text-align:right;padding-right:6px;"></div>
+        <div class="attn-heat" id="attn-heat" style="grid-template-columns:repeat(8,1fr);"></div>
+      </div>
+      <div class="viz-out" id="attn-out"></div>
+    </div>
+
+    <div class="code-block">
+      <div class="code-header"><span class="code-lang">python</span><button class="code-copy"><i class="ti ti-copy"></i> Copy</button></div>
+<pre><code><span class="co"># Scaled dot-product attention — the heart of the Transformer</span>
+<span class="kw">def</span> <span class="fn">scaled_dot_product_attention</span>(Q, K, V, mask=<span class="kw">None</span>):
+    <span class="st">"""
+    Q: (B, heads, T, d_k) — queries
+    K: (B, heads, T, d_k) — keys
+    V: (B, heads, T, d_v) — values
+    Returns: attended values + attention weights
+    """</span>
+    d_k    = Q.shape[-<span class="st">1</span>]
+    scores = torch.<span class="fn">matmul</span>(Q, K.<span class="fn">transpose</span>(-<span class="st">2</span>, -<span class="st">1</span>)) / (d_k ** <span class="st">0.5</span>)   <span class="co"># Scale</span>
+
+    <span class="kw">if</span> mask <span class="kw">is</span> <span class="kw">not</span> <span class="kw">None</span>:
+        scores = scores.<span class="fn">masked_fill</span>(mask == <span class="st">0</span>, <span class="fn">float</span>(<span class="st">'-inf'</span>))
+
+    weights = torch.<span class="fn">softmax</span>(scores, dim=-<span class="st">1</span>)   <span class="co"># (B, heads, T, T)</span>
+    output  = torch.<span class="fn">matmul</span>(weights, V)         <span class="co"># (B, heads, T, d_v)</span>
+    <span class="kw">return</span> output, weights
+
+
+<span class="co"># Demo: 4 heads, seq_len=5, d_k=8</span>
+B, heads, T, d_k = <span class="st">2</span>, <span class="st">4</span>, <span class="st">5</span>, <span class="st">8</span>
+Q = torch.<span class="fn">randn</span>(B, heads, T, d_k)
+K = torch.<span class="fn">randn</span>(B, heads, T, d_k)
+V = torch.<span class="fn">randn</span>(B, heads, T, d_k)
+
+out, weights = <span class="fn">scaled_dot_product_attention</span>(Q, K, V)
+<span class="fn">print</span>(<span class="st">"Attention output shape: "</span>, out.shape)     <span class="co"># (2, 4, 5, 8)</span>
+<span class="fn">print</span>(<span class="st">"Attention weights shape:"</span>, weights.shape) <span class="co"># (2, 4, 5, 5) — each token attends to all</span>
+<span class="fn">print</span>(<span class="st">"Attention weights sum (should be 1.0):"</span>, weights[<span class="st">0</span>, <span class="st">0</span>, <span class="st">0</span>].<span class="fn">sum</span>().<span class="fn">item</span>())</code></pre>
+    </div>
+    <div class="output">Attention output shape:  torch.Size([2, 4, 5, 8])
+Attention weights shape: torch.Size([2, 4, 5, 5])
+Attention weights sum (should be 1.0): 1.0</div>
+  </section>
+
+  <!-- ============ SECTION 4 ============ -->
+  <section class="section" id="sec-4">
+    <div class="section-num">SECTION 04</div>
+    <h2>Transformers: Embeddings &amp; Positional Encodings</h2>
+
+    <!-- INTERACTIVE WIDGET 4: Positional Encoding Heatmap -->
+    <div class="widget">
+      <div class="widget-title">Sinusoidal Positional Encoding</div>
+      <div class="widget-subtitle">A heatmap of the positional encoding matrix. Each row is a position, each column a dimension. Notice the wavelength gets longer for later dimensions — that's how the model encodes positions of all scales at once.</div>
+      <div class="controls">
+        <div class="ctrl-row">
+          <span class="ctrl-label">Sequence length</span>
+          <input type="range" id="pe-len" min="16" max="64" value="32" step="4">
+          <span class="ctrl-value" id="pe-len-v">32</span>
+        </div>
+        <div class="ctrl-row">
+          <span class="ctrl-label">d_model</span>
+          <input type="range" id="pe-d" min="16" max="64" value="32" step="4">
+          <span class="ctrl-value" id="pe-d-v">32</span>
+        </div>
+        <div class="ctrl-row">
+          <span class="ctrl-label">View</span>
+          <div class="btn-row">
+            <button class="pill-btn active" data-peview="heat">Heatmap</button>
+            <button class="pill-btn" data-peview="waves">Per-dimension waves</button>
+          </div>
+        </div>
+      </div>
+      <div id="pe-heat-wrap"><div class="pe-heat" id="pe-heat"></div></div>
+      <div id="pe-wave-wrap" style="display:none;"><div class="chart-box" style="height:220px;"><canvas id="pe-chart"></canvas></div></div>
+      <div class="viz-out" id="pe-out"></div>
+    </div>
+
+    <div class="code-block">
+      <div class="code-header"><span class="code-lang">python</span><button class="code-copy"><i class="ti ti-copy"></i> Copy</button></div>
+<pre><code><span class="kw">class</span> <span class="cls">PositionalEncoding</span>(nn.Module):
+    <span class="st">"""
+    Sinusoidal positional encoding.
+    Adds position information to embeddings so the model knows token order.
+    """</span>
+
+    <span class="kw">def</span> <span class="fn">__init__</span>(self, d_model: <span class="cls">int</span>, max_seq_len: <span class="cls">int</span> = <span class="st">512</span>, dropout: <span class="cls">float</span> = <span class="st">0.1</span>):
+        <span class="fn">super</span>().<span class="fn">__init__</span>()
+        self.dropout = nn.<span class="fn">Dropout</span>(dropout)
+
+        <span class="co"># Build the positional encoding matrix</span>
+        pe  = torch.<span class="fn">zeros</span>(max_seq_len, d_model)
+        pos = torch.<span class="fn">arange</span>(<span class="st">0</span>, max_seq_len).<span class="fn">unsqueeze</span>(<span class="st">1</span>).<span class="fn">float</span>()
+        div = torch.<span class="fn">exp</span>(torch.<span class="fn">arange</span>(<span class="st">0</span>, d_model, <span class="st">2</span>).<span class="fn">float</span>() *
+                        -(np.<span class="fn">log</span>(<span class="st">10000.0</span>) / d_model))
+
+        pe[:, <span class="st">0</span>::<span class="st">2</span>] = torch.<span class="fn">sin</span>(pos * div)
+        pe[:, <span class="st">1</span>::<span class="st">2</span>] = torch.<span class="fn">cos</span>(pos * div)
+        pe = pe.<span class="fn">unsqueeze</span>(<span class="st">0</span>)              <span class="co"># (1, max_seq_len, d_model)</span>
+        self.<span class="fn">register_buffer</span>(<span class="st">'pe'</span>, pe)   <span class="co"># Non-trainable buffer</span>
+
+    <span class="kw">def</span> <span class="fn">forward</span>(self, x: torch.Tensor) -&gt; torch.Tensor:
+        <span class="co"># x: (B, T, d_model)</span>
+        x = x + self.pe[:, :x.<span class="fn">size</span>(<span class="st">1</span>), :]
+        <span class="kw">return</span> self.<span class="fn">dropout</span>(x)
+
+
+<span class="kw">class</span> <span class="cls">LogTransformer</span>(nn.Module):
+    <span class="st">"""
+    Transformer encoder for log event sequences.
+    Input: sequence of log event IDs
+    Output: per-token representations OR sequence-level representation
+    """</span>
+
+    <span class="kw">def</span> <span class="fn">__init__</span>(self, vocab_size: <span class="cls">int</span>, d_model: <span class="cls">int</span> = <span class="st">128</span>, n_heads: <span class="cls">int</span> = <span class="st">4</span>,
+                 n_layers: <span class="cls">int</span> = <span class="st">3</span>, d_ff: <span class="cls">int</span> = <span class="st">256</span>, dropout: <span class="cls">float</span> = <span class="st">0.1</span>,
+                 max_seq_len: <span class="cls">int</span> = <span class="st">64</span>):
+        <span class="fn">super</span>().<span class="fn">__init__</span>()
+        self.embedding = nn.<span class="fn">Embedding</span>(vocab_size, d_model, padding_idx=<span class="st">0</span>)
+        self.pos_enc   = <span class="fn">PositionalEncoding</span>(d_model, max_seq_len, dropout)
+
+        encoder_layer = nn.<span class="fn">TransformerEncoderLayer</span>(
+            d_model=d_model, nhead=n_heads, dim_feedforward=d_ff,
+            dropout=dropout, batch_first=<span class="kw">True</span>, norm_first=<span class="kw">True</span>   <span class="co"># Pre-norm: more stable</span>
+        )
+        self.encoder = nn.<span class="fn">TransformerEncoder</span>(encoder_layer, num_layers=n_layers)
+        self.norm    = nn.<span class="fn">LayerNorm</span>(d_model)
+
+    <span class="kw">def</span> <span class="fn">forward</span>(self, token_ids: torch.Tensor,
+                padding_mask: torch.Tensor = <span class="kw">None</span>) -&gt; torch.Tensor:
+        <span class="st">"""
+        token_ids:    (B, T) — integer event IDs
+        padding_mask: (B, T) — True where tokens are padding
+        Returns:      (B, T, d_model) — contextual representations
+        """</span>
+        x = self.<span class="fn">pos_enc</span>(self.<span class="fn">embedding</span>(token_ids))
+        x = self.<span class="fn">encoder</span>(x, src_key_padding_mask=padding_mask)
+        <span class="kw">return</span> self.<span class="fn">norm</span>(x)
+
+
+<span class="co"># Test</span>
+VOCAB_SIZE = <span class="st">100</span>
+model_t  = <span class="fn">LogTransformer</span>(vocab_size=VOCAB_SIZE, d_model=<span class="st">128</span>, n_heads=<span class="st">4</span>, n_layers=<span class="st">3</span>)
+tokens   = torch.<span class="fn">randint</span>(<span class="st">0</span>, VOCAB_SIZE, (<span class="st">8</span>, <span class="st">32</span>))          <span class="co"># Batch=8, seq_len=32</span>
+pad_mask = (tokens == <span class="st">0</span>)
+
+output = <span class="fn">model_t</span>(tokens, pad_mask)
+<span class="fn">print</span>(<span class="st">"Transformer output shape:"</span>, output.shape)        <span class="co"># (8, 32, 128)</span>
+<span class="fn">print</span>(<span class="st">"Params:"</span>, <span class="fn">sum</span>(p.<span class="fn">numel</span>() <span class="kw">for</span> p <span class="kw">in</span> model_t.<span class="fn">parameters</span>()))</code></pre>
+    </div>
+    <div class="output">Transformer output shape: torch.Size([8, 32, 128])
+Params: 410496</div>
+  </section>
+
+  <!-- ============ SECTION 5 ============ -->
+  <section class="section" id="sec-5">
+    <div class="section-num">SECTION 05</div>
+    <h2>Training Tips: Masking, Padding, Teacher Forcing</h2>
+
+    <h3>Padding Mask</h3>
+    <div class="code-block">
+      <div class="code-header"><span class="code-lang">python</span><button class="code-copy"><i class="ti ti-copy"></i> Copy</button></div>
+<pre><code><span class="kw">from</span> torch.nn.utils.rnn <span class="kw">import</span> pad_sequence
+
+<span class="kw">def</span> <span class="fn">make_padding_mask</span>(sequences: <span class="cls">list</span>, pad_id: <span class="cls">int</span> = <span class="st">0</span>) -&gt; torch.Tensor:
+    <span class="st">"""Create a padding mask: True where tokens are padding."""</span>
+    padded = <span class="fn">pad_sequence</span>(sequences, batch_first=<span class="kw">True</span>, padding_value=pad_id)
+    mask   = (padded == pad_id)
+    <span class="kw">return</span> padded, mask
+
+
+seqs = [
+    torch.<span class="fn">tensor</span>([<span class="st">3</span>, <span class="st">7</span>, <span class="st">12</span>, <span class="st">5</span>]),
+    torch.<span class="fn">tensor</span>([<span class="st">8</span>, <span class="st">2</span>]),
+    torch.<span class="fn">tensor</span>([<span class="st">1</span>, <span class="st">9</span>, <span class="st">4</span>, <span class="st">7</span>, <span class="st">3</span>, <span class="st">11</span>])
+]
+padded, mask = <span class="fn">make_padding_mask</span>(seqs)
+<span class="fn">print</span>(<span class="st">"Padded:\n"</span>, padded)
+<span class="fn">print</span>(<span class="st">"Padding mask (True = pad):\n"</span>, mask)</code></pre>
+    </div>
+    <div class="output">Padded:
+ tensor([[ 3,  7, 12,  5,  0,  0],
+        [ 8,  2,  0,  0,  0,  0],
+        [ 1,  9,  4,  7,  3, 11]])
+Padding mask (True = pad):
+ tensor([[False, False, False, False,  True,  True],
+        [False, False,  True,  True,  True,  True],
+        [False, False, False, False, False, False]])</div>
+
+    <h3>Causal Mask for Autoregressive Generation</h3>
+    <div class="code-block">
+      <div class="code-header"><span class="code-lang">python</span><button class="code-copy"><i class="ti ti-copy"></i> Copy</button></div>
+<pre><code><span class="kw">def</span> <span class="fn">make_causal_mask</span>(seq_len: <span class="cls">int</span>) -&gt; torch.Tensor:
+    <span class="st">"""
+    Upper-triangular mask for autoregressive (causal) attention.
+    Position i can only attend to positions 0..i (not future tokens).
+    """</span>
+    <span class="co"># In PyTorch TransformerDecoder: True means 'ignore this position'</span>
+    mask = torch.<span class="fn">triu</span>(torch.<span class="fn">ones</span>(seq_len, seq_len), diagonal=<span class="st">1</span>).<span class="fn">bool</span>()
+    <span class="kw">return</span> mask
+
+mask = <span class="fn">make_causal_mask</span>(<span class="st">6</span>)
+<span class="fn">print</span>(<span class="st">"Causal mask (True = masked):"</span>)
+<span class="fn">print</span>(mask.<span class="fn">int</span>())</code></pre>
+    </div>
+    <div class="output">Causal mask (True = masked):
+tensor([[0, 1, 1, 1, 1, 1],
+        [0, 0, 1, 1, 1, 1],
+        [0, 0, 0, 1, 1, 1],
+        [0, 0, 0, 0, 1, 1],
+        [0, 0, 0, 0, 0, 1],
+        [0, 0, 0, 0, 0, 0]], dtype=torch.int32)</div>
+
+    <!-- INTERACTIVE WIDGET 5: Mask Visualizer -->
+    <div class="widget">
+      <div class="widget-title">Attention Mask Visualiser</div>
+      <div class="widget-subtitle">Toggle padding and causal masks to see exactly which positions a Transformer can attend to. Cyan cells = allowed, pink/yellow = blocked.</div>
+      <div class="controls">
+        <div class="ctrl-row">
+          <span class="ctrl-label">Sequence length</span>
+          <input type="range" id="mask-T" min="4" max="12" value="8" step="1">
+          <span class="ctrl-value" id="mask-T-v">8</span>
+        </div>
+        <div class="ctrl-row">
+          <span class="ctrl-label">Real tokens (rest = padding)</span>
+          <input type="range" id="mask-real" min="2" max="12" value="6" step="1">
+          <span class="ctrl-value" id="mask-real-v">6</span>
+        </div>
+        <div class="ctrl-row">
+          <span class="ctrl-label">Mask type</span>
+          <div class="btn-row">
+            <button class="pill-btn active" data-mtype="none">None</button>
+            <button class="pill-btn" data-mtype="pad">Padding only</button>
+            <button class="pill-btn" data-mtype="causal">Causal only</button>
+            <button class="pill-btn" data-mtype="both">Causal + padding</button>
+          </div>
+        </div>
+      </div>
+      <div class="mask-grid" id="mask-grid"></div>
+      <div class="legend" style="justify-content:center;">
+        <span><span class="legend-dot" style="background:rgba(0,229,255,0.45);"></span>can attend</span>
+        <span><span class="legend-dot" style="background:rgba(255,92,192,0.4);"></span>blocked by causal mask</span>
+        <span><span class="legend-dot" style="background:rgba(255,181,71,0.4);"></span>blocked by padding</span>
+      </div>
+      <div class="viz-out" id="mask-out"></div>
+    </div>
+  </section>
+
+  <!-- ============ PROJECT ============ -->
+  <section class="section" id="sec-project">
+    <div class="section-num">HANDS-ON PROJECT</div>
+    <h2>Log-Sequence Prediction + Anomaly Scoring</h2>
+
+    <p>Two tasks in one model:</p>
+    <ol>
+      <li><strong style="color:var(--cyan-soft);">Next event prediction</strong> — predict the next log event ID given previous events.</li>
+      <li><strong style="color:var(--cyan-soft);">Anomaly scoring</strong> — high loss on a sequence = anomalous sequence.</li>
+    </ol>
+
+    <div class="code-block">
+      <div class="code-header"><span class="code-lang">python</span><button class="code-copy"><i class="ti ti-copy"></i> Copy</button></div>
+<pre><code><span class="co"># Dataset</span>
+torch.<span class="fn">manual_seed</span>(<span class="st">77</span>)
+np.random.<span class="fn">seed</span>(<span class="st">77</span>)
+
+<span class="kw">def</span> <span class="fn">generate_log_sequences</span>(n_seqs=<span class="st">2000</span>, vocab_size=<span class="st">50</span>, seq_len=<span class="st">20</span>,
+                            anomaly_rate=<span class="st">0.1</span>):
+    <span class="st">"""
+    Normal sequences: Markov chain over events 1-30.
+    Anomalous sequences: random events from full vocab (including rare 31-49).
+    """</span>
+    sequences, labels = [], []
+    trans = np.random.<span class="fn">dirichlet</span>(np.<span class="fn">ones</span>(<span class="st">30</span>) * <span class="st">0.5</span>, size=<span class="st">30</span>)   <span class="co"># Transition matrix</span>
+
+    <span class="kw">for</span> _ <span class="kw">in</span> <span class="fn">range</span>(n_seqs):
+        is_anomaly = np.random.<span class="fn">rand</span>() &lt; anomaly_rate
+        seq = []
+        state = np.random.<span class="fn">randint</span>(<span class="st">0</span>, <span class="st">30</span>)
+        <span class="kw">for</span> _ <span class="kw">in</span> <span class="fn">range</span>(seq_len):
+            <span class="kw">if</span> is_anomaly:
+                event = np.random.<span class="fn">randint</span>(<span class="st">1</span>, vocab_size)
+            <span class="kw">else</span>:
+                event = <span class="fn">int</span>(np.random.<span class="fn">choice</span>(<span class="st">30</span>, p=trans[state])) + <span class="st">1</span>
+            seq.<span class="fn">append</span>(event)
+            state = event - <span class="st">1</span> <span class="kw">if</span> <span class="kw">not</span> is_anomaly <span class="kw">else</span> np.random.<span class="fn">randint</span>(<span class="st">0</span>, <span class="st">30</span>)
+        sequences.<span class="fn">append</span>(torch.<span class="fn">tensor</span>(seq, dtype=torch.long))
+        labels.<span class="fn">append</span>(<span class="fn">int</span>(is_anomaly))
+
+    <span class="kw">return</span> sequences, torch.<span class="fn">tensor</span>(labels)
+
+
+seqs, labels = <span class="fn">generate_log_sequences</span>(<span class="st">2000</span>, vocab_size=<span class="st">50</span>, seq_len=<span class="st">20</span>)
+<span class="fn">print</span>(<span class="st">f"Sequences: {len(seqs)}, Anomaly rate: {labels.float().mean():.3f}"</span>)</code></pre>
+    </div>
+    <div class="output">Sequences: 2000, Anomaly rate: 0.086</div>
+
+    <h4>Next-Event Dataset and Predictor</h4>
+    <div class="code-block">
+      <div class="code-header"><span class="code-lang">python</span><button class="code-copy"><i class="ti ti-copy"></i> Copy</button></div>
+<pre><code><span class="kw">from</span> torch.utils.data <span class="kw">import</span> Dataset, DataLoader
+
+<span class="kw">class</span> <span class="cls">NextEventDataset</span>(Dataset):
+    <span class="st">"""Each sample: input = seq[:-1], target = seq[1:] (next event prediction)."""</span>
+
+    <span class="kw">def</span> <span class="fn">__init__</span>(self, sequences: <span class="cls">list</span>, labels: torch.Tensor):
+        self.sequences = sequences
+        self.labels    = labels
+
+    <span class="kw">def</span> <span class="fn">__len__</span>(self): <span class="kw">return</span> <span class="fn">len</span>(self.sequences)
+
+    <span class="kw">def</span> <span class="fn">__getitem__</span>(self, idx):
+        seq = self.sequences[idx]
+        <span class="kw">return</span> seq[:-<span class="st">1</span>], seq[<span class="st">1</span>:], self.labels[idx]
+
+
+dataset = <span class="fn">NextEventDataset</span>(seqs, labels)
+
+split    = <span class="fn">int</span>(<span class="st">0.8</span> * <span class="fn">len</span>(dataset))
+train_ds = torch.utils.data.<span class="fn">Subset</span>(dataset, <span class="fn">range</span>(split))
+val_ds   = torch.utils.data.<span class="fn">Subset</span>(dataset, <span class="fn">range</span>(split, <span class="fn">len</span>(dataset)))
+
+train_dl = <span class="fn">DataLoader</span>(train_ds, batch_size=<span class="st">64</span>, shuffle=<span class="kw">True</span>)
+val_dl   = <span class="fn">DataLoader</span>(val_ds,   batch_size=<span class="st">128</span>)
+
+x_s, y_s, lbl_s = <span class="fn">next</span>(<span class="fn">iter</span>(train_dl))
+<span class="fn">print</span>(<span class="st">f"Batch: input={x_s.shape}, target={y_s.shape}, labels={lbl_s.shape}"</span>)</code></pre>
+    </div>
+    <div class="output">Batch: input=torch.Size([64, 19]), target=torch.Size([64, 19]), labels=torch.Size([64])</div>
+
+    <div class="code-block">
+      <div class="code-header"><span class="code-lang">python</span><button class="code-copy"><i class="ti ti-copy"></i> Copy</button></div>
+<pre><code><span class="co"># Next-event prediction model</span>
+<span class="kw">class</span> <span class="cls">NextEventPredictor</span>(nn.Module):
+
+    <span class="kw">def</span> <span class="fn">__init__</span>(self, vocab_size=<span class="st">50</span>, d_model=<span class="st">64</span>, n_heads=<span class="st">4</span>, n_layers=<span class="st">2</span>):
+        <span class="fn">super</span>().<span class="fn">__init__</span>()
+        self.transformer = <span class="fn">LogTransformer</span>(
+            vocab_size=vocab_size + <span class="st">1</span>,   <span class="co"># +1 for padding</span>
+            d_model=d_model, n_heads=n_heads, n_layers=n_layers,
+            d_ff=<span class="st">128</span>, max_seq_len=<span class="st">32</span>
+        )
+        self.head = nn.<span class="fn">Linear</span>(d_model, vocab_size + <span class="st">1</span>)
+
+    <span class="kw">def</span> <span class="fn">forward</span>(self, x):
+        <span class="co"># Causal mask: each position only attends to previous positions</span>
+        T    = x.<span class="fn">size</span>(<span class="st">1</span>)
+        mask = torch.<span class="fn">triu</span>(torch.<span class="fn">ones</span>(T, T, device=x.device), diagonal=<span class="st">1</span>).<span class="fn">bool</span>()
+        h    = self.transformer.<span class="fn">embedding</span>(x)
+        h    = self.transformer.<span class="fn">pos_enc</span>(h)
+        h    = self.transformer.<span class="fn">encoder</span>(h, mask=mask)
+        h    = self.transformer.<span class="fn">norm</span>(h)
+        <span class="kw">return</span> self.<span class="fn">head</span>(h)   <span class="co"># (B, T, vocab_size)</span>
+
+
+pred_model = <span class="fn">NextEventPredictor</span>(vocab_size=<span class="st">50</span>)
+opt        = torch.optim.<span class="fn">AdamW</span>(pred_model.<span class="fn">parameters</span>(), lr=<span class="st">1e-3</span>)
+criterion  = nn.<span class="fn">CrossEntropyLoss</span>(ignore_index=<span class="st">0</span>)
+sched      = torch.optim.lr_scheduler.<span class="fn">CosineAnnealingLR</span>(opt, T_max=<span class="st">30</span>)
+
+<span class="fn">print</span>(<span class="st">f"Predictor params: {sum(p.numel() for p in pred_model.parameters()):,}"</span>)</code></pre>
+    </div>
+    <div class="output">Predictor params: 73,651</div>
+
+    <h4>Training Loop with Reshape for Per-Token Loss</h4>
+    <div class="code-block">
+      <div class="code-header"><span class="code-lang">python</span><button class="code-copy"><i class="ti ti-copy"></i> Copy</button></div>
+<pre><code><span class="co"># Training</span>
+<span class="kw">for</span> epoch <span class="kw">in</span> <span class="fn">range</span>(<span class="st">30</span>):
+    pred_model.<span class="fn">train</span>()
+    total_loss = <span class="st">0</span>
+    <span class="kw">for</span> x_b, y_b, _ <span class="kw">in</span> train_dl:
+        opt.<span class="fn">zero_grad</span>()
+        logits = <span class="fn">pred_model</span>(x_b)              <span class="co"># (B, T, vocab)</span>
+        <span class="co"># Reshape for CrossEntropyLoss: (B*T, vocab), (B*T,)</span>
+        loss = <span class="fn">criterion</span>(logits.<span class="fn">reshape</span>(-<span class="st">1</span>, logits.<span class="fn">size</span>(-<span class="st">1</span>)), y_b.<span class="fn">reshape</span>(-<span class="st">1</span>))
+        loss.<span class="fn">backward</span>()
+        torch.nn.utils.<span class="fn">clip_grad_norm_</span>(pred_model.<span class="fn">parameters</span>(), <span class="st">1.0</span>)
+        opt.<span class="fn">step</span>()
+        total_loss += loss.<span class="fn">item</span>()
+    sched.<span class="fn">step</span>()
+
+    <span class="kw">if</span> epoch % <span class="st">10</span> == <span class="st">0</span>:
+        <span class="fn">print</span>(<span class="st">f"Epoch {epoch}: loss={total_loss/len(train_dl):.4f}"</span>)</code></pre>
+    </div>
+    <div class="output">Epoch 0: loss=3.6606
+Epoch 10: loss=2.8994
+Epoch 20: loss=2.8619</div>
+
+    <h4>Anomaly Scoring via Reconstruction Loss</h4>
+
+    <!-- INTERACTIVE WIDGET 6: Anomaly Scoring Distribution -->
+    <div class="widget">
+      <div class="widget-title">Anomaly Scoring Distribution</div>
+      <div class="widget-subtitle">High reconstruction loss = sequence the model didn't expect = potential anomaly. Drag the threshold to see how precision and recall trade off — set it at the 95th percentile of normal scores by default.</div>
+      <div class="controls">
+        <div class="ctrl-row">
+          <span class="ctrl-label">Threshold</span>
+          <input type="range" id="anom-th" min="1.5" max="6" value="3.13" step="0.05">
+          <span class="ctrl-value" id="anom-th-v">3.13</span>
+        </div>
+        <div class="btn-row" style="justify-content:flex-end;">
+          <button class="pill-btn" id="anom-95"><i class="ti ti-target"></i> Set at 95th-percentile of normal</button>
+        </div>
+      </div>
+      <div class="chart-box" style="height:240px;"><canvas id="anom-chart"></canvas></div>
+      <div class="legend" style="justify-content:center;">
+        <span><span class="legend-dot" style="background:rgba(0,229,255,0.55);"></span>normal sequences</span>
+        <span><span class="legend-dot" style="background:rgba(255,92,192,0.6);"></span>anomalous sequences</span>
+      </div>
+      <div class="metric-grid">
+        <div class="metric"><div class="metric-label">Normal mean</div><div class="metric-value" id="anom-nmean">2.76</div></div>
+        <div class="metric"><div class="metric-label">Anomaly mean</div><div class="metric-value" id="anom-amean" style="color:var(--pink);">4.16</div></div>
+        <div class="metric"><div class="metric-label">Precision</div><div class="metric-value" id="anom-prec">0.714</div></div>
+        <div class="metric"><div class="metric-label">Recall</div><div class="metric-value" id="anom-rec" style="color:var(--success);">1.000</div></div>
+      </div>
+    </div>
+
+    <div class="code-block">
+      <div class="code-header"><span class="code-lang">python</span><button class="code-copy"><i class="ti ti-copy"></i> Copy</button></div>
+<pre><code><span class="co"># Anomaly scoring via reconstruction loss</span>
+<span class="kw">def</span> <span class="fn">anomaly_score</span>(model: nn.Module, sequences: torch.Tensor) -&gt; torch.Tensor:
+    <span class="st">"""
+    Compute per-sequence anomaly score = mean cross-entropy loss.
+    High loss → sequence is unusual relative to training distribution → anomaly.
+    """</span>
+    model.<span class="fn">eval</span>()
+    <span class="kw">with</span> torch.<span class="fn">no_grad</span>():
+        x = sequences[:, :-<span class="st">1</span>]
+        y = sequences[:, <span class="st">1</span>:]
+        logits = <span class="fn">model</span>(x)
+        <span class="co"># Per-token loss</span>
+        losses = nn.<span class="fn">CrossEntropyLoss</span>(reduction=<span class="st">'none'</span>)(
+            logits.<span class="fn">reshape</span>(-<span class="st">1</span>, logits.<span class="fn">size</span>(-<span class="st">1</span>)),
+            y.<span class="fn">reshape</span>(-<span class="st">1</span>)
+        ).<span class="fn">reshape</span>(sequences.<span class="fn">size</span>(<span class="st">0</span>), -<span class="st">1</span>)
+        <span class="kw">return</span> losses.<span class="fn">mean</span>(dim=<span class="st">1</span>)   <span class="co"># Per-sequence mean loss</span>
+
+
+<span class="co"># Score validation sequences</span>
+val_seqs   = torch.<span class="fn">stack</span>([seqs[i] <span class="kw">for</span> i <span class="kw">in</span> <span class="fn">range</span>(split, <span class="fn">len</span>(seqs))])
+val_labels = labels[split:]
+
+scores = <span class="fn">anomaly_score</span>(pred_model, val_seqs)
+<span class="fn">print</span>(<span class="st">f"Normal seq mean score:    {scores[val_labels==0].mean():.4f}"</span>)
+<span class="fn">print</span>(<span class="st">f"Anomalous seq mean score: {scores[val_labels==1].mean():.4f}"</span>)
+
+<span class="co"># Choose threshold on val set (e.g., 95th percentile of normal scores)</span>
+normal_scores = scores[val_labels == <span class="st">0</span>]
+threshold     = normal_scores.<span class="fn">quantile</span>(<span class="st">0.95</span>).<span class="fn">item</span>()
+predictions   = (scores &gt; threshold).<span class="fn">long</span>()
+precision_a   = ((predictions == <span class="st">1</span>) &amp; (val_labels == <span class="st">1</span>)).<span class="fn">sum</span>().<span class="fn">float</span>() / (predictions == <span class="st">1</span>).<span class="fn">sum</span>().<span class="fn">clamp</span>(<span class="st">1</span>)
+recall_a      = ((predictions == <span class="st">1</span>) &amp; (val_labels == <span class="st">1</span>)).<span class="fn">sum</span>().<span class="fn">float</span>() / (val_labels == <span class="st">1</span>).<span class="fn">sum</span>().<span class="fn">clamp</span>(<span class="st">1</span>)
+<span class="fn">print</span>(<span class="st">f"\nAnomaly detection @ 95th-pct threshold ({threshold:.3f}):"</span>)
+<span class="fn">print</span>(<span class="st">f"  Precision: {precision_a:.3f}"</span>)
+<span class="fn">print</span>(<span class="st">f"  Recall:    {recall_a:.3f}"</span>)</code></pre>
+    </div>
+    <div class="output">Normal seq mean score:    2.7605
+Anomalous seq mean score: 4.1569
+
+Anomaly detection @ 95th-pct threshold (3.127):
+  Precision: 0.714
+  Recall:    1.000</div>
+  </section>
+
+  <!-- ============ SUMMARY ============ -->
+  <section class="section" id="sec-summary">
+    <div class="section-num">RECAP</div>
+    <h2>Module Summary</h2>
+    <div class="summary-box">
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Concept</th><th>Key Takeaway</th></tr></thead>
+          <tbody>
+            <tr><td>LSTM / GRU</td><td>Sequential; gates control memory. Use <code>batch_first=True</code> always.</td></tr>
+            <tr><td>Attention</td><td>Dot-product similarity between Q and K; softmax gives weights over V.</td></tr>
+            <tr><td>Positional encoding</td><td>Tells Transformer where in the sequence each token lives.</td></tr>
+            <tr><td>Padding mask</td><td>Pass to encoder so padded positions don't influence real ones.</td></tr>
+            <tr><td>Causal mask</td><td>Prevents position <code>i</code> from attending to <code>i+1..T</code> (for autoregressive tasks).</td></tr>
+            <tr><td>Anomaly scoring</td><td>High reconstruction loss = model surprised by sequence = potential anomaly.</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <h3>What's Next</h3>
+    <p>Module 9 — Modern Training Tricks covers the regularisation and optimisation techniques that separate "model trains but doesn't generalise" from "model trains and generalises well." Focal loss for class imbalance, label smoothing, mixup, contrastive learning, and Optuna-style hyperparameter tuning.</p>
+  </section>
+</div>
+
+<!-- ============ REFERENCES ============ -->
+<section class="references">
+  <div class="refs-header">
+    <h2><span class="cyan-text">Learn &amp;</span> <span class="accent">Practice</span></h2>
+    <p>Explore curated resources and practice with real code</p>
+  </div>
+
+  <div class="ref-card">
+    <div class="ref-icon"><i class="ti ti-bulb"></i></div>
+    <div class="ref-body">
+      <div class="ref-type">Progressive Article</div>
+      <div class="ref-tagline">Stuck? Start here — beginner-friendly explanation</div>
+      <div class="ref-title">The Illustrated Transformer — Jay Alammar</div>
+      <a href="https://jalammar.github.io/illustrated-transformer/" target="_blank" rel="noopener" class="ref-btn"><i class="ti ti-external-link"></i> Read Article</a>
+    </div>
+  </div>
+
+  <div class="ref-card">
+    <div class="ref-icon"><i class="ti ti-file-text"></i></div>
+    <div class="ref-body">
+      <div class="ref-type">Canonical Article</div>
+      <div class="ref-tagline">Authoritative source — official docs and tutorials</div>
+      <div class="ref-title">nn.Transformer &amp; TransformerEncoder — Official Reference</div>
+      <a href="https://docs.pytorch.org/docs/stable/generated/torch.nn.Transformer.html" target="_blank" rel="noopener" class="ref-btn"><i class="ti ti-external-link"></i> Read Canonical</a>
+    </div>
+  </div>
+
+  <div class="ref-card pink-card">
+    <div class="ref-icon"><i class="ti ti-brand-github"></i></div>
+    <div class="ref-body">
+      <div class="ref-type">GitHub Repository</div>
+      <div class="ref-tagline">Hands-on — reference implementation &amp; examples</div>
+      <div class="ref-title">harvardnlp / annotated-transformer — line-by-line explained</div>
+      <a href="https://github.com/harvardnlp/annotated-transformer" target="_blank" rel="noopener" class="ref-btn"><i class="ti ti-external-link"></i> Explore Repo</a>
+    </div>
+  </div>
+
+  <div class="ref-card">
+    <div class="ref-icon"><i class="ti ti-book-2"></i></div>
+    <div class="ref-body">
+      <div class="ref-type">API Reference</div>
+      <div class="ref-tagline">Hands-on Transformer tutorial — language modelling</div>
+      <div class="ref-title">Language Modeling with nn.Transformer &amp; TorchText</div>
+      <a href="https://docs.pytorch.org/tutorials/beginner/transformer_tutorial.html" target="_blank" rel="noopener" class="ref-btn"><i class="ti ti-external-link"></i> Open Docs</a>
+    </div>
+  </div>
+</section>
+
+<footer class="footer">
+  <div>This document is part of a 12-module PyTorch for Data Science course. Each module builds directly on the previous one.</div>
+  <div class="nav-row">
+    <a href="module7_cnns.html" class="nav-btn"><i class="ti ti-arrow-left"></i> Previous: Module 7 — CNNs</a>
+    <a href="#" class="nav-btn">Next: Module 9 — Training Tricks <i class="ti ti-arrow-right"></i></a>
+  </div>
+</footer>
+
+<div class="scroll-dots" id="scroll-dots">
+  <div class="scroll-dot active" data-target="sec-1" data-label="Why Sequences"></div>
+  <div class="scroll-dot" data-target="sec-2" data-label="LSTM/GRU"></div>
+  <div class="scroll-dot" data-target="sec-3" data-label="Attention"></div>
+  <div class="scroll-dot" data-target="sec-4" data-label="Transformer"></div>
+  <div class="scroll-dot" data-target="sec-5" data-label="Masks"></div>
+  <div class="scroll-dot" data-target="sec-project" data-label="Project"></div>
+  <div class="scroll-dot" data-target="sec-summary" data-label="Summary"></div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<script>
+/* Starfield */
+(function(){
+  const sf = document.getElementById('stars');
+  for (let i = 0; i < 120; i++) {
+    const s = document.createElement('div');
+    s.className = 'star';
+    const sz = Math.random() * 2 + 0.5;
+    s.style.width = sz + 'px'; s.style.height = sz + 'px';
+    s.style.left = Math.random() * 100 + '%';
+    s.style.top = Math.random() * 100 + '%';
+    s.style.setProperty('--dur', (2 + Math.random() * 4) + 's');
+    s.style.animationDelay = Math.random() * 4 + 's';
+    sf.appendChild(s);
+  }
+})();
+
+/* Nav + scroll dots */
+(function(){
+  const dots = document.querySelectorAll('.scroll-dot');
+  const navLinks = document.querySelectorAll('.nav-links a');
+  const sections = document.querySelectorAll('.section');
+  dots.forEach(d => d.addEventListener('click', () => {
+    const t = document.getElementById(d.dataset.target);
+    if (t) t.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }));
+  navLinks.forEach(a => a.addEventListener('click', (e) => {
+    e.preventDefault();
+    const id = a.getAttribute('href').slice(1);
+    const t = document.getElementById(id);
+    if (t) t.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }));
+  function updateActive() {
+    let current = sections[0].id;
+    sections.forEach(s => {
+      const rect = s.getBoundingClientRect();
+      if (rect.top < window.innerHeight * 0.35) current = s.id;
+    });
+    dots.forEach(d => d.classList.toggle('active', d.dataset.target === current));
+    navLinks.forEach(a => a.classList.toggle('active', a.getAttribute('href') === '#' + current));
+  }
+  window.addEventListener('scroll', updateActive, { passive: true });
+  updateActive();
+})();
+
+/* Copy */
+document.querySelectorAll('.code-copy').forEach(btn => {
+  btn.addEventListener('click', () => {
+    const code = btn.closest('.code-block').querySelector('pre').innerText;
+    navigator.clipboard.writeText(code).then(() => {
+      const orig = btn.innerHTML;
+      btn.innerHTML = '<i class="ti ti-check"></i> Copied';
+      setTimeout(() => btn.innerHTML = orig, 1200);
+    });
+  });
+});
+
+/* WIDGET 1: Architecture Decider */
+(function(){
+  const decisions = {
+    'balanced':    { rec: 'tfm', reason: 'For most tasks with adequate data, a Transformer is the default. Strong on long-range dependencies and parallel training.' },
+    'long-seq':    { rec: 'lstm', reason: 'Attention is O(T²) memory. For sequences >10k tokens, LSTM/GRU stays linear in memory and is preferred unless you can use a sparse-attention variant.' },
+    'streaming':   { rec: 'lstm', reason: 'LSTMs process one token at a time with constant memory — ideal for online inference. Transformers must re-attend over the whole context every step.' },
+    'long-range':  { rec: 'tfm', reason: 'Transformers handle long-range dependencies natively via attention. LSTMs suffer information bottleneck through the hidden state.' },
+    'tiny-data':   { rec: 'lstm', reason: 'Transformers need lots of data to generalise. With <10k examples, LSTM/GRU often wins because it has fewer parameters and stronger inductive bias for sequential data.' },
+    'edge':        { rec: 'lstm', reason: 'LSTMs export to ONNX/TFLite more reliably and have simpler memory patterns. Easier to deploy on phones and microcontrollers.' }
+  };
+  const cards = { mlp: document.getElementById('arch-mlp'), lstm: document.getElementById('arch-lstm'), tfm: document.getElementById('arch-tfm') };
+  function update(need) {
+    document.querySelectorAll('[data-need]').forEach(b => b.classList.toggle('active', b.dataset.need === need));
+    const d = decisions[need];
+    Object.entries(cards).forEach(([k, el]) => {
+      el.classList.toggle('recommended', k === d.rec);
+      el.classList.toggle('deprio', k !== d.rec && k !== 'tfm' && k !== 'lstm');
+      if (need === 'balanced' && k === 'lstm') el.classList.add('deprio');
+    });
+    const name = d.rec === 'tfm' ? 'Transformer' : d.rec === 'lstm' ? 'LSTM / GRU' : 'MLP';
+    document.getElementById('arch-out').textContent = '>>> Recommendation: ' + name + '\n\n' + d.reason;
+  }
+  document.querySelectorAll('[data-need]').forEach(b => b.addEventListener('click', () => update(b.dataset.need)));
+  update('balanced');
+})();
+
+/* WIDGET 2: LSTM Gates Visualiser */
+(function(){
+  // Simulate a 10-step sequence where the cell state grows then is reset
+  const SEQ = 10;
+  function sigmoid(x) { return 1 / (1 + Math.exp(-x)); }
+  // Pre-compute gates and cell state for the whole sequence
+  const data = [];
+  let c = 0, h = 0;
+  for (let t = 0; t < SEQ; t++) {
+    // Forget gate: at t=5 the model decides to drop most memory
+    const f = t === 5 ? sigmoid(-2) : sigmoid(1.5 + Math.sin(t) * 0.5);
+    // Input gate: high in early steps when new info matters
+    const i = sigmoid(1 - t * 0.2 + Math.cos(t * 0.7) * 0.5);
+    // Candidate value (tanh)
+    const cTilde = Math.tanh(0.5 + Math.sin(t * 1.3));
+    // Update cell
+    c = f * c + i * cTilde;
+    // Output gate
+    const o = sigmoid(0.5 + Math.sin(t * 1.7) * 0.8);
+    h = o * Math.tanh(c);
+    data.push({ f, i, o, c });
+  }
+
+  const tEl = document.getElementById('lstm-t');
+  const tV = document.getElementById('lstm-t-v');
+  const fGate = document.querySelector('#gate-f .gate-bar');
+  const iGate = document.querySelector('#gate-i .gate-bar');
+  const oGate = document.querySelector('#gate-o .gate-bar');
+
+  const cellData = data.map(d => d.c);
+  const fData = data.map(d => d.f);
+  const iData = data.map(d => d.i);
+  const oData = data.map(d => d.o);
+
+  const ctx = document.getElementById('lstm-chart').getContext('2d');
+  const chart = new Chart(ctx, {
+    type: 'line',
+    data: {
+      labels: Array.from({ length: SEQ }, (_, i) => 't=' + i),
+      datasets: [
+        { label: 'forget', data: fData, borderColor: '#ffb547', backgroundColor: 'transparent', pointRadius: 0, borderWidth: 1.5, yAxisID: 'y' },
+        { label: 'input', data: iData, borderColor: '#6bff9d', backgroundColor: 'transparent', pointRadius: 0, borderWidth: 1.5, yAxisID: 'y' },
+        { label: 'output', data: oData, borderColor: '#ff5cc0', backgroundColor: 'transparent', pointRadius: 0, borderWidth: 1.5, yAxisID: 'y' },
+        { label: 'cell state', data: cellData, borderColor: '#00e5ff', backgroundColor: 'rgba(0,229,255,0.12)', pointRadius: 0, borderWidth: 2.5, fill: true, yAxisID: 'y' },
+        { label: 'marker', data: Array.from({ length: SEQ }, () => null), borderColor: '#fff', backgroundColor: '#fff', pointRadius: 0, borderWidth: 0 }
+      ]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false, animation: { duration: 200 },
+      plugins: { legend: { display: false } },
+      scales: {
+        x: { grid: { color: 'rgba(0,229,255,0.07)' }, ticks: { color: '#6b7896', font: { size: 10 } } },
+        y: { grid: { color: 'rgba(0,229,255,0.07)' }, ticks: { color: '#6b7896' } }
+      }
+    }
+  });
+
+  let timer = null;
+  function showT(t) {
+    tEl.value = t;
+    tV.textContent = t + ' / ' + (SEQ - 1);
+    const d = data[t];
+    fGate.style.height = (d.f * 100).toFixed(0) + '%';
+    iGate.style.height = (d.i * 100).toFixed(0) + '%';
+    oGate.style.height = (d.o * 100).toFixed(0) + '%';
+    // Highlight active gate (the highest value)
+    document.querySelectorAll('.gate-card').forEach(c => c.classList.remove('active'));
+    const max = Math.max(d.f, d.i, d.o);
+    if (d.f === max) document.getElementById('gate-f').classList.add('active');
+    else if (d.i === max) document.getElementById('gate-i').classList.add('active');
+    else document.getElementById('gate-o').classList.add('active');
+    // marker dot on chart
+    const marker = Array.from({ length: SEQ }, (_, i) => i === t ? d.c : null);
+    chart.data.datasets[4].data = marker;
+    chart.data.datasets[4].pointRadius = chart.data.datasets[4].data.map(v => v === null ? 0 : 6);
+    chart.data.datasets[4].pointBackgroundColor = '#fff';
+    chart.data.datasets[4].pointBorderColor = '#00e5ff';
+    chart.data.datasets[4].pointBorderWidth = 2;
+    chart.update('none');
+  }
+  tEl.addEventListener('input', () => showT(+tEl.value));
+  document.getElementById('lstm-play').addEventListener('click', () => {
+    if (timer) { clearInterval(timer); timer = null; return; }
+    let t = 0;
+    showT(0);
+    timer = setInterval(() => {
+      t++;
+      if (t >= SEQ) { clearInterval(timer); timer = null; return; }
+      showT(t);
+    }, 600);
+  });
+  showT(0);
+})();
+
+/* WIDGET 3: Attention Heatmap */
+(function(){
+  const T = 8;
+  const tokens = ['login', 'read', 'write', 'login', 'sudo', 'denied', 'login', 'logout'];
+  const xLabels = document.getElementById('attn-x-labels');
+  const yLabels = document.getElementById('attn-y-labels');
+  const heat = document.getElementById('attn-heat');
+  const tempEl = document.getElementById('attn-temp');
+  const tempV = document.getElementById('attn-temp-v');
+  let pattern = 'local';
+
+  // build labels
+  xLabels.innerHTML = '';
+  yLabels.innerHTML = '';
+  tokens.forEach(tk => {
+    const x = document.createElement('div');
+    x.textContent = tk;
+    x.style.cssText = 'transform:rotate(-30deg);transform-origin:center;';
+    xLabels.appendChild(x);
+    const y = document.createElement('div');
+    y.textContent = tk;
+    yLabels.appendChild(y);
+  });
+
+  function rawScores(pattern) {
+    // Returns TxT raw scores
+    const s = Array.from({ length: T }, () => Array(T).fill(0));
+    for (let i = 0; i < T; i++) {
+      for (let j = 0; j < T; j++) {
+        if (pattern === 'local') {
+          s[i][j] = -Math.abs(i - j) * 1.2;
+        } else if (pattern === 'global') {
+          // attend to token 4 ('sudo')
+          s[i][j] = j === 4 ? 2.5 : (Math.random() - 0.5) * 0.5;
+        } else if (pattern === 'anomaly') {
+          // each position attends to the previous anomalous event (denied @ 5)
+          s[i][j] = j === 5 && i >= 5 ? 3.0 : (j <= i ? -0.2 : -1.5);
+        } else {
+          s[i][j] = 0;
+        }
+      }
+    }
+    return s;
+  }
+  function softmax(row, temp) {
+    const scaled = row.map(v => v / temp);
+    const max = Math.max(...scaled);
+    const exp = scaled.map(v => Math.exp(v - max));
+    const sum = exp.reduce((a, b) => a + b, 0);
+    return exp.map(e => e / sum);
+  }
+  function render() {
+    const temp = +tempEl.value;
+    tempV.textContent = temp.toFixed(1);
+    const raw = rawScores(pattern);
+    heat.innerHTML = '';
+    let maxVal = 0;
+    const rows = raw.map(row => softmax(row, temp));
+    rows.forEach(r => r.forEach(v => { if (v > maxVal) maxVal = v; }));
+    for (let i = 0; i < T; i++) {
+      for (let j = 0; j < T; j++) {
+        const v = rows[i][j];
+        const a = v / maxVal;
+        const cell = document.createElement('div');
+        cell.className = 'attn-cell';
+        cell.style.background = 'rgba(0, 229, 255, ' + a.toFixed(3) + ')';
+        if (v > 0.15) cell.textContent = v.toFixed(2);
+        cell.title = tokens[i] + ' → ' + tokens[j] + ': ' + v.toFixed(3);
+        heat.appendChild(cell);
+      }
+    }
+    let interp = '';
+    if (pattern === 'local') interp = '>>> Local attention: each token mostly attends to its neighbours.\n    Common in lower transformer layers, similar to a CNN receptive field.';
+    else if (pattern === 'global') interp = '>>> Global anchor: every position attends to token 4 (sudo).\n    This is how a single token can broadcast context to the whole sequence.';
+    else if (pattern === 'anomaly') interp = '>>> Anomaly focus: positions ≥5 all attend to denied (the anomalous event).\n    Real transformers learn similar patterns when one event dominates the meaning.';
+    else interp = '>>> Uniform: high temperature flattens softmax — attention becomes diffuse.\n    Effective context length collapses to roughly 1/T.';
+    document.getElementById('attn-out').textContent = interp;
+  }
+  document.querySelectorAll('[data-pattern]').forEach(b => b.addEventListener('click', () => {
+    document.querySelectorAll('[data-pattern]').forEach(x => x.classList.remove('active'));
+    b.classList.add('active');
+    pattern = b.dataset.pattern;
+    render();
+  }));
+  tempEl.addEventListener('input', render);
+  render();
+})();
+
+/* WIDGET 4: Positional Encoding */
+(function(){
+  const heatEl = document.getElementById('pe-heat');
+  const lenEl = document.getElementById('pe-len');
+  const dEl = document.getElementById('pe-d');
+  const lenV = document.getElementById('pe-len-v');
+  const dV = document.getElementById('pe-d-v');
+  const out = document.getElementById('pe-out');
+  const heatWrap = document.getElementById('pe-heat-wrap');
+  const waveWrap = document.getElementById('pe-wave-wrap');
+  let view = 'heat';
+
+  function computePE(maxLen, dModel) {
+    const pe = Array.from({ length: maxLen }, () => Array(dModel).fill(0));
+    for (let pos = 0; pos < maxLen; pos++) {
+      for (let i = 0; i < dModel; i += 2) {
+        const div = Math.exp(-Math.log(10000) * i / dModel);
+        pe[pos][i] = Math.sin(pos * div);
+        if (i + 1 < dModel) pe[pos][i + 1] = Math.cos(pos * div);
+      }
+    }
+    return pe;
+  }
+
+  const ctx = document.getElementById('pe-chart').getContext('2d');
+  const chart = new Chart(ctx, {
+    type: 'line',
+    data: { labels: [], datasets: [] },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      animation: { duration: 200 },
+      plugins: { legend: { display: true, position: 'bottom', labels: { color: '#9aa8c4', font: { size: 10 }, boxWidth: 12 } } },
+      scales: {
+        x: { grid: { color: 'rgba(0,229,255,0.07)' }, ticks: { color: '#6b7896', maxTicksLimit: 10 }, title: { display: true, text: 'position', color: '#9aa8c4', font: { size: 10 } } },
+        y: { grid: { color: 'rgba(0,229,255,0.07)' }, ticks: { color: '#6b7896' }, min: -1.1, max: 1.1 }
+      }
+    }
+  });
+
+  function render() {
+    const maxLen = +lenEl.value;
+    const dModel = +dEl.value;
+    lenV.textContent = maxLen;
+    dV.textContent = dModel;
+    const pe = computePE(maxLen, dModel);
+
+    if (view === 'heat') {
+      heatWrap.style.display = '';
+      waveWrap.style.display = 'none';
+      heatEl.style.gridTemplateColumns = 'repeat(' + dModel + ', 1fr)';
+      heatEl.style.gridTemplateRows = 'repeat(' + maxLen + ', 1fr)';
+      heatEl.innerHTML = '';
+      pe.forEach(row => {
+        row.forEach(v => {
+          const cell = document.createElement('div');
+          cell.className = 'pe-cell';
+          if (v >= 0) {
+            cell.style.background = 'rgba(0, 229, 255, ' + Math.abs(v).toFixed(3) + ')';
+          } else {
+            cell.style.background = 'rgba(255, 92, 192, ' + Math.abs(v).toFixed(3) + ')';
+          }
+          heatEl.appendChild(cell);
+        });
+      });
+    } else {
+      heatWrap.style.display = 'none';
+      waveWrap.style.display = '';
+      const colors = ['#00e5ff', '#ff5cc0', '#ffb547', '#6bff9d', '#5cdcff', '#ff8fd6'];
+      const dimsToShow = [0, 2, Math.floor(dModel / 4) * 2, Math.floor(dModel / 2) * 2, Math.min(dModel - 2, 14)];
+      chart.data.labels = Array.from({ length: maxLen }, (_, i) => i);
+      chart.data.datasets = dimsToShow.map((dim, idx) => ({
+        label: 'dim ' + dim,
+        data: pe.map(row => row[dim]),
+        borderColor: colors[idx % colors.length],
+        backgroundColor: 'transparent',
+        pointRadius: 0,
+        borderWidth: 1.5,
+        tension: 0.3
+      }));
+      chart.update('none');
+    }
+    out.textContent = '>>> Each dimension uses a different sine/cosine wavelength.\n' +
+      '    Low dimensions have short wavelength (encode fine positions).\n' +
+      '    High dimensions have long wavelength (encode coarse positions).\n' +
+      '    The model can derive any position offset by combining these waves.';
+  }
+  lenEl.addEventListener('input', render);
+  dEl.addEventListener('input', render);
+  document.querySelectorAll('[data-peview]').forEach(b => b.addEventListener('click', () => {
+    document.querySelectorAll('[data-peview]').forEach(x => x.classList.remove('active'));
+    b.classList.add('active');
+    view = b.dataset.peview;
+    render();
+  }));
+  render();
+})();
+
+/* WIDGET 5: Mask Visualizer */
+(function(){
+  const grid = document.getElementById('mask-grid');
+  const tEl = document.getElementById('mask-T');
+  const rEl = document.getElementById('mask-real');
+  const tV = document.getElementById('mask-T-v');
+  const rV = document.getElementById('mask-real-v');
+  const out = document.getElementById('mask-out');
+  let mtype = 'none';
+
+  function render() {
+    let T = +tEl.value;
+    let real = Math.min(+rEl.value, T);
+    rEl.max = T;
+    if (+rEl.value > T) rEl.value = T;
+    tV.textContent = T;
+    rV.textContent = real;
+    grid.innerHTML = '';
+    grid.style.gridTemplateColumns = 'repeat(' + T + ', 1fr)';
+    let blocked = 0, total = T * T;
+    for (let i = 0; i < T; i++) {
+      for (let j = 0; j < T; j++) {
+        let cls = 'attend';
+        const isPad = (i >= real || j >= real);
+        const isFuture = j > i;
+        if ((mtype === 'causal' || mtype === 'both') && isFuture) {
+          cls = 'blocked';
+        }
+        if ((mtype === 'pad' || mtype === 'both') && isPad) {
+          cls = 'pad-blocked';
+        }
+        if (cls !== 'attend') blocked++;
+        const cell = document.createElement('div');
+        cell.className = 'mask-cell ' + cls;
+        if (T <= 8) cell.textContent = cls === 'attend' ? '✓' : '✗';
+        grid.appendChild(cell);
+      }
+    }
+    const pct = (blocked / total * 100).toFixed(0);
+    let codeHint;
+    if (mtype === 'none') codeHint = '# No mask — every position attends to every other position';
+    else if (mtype === 'causal') codeHint = 'mask = torch.triu(torch.ones(T, T), diagonal=1).bool()\n# Pass as: encoder(x, mask=mask)';
+    else if (mtype === 'pad') codeHint = 'pad_mask = (tokens == pad_id)\n# Pass as: encoder(x, src_key_padding_mask=pad_mask)';
+    else codeHint = 'mask = torch.triu(torch.ones(T, T), diagonal=1).bool()\npad_mask = (tokens == pad_id)\n# Both: encoder(x, mask=mask, src_key_padding_mask=pad_mask)';
+    out.textContent = '>>> ' + blocked + ' of ' + total + ' positions blocked (' + pct + '%)\n\n' + codeHint;
+  }
+  tEl.addEventListener('input', render);
+  rEl.addEventListener('input', render);
+  document.querySelectorAll('[data-mtype]').forEach(b => b.addEventListener('click', () => {
+    document.querySelectorAll('[data-mtype]').forEach(x => x.classList.remove('active'));
+    b.classList.add('active');
+    mtype = b.dataset.mtype;
+    render();
+  }));
+  render();
+})();
+
+/* WIDGET 6: Anomaly Scoring Distribution */
+(function(){
+  // Generate normal and anomaly score distributions matching the module output
+  const normalMean = 2.76, normalStd = 0.22;
+  const anomalyMean = 4.16, anomalyStd = 0.7;
+  let seed = 12;
+  function rnd() { seed = (seed * 9301 + 49297) % 233280; return seed / 233280; }
+  function randn() {
+    let u = 0, v = 0;
+    while (u === 0) u = rnd();
+    while (v === 0) v = rnd();
+    return Math.sqrt(-2 * Math.log(u)) * Math.cos(2 * Math.PI * v);
+  }
+  const nNormal = 366, nAnomaly = 34;
+  const normalScores = Array.from({ length: nNormal }, () => Math.max(1, normalMean + randn() * normalStd));
+  const anomalyScores = Array.from({ length: nAnomaly }, () => Math.max(1, anomalyMean + randn() * anomalyStd));
+
+  // build histogram
+  const allScores = [...normalScores, ...anomalyScores];
+  const minS = Math.min(...allScores) - 0.1;
+  const maxS = Math.max(...allScores) + 0.1;
+  const bins = 30;
+  const w = (maxS - minS) / bins;
+  function hist(arr) {
+    const c = new Array(bins).fill(0);
+    arr.forEach(v => {
+      let b = Math.floor((v - minS) / w);
+      if (b >= bins) b = bins - 1;
+      if (b < 0) b = 0;
+      c[b]++;
+    });
+    return c;
+  }
+  const normalHist = hist(normalScores);
+  const anomalyHist = hist(anomalyScores);
+  const labels = [];
+  for (let i = 0; i < bins; i++) labels.push((minS + (i + 0.5) * w).toFixed(2));
+
+  const ctx = document.getElementById('anom-chart').getContext('2d');
+  const chart = new Chart(ctx, {
+    type: 'bar',
+    data: {
+      labels,
+      datasets: [
+        { label: 'normal', data: normalHist, backgroundColor: 'rgba(0, 229, 255, 0.55)', borderColor: '#00e5ff', borderWidth: 1, borderRadius: 2, stack: 's' },
+        { label: 'anomaly', data: anomalyHist, backgroundColor: 'rgba(255, 92, 192, 0.65)', borderColor: '#ff5cc0', borderWidth: 1, borderRadius: 2, stack: 's' }
+      ]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false, animation: { duration: 200 },
+      plugins: {
+        legend: { display: false },
+        annotation: { annotations: {} }
+      },
+      scales: {
+        x: { stacked: true, grid: { display: false }, ticks: { color: '#6b7896', maxTicksLimit: 10, font: { size: 9 } }, title: { display: true, text: 'reconstruction loss', color: '#9aa8c4', font: { size: 10 } } },
+        y: { stacked: true, grid: { color: 'rgba(0,229,255,0.07)' }, ticks: { color: '#6b7896' } }
+      }
+    }
+  });
+
+  const thEl = document.getElementById('anom-th');
+  const thV = document.getElementById('anom-th-v');
+
+  function update() {
+    const th = +thEl.value;
+    thV.textContent = th.toFixed(2);
+    // recolor bars based on threshold
+    const newNormal = labels.map((lab, i) => {
+      const center = +lab;
+      return center > th ? 0 : normalHist[i];
+    });
+    const newNormalAbove = labels.map((lab, i) => {
+      const center = +lab;
+      return center > th ? normalHist[i] : 0;
+    });
+    const newAnomaly = labels.map((lab, i) => {
+      const center = +lab;
+      return center > th ? anomalyHist[i] : 0;
+    });
+    const newAnomalyBelow = labels.map((lab, i) => {
+      const center = +lab;
+      return center > th ? 0 : anomalyHist[i];
+    });
+    chart.data.datasets = [
+      { label: 'normal (correct: below)', data: newNormal, backgroundColor: 'rgba(0, 229, 255, 0.55)', borderColor: '#00e5ff', borderWidth: 1, borderRadius: 2, stack: 's' },
+      { label: 'normal (false positive)', data: newNormalAbove, backgroundColor: 'rgba(255, 181, 71, 0.6)', borderColor: 'rgba(255, 181, 71, 0.9)', borderWidth: 1, borderRadius: 2, stack: 's' },
+      { label: 'anomaly (false neg)', data: newAnomalyBelow, backgroundColor: 'rgba(255, 107, 107, 0.55)', borderColor: 'rgba(255, 107, 107, 0.9)', borderWidth: 1, borderRadius: 2, stack: 's' },
+      { label: 'anomaly (caught)', data: newAnomaly, backgroundColor: 'rgba(255, 92, 192, 0.65)', borderColor: '#ff5cc0', borderWidth: 1, borderRadius: 2, stack: 's' }
+    ];
+    chart.update('none');
+    // metrics
+    const tp = anomalyScores.filter(s => s > th).length;
+    const fp = normalScores.filter(s => s > th).length;
+    const fn = anomalyScores.filter(s => s <= th).length;
+    const prec = tp / (tp + fp + 1e-8);
+    const rec = tp / (tp + fn + 1e-8);
+    document.getElementById('anom-prec').textContent = prec.toFixed(3);
+    document.getElementById('anom-rec').textContent = rec.toFixed(3);
+    document.getElementById('anom-nmean').textContent = (normalScores.reduce((a, b) => a + b, 0) / normalScores.length).toFixed(2);
+    document.getElementById('anom-amean').textContent = (anomalyScores.reduce((a, b) => a + b, 0) / anomalyScores.length).toFixed(2);
+  }
+  thEl.addEventListener('input', update);
+  document.getElementById('anom-95').addEventListener('click', () => {
+    const sorted = normalScores.slice().sort((a, b) => a - b);
+    const q95 = sorted[Math.floor(sorted.length * 0.95)];
+    thEl.value = q95.toFixed(2);
+    update();
+  });
+  update();
+})();
+</script>
+</body>
+</html>

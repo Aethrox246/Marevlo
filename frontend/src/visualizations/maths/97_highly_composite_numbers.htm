@@ -1,0 +1,391 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Highly Composite Numbers - Visualization</title>
+    <style>
+        :root {
+            --bg-page: #0d1117;
+            --bg-surface: #161b22;
+            --bg-input: #0d1117;
+            --border-main: #30363d;
+            --btn-bg: #21262d;
+            --btn-hover: #2d333b;
+            --text-main: #c9d1d9;
+            --text-dim: #8b949e;
+            --accent-orange: #e3b341;
+            --accent-blue: #388bfd;
+            --accent-green: #3fb950;
+            --accent-red: #f85149;
+            --accent-purple: #a371f7;
+        }
+
+        * { box-sizing: border-box; }
+        body {
+            background-color: var(--bg-page);
+            color: var(--text-main);
+            font-family: system-ui, -apple-system, sans-serif;
+            margin: 0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            min-height: 100vh;
+            padding-bottom: 40px;
+        }
+
+        /* INPUT BAR */
+        .input-bar {
+            width: 100%;
+            background-color: var(--bg-surface);
+            padding: 12px 16px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 8px;
+            border-bottom: 1px solid var(--border-main);
+            flex-wrap: wrap;
+        }
+        label.ui-label { font-family: 'Courier New', monospace; font-size: 13px; color: var(--text-dim); }
+        input[type="number"] {
+            background: var(--bg-input);
+            border: 1px solid var(--border-main);
+            color: var(--text-main);
+            height: 32px;
+            border-radius: 6px;
+            padding: 0 10px;
+            width: 140px;
+            font-size: 13px;
+        }
+
+        button {
+            height: 32px; border-radius: 6px; padding: 0 14px; background: var(--btn-bg);
+            border: 1px solid var(--border-main); color: var(--text-main); font-size: 13px; cursor: pointer;
+            transition: background 0.2s ease;
+        }
+        button:hover { background: var(--btn-hover); }
+
+        /* VISUALIZATION */
+        .visual-container { margin-top: 30px; display: flex; flex-direction: column; align-items: center; gap: 20px; width: 100%; }
+        .tiles-wrapper { display: flex; gap: 12px; flex-wrap: wrap; justify-content: center; max-width: 900px; min-height: 100px; position: relative; }
+
+        .tile-unit { display: flex; flex-direction: column; align-items: center; gap: 4px; position: relative; }
+        .tile {
+            min-width: 68px; height: 68px; display: flex; align-items: center; justify-content: center;
+            border-radius: 8px; font-size: 18px; font-weight: 600; font-family: 'Courier New', monospace;
+            transition: all 0.3s ease; border: 2px solid var(--border-main); background: #21262d;
+            color: var(--text-main); text-align: center; line-height: 1.2;
+        }
+        .tile-index { font-size: 11px; color: var(--text-dim); font-family: monospace; }
+
+        /* Highlight States */
+        .tile.candidate { background: #2a1600; border-color: var(--accent-orange); color: var(--accent-orange); transform: scale(1.15); box-shadow: 0 0 12px rgba(227, 179, 65, 0.4); }
+        .tile.winning { background: #0f2a1a; border-color: var(--accent-green); color: var(--accent-green); transform: scale(1.1); box-shadow: 0 0 12px var(--accent-green); }
+        .tile.current { background: #1e1030; border-color: var(--accent-purple); color: var(--accent-purple); transform: scale(1.08); }
+        .tile.done { opacity: 0.6; background: #161b22; border-color: var(--border-main); color: var(--text-dim); }
+
+        /* PANEL */
+        .action-panel {
+            margin-top: 25px; background: var(--bg-surface); border: 1px solid var(--border-main);
+            border-radius: 6px; padding: 14px 22px; width: 760px; text-align: center; font-family: monospace; min-height: 95px;
+            display: flex; flex-direction: column; justify-content: center; font-size: 15px; line-height: 1.5;
+        }
+
+        /* INFO PANEL */
+        .info-panel { margin-top: 12px; display: flex; gap: 12px; flex-wrap: wrap; justify-content: center; }
+        .info-cell {
+            background: var(--bg-surface); border: 1px solid var(--border-main); border-radius: 6px;
+            padding: 9px 16px; display: flex; flex-direction: column; align-items: center; min-width: 120px; gap: 4px;
+        }
+        .info-label { font-size: 11px; color: var(--text-dim); }
+        .info-value { font-family: monospace; font-size: 17px; font-weight: 700; }
+
+        /* RESULT */
+        .result-display { margin-top: 12px; display: flex; flex-direction: column; align-items: center; }
+        #res-val { font-size: 26px; color: var(--text-dim); font-family: monospace; font-weight: bold; transition: all 0.4s; }
+        .pop { animation: popAnim 500ms ease; color: var(--accent-green) !important; font-size: 32px !important; text-shadow: 0 0 15px var(--accent-green); }
+
+        @keyframes popAnim { 0%{transform:scale(1)} 50%{transform:scale(1.2)} 100%{transform:scale(1)} }
+
+        .status-bar { margin-top: 10px; font-size: 13px; color: var(--text-dim); height: 1.3em; text-align: center; width: 720px; }
+
+        /* CONTROLS */
+        .controls { margin-top: 26px; display: flex; align-items: center; gap: 10px; }
+        input[type="range"] { accent-color: var(--accent-blue); width: 130px; cursor: pointer; }
+
+        /* LEGEND */
+        .legend { margin-top: 14px; display: flex; gap: 18px; flex-wrap: wrap; justify-content: center; max-width: 900px; }
+        .legend-item { display: flex; align-items: center; font-size: 12px; color: var(--text-dim); }
+        .dot { width: 11px; height: 11px; border-radius: 3px; margin-right: 7px; display: inline-block; }
+
+        /* LOG */
+        .log-panel {
+            margin-top: 16px; background: var(--bg-page); border: 1px solid var(--border-main);
+            border-radius: 6px; padding: 14px 18px; width: 760px; max-width: 95%; height: 160px;
+            overflow-y: auto; font-family: 'Courier New', monospace; font-size: 13.2px; line-height: 1.45;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="input-bar">
+        <label class="ui-label">n =</label>
+        <input type="number" id="num-input" placeholder="10" value="10">
+        <button onclick="loadCustom()">Load</button>
+        <button onclick="loadExample(10)">Ex 1 (n=10)</button>
+        <button onclick="loadExample(20)">Ex 2 (n=20)</button>
+    </div>
+
+    <div class="visual-container">
+        <div class="ui-label" id="arr-label">Finding number ≤ n with maximum divisors</div>
+        <div class="tiles-wrapper" id="tiles-container"></div>
+    </div>
+
+    <div class="action-panel" id="main-panel">—</div>
+
+    <div class="info-panel">
+        <div class="info-cell">
+            <span class="info-label">Current i</span>
+            <span class="info-value" id="val-i" style="color: var(--accent-orange);">—</span>
+        </div>
+        <div class="info-cell">
+            <span class="info-label">Divisors of i</span>
+            <span class="info-value" id="val-div" style="color: var(--accent-purple);">—</span>
+        </div>
+        <div class="info-cell">
+            <span class="info-label">Max Divisors</span>
+            <span class="info-value" id="val-max" style="color: var(--accent-green);">—</span>
+        </div>
+        <div class="info-cell">
+            <span class="info-label">Current Best</span>
+            <span class="info-value" id="val-best" style="color: var(--accent-blue);">—</span>
+        </div>
+    </div>
+
+    <div class="result-display">
+        <span class="ui-label" style="margin-bottom: 6px;">Number with most divisors ≤ n</span>
+        <span id="res-val">—</span>
+    </div>
+
+    <div class="status-bar" id="status-text"></div>
+
+    <div class="controls">
+        <button onclick="reset()">↺ Reset</button>
+        <button onclick="back()">← Back</button>
+        <button onclick="togglePlay()" id="play-btn">Play</button>
+        <button onclick="next()">Next →</button>
+        <div style="display:flex;align-items:center;gap:6px;">
+            <span class="ui-label" style="font-size:11px">Speed</span>
+            <input type="range" id="speed-slider" min="0" max="2" value="1">
+        </div>
+    </div>
+
+    <div class="legend">
+        <div class="legend-item"><span class="dot" style="background:#2a1600;border:1px solid var(--accent-orange)"></span> Processing i</div>
+        <div class="legend-item"><span class="dot" style="background:var(--accent-purple);border:1px solid var(--accent-purple)"></span> Divisors count</div>
+        <div class="legend-item"><span class="dot" style="background:var(--accent-green);border:1px solid var(--accent-green)"></span> New max</div>
+        <div class="legend-item"><span class="dot" style="background:var(--bg-surface);border:1px solid var(--border-main);opacity:0.5"></span> Done</div>
+    </div>
+
+    <div class="log-panel" id="log"></div>
+
+    <script>
+        let inputN = 10;
+        let steps = [];
+        let stepIndex = 0;
+        let timer = null;
+        const delays = [1400, 700, 350];
+
+        function countDivisors(x) {
+            if (x < 1) return 0;
+            let count = 0;
+            const sqrtX = Math.floor(Math.sqrt(x));
+            for (let i = 1; i <= sqrtX; i++) {
+                if (x % i === 0) {
+                    count++;
+                    if (i !== Math.floor(x / i)) count++;
+                }
+            }
+            return count;
+        }
+
+        function generateSteps() {
+            steps = [];
+
+            // Init
+            steps.push({
+                type: 'init',
+                n: inputN,
+                panel: `Highly Composite Numbers<br>Find the number ≤ <b>${inputN}</b> with the <b>maximum number of divisors</b>.<br>Brute force: check every i from 1 to n.`,
+                statusText: `n = ${inputN}. Starting search...`,
+                log: `n = ${inputN}\nSearching for number ≤ ${inputN} with most divisors...`,
+                logColor: 'var(--text-dim)'
+            });
+
+            let maxDiv = 0;
+            let bestNum = 1;
+
+            for (let i = 1; i <= inputN; i++) {
+                const divs = countDivisors(i);
+                const isNewMax = divs > maxDiv;
+                const isTie = divs === maxDiv;
+
+                steps.push({
+                    type: isNewMax ? 'newmax' : (isTie ? 'tie' : 'check'),
+                    i: i,
+                    divs: divs,
+                    maxDiv: maxDiv,
+                    bestNum: bestNum,
+                    panel: `i = <b>${i}</b><br>Divisors = <b>${divs}</b>${isNewMax ? ' <span style="color:var(--accent-green)">NEW MAX!</span>' : ''}`,
+                    statusText: `i=${i}: ${divs} divisors`,
+                    log: `i=${i}: ${divs} divisors${isNewMax ? ' → NEW MAX' : isTie ? ' (tie)' : ''}`,
+                    logColor: isNewMax ? 'var(--accent-green)' : (isTie ? 'var(--accent-blue)' : 'var(--text-main)')
+                });
+
+                if (isNewMax) {
+                    maxDiv = divs;
+                    bestNum = i;
+                }
+            }
+
+            // Final
+            steps.push({
+                type: 'final',
+                bestNum: bestNum,
+                maxDiv: maxDiv,
+                panel: `Search complete.<br>The number ≤ ${inputN} with the most divisors is <b>${bestNum}</b> (${maxDiv} divisors).`,
+                statusText: `Done. Result = ${bestNum}`,
+                log: `\nFinal Result: ${bestNum} (with ${maxDiv} divisors)`,
+                logColor: 'var(--accent-green)',
+                bold: true,
+                complete: true
+            });
+        }
+
+        function renderStep(idx) {
+            const step = steps[idx];
+            if (!step) return;
+
+            const container = document.getElementById('tiles-container');
+            container.innerHTML = '';
+
+            // Show current i as big tile
+            const iTile = document.createElement('div');
+            iTile.className = 'tile-unit';
+            const bigTile = document.createElement('div');
+            bigTile.className = `tile ${step.type === 'newmax' ? 'winning' : (step.type === 'check' ? 'candidate' : 'done')}`;
+            bigTile.innerText = step.i || '—';
+            const iLabel = document.createElement('div');
+            iLabel.className = 'tile-index';
+            iLabel.innerText = 'Current i';
+            iTile.append(bigTile, iLabel);
+            container.appendChild(iTile);
+
+            // Show current divisors count
+            if (step.divs !== undefined) {
+                const dTile = document.createElement('div');
+                dTile.className = 'tile-unit';
+                const divTile = document.createElement('div');
+                divTile.className = `tile ${step.type === 'newmax' ? 'winning' : 'current'}`;
+                divTile.innerText = step.divs;
+                const dLabel = document.createElement('div');
+                dLabel.className = 'tile-index';
+                dLabel.innerText = 'Divisors';
+                dTile.append(divTile, dLabel);
+                container.appendChild(dTile);
+            }
+
+            document.getElementById('main-panel').innerHTML = step.panel || '—';
+            document.getElementById('val-i').innerText = step.i || '—';
+            document.getElementById('val-div').innerText = step.divs !== undefined ? step.divs : '—';
+            document.getElementById('val-max').innerText = step.maxDiv || '—';
+            document.getElementById('val-best').innerText = step.bestNum || '—';
+
+            const resVal = document.getElementById('res-val');
+            if (step.complete) {
+                resVal.innerText = step.bestNum;
+                resVal.className = 'pop';
+            } else {
+                resVal.innerText = '—';
+                resVal.className = '';
+            }
+
+            document.getElementById('status-text').innerText = step.statusText || '';
+
+            // Log
+            const logPanel = document.getElementById('log');
+            logPanel.innerHTML = '';
+            for (let k = 0; k <= idx; k++) {
+                if (steps[k].log) {
+                    const line = document.createElement('div');
+                    line.style.marginBottom = '3px';
+                    line.style.whiteSpace = 'pre-wrap';
+                    if (steps[k].logColor) line.style.color = steps[k].logColor;
+                    if (steps[k].bold) line.style.fontWeight = 'bold';
+                    line.innerText = steps[k].log;
+                    logPanel.appendChild(line);
+                }
+            }
+            logPanel.scrollTop = logPanel.scrollHeight;
+        }
+
+        function next() {
+            if (stepIndex < steps.length - 1) {
+                stepIndex++;
+                renderStep(stepIndex);
+            } else pause();
+        }
+
+        function back() {
+            if (stepIndex > 0) {
+                stepIndex--;
+                renderStep(stepIndex);
+            }
+        }
+
+        function reset() {
+            pause();
+            stepIndex = 0;
+            renderStep(0);
+        }
+
+        function togglePlay() {
+            const btn = document.getElementById('play-btn');
+            if (timer) pause();
+            else {
+                btn.innerText = 'Pause';
+                if (stepIndex >= steps.length - 1) stepIndex = 0;
+                timer = setInterval(next, delays[document.getElementById('speed-slider').value]);
+            }
+        }
+
+        function pause() {
+            clearInterval(timer);
+            timer = null;
+            document.getElementById('play-btn').innerText = 'Play';
+        }
+
+        function loadExample(newN) {
+            inputN = parseInt(newN);
+            document.getElementById('num-input').value = inputN;
+            generateSteps();
+            reset();
+        }
+
+        function loadCustom() {
+            const val = parseInt(document.getElementById('num-input').value);
+            if (!isNaN(val) && val >= 1) {
+                inputN = val;
+                generateSteps();
+                reset();
+            } else {
+                alert("Please enter a valid integer ≥ 1.");
+            }
+        }
+
+        window.onload = () => {
+            loadExample(10);
+        };
+    </script>
+</body>
+</html>

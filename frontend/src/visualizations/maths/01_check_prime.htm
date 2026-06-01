@@ -1,0 +1,404 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Prime Number Check - Visualization</title>
+    <style>
+        :root {
+            --bg-page: #0d1117;
+            --bg-surface: #161b22;
+            --bg-input: #0d1117;
+            --border-main: #30363d;
+            --btn-bg: #21262d;
+            --btn-hover: #2d333b;
+            --text-main: #c9d1d9;
+            --text-dim: #8b949e;
+            --accent-orange: #e3b341;
+            --accent-blue: #388bfd;
+            --accent-green: #3fb950;
+            --accent-red: #f85149;
+            --accent-purple: #a371f7;
+        }
+
+        * { box-sizing: border-box; }
+        body {
+            background-color: var(--bg-page);
+            color: var(--text-main);
+            font-family: system-ui, -apple-system, sans-serif;
+            margin: 0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            min-height: 100vh;
+            padding-bottom: 40px;
+        }
+
+        /* INPUT BAR */
+        .input-bar {
+            width: 100%;
+            background-color: var(--bg-surface);
+            padding: 12px 16px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 8px;
+            border-bottom: 1px solid var(--border-main);
+            flex-wrap: wrap;
+        }
+        label.ui-label { font-family: 'Courier New', monospace; font-size: 13px; color: var(--text-dim); }
+        input[type="number"] {
+            background: var(--bg-input);
+            border: 1px solid var(--border-main);
+            color: var(--text-main);
+            height: 32px;
+            border-radius: 6px;
+            padding: 0 10px;
+            font-size: 13px;
+            width: 140px;
+        }
+
+        button {
+            height: 32px; border-radius: 6px; padding: 0 14px; background: var(--btn-bg);
+            border: 1px solid var(--border-main); color: var(--text-main); font-size: 13px; cursor: pointer;
+            transition: background 0.2s ease;
+        }
+        button:hover { background: var(--btn-hover); }
+
+        /* VISUALIZATION */
+        .visual-container { margin-top: 30px; display: flex; flex-direction: column; align-items: center; gap: 20px; width: 100%; }
+        .tiles-wrapper { 
+            display: flex; gap: 8px; flex-wrap: wrap; justify-content: center; 
+            max-width: 820px; min-height: 90px; position: relative; 
+        }
+        
+        .tile-unit { display: flex; flex-direction: column; align-items: center; gap: 4px; }
+        .tile {
+            min-width: 48px; height: 48px; display: flex; align-items: center; justify-content: center;
+            border-radius: 8px; font-size: 18px; font-weight: 600; font-family: 'Courier New', monospace;
+            transition: all 0.3s ease; border: 2px solid var(--border-main); background: #21262d;
+            color: var(--text-main);
+        }
+        .tile-index { font-size: 10px; color: var(--text-dim); font-family: monospace; }
+
+        /* Highlight States */
+        .tile.candidate { background: #2a1600; border-color: var(--accent-orange); color: var(--accent-orange); transform: scale(1.2); box-shadow: 0 0 12px rgba(227, 179, 65, 0.5); }
+        .tile.divides { background: #2a0d0d; border-color: var(--accent-red); color: var(--accent-red); transform: scale(1.15); box-shadow: 0 0 12px var(--accent-red); }
+        .tile.no-div { background: #0d2244; border-color: var(--accent-blue); color: var(--accent-blue); }
+        .tile.past { opacity: 0.35; background: #161b22; border-color: var(--border-main); }
+        .tile.idle { opacity: 0.85; }
+
+        /* PANEL */
+        .action-panel {
+            margin-top: 20px; background: var(--bg-surface); border: 1px solid var(--border-main);
+            border-radius: 6px; padding: 14px 20px; width: 700px; text-align: center; 
+            font-family: monospace; min-height: 78px; font-size: 15px; line-height: 1.5;
+        }
+
+        /* INFO PANEL */
+        .info-panel { margin-top: 12px; display: flex; gap: 10px; flex-wrap: wrap; justify-content: center; }
+        .info-cell {
+            background: var(--bg-surface); border: 1px solid var(--border-main); border-radius: 6px;
+            padding: 8px 14px; display: flex; flex-direction: column; align-items: center; min-width: 110px; gap: 3px;
+        }
+        .info-label { font-size: 11px; color: var(--text-dim); }
+        .info-value { font-family: monospace; font-size: 17px; font-weight: 700; }
+
+        /* RESULT */
+        .result-display { margin-top: 12px; display: flex; flex-direction: column; align-items: center; }
+        #res-val { font-size: 22px; color: var(--text-dim); font-family: monospace; font-weight: bold; transition: all 0.3s; }
+        .pop { animation: popAnim 400ms ease; color: var(--accent-green) !important; font-size: 28px !important; text-shadow: 0 0 12px var(--accent-green); }
+        .pop-false { animation: popAnim 400ms ease; color: var(--accent-red) !important; font-size: 28px !important; text-shadow: 0 0 12px var(--accent-red); }
+
+        @keyframes popAnim { 0%{transform:scale(1)} 50%{transform:scale(1.12)} 100%{transform:scale(1)} }
+
+        .status-bar { margin-top: 8px; font-size: 13px; color: var(--text-dim); height: 1.3em; text-align: center; width: 680px; }
+
+        /* CONTROLS */
+        .controls { margin-top: 24px; display: flex; align-items: center; gap: 8px; }
+        input[type="range"] { accent-color: var(--accent-blue); width: 110px; cursor: pointer; }
+
+        /* LEGEND */
+        .legend { margin-top: 12px; display: flex; gap: 18px; flex-wrap: wrap; justify-content: center; max-width: 820px; }
+        .legend-item { display: flex; align-items: center; font-size: 12px; color: var(--text-dim); }
+        .dot { width: 11px; height: 11px; border-radius: 3px; margin-right: 6px; display: inline-block; }
+
+        /* LOG */
+        .log-panel {
+            margin-top: 16px; background: var(--bg-page); border: 1px solid var(--border-main);
+            border-radius: 6px; padding: 12px 16px; width: 720px; max-width: 92%; height: 138px;
+            overflow-y: auto; font-family: 'Courier New', monospace; font-size: 13px; line-height: 1.4;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="input-bar">
+        <label class="ui-label">n =</label>
+        <input type="number" id="num-input" placeholder="7" value="7">
+        <button onclick="loadCustom()">Load</button>
+        <button onclick="loadExample(7)">Ex 1 (7)</button>
+        <button onclick="loadExample(9)">Ex 2 (9)</button>
+    </div>
+
+    <div class="visual-container">
+        <div class="ui-label">Potential Divisors (2 to n-1)</div>
+        <div class="tiles-wrapper" id="tiles-container"></div>
+    </div>
+
+    <div class="action-panel" id="main-panel">—</div>
+
+    <div class="info-panel">
+        <div class="info-cell">
+            <span class="info-label">Current i</span>
+            <span class="info-value" id="val-i" style="color: var(--accent-orange);">—</span>
+        </div>
+        <div class="info-cell">
+            <span class="info-label">n % i</span>
+            <span class="info-value" id="val-rem" style="color: var(--accent-blue);">—</span>
+        </div>
+        <div class="info-cell">
+            <span class="info-label">Divisor Found?</span>
+            <span class="info-value" id="val-div" style="color: var(--accent-red);">No</span>
+        </div>
+        <div class="info-cell">
+            <span class="info-label">Original n</span>
+            <span class="info-value" id="val-orig" style="color: var(--text-main);">—</span>
+        </div>
+    </div>
+
+    <div class="result-display">
+        <span class="ui-label" style="margin-bottom: 4px;">is prime? =</span>
+        <span id="res-val">—</span>
+    </div>
+
+    <div class="status-bar" id="status-text"></div>
+
+    <div class="controls">
+        <button onclick="reset()">↺ Reset</button>
+        <button onclick="back()">← Back</button>
+        <button onclick="togglePlay()" id="play-btn">Play</button>
+        <button onclick="next()">Next →</button>
+        <div style="display:flex; align-items:center; gap:6px;">
+            <span class="ui-label" style="font-size:11px">Speed</span>
+            <input type="range" id="speed-slider" min="0" max="2" value="1">
+        </div>
+    </div>
+
+    <div class="legend">
+        <div class="legend-item"><span class="dot" style="background:#2a1600; border:1px solid var(--accent-orange)"></span> Checking i</div>
+        <div class="legend-item"><span class="dot" style="background:#2a0d0d; border:1px solid var(--accent-red)"></span> Divides n</div>
+        <div class="legend-item"><span class="dot" style="background:#0d2244; border:1px solid var(--accent-blue)"></span> Does not divide</div>
+        <div class="legend-item"><span class="dot" style="background:#161b22; border:1px solid var(--border-main); opacity:0.4"></span> Checked</div>
+    </div>
+
+    <div class="log-panel" id="log"></div>
+
+    <script>
+        let inputNumber = 7;
+        let steps = [];
+        let stepIndex = 0;
+        let timer = null;
+        const delays = [1600, 800, 400];
+
+        function init() { loadExample(7); }
+
+        function loadExample(newNum) {
+            inputNumber = parseInt(newNum);
+            document.getElementById('num-input').value = inputNumber;
+            generateSteps();
+            reset();
+        }
+
+        function loadCustom() {
+            const val = parseInt(document.getElementById('num-input').value);
+            if (!isNaN(val) && val >= 0) {
+                loadExample(val);
+            } else {
+                alert("Please enter a valid non-negative integer.");
+            }
+        }
+
+        function generateSteps() {
+            steps = [];
+            const n = inputNumber;
+
+            steps.push({
+                type: 'init',
+                i: '—', rem: '—',
+                panel: `Checking if <b>${n}</b> is a prime number.<br>A prime &gt; 1 has no positive divisors other than 1 and itself.`,
+                statusText: `n = ${n}. Starting prime check...`,
+                log: `n = ${n}\nIf n < 2 → not prime.`,
+                logColor: 'var(--text-dim)'
+            });
+
+            if (n < 2) {
+                steps.push({
+                    type: 'final',
+                    i: '—', rem: '—',
+                    panel: `<span style="color:var(--accent-red)">n = ${n} &lt; 2</span><br>Numbers less than 2 are not prime.`,
+                    statusText: `Done. ${n} is NOT prime.`,
+                    log: `n < 2 → Return False`,
+                    logColor: 'var(--accent-red)',
+                    isPrime: false,
+                    complete: true
+                });
+                return;
+            }
+
+            let isPrime = true;
+            let maxCheck = n - 1;
+
+            for (let i = 2; i <= maxCheck; i++) {
+                const rem = n % i;
+
+                steps.push({
+                    type: 'check',
+                    i: i,
+                    rem: rem,
+                    panel: `Testing divisor <b>${i}</b><br><code>${n} % ${i} = ${rem}</code>`,
+                    statusText: `Checking i = ${i}...`,
+                    log: `i = ${i} → ${n} % ${i} = ${rem}`,
+                    logColor: rem === 0 ? 'var(--accent-red)' : 'var(--text-main)'
+                });
+
+                if (rem === 0) {
+                    isPrime = false;
+                    steps.push({
+                        type: 'found',
+                        i: i,
+                        rem: 0,
+                        panel: `<span style="color:var(--accent-red)">${i} divides ${n} evenly!</span><br>${n} is composite.`,
+                        statusText: `Divisor ${i} found!`,
+                        log: `Divisor found at i=${i} → Return False`,
+                        logColor: 'var(--accent-red)',
+                        complete: true,
+                        isPrime: false
+                    });
+                    break;
+                }
+            }
+
+            if (isPrime) {
+                steps.push({
+                    type: 'final',
+                    i: '—', rem: '—',
+                    panel: `No divisors found between 2 and ${n-1}.<br><span style="color:var(--accent-green)">${n} is a prime number.</span>`,
+                    statusText: `No divisors found. ${n} is prime.`,
+                    log: `Loop completed. No divisors → Return True`,
+                    logColor: 'var(--accent-green)',
+                    complete: true,
+                    isPrime: true
+                });
+            }
+        }
+
+        function renderStep(idx) {
+            const step = steps[idx];
+            if (!step) return;
+
+            const container = document.getElementById('tiles-container');
+            container.innerHTML = '';
+
+            const n = inputNumber;
+            if (n < 2) {
+                const msg = document.createElement('div');
+                msg.style.color = 'var(--accent-red)';
+                msg.style.fontSize = '18px';
+                msg.innerHTML = 'n &lt; 2 → Not Prime';
+                container.appendChild(msg);
+            } else {
+                for (let i = 2; i < n; i++) {
+                    const wrapper = document.createElement('div');
+                    wrapper.className = 'tile-unit';
+
+                    const tile = document.createElement('div');
+                    tile.className = 'tile';
+
+                    if (step.type === 'check' && step.i === i) tile.classList.add('candidate');
+                    else if (step.type === 'found' && step.i === i) tile.classList.add('divides');
+                    else if (step.i && i < step.i) tile.classList.add('past');
+                    else if (step.complete) tile.classList.add('past');
+
+                    tile.innerText = i;
+
+                    const idxLabel = document.createElement('div');
+                    idxLabel.className = 'tile-index';
+                    idxLabel.innerText = `i=${i}`;
+                    wrapper.append(tile, idxLabel);
+                    container.appendChild(wrapper);
+                }
+            }
+
+            document.getElementById('main-panel').innerHTML = step.panel;
+            document.getElementById('val-i').innerText = step.i;
+            document.getElementById('val-rem').innerText = step.rem !== undefined ? step.rem : '—';
+            document.getElementById('val-div').innerText = (step.rem === 0) ? 'Yes' : 'No';
+            document.getElementById('val-orig').innerText = n;
+
+            const resVal = document.getElementById('res-val');
+            if (step.complete) {
+                resVal.innerText = step.isPrime ? "True" : "False";
+                resVal.className = step.isPrime ? 'pop' : 'pop-false';
+            } else {
+                resVal.innerText = '—';
+                resVal.className = '';
+            }
+
+            document.getElementById('status-text').innerText = step.statusText;
+
+            const logPanel = document.getElementById('log');
+            logPanel.innerHTML = '';
+            for (let k = 0; k <= idx; k++) {
+                if (steps[k].log) {
+                    const line = document.createElement('div');
+                    line.style.marginBottom = '3px';
+                    line.style.whiteSpace = 'pre-wrap';
+                    if (steps[k].logColor) line.style.color = steps[k].logColor;
+                    line.innerText = steps[k].log;
+                    logPanel.appendChild(line);
+                }
+            }
+            logPanel.scrollTop = logPanel.scrollHeight;
+        }
+
+        function next() {
+            if (stepIndex < steps.length - 1) {
+                stepIndex++;
+                renderStep(stepIndex);
+            } else pause();
+        }
+
+        function back() {
+            if (stepIndex > 0) {
+                stepIndex--;
+                renderStep(stepIndex);
+            }
+        }
+
+        function reset() {
+            pause();
+            stepIndex = 0;
+            renderStep(0);
+        }
+
+        function togglePlay() {
+            const btn = document.getElementById('play-btn');
+            if (timer) pause();
+            else {
+                btn.innerText = 'Pause';
+                if (stepIndex >= steps.length - 1) stepIndex = 0;
+                timer = setInterval(next, delays[document.getElementById('speed-slider').value]);
+            }
+        }
+
+        function pause() {
+            clearInterval(timer);
+            timer = null;
+            document.getElementById('play-btn').innerText = 'Play';
+        }
+
+        window.onload = init;
+    </script>
+</body>
+</html>

@@ -1,0 +1,828 @@
+```html id="5n8j6w"
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+<title>Word Dictionary Wildcard Search</title>
+
+<style>
+
+:root{
+    --bg:#0d1117;
+    --surface:#161b22;
+    --border:#30363d;
+    --text:#c9d1d9;
+    --purple:#a371f7;
+    --blue:#58a6ff;
+    --green:#3fb950;
+    --orange:#e3b341;
+}
+
+*{
+    box-sizing:border-box;
+}
+
+body{
+    margin:0;
+    padding:20px;
+    background:var(--bg);
+    color:var(--text);
+    font-family:Arial;
+}
+
+h1{
+    text-align:center;
+    color:var(--purple);
+}
+
+.subtitle{
+    text-align:center;
+    color:#8b949e;
+    margin-bottom:20px;
+}
+
+.controls{
+    display:flex;
+    justify-content:center;
+    gap:10px;
+    flex-wrap:wrap;
+    margin-bottom:20px;
+}
+
+button{
+    padding:10px 18px;
+    background:#21262d;
+    color:white;
+    border:none;
+    border-radius:8px;
+    cursor:pointer;
+}
+
+button:hover{
+    background:#30363d;
+}
+
+.panel{
+    background:var(--surface);
+    border:1px solid var(--border);
+    border-radius:12px;
+    padding:20px;
+    margin-bottom:20px;
+}
+
+.title{
+    color:var(--purple);
+    font-size:20px;
+    margin-bottom:10px;
+}
+
+.word-box{
+    display:inline-block;
+    padding:8px 14px;
+    margin:5px;
+    border:2px solid var(--orange);
+    border-radius:8px;
+    font-family:monospace;
+}
+
+.trie{
+    overflow:auto;
+    padding:10px;
+}
+
+.node{
+    display:inline-block;
+    vertical-align:top;
+    margin:10px;
+    padding:12px;
+    border:2px solid var(--blue);
+    border-radius:10px;
+    background:#21262d;
+    text-align:center;
+    min-width:90px;
+}
+
+.children{
+    display:flex;
+    justify-content:center;
+    flex-wrap:wrap;
+    margin-top:10px;
+}
+
+.end{
+    color:var(--green);
+    margin-top:5px;
+    font-size:12px;
+}
+
+.result{
+    font-size:20px;
+    color:var(--green);
+}
+
+.log-line{
+    margin:6px 0;
+    font-family:monospace;
+}
+
+.step-box{
+    padding:15px;
+    background:#21262d;
+    border-radius:10px;
+}
+
+</style>
+</head>
+
+<body>
+
+<h1>Word Dictionary Wildcard Search</h1>
+
+<div class="subtitle">
+Trie + DFS + '.' Wildcard Matching
+</div>
+
+<div class="controls">
+
+    <button onclick="loadExample1()">
+        Example 1
+    </button>
+
+    <button onclick="loadExample2()">
+        Example 2
+    </button>
+
+</div>
+
+<div class="controls">
+
+    <button onclick="prevStep()">
+        ⬅ Prev
+    </button>
+
+    <button onclick="togglePlay()" id="playBtn">
+        ▶ Play
+    </button>
+
+    <button onclick="nextStep()">
+        Next ➡
+    </button>
+
+</div>
+
+<div class="panel">
+
+    <div class="title">
+        Current Step
+    </div>
+
+    <div id="stepInfo" class="step-box"></div>
+
+</div>
+
+<div class="panel">
+
+    <div class="title">
+        Dictionary Words
+    </div>
+
+    <div id="words"></div>
+
+</div>
+
+<div class="panel">
+
+    <div class="title">
+        Trie Structure
+    </div>
+
+    <div id="trie" class="trie"></div>
+
+</div>
+
+<div class="panel">
+
+    <div class="title">
+        Search Result
+    </div>
+
+    <div id="result" class="result"></div>
+
+</div>
+
+<div class="panel">
+
+    <div class="title">
+        Execution Logs
+    </div>
+
+    <div id="logs"></div>
+
+</div>
+
+<script>
+
+class TrieNode{
+
+    constructor(){
+
+        this.children = {};
+        this.isEnd = false;
+    }
+}
+
+class WordDictionary{
+
+    constructor(){
+
+        this.root = new TrieNode();
+    }
+
+    addWord(word){
+
+        let node = this.root;
+
+        for(let ch of word){
+
+            if(!node.children[ch]){
+
+                node.children[ch] = new TrieNode();
+            }
+
+            node = node.children[ch];
+        }
+
+        node.isEnd = true;
+    }
+
+    search(word){
+
+        return this.dfs(word, 0, this.root);
+    }
+
+    dfs(word, index, node){
+
+        if(index === word.length){
+
+            return node.isEnd;
+        }
+
+        let ch = word[index];
+
+        if(ch === "."){
+
+            for(let key in node.children){
+
+                if(
+                    this.dfs(
+                        word,
+                        index + 1,
+                        node.children[key]
+                    )
+                ){
+                    return true;
+                }
+            }
+
+            return false;
+        }
+
+        if(!node.children[ch]){
+
+            return false;
+        }
+
+        return this.dfs(
+            word,
+            index + 1,
+            node.children[ch]
+        );
+    }
+}
+
+let dictionary;
+
+let steps = [];
+
+let currentStep = 0;
+
+let timer = null;
+
+let isPlaying = false;
+
+function buildTrie(node, label){
+
+    let html = `
+        <div class="node">
+
+            <div>
+                <strong>${label}</strong>
+            </div>
+
+            ${
+                node.isEnd
+                ? `<div class="end">END</div>`
+                : ``
+            }
+    `;
+
+    let keys = Object.keys(node.children);
+
+    if(keys.length > 0){
+
+        html += `<div class="children">`;
+
+        for(let key of keys){
+
+            html += buildTrie(
+                node.children[key],
+                key
+            );
+        }
+
+        html += `</div>`;
+    }
+
+    html += `</div>`;
+
+    return html;
+}
+
+function renderStep(){
+
+    let step = steps[currentStep];
+
+    document.getElementById("stepInfo").innerHTML =
+        step.description;
+
+    document.getElementById("words").innerHTML =
+        step.wordsHTML;
+
+    document.getElementById("trie").innerHTML =
+        step.trieHTML;
+
+    document.getElementById("result").innerHTML =
+        step.result;
+
+    document.getElementById("logs").innerHTML =
+        step.logsHTML;
+}
+
+function nextStep(){
+
+    if(currentStep < steps.length - 1){
+
+        currentStep++;
+
+        renderStep();
+    }
+    else{
+
+        pausePlay();
+    }
+}
+
+function prevStep(){
+
+    if(currentStep > 0){
+
+        currentStep--;
+
+        renderStep();
+    }
+}
+
+function togglePlay(){
+
+    if(isPlaying){
+
+        pausePlay();
+    }
+    else{
+
+        startPlay();
+    }
+}
+
+function startPlay(){
+
+    isPlaying = true;
+
+    document.getElementById("playBtn").innerHTML =
+        "⏸ Pause";
+
+    timer = setInterval(() => {
+
+        if(currentStep < steps.length - 1){
+
+            nextStep();
+        }
+        else{
+
+            pausePlay();
+        }
+
+    }, 1500);
+}
+
+function pausePlay(){
+
+    clearInterval(timer);
+
+    isPlaying = false;
+
+    document.getElementById("playBtn").innerHTML =
+        "▶ Play";
+}
+
+function createWordsHTML(words){
+
+    let html = "";
+
+    for(let word of words){
+
+        html += `
+            <div class="word-box">
+                ${word}
+            </div>
+        `;
+    }
+
+    return html;
+}
+
+function createLogsHTML(logs){
+
+    let html = "";
+
+    for(let log of logs){
+
+        html += `
+            <div class="log-line">
+                ${log}
+            </div>
+        `;
+    }
+
+    return html;
+}
+
+function clone(obj){
+
+    return JSON.parse(JSON.stringify(obj));
+}
+
+function loadExample1(){
+
+    pausePlay();
+
+    dictionary = new WordDictionary();
+
+    steps = [];
+
+    dictionary.addWord("cat");
+
+    steps.push({
+
+        description:
+            `Added word "cat"`,
+
+        wordsHTML:
+            createWordsHTML(["cat"]),
+
+        trieHTML:
+            buildTrie(
+                clone(dictionary.root),
+                "ROOT"
+            ),
+
+        result:
+            `Trie contains "cat"`,
+
+        logsHTML:
+            createLogsHTML([
+                `addWord("cat")`
+            ])
+    });
+
+    dictionary.addWord("dog");
+
+    steps.push({
+
+        description:
+            `Added word "dog"`,
+
+        wordsHTML:
+            createWordsHTML(["cat","dog"]),
+
+        trieHTML:
+            buildTrie(
+                clone(dictionary.root),
+                "ROOT"
+            ),
+
+        result:
+            `Trie contains "cat" and "dog"`,
+
+        logsHTML:
+            createLogsHTML([
+                `addWord("cat")`,
+                `addWord("dog")`
+            ])
+    });
+
+    let r1 = dictionary.search("c.t");
+
+    steps.push({
+
+        description:
+            `Search pattern "c.t"`,
+
+        wordsHTML:
+            createWordsHTML(["cat","dog"]),
+
+        trieHTML:
+            buildTrie(
+                clone(dictionary.root),
+                "ROOT"
+            ),
+
+        result:
+            `"c.t" → ${r1}`,
+
+        logsHTML:
+            createLogsHTML([
+                `"c" matches "c"`,
+                `"." matches "a"`,
+                `"t" matches "t"`,
+                `Result = true`
+            ])
+    });
+
+    let r2 = dictionary.search("d.g");
+
+    steps.push({
+
+        description:
+            `Search pattern "d.g"`,
+
+        wordsHTML:
+            createWordsHTML(["cat","dog"]),
+
+        trieHTML:
+            buildTrie(
+                clone(dictionary.root),
+                "ROOT"
+            ),
+
+        result:
+            `"d.g" → ${r2}`,
+
+        logsHTML:
+            createLogsHTML([
+                `"d" matches "d"`,
+                `"." matches "o"`,
+                `"g" matches "g"`,
+                `Result = true`
+            ])
+    });
+
+    let r3 = dictionary.search("bat");
+
+    steps.push({
+
+        description:
+            `Search pattern "bat"`,
+
+        wordsHTML:
+            createWordsHTML(["cat","dog"]),
+
+        trieHTML:
+            buildTrie(
+                clone(dictionary.root),
+                "ROOT"
+            ),
+
+        result:
+            `"bat" → ${r3}`,
+
+        logsHTML:
+            createLogsHTML([
+                `"b" does not exist`,
+                `Result = false`
+            ])
+    });
+
+    currentStep = 0;
+
+    renderStep();
+}
+
+function loadExample2(){
+
+    pausePlay();
+
+    dictionary = new WordDictionary();
+
+    steps = [];
+
+    dictionary.addWord("a");
+
+    steps.push({
+
+        description:
+            `Added word "a"`,
+
+        wordsHTML:
+            createWordsHTML(["a"]),
+
+        trieHTML:
+            buildTrie(
+                clone(dictionary.root),
+                "ROOT"
+            ),
+
+        result:
+            `"a" inserted`,
+
+        logsHTML:
+            createLogsHTML([
+                `addWord("a")`
+            ])
+    });
+
+    dictionary.addWord("aa");
+
+    steps.push({
+
+        description:
+            `Added word "aa"`,
+
+        wordsHTML:
+            createWordsHTML(["a","aa"]),
+
+        trieHTML:
+            buildTrie(
+                clone(dictionary.root),
+                "ROOT"
+            ),
+
+        result:
+            `"a" and "aa" inserted`,
+
+        logsHTML:
+            createLogsHTML([
+                `addWord("a")`,
+                `addWord("aa")`
+            ])
+    });
+
+    dictionary.addWord("aaa");
+
+    steps.push({
+
+        description:
+            `Added word "aaa"`,
+
+        wordsHTML:
+            createWordsHTML(["a","aa","aaa"]),
+
+        trieHTML:
+            buildTrie(
+                clone(dictionary.root),
+                "ROOT"
+            ),
+
+        result:
+            `"a", "aa", "aaa" inserted`,
+
+        logsHTML:
+            createLogsHTML([
+                `addWord("a")`,
+                `addWord("aa")`,
+                `addWord("aaa")`
+            ])
+    });
+
+    let r1 = dictionary.search(".");
+
+    steps.push({
+
+        description:
+            `Search pattern "."`,
+
+        wordsHTML:
+            createWordsHTML(["a","aa","aaa"]),
+
+        trieHTML:
+            buildTrie(
+                clone(dictionary.root),
+                "ROOT"
+            ),
+
+        result:
+            `"." → ${r1}`,
+
+        logsHTML:
+            createLogsHTML([
+                `"." matches "a"`,
+                `Result = true`
+            ])
+    });
+
+    let r2 = dictionary.search("..");
+
+    steps.push({
+
+        description:
+            `Search pattern ".."`,
+
+        wordsHTML:
+            createWordsHTML(["a","aa","aaa"]),
+
+        trieHTML:
+            buildTrie(
+                clone(dictionary.root),
+                "ROOT"
+            ),
+
+        result:
+            `".." → ${r2}`,
+
+        logsHTML:
+            createLogsHTML([
+                `"." matches first "a"`,
+                `"." matches second "a"`,
+                `Result = true`
+            ])
+    });
+
+    let r3 = dictionary.search("...");
+
+    steps.push({
+
+        description:
+            `Search pattern "..."`,
+
+        wordsHTML:
+            createWordsHTML(["a","aa","aaa"]),
+
+        trieHTML:
+            buildTrie(
+                clone(dictionary.root),
+                "ROOT"
+            ),
+
+        result:
+            `"..."
+            → ${r3}`,
+
+        logsHTML:
+            createLogsHTML([
+                `"." matches all characters`,
+                `Result = true`
+            ])
+    });
+
+    let r4 = dictionary.search("a.b");
+
+    steps.push({
+
+        description:
+            `Search pattern "a.b"`,
+
+        wordsHTML:
+            createWordsHTML(["a","aa","aaa"]),
+
+        trieHTML:
+            buildTrie(
+                clone(dictionary.root),
+                "ROOT"
+            ),
+
+        result:
+            `"a.b" → ${r4}`,
+
+        logsHTML:
+            createLogsHTML([
+                `"a" matches "a"`,
+                `"." matches "a"`,
+                `"b" does not match "a"`,
+                `Result = false`
+            ])
+    });
+
+    currentStep = 0;
+
+    renderStep();
+}
+
+loadExample1();
+
+</script>
+
+</body>
+</html>
+```

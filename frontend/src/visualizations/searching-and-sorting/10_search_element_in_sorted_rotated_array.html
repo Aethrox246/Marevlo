@@ -1,0 +1,517 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Search in Rotated Sorted Array - Visualization</title>
+    <style>
+        :root {
+            --bg-page: #0d1117;
+            --bg-surface: #161b22;
+            --bg-input: #0d1117;
+            --border-main: #30363d;
+            --btn-bg: #21262d;
+            --btn-hover: #2d333b;
+            --text-main: #c9d1d9;
+            --text-dim: #8b949e;
+            --text-log: #58a6ff;
+            --accent-orange: #e3b341;
+            --accent-blue: #388bfd;
+            --accent-green: #3fb950;
+            --accent-red: #f85149;
+            --accent-purple: #a371f7;
+        }
+
+        * { box-sizing: border-box; }
+        body {
+            background-color: var(--bg-page);
+            color: var(--text-main);
+            font-family: system-ui, -apple-system, sans-serif;
+            margin: 0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            min-height: 100vh;
+            padding-bottom: 40px;
+        }
+
+        /* ROW 1: INPUT BAR */
+        .input-bar {
+            width: 100%;
+            background-color: var(--bg-surface);
+            padding: 12px 16px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 8px;
+            border-bottom: 1px solid var(--border-main);
+            flex-wrap: wrap;
+        }
+        label.ui-label { font-family: 'Courier New', monospace; font-size: 13px; color: var(--text-dim); }
+        input[type="text"], input[type="number"] {
+            background: var(--bg-input);
+            border: 1px solid var(--border-main);
+            color: var(--text-main);
+            height: 32px;
+            border-radius: 6px;
+            padding: 0 10px;
+            font-size: 13px;
+        }
+        .arr-input { width: 320px; }
+        .target-input { width: 80px; }
+
+        button {
+            height: 32px; border-radius: 6px; padding: 0 14px; background: var(--btn-bg);
+            border: 1px solid var(--border-main); color: var(--text-main); font-size: 13px; cursor: pointer;
+            transition: background 0.2s ease;
+        }
+        button:hover { background: var(--btn-hover); }
+
+        /* ROW 2: ARRAY TILES */
+        .visual-container { margin-top: 30px; display: flex; flex-direction: column; align-items: center; gap: 20px; width: 100%; }
+        .tiles-wrapper { display: flex; gap: 12px; flex-wrap: wrap; justify-content: center; max-width: 800px; min-height: 80px; position: relative;}
+        
+        .tile-unit { display: flex; flex-direction: column; align-items: center; gap: 4px; position: relative; }
+        .tile {
+            min-width: 48px; height: 48px; display: flex; align-items: center; justify-content: center;
+            border-radius: 6px; font-size: 16px; font-weight: 600; font-family: 'Courier New', monospace;
+            transition: all 0.3s ease; border: 2px solid var(--border-main); background: #21262d;
+            color: var(--text-main);
+        }
+        .tile-index { font-size: 11px; color: var(--text-dim); font-family: monospace; }
+        
+        /* Highlight States */
+        .tile.search-space { background: #0d2244; border-color: var(--accent-blue); }
+        .tile.candidate { background: #2a1600; border-color: var(--accent-orange); color: var(--accent-orange); transform: scale(1.15); box-shadow: 0 0 12px rgba(227, 179, 65, 0.4); z-index: 2; }
+        .tile.winning { background: #0f2a1a; border-color: var(--accent-green); color: var(--accent-green); transform: scale(1.15); box-shadow: 0 0 12px var(--accent-green); z-index: 3;}
+        .tile.eliminated { opacity: 0.2; background: #161b22; border-color: var(--border-main); color: var(--text-dim); }
+
+        /* Pointers */
+        .ptr-container { display: flex; flex-direction: column; align-items: center; position: absolute; bottom: -50px; gap: 2px; font-size: 11px; font-family: monospace; font-weight: bold; transition: all 0.3s; }
+        .ptr-low { color: var(--accent-purple); }
+        .ptr-mid { color: var(--accent-orange); }
+        .ptr-high { color: var(--accent-blue); }
+        .ptr-arrow { font-size: 16px; line-height: 10px; margin-bottom: 2px; color: var(--text-dim); }
+
+        /* ROW 3: PANEL */
+        .action-panel {
+            margin-top: 40px; background: var(--bg-surface); border: 1px solid var(--border-main);
+            border-radius: 6px; padding: 12px 20px; width: 680px; text-align: center; font-family: monospace; min-height: 70px;
+            display: flex; flex-direction: column; justify-content: center; font-size: 15px; line-height: 1.5;
+        }
+
+        /* ROW 4: INFO PANEL */
+        .info-panel { margin-top: 10px; display: flex; gap: 10px; flex-wrap: wrap; justify-content: center; }
+        .info-cell {
+            background: var(--bg-surface); border: 1px solid var(--border-main); border-radius: 6px;
+            padding: 8px 14px; display: flex; flex-direction: column; align-items: center; min-width: 90px; gap: 4px;
+        }
+        .info-label { font-size: 11px; color: var(--text-dim); }
+        .info-value { font-family: monospace; font-size: 15px; font-weight: 700; text-align: center; }
+
+        /* ROW 5: RESULT DISPLAY */
+        .result-display { margin-top: 10px; display: flex; flex-direction: column; align-items: center; }
+        #res-val { font-size: 18px; color: var(--text-dim); font-family: monospace; transition: all 0.3s; font-weight: bold; }
+        .pop { animation: popAnim 400ms ease; color: var(--accent-green) !important; font-size: 24px !important; text-shadow: 0 0 12px var(--accent-green); }
+        .pop-false { animation: popAnim 400ms ease; color: var(--accent-red) !important; font-size: 24px !important; text-shadow: 0 0 12px var(--accent-red); }
+
+        @keyframes popAnim { 0%{transform:scale(1)} 50%{transform:scale(1.15)} 100%{transform:scale(1)} }
+
+        /* ROW 6: STATUS BAR */
+        .status-bar { margin-top: 8px; font-size: 13px; color: var(--text-dim); height: 1.2em; text-align: center; width: 600px;}
+
+        /* ROW 7: CONTROLS */
+        .controls { margin-top: 24px; display: flex; align-items: center; gap: 8px; }
+        input[type="range"] { accent-color: var(--accent-blue); width: 100px; cursor: pointer; }
+
+        /* ROW 8: LEGEND */
+        .legend { margin-top: 12px; display: flex; gap: 16px; flex-wrap: wrap; justify-content: center; max-width: 800px; }
+        .legend-item { display: flex; align-items: center; font-size: 12px; color: var(--text-dim); }
+        .dot { width: 10px; height: 10px; border-radius: 2px; margin-right: 6px; display: inline-block; }
+
+        /* ROW 9: LOG PANEL */
+        .log-panel {
+            margin-top: 12px; background: var(--bg-page); border: 1px solid var(--border-main);
+            border-radius: 6px; padding: 12px 16px; width: 700px; max-width: 90%; height: 120px;
+            overflow-y: auto; font-family: 'Courier New', monospace; font-size: 13px;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="input-bar">
+        <label class="ui-label">arr =</label>
+        <input type="text" id="arr-input" class="arr-input" placeholder="4, 5, 6, 7, 0, 1, 2">
+        <label class="ui-label">target =</label>
+        <input type="number" id="target-input" class="target-input" placeholder="0">
+        <button onclick="loadCustom()">Load</button>
+        <button onclick="loadExample([4, 5, 6, 7, 0, 1, 2], 0)">Ex 1</button>
+        <button onclick="loadExample([3, 1], 0)">Ex 2</button>
+        <button onclick="loadExample([1, 2, 3, 4, 5], 4)">Sorted</button>
+    </div>
+
+    <div class="visual-container">
+        <div class="ui-label">Rotated Sorted Array:</div>
+        <div class="tiles-wrapper" id="tiles-container"></div>
+    </div>
+
+    <div class="action-panel" id="main-panel">—</div>
+
+    <div class="info-panel">
+        <div class="info-cell">
+            <span class="info-label">low</span>
+            <span class="info-value" id="val-low" style="color: var(--accent-purple);">—</span>
+        </div>
+        <div class="info-cell">
+            <span class="info-label">mid</span>
+            <span class="info-value" id="val-mid" style="color: var(--accent-orange);">—</span>
+        </div>
+        <div class="info-cell">
+            <span class="info-label">high</span>
+            <span class="info-value" id="val-high" style="color: var(--accent-blue);">—</span>
+        </div>
+        <div class="info-cell">
+            <span class="info-label">target</span>
+            <span class="info-value" id="val-target" style="color: var(--text-main);">—</span>
+        </div>
+    </div>
+
+    <div class="result-display">
+        <span class="ui-label" style="margin-bottom: 4px;">target index =</span>
+        <span id="res-val">—</span>
+    </div>
+
+    <div class="status-bar" id="status-text"></div>
+
+    <div class="controls">
+        <button onclick="reset()">↺ Reset</button>
+        <button onclick="back()">← Back</button>
+        <button onclick="togglePlay()" id="play-btn">Play</button>
+        <button onclick="next()">Next →</button>
+        <div class="controls" style="margin-top:0">
+            <span class="ui-label" style="margin-right:4px; font-size:11px">Speed</span>
+            <input type="range" id="speed-slider" min="0" max="2" value="1">
+        </div>
+    </div>
+
+    <div class="legend">
+        <div class="legend-item"><span class="dot" style="background:var(--bg-surface); border:1px solid var(--accent-blue)"></span> Search Space</div>
+        <div class="legend-item"><span class="dot" style="background:var(--bg-surface); border:1px solid var(--accent-orange)"></span> Midpoint</div>
+        <div class="legend-item"><span class="dot" style="background:var(--accent-green); border:1px solid var(--accent-green)"></span> Found Target</div>
+        <div class="legend-item"><span class="dot" style="background:var(--bg-surface); border:1px solid var(--border-main); opacity:0.5"></span> Eliminated</div>
+    </div>
+
+    <div class="log-panel" id="log"></div>
+
+    <script>
+        let arr = [4, 5, 6, 7, 0, 1, 2];
+        let targetVal = 0;
+        let steps = [];
+        let stepIndex = 0;
+        let timer = null;
+        const delays = [2000, 1000, 500];
+
+        function init() { loadExample([4, 5, 6, 7, 0, 1, 2], 0); }
+
+        function loadExample(newArr, newTarget) {
+            // Do NOT sort! We are testing rotated sorted array behavior.
+            arr = [...newArr];
+            targetVal = parseInt(newTarget);
+            document.getElementById('arr-input').value = arr.join(', ');
+            document.getElementById('target-input').value = targetVal;
+            generateSteps();
+            reset();
+        }
+
+        function loadCustom() {
+            const valStr = document.getElementById('arr-input').value;
+            const tStr = document.getElementById('target-input').value;
+            const parsedArr = valStr.split(',').map(x => parseInt(x.trim())).filter(x => !isNaN(x));
+            const parsedTarget = parseInt(tStr);
+            
+            if (parsedArr.length > 0 && !isNaN(parsedTarget)) {
+                loadExample(parsedArr.slice(0, 20), parsedTarget); 
+            } else {
+                alert("Please enter a valid array of numbers and a target value.");
+            }
+        }
+
+        function generateSteps() {
+            steps = [];
+            const n = arr.length;
+            if (n === 0) return;
+
+            let low = 0;
+            let high = n - 1;
+            let ansIdx = -1;
+
+            const getArrStates = (l, h, m, found_idx) => {
+                return arr.map((_, idx) => {
+                    if (idx === found_idx) return 'winning'; 
+                    if (idx === m) return 'candidate';
+                    if (idx >= l && idx <= h) return 'search-space';
+                    return 'eliminated';
+                });
+            };
+
+            // STEP 0: INIT
+            steps.push({
+                type: 'init', low: low, high: high, mid: '—', target: targetVal, ans: ansIdx,
+                arrStates: getArrStates(low, high, -1, ansIdx),
+                panel: `Initialize pointers to scan the array:<br><code>low = 0</code>, <code>high = ${high}</code>.`,
+                statusText: `array=[${arr.join(', ')}], target=${targetVal}. Click Play to begin.`,
+                log: `n=${n}, target=${targetVal}. Finding element in Rotated Sorted Array.\nInitialize low=${low}, high=${high}.`,
+                logColor: 'var(--text-dim)'
+            });
+
+            while (low <= high) {
+                let mid = Math.floor((low + high) / 2);
+                let valMid = arr[mid];
+                let valLow = arr[low];
+                let valHigh = arr[high];
+
+                // EVALUATE MID
+                steps.push({
+                    type: 'eval', low: low, high: high, mid: mid, target: targetVal, ans: ansIdx,
+                    arrStates: getArrStates(low, high, mid, ansIdx),
+                    panel: `Calculate midpoint: <code>mid = floor((${low} + ${high}) / 2) = ${mid}</code>.<br>Compare <code>arr[mid]</code> (<b>${valMid}</b>) with target (<b>${targetVal}</b>).`,
+                    statusText: `Checking midpoint at index ${mid}...`,
+                    log: `\nRange [${low}, ${high}]: Calculate mid=${mid}.\n  Is arr[${mid}] (${valMid}) == target (${targetVal})?`,
+                    logColor: 'var(--text-main)'
+                });
+
+                if (valMid === targetVal) {
+                    ansIdx = mid;
+                    steps.push({
+                        type: 'found', low: low, high: high, mid: mid, target: targetVal, ans: ansIdx,
+                        arrStates: getArrStates(low, high, mid, ansIdx),
+                        panel: `<span style="color:var(--accent-green)">Match found! <code>${valMid} == ${targetVal}</code>.</span><br>Target is located at index <b>${mid}</b>. We can terminate early!`,
+                        statusText: `Target found at index ${mid}. Search complete.`,
+                        log: `  Yes! ${valMid} == ${targetVal}. Target found at index ${mid}. ✓`,
+                        logColor: 'var(--accent-green)'
+                    });
+                    break;
+                }
+
+                steps.push({
+                    type: 'check-sorted-half', low: low, high: high, mid: mid, target: targetVal, ans: ansIdx,
+                    arrStates: getArrStates(low, high, mid, ansIdx),
+                    panel: `<code>${valMid} != ${targetVal}</code>. Determine which half is fully sorted.<br>Is Left half sorted? Check <code>arr[low] <= arr[mid]</code> (<b>${valLow} <= ${valMid}</b>).`,
+                    statusText: `Identifying which half is continuously sorted...`,
+                    log: `  No. Identify sorted half. Is arr[${low}] <= arr[${mid}]? (${valLow} <= ${valMid})`,
+                    logColor: 'var(--text-dim)'
+                });
+
+                if (valLow <= valMid) {
+                    // Left is sorted
+                    steps.push({
+                        type: 'left-sorted', low: low, high: high, mid: mid, target: targetVal, ans: ansIdx,
+                        arrStates: getArrStates(low, high, mid, ansIdx),
+                        panel: `<span style="color:var(--accent-green)">Left half is sorted.</span><br>Check if target <b>${targetVal}</b> falls within this sorted range <code>[${valLow}, ${valMid})</code>.`,
+                        statusText: `Left half is sorted. Checking if target lies within it...`,
+                        log: `  Yes, Left half is sorted. Is target in range [${valLow}, ${valMid})?`,
+                        logColor: 'var(--accent-green)'
+                    });
+
+                    if (valLow <= targetVal && targetVal < valMid) {
+                        let oldHigh = high;
+                        high = mid - 1;
+                        steps.push({
+                            type: 'go-left', low: low, high: high, mid: mid, target: targetVal, ans: ansIdx,
+                            arrStates: getArrStates(low, high, -1, ansIdx),
+                            panel: `Target <b>${targetVal}</b> IS in the sorted left half.<br>Update <code>high = mid - 1 = ${high}</code>.<br><span style="color:var(--text-dim)">Right half is eliminated.</span>`,
+                            statusText: `Target is in the left half. Moving high pointer to ${high}.`,
+                            log: `    Yes. Eliminate right half. Update high = mid-1 = ${high}.`,
+                            logColor: 'var(--accent-purple)'
+                        });
+                    } else {
+                        let oldLow = low;
+                        low = mid + 1;
+                        steps.push({
+                            type: 'go-right', low: low, high: high, mid: mid, target: targetVal, ans: ansIdx,
+                            arrStates: getArrStates(low, high, -1, ansIdx),
+                            panel: `Target <b>${targetVal}</b> is NOT in the sorted left half.<br>Update <code>low = mid + 1 = ${low}</code>.<br><span style="color:var(--text-dim)">Left half is eliminated.</span>`,
+                            statusText: `Target is not in the left half. Moving low pointer to ${low}.`,
+                            log: `    No. Eliminate left half. Update low = mid+1 = ${low}.`,
+                            logColor: 'var(--accent-blue)'
+                        });
+                    }
+                } else {
+                    // Right is sorted
+                    steps.push({
+                        type: 'right-sorted', low: low, high: high, mid: mid, target: targetVal, ans: ansIdx,
+                        arrStates: getArrStates(low, high, mid, ansIdx),
+                        panel: `<span style="color:var(--accent-purple)">Left half is NOT sorted</span>, so the <b>Right half is sorted</b>.<br>Check if target <b>${targetVal}</b> falls within this sorted range <code>(${valMid}, ${valHigh}]</code>.`,
+                        statusText: `Right half is sorted. Checking if target lies within it...`,
+                        log: `  No. Right half must be sorted. Is target in range (${valMid}, ${valHigh}]?`,
+                        logColor: 'var(--accent-purple)'
+                    });
+
+                    if (valMid < targetVal && targetVal <= valHigh) {
+                        let oldLow = low;
+                        low = mid + 1;
+                        steps.push({
+                            type: 'go-right', low: low, high: high, mid: mid, target: targetVal, ans: ansIdx,
+                            arrStates: getArrStates(low, high, -1, ansIdx),
+                            panel: `Target <b>${targetVal}</b> IS in the sorted right half.<br>Update <code>low = mid + 1 = ${low}</code>.<br><span style="color:var(--text-dim)">Left half is eliminated.</span>`,
+                            statusText: `Target is in the right half. Moving low pointer to ${low}.`,
+                            log: `    Yes. Eliminate left half. Update low = mid+1 = ${low}.`,
+                            logColor: 'var(--accent-blue)'
+                        });
+                    } else {
+                        let oldHigh = high;
+                        high = mid - 1;
+                        steps.push({
+                            type: 'go-left', low: low, high: high, mid: mid, target: targetVal, ans: ansIdx,
+                            arrStates: getArrStates(low, high, -1, ansIdx),
+                            panel: `Target <b>${targetVal}</b> is NOT in the sorted right half.<br>Update <code>high = mid - 1 = ${high}</code>.<br><span style="color:var(--text-dim)">Right half is eliminated.</span>`,
+                            statusText: `Target is not in the right half. Moving high pointer to ${high}.`,
+                            log: `    No. Eliminate right half. Update high = mid-1 = ${high}.`,
+                            logColor: 'var(--accent-purple)'
+                        });
+                    }
+                }
+            }
+
+            if (ansIdx === -1) {
+                steps.push({
+                    type: 'not-found', low: low, high: high, mid: '—', target: targetVal, ans: ansIdx,
+                    arrStates: arr.map(() => 'eliminated'),
+                    panel: `<span style="color:var(--accent-red)"><code>low > high</code> (${low} > ${high}). The search space is exhausted.</span><br>Target <b>${targetVal}</b> does not exist in the array.`,
+                    statusText: `Search space exhausted. Target not found.`,
+                    log: `\nlow (${low}) > high (${high}). Loop terminates. Target not found. ✗`,
+                    logColor: 'var(--accent-red)'
+                });
+            }
+
+            // FINAL STEP
+            steps.push({
+                type: 'final', low: low, high: high, mid: '—', target: targetVal, ans: ansIdx,
+                arrStates: arr.map((_, idx) => idx === ansIdx ? 'winning' : 'eliminated'),
+                panel: ansIdx !== -1 ? `Modified Binary Search complete. Found target in O(log n) time.` : `Binary Search complete. Target is absent.`,
+                complete: true,
+                finalStr: ansIdx !== -1 ? ansIdx.toString() : '-1',
+                statusText: `Done. Returning ${ansIdx !== -1 ? ansIdx : '-1'}.`,
+                log: `Final Result: Index ${ansIdx !== -1 ? ansIdx : '-1'}`,
+                logColor: ansIdx !== -1 ? 'var(--accent-green)' : 'var(--accent-red)', bold: true
+            });
+        }
+
+        function renderStep(idx) {
+            const step = steps[idx];
+            if (!step) return;
+
+            const container = document.getElementById('tiles-container');
+            container.innerHTML = '';
+            
+            step.arrStates.forEach((state, i) => {
+                const wrapper = document.createElement('div');
+                wrapper.className = 'tile-unit';
+                
+                const tile = document.createElement('div');
+                tile.className = `tile ${state}`;
+                tile.innerText = arr[i];
+                
+                const idxLabel = document.createElement('div');
+                idxLabel.className = 'tile-index';
+                idxLabel.innerText = `[${i}]`;
+                
+                wrapper.append(tile, idxLabel);
+
+                // Add Pointers
+                const ptrs = [];
+                if (!step.complete) {
+                    if (step.low === i && step.low <= step.high) ptrs.push('<div class="ptr-low">L</div>');
+                    if (step.mid === i && step.mid !== '—') ptrs.push('<div class="ptr-mid">M</div>');
+                    if (step.high === i && step.high >= 0) ptrs.push('<div class="ptr-high">H</div>');
+                }
+
+                if (ptrs.length > 0) {
+                    const ptrContainer = document.createElement('div');
+                    ptrContainer.className = 'ptr-container';
+                    ptrContainer.innerHTML = '<div class="ptr-arrow">↑</div>' + ptrs.join('');
+                    wrapper.appendChild(ptrContainer);
+                }
+
+                container.appendChild(wrapper);
+            });
+
+            if (!step.complete) {
+                container.style.marginBottom = "45px";
+            } else {
+                container.style.marginBottom = "0px";
+            }
+
+            document.getElementById('main-panel').innerHTML = step.panel;
+            document.getElementById('val-low').innerText = step.low;
+            document.getElementById('val-mid').innerText = step.mid;
+            document.getElementById('val-high').innerText = step.high;
+            document.getElementById('val-target').innerText = step.target;
+
+            const resVal = document.getElementById('res-val');
+            resVal.innerText = step.complete ? step.finalStr : '—';
+            
+            if (step.complete) {
+                resVal.className = step.finalStr !== '-1' ? 'pop' : 'pop-false';
+            } else {
+                resVal.className = '';
+            }
+
+            document.getElementById('status-text').innerText = step.statusText;
+
+            const logPanel = document.getElementById('log');
+            logPanel.innerHTML = '';
+            for (let k = 0; k <= idx; k++) {
+                if (steps[k].log) {
+                    const line = document.createElement('div');
+                    line.style.marginBottom = '2px';
+                    line.style.whiteSpace = 'pre-wrap';
+                    if (steps[k].logColor) line.style.color = steps[k].logColor;
+                    if (steps[k].bold) line.style.fontWeight = 'bold';
+                    line.innerText = steps[k].log;
+                    logPanel.appendChild(line);
+                }
+            }
+            logPanel.scrollTop = logPanel.scrollHeight;
+        }
+
+        function next() {
+            if (stepIndex < steps.length - 1) {
+                stepIndex++;
+                renderStep(stepIndex);
+            } else pause();
+        }
+
+        function back() {
+            if (stepIndex > 0) {
+                stepIndex--;
+                renderStep(stepIndex);
+            }
+        }
+
+        function reset() {
+            pause();
+            stepIndex = 0;
+            renderStep(0);
+        }
+
+        function togglePlay() {
+            const btn = document.getElementById('play-btn');
+            if (timer) pause();
+            else {
+                btn.innerText = 'Pause';
+                if (stepIndex >= steps.length - 1) stepIndex = 0;
+                timer = setInterval(next, delays[document.getElementById('speed-slider').value]);
+            }
+        }
+
+        function pause() {
+            clearInterval(timer);
+            timer = null;
+            document.getElementById('play-btn').innerText = 'Play';
+        }
+
+        window.onload = init;
+    </script>
+</body>
+</html>

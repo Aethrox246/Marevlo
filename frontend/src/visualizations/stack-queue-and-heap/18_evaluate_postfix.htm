@@ -1,0 +1,485 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Evaluate Postfix - Visualization</title>
+    <style>
+        :root {
+            --bg-page: #0d1117;
+            --bg-surface: #161b22;
+            --bg-input: #0d1117;
+            --border-main: #30363d;
+            --btn-bg: #21262d;
+            --btn-hover: #2d333b;
+            --text-main: #c9d1d9;
+            --text-dim: #8b949e;
+            --accent-orange: #e3b341;
+            --accent-blue: #388bfd;
+            --accent-green: #3fb950;
+            --accent-red: #f85149;
+            --accent-purple: #a371f7;
+        }
+
+        * { box-sizing: border-box; }
+        body {
+            background-color: var(--bg-page);
+            color: var(--text-main);
+            font-family: system-ui, -apple-system, sans-serif;
+            margin: 0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            min-height: 100vh;
+            padding-bottom: 40px;
+        }
+
+        .input-bar {
+            width: 100%;
+            background-color: var(--bg-surface);
+            padding: 12px 16px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 8px;
+            border-bottom: 1px solid var(--border-main);
+            flex-wrap: wrap;
+        }
+        label.ui-label { font-family: 'Courier New', monospace; font-size: 13px; color: var(--text-dim); }
+        input[type="text"] {
+            background: var(--bg-input);
+            border: 1px solid var(--border-main);
+            color: var(--text-main);
+            height: 32px;
+            border-radius: 6px;
+            padding: 0 12px;
+            width: 320px;
+            font-size: 13px;
+        }
+
+        button {
+            height: 32px; border-radius: 6px; padding: 0 14px; background: var(--btn-bg);
+            border: 1px solid var(--border-main); color: var(--text-main); font-size: 13px; cursor: pointer;
+            transition: background 0.2s ease;
+        }
+        button:hover { background: var(--btn-hover); }
+
+        .visual-container { 
+            margin-top: 30px; 
+            display: flex; 
+            flex-direction: column; 
+            align-items: center; 
+            gap: 30px; 
+            width: 100%; 
+            max-width: 960px; 
+        }
+
+        .tokens-wrapper {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+            justify-content: center;
+            padding: 16px;
+            background: #161b22;
+            border: 2px solid var(--border-main);
+            border-radius: 10px;
+            min-height: 70px;
+        }
+        .token {
+            min-width: 52px; height: 52px; display: flex; align-items: center; justify-content: center;
+            border-radius: 8px; font-size: 18px; font-weight: 700; font-family: 'Courier New', monospace;
+            border: 2px solid var(--border-main); background: #21262d; color: var(--text-main);
+            transition: all 0.3s ease;
+        }
+        .token.current { 
+            border-color: var(--accent-orange); 
+            background: #2a1600; 
+            transform: scale(1.15); 
+            box-shadow: 0 0 15px rgba(227,179,65,0.6); 
+        }
+        .token.operator { border-color: var(--accent-purple); color: var(--accent-purple); }
+
+        .stack-container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 8px;
+        }
+        .stack-label { 
+            color: var(--accent-blue); 
+            font-family: 'Courier New', monospace; 
+            font-size: 14px; 
+            font-weight: bold; 
+        }
+        .stack-box {
+            background: #161b22;
+            border: 3px solid var(--accent-blue);
+            border-radius: 10px;
+            padding: 12px 10px;
+            min-height: 280px;
+            min-width: 80px;
+            display: flex;
+            flex-direction: column-reverse;
+            gap: 8px;
+            align-items: center;
+        }
+        .stack-tile {
+            width: 58px; height: 58px; display: flex; align-items: center; justify-content: center;
+            background: #21262d; border: 2px solid var(--accent-blue); border-radius: 8px;
+            font-size: 20px; font-weight: bold; color: var(--accent-blue);
+            transition: all 0.4s ease;
+        }
+
+        .action-panel {
+            margin-top: 20px; background: var(--bg-surface); border: 1px solid var(--border-main);
+            border-radius: 8px; padding: 18px 26px; width: 760px; min-height: 130px;
+            font-family: monospace; font-size: 15px; line-height: 1.65;
+        }
+
+        .result-display {
+            margin-top: 15px;
+            font-size: 28px;
+            font-weight: bold;
+            font-family: 'Courier New', monospace;
+            color: var(--accent-green);
+        }
+
+        .info-panel { 
+            margin: 15px 0; 
+            display: flex; 
+            gap: 20px; 
+            flex-wrap: wrap; 
+            justify-content: center; 
+        }
+        .info-cell {
+            background: var(--bg-surface); border: 1px solid var(--border-main); border-radius: 6px;
+            padding: 10px 20px; min-width: 140px; text-align: center;
+        }
+        .info-label { font-size: 11px; color: var(--text-dim); }
+        .info-value { font-family: monospace; font-size: 18px; font-weight: 700; }
+
+        .status-bar { margin-top: 8px; font-size: 14px; color: var(--text-dim); min-height: 28px; text-align: center; }
+
+        .controls { 
+            margin-top: 20px; 
+            display: flex; 
+            align-items: center; 
+            gap: 12px; 
+            flex-wrap: wrap; 
+            justify-content: center; 
+        }
+        input[type="range"] { accent-color: var(--accent-blue); width: 140px; }
+
+        .legend { 
+            margin-top: 15px; 
+            display: flex; 
+            gap: 24px; 
+            flex-wrap: wrap; 
+            justify-content: center; 
+            font-size: 13px; 
+        }
+        .legend-item { display: flex; align-items: center; gap: 8px; }
+
+        .log-panel {
+            margin-top: 20px; background: var(--bg-page); border: 1px solid var(--border-main);
+            border-radius: 8px; padding: 14px 18px; width: 760px; max-width: 95%; height: 180px;
+            overflow-y: auto; font-family: 'Courier New', monospace; font-size: 13.2px; line-height: 1.5;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="input-bar">
+        <label class="ui-label">Postfix:</label>
+        <input type="text" id="expr-input" placeholder="3 4 + 2 * 7 /" value="3 4 + 2 * 7 /">
+        <button onclick="loadCustom()">Load</button>
+        <button onclick="loadExample(0)">Ex 1</button>
+        <button onclick="loadExample(1)">Ex 2</button>
+    </div>
+
+    <div class="visual-container">
+        <div>
+            <div class="ui-label">Tokens</div>
+            <div class="tokens-wrapper" id="tokens-container"></div>
+        </div>
+
+        <div class="stack-container">
+            <div class="stack-label">STACK (Operands)</div>
+            <div class="stack-box" id="stack-box"></div>
+        </div>
+    </div>
+
+    <div class="action-panel" id="main-panel">—</div>
+
+    <div class="info-panel">
+        <div class="info-cell">
+            <span class="info-label">Current Token</span>
+            <span class="info-value" id="val-token" style="color:var(--accent-orange);">—</span>
+        </div>
+        <div class="info-cell">
+            <span class="info-label">Stack Size</span>
+            <span class="info-value" id="val-size" style="color:var(--accent-blue);">0</span>
+        </div>
+        <div class="info-cell">
+            <span class="info-label">Top Two</span>
+            <span class="info-value" id="val-top2" style="color:var(--text-main);">—</span>
+        </div>
+        <div class="info-cell">
+            <span class="info-label">Result</span>
+            <span class="info-value" id="val-result" style="color:var(--accent-green);">—</span>
+        </div>
+    </div>
+
+    <div class="result-display" id="final-result">—</div>
+
+    <div class="status-bar" id="status-text"></div>
+
+    <div class="controls">
+        <button onclick="reset()">↺ Reset</button>
+        <button onclick="back()">← Back</button>
+        <button onclick="togglePlay()" id="play-btn">Play</button>
+        <button onclick="next()">Next →</button>
+        <div>
+            <span class="ui-label" style="margin-right:4px; font-size:11px">Speed</span>
+            <input type="range" id="speed-slider" min="0" max="2" value="1">
+        </div>
+    </div>
+
+    <div class="legend">
+        <div class="legend-item"><span style="display:inline-block;width:18px;height:18px;background:#2a1600;border:2px solid #e3b341;border-radius:6px;"></span> Current Token</div>
+        <div class="legend-item"><span style="display:inline-block;width:18px;height:18px;background:#21262d;border:2px solid #a371f7;border-radius:6px;"></span> Operator</div>
+        <div class="legend-item"><span style="display:inline-block;width:18px;height:18px;background:#21262d;border:2px solid #58a6ff;border-radius:6px;"></span> Stack Item</div>
+    </div>
+
+    <div class="log-panel" id="log"></div>
+
+    <script>
+        let tokens = [];
+        let stack = [];
+        let steps = [];
+        let stepIndex = 0;
+        let timer = null;
+        const delays = [1500, 800, 350];
+
+        const examples = [
+            ["3", "4", "+", "2", "*", "7", "/"],
+            ["5", "1", "2", "+", "4", "*", "+", "3", "-"]
+        ];
+
+        function generateSteps(inputTokens) {
+            tokens = inputTokens.map(t => t.trim());
+            steps = [];
+            stack = [];
+
+            // Init
+            steps.push({
+                type: 'init',
+                tokenIdx: -1,
+                stack: [],
+                panel: `<b>Postfix Evaluation using Stack</b><br>Expression: <code>${tokens.join(' ')}</code>`,
+                statusText: `Starting evaluation...`,
+                log: `Tokens: [${tokens.join(', ')}]\nStack: []`,
+                logColor: 'var(--text-dim)'
+            });
+
+            for (let i = 0; i < tokens.length; i++) {
+                const token = tokens[i];
+
+                steps.push({
+                    type: 'process',
+                    tokenIdx: i,
+                    stack: [...stack],
+                    panel: `Processing token <b>${token}</b>`,
+                    statusText: `Token: ${token}`,
+                    log: `\n→ Token: ${token}`,
+                    logColor: 'var(--accent-orange)'
+                });
+
+                if (!isNaN(parseFloat(token))) {
+                    // Operand
+                    stack.push(parseFloat(token));
+                    steps.push({
+                        type: 'push',
+                        tokenIdx: i,
+                        stack: [...stack],
+                        panel: `Push operand <b>${token}</b>`,
+                        statusText: `Pushed ${token}`,
+                        log: `  Push ${token} → Stack: [${stack.join(', ')}]`,
+                        logColor: 'var(--accent-blue)'
+                    });
+                } else {
+                    // Operator
+                    if (stack.length < 2) {
+                        steps.push({
+                            type: 'error',
+                            tokenIdx: i,
+                            stack: [...stack],
+                            panel: `<span style="color:var(--accent-red)">Error: Insufficient operands for ${token}</span>`,
+                            statusText: `Error`,
+                            log: `  Error: Not enough operands for ${token}`,
+                            logColor: 'var(--accent-red)'
+                        });
+                        return;
+                    }
+
+                    const b = stack.pop();
+                    const a = stack.pop();
+
+                    let result;
+                    let opSymbol = token;
+
+                    if (token === '+') result = a + b;
+                    else if (token === '-') result = a - b;
+                    else if (token === '*') result = a * b;
+                    else if (token === '/') result = b !== 0 ? Math.floor(a / b) : 0; // integer division
+
+                    stack.push(result);
+
+                    steps.push({
+                        type: 'compute',
+                        tokenIdx: i,
+                        stack: [...stack],
+                        panel: `Apply <b>${token}</b>: ${a} ${token} ${b} = <b>${result}</b>`,
+                        statusText: `${a} ${token} ${b} = ${result}`,
+                        log: `  Pop ${b}, Pop ${a} → ${a} ${token} ${b} = ${result} → Push ${result}`,
+                        logColor: 'var(--accent-green)'
+                    });
+                }
+            }
+
+            // Final
+            const finalResult = stack.length > 0 ? stack[stack.length-1] : '—';
+            steps.push({
+                type: 'final',
+                tokenIdx: tokens.length,
+                stack: [...stack],
+                panel: `<b>Evaluation Complete!</b><br>Final Result = <span style="color:var(--accent-green);font-size:1.3em">${finalResult}</span>`,
+                statusText: `Done. Result = ${finalResult}`,
+                log: `\nFinal Stack: [${stack.join(', ')}]\nResult: ${finalResult}`,
+                logColor: 'var(--accent-green)',
+                bold: true
+            });
+        }
+
+        function isOperator(t) {
+            return ['+', '-', '*', '/'].includes(t);
+        }
+
+        function renderTokens(currentIdx) {
+            const container = document.getElementById('tokens-container');
+            container.innerHTML = '';
+            tokens.forEach((token, i) => {
+                const el = document.createElement('div');
+                el.className = `token ${i === currentIdx ? 'current' : ''} ${isOperator(token) ? 'operator' : ''}`;
+                el.textContent = token;
+                container.appendChild(el);
+            });
+        }
+
+        function renderStack() {
+            const container = document.getElementById('stack-box');
+            container.innerHTML = '';
+            // Show from bottom to top
+            for (let i = stack.length - 1; i >= 0; i--) {
+                const tile = document.createElement('div');
+                tile.className = 'stack-tile';
+                tile.textContent = stack[i];
+                container.appendChild(tile);
+            }
+        }
+
+        function renderStep(idx) {
+            const step = steps[idx];
+            if (!step) return;
+
+            renderTokens(step.tokenIdx);
+            stack = [...step.stack]; // update global for rendering
+            renderStack();
+
+            document.getElementById('main-panel').innerHTML = step.panel || '—';
+            document.getElementById('val-token').innerText = step.tokenIdx >= 0 && step.tokenIdx < tokens.length ? tokens[step.tokenIdx] : '—';
+            document.getElementById('val-size').innerText = step.stack.length;
+            document.getElementById('val-top2').innerText = step.stack.length >= 2 ? `${step.stack[step.stack.length-2]}, ${step.stack[step.stack.length-1]}` : (step.stack.length === 1 ? step.stack[0] : '—');
+            document.getElementById('val-result').innerText = step.type === 'final' ? step.stack[0] || '—' : '—';
+            document.getElementById('final-result').innerText = step.type === 'final' ? step.stack[0] || '—' : '—';
+            document.getElementById('status-text').innerText = step.statusText || '';
+
+            // Log
+            const logPanel = document.getElementById('log');
+            logPanel.innerHTML = '';
+            for (let k = 0; k <= idx; k++) {
+                const s = steps[k];
+                if (s.log) {
+                    const line = document.createElement('div');
+                    line.style.marginBottom = '4px';
+                    line.style.whiteSpace = 'pre-wrap';
+                    if (s.logColor) line.style.color = s.logColor;
+                    if (s.bold) line.style.fontWeight = 'bold';
+                    line.innerText = s.log;
+                    logPanel.appendChild(line);
+                }
+            }
+            logPanel.scrollTop = logPanel.scrollHeight;
+        }
+
+        function next() {
+            if (stepIndex < steps.length - 1) {
+                stepIndex++;
+                renderStep(stepIndex);
+            } else {
+                pause();
+            }
+        }
+
+        function back() {
+            if (stepIndex > 0) {
+                stepIndex--;
+                renderStep(stepIndex);
+            }
+        }
+
+        function reset() {
+            pause();
+            stepIndex = 0;
+            renderStep(0);
+        }
+
+        function togglePlay() {
+            const btn = document.getElementById('play-btn');
+            if (timer) {
+                pause();
+            } else {
+                btn.innerText = 'Pause';
+                if (stepIndex >= steps.length - 1) stepIndex = 0;
+                timer = setInterval(next, delays[document.getElementById('speed-slider').value]);
+            }
+        }
+
+        function pause() {
+            clearInterval(timer);
+            timer = null;
+            document.getElementById('play-btn').innerText = 'Play';
+        }
+
+        function loadCustom() {
+            const val = document.getElementById('expr-input').value.trim();
+            if (!val) return;
+            const inputTokens = val.split(/\s+/);
+            generateSteps(inputTokens);
+            reset();
+        }
+
+        function loadExample(idx) {
+            document.getElementById('expr-input').value = examples[idx].join(' ');
+            generateSteps(examples[idx]);
+            reset();
+        }
+
+        function init() {
+            loadExample(0);
+        }
+
+        window.onload = init;
+    </script>
+</body>
+</html>

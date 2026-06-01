@@ -1,0 +1,202 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Lucas Theorem - Visualization</title>
+    <style>
+        :root { --bg-page:#0d1117;--bg-surface:#161b22;--bg-input:#0d1117;--border-main:#30363d;
+            --btn-bg:#21262d;--btn-hover:#2d333b;--text-main:#c9d1d9;--text-dim:#8b949e;
+            --accent-orange:#e3b341;--accent-blue:#388bfd;--accent-green:#3fb950;
+            --accent-red:#f85149;--accent-purple:#a371f7; }
+        *{box-sizing:border-box;}
+        body{background:var(--bg-page);color:var(--text-main);font-family:system-ui,sans-serif;
+            margin:0;display:flex;flex-direction:column;align-items:center;min-height:100vh;padding-bottom:40px;}
+        .input-bar{width:100%;background:var(--bg-surface);padding:12px 16px;display:flex;
+            justify-content:center;align-items:center;gap:8px;border-bottom:1px solid var(--border-main);flex-wrap:wrap;}
+        label.ui-label{font-family:monospace;font-size:13px;color:var(--text-dim);}
+        input[type="number"]{background:var(--bg-input);border:1px solid var(--border-main);color:var(--text-main);
+            height:32px;border-radius:6px;padding:0 10px;font-size:13px;width:80px;}
+        button{height:32px;padding:0 14px;background:var(--btn-bg);border:1px solid var(--border-main);
+            color:var(--text-main);border-radius:6px;cursor:pointer;font-size:13px;}
+        button:hover{background:var(--btn-hover);}
+        .visual-container{margin-top:28px;width:100%;text-align:center;}
+        .section-title{font-size:12px;color:var(--text-dim);font-family:monospace;text-transform:uppercase;margin-bottom:8px;}
+        .tiles-row{display:flex;gap:8px;flex-wrap:wrap;justify-content:center;margin-bottom:14px;}
+        .tile{min-width:52px;height:52px;display:flex;flex-direction:column;align-items:center;justify-content:center;
+            border-radius:8px;font-size:16px;font-weight:700;font-family:monospace;
+            border:2px solid var(--border-main);background:var(--btn-bg);transition:all 0.3s;}
+        .tile-idx{font-size:10px;color:var(--text-dim);}
+        .tile.active{background:#0d2244;border-color:var(--accent-blue);color:var(--accent-blue);transform:scale(1.1);}
+        .tile.done-cell{background:#0f2a1a;border-color:var(--accent-green);color:var(--accent-green);}
+        .info-panel{margin-top:12px;display:flex;gap:14px;flex-wrap:wrap;justify-content:center;}
+        .info-cell{background:var(--bg-surface);border:1px solid var(--border-main);border-radius:6px;padding:8px 16px;min-width:130px;}
+        .info-label{font-size:11px;color:var(--text-dim);}
+        .info-value{font-family:monospace;font-size:18px;font-weight:700;}
+        .result-display{margin-top:16px;font-size:28px;font-family:monospace;font-weight:bold;color:var(--accent-green);}
+        .action-panel{margin-top:20px;background:var(--bg-surface);border:1px solid var(--border-main);
+            border-radius:6px;padding:14px 22px;width:820px;max-width:96%;min-height:90px;
+            font-family:monospace;font-size:14px;line-height:1.6;text-align:center;}
+        .controls{margin-top:20px;display:flex;align-items:center;gap:10px;}
+        .log-panel{margin-top:12px;background:var(--bg-page);border:1px solid var(--border-main);
+            border-radius:6px;padding:12px 16px;width:820px;max-width:96%;height:130px;overflow-y:auto;
+            font-family:monospace;font-size:13px;}
+        .formula-box{background:var(--bg-surface);border:1px solid var(--border-main);border-radius:8px;
+            padding:12px 24px;display:inline-block;font-family:monospace;font-size:15px;margin:10px 0;}
+    </style>
+</head>
+<body>
+<div class="input-bar">
+    <label class="ui-label">n =</label>
+    <input type="number" id="inp-n" value="5" min="0" max="50">
+    <label class="ui-label">r =</label>
+    <input type="number" id="inp-r" value="2" min="0" max="50">
+    <label class="ui-label">MOD =</label>
+    <input type="number" id="inp-mod" value="1000000007" min="2" style="width:140px">
+    <button onclick="loadCustom()">Compute</button>
+    <button onclick="loadExample(0)">Ex 1: n=5,r=2</button>
+    <button onclick="loadExample(1)">Ex 2: n=10,r=5</button>
+</div>
+
+<div class="visual-container">
+    <div class="section-title" style="color:var(--accent-blue)">Factorials fact[0..n]</div>
+    <div class="tiles-row" id="fact-row"></div>
+    <div class="section-title" style="color:var(--accent-purple)">Inverse Factorials inv_fact[0..n]</div>
+    <div class="tiles-row" id="inv-row"></div>
+    <div class="formula-box" id="formula-box">nCr = fact[n] × inv_fact[r] × inv_fact[n−r]  (mod p)</div>
+    <div class="info-panel">
+        <div class="info-cell"><div class="info-label">fact[n]</div><div class="info-value" id="fn-val">—</div></div>
+        <div class="info-cell"><div class="info-label">inv_fact[r]</div><div class="info-value" id="ifr-val">—</div></div>
+        <div class="info-cell"><div class="info-label">inv_fact[n-r]</div><div class="info-value" id="ifnr-val">—</div></div>
+        <div class="info-cell"><div class="info-label">nCr mod p</div><div class="info-value" id="ncr-val" style="color:var(--accent-green)">—</div></div>
+    </div>
+    <div class="result-display" id="result-display"></div>
+</div>
+
+<div class="action-panel" id="main-panel">Click <b>▶ Play</b> or <b>Next</b> to start.</div>
+<div class="controls">
+    <button onclick="reset()">↺ Reset</button>
+    <button onclick="back()">← Back</button>
+    <button onclick="togglePlay()" id="play-btn">▶ Play</button>
+    <button onclick="next()">Next →</button>
+    <span class="ui-label">Speed</span>
+    <input type="range" id="speed-slider" min="0" max="2" value="1">
+</div>
+<div class="log-panel" id="log"></div>
+
+<script>
+    let steps=[], stepIdx=0, timer=null;
+    const delays=[1400,700,350];
+
+    function modpow(base,exp,mod){ let r=1n; base=BigInt(base)%BigInt(mod); exp=BigInt(exp); mod=BigInt(mod);
+        while(exp>0n){ if(exp%2n===1n) r=r*base%mod; exp=exp>>1n; base=base*base%mod; } return Number(r); }
+
+    function generateSteps(N,R,MOD) {
+        steps=[];
+        const add=(panel,log,color,extra={})=>steps.push({panel,log,logColor:color,...extra});
+
+        add(`<b>Lucas Theorem:</b> Compute nCr = <b>${N}C${R}</b> mod <b>${MOD}</b>.<br>Method: Precompute factorials and inverse factorials up to n, then use Fermat's Little Theorem for modular inverse.`,
+            `Start: ${N}C${R} mod ${MOD}`,'var(--text-dim)',{factH:[],invH:[],step:0});
+
+        // Build factorials
+        const fact=new Array(N+1);
+        fact[0]=1;
+        const factSnap=[[...fact.map((v,i)=>i===0?1:null)]];
+        add(`<b>Step 1:</b> Compute factorials. fact[0]=1`,`fact[0]=1`,'var(--text-dim)',
+            {factH:[0],invH:[],fact:[...fact.map((v,i)=>i>0?null:v)],inv:[],step:1});
+
+        for(let i=1;i<=N;i++){
+            fact[i]=Number(BigInt(fact[i-1])*BigInt(i)%BigInt(MOD));
+            const snapF=[...fact.map((v,j)=>j<=i?v:null)];
+            add(`fact[${i}] = fact[${i-1}] × ${i} % MOD = <b>${fact[i]}</b>`,
+                `fact[${i}] = ${fact[i]}`,'var(--accent-blue)',
+                {factH:[i],invH:[],fact:snapF,inv:[],step:1});
+        }
+
+        // Build inverse factorials
+        const inv=new Array(N+1).fill(null);
+        inv[N]=modpow(fact[N],MOD-2,MOD);
+        add(`<b>Step 2:</b> Inverse factorials. inv_fact[${N}] = pow(fact[${N}], MOD−2, MOD) = <b>${inv[N]}</b>`,
+            `inv_fact[${N}] = ${inv[N]}`,'var(--accent-purple)',
+            {factH:[],invH:[N],fact:[...fact],inv:[...inv],step:2});
+
+        for(let i=N-1;i>=0;i--){
+            inv[i]=Number(BigInt(inv[i+1])*BigInt(i+1)%BigInt(MOD));
+            add(`inv_fact[${i}] = inv_fact[${i+1}] × ${i+1} % MOD = <b>${inv[i]}</b>`,
+                `inv_fact[${i}] = ${inv[i]}`,'var(--accent-purple)',
+                {factH:[],invH:[i],fact:[...fact],inv:[...inv],step:2});
+        }
+
+        const ncr=Number(BigInt(fact[N])*BigInt(inv[R])%BigInt(MOD)*BigInt(inv[N-R])%BigInt(MOD));
+        add(`<b>Step 3:</b> nCr = fact[${N}] × inv_fact[${R}] × inv_fact[${N-R}] % MOD<br>= ${fact[N]} × ${inv[R]} × ${inv[N-R]} % MOD = <span style="color:var(--accent-green);font-size:18px"><b>${ncr}</b></span>`,
+            `${N}C${R} = ${ncr}`,'var(--accent-green)',
+            {factH:[N],invH:[R,N-R],fact:[...fact],inv:[...inv],step:3,ncr,fn:fact[N],ifr:inv[R],ifnr:inv[N-R]});
+
+        add(`<span style="color:var(--accent-green)">✅ Result: ${N}C${R} mod ${MOD} = <b>${ncr}</b></span>`,
+            `Final: ${N}C${R} = ${ncr}`,'var(--accent-green)',
+            {factH:[N],invH:[R,N-R],fact:[...fact],inv:[...inv],step:3,ncr,fn:fact[N],ifr:inv[R],ifnr:inv[N-R],done:true});
+    }
+
+    function renderTiles(id, arr, highlights) {
+        const row=document.getElementById(id);
+        row.innerHTML='';
+        arr.forEach((v,i)=>{
+            if(v===null) return;
+            const tile=document.createElement('div');
+            tile.className='tile'+(highlights.includes(i)?' done-cell':'');
+            tile.innerHTML=`${v}<span class="tile-idx">[${i}]</span>`;
+            row.appendChild(tile);
+        });
+    }
+
+    function renderStep(idx) {
+        const s=steps[idx];
+        if(!s) return;
+        renderTiles('fact-row', s.fact||[], s.factH||[]);
+        renderTiles('inv-row', s.inv||[], s.invH||[]);
+        document.getElementById('fn-val').textContent = s.fn!==undefined ? s.fn : '—';
+        document.getElementById('ifr-val').textContent = s.ifr!==undefined ? s.ifr : '—';
+        document.getElementById('ifnr-val').textContent = s.ifnr!==undefined ? s.ifnr : '—';
+        document.getElementById('ncr-val').textContent = s.ncr!==undefined ? s.ncr : '—';
+        document.getElementById('result-display').textContent = s.done ? `Answer: ${s.ncr}` : '';
+        document.getElementById('main-panel').innerHTML=s.panel;
+        const log=document.getElementById('log');
+        log.innerHTML='';
+        for(let i=0;i<=idx;i++){
+            if(!steps[i].log) continue;
+            const line=document.createElement('div');
+            line.style.color=steps[i].logColor||'var(--text-main)';
+            line.textContent=steps[i].log;
+            log.appendChild(line);
+        }
+        log.scrollTop=log.scrollHeight;
+    }
+
+    function next(){ if(stepIdx<steps.length-1){stepIdx++;renderStep(stepIdx);}else pause(); }
+    function back(){ if(stepIdx>0){stepIdx--;renderStep(stepIdx);} }
+    function reset(){ pause(); stepIdx=0; renderStep(0); }
+    function togglePlay(){
+        const btn=document.getElementById('play-btn');
+        if(timer) pause();
+        else { btn.textContent='⏸ Pause'; if(stepIdx>=steps.length-1) stepIdx=0;
+            timer=setInterval(next,delays[parseInt(document.getElementById('speed-slider').value)]); }
+    }
+    function pause(){ clearInterval(timer); timer=null; document.getElementById('play-btn').textContent='▶ Play'; }
+    function loadCustom(){
+        const n=parseInt(document.getElementById('inp-n').value);
+        const r=parseInt(document.getElementById('inp-r').value);
+        const mod=parseInt(document.getElementById('inp-mod').value);
+        if(isNaN(n)||isNaN(r)||isNaN(mod)||r>n||r<0) { alert('Invalid input'); return; }
+        generateSteps(n,r,mod); reset();
+    }
+    function loadExample(i){
+        const ex=[[5,2,1000000007],[10,5,1000000007]][i];
+        document.getElementById('inp-n').value=ex[0];
+        document.getElementById('inp-r').value=ex[1];
+        document.getElementById('inp-mod').value=ex[2];
+        loadCustom();
+    }
+    window.onload=()=>loadExample(0);
+</script>
+</body>
+</html>

@@ -1053,7 +1053,7 @@ export default function Profile() {
                                             <InlineInput value={form.dob}     onChange={e => set('dob', e.target.value)}     placeholder="Date of birth" type="date" max={new Date().toISOString().split('T')[0]} />
                                         </div>
                                         <InlineInput value={form.location} onChange={e => set('location', e.target.value)} placeholder="Location" />
-                                    </div>
+                                    </div> 
                                     : <div>
                                         <div style={{ display: 'flex', alignItems: 'baseline', gap: 10, flexWrap: 'wrap', marginBottom: 2 }}>
                                             <h1 style={{ fontSize: '1.55rem', fontWeight: 800, color: 'var(--foreground)', lineHeight: 1.15, letterSpacing: '-0.02em', margin: 0 }}>

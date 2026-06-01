@@ -1,0 +1,405 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Phone Directory Trie</title>
+    <style>
+        :root {
+            --bg: #0d1117;
+            --surface: #161b22;
+            --border: #30363d;
+            --text: #c9d1d9;
+            --muted: #8b949e;
+            --purple: #a371f7;
+            --blue: #58a6ff;
+            --green: #3fb950;
+            --orange: #e3b341;
+        }
+        * { box-sizing: border-box; }
+        body {
+            margin: 0;
+            padding: 20px;
+            background: var(--bg);
+            color: var(--text);
+            font-family: system-ui, sans-serif;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+        h1 { color: var(--purple); margin: 0 0 8px 0; }
+        .subtitle { color: var(--muted); margin-bottom: 20px; }
+        .controls {
+            display: flex;
+            gap: 12px;
+            flex-wrap: wrap;
+            justify-content: center;
+            margin: 15px 0;
+        }
+        button {
+            background: #21262d;
+            color: var(--text);
+            border: 1px solid var(--border);
+            padding: 10px 18px;
+            border-radius: 8px;
+            cursor: pointer;
+        }
+        button:hover { background: #30363d; }
+        .main {
+            display: flex;
+            gap: 40px;
+            flex-wrap: wrap;
+            justify-content: center;
+            width: 100%;
+            max-width: 1300px;
+        }
+        .panel {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 18px;
+        }
+        .dict-panel { width: 340px; }
+        .trie-panel { width: 620px; }
+        .label {
+            color: var(--purple);
+            font-weight: bold;
+            margin-bottom: 10px;
+            text-align: center;
+        }
+        .words-list {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            padding: 12px;
+            background: #21262d;
+            border-radius: 10px;
+            min-height: 160px;
+        }
+        .tile {
+            padding: 8px 16px;
+            background: #30363d;
+            border: 2px solid var(--orange);
+            border-radius: 8px;
+            font-family: monospace;
+        }
+        .trie {
+            background: #21262d;
+            border: 3px solid var(--blue);
+            border-radius: 12px;
+            padding: 20px;
+            min-height: 460px;
+            overflow: auto;
+            font-family: monospace;
+        }
+        .trie-node {
+            display: inline-block;
+            background: #30363d;
+            border: 3px solid #58a6ff;
+            border-radius: 10px;
+            padding: 12px 18px;
+            margin: 12px 8px;
+            text-align: center;
+            position: relative;
+        }
+        .trie-node.current {
+            border-color: var(--orange);
+            box-shadow: 0 0 0 4px rgba(227,179,65,0.4);
+        }
+        .trie-node .end {
+            color: var(--green);
+            font-size: 13px;
+            margin-top: 4px;
+        }
+        .children {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            justify-content: center;
+            margin-top: 14px;
+        }
+        .info {
+            margin: 20px 0;
+            padding: 16px;
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            font-family: monospace;
+            min-height: 140px;
+        }
+        .action {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            padding: 16px;
+            width: 100%;
+            max-width: 1100px;
+            margin: 20px 0;
+            min-height: 110px;
+            font-family: monospace;
+        }
+        .log {
+            background: #0d1117;
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            padding: 14px;
+            width: 100%;
+            max-width: 1100px;
+            height: 240px;
+            overflow-y: auto;
+            font-family: 'Courier New', monospace;
+            font-size: 14px;
+        }
+    </style>
+</head>
+<body>
+    <h1>Phone Directory Trie</h1>
+    <p class="subtitle">Trie Prefix Search → Autocomplete Suggestions</p>
+
+    <div class="controls">
+        <button onclick="loadExample(0)">Example 1: john/jane/jack/alice</button>
+        <button onclick="loadExample(1)">Example 2: cat/car/cart/dog</button>
+        <button onclick="resetViz()">Reset</button>
+    </div>
+
+    <div class="main">
+        <div class="panel dict-panel">
+            <div class="label">Contacts</div>
+            <div class="words-list" id="dict-words"></div>
+        </div>
+
+        <div class="panel trie-panel">
+            <div class="label">Trie (Current Prefix Highlighted)</div>
+            <div class="trie" id="trie"></div>
+        </div>
+    </div>
+
+    <div class="info">
+        <strong>Query:</strong> <span id="query-val" style="color:var(--orange)">—</span><br>
+        <strong>Suggestions:</strong> <span id="suggestions-val" style="color:var(--green)"></span>
+    </div>
+
+    <div class="action" id="action">Click an example to begin</div>
+
+    <div class="controls">
+        <button onclick="prevStep()">← Prev</button>
+        <button onclick="togglePlay()" id="play-btn">▶ Play</button>
+        <button onclick="nextStep()">Next →</button>
+        <label>Speed <input type="range" id="speed" min="0" max="2" value="1"></label>
+    </div>
+
+    <div class="log" id="log"></div>
+
+    <script>
+        let root = null;
+        let steps = [];
+        let stepIdx = 0;
+        let timer = null;
+        let isPlaying = false;
+        let contacts = [];
+        let currentQuery = '';
+
+        class TrieNode {
+            constructor() {
+                this.children = new Array(26).fill(null);
+                this.isEnd = false;
+            }
+        }
+
+        function createTrie() {
+            return new TrieNode();
+        }
+
+        function insert(word) {
+            let node = root;
+            const path = [];
+            for (let ch of word) {
+                const idx = ch.charCodeAt(0) - 97;
+                path.push(ch);
+                if (!node.children[idx]) {
+                    node.children[idx] = new TrieNode();
+                }
+                node = node.children[idx];
+            }
+            node.isEnd = true;
+            return path;
+        }
+
+        function findPrefixNode(prefix) {
+            let node = root;
+            const path = [];
+            for (let ch of prefix) {
+                const idx = ch.charCodeAt(0) - 97;
+                path.push(ch);
+                if (!node.children[idx]) return {node: null, path};
+                node = node.children[idx];
+            }
+            return {node, path};
+        }
+
+        function collectSuggestions(node, prefix, results) {
+            if (!node) return;
+            if (node.isEnd) {
+                results.push(prefix);
+            }
+            for (let i = 0; i < 26; i++) {
+                if (node.children[i]) {
+                    const ch = String.fromCharCode(97 + i);
+                    collectSuggestions(node.children[i], prefix + ch, results);
+                }
+            }
+        }
+
+        function generateSteps(contactsList, queries) {
+            root = createTrie();
+            contacts = [...contactsList];
+            steps = [];
+
+            // Init
+            steps.push({
+                action: "Initialize Trie",
+                panel: "Trie ready",
+                log: "Root created",
+                highlight: [],
+                query: "",
+                suggestions: []
+            });
+
+            // Insert contacts
+            for (let contact of contactsList) {
+                const path = insert(contact);
+                steps.push({
+                    action: `Add contact "${contact}"`,
+                    panel: `Inserted "${contact}"`,
+                    log: `Path: ${path.join('')}`,
+                    highlight: path,
+                    query: "",
+                    suggestions: []
+                });
+            }
+
+            // Search queries
+            for (let query of queries) {
+                currentQuery = query;
+                const {node: prefixNode, path: prefixPath} = findPrefixNode(query);
+                let suggestions = [];
+                if (prefixNode) {
+                    collectSuggestions(prefixNode, query, suggestions);
+                    // Sort suggestions alphabetically
+                    suggestions.sort();
+                }
+
+                steps.push({
+                    action: `Search prefix "${query}"`,
+                    panel: `Suggestions for "${query}": <span style="color:var(--green)">${suggestions.join(', ') || 'None'}</span>`,
+                    log: `Found ${suggestions.length} matches`,
+                    highlight: prefixPath,
+                    query: query,
+                    suggestions: suggestions
+                });
+            }
+        }
+
+        function renderContacts() {
+            const cont = document.getElementById('dict-words');
+            cont.innerHTML = contacts.map(w => `<div class="tile">"${w}"</div>`).join('');
+        }
+
+        function buildTrieHTML(node, prefix = "", highlight = []) {
+            if (!node) return '';
+            let html = `<div class="trie-node ${highlight.length && prefix.length <= highlight.length ? 'current' : ''}">`;
+            html += `<div>${prefix || 'ROOT'}</div>`;
+            if (node.isEnd) html += `<div class="end">END</div>`;
+
+            let chHtml = '<div class="children">';
+            let has = false;
+            for (let i = 0; i < 26; i++) {
+                if (node.children[i]) {
+                    has = true;
+                    const ch = String.fromCharCode(97 + i);
+                    chHtml += buildTrieHTML(node.children[i], prefix + ch, highlight);
+                }
+            }
+            chHtml += '</div>';
+            if (has) html += chHtml;
+            html += '</div>';
+            return html;
+        }
+
+        function renderTrie(highlight = []) {
+            const cont = document.getElementById('trie');
+            cont.innerHTML = buildTrieHTML(root, "", highlight);
+        }
+
+        function renderStep(idx) {
+            stepIdx = Math.max(0, Math.min(idx, steps.length - 1));
+            const step = steps[stepIdx];
+
+            document.getElementById('action').innerHTML = step.panel;
+            document.getElementById('query-val').textContent = step.query || '—';
+            document.getElementById('suggestions-val').innerHTML = step.suggestions ? step.suggestions.join(', ') : '—';
+
+            renderContacts();
+            renderTrie(step.highlight || []);
+
+            const logEl = document.getElementById('log');
+            logEl.innerHTML = steps.slice(0, stepIdx + 1).map(s => `<div>${s.log}</div>`).join('');
+            logEl.scrollTop = logEl.scrollHeight;
+        }
+
+        function nextStep() {
+            if (stepIdx < steps.length - 1) renderStep(stepIdx + 1);
+            else pause();
+        }
+
+        function prevStep() {
+            if (stepIdx > 0) renderStep(stepIdx - 1);
+        }
+
+        function togglePlay() {
+            const btn = document.getElementById('play-btn');
+            if (isPlaying) {
+                pause();
+            } else {
+                isPlaying = true;
+                btn.textContent = '❚❚ Pause';
+                const speedMap = [1650, 850, 380];
+                timer = setInterval(() => {
+                    if (stepIdx < steps.length - 1) nextStep();
+                    else pause();
+                }, speedMap[document.getElementById('speed').value]);
+            }
+        }
+
+        function pause() {
+            clearInterval(timer);
+            isPlaying = false;
+            document.getElementById('play-btn').textContent = '▶ Play';
+        }
+
+        function resetViz() {
+            pause();
+            stepIdx = 0;
+            renderStep(0);
+        }
+
+        function loadExample(n) {
+            const examples = [
+                {
+                    contacts: ["john", "jane", "jack", "alice"],
+                    queries: ["j", "ja", "al"]
+                },
+                {
+                    contacts: ["cat", "car", "cart", "dog"],
+                    queries: ["ca", "c", "d", ""]
+                }
+            ];
+            const ex = examples[n];
+            generateSteps(ex.contacts, ex.queries);
+            resetViz();
+        }
+
+        window.onload = () => loadExample(0);
+    </script>
+</body>
+</html>

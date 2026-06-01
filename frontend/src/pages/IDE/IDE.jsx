@@ -11,6 +11,7 @@ import TestcasePanel from './TestcasePanel';
 import StatusNotification from './StatusNotification';
 import ConsolePanel from './ConsolePanel';
 import EmptyState from './EmptyState';
+import DragHandle from './DragHandle';
 
 const starterCodes = {
     cpp: "#include <iostream>\nusing namespace std;\n\nint main(){\n    cout << \"Hello\";\n}",
@@ -18,6 +19,14 @@ const starterCodes = {
     python: "print('Hello')",
     javascript: "console.log('Hello');"
 };
+
+/** Stable language list — defined outside component to avoid recreation on every render */
+const LANGUAGES = [
+    { id: 'cpp', name: 'C++' },
+    { id: 'java', name: 'Java' },
+    { id: 'python', name: 'Python' },
+    { id: 'javascript', name: 'JavaScript' }
+];
 
 const API = import.meta.env.VITE_API_URL;
 
@@ -183,16 +192,10 @@ export default function IDE({ problem, judgeTestCases = [], onBack, onNext, onSo
     const [activeLadder, setActiveLadder] = useState(null); // Current ladder from Approaches tab
     const [solvedLadders, setSolvedLadders] = useState({}); // { approachId: { ladderIndex: true } }
     const [isRunning, setIsRunning] = useState(false);
-    const languages = [
-        { id: 'cpp', name: 'C++' },
-        { id: 'java', name: 'Java' },
-        { id: 'python', name: 'Python' },
-        { id: 'javascript', name: 'JavaScript' }
-    ];
 
     const [activeMobileTab, setActiveMobileTab] = useState('problem'); // 'problem', 'editor', 'testcases'
 
-    const handleActiveLadderChange = (data) => {
+    const handleActiveLadderChange = useCallback((data) => {
         if (data && data.ladder && data.ladder.testCases && data.ladder.testCases.length > 0) {
             setActiveLadder(data); // { ladder, approachId, ladderIndex }
             setTestcases(data.ladder.testCases.map(tc => ({
@@ -215,7 +218,11 @@ export default function IDE({ problem, judgeTestCases = [], onBack, onNext, onSo
         } else {
             setActiveLadder(data || null);
         }
-    };
+    }, [problem]);
+
+    // Stable callbacks — no deps on volatile state, safe to memoize
+    const handleClearPrefill  = useCallback(() => setDiscussError(null), []);
+    const handleToggleConsole = useCallback(() => setIsConsoleOpen(prev => !prev), []);
 
     const hDrag = useDrag(40, 20, 72, 'horizontal');
     const vDrag = useDrag(65, 25, 80, 'vertical');
@@ -535,13 +542,13 @@ export default function IDE({ problem, judgeTestCases = [], onBack, onNext, onSo
             {/* Header - Global CodeToolbar */}
             <CodeToolbar
                 selectedLanguage={selectedLanguage}
-                languages={languages}
+                languages={LANGUAGES}
                 onLanguageChange={handleLanguageChange}
                 onCopy={handleCopy}
                 onReset={handleReset}
             />
 
-            <div className="flex-1 flex overflow-hidden relative">
+            <div className="flex-1 flex overflow-hidden relative" style={{ padding: '8px' }}>
                 {isMobile ? (
                     <div className="flex-1 flex flex-col h-full">
                         {activeMobileTab === 'problem' && (
@@ -553,7 +560,7 @@ export default function IDE({ problem, judgeTestCases = [], onBack, onNext, onSo
                                     solvedLadders={solvedLadders}
                                     attempts={attempts}
                                     prefillError={discussError}
-                                    onClearPrefill={() => setDiscussError(null)}
+                                    onClearPrefill={handleClearPrefill}
                                 />
                             </div>
                         )}
@@ -581,7 +588,7 @@ export default function IDE({ problem, judgeTestCases = [], onBack, onNext, onSo
                     </div>
                 ) : (
                     <div ref={hDrag.containerRef} className="flex flex-1 h-full" style={{ position: 'relative' }}>
-                        <div style={{ width: `${hDrag.size}%`, minWidth: '240px', height: '100%', flexShrink: 0, overflow: 'hidden', borderRight: '1px solid var(--color-border)' }}>
+                        <div style={{ width: `${hDrag.size}%`, minWidth: '240px', height: '100%', flexShrink: 0, overflow: 'hidden', borderRadius: 14, border: '1px solid var(--color-border)' }}>
                             <ProblemPanel
                                 problem={problem}
                                 onBack={onBack}
@@ -589,46 +596,22 @@ export default function IDE({ problem, judgeTestCases = [], onBack, onNext, onSo
                                 solvedLadders={solvedLadders}
                                 attempts={attempts}
                                 prefillError={discussError}
-                                onClearPrefill={() => setDiscussError(null)}
+                                onClearPrefill={handleClearPrefill}
                             />
                         </div>
 
-                        {/* ↔ Horizontal drag handle — 1px visible, 6px transparent hit zone on each side */}
-                        <div
-                            onMouseDown={hDrag.onMouseDown}
-                            style={{
-                                width: 13, margin: '0 -6px', flexShrink: 0,
-                                borderLeft: '6px solid transparent', borderRight: '6px solid transparent',
-                                background: 'var(--color-border)', backgroundClip: 'padding-box',
-                                cursor: 'col-resize', position: 'relative', zIndex: 10,
-                                transition: 'background-color 0.2s ease',
-                            }}
-                            onMouseEnter={e => { e.currentTarget.style.backgroundColor = '#818cf8'; }}
-                            onMouseLeave={e => { e.currentTarget.style.backgroundColor = 'var(--color-border)'; }}
-                            title="Drag to resize left/right"
-                        />
+                        {/* ↔ Horizontal drag handle */}
+                        <DragHandle direction="horizontal" onMouseDown={hDrag.onMouseDown} />
 
                         <div ref={vDrag.containerRef} style={{ flex: 1, minWidth: 0, minHeight: 0, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
-                            <div style={{ height: `${vDrag.size}%`, minHeight: '80px', overflow: 'hidden', position: 'relative' }}>
+                            <div style={{ height: `${vDrag.size}%`, minHeight: '80px', overflow: 'hidden', position: 'relative', borderRadius: 14, border: '1px solid var(--color-border)' }}>
                                 <CodeEditor code={code} onChange={setCode} language={selectedLanguage} />
                             </div>
 
-                            {/* ↕ Vertical drag handle — 1px visible, 6px transparent hit zone on each side */}
-                            <div
-                                onMouseDown={vDrag.onMouseDown}
-                                style={{
-                                    height: 13, margin: '-6px 0', flexShrink: 0,
-                                    borderTop: '6px solid transparent', borderBottom: '6px solid transparent',
-                                    background: 'var(--color-border)', backgroundClip: 'padding-box',
-                                    cursor: 'row-resize', position: 'relative', zIndex: 10,
-                                    transition: 'background-color 0.2s ease',
-                                }}
-                                onMouseEnter={e => { e.currentTarget.style.backgroundColor = '#818cf8'; }}
-                                onMouseLeave={e => { e.currentTarget.style.backgroundColor = 'var(--color-border)'; }}
-                                title="Drag to resize top/bottom"
-                            />
+                            {/* ↕ Vertical drag handle */}
+                            <DragHandle direction="vertical" onMouseDown={vDrag.onMouseDown} />
 
-                            <div style={{ flex: 1, minHeight: '80px', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+                            <div style={{ flex: 1, minHeight: '80px', display: 'flex', flexDirection: 'column', overflow: 'hidden', borderRadius: 14, border: '1px solid var(--color-border)' }}>
                                 <div className="flex-1 overflow-hidden">
                                     <TestcasePanel
                                         testcases={testcases}
@@ -640,14 +623,14 @@ export default function IDE({ problem, judgeTestCases = [], onBack, onNext, onSo
                                         onRun={() => runCode(false)}
                                         onSubmit={() => runCode(true)}
                                         isRunning={isRunning}
-                                        onDiscussError={(ctx) => setDiscussError(ctx)}
+                                        onDiscussError={setDiscussError}
                                     />
                                 </div>
                                 <ConsolePanel
                                     output={output}
                                     status={status}
                                     isExpanded={isConsoleOpen}
-                                    onToggle={() => setIsConsoleOpen(prev => !prev)}
+                                    onToggle={handleToggleConsole}
                                     stdin={stdin}
                                     onStdinChange={setStdin}
                                     useCustomInput={useCustomInput}
@@ -664,23 +647,23 @@ export default function IDE({ problem, judgeTestCases = [], onBack, onNext, onSo
             {isMobile && (
                 <>
                     <div className={`fixed bottom-20 right-4 flex flex-col gap-3 z-50 transition-transform duration-300 ${activeMobileTab === 'problem' ? 'translate-y-24 opacity-0' : 'translate-y-0 opacity-100'}`}>
-                        <button onClick={() => runCode(false)} disabled={isRunning} className="flex items-center justify-center w-12 h-12 rounded-full bg-neutral-800 text-white shadow-lg border border-neutral-700 active:scale-95 transition-all">
+                        <button onClick={() => runCode(false)} disabled={isRunning} className="flex items-center justify-center w-12 h-12 rounded-full text-white shadow-lg active:scale-95 transition-all" style={{ background: 'var(--color-surface)', border: '1px solid var(--color-border)', color: 'var(--color-primary-text)' }}>
                             <Play size={20} fill={isRunning ? "none" : "currentColor"} />
                         </button>
                         <button onClick={() => runCode(true)} disabled={isRunning} className="flex items-center justify-center w-12 h-12 rounded-full bg-emerald-600 text-white shadow-lg active:scale-95 transition-all">
                             <Upload size={20} />
                         </button>
                     </div>
-                    <div className="h-16 bg-neutral-900 border-t border-neutral-800 flex items-center justify-around shrink-0 z-40">
-                        <button onClick={() => setActiveMobileTab('problem')} className={`flex flex-col items-center gap-1 p-2 ${activeMobileTab === 'problem' ? 'text-white' : 'text-muted-foreground'}`}>
+                    <div className="h-16 border-t flex items-center justify-around shrink-0 z-40" style={{ background: 'var(--color-surface)', borderColor: 'var(--color-border)' }}>
+                        <button onClick={() => setActiveMobileTab('problem')} className="flex flex-col items-center gap-1 p-2" style={{ color: activeMobileTab === 'problem' ? 'var(--color-primary-text)' : 'var(--color-muted-text)' }}>
                             <FileText size={20} />
                             <span className="text-[10px] font-medium">Problem</span>
                         </button>
-                        <button onClick={() => setActiveMobileTab('editor')} className={`flex flex-col items-center gap-1 p-2 ${activeMobileTab === 'editor' ? 'text-white' : 'text-muted-foreground'}`}>
+                        <button onClick={() => setActiveMobileTab('editor')} className="flex flex-col items-center gap-1 p-2" style={{ color: activeMobileTab === 'editor' ? 'var(--color-primary-text)' : 'var(--color-muted-text)' }}>
                             <Code size={20} />
                             <span className="text-[10px] font-medium">Code</span>
                         </button>
-                        <button onClick={() => setActiveMobileTab('testcases')} className={`flex flex-col items-center gap-1 p-2 ${activeMobileTab === 'testcases' ? 'text-white' : 'text-muted-foreground'}`}>
+                        <button onClick={() => setActiveMobileTab('testcases')} className="flex flex-col items-center gap-1 p-2" style={{ color: activeMobileTab === 'testcases' ? 'var(--color-primary-text)' : 'var(--color-muted-text)' }}>
                             <Terminal size={20} />
                             <span className="text-[10px] font-medium">Testcases</span>
                         </button>

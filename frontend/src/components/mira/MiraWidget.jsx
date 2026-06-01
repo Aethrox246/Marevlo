@@ -47,6 +47,8 @@ export default function MiraWidget() {
   }, []);
 
   if (loading || !enabled) return null;
+  // Don't render inside iframes (e.g. the per-example visualization iframe).
+  if (typeof window !== 'undefined' && window.self !== window.top) return null;
 
   return open ? (
     <div className={styles.miraRoot}>

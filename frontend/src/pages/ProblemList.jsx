@@ -322,9 +322,31 @@ function FeatureSidebar() {
 }
 
 export default function ProblemList({ onSelect }) {
-    const [topics, setTopics] = useState([]);
-    const [loading, setLoading] = useState(true);
+    const [topics, setTopics]                 = useState([]);
+const [expandedTopics, setExpandedTopics] = useState(() => {
+    const saved = sessionStorage.getItem('problemListExpandedTopics');
+    return saved ? JSON.parse(saved) : { arrays: true };
+});
+    const [visibleCounts, setVisibleCounts] = useState(() => {
+    const saved = sessionStorage.getItem('problemListVisibleCounts');
+    return saved ? JSON.parse(saved) : { arrays: 10 };
+});
+    const [loading, setLoading]               = useState(true);
     const navigate = useNavigate();
+
+    useEffect(() => {
+    sessionStorage.setItem(
+        'problemListExpandedTopics',
+        JSON.stringify(expandedTopics)
+    );
+}, [expandedTopics]);
+
+useEffect(() => {
+    sessionStorage.setItem(
+        'problemListVisibleCounts',
+        JSON.stringify(visibleCounts)
+    );
+}, [visibleCounts]);
 
     useEffect(() => {
         loadAllTopics()

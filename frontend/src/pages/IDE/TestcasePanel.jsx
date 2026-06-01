@@ -58,73 +58,105 @@ const TestcasePanel = ({
 
             {/* Header: Tabs + Run/Submit */}
             <div style={{
-                display: 'flex', alignItems: 'center', padding: '0 16px',
+                display: 'flex', alignItems: 'center', padding: '0 14px',
                 borderBottom: '1px solid var(--color-border)',
-                background: 'color-mix(in srgb, var(--color-surface) 80%, transparent)',
-                backdropFilter: 'blur(12px)', minHeight: 42,
+                background: 'var(--color-surface)',
+                minHeight: 44,
+                gap: 4,
             }}>
-                <div style={{ display: 'flex', alignItems: 'center', flex: 1, gap: 2 }}>
+                <div style={{ display: 'flex', alignItems: 'center', flex: 1, gap: 0 }}>
                     {['testcase', 'result'].map(tab => {
                         const isActive = activeTab === tab;
                         const label = tab === 'testcase' ? 'Testcase' : 'Test Result';
                         const allPassed = hasResults && testResults.every(r => r.passed);
                         return (
                             <button key={tab} onClick={() => onTabChange?.(tab)} style={{
-                                fontSize: 13, fontWeight: 600, padding: '11px 14px',
+                                fontSize: 13, fontWeight: isActive ? 600 : 500, padding: '12px 14px',
                                 background: 'none', border: 'none', cursor: 'pointer',
                                 color: isActive ? 'var(--color-primary-text)' : 'var(--color-muted-text)',
-                                position: 'relative', transition: 'color 0.2s', outline: 'none',
+                                position: 'relative', transition: 'color 0.18s ease', outline: 'none',
                                 display: 'flex', alignItems: 'center', gap: 6,
-                            }}>
+                            }}
+                                onMouseEnter={e => { if (!isActive) e.currentTarget.style.color = 'var(--color-primary-text)'; }}
+                                onMouseLeave={e => { if (!isActive) e.currentTarget.style.color = 'var(--color-muted-text)'; }}
+                            >
                                 {label}
                                 {tab === 'result' && hasResults && (
-                                    <span style={{ width: 6, height: 6, borderRadius: '50%', background: allPassed ? '#10b981' : '#ef4444', boxShadow: `0 0 6px ${allPassed ? 'rgba(16,185,129,.5)' : 'rgba(239,68,68,.5)'}` }} />
+                                    <span style={{ width: 6, height: 6, borderRadius: '50%', background: allPassed ? '#10b981' : '#ef4444', flexShrink: 0 }} />
                                 )}
-                                {isActive && <div style={{ position: 'absolute', bottom: -1, left: 14, right: 14, height: 2, background: '#818cf8', borderRadius: '2px 2px 0 0', boxShadow: '0 -2px 8px rgba(129,140,248,.35)' }} />}
+                                {isActive && <div style={{ position: 'absolute', bottom: -1, left: 14, right: 14, height: 2, background: 'var(--color-primary-text)', opacity: 0.85, borderRadius: '2px 2px 0 0' }} />}
                             </button>
                         );
                     })}
                 </div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                     <button onClick={onRun} disabled={isRunning} className={isRunning ? 'tc-running' : ''}
-                        style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '5px 14px', borderRadius: 8, fontSize: 13, fontWeight: 600, background: 'var(--color-surface-hover)', color: isRunning ? 'var(--color-muted-text)' : 'var(--color-primary-text)', border: '1px solid var(--color-border)', cursor: isRunning ? 'not-allowed' : 'pointer', transition: 'all 0.2s' }}>
+                        style={{
+                            display: 'flex', alignItems: 'center', gap: 5, padding: '5px 14px', borderRadius: 8,
+                            fontSize: 13, fontWeight: 600,
+                            background: 'var(--color-surface-hover)',
+                            color: isRunning ? 'var(--color-muted-text)' : 'var(--color-primary-text)',
+                            border: '1px solid var(--color-border)',
+                            cursor: isRunning ? 'not-allowed' : 'pointer',
+                            transition: 'all 0.18s ease',
+                        }}
+                        onMouseEnter={e => { if (!isRunning) { e.currentTarget.style.borderColor = 'var(--color-muted-text)'; e.currentTarget.style.background = 'color-mix(in srgb, var(--color-surface-hover) 80%, var(--color-border))'; }}}
+                        onMouseLeave={e => { e.currentTarget.style.borderColor = 'var(--color-border)'; e.currentTarget.style.background = 'var(--color-surface-hover)'; }}
+                    >
                         <Play size={13} fill={isRunning ? 'none' : 'currentColor'} /> Run
                     </button>
                     <button onClick={onSubmit} disabled={isRunning} className={isRunning ? 'tc-running' : ''}
-                        style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '5px 14px', borderRadius: 8, fontSize: 13, fontWeight: 600, background: isRunning ? '#059669' : 'linear-gradient(135deg, #10b981, #059669)', color: '#fff', border: 'none', cursor: isRunning ? 'not-allowed' : 'pointer', transition: 'all 0.2s', boxShadow: '0 2px 10px rgba(16,185,129,.25)' }}>
+                        style={{
+                            display: 'flex', alignItems: 'center', gap: 5, padding: '5px 14px', borderRadius: 8,
+                            fontSize: 13, fontWeight: 600,
+                            background: '#10b981',
+                            color: '#fff', border: 'none',
+                            cursor: isRunning ? 'not-allowed' : 'pointer',
+                            transition: 'all 0.18s ease',
+                            boxShadow: '0 1px 8px rgba(16,185,129,0.22)',
+                            opacity: isRunning ? 0.7 : 1,
+                        }}
+                        onMouseEnter={e => { if (!isRunning) { e.currentTarget.style.background = '#059669'; e.currentTarget.style.boxShadow = '0 2px 12px rgba(16,185,129,0.35)'; }}}
+                        onMouseLeave={e => { e.currentTarget.style.background = '#10b981'; e.currentTarget.style.boxShadow = '0 1px 8px rgba(16,185,129,0.22)'; }}
+                    >
                         <Upload size={13} /> Submit
                     </button>
                 </div>
             </div>
 
             {/* Scrollable Case Chips */}
-            <div style={{ position: 'relative', borderBottom: '1px solid var(--color-border)', padding: '8px 0' }}>
+            <div style={{ position: 'relative', borderBottom: '1px solid var(--color-border)', padding: '7px 0' }}>
                 {canScrollLeft && (
-                    <button onClick={() => scroll(-1)} style={{ position: 'absolute', left: 0, top: 0, bottom: 0, width: 30, zIndex: 5, background: 'linear-gradient(to right, var(--color-surface) 60%, transparent)', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--color-muted-text)' }}>
-                        <ChevronLeft size={15} />
+                    <button onClick={() => scroll(-1)} style={{ position: 'absolute', left: 0, top: 0, bottom: 0, width: 28, zIndex: 5, background: 'linear-gradient(to right, var(--color-surface) 55%, transparent)', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--color-muted-text)' }}>
+                        <ChevronLeft size={14} />
                     </button>
                 )}
                 {canScrollRight && (
-                    <button onClick={() => scroll(1)} style={{ position: 'absolute', right: 0, top: 0, bottom: 0, width: 30, zIndex: 5, background: 'linear-gradient(to left, var(--color-surface) 60%, transparent)', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--color-muted-text)' }}>
-                        <ChevronRight size={15} />
+                    <button onClick={() => scroll(1)} style={{ position: 'absolute', right: 0, top: 0, bottom: 0, width: 28, zIndex: 5, background: 'linear-gradient(to left, var(--color-surface) 55%, transparent)', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--color-muted-text)' }}>
+                        <ChevronRight size={14} />
                     </button>
                 )}
-                <div ref={scrollRef} className="tc-scroll" style={{ display: 'flex', gap: 7, padding: '0 14px', overflowX: 'auto' }}>
+                <div ref={scrollRef} className="tc-scroll" style={{ display: 'flex', gap: 6, padding: '0 14px', overflowX: 'auto' }}>
                     {testcases.map((_, idx) => {
                         const isActive = activeTestcase === idx;
                         const status = getStatus(idx);
                         const color = statusColor[status];
                         return (
                             <button key={idx} onClick={() => onTestcaseChange(idx)} style={{
-                                display: 'flex', alignItems: 'center', gap: 5, padding: '4px 11px', borderRadius: 7,
-                                fontSize: 12, fontWeight: 600, flexShrink: 0, whiteSpace: 'nowrap', cursor: 'pointer', transition: 'all 0.15s',
-                                background: isActive ? 'color-mix(in srgb, #818cf8 14%, transparent)' : status !== 'pending' ? `color-mix(in srgb, ${color} 10%, transparent)` : 'var(--color-surface-hover)',
-                                color: isActive ? '#818cf8' : color,
-                                border: isActive ? '1px solid color-mix(in srgb, #818cf8 30%, transparent)' : `1px solid ${status !== 'pending' ? `color-mix(in srgb, ${color} 22%, transparent)` : 'var(--color-border)'}`,
+                                display: 'flex', alignItems: 'center', gap: 5, padding: '4px 12px', borderRadius: 8,
+                                fontSize: 12, fontWeight: 600, flexShrink: 0, whiteSpace: 'nowrap', cursor: 'pointer',
+                                transition: 'all 0.15s ease',
+                                background: isActive
+                                    ? 'var(--color-surface-hover)'
+                                    : status !== 'pending' ? `color-mix(in srgb, ${color} 8%, var(--color-surface))` : 'var(--color-surface)',
+                                color: status === 'passed' ? '#10b981' : status === 'failed' ? '#ef4444' : isActive ? 'var(--color-primary-text)' : 'var(--color-muted-text)',
+                                border: isActive
+                                    ? '1px solid var(--color-border)'
+                                    : `1px solid ${status !== 'pending' ? `color-mix(in srgb, ${color} 20%, transparent)` : 'var(--color-border)'}`,
                             }}>
                                 {status === 'passed' && <Check size={11} strokeWidth={3} />}
                                 {status === 'failed' && <X size={11} strokeWidth={3} />}
-                                {status === 'pending' && <span style={{ width: 5, height: 5, borderRadius: '50%', background: isActive ? '#818cf8' : 'var(--color-border)' }} />}
+                                {status === 'pending' && <span style={{ width: 5, height: 5, borderRadius: '50%', background: isActive ? 'var(--color-primary-text)' : 'var(--color-border)', opacity: isActive ? 0.8 : 1 }} />}
                                 Case {idx + 1}
                             </button>
                         );
@@ -133,7 +165,7 @@ const TestcasePanel = ({
             </div>
 
             {/* Content */}
-            <div style={{ flex: 1, overflowY: 'auto', padding: '14px 16px', display: 'flex', flexDirection: 'column', gap: 14 }} className="premium-scrollbar">
+            <div style={{ flex: 1, overflowY: 'auto', padding: '14px 16px', display: 'flex', flexDirection: 'column', gap: 12 }} className="premium-scrollbar">
                 {activeTab === 'testcase' ? (
                     testcases && testcases[activeTestcase] ? (
                         <>

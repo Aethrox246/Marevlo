@@ -1,0 +1,1483 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Module 6.1 — ViT & DeiT · Marevlo Transformer Track</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;500&family=Syne:wght@500;700;800&family=Inter+Tight:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg-0: #05070d;
+    --bg-1: #080b14;
+    --bg-2: #0d1220;
+    --bg-card: #0a0f1c;
+    --bg-code: #06090f;
+    --line: rgba(120, 200, 255, 0.18);
+    --line-strong: rgba(120, 200, 255, 0.55);
+    --glow: #5fd4ff;
+    --glow-soft: #7af0ff;
+    --accent: #ff4d8a;
+    --accent-2: #b48cff;
+    --accent-yellow: #f0c674;
+    --green: #7fc28a;
+    --red: #e26a6a;
+    --text: #e6f1ff;
+    --muted: #7a8aa3;
+    --text-dim: #aebbd1;
+    --text-faint: #6a7a93;
+    --mono: 'JetBrains Mono', ui-monospace, monospace;
+    --display: 'Syne', sans-serif;
+    --body: 'Inter Tight', sans-serif;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  html { scroll-behavior: smooth; }
+  html, body {
+    background: var(--bg-0);
+    color: var(--text);
+    font-family: var(--body);
+    font-size: 16px;
+    line-height: 1.7;
+    overflow-x: hidden;
+    min-height: 100vh;
+  }
+
+  /* ---------- Background neural circuit ---------- */
+  .circuit-bg {
+    position: fixed;
+    inset: 0;
+    z-index: 0;
+    pointer-events: none;
+    background:
+      radial-gradient(ellipse 80% 60% at 20% 10%, rgba(95, 212, 255, 0.08), transparent 60%),
+      radial-gradient(ellipse 70% 50% at 85% 90%, rgba(180, 140, 255, 0.07), transparent 60%),
+      radial-gradient(ellipse 60% 40% at 50% 50%, rgba(255, 77, 138, 0.04), transparent 70%),
+      var(--bg-0);
+  }
+  .circuit-bg svg {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    opacity: 0.95;
+  }
+  .circuit-bg::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background-image:
+      linear-gradient(rgba(120,200,255,0.03) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(120,200,255,0.03) 1px, transparent 1px);
+    background-size: 60px 60px;
+    mask-image: radial-gradient(ellipse at center, black 30%, transparent 80%);
+    -webkit-mask-image: radial-gradient(ellipse at center, black 30%, transparent 80%);
+  }
+
+  .grain {
+    position: fixed;
+    inset: 0;
+    z-index: 1;
+    pointer-events: none;
+    opacity: 0.04;
+    mix-blend-mode: overlay;
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='3'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  }
+
+  /* ---------- Layout ---------- */
+  .wrap {
+    position: relative;
+    z-index: 2;
+    max-width: 1280px;
+    margin: 0 auto;
+    padding: 48px 56px 96px;
+  }
+
+  /* ---------- Top bar ---------- */
+  .topbar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-family: var(--mono);
+    font-size: 11px;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    color: var(--muted);
+    padding-bottom: 24px;
+    border-bottom: 1px solid var(--line);
+  }
+  .topbar .left { display: flex; gap: 28px; align-items: center; }
+  .topbar .dot {
+    width: 6px; height: 6px; border-radius: 50%;
+    background: var(--glow);
+    box-shadow: 0 0 10px var(--glow), 0 0 20px var(--glow);
+    animation: pulse 2s ease-in-out infinite;
+  }
+  @keyframes pulse {
+    0%, 100% { opacity: 1; transform: scale(1); }
+    50% { opacity: 0.5; transform: scale(0.85); }
+  }
+
+  /* ---------- Hero ---------- */
+  .hero {
+    margin-top: 72px;
+    display: grid;
+    grid-template-columns: 1.3fr 1fr;
+    gap: 80px;
+    align-items: end;
+  }
+  .module-tag {
+    font-family: var(--mono);
+    font-size: 12px;
+    letter-spacing: 0.3em;
+    text-transform: uppercase;
+    color: var(--glow);
+    margin-bottom: 24px;
+    display: inline-flex;
+    align-items: center;
+    gap: 14px;
+  }
+  .module-tag::before {
+    content: '';
+    width: 28px; height: 1px;
+    background: var(--glow);
+    box-shadow: 0 0 6px var(--glow);
+  }
+  h1.title {
+    font-family: var(--display);
+    font-weight: 800;
+    font-size: clamp(44px, 6.5vw, 84px);
+    line-height: 0.95;
+    letter-spacing: -0.03em;
+    color: var(--text);
+  }
+  h1.title .accent {
+    background: linear-gradient(120deg, var(--glow), var(--accent-2) 60%, var(--accent));
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+    font-style: italic;
+    font-weight: 700;
+  }
+  h1.title .line2 { display: block; opacity: 0.92; }
+  .lede {
+    font-size: 16.5px;
+    line-height: 1.65;
+    color: var(--text-dim);
+    max-width: 460px;
+    border-left: 1px solid var(--line);
+    padding-left: 24px;
+  }
+  .lede strong { color: var(--text); font-weight: 500; }
+  .lede em { color: var(--glow-soft); font-style: italic; }
+
+  /* ---------- Meta strip ---------- */
+  .meta-strip {
+    margin-top: 64px;
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 1px;
+    background: var(--line);
+    border-top: 1px solid var(--line);
+    border-bottom: 1px solid var(--line);
+  }
+  .meta-cell { background: var(--bg-0); padding: 22px 24px; }
+  .meta-cell .label {
+    font-family: var(--mono);
+    font-size: 10px;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin-bottom: 10px;
+  }
+  .meta-cell .value {
+    font-family: var(--display);
+    font-size: 20px;
+    font-weight: 700;
+    color: var(--text);
+    letter-spacing: -0.01em;
+  }
+  .meta-cell .value span.unit {
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--glow);
+    margin-left: 6px;
+    font-weight: 400;
+  }
+
+  /* ---------- Body grid ---------- */
+  .body-grid {
+    margin-top: 88px;
+    display: grid;
+    grid-template-columns: 240px 1fr;
+    gap: 64px;
+  }
+  .sidebar {
+    font-family: var(--mono);
+    font-size: 11px;
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    color: var(--muted);
+    position: sticky;
+    top: 40px;
+    align-self: start;
+  }
+  .sidebar h4 { color: var(--glow); font-weight: 400; margin-bottom: 18px; }
+  .sidebar ul { list-style: none; }
+  .sidebar li {
+    padding: 10px 0;
+    border-top: 1px solid var(--line);
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    cursor: pointer;
+    transition: color 0.2s ease;
+  }
+  .sidebar li:last-child { border-bottom: 1px solid var(--line); }
+  .sidebar li .num { color: var(--glow); }
+  .sidebar li:hover { color: var(--text); }
+  .sidebar li.active { color: var(--text); }
+
+  /* ---------- Content sections ---------- */
+  .content section { margin-bottom: 80px; }
+  .content h2 {
+    font-family: var(--display);
+    font-weight: 700;
+    font-size: 32px;
+    letter-spacing: -0.015em;
+    line-height: 1.15;
+    margin-bottom: 24px;
+    padding-top: 20px;
+    position: relative;
+    color: var(--text);
+  }
+  .content h2::before {
+    content: attr(data-num);
+    position: absolute;
+    top: -2px;
+    left: 0;
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--glow);
+    letter-spacing: 0.2em;
+    font-weight: 400;
+  }
+  .content h3 {
+    font-family: var(--display);
+    font-size: 22px;
+    font-weight: 700;
+    letter-spacing: -0.01em;
+    margin: 40px 0 18px;
+    color: var(--text);
+  }
+  .content h4 {
+    font-family: var(--display);
+    font-size: 17px;
+    font-weight: 700;
+    margin: 28px 0 12px;
+    color: var(--text);
+  }
+  .content p {
+    font-size: 15.5px;
+    line-height: 1.75;
+    color: var(--text-dim);
+    margin-bottom: 18px;
+    max-width: 68ch;
+  }
+  .content p strong { color: var(--glow-soft); font-weight: 600; }
+  .content p em { color: var(--text); font-style: italic; }
+
+  /* ---------- Equation block ---------- */
+  .eq {
+    margin: 28px 0;
+    padding: 28px 32px;
+    background: linear-gradient(180deg, rgba(120,200,255,0.04), rgba(120,200,255,0.01));
+    border: 1px solid var(--line);
+    font-family: var(--body);
+    font-size: 19px;
+    font-style: italic;
+    text-align: center;
+    color: var(--text);
+    line-height: 1.6;
+    position: relative;
+  }
+  .eq::before {
+    content: '';
+    position: absolute;
+    top: -1px; left: -1px;
+    width: 14px; height: 14px;
+    border-top: 1px solid var(--glow);
+    border-left: 1px solid var(--glow);
+  }
+  .eq::after {
+    content: '';
+    position: absolute;
+    bottom: -1px; right: -1px;
+    width: 14px; height: 14px;
+    border-bottom: 1px solid var(--glow);
+    border-right: 1px solid var(--glow);
+  }
+  .eq .num {
+    position: absolute;
+    right: 18px;
+    top: 50%;
+    transform: translateY(-50%);
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--text-faint);
+    font-style: normal;
+  }
+
+  /* ---------- Calc box ---------- */
+  .calcbox {
+    background: var(--bg-card);
+    border: 1px solid var(--line);
+    border-left: 2px solid var(--accent-yellow);
+    padding: 28px 32px;
+    margin: 32px 0;
+    position: relative;
+  }
+  .calcbox .ch {
+    font-family: var(--mono);
+    font-size: 11px;
+    font-weight: 500;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    color: var(--accent-yellow);
+    margin-bottom: 18px;
+  }
+  .calcbox .step {
+    padding: 12px 0 12px 40px;
+    border-bottom: 1px solid var(--line);
+    position: relative;
+    font-family: var(--body);
+    font-size: 14.5px;
+    color: var(--text);
+    line-height: 1.65;
+  }
+  .calcbox .step:last-child { border-bottom: none; }
+  .calcbox .step::before {
+    content: attr(data-s);
+    position: absolute;
+    left: 0;
+    top: 12px;
+    font-family: var(--mono);
+    font-size: 12px;
+    color: var(--accent-yellow);
+    font-weight: 500;
+  }
+  .calcbox .step .val {
+    display: block;
+    font-family: var(--mono);
+    font-size: 12.5px;
+    color: var(--muted);
+    margin-top: 6px;
+    line-height: 1.6;
+  }
+  .calcbox .step strong { color: var(--glow-soft); font-weight: 600; }
+
+  /* ---------- Insight box ---------- */
+  .insight {
+    background: linear-gradient(180deg, rgba(120,200,255,0.04), transparent);
+    border: 1px solid var(--line);
+    padding: 28px 32px;
+    margin: 32px 0;
+    font-family: var(--body);
+    position: relative;
+  }
+  .insight::before {
+    content: '';
+    position: absolute;
+    top: -1px; left: -1px;
+    width: 14px; height: 14px;
+    border-top: 1px solid var(--glow);
+    border-left: 1px solid var(--glow);
+  }
+  .insight .key {
+    font-family: var(--mono);
+    font-size: 10px;
+    letter-spacing: 0.28em;
+    text-transform: uppercase;
+    font-weight: 500;
+    margin-bottom: 12px;
+    color: var(--glow);
+  }
+  .insight p { font-size: 16px; line-height: 1.6; color: var(--text); font-weight: 400; margin: 0; max-width: none; }
+
+  /* ---------- Pitfall ---------- */
+  .pitfall {
+    background: linear-gradient(135deg, rgba(226,106,106,0.06), transparent);
+    border: 1px solid rgba(226,106,106,0.28);
+    border-left: 3px solid var(--red);
+    padding: 26px 32px;
+    margin: 32px 0;
+  }
+  .pitfall .lbl {
+    font-family: var(--mono);
+    font-size: 10px;
+    letter-spacing: 0.25em;
+    text-transform: uppercase;
+    font-weight: 500;
+    color: var(--red);
+    margin-bottom: 10px;
+  }
+  .pitfall h4 { margin: 0 0 10px; font-size: 17px; color: var(--text); }
+  .pitfall p { font-size: 14.5px; color: var(--text-dim); margin: 0; max-width: none; }
+
+  /* ---------- CineMatch ---------- */
+  .cinematch {
+    background: linear-gradient(135deg, rgba(255,77,138,0.08), transparent 80%);
+    border: 1px solid rgba(255,77,138,0.30);
+    border-left: 3px solid var(--accent);
+    padding: 32px 36px;
+    margin: 40px 0;
+    position: relative;
+  }
+  .cinematch .tag {
+    position: absolute;
+    top: -10px;
+    left: 24px;
+    background: var(--bg-0);
+    color: var(--accent);
+    font-family: var(--mono);
+    font-size: 10px;
+    font-weight: 500;
+    letter-spacing: 0.25em;
+    padding: 0 12px;
+    text-transform: uppercase;
+  }
+  .cinematch h4 { font-family: var(--display); font-size: 20px; font-weight: 700; margin-bottom: 14px; color: var(--text); }
+  .cinematch p { color: var(--text-dim); margin-bottom: 12px; font-size: 15px; max-width: none; }
+  .cinematch p:last-child { margin-bottom: 0; }
+  .cinematch p strong { color: var(--accent); }
+
+  /* ---------- Historical ---------- */
+  .historical {
+    background: linear-gradient(135deg, rgba(180,140,255,0.06), transparent);
+    border: 1px solid rgba(180,140,255,0.30);
+    border-left: 3px solid var(--accent-2);
+    padding: 32px 36px;
+    margin: 40px 0;
+    position: relative;
+  }
+  .historical .tag {
+    position: absolute;
+    top: -10px;
+    left: 24px;
+    background: var(--bg-0);
+    color: var(--accent-2);
+    font-family: var(--mono);
+    font-size: 10px;
+    font-weight: 500;
+    letter-spacing: 0.25em;
+    padding: 0 12px;
+    text-transform: uppercase;
+  }
+  .historical h4 { font-family: var(--display); font-size: 20px; font-weight: 700; margin-bottom: 14px; color: var(--text); }
+  .historical p { color: var(--text-dim); margin-bottom: 12px; font-size: 15px; max-width: none; }
+  .historical p:last-child { margin-bottom: 0; }
+
+  /* ---------- Diagrams ---------- */
+  .diagram-wrap { margin: 48px 0; }
+  .diagram-wrap svg {
+    width: 100%;
+    height: auto;
+    display: block;
+    background: linear-gradient(180deg, rgba(120,200,255,0.025), rgba(120,200,255,0.005));
+    border: 1px solid var(--line);
+    padding: 24px;
+  }
+  .caption {
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--muted);
+    margin-top: 14px;
+    text-align: center;
+    letter-spacing: 0.05em;
+    line-height: 1.6;
+  }
+  .caption b { color: var(--glow); font-weight: 500; }
+
+  /* ---------- Table ---------- */
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 28px 0;
+    font-family: var(--mono);
+    font-size: 13.5px;
+    background: var(--bg-card);
+    border: 1px solid var(--line);
+  }
+  th, td {
+    padding: 14px 18px;
+    text-align: left;
+    border-bottom: 1px solid var(--line);
+  }
+  th {
+    font-family: var(--mono);
+    font-weight: 500;
+    font-size: 10px;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    color: var(--glow);
+    background: rgba(120,200,255,0.04);
+  }
+  td { color: var(--text); }
+  td strong { color: var(--glow-soft); font-weight: 600; }
+  td.win { color: var(--green); font-weight: 600; }
+  tr:last-child td { border-bottom: none; }
+
+  /* ---------- Code blocks ---------- */
+  pre {
+    background: var(--bg-code);
+    border: 1px solid var(--line);
+    border-left: 2px solid var(--glow);
+    padding: 24px 28px;
+    margin: 28px 0;
+    overflow-x: auto;
+    font-family: var(--mono);
+    font-size: 13.5px;
+    line-height: 1.7;
+    position: relative;
+    color: #d8e6f5;
+  }
+  pre::before {
+    content: 'PYTHON';
+    position: absolute;
+    top: 8px;
+    right: 14px;
+    font-family: var(--mono);
+    font-size: 9px;
+    letter-spacing: 0.25em;
+    color: var(--text-faint);
+    font-weight: 500;
+  }
+  pre code { color: #d8e6f5; font-family: var(--mono); }
+  pre .k { color: var(--accent); font-weight: 500; }
+  pre .s { color: var(--green); }
+  pre .n { color: var(--accent-yellow); }
+  pre .c { color: var(--text-faint); font-style: italic; }
+  pre .f { color: var(--glow); }
+  pre .v { color: var(--accent-2); }
+
+  /* ---------- MCQ ---------- */
+  .mcq {
+    background: linear-gradient(180deg, rgba(120,200,255,0.03), transparent);
+    border: 1px solid var(--line);
+    border-left: 3px solid var(--accent-yellow);
+    padding: 28px 32px;
+    margin: 36px 0;
+    position: relative;
+  }
+  .mcq .mh {
+    font-family: var(--mono);
+    font-size: 10px;
+    letter-spacing: 0.25em;
+    text-transform: uppercase;
+    font-weight: 500;
+    color: var(--accent-yellow);
+    margin-bottom: 16px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+  .mcq .mh .qnum {
+    font-family: var(--mono);
+    color: var(--text-faint);
+    font-size: 11px;
+    letter-spacing: 0.1em;
+    font-weight: 400;
+  }
+  .mcq .mq {
+    font-family: var(--display);
+    font-size: 18px;
+    font-weight: 500;
+    color: var(--text);
+    line-height: 1.5;
+    margin-bottom: 22px;
+    letter-spacing: -0.005em;
+  }
+  .mcq .mq code {
+    font-family: var(--mono);
+    font-size: 15px;
+    background: var(--bg-code);
+    padding: 2px 8px;
+    color: var(--glow);
+    border: 1px solid var(--line);
+    font-weight: 400;
+  }
+  .mcq .opts { display: flex; flex-direction: column; gap: 10px; }
+  .mcq .opt {
+    background: var(--bg-card);
+    border: 1px solid var(--line);
+    padding: 14px 18px;
+    cursor: pointer;
+    font-family: var(--body);
+    font-size: 14.5px;
+    color: var(--text-dim);
+    transition: all 0.18s;
+    display: flex;
+    align-items: flex-start;
+    gap: 14px;
+    line-height: 1.55;
+  }
+  .mcq .opt:hover {
+    border-color: var(--line-strong);
+    background: rgba(120,200,255,0.04);
+    color: var(--text);
+  }
+  .mcq .opt .key {
+    font-family: var(--mono);
+    font-size: 12px;
+    color: var(--muted);
+    font-weight: 500;
+    min-width: 18px;
+    margin-top: 2px;
+  }
+  .mcq .opt .text { flex: 1; }
+  .mcq .opt code {
+    font-family: var(--mono);
+    font-size: 13px;
+    background: var(--bg-code);
+    padding: 1px 6px;
+    color: var(--glow);
+    border: 1px solid var(--line);
+  }
+  .mcq .opt.correct {
+    border-color: var(--green);
+    background: linear-gradient(90deg, rgba(127,194,138,0.10), transparent);
+    color: var(--text);
+  }
+  .mcq .opt.correct .key { color: var(--green); }
+  .mcq .opt.wrong {
+    border-color: var(--red);
+    background: linear-gradient(90deg, rgba(226,106,106,0.10), transparent);
+    color: var(--text);
+  }
+  .mcq .opt.wrong .key { color: var(--red); }
+  .mcq .opt.disabled { cursor: default; }
+  .mcq .opt.disabled:hover {
+    border-color: var(--line);
+    background: var(--bg-card);
+  }
+  .mcq .opt.correct.disabled:hover {
+    border-color: var(--green);
+    background: linear-gradient(90deg, rgba(127,194,138,0.10), transparent);
+  }
+  .mcq .opt.wrong.disabled:hover {
+    border-color: var(--red);
+    background: linear-gradient(90deg, rgba(226,106,106,0.10), transparent);
+  }
+  .mcq .feedback {
+    margin-top: 20px;
+    padding: 20px 24px;
+    background: var(--bg-code);
+    border-left: 2px solid var(--glow);
+    font-family: var(--body);
+    font-size: 14.5px;
+    line-height: 1.7;
+    color: var(--text-dim);
+    display: none;
+  }
+  .mcq .feedback.show { display: block; }
+  .mcq .feedback .verdict {
+    font-family: var(--mono);
+    font-size: 10px;
+    letter-spacing: 0.28em;
+    text-transform: uppercase;
+    font-weight: 500;
+    margin-bottom: 10px;
+    display: block;
+  }
+  .mcq .feedback.right .verdict { color: var(--green); }
+  .mcq .feedback.wrong .verdict { color: var(--red); }
+  .mcq .feedback strong { color: var(--text); font-weight: 600; }
+  .mcq .feedback code {
+    font-family: var(--mono);
+    font-size: 13px;
+    background: rgba(120,200,255,0.05);
+    padding: 1px 6px;
+    color: var(--glow);
+    border: 1px solid var(--line);
+  }
+
+  /* ---------- Checkpoint ---------- */
+  .checkpoint {
+    background: linear-gradient(180deg, rgba(120,200,255,0.04), transparent);
+    border: 1px solid var(--line-strong);
+    padding: 36px;
+    margin: 56px 0;
+    position: relative;
+  }
+  .checkpoint::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 2px;
+    background: linear-gradient(90deg, var(--glow), var(--accent-2), var(--accent));
+  }
+  .checkpoint h4 {
+    font-family: var(--mono);
+    font-size: 11px;
+    letter-spacing: 0.28em;
+    text-transform: uppercase;
+    color: var(--glow);
+    font-weight: 500;
+    margin-bottom: 24px;
+  }
+  .checkpoint ol { list-style: none; counter-reset: item; }
+  .checkpoint li {
+    counter-increment: item;
+    padding: 14px 0 14px 48px;
+    border-bottom: 1px solid var(--line);
+    position: relative;
+    font-family: var(--body);
+    font-size: 15px;
+    color: var(--text);
+    line-height: 1.55;
+  }
+  .checkpoint li:last-child { border-bottom: none; }
+  .checkpoint li::before {
+    content: counter(item, decimal-leading-zero);
+    position: absolute;
+    left: 0;
+    top: 14px;
+    font-family: var(--mono);
+    font-size: 12px;
+    color: var(--glow);
+    font-weight: 400;
+  }
+
+  /* ---------- Phase complete ---------- */
+  .phase-done {
+    background: linear-gradient(135deg, rgba(127,194,138,0.08), transparent);
+    border: 1px solid rgba(127,194,138,0.30);
+    border-left: 3px solid var(--green);
+    padding: 36px 40px;
+    margin: 56px 0;
+    position: relative;
+  }
+  .phase-done .tag {
+    position: absolute;
+    top: -10px;
+    left: 24px;
+    background: var(--bg-0);
+    color: var(--green);
+    font-family: var(--mono);
+    font-size: 10px;
+    font-weight: 500;
+    letter-spacing: 0.3em;
+    padding: 0 14px;
+    text-transform: uppercase;
+  }
+  .phase-done h4 { font-family: var(--display); font-size: 22px; font-weight: 700; margin-bottom: 18px; color: var(--text); }
+  .phase-done p { color: var(--text-dim); font-size: 15px; margin-bottom: 14px; line-height: 1.7; max-width: none; }
+  .phase-done p:last-child { margin-bottom: 0; }
+  .phase-done strong { color: var(--green); }
+  /* ---------- Learn resources ---------- */
+  .learn-intro {
+    color: var(--text-dim);
+    max-width: 62ch;
+    margin-bottom: 34px;
+  }
+  .resource-stack {
+    display: grid;
+    gap: 18px;
+    margin: 34px 0 10px;
+  }
+  .resource-card {
+    background: linear-gradient(135deg, rgba(120,200,255,0.055), rgba(180,140,255,0.035) 55%, rgba(255,77,138,0.025));
+    border: 1px solid var(--line);
+    padding: 26px 28px;
+    position: relative;
+    overflow: hidden;
+  }
+  .resource-card::before {
+    content: '';
+    position: absolute;
+    inset: -1px;
+    border: 1px solid transparent;
+    pointer-events: none;
+    background: linear-gradient(120deg, rgba(95,212,255,0.65), transparent 42%, rgba(255,77,138,0.45)) border-box;
+    mask: linear-gradient(#000 0 0) padding-box, linear-gradient(#000 0 0);
+    -webkit-mask: linear-gradient(#000 0 0) padding-box, linear-gradient(#000 0 0);
+    mask-composite: exclude;
+    -webkit-mask-composite: xor;
+  }
+  .resource-head {
+    display: grid;
+    grid-template-columns: 42px 1fr;
+    gap: 16px;
+    align-items: center;
+    margin-bottom: 18px;
+  }
+  .resource-icon {
+    width: 34px;
+    height: 34px;
+    display: grid;
+    place-items: center;
+    border: 1px solid rgba(95,212,255,0.55);
+    background: rgba(95,212,255,0.07);
+    color: var(--glow);
+    font-family: var(--mono);
+    font-size: 16px;
+    line-height: 1;
+  }
+  .resource-card.canonical .resource-icon {
+    border-color: rgba(180,140,255,0.65);
+    background: rgba(180,140,255,0.08);
+    color: var(--accent-2);
+  }
+  .resource-card.repo .resource-icon {
+    border-color: rgba(255,77,138,0.62);
+    background: rgba(255,77,138,0.07);
+    color: var(--accent);
+  }
+  .resource-kicker {
+    font-family: var(--mono);
+    font-size: 10px;
+    letter-spacing: 0.24em;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin-bottom: 3px;
+  }
+  .resource-card h3 {
+    margin: 0;
+    font-size: 21px;
+    line-height: 1.15;
+  }
+  .resource-title {
+    display: block;
+    font-family: var(--display);
+    font-size: 18px;
+    font-weight: 700;
+    line-height: 1.35;
+    color: var(--glow-soft);
+    margin-bottom: 8px;
+    text-decoration: none;
+  }
+  .resource-card.canonical .resource-title { color: var(--accent-2); }
+  .resource-card.repo .resource-title { color: var(--accent); }
+  .resource-card p {
+    max-width: none;
+    margin-bottom: 18px;
+    font-size: 14.5px;
+    color: var(--text-dim);
+  }
+  .resource-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px;
+  }
+  .resource-link {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 42px;
+    padding: 0 18px;
+    border: 1px solid rgba(95,212,255,0.65);
+    color: var(--glow);
+    background: rgba(95,212,255,0.04);
+    font-family: var(--mono);
+    font-size: 11px;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    text-decoration: none;
+    transition: border-color 0.18s ease, background 0.18s ease, color 0.18s ease;
+  }
+  .resource-link:hover {
+    border-color: var(--glow);
+    background: rgba(95,212,255,0.10);
+    color: var(--text);
+  }
+  .resource-card.canonical .resource-link {
+    border-color: rgba(180,140,255,0.70);
+    color: var(--accent-2);
+    background: rgba(180,140,255,0.04);
+  }
+  .resource-card.canonical .resource-link:hover {
+    border-color: var(--accent-2);
+    background: rgba(180,140,255,0.10);
+    color: var(--text);
+  }
+  .resource-card.repo .resource-link {
+    border-color: rgba(255,77,138,0.72);
+    color: var(--accent);
+    background: rgba(255,77,138,0.04);
+  }
+  .resource-card.repo .resource-link:hover {
+    border-color: var(--accent);
+    background: rgba(255,77,138,0.10);
+    color: var(--text);
+  }
+
+  /* ---------- Interactive box ---------- */
+  .ibox {
+    background: var(--bg-card);
+    border: 1px solid var(--line-strong);
+    padding: 32px;
+    margin: 40px 0;
+    position: relative;
+    overflow: hidden;
+  }
+  .ibox::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 2px;
+    background: linear-gradient(90deg, var(--accent), var(--accent-2), var(--glow));
+  }
+  .ibox .ilbl {
+    font-family: var(--mono);
+    font-size: 10px;
+    letter-spacing: 0.28em;
+    text-transform: uppercase;
+    color: var(--glow);
+    font-weight: 500;
+    margin-bottom: 16px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  .ibox .ilbl .dot {
+    display: inline-block;
+    width: 6px; height: 6px;
+    background: var(--glow);
+    border-radius: 50%;
+    box-shadow: 0 0 8px var(--glow);
+    animation: pulse 2s infinite;
+  }
+  .ibox .idesc {
+    font-family: var(--body);
+    font-size: 14.5px;
+    color: var(--text-dim);
+    margin-bottom: 22px;
+    line-height: 1.65;
+  }
+
+  /* ---------- Inline code ---------- */
+  code.inline {
+    font-family: var(--mono);
+    font-size: 14px;
+    background: var(--bg-code);
+    padding: 2px 8px;
+    color: var(--glow);
+    border: 1px solid var(--line);
+  }
+
+  /* ---------- Footer ---------- */
+  .footer-bar {
+    margin-top: 72px;
+    padding-top: 24px;
+    border-top: 1px solid var(--line);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-family: var(--mono);
+    font-size: 11px;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    color: var(--muted);
+  }
+  .footer-bar .prev-link, .footer-bar .next-link {
+    text-decoration: none;
+    color: var(--muted);
+    display: inline-flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+  .footer-bar .next-link { align-items: flex-end; }
+  .footer-bar .lbl {
+    font-family: var(--mono);
+    font-size: 10px;
+    letter-spacing: 0.25em;
+    color: var(--text-faint);
+  }
+  .footer-bar .ttl {
+    font-family: var(--display);
+    font-size: 16px;
+    color: var(--text);
+    font-weight: 700;
+    text-transform: none;
+    letter-spacing: -0.01em;
+  }
+  .footer-bar .next-link .ttl { color: var(--glow); }
+  .footer-bar .next-link .ttl::after { content: ' →'; }
+  .footer-bar .prev-link .ttl::before { content: '← '; }
+
+  /* ---------- Entrance animations ---------- */
+  .fade-in { opacity: 0; transform: translateY(14px); animation: fadeIn 0.9s ease forwards; }
+  .d1 { animation-delay: 0.1s; }
+  .d2 { animation-delay: 0.25s; }
+  .d3 { animation-delay: 0.4s; }
+  .d4 { animation-delay: 0.55s; }
+  .d5 { animation-delay: 0.7s; }
+  .d6 { animation-delay: 0.85s; }
+  @keyframes fadeIn { to { opacity: 1; transform: translateY(0); } }
+
+  .draw-path {
+    stroke-dasharray: 800;
+    stroke-dashoffset: 800;
+    animation: draw 6s ease-out forwards;
+  }
+  @keyframes draw { to { stroke-dashoffset: 0; } }
+
+  .node-pulse { animation: nodePulse 3s ease-in-out infinite; transform-origin: center; transform-box: fill-box; }
+  @keyframes nodePulse {
+    0%, 100% { opacity: 0.6; r: 2.5; }
+    50% { opacity: 1; r: 3.8; }
+  }
+
+  @media (max-width: 960px) {
+    .wrap { padding: 32px 24px 64px; }
+    .hero { grid-template-columns: 1fr; gap: 40px; }
+    .meta-strip { grid-template-columns: repeat(2, 1fr); }
+    .body-grid { grid-template-columns: 1fr; gap: 32px; }
+    .sidebar { position: static; }
+    .content h2 { font-size: 26px; }
+    .calcbox, .insight, .pitfall, .cinematch, .historical, .mcq, .ibox, .checkpoint, .resource-card { padding: 22px 20px; }
+    .resource-head { grid-template-columns: 1fr; gap: 12px; }
+  }
+
+  /* ---------- Readability + sidebar anchors ---------- */
+  .content section { scroll-margin-top: 36px; }
+  .sidebar a {
+    color: inherit;
+    text-decoration: none;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    width: 100%;
+  }
+  .sidebar a:focus-visible {
+    outline: 1px solid var(--glow);
+    outline-offset: 4px;
+  }
+  .eq,
+  .calcbox,
+  .insight,
+  .pitfall,
+  .cinematch,
+  .historical,
+  .mcq,
+  .checkpoint,
+  .ibox,
+  .resource-card,
+  .phase-done,
+  .diagram-wrap svg,
+  table,
+  pre {
+    background-color: #090f1d;
+  }
+  .eq { background: linear-gradient(180deg, rgba(120,200,255,0.10), rgba(120,200,255,0.04)), #090f1d; }
+  .calcbox { background: linear-gradient(180deg, rgba(240,198,116,0.07), rgba(120,200,255,0.03)), #090f1d; }
+  .insight { background: linear-gradient(180deg, rgba(120,200,255,0.10), rgba(120,200,255,0.035)), #090f1d; }
+  .pitfall { background: linear-gradient(135deg, rgba(226,106,106,0.12), rgba(120,200,255,0.025)), #090f1d; }
+  .cinematch { background: linear-gradient(135deg, rgba(255,77,138,0.13), rgba(120,200,255,0.025)), #090f1d; }
+  .historical { background: linear-gradient(135deg, rgba(180,140,255,0.13), rgba(120,200,255,0.025)), #090f1d; }
+  .mcq { background: linear-gradient(180deg, rgba(120,200,255,0.085), rgba(120,200,255,0.025)), #090f1d; }
+  .mcq .opt { background: #0b1221; }
+  .mcq .feedback { background: #070b14; }
+  .checkpoint { background: linear-gradient(180deg, rgba(120,200,255,0.09), rgba(120,200,255,0.025)), #090f1d; }
+  .ibox { background: #090f1d; }
+  .resource-card { background: linear-gradient(135deg, rgba(120,200,255,0.10), rgba(180,140,255,0.075) 55%, rgba(255,77,138,0.055)), #090f1d; }
+  .phase-done { background: linear-gradient(135deg, rgba(120,200,255,0.10), rgba(255,77,138,0.055)), #090f1d; }
+  .diagram-wrap svg { background: linear-gradient(180deg, rgba(120,200,255,0.07), rgba(120,200,255,0.025)), #090f1d; }
+  table { background: #090f1d; }
+  th { background: rgba(120,200,255,0.10); }
+  pre { background: #070b14; }
+</style>
+</head>
+<body>
+
+<!-- Neural circuit background -->
+<div class="circuit-bg">
+  <svg viewBox="0 0 1600 1000" preserveAspectRatio="xMidYMid slice" xmlns="http://www.w3.org/2000/svg">
+    <defs>
+      <filter id="bgglow" x="-50%" y="-50%" width="200%" height="200%">
+        <feGaussianBlur stdDeviation="2" result="b"/>
+        <feMerge>
+          <feMergeNode in="b"/>
+          <feMergeNode in="SourceGraphic"/>
+        </feMerge>
+      </filter>
+      <linearGradient id="lineGrad" x1="0" y1="0" x2="1" y2="1">
+        <stop offset="0%" stop-color="#5fd4ff" stop-opacity="0.7"/>
+        <stop offset="100%" stop-color="#b48cff" stop-opacity="0.2"/>
+      </linearGradient>
+      <radialGradient id="nodeGlow">
+        <stop offset="0%" stop-color="#7af0ff" stop-opacity="1"/>
+        <stop offset="100%" stop-color="#5fd4ff" stop-opacity="0"/>
+      </radialGradient>
+    </defs>
+
+    <g stroke="url(#lineGrad)" fill="none" stroke-width="1" filter="url(#bgglow)">
+      <path class="draw-path" d="M 50 120 L 280 120 L 280 240 L 520 240 L 520 180 L 760 180"/>
+      <path class="draw-path" d="M 760 180 L 760 320 L 1020 320 L 1020 260 L 1280 260 L 1280 400 L 1540 400" style="animation-delay:0.4s"/>
+      <path class="draw-path" d="M 80 480 L 240 480 L 240 620 L 480 620 L 480 540 L 720 540 L 720 680" style="animation-delay:0.8s"/>
+      <path class="draw-path" d="M 720 680 L 960 680 L 960 780 L 1200 780 L 1200 700 L 1500 700" style="animation-delay:1.2s"/>
+      <path class="draw-path" d="M 50 820 L 320 820 L 320 900 L 600 900 L 600 860 L 880 860" style="animation-delay:1.6s"/>
+      <path class="draw-path" d="M 880 860 L 880 940 L 1180 940 L 1180 880 L 1500 880" style="animation-delay:2s"/>
+      <path class="draw-path" d="M 1100 40 L 1100 180 L 1360 180 L 1360 80 L 1560 80" style="animation-delay:2.4s"/>
+      <path class="draw-path" d="M 380 40 L 380 160 L 620 160 L 620 60 L 880 60" style="animation-delay:2.8s"/>
+      <path class="draw-path" d="M 200 320 L 200 420 L 80 420" style="animation-delay:1.5s"/>
+      <path class="draw-path" d="M 1380 540 L 1380 640 L 1240 640" style="animation-delay:1.8s"/>
+      <path class="draw-path" d="M 540 720 L 540 800 L 360 800" style="animation-delay:2.2s"/>
+    </g>
+
+    <g stroke="rgba(120,200,255,0.08)" fill="none" stroke-width="0.6">
+      <path d="M 0 60 L 200 60 L 200 200 L 400 200"/>
+      <path d="M 600 400 L 800 400 L 800 460 L 1000 460"/>
+      <path d="M 1200 100 L 1400 100 L 1400 220"/>
+      <path d="M 100 700 L 300 700 L 300 580"/>
+      <path d="M 900 200 L 900 100 L 1100 100"/>
+      <path d="M 1300 800 L 1500 800 L 1500 920"/>
+    </g>
+
+    <g fill="#5fd4ff" filter="url(#bgglow)">
+      <circle class="node-pulse" cx="280" cy="120" r="3"/>
+      <circle class="node-pulse" cx="520" cy="240" r="3" style="animation-delay:0.3s"/>
+      <circle class="node-pulse" cx="760" cy="180" r="3" style="animation-delay:0.6s"/>
+      <circle class="node-pulse" cx="1020" cy="320" r="3" style="animation-delay:0.9s"/>
+      <circle class="node-pulse" cx="1280" cy="260" r="3" style="animation-delay:1.2s"/>
+      <circle class="node-pulse" cx="240" cy="620" r="3" style="animation-delay:0.4s"/>
+      <circle class="node-pulse" cx="720" cy="540" r="3" style="animation-delay:0.7s"/>
+      <circle class="node-pulse" cx="960" cy="680" r="3" style="animation-delay:1s"/>
+      <circle class="node-pulse" cx="1200" cy="780" r="3" style="animation-delay:1.3s"/>
+      <circle class="node-pulse" cx="320" cy="820" r="3" style="animation-delay:0.5s"/>
+      <circle class="node-pulse" cx="880" cy="860" r="3" style="animation-delay:0.8s"/>
+      <circle class="node-pulse" cx="1100" cy="180" r="3" style="animation-delay:1.1s"/>
+      <circle class="node-pulse" cx="380" cy="160" r="3" style="animation-delay:1.4s"/>
+      <circle class="node-pulse" cx="200" cy="420" r="3" style="animation-delay:0.6s"/>
+    </g>
+
+    <g>
+      <circle cx="760" cy="180" r="18" fill="url(#nodeGlow)" opacity="0.6"/>
+      <circle cx="960" cy="680" r="18" fill="url(#nodeGlow)" opacity="0.6"/>
+      <circle cx="1100" cy="180" r="14" fill="url(#nodeGlow)" opacity="0.4"/>
+    </g>
+  </svg>
+</div>
+
+<div class="grain"></div>
+
+<div class="wrap">
+
+  <!-- Top bar -->
+  <div class="topbar fade-in d1">
+    <div class="left">
+      <span class="dot"></span>
+      <span>Marevlo · Transformer Architectures</span>
+      <span>·</span>
+      <span>Phase 6 — Vision &amp; Multimodal</span>
+    </div>
+    <div class="right">
+      <span>Module 6.1</span>
+    </div>
+  </div>
+
+  <!-- Hero -->
+  <div class="hero">
+    <div>
+      <div class="module-tag fade-in d2">Phase 6 — Vision &amp; Multimodal · Module 6.1</div>
+      <h1 class="title fade-in d2">
+        ViT &amp; DeiT.
+        <span class="line2"><span class="accent">Patches</span> are</span>
+        <span class="line2">all you need.</span>
+      </h1>
+    </div>
+    <p class="lede fade-in d3">
+      Every module so far processed text tokens. The Vision Transformer (Dosovitskiy et al., 2021) asked: <em>what if we treat image patches as tokens?</em> Split a 224&times;224 image into 196 patches of 16&times;16, flatten each into a vector, add position embeddings, and feed to a standard transformer encoder. No convolutions. No pooling. No image-specific inductive biases. The result: ViT matches or beats the best CNNs on ImageNet — proving that transformers are a universal architecture for any sequential data, not just text. DeiT (Touvron et al., 2021) made this practical with knowledge distillation from a CNN teacher.
+    </p>
+  </div>
+
+  <!-- Meta strip -->
+  <div class="meta-strip fade-in d4">
+    <div class="meta-cell">
+      <div class="label">Phase</div>
+      <div class="value">6 <span class="unit">Vision</span></div>
+    </div>
+    <div class="meta-cell">
+      <div class="label">Module</div>
+      <div class="value">6.1</div>
+    </div>
+    <div class="meta-cell">
+      <div class="label">Reading Time</div>
+      <div class="value">35 <span class="unit">min</span></div>
+    </div>
+    <div class="meta-cell">
+      <div class="label">Papers</div>
+      <div class="value">Dosovitskiy <span class="unit">2021</span></div>
+    </div>
+  </div>
+
+  <!-- Body -->
+  <div class="body-grid">
+
+    <aside class="sidebar fade-in d5">
+      <h4>// In This Module</h4>
+      <ul>
+        <li class="active"><a href="#section-01"><span class="num">01</span> Patch Embedding</a></li>
+        <li><a href="#section-02"><span class="num">02</span> ViT Architecture</a></li>
+        <li><a href="#section-03"><span class="num">03</span> CineMatch Use</a></li>
+        <li><a href="#section-04"><span class="num">04</span> ViT vs CNN</a></li>
+        <li><a href="#section-05"><span class="num">05</span> Attention Maps</a></li>
+        <li><a href="#section-06"><span class="num">06</span> Patch Trade-offs</a></li>
+        <li><a href="#section-07"><span class="num">07</span> Legacy</a></li>
+        <li><a href="#section-08"><span class="num">08</span> Learn More</a></li>
+      </ul>
+    </aside>
+
+    <div class="content">
+
+<section id="section-01">
+  <h2 data-num="01 / 08">Patch embedding — images as token sequences.</h2>
+  <p>A 224&times;224 RGB image has 224 &times; 224 &times; 3 = 150,528 values. Treating each pixel as a token (150K tokens) is computationally infeasible. ViT's solution: <strong>split the image into non-overlapping patches</strong> of size P&times;P (typically 16&times;16), then project each patch into a d-dimensional embedding.</p>
+  <div class="calcbox">
+    <div class="ch">Patch embedding arithmetic</div>
+    <div class="step" data-s="1.">Image: 224&times;224 pixels, 3 channels (RGB). Patch size P=16.<span class="val">Number of patches: (224/16)&sup2; = 14 &times; 14 = 196 patches</span></div>
+    <div class="step" data-s="2.">Each patch: 16 &times; 16 &times; 3 = 768 values. Projection: Linear(768, d).<span class="val">For ViT-Base (d=768): the projection is 768&rarr;768. Coincidence — d happens to equal P&sup2;&times;C for base config.</span></div>
+    <div class="step" data-s="3.">Result: 196 patch tokens + 1 [CLS] token = 197 tokens of dimension 768.<span class="val">This is identical in shape to BERT processing 197 text tokens. The transformer encoder doesn't know it's processing an image.</span></div>
+    <div class="step" data-s="4.">Position embedding: learned, (197, 768). Each patch gets a position vector.<span class="val">Unlike text, patches have 2D spatial positions. But ViT uses 1D position indices — and it works. The model learns spatial relationships from data.</span></div>
+    <div class="step" data-s="5.">Attention cost: 197&sup2; = 38,809 attention scores per head. Trivial — much less than text at 512&sup2;.<span class="val">This is why ViT doesn't need efficient attention: 196 patches = short sequence. Even ViT-Huge (14&times;14=196 patches at 16&times;16, or 16&times;16=256 patches at 14&times;14) is manageable.</span></div>
+  </div>
+
+  <div class="mcq" data-correct="b">
+    <div class="mh"><span>Patches</span><span class="qnum">Question 01 / 07</span></div>
+    <div class="mq">ViT uses 1D position embeddings for 2D image patches. Why doesn't it use 2D position encoding?</div>
+    <div class="opts">
+      <div class="opt" data-key="a"><span class="key">A</span><span class="text">2D encoding is too complex to implement.</span></div>
+      <div class="opt" data-key="b"><span class="key">B</span><span class="text">It doesn't need to. The learned 1D position embeddings implicitly capture 2D spatial relationships. After training, visualizing the position embeddings reveals a 2D grid structure: nearby patches (in 2D space) have similar position embeddings. The model learns spatial layout from data without being told about 2D structure. Ablations show that 2D-aware position encodings improve results by only ~0.3% — not worth the added complexity.</span></div>
+      <div class="opt" data-key="c"><span class="key">C</span><span class="text">Images don't have spatial structure that matters.</span></div>
+      <div class="opt" data-key="d"><span class="key">D</span><span class="text">RoPE is used instead.</span></div>
+    </div>
+    <div class="feedback" data-right="<strong>Right.</strong> Learned 1D positions implicitly discover 2D structure during training. The position embedding for patch (3,5) ends up near the embeddings for patches (2,5) and (3,6) — the model learns spatial adjacency without being told. This is a recurring ViT theme: minimal inductive bias, maximum learning from data. The trade-off: ViT needs more data (or distillation) than CNNs, which have spatial priors built in." data-wrong="<strong>Not quite.</strong> 1D position embeddings are sufficient because the model learns 2D spatial relationships from data. After training, the embeddings show a clear 2D grid pattern. Explicit 2D encoding adds ~0.3% improvement — not worth the complexity. ViT's philosophy: let the model learn structure rather than imposing it."></div>
+  </div>
+</section>
+
+<section id="section-02">
+  <h2 data-num="02 / 08">ViT architecture — it's just BERT for images.</h2>
+  <table>
+    <thead><tr><th>Config</th><th>Layers</th><th>d</th><th>Heads</th><th>Params</th><th>Patches</th><th>ImageNet Top-1</th></tr></thead>
+    <tbody>
+      <tr><td>ViT-Small</td><td>12</td><td>384</td><td>6</td><td>22M</td><td>196</td><td>78.1%</td></tr>
+      <tr><td>ViT-Base</td><td>12</td><td>768</td><td>12</td><td>86M</td><td>196</td><td>81.8%</td></tr>
+      <tr><td>ViT-Large</td><td>24</td><td>1024</td><td>16</td><td>307M</td><td>196</td><td>85.2%</td></tr>
+      <tr><td>ViT-Huge</td><td>32</td><td>1280</td><td>16</td><td>632M</td><td>256</td><td class="win">88.6%</td></tr>
+    </tbody>
+  </table>
+  <p>The architecture is a standard transformer encoder — identical to BERT. The only difference: the input embedding is a patch projection instead of a token embedding. LayerNorm, multi-head attention, FFN, residual connections — all identical. The [CLS] token representation is fed to a classification head, just like BERT.</p>
+
+  <div class="pitfall">
+    <div class="lbl">ViT needs massive data — or a teacher</div>
+    <h4>ViT-Base trained on ImageNet-1K alone (1.3M images) underperforms a ResNet-50. It needs ImageNet-21K (14M) or JFT-300M to match CNNs.</h4>
+    <p>CNNs have built-in inductive biases: translation equivariance (a cat is a cat regardless of position) and locality (nearby pixels are related). ViT has none — it must learn these from data. With 1.3M images, there's not enough data to learn spatial structure from scratch. With 14M+, ViT learns spatial relationships and surpasses CNNs. DeiT solves this by distilling CNN knowledge into ViT, achieving strong results even with only ImageNet-1K.</p>
+  </div>
+
+  <div class="mcq" data-correct="c">
+    <div class="mh"><span>Data</span><span class="qnum">Question 02 / 07</span></div>
+    <div class="mq">DeiT matches ViT quality using only ImageNet-1K (1.3M images) instead of JFT-300M. How?</div>
+    <div class="opts">
+      <div class="opt" data-key="a"><span class="key">A</span><span class="text">DeiT uses a different architecture than ViT.</span></div>
+      <div class="opt" data-key="b"><span class="key">B</span><span class="text">DeiT trains for more epochs on the same data.</span></div>
+      <div class="opt" data-key="c"><span class="key">C</span><span class="text">Knowledge distillation from a CNN teacher. DeiT adds a "distillation token" (alongside [CLS]) that learns to match a RegNet CNN teacher's predictions. The CNN teacher provides the spatial inductive biases that ViT lacks — locality, translation equivariance — as soft labels. The student ViT learns from both the ground truth labels (via [CLS]) and the teacher's predictions (via the distillation token). This transfers the CNN's spatial priors into the ViT without modifying the architecture.</span></div>
+      <div class="opt" data-key="d"><span class="key">D</span><span class="text">DeiT uses a more aggressive data augmentation pipeline.</span></div>
+    </div>
+    <div class="feedback" data-right="<strong>Right.</strong> Knowledge distillation transfers the CNN's inductive biases (locality, translation equivariance) to the ViT as learned behavior. The distillation token learns to mimic the CNN teacher; the [CLS] token learns from ground truth labels. This dual learning provides the ViT with spatial priors it would otherwise need 300M images to learn from scratch. DeiT also uses strong augmentation (RandAugment, Mixup, CutMix) — but distillation is the key innovation." data-wrong="<strong>Not quite.</strong> DeiT's key innovation is knowledge distillation from a CNN teacher. A 'distillation token' learns to match the teacher CNN's predictions, transferring spatial inductive biases (locality, translation equivariance) into the ViT. This compensates for ViT's lack of built-in spatial priors, enabling strong performance with only 1.3M images."></div>
+  </div>
+</section>
+
+<section id="section-03">
+  <h2 data-num="03 / 08">ViT as a vision encoder for CineMatch.</h2>
+  <div class="cinematch">
+    <div class="tag">CineMatch Integration</div>
+    <h4>ViT powers CineMatch's visual content pipeline.</h4>
+    <p><strong>Poster classification:</strong> ViT-Base (86M params) classifies movie posters into 20 visual style categories (minimalist, action-packed, dark/moody, animated, etc.). Fine-tuned on 50K CineMatch poster images. Accuracy: 91.3%. Used for visual recommendation: "you liked the dark, moody poster style of Zodiac — here are similar-looking films."</p>
+    <p><strong>Thumbnail quality scoring:</strong> ViT-Small (22M params) rates user-uploaded thumbnails on a 1-5 quality scale. Low-quality uploads get automated improvement suggestions. Inference: ~5ms per image on A10G.</p>
+    <p><strong>Why ViT over CNN:</strong> ViT integrates with CineMatch's transformer-based text pipeline. The same attention mechanism, same embedding space, same serving infrastructure. This unification matters in Phase 6.3 (CLIP) and 6.4 (multimodal LLMs) where vision and language models must share representations.</p>
+  </div>
+
+  <div class="mcq" data-correct="d">
+    <div class="mh"><span>Application</span><span class="qnum">Question 03 / 07</span></div>
+    <div class="mq">CineMatch's poster classifier uses ViT-Base (86M, 196 patches). A user uploads a 4K poster (3840&times;2160). How should it be processed?</div>
+    <div class="opts">
+      <div class="opt" data-key="a"><span class="key">A</span><span class="text">Process at full 4K resolution — more pixels = more information.</span></div>
+      <div class="opt" data-key="b"><span class="key">B</span><span class="text">Use larger patches (64&times;64) to keep 196 patches at higher resolution.</span></div>
+      <div class="opt" data-key="c"><span class="key">C</span><span class="text">Split into multiple 224&times;224 crops and classify each separately.</span></div>
+      <div class="opt" data-key="d"><span class="key">D</span><span class="text">Resize to 224&times;224. ViT-Base was trained with 224&times;224 input and learned position embeddings for a 14&times;14 patch grid. Using a different resolution changes the patch count, breaking the position embeddings. While fine-tuning at higher resolution is possible (interpolate position embeddings), it requires retraining. For a production classifier, resize to the training resolution — poster style classification doesn't need 4K detail, and the 5ms inference time stays constant.</span></div>
+    </div>
+    <div class="feedback" data-right="<strong>Right.</strong> Resolution changes the patch count, which breaks learned position embeddings. ViT-Base at 224&times;224 produces 14&times;14=196 patches; at 3840&times;2160 with 16&times;16 patches, it would produce 240&times;135=32,400 patches — 165&times; more tokens, 27,000&times; more attention compute, and incompatible position embeddings. For classification, resize to 224&times;224. For tasks needing fine detail (OCR, small object detection), fine-tune at higher resolution with interpolated positions." data-wrong="<strong>Not quite.</strong> ViT-Base expects 224&times;224 input. Higher resolution changes the patch count (196 &rarr; 32,400 at 4K), breaking position embeddings and exploding attention cost. For classification (doesn't need 4K detail), resize to 224&times;224. For detail-sensitive tasks, fine-tune at higher resolution with interpolated position embeddings."></div>
+  </div>
+</section>
+
+<section id="section-04">
+  <h2 data-num="04 / 08">ViT vs CNN — when to use which.</h2>
+  <div class="calcbox">
+    <div class="ch">ViT vs CNN decision framework in 2026</div>
+    <div class="step" data-s="1."><strong>ViT wins</strong> when: large dataset (&gt;1M images OR distillation available), need to integrate with text transformers (multimodal), high-resolution with patch scaling, pretrained models available (ViT-B/L on ImageNet-21K)<span class="val">CineMatch: poster classification (50K images + DeiT distillation), visual-language integration.</span></div>
+    <div class="step" data-s="2."><strong>CNN wins</strong> when: small dataset (&lt;100K images, no distillation), real-time edge inference (mobile, embedded), detection/segmentation requiring multi-scale features, no transformer infrastructure<span class="val">CineMatch: on-device video frame analysis in the mobile app (MobileNet, not ViT).</span></div>
+    <div class="step" data-s="3."><strong>The 2026 reality:</strong> ViT (and its descendants: Swin, DINOv2, EVA) has largely replaced CNNs in cloud/server vision. CNNs remain dominant on edge/mobile. The dividing line is hardware: GPU &rarr; ViT, mobile CPU &rarr; CNN.<span class="val">ConvNeXt (2022) showed CNNs can match ViT with ViT-style training recipes — the architecture gap has narrowed.</span></div>
+  </div>
+
+  <div class="mcq" data-correct="b">
+    <div class="mh"><span>ViT vs CNN</span><span class="qnum">Question 04 / 07</span></div>
+    <div class="mq">ViT-Base (86M) and ResNet-152 (60M) achieve similar ImageNet accuracy (~82%). ViT has more parameters but uses self-attention. Which is faster at inference?</div>
+    <div class="opts">
+      <div class="opt" data-key="a"><span class="key">A</span><span class="text">ViT is always faster due to parallelism.</span></div>
+      <div class="opt" data-key="b"><span class="key">B</span><span class="text">Depends on hardware. On GPU (high parallelism): ViT is competitive — self-attention over 196 tokens parallelizes well. On CPU (low parallelism): ResNet is 2-3&times; faster — convolutions are heavily optimized for CPU inference (im2col, Winograd). On mobile NPU: ResNet (or MobileNet) is much faster — mobile accelerators are designed for convolution, not attention. The winner depends on deployment hardware, not architecture quality.</span></div>
+      <div class="opt" data-key="c"><span class="key">C</span><span class="text">ResNet is always faster due to fewer parameters.</span></div>
+      <div class="opt" data-key="d"><span class="key">D</span><span class="text">They're identical in speed.</span></div>
+    </div>
+    <div class="feedback" data-right="<strong>Right.</strong> Inference speed depends on hardware optimization as much as architecture. GPUs parallelize attention well; CPUs and NPUs parallelize convolution well. At equal accuracy, the deployment target determines the winner. This is a practical engineering consideration often overlooked in academic comparisons that test only on GPUs." data-wrong="<strong>Not quite.</strong> Speed depends on hardware. GPUs handle attention efficiently (ViT competitive). CPUs and mobile NPUs are optimized for convolutions (ResNet/MobileNet faster). For cloud servers with GPUs: ViT. For mobile or edge: CNN. Always benchmark on your target hardware."></div>
+  </div>
+</section>
+
+<section id="section-05">
+  <h2 data-num="05 / 08">Attention visualization — what ViT learns to see.</h2>
+  <p>Visualizing ViT's attention reveals that different heads learn different visual patterns: some attend to local texture, others to global structure, others to object boundaries. By layer 8+, attention heads clearly focus on semantically meaningful regions — the dog's face, the car's outline, the sky vs ground boundary. This is remarkable because ViT has no built-in knowledge of objects or boundaries — it discovers them from data.</p>
+
+  <div class="insight">
+    <div class="key">Self-supervised ViT (DINO) produces even better features</div>
+    <p>DINO (Caron et al., 2021) trains ViT without any labels using self-distillation. The resulting attention maps are even more object-focused: the [CLS] attention in a DINO-trained ViT segments objects from background with no segmentation supervision. DINOv2 (2023) extends this to produce universal visual features that transfer to any downstream task — classification, segmentation, depth estimation — without fine-tuning. DINOv2 features are to vision what BERT embeddings are to text: general-purpose representations.</p>
+  </div>
+
+  <div class="mcq" data-correct="c">
+    <div class="mh"><span>Representation</span><span class="qnum">Question 05 / 07</span></div>
+    <div class="mq">ViT's [CLS] token attends to all 196 patches. After training, the [CLS] representation is used for classification. Why does a single [CLS] vector capture the entire image?</div>
+    <div class="opts">
+      <div class="opt" data-key="a"><span class="key">A</span><span class="text">It doesn't — the classification head uses all 196 patch embeddings.</span></div>
+      <div class="opt" data-key="b"><span class="key">B</span><span class="text">[CLS] only captures the most salient patch.</span></div>
+      <div class="opt" data-key="c"><span class="key">C</span><span class="text">Through 12 layers of self-attention, the [CLS] token learns to aggregate information from all patches with learned, task-relevant weighting. In early layers, [CLS] attends broadly (gathering general image statistics). In later layers, it attends selectively (focusing on discriminative regions — the dog's face for dog-vs-cat, the text for document classification). By layer 12, the [CLS] vector is a compressed representation of the entire image, weighted by task relevance. Same mechanism as BERT's [CLS] for text classification.</span></div>
+      <div class="opt" data-key="d"><span class="key">D</span><span class="text">The classification head averages all 196 patches, not just [CLS].</span></div>
+    </div>
+    <div class="feedback" data-right="<strong>Right.</strong> [CLS] is an information aggregation token — it doesn't contribute visual content but learns to collect and compress task-relevant information from all patches through multi-layer attention. This is identical to BERT's [CLS] mechanism for text. Alternative: average pooling over all 196 patch embeddings (used in some ViT variants like MAE). Both work; [CLS] is more common for classification, average pooling for dense prediction." data-wrong="<strong>Not quite.</strong> [CLS] aggregates information from all patches through 12 layers of attention. Early layers: broad attention (general statistics). Late layers: selective attention (task-relevant regions). The result: a single d-dimensional vector that compresses the image's task-relevant content. Same mechanism as BERT's [CLS] for text."></div>
+  </div>
+</section>
+
+<section id="section-06">
+  <h2 data-num="06 / 08">Patch size trade-offs — resolution vs compute.</h2>
+  <div class="calcbox">
+    <div class="ch">Patch size affects everything</div>
+    <div class="step" data-s="1.">P=16 (standard ViT): 224/16 = 14&times;14 = 196 patches. Attention: 196&sup2; &asymp; 38K. Good balance.<span class="val">Default for classification. Sufficient resolution for most tasks.</span></div>
+    <div class="step" data-s="2.">P=32 (coarser): 224/32 = 7&times;7 = 49 patches. Attention: 49&sup2; &asymp; 2.4K. 16&times; cheaper.<span class="val">Faster but loses fine detail. Each patch covers 32&times;32 = 1024 pixels — small objects become invisible.</span></div>
+    <div class="step" data-s="3.">P=8 (finer): 224/8 = 28&times;28 = 784 patches. Attention: 784&sup2; &asymp; 615K. 16&times; more expensive.<span class="val">Better fine detail but 16&times; the compute. Needed for dense tasks (segmentation, detection).</span></div>
+    <div class="step" data-s="4.">The trade-off: smaller patches = more tokens = better resolution = more compute. This is the vision analog of the text context length problem.<span class="val">Swin Transformer (Module 6.2) solves this with hierarchical local attention — getting fine patches without quadratic cost.</span></div>
+  </div>
+
+  <div class="mcq" data-correct="a">
+    <div class="mh"><span>Patch size</span><span class="qnum">Question 06 / 07</span></div>
+    <div class="mq">CineMatch wants to detect small text in movie posters (titles, credits). ViT-Base with P=16 misses small text. What's the best fix?</div>
+    <div class="opts">
+      <div class="opt" data-key="a"><span class="key">A</span><span class="text">Increase input resolution to 384&times;384 or 512&times;512 (keeping P=16). This gives 24&times;24=576 or 32&times;32=1024 patches — more tokens per image, capturing finer detail. The attention cost goes from 196&sup2; to 576&sup2; or 1024&sup2; (9&times; or 27&times; more), but FlashAttention handles this easily. Fine-tune with interpolated position embeddings at the new resolution. This is the standard approach for tasks requiring fine detail.</span></div>
+      <div class="opt" data-key="b"><span class="key">B</span><span class="text">Use P=4 patches — smallest possible.</span></div>
+      <div class="opt" data-key="c"><span class="key">C</span><span class="text">Add a CNN text detector before ViT.</span></div>
+      <div class="opt" data-key="d"><span class="key">D</span><span class="text">ViT can't detect small text — use OCR instead.</span></div>
+    </div>
+    <div class="feedback" data-right="<strong>Right.</strong> Increasing input resolution (keeping patch size) is the standard approach for fine detail. 384&times;384 with P=16 gives 576 patches — enough to resolve most text. The position embeddings are interpolated from the 14&times;14 grid to 24&times;24 and fine-tuned. This is computationally feasible (576&sup2; = 332K attention scores — trivial with FlashAttention) and maintains the pretrained model's learned features." data-wrong="<strong>Not quite.</strong> The best fix is higher input resolution with the same patch size. 384&times;384 or 512&times;512 input with P=16 gives 576 or 1024 patches, capturing finer detail. Position embeddings are interpolated and fine-tuned. P=4 patches would work but creates 3136 patches — unnecessarily expensive. Higher resolution is the standard, proven approach."></div>
+  </div>
+</section>
+
+<section id="section-07">
+  <h2 data-num="07 / 08">ViT's legacy — transformers are universal.</h2>
+  <div class="mcq" data-correct="d">
+    <div class="mh"><span>Legacy</span><span class="qnum">Question 07 / 07</span></div>
+    <div class="mq">What is ViT's most important contribution?</div>
+    <div class="opts">
+      <div class="opt" data-key="a"><span class="key">A</span><span class="text">A new image classification architecture.</span></div>
+      <div class="opt" data-key="b"><span class="key">B</span><span class="text">Replacing CNNs in all vision tasks.</span></div>
+      <div class="opt" data-key="c"><span class="key">C</span><span class="text">The patch embedding technique.</span></div>
+      <div class="opt" data-key="d"><span class="key">D</span><span class="text">Proving that transformers are a universal architecture. Before ViT, transformers were "the NLP architecture" and CNNs were "the vision architecture." ViT showed that the same transformer — same attention, same FFN, same LayerNorm — processes images as well as text. This opened the door to multimodal models (CLIP, GPT-4V) where a single architecture processes text, images, audio, and video. ViT's legacy is architectural unification: one architecture for all modalities.</span></div>
+    </div>
+    <div class="feedback" data-right="<strong>Right.</strong> ViT's technical contribution (patches as tokens) is simple. Its conceptual contribution (transformers work for everything, not just text) is transformative. This unification enabled: CLIP (Module 6.3) — shared embedding space for images and text. GPT-4V (Module 6.4) — single model processing both modalities. DALL-E — generating images with transformer decoders. The insight that 'any data can be tokenized and processed by attention' generalized transformers beyond NLP." data-wrong="<strong>Not quite.</strong> ViT's deepest contribution is proving architectural universality — the same transformer processes images, text, audio, and eventually any sequential data. This enabled multimodal models (CLIP, GPT-4V) and unified the field around a single architecture. The patch embedding is a technique; universality is the paradigm shift."></div>
+  </div>
+  <div class="checkpoint">
+    <h4>Module 6.1 — Mastery checkpoint</h4>
+    <ol>
+      <li>Derive the patch embedding: image dimensions &rarr; patch count &rarr; sequence length.</li>
+      <li>Explain why ViT needs large data or distillation (lack of inductive biases vs CNNs).</li>
+      <li>Explain DeiT's distillation token mechanism.</li>
+      <li>Choose between ViT and CNN based on dataset size, hardware, and task requirements.</li>
+      <li>Analyze the patch size vs resolution trade-off for detail-sensitive tasks.</li>
+    </ol>
+  </div>
+</section>
+
+<section id="section-08">
+  <h2 data-num="08 / 08">Learn &amp; Practice.</h2>
+
+  <p class="learn-intro">Use these resources in layers: start with the approachable explanation when the architecture feels fuzzy, read the original paper once the idea clicks, then inspect the reference implementation to connect the concept to code.</p>
+
+  <div class="resource-stack">
+    <article class="resource-card">
+      <div class="resource-head">
+        <div class="resource-icon">?</div>
+        <div>
+          <div class="resource-kicker">Progressive Article</div>
+          <h3>Stuck? Start here</h3>
+        </div>
+      </div>
+      <a class="resource-title" href="https://www.pinecone.io/learn/series/image-search/vision-transformers/" target="_blank" rel="noopener noreferrer">Vision Transformers Explained - Pinecone</a>
+      <p>Beginner walkthrough of image patches as tokens.</p>
+      <div class="resource-actions">
+        <a class="resource-link" href="https://www.pinecone.io/learn/series/image-search/vision-transformers/" target="_blank" rel="noopener noreferrer">Read Article</a>
+      </div>
+    </article>
+
+    <article class="resource-card canonical">
+      <div class="resource-head">
+        <div class="resource-icon">A</div>
+        <div>
+          <div class="resource-kicker">Canonical Article</div>
+          <h3>Original research paper</h3>
+        </div>
+      </div>
+      <a class="resource-title" href="https://arxiv.org/abs/2010.11929" target="_blank" rel="noopener noreferrer">An Image is Worth 16x16 Words - Dosovitskiy et al.</a>
+      <p>The ViT paper.</p>
+      <a class="resource-title" href="https://arxiv.org/abs/2012.12877" target="_blank" rel="noopener noreferrer">Training data-efficient image transformers - Touvron et al.</a>
+      <p>The DeiT paper.</p>
+      <div class="resource-actions">
+        <a class="resource-link" href="https://arxiv.org/abs/2010.11929" target="_blank" rel="noopener noreferrer">Read Paper</a>
+        <a class="resource-link" href="https://arxiv.org/abs/2012.12877" target="_blank" rel="noopener noreferrer">Read Paper</a>
+      </div>
+    </article>
+
+    <article class="resource-card repo">
+      <div class="resource-head">
+        <div class="resource-icon">{ }</div>
+        <div>
+          <div class="resource-kicker">GitHub Repository</div>
+          <h3>Reference implementation</h3>
+        </div>
+      </div>
+      <a class="resource-title" href="https://github.com/google-research/vision_transformer" target="_blank" rel="noopener noreferrer">google-research/vision_transformer</a>
+      <p>Official ViT repository.</p>
+      <a class="resource-title" href="https://github.com/facebookresearch/deit" target="_blank" rel="noopener noreferrer">facebookresearch/deit</a>
+      <p>Official DeiT repository.</p>
+      <div class="resource-actions">
+        <a class="resource-link" href="https://github.com/google-research/vision_transformer" target="_blank" rel="noopener noreferrer">Explore Repo</a>
+        <a class="resource-link" href="https://github.com/facebookresearch/deit" target="_blank" rel="noopener noreferrer">Explore Repo</a>
+      </div>
+    </article>
+  </div>
+</section>
+    </div>
+  </div>
+
+  <!-- Footer -->
+  <div class="footer-bar fade-in d6">
+    <span>Module 6.1 / Phase 6 · ViT &amp; DeiT</span>
+    <a href="module_6_2_swin.html" class="next-link">
+      <span class="lbl">Next Module</span>
+      <span class="ttl">6.2 — Swin Transformer</span>
+    </a>
+  </div>
+
+</div>
+
+<script>
+  document.querySelectorAll('.mcq').forEach(mcq=>{const correct=mcq.dataset.correct;const opts=mcq.querySelectorAll('.opt');const fb=mcq.querySelector('.feedback');opts.forEach(opt=>{opt.addEventListener('click',()=>{if(opt.classList.contains('disabled'))return;const chosen=opt.dataset.key;const isRight=chosen===correct;opts.forEach(o=>{o.classList.add('disabled');if(o.dataset.key===correct)o.classList.add('correct');else if(o===opt&&!isRight)o.classList.add('wrong')});if(isRight){fb.classList.add('show','right');fb.innerHTML='<span class="verdict">Correct</span>'+fb.dataset.right}else{fb.classList.add('show','wrong');fb.innerHTML='<span class="verdict">Not quite</span>'+fb.dataset.wrong}})})});
+</script>
+</body>
+</html>

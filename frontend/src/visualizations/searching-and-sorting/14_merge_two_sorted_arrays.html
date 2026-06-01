@@ -1,0 +1,521 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Merge Two Sorted Arrays - Visualization</title>
+    <style>
+        :root {
+            --bg-page: #0d1117;
+            --bg-surface: #161b22;
+            --bg-input: #0d1117;
+            --border-main: #30363d;
+            --btn-bg: #21262d;
+            --btn-hover: #2d333b;
+            --text-main: #c9d1d9;
+            --text-dim: #8b949e;
+            --text-log: #58a6ff;
+            --accent-orange: #e3b341;
+            --accent-blue: #388bfd;
+            --accent-green: #3fb950;
+            --accent-red: #f85149;
+            --accent-purple: #a371f7;
+        }
+
+        * { box-sizing: border-box; }
+        body {
+            background-color: var(--bg-page);
+            color: var(--text-main);
+            font-family: system-ui, -apple-system, sans-serif;
+            margin: 0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            min-height: 100vh;
+            padding-bottom: 40px;
+        }
+
+        /* ROW 1: INPUT BAR */
+        .input-bar {
+            width: 100%;
+            background-color: var(--bg-surface);
+            padding: 12px 16px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 8px;
+            border-bottom: 1px solid var(--border-main);
+            flex-wrap: wrap;
+        }
+        label.ui-label { font-family: 'Courier New', monospace; font-size: 13px; color: var(--text-dim); margin-bottom: 4px; display: block; text-align: center; }
+        input[type="text"] {
+            background: var(--bg-input);
+            border: 1px solid var(--border-main);
+            color: var(--text-main);
+            height: 32px;
+            border-radius: 6px;
+            padding: 0 10px;
+            font-size: 13px;
+        }
+        .arr-input { width: 220px; }
+
+        button {
+            height: 32px; border-radius: 6px; padding: 0 14px; background: var(--btn-bg);
+            border: 1px solid var(--border-main); color: var(--text-main); font-size: 13px; cursor: pointer;
+            transition: background 0.2s ease;
+        }
+        button:hover { background: var(--btn-hover); }
+
+        /* ROW 2: ARRAY TILES */
+        .visual-container { margin-top: 30px; display: flex; flex-direction: column; align-items: center; gap: 30px; width: 100%; }
+        
+        .array-section { display: flex; flex-direction: column; align-items: center; width: 100%; }
+        .tiles-wrapper { display: flex; gap: 12px; flex-wrap: wrap; justify-content: center; max-width: 800px; min-height: 70px; position: relative;}
+        
+        .tile-unit { display: flex; flex-direction: column; align-items: center; gap: 4px; position: relative; }
+        .tile {
+            min-width: 48px; height: 48px; display: flex; align-items: center; justify-content: center;
+            border-radius: 6px; font-size: 16px; font-weight: 600; font-family: 'Courier New', monospace;
+            transition: all 0.3s ease; border: 2px solid var(--border-main); background: #21262d;
+            color: var(--text-main);
+        }
+        .tile-index { font-size: 11px; color: var(--text-dim); font-family: monospace; }
+        
+        /* Highlight States */
+        .tile.search-space { background: #0d2244; border-color: var(--accent-blue); }
+        .tile.candidate-1 { background: #0d2244; border-color: var(--accent-blue); color: var(--accent-blue); transform: scale(1.15); box-shadow: 0 0 12px rgba(56, 139, 253, 0.4); z-index: 2; }
+        .tile.candidate-2 { background: #2a1600; border-color: var(--accent-orange); color: var(--accent-orange); transform: scale(1.15); box-shadow: 0 0 12px rgba(227, 179, 65, 0.4); z-index: 2; }
+        .tile.winning { background: #0f2a1a; border-color: var(--accent-green); color: var(--accent-green); transform: scale(1.1); box-shadow: 0 0 8px var(--accent-green); z-index: 3;}
+        .tile.eliminated { opacity: 0.2; background: #161b22; border-color: var(--border-main); color: var(--text-dim); }
+
+        /* Pointers */
+        .ptr-container { display: flex; flex-direction: column; align-items: center; position: absolute; bottom: -50px; gap: 2px; font-size: 11px; font-family: monospace; font-weight: bold; transition: all 0.3s; }
+        .ptr-i { color: var(--accent-blue); }
+        .ptr-j { color: var(--accent-orange); }
+        .ptr-arrow { font-size: 16px; line-height: 10px; margin-bottom: 2px; color: var(--text-dim); }
+
+        /* ROW 3: PANEL */
+        .action-panel {
+            margin-top: 50px; background: var(--bg-surface); border: 1px solid var(--border-main);
+            border-radius: 6px; padding: 12px 20px; width: 680px; text-align: center; font-family: monospace; min-height: 70px;
+            display: flex; flex-direction: column; justify-content: center; font-size: 15px; line-height: 1.5;
+        }
+
+        /* ROW 4: INFO PANEL */
+        .info-panel { margin-top: 10px; display: flex; gap: 10px; flex-wrap: wrap; justify-content: center; }
+        .info-cell {
+            background: var(--bg-surface); border: 1px solid var(--border-main); border-radius: 6px;
+            padding: 8px 14px; display: flex; flex-direction: column; align-items: center; min-width: 90px; gap: 4px;
+        }
+        .info-label { font-size: 11px; color: var(--text-dim); }
+        .info-value { font-family: monospace; font-size: 15px; font-weight: 700; text-align: center; }
+
+        /* ROW 5: RESULT DISPLAY */
+        .result-display { margin-top: 10px; display: flex; flex-direction: column; align-items: center; }
+        #res-val { font-size: 18px; color: var(--text-dim); font-family: monospace; transition: all 0.3s; font-weight: bold; }
+        .pop { animation: popAnim 400ms ease; color: var(--accent-green) !important; font-size: 24px !important; text-shadow: 0 0 12px var(--accent-green); }
+
+        @keyframes popAnim { 0%{transform:scale(1)} 50%{transform:scale(1.15)} 100%{transform:scale(1)} }
+
+        /* ROW 6: STATUS BAR */
+        .status-bar { margin-top: 8px; font-size: 13px; color: var(--text-dim); height: 1.2em; text-align: center; width: 600px;}
+
+        /* ROW 7: CONTROLS */
+        .controls { margin-top: 24px; display: flex; align-items: center; gap: 8px; }
+        input[type="range"] { accent-color: var(--accent-blue); width: 100px; cursor: pointer; }
+
+        /* ROW 8: LEGEND */
+        .legend { margin-top: 12px; display: flex; gap: 16px; flex-wrap: wrap; justify-content: center; max-width: 800px; }
+        .legend-item { display: flex; align-items: center; font-size: 12px; color: var(--text-dim); }
+        .dot { width: 10px; height: 10px; border-radius: 2px; margin-right: 6px; display: inline-block; }
+
+        /* ROW 9: LOG PANEL */
+        .log-panel {
+            margin-top: 12px; background: var(--bg-page); border: 1px solid var(--border-main);
+            border-radius: 6px; padding: 12px 16px; width: 700px; max-width: 90%; height: 120px;
+            overflow-y: auto; font-family: 'Courier New', monospace; font-size: 13px;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="input-bar">
+        <label class="ui-label" style="display:inline; margin:0;">arr1 =</label>
+        <input type="text" id="arr1-input" class="arr-input" placeholder="1, 3, 5">
+        <label class="ui-label" style="display:inline; margin:0; margin-left:10px;">arr2 =</label>
+        <input type="text" id="arr2-input" class="arr-input" placeholder="2, 4, 6">
+        <button onclick="loadCustom()" style="margin-left:8px;">Load</button>
+        <button onclick="loadExample([1, 3, 5], [2, 4, 6])">Ex 1</button>
+        <button onclick="loadExample([10, 20], [5, 15, 25])">Ex 2</button>
+    </div>
+
+    <div class="visual-container">
+        <div class="array-section">
+            <span class="ui-label">arr1 (Sorted)</span>
+            <div class="tiles-wrapper" id="tiles-arr1"></div>
+        </div>
+        
+        <div class="array-section" style="margin-top: 10px;">
+            <span class="ui-label">arr2 (Sorted)</span>
+            <div class="tiles-wrapper" id="tiles-arr2"></div>
+        </div>
+
+        <div class="array-section" style="margin-top: 20px;">
+            <span class="ui-label">Merged Array Result</span>
+            <div class="tiles-wrapper" id="tiles-res" style="min-height: 60px;"></div>
+        </div>
+    </div>
+
+    <div class="action-panel" id="main-panel">—</div>
+
+    <div class="info-panel">
+        <div class="info-cell">
+            <span class="info-label">pointer i</span>
+            <span class="info-value" id="val-i" style="color: var(--accent-blue);">—</span>
+        </div>
+        <div class="info-cell">
+            <span class="info-label">arr1[i]</span>
+            <span class="info-value" id="val-arri" style="color: var(--accent-blue);">—</span>
+        </div>
+        <div class="info-cell">
+            <span class="info-label">pointer j</span>
+            <span class="info-value" id="val-j" style="color: var(--accent-orange);">—</span>
+        </div>
+        <div class="info-cell">
+            <span class="info-label">arr2[j]</span>
+            <span class="info-value" id="val-arrj" style="color: var(--accent-orange);">—</span>
+        </div>
+    </div>
+
+    <div class="result-display">
+        <span class="ui-label" style="margin-bottom: 4px;">merge status</span>
+        <span id="res-val">—</span>
+    </div>
+
+    <div class="status-bar" id="status-text"></div>
+
+    <div class="controls">
+        <button onclick="reset()">↺ Reset</button>
+        <button onclick="back()">← Back</button>
+        <button onclick="togglePlay()" id="play-btn">Play</button>
+        <button onclick="next()">Next →</button>
+        <div class="controls" style="margin-top:0">
+            <span class="ui-label" style="margin-right:4px; font-size:11px">Speed</span>
+            <input type="range" id="speed-slider" min="0" max="2" value="1">
+        </div>
+    </div>
+
+    <div class="legend">
+        <div class="legend-item"><span class="dot" style="background:var(--bg-surface); border:1px solid var(--accent-blue)"></span> arr1 Element</div>
+        <div class="legend-item"><span class="dot" style="background:var(--bg-surface); border:1px solid var(--accent-orange)"></span> arr2 Element</div>
+        <div class="legend-item"><span class="dot" style="background:var(--bg-surface); border:1px solid var(--border-main); opacity:0.3"></span> Processed / Pushed</div>
+        <div class="legend-item"><span class="dot" style="background:var(--accent-green); border:1px solid var(--accent-green)"></span> Merged Order</div>
+    </div>
+
+    <div class="log-panel" id="log"></div>
+
+    <script>
+        let arr1 = [1, 3, 5];
+        let arr2 = [2, 4, 6];
+        let steps = [];
+        let stepIndex = 0;
+        let timer = null;
+        const delays = [2000, 1000, 500];
+
+        function init() { loadExample([1, 3, 5], [2, 4, 6]); }
+
+        function loadExample(newArr1, newArr2) {
+            arr1 = [...newArr1].sort((a,b)=>a-b); // Ensure strictly sorted per problem
+            arr2 = [...newArr2].sort((a,b)=>a-b);
+            document.getElementById('arr1-input').value = arr1.join(', ');
+            document.getElementById('arr2-input').value = arr2.join(', ');
+            generateSteps();
+            reset();
+        }
+
+        function loadCustom() {
+            const valStr1 = document.getElementById('arr1-input').value;
+            const valStr2 = document.getElementById('arr2-input').value;
+            const parsedArr1 = valStr1.split(',').map(x => parseInt(x.trim())).filter(x => !isNaN(x));
+            const parsedArr2 = valStr2.split(',').map(x => parseInt(x.trim())).filter(x => !isNaN(x));
+            
+            if (parsedArr1.length > 0 || parsedArr2.length > 0) {
+                loadExample(parsedArr1.slice(0, 15), parsedArr2.slice(0, 15)); // limit size
+            } else {
+                alert("Please enter valid numbers for the arrays.");
+            }
+        }
+
+        function generateSteps() {
+            steps = [];
+            const n1 = arr1.length;
+            const n2 = arr2.length;
+            let i = 0;
+            let j = 0;
+            let merged = [];
+
+            const getArrStates = (currI, currJ, isFinal = false) => {
+                const s1 = arr1.map((_, idx) => {
+                    if (isFinal || idx < i) return 'eliminated';
+                    if (idx === currI) return 'candidate-1';
+                    return 'search-space';
+                });
+                const s2 = arr2.map((_, idx) => {
+                    if (isFinal || idx < j) return 'eliminated';
+                    if (idx === currJ) return 'candidate-2';
+                    return 'search-space';
+                });
+                return { s1, s2 };
+            };
+
+            // STEP 0: INIT
+            steps.push({
+                type: 'init', i: i, j: j, val1: '—', val2: '—', res: [...merged],
+                states: getArrStates(i, j),
+                panel: `<b>Merge Two Sorted Arrays</b><br>We use two pointers: <code>i</code> for arr1 and <code>j</code> for arr2.<br>Initialize <code>i = 0</code>, <code>j = 0</code>, and an empty merged array.`,
+                statusText: `Ready. Click Play to begin.`,
+                log: `Starting Merge Process.\narr1 = [${arr1.join(', ')}]\narr2 = [${arr2.join(', ')}]\nInitialize pointers i=0, j=0.`,
+                logColor: 'var(--text-dim)'
+            });
+
+            while (i < n1 && j < n2) {
+                let v1 = arr1[i];
+                let v2 = arr2[j];
+
+                // EVALUATE
+                steps.push({
+                    type: 'eval', i: i, j: j, val1: v1, val2: v2, res: [...merged],
+                    states: getArrStates(i, j),
+                    panel: `Compare current elements:<br><code>arr1[${i}] == ${v1}</code> vs <code>arr2[${j}] == ${v2}</code>.`,
+                    statusText: `Comparing arr1[${i}] and arr2[${j}]...`,
+                    log: `\nCompare arr1[${i}]=${v1} with arr2[${j}]=${v2}.`,
+                    logColor: 'var(--text-main)'
+                });
+
+                if (v1 <= v2) {
+                    merged.push(v1);
+                    steps.push({
+                        type: 'push1', i: i, j: j, val1: v1, val2: v2, res: [...merged],
+                        states: getArrStates(i, j),
+                        panel: `<span style="color:var(--accent-blue)"><code>${v1} <= ${v2}</code></span>.<br>Append <code>arr1[${i}]</code> to the merged array.<br>Increment pointer <code>i</code>.`,
+                        statusText: `Appended ${v1} from arr1. Incrementing i.`,
+                        log: `  ${v1} <= ${v2}. Append ${v1} to merged array. i++.`,
+                        logColor: 'var(--accent-blue)'
+                    });
+                    i++;
+                } else {
+                    merged.push(v2);
+                    steps.push({
+                        type: 'push2', i: i, j: j, val1: v1, val2: v2, res: [...merged],
+                        states: getArrStates(i, j),
+                        panel: `<span style="color:var(--accent-orange)"><code>${v1} > ${v2}</code></span>.<br>Append <code>arr2[${j}]</code> to the merged array.<br>Increment pointer <code>j</code>.`,
+                        statusText: `Appended ${v2} from arr2. Incrementing j.`,
+                        log: `  ${v1} > ${v2}. Append ${v2} to merged array. j++.`,
+                        logColor: 'var(--accent-orange)'
+                    });
+                    j++;
+                }
+            }
+
+            // EXHAUSTION PHASES
+            if (i < n1) {
+                steps.push({
+                    type: 'exhaust1-start', i: i, j: j, val1: arr1[i], val2: '—', res: [...merged],
+                    states: getArrStates(i, -1),
+                    panel: `Pointer <code>j</code> has reached the end of arr2.<br>Append all remaining elements from arr1 to the merged array.`,
+                    statusText: `arr2 exhausted. Appending remaining arr1 elements.`,
+                    log: `\narr2 is exhausted (j = ${n2}). Copying remaining elements from arr1.`,
+                    logColor: 'var(--text-dim)'
+                });
+
+                while (i < n1) {
+                    let v1 = arr1[i];
+                    merged.push(v1);
+                    steps.push({
+                        type: 'exhaust1', i: i, j: j, val1: v1, val2: '—', res: [...merged],
+                        states: getArrStates(i, -1),
+                        panel: `Appending remaining element <code>arr1[${i}] == ${v1}</code>.`,
+                        statusText: `Appended ${v1} from arr1.`,
+                        log: `  Append ${v1}. i++.`,
+                        logColor: 'var(--accent-blue)'
+                    });
+                    i++;
+                }
+            } else if (j < n2) {
+                steps.push({
+                    type: 'exhaust2-start', i: i, j: j, val1: '—', val2: arr2[j], res: [...merged],
+                    states: getArrStates(-1, j),
+                    panel: `Pointer <code>i</code> has reached the end of arr1.<br>Append all remaining elements from arr2 to the merged array.`,
+                    statusText: `arr1 exhausted. Appending remaining arr2 elements.`,
+                    log: `\narr1 is exhausted (i = ${n1}). Copying remaining elements from arr2.`,
+                    logColor: 'var(--text-dim)'
+                });
+
+                while (j < n2) {
+                    let v2 = arr2[j];
+                    merged.push(v2);
+                    steps.push({
+                        type: 'exhaust2', i: i, j: j, val1: '—', val2: v2, res: [...merged],
+                        states: getArrStates(-1, j),
+                        panel: `Appending remaining element <code>arr2[${j}] == ${v2}</code>.`,
+                        statusText: `Appended ${v2} from arr2.`,
+                        log: `  Append ${v2}. j++.`,
+                        logColor: 'var(--accent-orange)'
+                    });
+                    j++;
+                }
+            }
+
+            // FINAL STEP
+            steps.push({
+                type: 'final', i: i, j: j, val1: '—', val2: '—', res: [...merged],
+                states: getArrStates(-1, -1, true),
+                panel: `<span style="color:var(--accent-green)">Both arrays are fully processed.</span><br>The merged array is complete and fully sorted!`,
+                complete: true,
+                finalStr: 'Complete',
+                statusText: `Merge complete.`,
+                log: `\nAll elements processed. Merge complete. ✓`,
+                logColor: 'var(--accent-green)', bold: true
+            });
+        }
+
+        function renderStep(idx) {
+            const step = steps[idx];
+            if (!step) return;
+
+            // Render Arr 1
+            const arr1Container = document.getElementById('tiles-arr1');
+            arr1Container.innerHTML = '';
+            if(arr1.length === 0) arr1Container.innerHTML = '<div style="color:var(--text-dim); font-size:13px; padding:10px;">[Empty]</div>';
+            step.states.s1.forEach((state, idx) => {
+                const wrapper = document.createElement('div');
+                wrapper.className = 'tile-unit';
+                const tile = document.createElement('div');
+                tile.className = `tile ${state}`;
+                tile.innerText = arr1[idx];
+                const idxLabel = document.createElement('div');
+                idxLabel.className = 'tile-index';
+                idxLabel.innerText = `[${idx}]`;
+                wrapper.append(tile, idxLabel);
+
+                if (!step.complete && step.i === idx && step.i < arr1.length) {
+                    const ptr = document.createElement('div');
+                    ptr.className = 'ptr-container';
+                    ptr.innerHTML = '<div class="ptr-arrow">↑</div><div class="ptr-i">i</div>';
+                    wrapper.appendChild(ptr);
+                }
+                arr1Container.appendChild(wrapper);
+            });
+
+            // Render Arr 2
+            const arr2Container = document.getElementById('tiles-arr2');
+            arr2Container.innerHTML = '';
+            if(arr2.length === 0) arr2Container.innerHTML = '<div style="color:var(--text-dim); font-size:13px; padding:10px;">[Empty]</div>';
+            step.states.s2.forEach((state, idx) => {
+                const wrapper = document.createElement('div');
+                wrapper.className = 'tile-unit';
+                const tile = document.createElement('div');
+                tile.className = `tile ${state}`;
+                tile.innerText = arr2[idx];
+                const idxLabel = document.createElement('div');
+                idxLabel.className = 'tile-index';
+                idxLabel.innerText = `[${idx}]`;
+                wrapper.append(tile, idxLabel);
+
+                if (!step.complete && step.j === idx && step.j < arr2.length) {
+                    const ptr = document.createElement('div');
+                    ptr.className = 'ptr-container';
+                    ptr.innerHTML = '<div class="ptr-arrow">↑</div><div class="ptr-j">j</div>';
+                    wrapper.appendChild(ptr);
+                }
+                arr2Container.appendChild(wrapper);
+            });
+
+            // Render Res
+            const resContainer = document.getElementById('tiles-res');
+            resContainer.innerHTML = '';
+            if (step.res.length === 0) {
+                 resContainer.innerHTML = '<div style="color:var(--text-dim); font-size:13px; padding:10px;">[Empty]</div>';
+            } else {
+                step.res.forEach((val, idx) => {
+                    const wrapper = document.createElement('div');
+                    wrapper.className = 'tile-unit';
+                    const tile = document.createElement('div');
+                    tile.className = `tile winning`;
+                    tile.innerText = val;
+                    const idxLabel = document.createElement('div');
+                    idxLabel.className = 'tile-index';
+                    idxLabel.innerText = `[${idx}]`;
+                    wrapper.append(tile, idxLabel);
+                    resContainer.appendChild(wrapper);
+                });
+            }
+
+            document.getElementById('main-panel').innerHTML = step.panel;
+            document.getElementById('val-i').innerText = step.i < arr1.length ? step.i : (arr1.length === 0 ? '—' : 'end');
+            document.getElementById('val-j').innerText = step.j < arr2.length ? step.j : (arr2.length === 0 ? '—' : 'end');
+            document.getElementById('val-arri').innerText = step.val1;
+            document.getElementById('val-arrj').innerText = step.val2;
+
+            const resVal = document.getElementById('res-val');
+            resVal.innerText = step.complete ? step.finalStr : 'In Progress';
+            resVal.className = step.complete ? 'pop' : '';
+
+            document.getElementById('status-text').innerText = step.statusText;
+
+            const logPanel = document.getElementById('log');
+            logPanel.innerHTML = '';
+            for (let k = 0; k <= idx; k++) {
+                if (steps[k].log) {
+                    const line = document.createElement('div');
+                    line.style.marginBottom = '2px';
+                    line.style.whiteSpace = 'pre-wrap';
+                    if (steps[k].logColor) line.style.color = steps[k].logColor;
+                    if (steps[k].bold) line.style.fontWeight = 'bold';
+                    line.innerText = steps[k].log;
+                    logPanel.appendChild(line);
+                }
+            }
+            logPanel.scrollTop = logPanel.scrollHeight;
+        }
+
+        function next() {
+            if (stepIndex < steps.length - 1) {
+                stepIndex++;
+                renderStep(stepIndex);
+            } else pause();
+        }
+
+        function back() {
+            if (stepIndex > 0) {
+                stepIndex--;
+                renderStep(stepIndex);
+            }
+        }
+
+        function reset() {
+            pause();
+            stepIndex = 0;
+            renderStep(0);
+        }
+
+        function togglePlay() {
+            const btn = document.getElementById('play-btn');
+            if (timer) pause();
+            else {
+                btn.innerText = 'Pause';
+                if (stepIndex >= steps.length - 1) stepIndex = 0;
+                timer = setInterval(next, delays[document.getElementById('speed-slider').value]);
+            }
+        }
+
+        function pause() {
+            clearInterval(timer);
+            timer = null;
+            document.getElementById('play-btn').innerText = 'Play';
+        }
+
+        window.onload = init;
+    </script>
+</body>
+</html>

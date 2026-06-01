@@ -1,0 +1,287 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Offline XOR Queries - Binary Trie</title>
+    <style>
+        :root {
+            --bg: #0d1117;
+            --surface: #161b22;
+            --border: #30363d;
+            --text: #c9d1d9;
+            --muted: #8b949e;
+            --purple: #a371f7;
+            --blue: #58a6ff;
+            --green: #3fb950;
+            --orange: #e3b341;
+            --red: #ff7b72;
+        }
+        * { box-sizing: border-box; }
+        body {
+            margin: 0; padding: 20px;
+            background: var(--bg); color: var(--text);
+            font-family: system-ui, sans-serif;
+            display: flex; flex-direction: column; align-items: center;
+        }
+        h1 { color: var(--purple); margin: 0 0 8px 0; }
+        .subtitle { color: var(--muted); margin-bottom: 20px; }
+        .controls { display: flex; gap: 12px; flex-wrap: wrap; justify-content: center; margin: 15px 0; }
+        button {
+            background: #21262d; color: var(--text);
+            border: 1px solid var(--border); padding: 10px 18px;
+            border-radius: 8px; cursor: pointer;
+        }
+        button:hover { background: #30363d; }
+        .main { display: flex; gap: 40px; flex-wrap: wrap; justify-content: center; width: 100%; max-width: 1350px; }
+        .panel { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 18px; }
+        .array-panel { width: 340px; }
+        .trie-panel { width: 680px; }
+        .label { color: var(--purple); font-weight: bold; margin-bottom: 10px; text-align: center; }
+        .array-list { display: flex; flex-wrap: wrap; gap: 10px; padding: 12px; background: #21262d; border-radius: 10px; }
+        .tile { padding: 10px 18px; background: #30363d; border: 2px solid var(--orange); border-radius: 8px; font-family: monospace; font-size: 15px; }
+        .trie { background: #21262d; border: 3px solid var(--blue); border-radius: 12px; padding: 20px; min-height: 520px; overflow: auto; font-family: monospace; }
+        .trie-node {
+            display: inline-block; background: #30363d; border: 3px solid #58a6ff;
+            border-radius: 10px; padding: 12px 18px; margin: 10px 6px; text-align: center;
+        }
+        .trie-node.current { border-color: var(--orange); box-shadow: 0 0 0 6px rgba(227,179,65,0.3); }
+        .trie-node .bit { font-size: 18px; font-weight: bold; color: var(--green); }
+        .trie-node .val { font-size: 13px; color: var(--purple); margin-top: 4px; }
+        .children { display: flex; gap: 20px; justify-content: center; margin-top: 12px; }
+        .info { margin: 20px 0; padding: 18px; background: var(--surface); border: 1px solid var(--border); border-radius: 10px; font-family: monospace; min-height: 160px; }
+        .action { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 18px; width: 100%; max-width: 1100px; margin: 20px 0; min-height: 110px; font-family: monospace; }
+        .log { background: #0d1117; border: 1px solid var(--border); border-radius: 10px; padding: 14px; width: 100%; max-width: 1100px; height: 260px; overflow-y: auto; font-family: 'Courier New', monospace; font-size: 14px; }
+    </style>
+</head>
+<body>
+    <h1>Offline XOR Queries</h1>
+    <p class="subtitle">Binary Trie (MSB first) • Max XOR per Query</p>
+
+    <div class="controls">
+        <button onclick="loadExample(0)">Example 1: [3,10,5,25,2,8]</button>
+        <button onclick="loadExample(1)">Example 2: [1,2,3]</button>
+        <button onclick="resetViz()">Reset</button>
+    </div>
+
+    <div class="main">
+        <div class="panel array-panel">
+            <div class="label">Array Elements</div>
+            <div class="array-list" id="array-list"></div>
+        </div>
+        <div class="panel trie-panel">
+            <div class="label">Binary Trie</div>
+            <div class="trie" id="trie"></div>
+        </div>
+    </div>
+
+    <div class="info">
+        <strong>Query:</strong> <span id="query" style="color:var(--orange)"></span><br>
+        <strong>Current Max:</strong> <span id="maxxor" style="color:var(--green); font-size:24px;"></span><br>
+        <strong>Best Match:</strong> <span id="best" style="color:var(--blue)"></span>
+    </div>
+
+    <div class="action" id="action">Click example to begin</div>
+
+    <div class="controls">
+        <button onclick="prevStep()">← Prev</button>
+        <button onclick="togglePlay()" id="play-btn">▶ Play</button>
+        <button onclick="nextStep()">Next →</button>
+        <label>Speed <input type="range" id="speed" min="0" max="2" value="1"></label>
+    </div>
+
+    <div class="log" id="log"></div>
+
+    <script>
+        const BIT_LENGTH = 5; // sufficient for examples
+        let root = null;
+        let steps = [];
+        let stepIdx = 0;
+        let timer = null;
+        let isPlaying = false;
+        let arr = [];
+        let queries = [];
+        let answers = [];
+
+        class TrieNode {
+            constructor() {
+                this.children = [null, null];
+            }
+        }
+
+        function createTrie() {
+            return new TrieNode();
+        }
+
+        function insert(num) {
+            let node = root;
+            const path = [];
+            for (let i = BIT_LENGTH - 1; i >= 0; i--) {
+                const bit = (num >> i) & 1;
+                path.push(bit);
+                if (!node.children[bit]) node.children[bit] = new TrieNode();
+                node = node.children[bit];
+            }
+            return path;
+        }
+
+        function queryMaxXOR(q) {
+            let node = root;
+            let xorVal = 0;
+            const path = [];
+            for (let i = BIT_LENGTH - 1; i >= 0; i--) {
+                const bit = (q >> i) & 1;
+                const opp = 1 - bit;
+                path.push(opp);
+                if (node.children[opp]) {
+                    xorVal |= (1 << i);
+                    node = node.children[opp];
+                } else if (node.children[bit]) {
+                    node = node.children[bit];
+                } else {
+                    break;
+                }
+            }
+            return {xorVal, path};
+        }
+
+        function generateSteps(inputArr, inputQueries) {
+            arr = [...inputArr];
+            queries = [...inputQueries];
+            answers = [];
+            root = createTrie();
+            steps = [];
+
+            steps.push({
+                phase: "Init",
+                log: "Trie initialized",
+                query: "",
+                maxxor: 0,
+                best: "",
+                highlight: [],
+                action: "Start"
+            });
+
+            // Insert all array elements
+            for (let num of arr) {
+                const path = insert(num);
+                steps.push({
+                    phase: "Insert",
+                    log: `Insert ${num}`,
+                    query: "",
+                    maxxor: 0,
+                    best: "",
+                    highlight: path,
+                    action: `Insert ${num}`
+                });
+            }
+
+            // Process each query
+            for (let q of queries) {
+                const res = queryMaxXOR(q);
+                answers.push(res.xorVal);
+                steps.push({
+                    phase: "Query",
+                    log: `Query ${q} → max XOR = ${res.xorVal}`,
+                    query: q,
+                    maxxor: res.xorVal,
+                    best: res.xorVal,
+                    highlight: res.path,
+                    action: `Query ${q} = ${res.xorVal}`
+                });
+            }
+        }
+
+        function buildTrieHTML(node, prefix = "", highlight = [], depth = 0) {
+            if (!node) return '';
+            const isCurrent = highlight.length > depth;
+            let html = `<div class="trie-node ${isCurrent ? 'current' : ''}">`;
+            html += `<div class="bit">${prefix || 'ROOT'}</div>`;
+
+            let chHTML = '<div class="children">';
+            let hasCh = false;
+            for (let b = 0; b < 2; b++) {
+                if (node.children[b]) {
+                    hasCh = true;
+                    chHTML += buildTrieHTML(node.children[b], prefix + b, highlight, depth + 1);
+                }
+            }
+            chHTML += '</div>';
+            if (hasCh) html += chHTML;
+            html += '</div>';
+            return html;
+        }
+
+        function renderTrie(highlight = []) {
+            document.getElementById('trie').innerHTML = buildTrieHTML(root, "", highlight);
+        }
+
+        function renderArray() {
+            const cont = document.getElementById('array-list');
+            cont.innerHTML = arr.map(v => `<div class="tile">${v}</div>`).join('');
+        }
+
+        function renderStep(idx) {
+            stepIdx = Math.max(0, Math.min(idx, steps.length - 1));
+            const step = steps[stepIdx];
+
+            document.getElementById('query').textContent = step.query !== undefined ? step.query : '—';
+            document.getElementById('maxxor').textContent = step.maxxor;
+            document.getElementById('best').textContent = step.best || '—';
+            document.getElementById('action').innerHTML = `<strong>${step.action}</strong>`;
+
+            renderArray();
+            renderTrie(step.highlight || []);
+
+            const logEl = document.getElementById('log');
+            logEl.innerHTML = steps.slice(0, stepIdx + 1).map(s => `<div>${s.log}</div>`).join('');
+            logEl.scrollTop = logEl.scrollHeight;
+        }
+
+        function nextStep() { if (stepIdx < steps.length - 1) renderStep(stepIdx + 1); else pause(); }
+        function prevStep() { if (stepIdx > 0) renderStep(stepIdx - 1); }
+
+        function togglePlay() {
+            const btn = document.getElementById('play-btn');
+            if (isPlaying) {
+                pause();
+            } else {
+                isPlaying = true;
+                btn.textContent = '❚❚ Pause';
+                const speeds = [900, 450, 180];
+                timer = setInterval(() => {
+                    if (stepIdx < steps.length - 1) nextStep();
+                    else pause();
+                }, speeds[parseInt(document.getElementById('speed').value)]);
+            }
+        }
+
+        function pause() {
+            clearInterval(timer);
+            isPlaying = false;
+            document.getElementById('play-btn').textContent = '▶ Play';
+        }
+
+        function resetViz() {
+            pause();
+            stepIdx = 0;
+            renderStep(0);
+        }
+
+        function loadExample(n) {
+            let inputArr, inputQueries;
+            if (n === 0) {
+                inputArr = [3, 10, 5, 25, 2, 8];
+                inputQueries = [5, 7];
+            } else {
+                inputArr = [1, 2, 3];
+                inputQueries = [4, 5];
+            }
+            generateSteps(inputArr, inputQueries);
+            resetViz();
+        }
+
+        window.onload = () => loadExample(0);
+    </script>
+</body>
+</html>

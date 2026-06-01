@@ -47,17 +47,20 @@ const CodeEditor = ({ code, onChange, language }) => {
                     top: '12px',
                     right: '12px',
                     zIndex: 10,
-                    backgroundColor: 'var(--color-hover-bg)',
+                    backgroundColor: 'var(--color-surface)',
                     border: '1px solid var(--color-border)',
-                    borderRadius: '6px',
-                    color: 'var(--color-primary-text)',
+                    borderRadius: '8px',
+                    color: 'var(--color-muted-text)',
                     cursor: 'pointer',
                     padding: '6px 8px',
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'center',
-                    transition: 'all 0.2s ease'
+                    transition: 'background 0.18s ease, color 0.18s ease, border-color 0.18s ease',
+                    opacity: 0.85,
                 }}
+                onMouseEnter={e => { e.currentTarget.style.background = 'var(--color-surface-hover)'; e.currentTarget.style.color = 'var(--color-primary-text)'; e.currentTarget.style.opacity = '1'; }}
+                onMouseLeave={e => { e.currentTarget.style.background = 'var(--color-surface)'; e.currentTarget.style.color = 'var(--color-muted-text)'; e.currentTarget.style.opacity = '0.85'; }}
             >
                 {isFullscreen ? (
                     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">

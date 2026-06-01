@@ -74,11 +74,15 @@ export default function Login({ onLogin, onSignup }) {
             const { auth, googleProvider, signInWithPopup } = await getFirebaseAuth();
             const result = await signInWithPopup(auth, googleProvider);
             const idToken = await result.user.getIdToken();
+            const displayName = result.user.displayName;
 
             const response = await fetch(`${API}/auth/google`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ id_token: idToken }),
+                body: JSON.stringify({
+    id_token: idToken,
+    display_name: displayName
+}),
             });
 
             if (!response.ok) {

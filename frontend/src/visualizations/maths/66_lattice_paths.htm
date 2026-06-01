@@ -1,0 +1,427 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Lattice Paths - Visualization</title>
+    <style>
+        :root {
+            --bg-page: #0d1117;
+            --bg-surface: #161b22;
+            --bg-input: #0d1117;
+            --border-main: #30363d;
+            --btn-bg: #21262d;
+            --btn-hover: #2d333b;
+            --text-main: #c9d1d9;
+            --text-dim: #8b949e;
+            --accent-orange: #e3b341;
+            --accent-blue: #388bfd;
+            --accent-green: #3fb950;
+            --accent-red: #f85149;
+            --accent-purple: #a371f7;
+        }
+
+        * { box-sizing: border-box; }
+        body {
+            background-color: var(--bg-page);
+            color: var(--text-main);
+            font-family: system-ui, -apple-system, sans-serif;
+            margin: 0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            min-height: 100vh;
+            padding-bottom: 40px;
+        }
+
+        /* INPUT BAR */
+        .input-bar {
+            width: 100%;
+            background-color: var(--bg-surface);
+            padding: 12px 16px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 12px;
+            border-bottom: 1px solid var(--border-main);
+            flex-wrap: wrap;
+        }
+        label.ui-label { font-family: 'Courier New', monospace; font-size: 13px; color: var(--text-dim); }
+        input[type="number"] {
+            background: var(--bg-input);
+            border: 1px solid var(--border-main);
+            color: var(--text-main);
+            height: 32px;
+            border-radius: 6px;
+            padding: 0 10px;
+            font-size: 13px;
+            width: 80px;
+        }
+
+        button {
+            height: 32px; border-radius: 6px; padding: 0 14px; background: var(--btn-bg);
+            border: 1px solid var(--border-main); color: var(--text-main); font-size: 13px; cursor: pointer;
+            transition: background 0.2s ease;
+        }
+        button:hover { background: var(--btn-hover); }
+
+        /* GRID */
+        .visual-container { margin-top: 30px; display: flex; flex-direction: column; align-items: center; gap: 20px; width: 100%; }
+        .grid {
+            display: grid;
+            gap: 6px;
+            background: #0d1117;
+            padding: 12px;
+            border: 3px solid var(--border-main);
+            border-radius: 12px;
+        }
+        .cell {
+            width: 56px; height: 56px; display: flex; align-items: center; justify-content: center;
+            border-radius: 10px; font-size: 22px; font-weight: 700; font-family: 'Courier New', monospace;
+            background: #21262d; color: var(--text-main); border: 3px solid var(--border-main);
+            transition: all 0.4s ease;
+        }
+        .cell.start { background: #2a1600; border-color: var(--accent-orange); color: var(--accent-orange); }
+        .cell.end { background: #0f2a1a; border-color: var(--accent-green); color: var(--accent-green); }
+        .cell.current { border-color: var(--accent-purple); color: var(--accent-purple); transform: scale(1.18); box-shadow: 0 0 20px var(--accent-purple); }
+
+        /* PANEL */
+        .action-panel {
+            margin-top: 20px; background: var(--bg-surface); border: 1px solid var(--border-main);
+            border-radius: 6px; padding: 16px 24px; width: 720px; text-align: center; font-family: monospace;
+            min-height: 95px; font-size: 15px; line-height: 1.5;
+        }
+
+        /* INFO */
+        .info-panel { margin-top: 15px; display: flex; gap: 14px; flex-wrap: wrap; justify-content: center; }
+        .info-cell {
+            background: var(--bg-surface); border: 1px solid var(--border-main); border-radius: 6px;
+            padding: 10px 18px; display: flex; flex-direction: column; align-items: center; min-width: 120px;
+        }
+        .info-label { font-size: 11px; color: var(--text-dim); }
+        .info-value { font-family: monospace; font-size: 19px; font-weight: 700; }
+
+        /* RESULT */
+        .result-display { margin-top: 18px; text-align: center; }
+        #res-val { font-size: 36px; font-weight: bold; font-family: monospace; transition: all 0.4s; }
+        .pop { animation: popAnim 600ms ease; color: var(--accent-green) !important; }
+
+        @keyframes popAnim { 0%{transform:scale(0.7)} 50%{transform:scale(1.2)} 100%{transform:scale(1)} }
+
+        .status-bar { margin-top: 10px; font-size: 13.5px; color: var(--text-dim); height: 1.5em; text-align: center; width: 700px; }
+        .controls { margin-top: 28px; display: flex; align-items: center; gap: 12px; flex-wrap: wrap; justify-content: center; }
+        input[type="range"] { accent-color: var(--accent-blue); width: 150px; }
+
+        .legend { margin-top: 18px; display: flex; gap: 22px; flex-wrap: wrap; justify-content: center; max-width: 800px; }
+        .legend-item { display: flex; align-items: center; font-size: 13px; color: var(--text-dim); }
+
+        .log-panel {
+            margin-top: 22px; background: var(--bg-page); border: 1px solid var(--border-main);
+            border-radius: 6px; padding: 14px 20px; width: 720px; max-width: 95%; height: 160px;
+            overflow-y: auto; font-family: 'Courier New', monospace; font-size: 13.2px; line-height: 1.45;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="input-bar">
+        <label class="ui-label">n =</label>
+        <input type="number" id="n-input" value="2" min="0" max="8">
+        <label class="ui-label">m =</label>
+        <input type="number" id="m-input" value="2" min="0" max="8">
+        <button onclick="loadCustom()">Load</button>
+        <button onclick="loadExample(2,2)">Ex 1 (2×2 → 6)</button>
+        <button onclick="loadExample(1,1)">Ex 2 (1×1 → 2)</button>
+    </div>
+
+    <div class="visual-container">
+        <div class="ui-label">Grid (0,0) → (n,m) — Only Right / Down moves</div>
+        <div class="grid" id="grid-container"></div>
+    </div>
+
+    <div class="action-panel" id="main-panel">—</div>
+
+    <div class="info-panel">
+        <div class="info-cell">
+            <span class="info-label">Current Position</span>
+            <span class="info-value" id="val-pos" style="color: var(--accent-purple);">—</span>
+        </div>
+        <div class="info-cell">
+            <span class="info-label">Paths from here</span>
+            <span class="info-value" id="val-paths" style="color: var(--accent-green);">—</span>
+        </div>
+        <div class="info-cell">
+            <span class="info-label">Total Paths Found</span>
+            <span class="info-value" id="val-total" style="color: var(--accent-orange);">—</span>
+        </div>
+    </div>
+
+    <div class="result-display">
+        <span class="ui-label">Number of Paths =</span>
+        <span id="res-val">—</span>
+    </div>
+
+    <div class="status-bar" id="status-text"></div>
+
+    <div class="controls">
+        <button onclick="reset()">↺ Reset</button>
+        <button onclick="back()">← Back</button>
+        <button onclick="togglePlay()" id="play-btn">Play</button>
+        <button onclick="next()">Next →</button>
+        <div>
+            <span class="ui-label" style="margin-right:6px; font-size:12px">Speed</span>
+            <input type="range" id="speed-slider" min="0" max="2" value="1">
+        </div>
+    </div>
+
+    <div class="legend">
+        <div class="legend-item"><span style="display:inline-block;width:16px;height:16px;background:var(--accent-orange);border-radius:4px;margin-right:8px;"></span>Start</div>
+        <div class="legend-item"><span style="display:inline-block;width:16px;height:16px;background:var(--accent-green);border-radius:4px;margin-right:8px;"></span>Destination</div>
+        <div class="legend-item"><span style="display:inline-block;width:16px;height:16px;background:var(--accent-purple);border-radius:4px;margin-right:8px;"></span>Current Cell</div>
+    </div>
+
+    <div class="log-panel" id="log"></div>
+
+    <script>
+        let N = 2, M = 2;
+        let steps = [];
+        let stepIndex = 0;
+        let timer = null;
+        const delays = [1100, 550, 280];
+
+        function init() {
+            loadExample(2, 2);
+        }
+
+        function loadExample(nVal, mVal) {
+            N = nVal;
+            M = mVal;
+            document.getElementById('n-input').value = N;
+            document.getElementById('m-input').value = M;
+            generateSteps();
+            reset();
+        }
+
+        function loadCustom() {
+            const nVal = parseInt(document.getElementById('n-input').value);
+            const mVal = parseInt(document.getElementById('m-input').value);
+            if (nVal >= 0 && mVal >= 0 && nVal <= 8 && mVal <= 8) {
+                N = nVal;
+                M = mVal;
+                generateSteps();
+                reset();
+            }
+        }
+
+        function generateSteps() {
+            steps = [];
+            let totalPaths = 0;
+
+            // INIT
+            steps.push({
+                type: 'init',
+                i: 0, j: 0,
+                pathsHere: 0,
+                total: 0,
+                panel: `Count all paths from <b>(0,0)</b> to <b>(${N},${M})</b><br>Only <b>Right</b> and <b>Down</b> moves allowed.`,
+                statusText: `Starting recursion at (0,0)...`,
+                log: `Grid: ${N}×${M}\nStart at (0,0)\nTotal Paths = 0`,
+                logColor: 'var(--text-dim)'
+            });
+
+            function recurse(i, j, depth = 0) {
+                const indent = '  '.repeat(depth);
+
+                steps.push({
+                    type: 'visit',
+                    i: i, j: j,
+                    pathsHere: 0,
+                    total: totalPaths,
+                    panel: `At cell <b>(${i},${j})</b>`,
+                    statusText: `Exploring (${i},${j})`,
+                    log: `${indent}Visit (${i},${j})`,
+                    logColor: 'var(--text-main)'
+                });
+
+                if (i === N && j === M) {
+                    totalPaths++;
+                    steps.push({
+                        type: 'success',
+                        i: i, j: j,
+                        pathsHere: 1,
+                        total: totalPaths,
+                        panel: `<span style="color:var(--accent-green)">Reached destination! +1 path</span>`,
+                        statusText: `Valid path found`,
+                        log: `${indent}  Reached (${N},${M}) → +1`,
+                        logColor: 'var(--accent-green)'
+                    });
+                    return 1;
+                }
+
+                if (i > N || j > M) {
+                    steps.push({
+                        type: 'invalid',
+                        i: i, j: j,
+                        pathsHere: 0,
+                        total: totalPaths,
+                        panel: `<span style="color:var(--accent-red)">Out of bounds → 0</span>`,
+                        statusText: `Invalid move`,
+                        log: `${indent}  Out of bounds → 0`,
+                        logColor: 'var(--accent-red)'
+                    });
+                    return 0;
+                }
+
+                let paths = 0;
+
+                // Right
+                steps.push({
+                    type: 'move',
+                    i: i, j: j,
+                    pathsHere: 0,
+                    total: totalPaths,
+                    direction: 'right',
+                    panel: `Move <b>Right</b> → (${i},${j+1})`,
+                    statusText: `Moving right`,
+                    log: `${indent}  Try Right → (${i},${j+1})`,
+                    logColor: 'var(--accent-blue)'
+                });
+                paths += recurse(i, j + 1, depth + 1);
+
+                // Down
+                steps.push({
+                    type: 'move',
+                    i: i, j: j,
+                    pathsHere: 0,
+                    total: totalPaths,
+                    direction: 'down',
+                    panel: `Move <b>Down</b> → (${i+1},${j})`,
+                    statusText: `Moving down`,
+                    log: `${indent}  Try Down → (${i+1},${j})`,
+                    logColor: 'var(--accent-blue)'
+                });
+                paths += recurse(i + 1, j, depth + 1);
+
+                steps.push({
+                    type: 'return',
+                    i: i, j: j,
+                    pathsHere: paths,
+                    total: totalPaths,
+                    panel: `From (${i},${j}) → <b>${paths}</b> paths`,
+                    statusText: `Returning ${paths}`,
+                    log: `${indent}  Total from (${i},${j}) = ${paths}`,
+                    logColor: 'var(--accent-green)'
+                });
+
+                return paths;
+            }
+
+            recurse(0, 0);
+
+            steps.push({
+                type: 'final',
+                i: N, j: M,
+                pathsHere: totalPaths,
+                total: totalPaths,
+                panel: `All paths explored!<br><b>Total Paths = ${totalPaths}</b>`,
+                statusText: `Done! Answer = ${totalPaths}`,
+                log: `\nFinal Result: ${totalPaths}`,
+                logColor: 'var(--accent-green)',
+                bold: true
+            });
+        }
+
+        function renderStep(idx) {
+            const step = steps[idx];
+            if (!step) return;
+
+            const container = document.getElementById('grid-container');
+            container.style.gridTemplateColumns = `repeat(${M+1}, 1fr)`;
+            container.innerHTML = '';
+
+            for (let row = 0; row <= N; row++) {
+                for (let col = 0; col <= M; col++) {
+                    const cell = document.createElement('div');
+                    cell.className = 'cell';
+                    cell.innerText = `${row},${col}`;
+
+                    if (row === 0 && col === 0) cell.classList.add('start');
+                    if (row === N && col === M) cell.classList.add('end');
+                    if (step.i === row && step.j === col) cell.classList.add('current');
+
+                    container.appendChild(cell);
+                }
+            }
+
+            document.getElementById('main-panel').innerHTML = step.panel;
+            document.getElementById('val-pos').innerText = `(${step.i}, ${step.j})`;
+            document.getElementById('val-paths').innerText = step.pathsHere || '—';
+            document.getElementById('val-total').innerText = step.total;
+
+            const resVal = document.getElementById('res-val');
+            if (step.type === 'final') {
+                resVal.innerText = step.total;
+                resVal.className = 'pop';
+            } else {
+                resVal.innerText = '—';
+                resVal.className = '';
+            }
+
+            document.getElementById('status-text').innerText = step.statusText;
+
+            const logPanel = document.getElementById('log');
+            logPanel.innerHTML = '';
+            for (let k = 0; k <= idx; k++) {
+                if (steps[k].log) {
+                    const line = document.createElement('div');
+                    line.style.marginBottom = '3px';
+                    line.style.whiteSpace = 'pre-wrap';
+                    if (steps[k].logColor) line.style.color = steps[k].logColor;
+                    if (steps[k].bold) line.style.fontWeight = 'bold';
+                    line.innerText = steps[k].log;
+                    logPanel.appendChild(line);
+                }
+            }
+            logPanel.scrollTop = logPanel.scrollHeight;
+        }
+
+        function next() {
+            if (stepIndex < steps.length - 1) {
+                stepIndex++;
+                renderStep(stepIndex);
+            } else pause();
+        }
+
+        function back() {
+            if (stepIndex > 0) {
+                stepIndex--;
+                renderStep(stepIndex);
+            }
+        }
+
+        function reset() {
+            pause();
+            stepIndex = 0;
+            renderStep(0);
+        }
+
+        function togglePlay() {
+            const btn = document.getElementById('play-btn');
+            if (timer) pause();
+            else {
+                btn.innerText = 'Pause';
+                if (stepIndex >= steps.length - 1) stepIndex = 0;
+                timer = setInterval(next, delays[parseInt(document.getElementById('speed-slider').value)]);
+            }
+        }
+
+        function pause() {
+            clearInterval(timer);
+            timer = null;
+            document.getElementById('play-btn').innerText = 'Play';
+        }
+
+        window.onload = init;
+    </script>
+</body>
+</html>

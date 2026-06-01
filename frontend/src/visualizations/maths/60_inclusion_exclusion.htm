@@ -1,0 +1,326 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Inclusion Exclusion - Visualization</title>
+    <style>
+        :root {
+            --bg-page: #0d1117;
+            --bg-surface: #161b22;
+            --bg-input: #0d1117;
+            --border-main: #30363d;
+            --btn-bg: #21262d;
+            --btn-hover: #2d333b;
+            --text-main: #c9d1d9;
+            --text-dim: #8b949e;
+            --accent-orange: #e3b341;
+            --accent-blue: #388bfd;
+            --accent-green: #3fb950;
+            --accent-red: #f85149;
+            --accent-purple: #a371f7;
+        }
+
+        * { box-sizing: border-box; }
+        body {
+            background-color: var(--bg-page);
+            color: var(--text-main);
+            font-family: system-ui, -apple-system, sans-serif;
+            margin: 0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            min-height: 100vh;
+            padding-bottom: 40px;
+        }
+
+        .input-bar {
+            width: 100%;
+            background-color: var(--bg-surface);
+            padding: 12px 16px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 8px;
+            border-bottom: 1px solid var(--border-main);
+            flex-wrap: wrap;
+        }
+        label.ui-label { font-family: 'Courier New', monospace; font-size: 13px; color: var(--text-dim); }
+        input[type="number"] {
+            background: var(--bg-input);
+            border: 1px solid var(--border-main);
+            color: var(--text-main);
+            height: 32px;
+            border-radius: 6px;
+            padding: 0 10px;
+            width: 80px;
+            font-size: 13px;
+        }
+        button {
+            height: 32px; border-radius: 6px; padding: 0 14px; background: var(--btn-bg);
+            border: 1px solid var(--border-main); color: var(--text-main); font-size: 13px; cursor: pointer;
+        }
+        button:hover { background: var(--btn-hover); }
+
+        .visual-container { margin-top: 30px; display: flex; flex-direction: column; align-items: center; gap: 20px; width: 100%; }
+        .tiles-wrapper { display: flex; gap: 10px; flex-wrap: wrap; justify-content: center; max-width: 860px; min-height: 90px; }
+
+        .tile-unit { display: flex; flex-direction: column; align-items: center; gap: 4px; }
+        .tile {
+            min-width: 48px; height: 48px; display: flex; align-items: center; justify-content: center;
+            border-radius: 6px; font-size: 18px; font-weight: 600; font-family: 'Courier New', monospace;
+            transition: all 0.3s ease; border: 2px solid var(--border-main); background: #21262d;
+            color: var(--text-main);
+        }
+        .tile.candidate { background: #2a1600; border-color: var(--accent-orange); color: var(--accent-orange); transform: scale(1.15); }
+        .tile.winning { background: #0f2a1a; border-color: var(--accent-green); color: var(--accent-green); transform: scale(1.12); }
+        .tile.done { opacity: 0.55; background: #161b22; border-color: var(--border-main); color: var(--text-dim); }
+
+        .action-panel {
+            margin-top: 40px; background: var(--bg-surface); border: 1px solid var(--border-main);
+            border-radius: 6px; padding: 12px 20px; width: 720px; text-align: center; font-family: monospace; min-height: 90px;
+        }
+
+        .info-panel { margin-top: 10px; display: flex; gap: 12px; flex-wrap: wrap; justify-content: center; }
+        .info-cell {
+            background: var(--bg-surface); border: 1px solid var(--border-main); border-radius: 6px;
+            padding: 8px 14px; display: flex; flex-direction: column; align-items: center; min-width: 110px; gap: 4px;
+        }
+        .info-label { font-size: 11px; color: var(--text-dim); }
+        .info-value { font-family: monospace; font-size: 16px; font-weight: 700; }
+
+        #res-val { font-size: 24px; color: var(--accent-green); font-family: monospace; font-weight: bold; transition: all 0.3s; }
+        .pop { animation: popAnim 400ms ease; font-size: 30px !important; }
+
+        @keyframes popAnim { 0%{transform:scale(1)} 50%{transform:scale(1.15)} 100%{transform:scale(1)} }
+
+        .status-bar { margin-top: 8px; font-size: 13px; color: var(--text-dim); height: 1.2em; text-align: center; width: 600px; }
+
+        .controls { margin-top: 24px; display: flex; align-items: center; gap: 8px; }
+        input[type="range"] { accent-color: var(--accent-blue); width: 110px; }
+
+        .legend { margin-top: 12px; display: flex; gap: 16px; flex-wrap: wrap; justify-content: center; }
+        .legend-item { display: flex; align-items: center; font-size: 12px; color: var(--text-dim); }
+        .dot { width: 10px; height: 10px; border-radius: 2px; margin-right: 6px; }
+
+        .log-panel {
+            margin-top: 12px; background: var(--bg-page); border: 1px solid var(--border-main);
+            border-radius: 6px; padding: 12px 16px; width: 720px; max-width: 90%; height: 140px;
+            overflow-y: auto; font-family: 'Courier New', monospace; font-size: 13px;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="input-bar">
+        <label class="ui-label">a =</label>
+        <input type="number" id="a-input" value="1">
+        <label class="ui-label">b =</label>
+        <input type="number" id="b-input" value="10">
+        <label class="ui-label">divisors =</label>
+        <input type="text" id="divisors-input" value="2,3" style="width:120px;">
+        <button onclick="loadCustom()">Load</button>
+        <button onclick="loadExample(1,10,'2,3')">Ex 1 (1-10, [2,3] → 7)</button>
+        <button onclick="loadExample(10,20,'5')">Ex 2 (10-20, [5] → 3)</button>
+    </div>
+
+    <div class="visual-container">
+        <div class="ui-label">Iterating numbers in [a,b] and checking divisibility</div>
+        <div class="tiles-wrapper" id="tiles-container"></div>
+    </div>
+
+    <div class="action-panel" id="main-panel">—</div>
+
+    <div class="info-panel">
+        <div class="info-cell">
+            <span class="info-label">Current Number</span>
+            <span class="info-value" id="val-num" style="color:var(--accent-orange);">—</span>
+        </div>
+        <div class="info-cell">
+            <span class="info-label">Divisible?</span>
+            <span class="info-value" id="val-div" style="color:var(--accent-green);">—</span>
+        </div>
+        <div class="info-cell">
+            <span class="info-label">Count So Far</span>
+            <span class="info-value" id="val-count" style="color:var(--accent-blue);">—</span>
+        </div>
+    </div>
+
+    <div class="result-display">
+        <span class="ui-label">Final Count</span><br>
+        <span id="res-val">—</span>
+    </div>
+
+    <div class="status-bar" id="status-text"></div>
+
+    <div class="controls">
+        <button onclick="reset()">↺ Reset</button>
+        <button onclick="back()">← Back</button>
+        <button onclick="togglePlay()" id="play-btn">Play</button>
+        <button onclick="next()">Next →</button>
+        <span class="ui-label" style="margin-left:10px;">Speed</span>
+        <input type="range" id="speed-slider" min="0" max="2" value="1">
+    </div>
+
+    <div class="legend">
+        <div class="legend-item"><span class="dot" style="background:#2a1600;border:1px solid var(--accent-orange)"></span> Checking</div>
+        <div class="legend-item"><span class="dot" style="background:var(--accent-green);border:1px solid var(--accent-green)"></span> Divisible (count++)</div>
+        <div class="legend-item"><span class="dot" style="background:var(--bg-surface);border:1px solid var(--border-main);opacity:0.5"></span> Not divisible</div>
+    </div>
+
+    <div class="log-panel" id="log"></div>
+
+    <script>
+        let a = 1, b = 10;
+        let divisors = [2, 3];
+        let steps = [];
+        let stepIndex = 0;
+        let timer = null;
+        const delays = [1200, 600, 300];
+
+        function generateSteps() {
+            steps = [];
+
+            let count = 0;
+            steps.push({
+                type: 'init',
+                num: '—',
+                isDiv: '—',
+                count: 0,
+                panel: `Counting numbers in [${a}, ${b}] divisible by any of [${divisors.join(', ')}]`,
+                statusText: `Starting iteration from ${a} to ${b}...`,
+                log: `Range [${a},${b}], divisors = [${divisors.join(', ')}]`,
+                logColor: 'var(--text-dim)'
+            });
+
+            for (let num = a; num <= b; num++) {
+                let divisible = false;
+                for (let d of divisors) {
+                    if (d !== 0 && num % d === 0) {
+                        divisible = true;
+                        break;
+                    }
+                }
+
+                steps.push({
+                    type: divisible ? 'winning' : 'candidate',
+                    num: num,
+                    isDiv: divisible,
+                    count: count + (divisible ? 1 : 0),
+                    panel: `num = <b>${num}</b> → ${divisible ? 'divisible by some divisor' : 'not divisible'}`,
+                    statusText: `num=${num} | ${divisible ? 'Yes' : 'No'} | count=${count + (divisible ? 1 : 0)}`,
+                    log: `num=${num}: ${divisible ? 'divisible → count++' : 'not divisible'}`,
+                    logColor: divisible ? 'var(--accent-green)' : 'var(--accent-orange)'
+                });
+
+                if (divisible) count++;
+            }
+
+            steps.push({
+                type: 'final',
+                num: '—',
+                isDiv: '—',
+                count: count,
+                panel: `Final count = <b>${count}</b>`,
+                statusText: `Done! Total = ${count}`,
+                log: `Final result: ${count}`,
+                logColor: 'var(--accent-green)',
+                bold: true
+            });
+        }
+
+        function renderStep(idx) {
+            const step = steps[idx];
+            if (!step) return;
+
+            const container = document.getElementById('tiles-container');
+            container.innerHTML = '';
+
+            // Show current number with highlight
+            const wrapper = document.createElement('div');
+            wrapper.className = 'tile-unit';
+            const tile = document.createElement('div');
+            tile.className = `tile ${step.type}`;
+            tile.innerText = step.num !== '—' ? step.num : '?';
+            const lbl = document.createElement('div');
+            lbl.className = 'tile-index';
+            lbl.innerText = 'num';
+            wrapper.appendChild(tile);
+            wrapper.appendChild(lbl);
+            container.appendChild(wrapper);
+
+            document.getElementById('main-panel').innerHTML = step.panel || '—';
+            document.getElementById('val-num').innerText = step.num;
+            document.getElementById('val-div').innerText = step.isDiv === true ? 'Yes' : (step.isDiv === false ? 'No' : '—');
+            document.getElementById('val-count').innerText = step.count;
+
+            const resVal = document.getElementById('res-val');
+            if (step.type === 'final') {
+                resVal.innerText = step.count;
+                resVal.classList.add('pop');
+            } else {
+                resVal.innerText = '—';
+                resVal.classList.remove('pop');
+            }
+
+            document.getElementById('status-text').innerText = step.statusText || '';
+
+            const logPanel = document.getElementById('log');
+            logPanel.innerHTML = '';
+            for (let k = 0; k <= idx; k++) {
+                if (steps[k].log) {
+                    const line = document.createElement('div');
+                    line.style.color = steps[k].logColor || 'var(--text-dim)';
+                    if (steps[k].bold) line.style.fontWeight = 'bold';
+                    line.innerText = steps[k].log;
+                    logPanel.appendChild(line);
+                }
+            }
+            logPanel.scrollTop = logPanel.scrollHeight;
+        }
+
+        function next() { if (stepIndex < steps.length - 1) { stepIndex++; renderStep(stepIndex); } else pause(); }
+        function back() { if (stepIndex > 0) { stepIndex--; renderStep(stepIndex); } }
+        function reset() { pause(); stepIndex = 0; renderStep(0); }
+
+        function togglePlay() {
+            const btn = document.getElementById('play-btn');
+            if (timer) pause();
+            else {
+                btn.innerText = 'Pause';
+                if (stepIndex >= steps.length - 1) stepIndex = 0;
+                timer = setInterval(next, delays[document.getElementById('speed-slider').value]);
+            }
+        }
+
+        function pause() {
+            clearInterval(timer);
+            timer = null;
+            document.getElementById('play-btn').innerText = 'Play';
+        }
+
+        function loadCustom() {
+            a = parseInt(document.getElementById('a-input').value) || 1;
+            b = parseInt(document.getElementById('b-input').value) || 10;
+            const divStr = document.getElementById('divisors-input').value || '2,3';
+            divisors = divStr.split(',').map(x => parseInt(x.trim())).filter(x => !isNaN(x) && x > 0);
+            if (divisors.length === 0) divisors = [2, 3];
+            generateSteps();
+            reset();
+        }
+
+        function loadExample(aa, bb, divsStr) {
+            a = aa; b = bb;
+            document.getElementById('a-input').value = a;
+            document.getElementById('b-input').value = b;
+            document.getElementById('divisors-input').value = divsStr;
+            const divs = divsStr.split(',').map(x => parseInt(x.trim())).filter(x => !isNaN(x) && x > 0);
+            divisors = divs.length > 0 ? divs : [2, 3];
+            generateSteps();
+            reset();
+        }
+
+        window.onload = () => loadExample(1, 10, '2,3');
+    </script>
+</body>
+</html>

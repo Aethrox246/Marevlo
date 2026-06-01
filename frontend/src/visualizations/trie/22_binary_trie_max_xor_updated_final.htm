@@ -1,0 +1,403 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Binary Trie - Max XOR</title>
+    <style>
+        :root {
+            --bg: #0d1117;
+            --surface: #161b22;
+            --border: #30363d;
+            --text: #c9d1d9;
+            --muted: #8b949e;
+            --purple: #a371f7;
+            --blue: #58a6ff;
+            --green: #3fb950;
+            --orange: #e3b341;
+        }
+        * { box-sizing: border-box; }
+        body {
+            margin: 0;
+            padding: 20px;
+            background: var(--bg);
+            color: var(--text);
+            font-family: system-ui, sans-serif;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+        h1 { color: var(--purple); margin: 0 0 8px 0; }
+        .subtitle { color: var(--muted); margin-bottom: 20px; }
+        .controls {
+            display: flex;
+            gap: 12px;
+            flex-wrap: wrap;
+            justify-content: center;
+            margin: 15px 0;
+        }
+        button {
+            background: #21262d;
+            color: var(--text);
+            border: 1px solid var(--border);
+            padding: 10px 18px;
+            border-radius: 8px;
+            cursor: pointer;
+        }
+        button:hover { background: #30363d; }
+        .main {
+            display: flex;
+            gap: 40px;
+            flex-wrap: wrap;
+            justify-content: center;
+            width: 100%;
+            max-width: 1350px;
+        }
+        .panel {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 18px;
+        }
+        .array-panel { width: 340px; }
+        .trie-panel { width: 620px; }
+        .label {
+            color: var(--purple);
+            font-weight: bold;
+            margin-bottom: 10px;
+            text-align: center;
+        }
+        .array-list {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            padding: 12px;
+            background: #21262d;
+            border-radius: 10px;
+        }
+        .tile {
+            padding: 8px 16px;
+            background: #30363d;
+            border: 2px solid var(--orange);
+            border-radius: 8px;
+            font-family: monospace;
+        }
+        .trie {
+            background: #21262d;
+            border: 3px solid var(--blue);
+            border-radius: 12px;
+            padding: 20px;
+            min-height: 460px;
+            overflow: auto;
+            font-family: monospace;
+        }
+        .trie-node {
+            display: inline-block;
+            background: #30363d;
+            border: 3px solid #58a6ff;
+            border-radius: 10px;
+            padding: 12px 18px;
+            margin: 12px 8px;
+            text-align: center;
+            position: relative;
+        }
+        .trie-node.current {
+            border-color: var(--orange);
+            box-shadow: 0 0 0 4px rgba(227,179,65,0.4);
+        }
+        .trie-node .bit {
+            font-size: 18px;
+            font-weight: bold;
+        }
+        .children {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 12px;
+            justify-content: center;
+            margin-top: 14px;
+        }
+        .info {
+            margin: 20px 0;
+            padding: 16px;
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            font-family: monospace;
+            min-height: 160px;
+        }
+        .action {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            padding: 16px;
+            width: 100%;
+            max-width: 1100px;
+            margin: 20px 0;
+            min-height: 110px;
+            font-family: monospace;
+        }
+        .log {
+            background: #0d1117;
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            padding: 14px;
+            width: 100%;
+            max-width: 1100px;
+            height: 240px;
+            overflow-y: auto;
+            font-family: 'Courier New', monospace;
+            font-size: 14px;
+        }
+    </style>
+</head>
+<body>
+    <h1>Binary Trie - Max XOR</h1>
+    <p class="subtitle">Find Maximum XOR Pair using Binary Trie</p>
+
+    <div class="controls">
+        <button onclick="loadExample(0)">Example 1: [3,10,5,25,2,8]</button>
+        <button onclick="loadExample(1)">Example 2: [1,2]</button>
+        <button onclick="resetViz()">Reset</button>
+    </div>
+
+    <div class="main">
+        <div class="panel array-panel">
+            <div class="label">Numbers</div>
+            <div class="array-list" id="array-list"></div>
+        </div>
+
+        <div class="panel trie-panel">
+            <div class="label">Binary Trie (MSB → LSB)</div>
+            <div class="trie" id="trie"></div>
+        </div>
+    </div>
+
+    <div class="info">
+        <strong>Current Number:</strong> <span id="current-num" style="color:var(--orange)"></span><br>
+        <strong>Best Match:</strong> <span id="best-match" style="color:var(--green)"></span><br>
+        <strong>Max XOR:</strong> <span id="max-xor" style="color:var(--purple); font-size:24px;"></span>
+    </div>
+
+    <div class="action" id="action">Click example to begin</div>
+
+    <div class="controls">
+        <button onclick="prevStep()">← Prev</button>
+        <button onclick="togglePlay()" id="play-btn">▶ Play</button>
+        <button onclick="nextStep()">Next →</button>
+        <label>Speed <input type="range" id="speed" min="0" max="2" value="1"></label>
+    </div>
+
+    <div class="log" id="log"></div>
+
+    <script>
+        let root = null;
+        let steps = [];
+        let stepIdx = 0;
+        let timer = null;
+        let isPlaying = false;
+        let numbers = [];
+        let BIT_LENGTH = 5; // For examples, adjustable
+
+        class TrieNode {
+            constructor() {
+                this.children = [null, null]; // 0 and 1
+            }
+        }
+
+        function createTrie() {
+            return new TrieNode();
+        }
+
+        function insert(num) {
+            let node = root;
+            const path = [];
+            for (let i = BIT_LENGTH - 1; i >= 0; i--) {
+                const bit = (num >> i) & 1;
+                path.push(bit);
+                if (!node.children[bit]) {
+                    node.children[bit] = new TrieNode();
+                }
+                node = node.children[bit];
+            }
+            return path;
+        }
+
+        function getMaxXOR(num) {
+            let node = root;
+            let xor = 0;
+            const path = [];
+            for (let i = BIT_LENGTH - 1; i >= 0; i--) {
+                const bit = (num >> i) & 1;
+                const opp = 1 - bit;
+                path.push(bit);
+                if (node.children[opp]) {
+                    xor |= (1 << i);
+                    node = node.children[opp];
+                } else if (node.children[bit]) {
+                    node = node.children[bit];
+                } else {
+                    break;
+                }
+            }
+            return {xor, path};
+        }
+
+        function generateSteps(numsList) {
+            numbers = [...numsList];
+            BIT_LENGTH = 5; // Fixed for examples, can be Math.max(...numbers).toString(2).length
+            root = createTrie();
+            steps = [];
+
+            steps.push({
+                action: "Initialize Trie",
+                panel: `Numbers: [${numbers.join(', ')}]`,
+                log: "Binary Trie (MSB to LSB) created",
+                highlight: [],
+                currentNum: null,
+                best: null,
+                maxVal: 0
+            });
+
+            // Insert all numbers
+            for (let num of numbers) {
+                const path = insert(num);
+                steps.push({
+                    action: `Insert ${num}`,
+                    panel: `Inserted ${num} (binary path highlighted)`,
+                    log: `Inserted ${num}`,
+                    highlight: path,
+                    currentNum: num,
+                    best: null,
+                    maxVal: 0
+                });
+            }
+
+            let globalMax = 0;
+            let bestPair = null;
+
+            // Query for each number
+            for (let i = 0; i < numbers.length; i++) {
+                const num = numbers[i];
+                const {xor, path} = getMaxXOR(num);
+                if (xor > globalMax) {
+                    globalMax = xor;
+                    bestPair = {num, xor};
+                }
+                steps.push({
+                    action: `Query for ${num}`,
+                    panel: `Best XOR for ${num}: <span style="color:var(--green)">${xor}</span>`,
+                    log: `Max for ${num} is ${xor}`,
+                    highlight: path,
+                    currentNum: num,
+                    best: xor,
+                    maxVal: globalMax
+                });
+            }
+
+            steps.push({
+                action: "Final Result",
+                panel: `Maximum XOR: <span style="color:var(--purple); font-size:28px;">${globalMax}</span>`,
+                log: `Overall maximum XOR is ${globalMax}`,
+                highlight: [],
+                currentNum: null,
+                best: globalMax,
+                maxVal: globalMax
+            });
+        }
+
+        function buildTrieHTML(node, prefix = "", highlight = [], depth = 0) {
+            if (!node) return '';
+            let html = `<div class="trie-node ${highlight.length && depth < highlight.length ? 'current' : ''}">`;
+            html += `<div class="bit">${prefix || 'ROOT'}</div>`;
+
+            let chHtml = '<div class="children">';
+            let has = false;
+            for (let bit = 0; bit < 2; bit++) {
+                if (node.children[bit]) {
+                    has = true;
+                    chHtml += buildTrieHTML(node.children[bit], prefix + bit, highlight, depth + 1);
+                }
+            }
+            chHtml += '</div>';
+            if (has) html += chHtml;
+            html += '</div>';
+            return html;
+        }
+
+        function renderTrie(highlight = []) {
+            const cont = document.getElementById('trie');
+            cont.innerHTML = buildTrieHTML(root, "", highlight);
+        }
+
+        function renderArray() {
+            const cont = document.getElementById('array-list');
+            cont.innerHTML = numbers.map(n => `<div class="tile">${n}</div>`).join('');
+        }
+
+        function renderStep(idx) {
+            stepIdx = Math.max(0, Math.min(idx, steps.length - 1));
+            const step = steps[stepIdx];
+
+            document.getElementById('action').innerHTML = step.panel;
+            document.getElementById('current-num').textContent = step.currentNum !== null ? step.currentNum : '—';
+            document.getElementById('best-match').textContent = step.best !== null ? step.best : '—';
+            document.getElementById('max-xor').textContent = step.maxVal;
+
+            renderArray();
+            renderTrie(step.highlight || []);
+
+            const logEl = document.getElementById('log');
+            logEl.innerHTML = steps.slice(0, stepIdx + 1).map(s => `<div>${s.log}</div>`).join('');
+            logEl.scrollTop = logEl.scrollHeight;
+        }
+
+        function nextStep() {
+            if (stepIdx < steps.length - 1) renderStep(stepIdx + 1);
+            else pause();
+        }
+
+        function prevStep() {
+            if (stepIdx > 0) renderStep(stepIdx - 1);
+        }
+
+        function togglePlay() {
+            const btn = document.getElementById('play-btn');
+            if (isPlaying) {
+                pause();
+            } else {
+                isPlaying = true;
+                btn.textContent = '❚❚ Pause';
+                const speedMap = [950, 480, 220];
+                timer = setInterval(() => {
+                    if (stepIdx < steps.length - 1) nextStep();
+                    else pause();
+                }, speedMap[document.getElementById('speed').value]);
+            }
+        }
+
+        function pause() {
+            clearInterval(timer);
+            isPlaying = false;
+            document.getElementById('play-btn').textContent = '▶ Play';
+        }
+
+        function resetViz() {
+            pause();
+            stepIdx = 0;
+            renderStep(0);
+        }
+
+        function loadExample(n) {
+            const examples = [
+                { nums: [3, 10, 5, 25, 2, 8] },
+                { nums: [1, 2] }
+            ];
+            const ex = examples[n];
+            generateSteps(ex.nums);
+            resetViz();
+        }
+
+        window.onload = () => loadExample(0);
+    </script>
+</body>
+</html>

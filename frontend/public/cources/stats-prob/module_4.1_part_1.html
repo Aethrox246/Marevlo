@@ -1,0 +1,1663 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Module 5.7 — Bias-Variance Tradeoff & Regularization | Quantum Neural Analytics OS</title>
+<style>
+:root {
+  --bg-deep: #03040a;
+  --bg-navy: #060818;
+  --bg-panel: rgba(10, 15, 35, 0.55);
+  --neon-cyan: #00f0ff;
+  --neon-purple: #b14dff;
+  --neon-magenta: #ff2bd6;
+  --neon-amber: #ffb547;
+  --neon-green: #00ffaa;
+  --neon-red: #ff4d6d;
+  --text-primary: #e6f4ff;
+  --text-soft: #d8e6ff;
+  --text-dim: #7a8bbf;
+  --border-glow: rgba(0, 240, 255, 0.25);
+  --glass-blur: blur(18px);
+  --mono: 'JetBrains Mono', 'Fira Code', 'Consolas', monospace;
+}
+* { margin: 0; padding: 0; box-sizing: border-box; }
+html { scroll-behavior: smooth; }
+body { background: var(--bg-deep); color: var(--text-soft); font-family: 'Inter','Segoe UI',system-ui,sans-serif; overflow-x: hidden; line-height: 1.65; min-height: 100vh; position: relative; }
+body::before {
+  content: ''; position: fixed; inset: 0;
+  background-image: linear-gradient(rgba(0,240,255,0.04) 1px, transparent 1px), linear-gradient(90deg, rgba(0,240,255,0.04) 1px, transparent 1px);
+  background-size: 60px 60px; pointer-events: none; z-index: 0; animation: gridShift 30s linear infinite;
+}
+body::after {
+  content: ''; position: fixed; inset: 0;
+  background: radial-gradient(circle at 18% 22%, rgba(0,240,255,0.12), transparent 42%), radial-gradient(circle at 82% 65%, rgba(177,77,255,0.13), transparent 45%), radial-gradient(circle at 50% 95%, rgba(255,43,214,0.08), transparent 40%);
+  pointer-events: none; z-index: 0;
+}
+@keyframes gridShift { 0% { background-position: 0 0,0 0; } 100% { background-position: 60px 60px,60px 60px; } }
+#particle-canvas { position: fixed; inset: 0; z-index: 1; pointer-events: none; }
+.container { position: relative; z-index: 10; max-width: 1280px; margin: 0 auto; padding: 32px 24px 120px; }
+.hud { display: flex; justify-content: space-between; align-items: center; padding: 14px 22px; background: var(--bg-panel); backdrop-filter: var(--glass-blur); border: 1px solid var(--border-glow); border-radius: 14px; font-family: var(--mono); font-size: 11px; letter-spacing: 1.8px; text-transform: uppercase; margin-bottom: 50px; box-shadow: 0 0 30px rgba(0,240,255,0.1); flex-wrap: wrap; gap: 10px; }
+.hud-left { color: var(--neon-cyan); }
+.hud-center { color: var(--text-soft); }
+.hud-right { color: var(--neon-purple); display: flex; align-items: center; gap: 8px; }
+.hud-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--neon-cyan); box-shadow: 0 0 12px var(--neon-cyan); animation: pulse 1.6s ease-in-out infinite; }
+@keyframes pulse { 0%,100% { opacity: 1; transform: scale(1); } 50% { opacity: 0.4; transform: scale(1.3); } }
+.hero { position: relative; text-align: center; padding: 90px 24px 60px; margin-bottom: 80px; border: 1px solid var(--border-glow); border-radius: 28px; background: linear-gradient(135deg, rgba(10,15,40,0.6), rgba(20,5,40,0.4)); backdrop-filter: var(--glass-blur); overflow: hidden; box-shadow: 0 0 60px rgba(0,240,255,0.1), inset 0 0 80px rgba(177,77,255,0.06); }
+.hero-bg-svg { position: absolute; inset: 0; width: 100%; height: 100%; opacity: 0.45; pointer-events: none; }
+.hero-tag { display: inline-block; font-family: var(--mono); font-size: 11px; letter-spacing: 3px; color: var(--neon-cyan); padding: 6px 18px; border: 1px solid var(--neon-cyan); border-radius: 999px; margin-bottom: 26px; text-transform: uppercase; background: rgba(0,240,255,0.05); box-shadow: 0 0 20px rgba(0,240,255,0.2); position: relative; z-index: 2; }
+.hero h1 { font-family: 'Inter','Segoe UI',system-ui,sans-serif; font-size: clamp(2.4rem, 6vw, 4.8rem); font-weight: 900; line-height: 1.05; letter-spacing: -2px; background: linear-gradient(135deg, #ffffff 0%, var(--neon-cyan) 40%, var(--neon-purple) 80%, var(--neon-magenta) 100%); background-size: 200% 200%; -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent; animation: gradientShift 8s ease infinite; margin: 0 auto 18px; text-shadow: 0 0 80px rgba(177,77,255,0.2); text-align: center; position: relative; z-index: 2; }
+@keyframes gradientShift { 0%,100% { background-position: 0% 50%; } 50% { background-position: 100% 50%; } }
+.hero .subtitle { font-size: 1.15rem; color: var(--text-soft); max-width: 780px; margin: 0 auto 26px; position: relative; z-index: 2; }
+.hero .overview { font-size: 0.95rem; color: var(--text-dim); max-width: 840px; margin: 0 auto 30px; position: relative; z-index: 2; font-style: italic; }
+.hero-meta { display: flex; justify-content: center; flex-wrap: wrap; gap: 12px; position: relative; z-index: 2; margin-top: 20px; }
+.meta-chip { display: inline-flex; align-items: center; gap: 10px; padding: 10px 18px; background: rgba(10,15,35,0.6); border: 1px solid var(--border-glow); border-radius: 10px; font-family: var(--mono); font-size: 11px; letter-spacing: 1.5px; text-transform: uppercase; transition: all 0.3s; }
+.meta-chip:hover { border-color: var(--neon-cyan); box-shadow: 0 0 18px rgba(0,240,255,0.2); transform: translateY(-2px); }
+.meta-chip .label { color: var(--text-dim); }
+.meta-chip .value { color: var(--neon-cyan); font-weight: 700; }
+.section { margin-bottom: 90px; position: relative; }
+.section-header { display: flex; align-items: center; gap: 18px; margin-bottom: 36px; }
+.section-num { font-family: var(--mono); font-size: 13px; color: var(--neon-cyan); padding: 8px 14px; border: 1px solid var(--neon-cyan); border-radius: 8px; background: rgba(0,240,255,0.06); letter-spacing: 2px; white-space: nowrap; }
+.section-title { font-size: clamp(1.5rem, 3vw, 2.1rem); font-weight: 700; background: linear-gradient(90deg, #fff, var(--neon-cyan)); -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent; }
+.section-line { flex: 1; height: 1px; background: linear-gradient(90deg, var(--neon-cyan), transparent); margin-left: 8px; }
+.sub-section-marker { font-family: var(--mono); font-size: 11px; color: var(--neon-purple); letter-spacing: 3px; text-transform: uppercase; margin-bottom: 14px; padding: 6px 12px; display: inline-block; border: 1px solid var(--neon-purple); border-radius: 6px; background: rgba(177,77,255,0.05); }
+.concept-block { background: var(--bg-panel); backdrop-filter: var(--glass-blur); border: 1px solid var(--border-glow); border-radius: 20px; padding: 32px; margin-bottom: 24px; position: relative; overflow: hidden; }
+.concept-block::after { content: ''; position: absolute; bottom: -50%; right: -10%; width: 320px; height: 320px; background: radial-gradient(circle, rgba(0,240,255,0.08), transparent 70%); pointer-events: none; }
+.concept-block h3 { font-size: 1.35rem; color: var(--neon-cyan); margin-bottom: 14px; display: flex; align-items: center; gap: 12px; }
+.concept-block h3::before { content: '◆'; color: var(--neon-purple); font-size: 1rem; }
+.concept-block h4 { font-size: 1.05rem; color: var(--neon-magenta); margin-top: 18px; margin-bottom: 10px; }
+.concept-block p { color: var(--text-soft); margin-bottom: 14px; font-size: 1rem; }
+.concept-block strong { color: #fff; }
+.concept-block em { color: var(--neon-magenta); font-style: normal; }
+.concept-block ul { list-style: none; padding-left: 0; }
+.concept-block ul li { padding: 6px 0 6px 22px; position: relative; color: var(--text-soft); }
+.concept-block ul li::before { content: '▸'; position: absolute; left: 0; color: var(--neon-cyan); }
+.highlight-box { background: linear-gradient(135deg, rgba(0,240,255,0.07), rgba(177,77,255,0.06)); border-left: 3px solid var(--neon-cyan); padding: 16px 22px; border-radius: 10px; margin: 18px 0; font-size: 0.95rem; }
+.success-box { background: linear-gradient(135deg, rgba(0,255,170,0.06), rgba(0,240,255,0.05)); border-left: 3px solid var(--neon-green); padding: 16px 22px; border-radius: 10px; margin: 18px 0; font-size: 0.95rem; }
+.warning-box { background: linear-gradient(135deg, rgba(255,77,109,0.08), rgba(255,181,71,0.06)); border-left: 3px solid var(--neon-red); padding: 16px 22px; border-radius: 10px; margin: 18px 0; font-size: 0.95rem; }
+.warning-box strong { color: var(--neon-red); }
+.viz-wrap { background: var(--bg-panel); backdrop-filter: var(--glass-blur); border: 1px solid var(--border-glow); border-radius: 22px; padding: 30px; margin-bottom: 28px; position: relative; }
+.viz-title { font-size: 1.15rem; color: var(--neon-cyan); margin-bottom: 8px; font-family: var(--mono); letter-spacing: 1px; text-transform: uppercase; }
+.viz-desc { font-size: 0.92rem; color: var(--text-soft); margin-bottom: 22px; }
+.viz-canvas { width: 100%; background: rgba(0,0,0,0.35); border-radius: 12px; border: 1px solid rgba(0,240,255,0.2); display: block; }
+input[type="range"] { width: 100%; -webkit-appearance: none; appearance: none; background: transparent; height: 24px; }
+input[type="range"]::-webkit-slider-runnable-track { height: 4px; background: linear-gradient(90deg, var(--neon-cyan), var(--neon-purple)); border-radius: 4px; }
+input[type="range"]::-moz-range-track { height: 4px; background: linear-gradient(90deg, var(--neon-cyan), var(--neon-purple)); border-radius: 4px; }
+input[type="range"]::-webkit-slider-thumb { -webkit-appearance: none; appearance: none; width: 18px; height: 18px; border-radius: 50%; background: #fff; margin-top: -7px; cursor: pointer; box-shadow: 0 0 12px rgba(0,240,255,0.8); }
+input[type="range"]::-moz-range-thumb { width: 18px; height: 18px; border-radius: 50%; background: #fff; border: 0; cursor: pointer; box-shadow: 0 0 12px rgba(0,240,255,0.8); }
+.slider-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 20px; margin-bottom: 18px; }
+.slider-cell { background: rgba(0,0,0,0.25); border: 1px solid var(--border-glow); border-radius: 12px; padding: 16px; }
+.slider-label { display: flex; justify-content: space-between; font-family: var(--mono); font-size: 11px; text-transform: uppercase; letter-spacing: 1.5px; color: var(--text-dim); margin-bottom: 10px; }
+.slider-label span:last-child { color: var(--neon-cyan); font-size: 14px; font-weight: 700; }
+.stat-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px; margin-top: 14px; }
+.stat-box { background: rgba(0,240,255,0.05); border: 1px solid var(--border-glow); border-radius: 10px; padding: 14px; text-align: center; }
+.stat-label { font-family: var(--mono); font-size: 10px; color: var(--text-dim); text-transform: uppercase; letter-spacing: 1.5px; margin-bottom: 6px; }
+.stat-value { font-size: 1.4rem; font-weight: 700; color: var(--neon-cyan); font-family: var(--mono); }
+.stat-value.purple { color: var(--neon-purple); }
+.stat-value.magenta { color: var(--neon-magenta); }
+.stat-value.amber { color: var(--neon-amber); }
+.stat-value.green { color: var(--neon-green); }
+.stat-value.red { color: var(--neon-red); }
+.btn-row { display: flex; flex-wrap: wrap; gap: 12px; margin-bottom: 20px; }
+.btn { background: rgba(0,240,255,0.06); border: 1px solid var(--border-glow); color: var(--neon-cyan); padding: 10px 20px; border-radius: 10px; font-family: var(--mono); font-size: 12px; letter-spacing: 1.5px; cursor: pointer; text-transform: uppercase; transition: all 0.25s; }
+.btn:hover { background: rgba(0,240,255,0.15); box-shadow: 0 0 22px rgba(0,240,255,0.3); transform: translateY(-2px); }
+.btn.purple { border-color: rgba(177,77,255,0.4); color: var(--neon-purple); }
+.btn.purple:hover { background: rgba(177,77,255,0.15); box-shadow: 0 0 22px rgba(177,77,255,0.3); }
+.btn.magenta { border-color: rgba(255,43,214,0.4); color: var(--neon-magenta); }
+.btn.magenta:hover { background: rgba(255,43,214,0.15); box-shadow: 0 0 22px rgba(255,43,214,0.3); }
+.btn.active { background: linear-gradient(135deg, rgba(0,240,255,0.3), rgba(177,77,255,0.2)); border-color: var(--neon-cyan); color: #fff; box-shadow: 0 0 18px rgba(0,240,255,0.4); }
+.formula-card { background: linear-gradient(135deg, rgba(10,15,40,0.85), rgba(30,10,50,0.75)); border: 1px solid var(--border-glow); border-radius: 16px; padding: 28px; margin-bottom: 22px; position: relative; overflow: hidden; }
+.formula-card::before { content: ''; position: absolute; top: 0; left: 0; width: 4px; height: 100%; background: linear-gradient(180deg, var(--neon-cyan), var(--neon-purple), var(--neon-magenta)); }
+.formula-label { font-family: var(--mono); font-size: 11px; color: var(--neon-cyan); letter-spacing: 2px; text-transform: uppercase; margin-bottom: 14px; }
+.formula { font-family: var(--mono); font-size: 1.25rem; color: #fff; text-align: center; padding: 18px 12px; background: rgba(0,0,0,0.35); border-radius: 10px; margin: 14px 0; letter-spacing: 1px; overflow-x: auto; }
+.formula-explain { color: var(--text-soft); font-size: 0.95rem; margin-top: 12px; }
+.var-list { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 10px; margin-top: 14px; }
+.var-item { background: rgba(0,0,0,0.3); border: 1px solid rgba(0,240,255,0.15); border-radius: 8px; padding: 10px 14px; font-size: 0.88rem; }
+.var-item code { font-family: var(--mono); color: var(--neon-cyan); font-weight: 700; }
+.dual-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 18px; margin-top: 16px; }
+.dual-cell { background: rgba(0,0,0,0.25); border: 1px solid var(--border-glow); border-radius: 12px; padding: 20px; }
+.dual-cell h4 { font-family: var(--mono); font-size: 12px; color: var(--neon-cyan); letter-spacing: 2px; text-transform: uppercase; margin-bottom: 12px; }
+.dual-cell.purple h4 { color: var(--neon-purple); }
+.dual-cell.magenta h4 { color: var(--neon-magenta); }
+.dual-cell.green h4 { color: var(--neon-green); }
+.dual-cell.amber h4 { color: var(--neon-amber); }
+.dual-cell.red h4 { color: var(--neon-red); }
+.dual-cell ul { list-style: none; padding-left: 0; }
+.dual-cell li { padding: 6px 0 6px 18px; color: var(--text-soft); font-size: 0.92rem; border-bottom: 1px dashed rgba(0,240,255,0.08); position: relative; }
+.dual-cell li:last-child { border-bottom: 0; }
+.dual-cell li::before { content: '▸'; position: absolute; left: 0; color: var(--neon-cyan); }
+.deep-dive { background: linear-gradient(135deg, rgba(10,15,35,0.7), rgba(20,5,40,0.55)); border: 1px solid var(--border-glow); border-radius: 18px; padding: 26px; margin: 18px 0; }
+.deep-dive .dd-label { font-family: var(--mono); font-size: 11px; color: var(--neon-magenta); letter-spacing: 2px; text-transform: uppercase; margin-bottom: 10px; padding: 4px 10px; display: inline-block; border: 1px solid var(--neon-magenta); border-radius: 6px; background: rgba(255,43,214,0.05); }
+.deep-dive h4 { font-size: 1.1rem; color: #fff; margin-bottom: 10px; }
+.deep-dive p { color: var(--text-soft); font-size: 0.95rem; margin-bottom: 12px; }
+.real-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 18px; margin-top: 14px; }
+.real-card { background: rgba(10,15,35,0.6); border: 1px solid var(--border-glow); border-radius: 14px; padding: 20px; transition: all 0.3s; }
+.real-card:hover { transform: translateY(-4px); border-color: var(--neon-purple); box-shadow: 0 8px 24px rgba(177,77,255,0.2); }
+.real-card h4 { color: var(--neon-magenta); margin-bottom: 8px; font-size: 1rem; }
+.real-card p { color: var(--text-soft); font-size: 0.9rem; }
+.comp-table { width: 100%; border-collapse: collapse; margin-top: 16px; font-size: 0.95rem; }
+.comp-table th, .comp-table td { padding: 14px 18px; text-align: left; border-bottom: 1px solid rgba(0,240,255,0.12); vertical-align: top; }
+.comp-table th { font-family: var(--mono); font-size: 11px; letter-spacing: 2px; text-transform: uppercase; color: var(--neon-cyan); background: rgba(0,240,255,0.05); }
+.comp-table td:first-child { color: var(--neon-purple); font-weight: 600; font-family: var(--mono); font-size: 0.85rem; }
+.comp-table tr:hover { background: rgba(0,240,255,0.03); }
+
+/* ── QUIZ ── */
+.quiz-card { background: var(--bg-panel); backdrop-filter: var(--glass-blur); border: 1px solid var(--border-glow); border-radius: 18px; padding: 28px; margin-bottom: 22px; }
+.quiz-q { font-size: 1.05rem; color: #fff; margin-bottom: 18px; font-weight: 500; }
+.quiz-q .qnum { font-family: var(--mono); color: var(--neon-cyan); margin-right: 10px; }
+.quiz-q .qlevel { font-family: var(--mono); font-size: 10px; letter-spacing: 1.5px; padding: 3px 10px; border-radius: 5px; margin-left: 8px; text-transform: uppercase; font-weight: 700; }
+.qlevel.easy { background: rgba(0,255,170,0.12); color: var(--neon-green); border: 1px solid rgba(0,255,170,0.4); }
+.qlevel.mod { background: rgba(255,181,71,0.12); color: var(--neon-amber); border: 1px solid rgba(255,181,71,0.4); }
+.qlevel.hard { background: rgba(255,77,109,0.12); color: var(--neon-red); border: 1px solid rgba(255,77,109,0.4); }
+.quiz-options { display: grid; gap: 10px; }
+.quiz-opt { padding: 14px 18px; background: rgba(0,240,255,0.04); border: 1px solid var(--border-glow); border-radius: 10px; cursor: pointer; color: var(--text-soft); transition: all 0.25s; font-size: 0.95rem; }
+.quiz-opt:hover { background: rgba(0,240,255,0.12); border-color: var(--neon-cyan); color: #fff; transform: translateX(4px); }
+.quiz-opt.correct { background: rgba(0,255,170,0.15); border-color: var(--neon-green); color: var(--neon-green); box-shadow: 0 0 18px rgba(0,255,170,0.3); }
+.quiz-opt.wrong { background: rgba(255,77,109,0.15); border-color: var(--neon-red); color: var(--neon-red); }
+.quiz-feedback { margin-top: 14px; padding: 12px 16px; border-radius: 10px; font-size: 0.9rem; display: none; }
+.quiz-feedback.show { display: block; }
+.quiz-feedback.ok { background: rgba(0,255,170,0.08); border: 1px solid rgba(0,255,170,0.4); color: var(--neon-green); }
+.quiz-feedback.no { background: rgba(255,77,109,0.08); border: 1px solid rgba(255,77,109,0.4); color: #ff7e9d; }
+.quiz-feedback .fb-title { font-weight: 700; display: block; margin-bottom: 4px; }
+.quiz-feedback .fb-explain { color: var(--text-soft); font-weight: 400; font-size: 0.88rem; display: block; margin-top: 4px; }
+.quiz-subtitle { font-family: var(--mono); font-size: 11px; color: var(--neon-cyan); letter-spacing: 2px; text-transform: uppercase; margin: 30px 0 16px; padding-bottom: 8px; border-bottom: 1px dashed rgba(0,240,255,0.25); }
+.quiz-score-card { background: linear-gradient(135deg, rgba(0,240,255,0.08), rgba(177,77,255,0.06)); border: 1px solid var(--border-glow); border-radius: 16px; padding: 22px 26px; margin-bottom: 26px; display: flex; align-items: center; gap: 18px; flex-wrap: wrap; }
+.quiz-score-card .score-num { font-family: var(--mono); font-size: 1.6rem; color: var(--neon-cyan); font-weight: 800; }
+.quiz-score-card .score-label { font-family: var(--mono); font-size: 11px; color: var(--text-dim); letter-spacing: 1.8px; text-transform: uppercase; }
+.quiz-score-card .score-bar-wrap { flex: 1; min-width: 200px; height: 8px; background: rgba(0,0,0,0.35); border-radius: 4px; overflow: hidden; }
+.quiz-score-card .score-bar-fill { height: 100%; width: 0%; background: linear-gradient(90deg, var(--neon-cyan), var(--neon-purple)); transition: width 0.6s ease; }
+
+/* ── AI EVALUATION ── */
+.ai-eval-card { position: relative; background: linear-gradient(135deg, rgba(177,77,255,0.06), rgba(0,240,255,0.05)); border: 1px solid rgba(177,77,255,0.25); border-radius: 18px; padding: 28px; margin-bottom: 22px; backdrop-filter: var(--glass-blur); }
+.ai-eval-card::before { content: ''; position: absolute; top: 0; left: 0; width: 4px; height: 100%; background: linear-gradient(180deg, var(--neon-purple), var(--neon-cyan)); border-radius: 18px 0 0 18px; }
+.ai-eval-q { font-size: 1.05rem; color: #fff; margin-bottom: 8px; font-weight: 500; }
+.ai-eval-q .qnum { font-family: var(--mono); color: var(--neon-purple); margin-right: 10px; }
+.ai-eval-hint { font-family: var(--mono); font-size: 11px; color: var(--text-dim); letter-spacing: 1.5px; text-transform: uppercase; margin-bottom: 14px; }
+.ai-eval-input { width: 100%; min-height: 110px; padding: 14px 16px; background: rgba(0,0,0,0.35); border: 1px solid var(--border-glow); border-radius: 12px; color: var(--text-primary); font-family: 'Inter', system-ui, sans-serif; font-size: 0.95rem; line-height: 1.6; resize: vertical; transition: border-color 0.25s, box-shadow 0.25s; }
+.ai-eval-input:focus { outline: none; border-color: var(--neon-purple); box-shadow: 0 0 18px rgba(177,77,255,0.2); }
+.ai-eval-btn-row { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 14px; }
+.ai-eval-btn { padding: 10px 22px; background: linear-gradient(135deg, var(--neon-purple), var(--neon-cyan)); border: none; border-radius: 10px; color: var(--bg-deep); font-family: var(--mono); font-size: 12px; font-weight: 700; letter-spacing: 1.5px; text-transform: uppercase; cursor: pointer; transition: transform 0.2s, box-shadow 0.2s; }
+.ai-eval-btn:hover { transform: translateY(-2px); box-shadow: 0 6px 20px rgba(177,77,255,0.35); }
+.ai-eval-btn.ghost { background: transparent; border: 1px solid var(--border-glow); color: var(--text-dim); }
+.ai-eval-btn.ghost:hover { border-color: var(--neon-cyan); color: var(--neon-cyan); box-shadow: none; }
+.ai-eval-result { margin-top: 16px; padding: 16px 18px; background: rgba(0,0,0,0.35); border: 1px solid rgba(177,77,255,0.3); border-radius: 12px; display: none; }
+.ai-eval-result.show { display: block; animation: slideIn 0.4s; }
+.ai-eval-score-row { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; padding-bottom: 12px; border-bottom: 1px dashed rgba(177,77,255,0.2); margin-bottom: 12px; }
+.ai-eval-avatar { width: 36px; height: 36px; border-radius: 50%; background: linear-gradient(135deg, var(--neon-purple), var(--neon-cyan)); display: flex; align-items: center; justify-content: center; font-family: var(--mono); font-weight: 800; color: var(--bg-deep); font-size: 13px; flex-shrink: 0; }
+.ai-eval-tag { font-family: var(--mono); font-size: 10px; color: var(--neon-purple); letter-spacing: 1.8px; text-transform: uppercase; }
+.ai-eval-score { margin-left: auto; font-family: var(--mono); font-size: 1.05rem; font-weight: 700; padding: 4px 14px; border-radius: 8px; letter-spacing: 1px; }
+.ai-eval-score.excellent { background: rgba(0,255,170,0.15); border: 1px solid var(--neon-green); color: var(--neon-green); }
+.ai-eval-score.good { background: rgba(0,240,255,0.15); border: 1px solid var(--neon-cyan); color: var(--neon-cyan); }
+.ai-eval-score.partial { background: rgba(255,181,71,0.15); border: 1px solid var(--neon-amber); color: var(--neon-amber); }
+.ai-eval-score.weak { background: rgba(255,77,109,0.15); border: 1px solid var(--neon-red); color: #ff7e9d; }
+.ai-eval-feedback { color: var(--text-soft); font-size: 0.92rem; line-height: 1.65; }
+.ai-eval-feedback strong { color: #fff; }
+.ai-eval-feedback .keyword-hit { color: var(--neon-green); font-family: var(--mono); font-size: 0.85rem; }
+.ai-eval-feedback .keyword-miss { color: var(--neon-amber); font-family: var(--mono); font-size: 0.85rem; }
+.ai-eval-feedback ul { margin-top: 8px; padding-left: 20px; list-style: none; }
+.ai-eval-feedback li { margin-bottom: 4px; padding-left: 0; }
+.ai-eval-feedback li::before { content: ''; }
+.ai-eval-model { margin-top: 12px; padding: 12px 14px; background: rgba(0,240,255,0.05); border-left: 3px solid var(--neon-cyan); border-radius: 8px; font-size: 0.88rem; color: var(--text-soft); }
+.ai-eval-model .model-label { font-family: var(--mono); font-size: 10px; color: var(--neon-cyan); letter-spacing: 1.8px; text-transform: uppercase; display: block; margin-bottom: 6px; }
+
+/* ── AI / RECAP PANEL ── */
+.ai-panel { position: relative; background: linear-gradient(135deg, rgba(0,240,255,0.06), rgba(177,77,255,0.06)); border: 1px solid var(--border-glow); border-radius: 24px; padding: 38px 30px; backdrop-filter: var(--glass-blur); overflow: hidden; }
+.ai-head { display: flex; align-items: center; gap: 16px; margin-bottom: 26px; }
+.ai-avatar { width: 54px; height: 54px; border-radius: 50%; background: linear-gradient(135deg, var(--neon-cyan), var(--neon-purple)); display: flex; align-items: center; justify-content: center; font-family: var(--mono); font-weight: 800; color: var(--bg-deep); font-size: 18px; box-shadow: 0 0 24px rgba(0,240,255,0.5); animation: aiPulse 2.4s ease-in-out infinite; }
+@keyframes aiPulse { 0%,100% { box-shadow: 0 0 24px rgba(0,240,255,0.5); } 50% { box-shadow: 0 0 40px rgba(177,77,255,0.6); } }
+.ai-meta .ai-name { font-size: 1.05rem; color: #fff; font-weight: 600; }
+.ai-meta .ai-role { font-family: var(--mono); font-size: 11px; color: var(--neon-cyan); letter-spacing: 2px; text-transform: uppercase; }
+.takeaway { display: flex; gap: 14px; align-items: flex-start; padding: 14px 0; border-bottom: 1px dashed rgba(0,240,255,0.15); }
+.takeaway:last-child { border-bottom: 0; }
+.takeaway-num { font-family: var(--mono); font-size: 13px; color: var(--neon-cyan); background: rgba(0,240,255,0.08); border: 1px solid var(--border-glow); padding: 4px 10px; border-radius: 6px; flex-shrink: 0; font-weight: 600; }
+.takeaway-text { color: var(--text-soft); font-size: 0.95rem; }
+.takeaway-text strong { color: #fff; }
+.takeaway-text em { color: var(--neon-magenta); font-style: normal; }
+
+.module-footer { text-align: center; margin-top: 60px; padding: 26px; font-family: var(--mono); font-size: 11px; color: var(--text-dim); letter-spacing: 2px; text-transform: uppercase; border-top: 1px dashed rgba(0,240,255,0.2); }
+
+/* ── REVEAL (Disabled to ensure content visibility) ── */
+.reveal { opacity: 1 !important; transform: none !important; }
+
+@keyframes slideIn { from { transform: translateY(-8px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+.quiz-feedback.show { animation: slideIn 0.4s; }
+
+/* ── RESPONSIVE ── */
+@media (max-width: 768px) {
+  .container { padding: 20px 14px 100px; }
+  .hero { padding: 60px 18px 40px; margin-bottom: 50px; }
+  .section { margin-bottom: 60px; }
+  .section-header { flex-wrap: wrap; }
+  .concept-block, .viz-wrap, .ai-panel, .quiz-card, .ai-eval-card { padding: 22px 18px; }
+  .formula { font-size: 0.95rem; padding: 14px 8px; }
+}
+</style>
+</head>
+<body>
+<canvas id="particle-canvas"></canvas>
+
+<div class="container">
+  <div class="hud">
+    <div class="hud-left">▸ QNA-OS // TRACK 5 · MODULE 5.7</div>
+    <div class="hud-center">BIAS-VARIANCE TRADEOFF &amp; REGULARIZATION</div>
+    <div class="hud-right"><span class="hud-dot"></span>SYSTEM NOMINAL</div>
+  </div>
+
+  <section class="hero">
+    <svg class="hero-bg-svg" viewBox="0 0 1200 400" preserveAspectRatio="none">
+      <defs>
+        <linearGradient id="uGradH" x1="0" y1="1" x2="1" y2="0">
+          <stop offset="0%" stop-color="#00f0ff" stop-opacity="0.7"/>
+          <stop offset="100%" stop-color="#b14dff" stop-opacity="0.8"/>
+        </linearGradient>
+      </defs>
+      <path d="M 80 320 Q 250 240 400 220 T 600 200 T 800 220 T 1100 320" fill="none" stroke="url(#uGradH)" stroke-width="3" opacity="0.85"/>
+      <text x="600" y="180" fill="#00f0ff" font-family="JetBrains Mono" font-size="13" text-anchor="middle" opacity="0.85">TOTAL ERROR</text>
+      <path d="M 80 130 Q 300 200 600 290 T 1100 340" fill="none" stroke="#ff4d6d" stroke-width="2" opacity="0.6" stroke-dasharray="6 4"/>
+      <text x="200" y="120" fill="#ff4d6d" font-family="JetBrains Mono" font-size="12" opacity="0.8">BIAS²</text>
+      <path d="M 80 340 Q 350 320 600 280 T 1100 130" fill="none" stroke="#00ffaa" stroke-width="2" opacity="0.6" stroke-dasharray="6 4"/>
+      <text x="950" y="120" fill="#00ffaa" font-family="JetBrains Mono" font-size="12" opacity="0.8">VARIANCE</text>
+      <circle cx="600" cy="200" r="8" fill="#ff2bd6" opacity="0.9"/>
+      <circle cx="600" cy="200" r="14" fill="none" stroke="#ff2bd6" stroke-width="1.5" opacity="0.5"/>
+      <text x="600" y="370" fill="#ff2bd6" font-family="JetBrains Mono" font-size="13" text-anchor="middle" opacity="0.9">◉ SWEET SPOT</text>
+      <text x="80"  y="375" fill="#7a8bbf" font-family="JetBrains Mono" font-size="11" opacity="0.7">UNDERFIT</text>
+      <text x="1020" y="375" fill="#7a8bbf" font-family="JetBrains Mono" font-size="11" opacity="0.7">OVERFIT</text>
+    </svg>
+    <div class="hero-tag">◉ MODULE 5.7 — TRACK 5 · MASTERY MILESTONE</div>
+    <h1>Bias-Variance &amp; Regularization</h1>
+    <p class="subtitle">The single most important idea in machine learning. Why simple models underfit, complex models overfit — and how shrinkage saves you from both.</p>
+    <p class="overview">In Module 4.1 we met bias and variance in pure statistics. Now in Track 5 we apply them to <strong>predictive models</strong>: linear regression, polynomials, neural networks — anything that learns from data. The bias-variance tradeoff explains why the model that fits your training data best almost never predicts new data best. From there, we build the two most-used cures: <em>Ridge</em> and <em>Lasso</em> regression. By the end, you'll understand the math behind regularization in scikit-learn, XGBoost, deep learning weight decay, and almost every modern ML framework.</p>
+    <div class="hero-meta">
+      <div class="meta-chip"><span class="label">DURATION:</span><span class="value">60 MIN</span></div>
+      <div class="meta-chip"><span class="label">LEVEL:</span><span class="value">CORE → MASTER</span></div>
+      <div class="meta-chip"><span class="label">TOPICS:</span><span class="value">05</span></div>
+      <div class="meta-chip"><span class="label">FORMULAS:</span><span class="value">06</span></div>
+      <div class="meta-chip"><span class="label">PRACTICE:</span><span class="value">8 QUIZ + 05 AI EVAL</span></div>
+      <div class="meta-chip"><span class="label">PREREQ:</span><span class="value">M-4.1 · M-5.1 (linreg)</span></div>
+    </div>
+  </section>
+
+  <section class="section reveal">
+    <div class="section-header">
+      <div class="section-num">⟁ OBJECTIVES</div>
+      <h2 class="section-title">What You'll Learn in Module 5.7</h2>
+      <div class="section-line"></div>
+    </div>
+
+    <div class="dual-grid">
+      <div class="dual-cell">
+        <h4>⟁ Underfit vs Overfit</h4>
+        <ul>
+          <li>What too-simple and too-complex models look like</li>
+          <li>Train error vs test error — the diagnostic gap</li>
+          <li>Why training accuracy can lie</li>
+        </ul>
+      </div>
+      <div class="dual-cell purple">
+        <h4>⟁ Bias-Variance Decomposition</h4>
+        <ul>
+          <li>Total Error = Bias² + Variance + Irreducible Noise</li>
+          <li>The U-curve of total error vs complexity</li>
+          <li>Why the sweet spot is rarely at zero training error</li>
+        </ul>
+      </div>
+      <div class="dual-cell magenta">
+        <h4>⟁ Ridge Regression (L2)</h4>
+        <ul>
+          <li>Shrinkage penalty: λ·Σ wⱼ²</li>
+          <li>Smoothly shrinks all coefficients toward zero</li>
+          <li>The first tool you should reach for</li>
+        </ul>
+      </div>
+      <div class="dual-cell green">
+        <h4>⟁ Lasso Regression (L1)</h4>
+        <ul>
+          <li>Shrinkage + selection: λ·Σ |wⱼ|</li>
+          <li>Drives some weights to exactly zero</li>
+          <li>Automatic feature selection</li>
+        </ul>
+      </div>
+      <div class="dual-cell amber">
+        <h4>⟁ Why Regularization Works</h4>
+        <ul>
+          <li>Buys variance reduction for a small bias</li>
+          <li>Connects to Bayesian priors</li>
+          <li>Used in every modern ML model</li>
+        </ul>
+      </div>
+      <div class="dual-cell red">
+        <h4>⟁ Practical Skills</h4>
+        <ul>
+          <li>Diagnose underfit vs overfit from train/test gap</li>
+          <li>Choose λ via cross-validation</li>
+          <li>Pick Ridge vs Lasso for your problem</li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <section class="section reveal">
+    <div class="section-header">
+      <div class="section-num">TOPIC 1</div>
+      <h2 class="section-title">Underfitting vs Overfitting</h2>
+      <div class="section-line"></div>
+    </div>
+
+    <div class="concept-block">
+      <div class="sub-section-marker">The fundamental problem of learning</div>
+      <h3>The Goldilocks Problem</h3>
+      <p>Every predictive model has a dial labeled <em>complexity</em>. Crank it left and your model is too dumb to capture the real pattern — it <strong>underfits</strong>. Crank it right and the model memorizes every quirk of your training data, including the random noise — it <strong>overfits</strong>. Both extremes predict new data poorly. Your job as a modeler is to find the middle.</p>
+
+      <h4>Underfitting — the model is too simple</h4>
+      <p>The model can't capture the real shape of the data. Train error is high, test error is high, and the two are close together. Fitting a straight line to a clearly curved relationship is the classic example. <strong>Symptom:</strong> both errors are bad.</p>
+
+      <h4>Overfitting — the model is too complex</h4>
+      <p>The model fits the training data almost perfectly — every wiggle and bump, including the random noise. But on new data it falls apart. Train error is near zero, test error is huge. <strong>Symptom:</strong> a big gap between train and test performance.</p>
+
+      <h4>The just-right zone</h4>
+      <p>A model complex enough to capture the real signal, but disciplined enough to ignore the noise. Train error is small but not zero. Test error is close to train error. This is the goal.</p>
+
+      <div class="highlight-box">
+        <strong>The diagnostic in one number:</strong> <code>generalization gap = test_error − train_error</code>. A small gap with low errors = good fit. A small gap with high errors = underfit. A huge gap with near-zero train error = overfit.
+      </div>
+    </div>
+
+    <div class="dual-grid">
+      <div class="dual-cell red">
+        <h4>⚠ UNDERFIT</h4>
+        <ul>
+          <li>Train error: HIGH</li>
+          <li>Test error: HIGH</li>
+          <li>Gap: small</li>
+          <li>Fix: more features, more complexity, less regularization</li>
+        </ul>
+      </div>
+      <div class="dual-cell green">
+        <h4>✓ GOOD FIT</h4>
+        <ul>
+          <li>Train error: LOW</li>
+          <li>Test error: LOW</li>
+          <li>Gap: small</li>
+          <li>You're done. Ship it.</li>
+        </ul>
+      </div>
+      <div class="dual-cell amber">
+        <h4>⚠ OVERFIT</h4>
+        <ul>
+          <li>Train error: ~0</li>
+          <li>Test error: HIGH</li>
+          <li>Gap: HUGE</li>
+          <li>Fix: simpler model, more data, regularization, dropout</li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="deep-dive">
+      <div class="dd-label">⟁ DEEP DIVE — POLYNOMIAL REGRESSION</div>
+      <h4>The canonical example: fitting a polynomial of degree d</h4>
+      <p>Suppose the true relationship is y = sin(x) + small noise, and we have 20 noisy points. Fit polynomials of degree 1, 3, and 15 to the same data:</p>
+      <ul>
+        <li><strong>Degree 1 (line):</strong> can't capture the sinusoidal shape — underfit. Train MSE ≈ 0.45, test MSE ≈ 0.48.</li>
+        <li><strong>Degree 3:</strong> wiggles correctly through the data — just right. Train MSE ≈ 0.04, test MSE ≈ 0.05.</li>
+        <li><strong>Degree 15:</strong> passes through nearly every point including the noisy ones — overfit. Train MSE ≈ 0.001, test MSE ≈ 1.2.</li>
+      </ul>
+      <p>The degree-15 polynomial is the <em>worst</em> predictor of new data, even though it fits the training data <em>best</em>. This is overfitting in its cleanest form.</p>
+    </div>
+  </section>
+
+  <section class="section reveal">
+    <div class="section-header">
+      <div class="section-num">DEMO 1</div>
+      <h2 class="section-title">Interactive — Fit Complexity Explorer</h2>
+      <div class="section-line"></div>
+    </div>
+
+    <div class="viz-wrap">
+      <div class="viz-title">▸ Polynomial fit · train vs test error</div>
+      <div class="viz-desc">Drag the slider to change the polynomial degree. Watch the curve chase the data, then start memorizing the noise. The right panel shows the gap between train error (cyan) and test error (magenta).</div>
+      <canvas id="fitCanvas" class="viz-canvas" width="900" height="380"></canvas>
+      <div class="slider-row" style="margin-top: 18px;">
+        <div class="slider-cell">
+          <div class="slider-label"><span>POLYNOMIAL DEGREE</span><span id="degVal">3</span></div>
+          <input type="range" id="degSlider" min="1" max="15" value="3" step="1">
+        </div>
+        <div class="slider-cell">
+          <div class="slider-label"><span>NOISE LEVEL</span><span id="noiseVal">0.30</span></div>
+          <input type="range" id="noiseSlider" min="0.05" max="0.6" value="0.3" step="0.05">
+        </div>
+      </div>
+      <div class="btn-row">
+        <button class="btn" onclick="regenFit()">↻ NEW DATA</button>
+      </div>
+      <div class="stat-grid">
+        <div class="stat-box">
+          <div class="stat-label">Train MSE</div>
+          <div class="stat-value" id="trainMse">—</div>
+        </div>
+        <div class="stat-box">
+          <div class="stat-label">Test MSE</div>
+          <div class="stat-value magenta" id="testMse">—</div>
+        </div>
+        <div class="stat-box">
+          <div class="stat-label">Gen. Gap</div>
+          <div class="stat-value amber" id="genGap">—</div>
+        </div>
+        <div class="stat-box">
+          <div class="stat-label">Verdict</div>
+          <div class="stat-value purple" id="fitVerdict" style="font-size:1.05rem;">—</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="section reveal">
+    <div class="section-header">
+      <div class="section-num">TOPIC 2</div>
+      <h2 class="section-title">The Bias-Variance Decomposition</h2>
+      <div class="section-line"></div>
+    </div>
+
+    <div class="concept-block">
+      <div class="sub-section-marker">The most important identity in ML</div>
+      <h3>Total Error = Bias² + Variance + Noise</h3>
+      <p>In Module 4.1 we saw that for any estimator, MSE = Bias² + Variance. For predictive models, there's one more piece: <strong>irreducible noise</strong> — the part of the world that's genuinely random and no model can predict.</p>
+      <p>If we fix a test point x₀ and average prediction error over many possible training sets drawn from the same distribution, the expected squared error decomposes <em>exactly</em> as:</p>
+    </div>
+
+    <div class="formula-card">
+      <div class="formula-label">◆ THE BIAS-VARIANCE DECOMPOSITION</div>
+      <div class="formula">E[(y − f̂(x))²] = Bias[f̂(x)]² + Var[f̂(x)] + σ²</div>
+      <div class="formula-explain">Three sources of error, added together. <strong>Bias²</strong> = how far the average prediction is from the truth. <strong>Variance</strong> = how much predictions wiggle across different training sets. <strong>σ²</strong> = irreducible noise (you can't beat it, no matter how good your model is).</div>
+      <div class="var-list">
+        <div class="var-item"><code>f̂(x)</code> = our model's prediction at x</div>
+        <div class="var-item"><code>y</code> = the true value at x (with noise)</div>
+        <div class="var-item"><code>Bias[f̂(x)]</code> = E[f̂(x)] − true f(x)</div>
+        <div class="var-item"><code>Var[f̂(x)]</code> = spread of f̂(x) across training sets</div>
+        <div class="var-item"><code>σ²</code> = noise variance (irreducible)</div>
+      </div>
+    </div>
+
+    <div class="concept-block">
+      <h3>How complexity drives bias and variance in opposite directions</h3>
+      <p>Here's the punch line. As you increase model complexity:</p>
+      <ul>
+        <li><strong>Bias goes DOWN</strong> — a more flexible model can capture more of the true pattern, so its average prediction lands closer to the truth.</li>
+        <li><strong>Variance goes UP</strong> — a more flexible model is more sensitive to which specific training data it saw, so predictions wiggle more from one training set to another.</li>
+        <li><strong>Noise σ² stays constant</strong> — it's a property of the world, not the model.</li>
+      </ul>
+      <p>Total error is the sum, so it forms a <strong>U-shape</strong> against complexity: high on the left (bias-dominated), high on the right (variance-dominated), minimum in the middle. <em>That minimum is what you're hunting for.</em></p>
+
+      <div class="highlight-box">
+        <strong>The key insight:</strong> the model that minimizes training error pushes bias all the way to zero — but at the cost of huge variance. The model that minimizes <em>test</em> error accepts a little bias in exchange for much lower variance. Regularization is the tool that lets you make that exchange.
+      </div>
+    </div>
+
+    <div class="dual-grid">
+      <div class="dual-cell red">
+        <h4>⚠ HIGH BIAS</h4>
+        <ul>
+          <li>Underfit: model too simple</li>
+          <li>Predictions consistently off the truth</li>
+          <li>Same wrongness regardless of training set</li>
+          <li>Example: linear model on a curve</li>
+        </ul>
+      </div>
+      <div class="dual-cell amber">
+        <h4>⚠ HIGH VARIANCE</h4>
+        <ul>
+          <li>Overfit: model too complex</li>
+          <li>Predictions jump around wildly from sample to sample</li>
+          <li>Memorizes noise instead of signal</li>
+          <li>Example: degree-15 polynomial on 20 points</li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <section class="section reveal">
+    <div class="section-header">
+      <div class="section-num">DEMO 2</div>
+      <h2 class="section-title">The Bias-Variance Curve</h2>
+      <div class="section-line"></div>
+    </div>
+
+    <div class="viz-wrap">
+      <div class="viz-title">▸ Total error = bias² + variance + noise · live decomposition</div>
+      <div class="viz-desc">Drag the complexity slider. The red curve is Bias², the green curve is Variance, the cyan dashed line is the noise floor, and the bold purple curve is the total error. The pink dot is your current position — find the minimum.</div>
+      <canvas id="bvCanvas" class="viz-canvas" width="900" height="380"></canvas>
+      <div class="slider-row" style="margin-top: 18px;">
+        <div class="slider-cell">
+          <div class="slider-label"><span>MODEL COMPLEXITY</span><span id="cmpVal">5</span></div>
+          <input type="range" id="cmpSlider" min="1" max="20" value="5" step="1">
+        </div>
+        <div class="slider-cell">
+          <div class="slider-label"><span>NOISE FLOOR σ²</span><span id="sigVal">0.10</span></div>
+          <input type="range" id="sigSlider" min="0.02" max="0.5" value="0.1" step="0.02">
+        </div>
+      </div>
+      <div class="stat-grid">
+        <div class="stat-box">
+          <div class="stat-label">Bias²</div>
+          <div class="stat-value red" id="biasVal">—</div>
+        </div>
+        <div class="stat-box">
+          <div class="stat-label">Variance</div>
+          <div class="stat-value green" id="varVal">—</div>
+        </div>
+        <div class="stat-box">
+          <div class="stat-label">Noise σ²</div>
+          <div class="stat-value" id="noiseFloor">—</div>
+        </div>
+        <div class="stat-box">
+          <div class="stat-label">TOTAL ERROR</div>
+          <div class="stat-value purple" id="totalErr">—</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="section reveal">
+    <div class="section-header">
+      <div class="section-num">TOPIC 3</div>
+      <h2 class="section-title">Ridge Regression — Smooth Shrinkage (L2)</h2>
+      <div class="section-line"></div>
+    </div>
+
+    <div class="concept-block">
+      <div class="sub-section-marker">The first regularization tool</div>
+      <h3>Ordinary linear regression and its problem</h3>
+      <p>Ordinary least squares (OLS) finds the weights <code>w</code> that minimize squared error on the training set:</p>
+    </div>
+
+    <div class="formula-card">
+      <div class="formula-label">◆ ORDINARY LEAST SQUARES (OLS)</div>
+      <div class="formula">L<sub>OLS</sub>(w) = Σᵢ (yᵢ − xᵢᵀw)²</div>
+      <div class="formula-explain">Pure training error. With many features, this can give huge weights that fit noise — high variance, overfitting.</div>
+    </div>
+
+    <div class="concept-block">
+      <h3>The Ridge fix: add a size penalty</h3>
+      <p>Ridge regression adds a term that punishes large weights. The model now has to balance fitting the data against keeping the weights small:</p>
+    </div>
+
+    <div class="formula-card">
+      <div class="formula-label">◆ RIDGE REGRESSION (L2)</div>
+      <div class="formula">L<sub>Ridge</sub>(w) = Σᵢ (yᵢ − xᵢᵀw)² + λ · Σⱼ wⱼ²</div>
+      <div class="formula-explain">The first term is OLS loss. The second term is the <em>L2 penalty</em>: the sum of squared weights, scaled by λ. The model accepts a little more training error in exchange for smaller weights — and smaller weights mean lower variance.</div>
+      <div class="var-list">
+        <div class="var-item"><code>λ</code> (lambda) = penalty strength · tunable</div>
+        <div class="var-item"><code>λ = 0</code> = pure OLS, no penalty</div>
+        <div class="var-item"><code>λ → ∞</code> = all weights → 0</div>
+        <div class="var-item"><code>Σⱼ wⱼ²</code> = "size" of the weight vector, L2 norm squared</div>
+      </div>
+    </div>
+
+    <div class="concept-block">
+      <h3>What Ridge does to the weights</h3>
+      <ul>
+        <li><strong>Shrinks all weights smoothly toward zero</strong> as λ grows.</li>
+        <li><strong>Never drives a weight exactly to zero</strong> — they get small but stay non-zero.</li>
+        <li><strong>Spreads the load:</strong> if two features are correlated, Ridge gives them similar smallish weights instead of one huge and one tiny.</li>
+        <li><strong>Has a closed-form solution:</strong> w = (XᵀX + λI)⁻¹ Xᵀy — fast to compute, works even when XᵀX is singular.</li>
+      </ul>
+
+      <div class="success-box">
+        <strong>When to reach for Ridge:</strong> when you have many features that all contribute a little, and you don't expect any feature to be irrelevant. Default choice when in doubt.
+      </div>
+    </div>
+  </section>
+
+  <section class="section reveal">
+    <div class="section-header">
+      <div class="section-num">TOPIC 4</div>
+      <h2 class="section-title">Lasso Regression — Shrinkage + Selection (L1)</h2>
+      <div class="section-line"></div>
+    </div>
+
+    <div class="concept-block">
+      <div class="sub-section-marker">When you want sparsity</div>
+      <h3>Same idea, different penalty shape</h3>
+      <p>Lasso (Least Absolute Shrinkage and Selection Operator) does the same thing as Ridge — adds a penalty on weight size — but it uses the <strong>absolute value</strong> instead of the square:</p>
+    </div>
+
+    <div class="formula-card">
+      <div class="formula-label">◆ LASSO REGRESSION (L1)</div>
+      <div class="formula">L<sub>Lasso</sub>(w) = Σᵢ (yᵢ − xᵢᵀw)² + λ · Σⱼ |wⱼ|</div>
+      <div class="formula-explain">The second term is the <em>L1 penalty</em>: the sum of absolute weights. One small change (square → absolute value), one huge consequence: some weights become exactly zero. That's automatic feature selection, for free.</div>
+      <div class="var-list">
+        <div class="var-item"><code>Σⱼ |wⱼ|</code> = L1 norm of weight vector</div>
+        <div class="var-item"><code>Some wⱼ = 0</code> exactly · sparsity</div>
+        <div class="var-item"><code>λ ↑</code> → more weights become 0</div>
+        <div class="var-item">No closed form · solved numerically</div>
+      </div>
+    </div>
+
+    <div class="concept-block">
+      <h3>Why L1 produces sparsity (the geometric intuition)</h3>
+      <p>Picture the constraint region — the set of weights with the penalty below some budget. For <strong>Ridge</strong>, the L2 ball is a smooth circle (or sphere in higher dimensions). For <strong>Lasso</strong>, the L1 ball is a diamond with sharp corners along the axes. The optimal solution is where the data's loss contour first touches this region.</p>
+      <ul>
+        <li>The smooth Ridge circle is most likely to be touched on its <em>side</em> → all weights small but nonzero.</li>
+        <li>The Lasso diamond has its corners <em>on the axes</em>, so contact often happens at a corner → some weights become exactly zero.</li>
+      </ul>
+
+      <div class="dual-grid">
+        <div class="dual-cell purple">
+          <h4>◆ RIDGE — L2</h4>
+          <ul>
+            <li>Penalty: Σ wⱼ²</li>
+            <li>Constraint shape: smooth ball</li>
+            <li>All features kept, all shrunk</li>
+            <li>Handles correlated features gracefully</li>
+            <li>Has closed-form solution</li>
+            <li>Best when most features matter</li>
+          </ul>
+        </div>
+        <div class="dual-cell green">
+          <h4>◆ LASSO — L1</h4>
+          <ul>
+            <li>Penalty: Σ |wⱼ|</li>
+            <li>Constraint shape: diamond / cross-polytope</li>
+            <li>Some features dropped (weight = 0)</li>
+            <li>Picks one of a correlated pair, drops the other</li>
+            <li>Solved iteratively (coordinate descent)</li>
+            <li>Best when you want a sparse model</li>
+          </ul>
+        </div>
+      </div>
+
+      <div class="highlight-box">
+        <strong>Elastic Net</strong> = combine both: λ₁·Σ|wⱼ| + λ₂·Σwⱼ². Gets sparsity from L1 and stability with correlated features from L2. Used heavily in genomics and text models.
+      </div>
+    </div>
+  </section>
+
+  <section class="section reveal">
+    <div class="section-header">
+      <div class="section-num">DEMO 3</div>
+      <h2 class="section-title">Regularization Lab — Ridge vs Lasso</h2>
+      <div class="section-line"></div>
+    </div>
+
+    <div class="viz-wrap">
+      <div class="viz-title">▸ Coefficient paths under shrinkage</div>
+      <div class="viz-desc">Eight features, eight coefficients. Switch between Ridge and Lasso, then drag λ. Notice how Ridge curves bend smoothly toward zero but never touch it — while Lasso lines snap to exactly zero one by one. The number that survive at any λ is your selected feature set.</div>
+      <canvas id="regCanvas" class="viz-canvas" width="900" height="380"></canvas>
+      <div class="btn-row" style="margin-top: 18px;">
+        <button class="btn active" id="btnRidge" onclick="setReg('ridge')">RIDGE (L2)</button>
+        <button class="btn purple" id="btnLasso" onclick="setReg('lasso')">LASSO (L1)</button>
+      </div>
+      <div class="slider-row">
+        <div class="slider-cell">
+          <div class="slider-label"><span>LOG λ</span><span id="lamVal">−2.0</span></div>
+          <input type="range" id="lamSlider" min="-4" max="2" value="-2" step="0.1">
+        </div>
+      </div>
+      <div class="stat-grid">
+        <div class="stat-box">
+          <div class="stat-label">Active weights</div>
+          <div class="stat-value green" id="activeCount">—</div>
+        </div>
+        <div class="stat-box">
+          <div class="stat-label">Σ|w|  (L1)</div>
+          <div class="stat-value purple" id="l1Norm">—</div>
+        </div>
+        <div class="stat-box">
+          <div class="stat-label">Σw²  (L2²)</div>
+          <div class="stat-value magenta" id="l2Norm">—</div>
+        </div>
+        <div class="stat-box">
+          <div class="stat-label">Penalty type</div>
+          <div class="stat-value amber" id="penaltyType" style="font-size:1.05rem;">RIDGE</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="section reveal">
+    <div class="section-header">
+      <div class="section-num">TOPIC 5</div>
+      <h2 class="section-title">Why Regularization Works — The MSE Trade</h2>
+      <div class="section-line"></div>
+    </div>
+
+    <div class="concept-block">
+      <div class="sub-section-marker">The deep reason</div>
+      <h3>It's the bias-variance tradeoff in action</h3>
+      <p>OLS is the <em>unbiased</em> estimator that minimizes squared training error. But unbiased ≠ best, because:</p>
+
+      <div class="formula" style="margin: 20px 0;">MSE = Bias² + Variance</div>
+
+      <p>Ridge and Lasso both introduce a small bias (because shrinking weights away from their OLS values means we're no longer hitting the unbiased optimum) — but they cut variance dramatically. Net effect: total MSE drops.</p>
+
+      <h4>The shrinkage trade in one sentence</h4>
+      <p style="color:#fff; font-size:1.05rem; padding: 16px; background: rgba(177,77,255,0.08); border-radius: 12px; border-left: 3px solid var(--neon-purple);">
+        Regularization pays a small bias premium to buy a large variance discount.
+      </p>
+    </div>
+
+    <div class="concept-block">
+      <h3>The Bayesian interpretation (optional, but beautiful)</h3>
+      <p>Regularization isn't just a hack — it has a clean probabilistic meaning. Adding a penalty to your loss is mathematically equivalent to <strong>maximizing a posterior</strong> instead of a likelihood:</p>
+      <ul>
+        <li><strong>Ridge ≡</strong> linear regression with a <em>Gaussian prior</em> on the weights centered at 0. Bigger λ ⇔ tighter prior.</li>
+        <li><strong>Lasso ≡</strong> linear regression with a <em>Laplace prior</em> on the weights centered at 0. The Laplace's sharp peak at 0 is what produces sparsity.</li>
+      </ul>
+      <p>You can think of regularization as expressing prior belief: "I think most weights should be small, and some might be exactly zero." Data updates that belief; the regularizer is the prior, the squared-error term is the (Gaussian) likelihood.</p>
+    </div>
+
+    <div class="concept-block">
+      <h3>Choosing λ — cross-validation</h3>
+      <p>The penalty strength λ is a knob you have to set. Too small and you barely regularize (overfit). Too big and you crush the signal (underfit). The standard procedure:</p>
+      <ul>
+        <li>Split the training data into K folds (typically K = 5 or 10).</li>
+        <li>For each candidate λ in a log-spaced grid (e.g., 10⁻⁴ to 10²):
+          <ul style="margin-top: 6px;">
+            <li>Train on K−1 folds, evaluate on the held-out fold.</li>
+            <li>Repeat for all K folds and average the test error.</li>
+          </ul>
+        </li>
+        <li>Pick the λ with the lowest average validation error.</li>
+      </ul>
+      <div class="success-box">
+        <strong>The "one-standard-error rule":</strong> instead of picking the absolute minimum, pick the largest λ within one standard error of the minimum. This favors simpler models with similar performance.
+      </div>
+    </div>
+  </section>
+
+  <section class="section reveal">
+    <div class="section-header">
+      <div class="section-num">CONNECT</div>
+      <h2 class="section-title">Where You'll See This in Practice</h2>
+      <div class="section-line"></div>
+    </div>
+
+    <div class="real-grid">
+      <div class="real-card">
+        <h4>◉ scikit-learn</h4>
+        <p><code>Ridge(alpha=λ)</code>, <code>Lasso(alpha=λ)</code>, <code>ElasticNet</code>, <code>RidgeCV</code>, <code>LassoCV</code>. The <code>alpha</code> parameter <em>is</em> λ. Defaults are sane but always tune via CV.</p>
+      </div>
+      <div class="real-card">
+        <h4>◉ Deep Learning</h4>
+        <p>Weight decay in optimizers (Adam, SGD) is L2 regularization — the same thing. PyTorch's <code>weight_decay=1e-4</code> and TensorFlow's L2 kernel regularizer are doing Ridge on your network weights.</p>
+      </div>
+      <div class="real-card">
+        <h4>◉ XGBoost &amp; GBMs</h4>
+        <p>The <code>reg_alpha</code> (L1) and <code>reg_lambda</code> (L2) hyperparameters apply Lasso and Ridge penalties to the leaf weights of every tree. Plus tree depth limits act as a complexity constraint.</p>
+      </div>
+      <div class="real-card">
+        <h4>◉ Genomics &amp; High-dim Data</h4>
+        <p>When you have 20,000 genes and 200 patients, OLS is hopeless — XᵀX is singular. Ridge (and especially Elastic Net) is the workhorse for gene-expression studies and GWAS.</p>
+      </div>
+      <div class="real-card">
+        <h4>◉ Finance &amp; Risk Models</h4>
+        <p>Ridge stabilizes covariance estimates in portfolio optimization. Lasso is used for sparse factor models — pick a handful of significant factors out of hundreds.</p>
+      </div>
+      <div class="real-card">
+        <h4>◉ Text Classification</h4>
+        <p>Logistic regression on bag-of-words has tens of thousands of features. Lasso drops the irrelevant words automatically; what's left is a tiny, interpretable model.</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="section reveal">
+    <div class="section-header">
+      <div class="section-num">QUIZ</div>
+      <h2 class="section-title">Test Your Understanding</h2>
+      <div class="section-line"></div>
+    </div>
+
+    <div class="concept-block">
+      <h3>Two-Stage Challenge — Multiple Choice + AI-Evaluated Writing</h3>
+      <p>8 multiple-choice questions cover the full module: underfit/overfit, the bias-variance decomposition, Ridge, Lasso, and choosing λ. Then 5 open-response prompts test whether you can <em>explain</em> the ideas in your own words. Click any option to reveal a full explanation — wrong answers teach as well as right ones.</p>
+      <div class="highlight-box">
+        <strong>💡 Tip:</strong> For the MCQs, click an option to see why it's right or wrong. For the written questions, the AI rubric checks for key concepts — not exact wording.
+      </div>
+    </div>
+
+    
+
+    <div class="quiz-subtitle">▸ Block A — Underfitting vs Overfitting</div>
+
+    <div class="quiz-card">
+      <div class="quiz-q"><span class="qnum">Q1</span>A model has 2% training error and 35% test error. What's the most likely diagnosis?<span class="qlevel easy">EASY</span></div>
+      <div class="quiz-options">
+        <div class="quiz-opt" onclick="checkQ(this, false, `Underfit would show both errors as high and close together — here training error is excellent, which rules that out.`)">Underfit</div>
+        <div class="quiz-opt" onclick="checkQ(this, true, `Correct — tiny training error with huge test error is the classic signature of overfitting. The model has memorized the training data including its noise, and the resulting predictions do not generalize.`)">Overfit</div>
+        <div class="quiz-opt" onclick="checkQ(this, false, `A good fit would have both errors low AND close — the 33-point gap here is way too big.`)">Good fit</div>
+        <div class="quiz-opt" onclick="checkQ(this, false, `Both errors being high (e.g., 40% / 42%) would suggest a broken model. Here training is fine; only generalization fails.`)">Broken model</div>
+      </div>
+      <div class="quiz-feedback"></div>
+    </div>
+
+    <div class="quiz-card">
+      <div class="quiz-q"><span class="qnum">Q2</span>The generalization gap is defined as:<span class="qlevel easy">EASY</span></div>
+      <div class="quiz-options">
+        <div class="quiz-opt" onclick="checkQ(this, false, `That subtraction direction makes it negative for an overfit model — the convention is test minus train, since test is usually larger.`)">train_error − test_error</div>
+        <div class="quiz-opt" onclick="checkQ(this, true, `Correct — generalization_gap = test_error − train_error. A small gap (with both errors low) is the goal; a huge gap signals overfitting.`)">test_error − train_error</div>
+        <div class="quiz-opt" onclick="checkQ(this, false, `Adding them is meaningless — you want their difference to diagnose overfitting.`)">train_error + test_error</div>
+        <div class="quiz-opt" onclick="checkQ(this, false, `The product has no useful interpretation; the gap is a difference.`)">train_error × test_error</div>
+      </div>
+      <div class="quiz-feedback"></div>
+    </div>
+
+    <div class="quiz-card">
+      <div class="quiz-q"><span class="qnum">Q3</span>A fix that helps an UNDERFIT model is…<span class="qlevel mod">MODERATE</span></div>
+      <div class="quiz-options">
+        <div class="quiz-opt" onclick="checkQ(this, false, `More regularization makes a too-simple model even simpler — the opposite of what underfitting needs.`)">Add more regularization (increase λ)</div>
+        <div class="quiz-opt" onclick="checkQ(this, true, `Correct — underfit means the model is too simple. Adding features (polynomial terms, interactions, deeper nets) or reducing the regularization strength lets the model capture more of the true pattern.`)">Add more features or reduce regularization</div>
+        <div class="quiz-opt" onclick="checkQ(this, false, `Removing features makes the model even simpler — wrong direction.`)">Remove features to simplify the model</div>
+        <div class="quiz-opt" onclick="checkQ(this, false, `Cross-validation is a tuning method; it does not add capacity by itself.`)">Use cross-validation</div>
+      </div>
+      <div class="quiz-feedback"></div>
+    </div>
+
+    <div class="quiz-card">
+      <div class="quiz-q"><span class="qnum">Q4</span>If you fit a degree-15 polynomial to 20 noisy points, you'll typically get…<span class="qlevel mod">MODERATE</span></div>
+      <div class="quiz-options">
+        <div class="quiz-opt" onclick="checkQ(this, false, `A degree-1 line on curved data would be underfit. Degree-15 on 20 points is the opposite.`)">Underfitting</div>
+        <div class="quiz-opt" onclick="checkQ(this, true, `Correct — with 20 points and 16 free parameters, the polynomial has nearly enough freedom to pass through every point including the noise. Train error is tiny, test error explodes.`)">Overfitting with near-zero train error and huge test error</div>
+        <div class="quiz-opt" onclick="checkQ(this, false, `Good fits do not happen at extreme complexity on small data — the bias-variance U-curve says the minimum is in the middle, not the edge.`)">A near-optimal good fit</div>
+        <div class="quiz-opt" onclick="checkQ(this, false, `The fit converges in principle, but on test data it is a disaster.`)">An unconverged solution</div>
+      </div>
+      <div class="quiz-feedback"></div>
+    </div>
+
+    <div class="quiz-subtitle">▸ Block B — Bias-Variance Decomposition</div>
+
+    <div class="quiz-card">
+      <div class="quiz-q"><span class="qnum">Q5</span>The bias-variance decomposition says total expected error equals:<span class="qlevel easy">EASY</span></div>
+      <div class="quiz-options">
+        <div class="quiz-opt" onclick="checkQ(this, false, `Bias² is correct but the other term is variance, not standard deviation. Bias gets squared because we are decomposing a squared error.`)">Bias² + Standard Deviation</div>
+        <div class="quiz-opt" onclick="checkQ(this, true, `Correct — E[(y − f̂(x))²] = Bias² + Variance + σ² (irreducible noise). Three sources of error, added.`)">Bias² + Variance + Irreducible Noise (σ²)</div>
+        <div class="quiz-opt" onclick="checkQ(this, false, `Multiplying bias and variance has no theoretical basis — they add.`)">Bias × Variance</div>
+        <div class="quiz-opt" onclick="checkQ(this, false, `No — bias contributes a positive term (squared), not subtractive.`)">Variance − Bias²</div>
+      </div>
+      <div class="quiz-feedback"></div>
+    </div>
+
+    <div class="quiz-card">
+      <div class="quiz-q"><span class="qnum">Q6</span>As model complexity increases, the typical pattern is…<span class="qlevel mod">MODERATE</span></div>
+      <div class="quiz-options">
+        <div class="quiz-opt" onclick="checkQ(this, false, `Both moving in the same direction is impossible — the whole point of the tradeoff is they move opposite to each other.`)">Both bias and variance go up</div>
+        <div class="quiz-opt" onclick="checkQ(this, false, `The reverse — complex models capture more, so they have LESS bias (not more) and MORE variance.`)">Bias up, variance down</div>
+        <div class="quiz-opt" onclick="checkQ(this, true, `Correct — adding complexity reduces bias (more flexible models fit the true pattern more closely on average) but increases variance (more flexible models are more sensitive to which specific training data you saw).`)">Bias down, variance up</div>
+        <div class="quiz-opt" onclick="checkQ(this, false, `Both going down would mean there is no tradeoff — but the empirical fact is total error forms a U-curve, so they must trade.`)">Both bias and variance go down</div>
+      </div>
+      <div class="quiz-feedback"></div>
+    </div>
+
+    <div class="quiz-card">
+      <div class="quiz-q"><span class="qnum">Q7</span>"Irreducible noise" σ² in the decomposition represents…<span class="qlevel mod">MODERATE</span></div>
+      <div class="quiz-options">
+        <div class="quiz-opt" onclick="checkQ(this, false, `Bias is reducible — by changing the model. σ² is the part that NO model can remove.`)">Bias from the model</div>
+        <div class="quiz-opt" onclick="checkQ(this, true, `Correct — σ² is randomness intrinsic to the world: measurement noise, unobserved variables, true stochasticity. No model has access to it, so it sets a hard floor on achievable error.`)">Randomness in the world that no model can eliminate</div>
+        <div class="quiz-opt" onclick="checkQ(this, false, `Variance from the training data IS something you can reduce — with regularization or more data.`)">Variance from the choice of training data</div>
+        <div class="quiz-opt" onclick="checkQ(this, false, `Computational error is usually negligible. σ² is about the data-generating process itself.`)">Floating-point rounding error</div>
+      </div>
+      <div class="quiz-feedback"></div>
+    </div>
+
+    <div class="quiz-card">
+      <div class="quiz-q"><span class="qnum">Q8</span>The Bayesian view: Ridge regression corresponds to a prior on the weights of…<span class="qlevel hard">CHALLENGE</span></div>
+      <div class="quiz-options">
+        <div class="quiz-opt" onclick="checkQ(this, false, `Uniform priors give no penalty — that is equivalent to plain OLS, not Ridge.`)">Uniform</div>
+        <div class="quiz-opt" onclick="checkQ(this, true, `Correct — adding −λ·Σwⱼ² to log-likelihood is exactly the log of a Gaussian density centered at 0. So Ridge ≡ Gaussian (Normal) prior on weights. Lasso, by contrast, corresponds to a Laplace prior — its sharp peak at zero is what produces sparsity.`)">Gaussian (Normal) centered at 0</div>
+        <div class="quiz-opt" onclick="checkQ(this, false, `Laplace is Lasso's prior, not Ridge's. The Laplace's sharp peak at 0 is what creates sparsity in Lasso.`)">Laplace centered at 0</div>
+        <div class="quiz-opt" onclick="checkQ(this, false, `Exponential is one-sided (only positive values); weights can be negative, so this does not fit.`)">Exponential</div>
+      </div>
+      <div class="quiz-feedback"></div>
+    </div>
+
+    <div class="quiz-subtitle" style="margin-top:50px;">▸ AI Evaluation Challenge — Open-Response Mastery</div>
+
+    <div class="highlight-box" style="margin-bottom:24px;">
+      <strong>Now go beyond multiple choice.</strong> Below are 5 open-ended prompts. Type your answer and hit <strong>"Evaluate My Answer"</strong> — the QNA-Σ engine analyzes your response for the key concepts, scores you against a rubric, and shows what you got right and what to revisit. Aim for 3–5 sentences in your own words.
+    </div>
+
+    <div class="ai-eval-card">
+      <div class="ai-eval-q"><span class="qnum">AI-Q1</span>In your own words, explain the difference between <strong>underfitting</strong> and <strong>overfitting</strong>. How do their train and test errors compare in each case?</div>
+      <div class="ai-eval-hint">◉ COVER: TOO SIMPLE VS TOO COMPLEX · TRAIN/TEST ERROR PATTERN · GENERALIZATION GAP</div>
+      <textarea class="ai-eval-input" id="aiInput1" placeholder="Type your answer here…"></textarea>
+      <div class="ai-eval-btn-row">
+        <button class="ai-eval-btn" onclick="evalAI(1)">⟁ Evaluate My Answer</button>
+        <button class="ai-eval-btn ghost" onclick="clearAI(1)">Clear</button>
+      </div>
+      <div class="ai-eval-result" id="aiResult1"></div>
+    </div>
+
+    <div class="ai-eval-card">
+      <div class="ai-eval-q"><span class="qnum">AI-Q2</span>Write down the <strong>bias-variance decomposition</strong> and explain in plain words why total error forms a <em>U-shaped curve</em> as model complexity increases.</div>
+      <div class="ai-eval-hint">◉ STATE: TOTAL = BIAS² + VARIANCE + NOISE · EXPLAIN HOW BIAS AND VARIANCE TRADE WITH COMPLEXITY</div>
+      <textarea class="ai-eval-input" id="aiInput2" placeholder="Type your answer here…"></textarea>
+      <div class="ai-eval-btn-row">
+        <button class="ai-eval-btn" onclick="evalAI(2)">⟁ Evaluate My Answer</button>
+        <button class="ai-eval-btn ghost" onclick="clearAI(2)">Clear</button>
+      </div>
+      <div class="ai-eval-result" id="aiResult2"></div>
+    </div>
+
+    <div class="ai-eval-card">
+      <div class="ai-eval-q"><span class="qnum">AI-Q3</span>Explain the difference between <strong>Ridge</strong> and <strong>Lasso</strong> regression. When would you reach for one over the other?</div>
+      <div class="ai-eval-hint">◉ COVER: L2 VS L1 PENALTY · SMOOTH SHRINKAGE VS SPARSITY · ONE USE CASE FOR EACH</div>
+      <textarea class="ai-eval-input" id="aiInput3" placeholder="Type your answer here…"></textarea>
+      <div class="ai-eval-btn-row">
+        <button class="ai-eval-btn" onclick="evalAI(3)">⟁ Evaluate My Answer</button>
+        <button class="ai-eval-btn ghost" onclick="clearAI(3)">Clear</button>
+      </div>
+      <div class="ai-eval-result" id="aiResult3"></div>
+    </div>
+
+    <div class="ai-eval-card">
+      <div class="ai-eval-q"><span class="qnum">AI-Q4</span>Why does adding a <strong>regularization penalty</strong> usually <em>improve</em> test-set performance, even though it makes the training-set fit worse? Frame your answer in terms of bias and variance.</div>
+      <div class="ai-eval-hint">◉ EXPLAIN: SMALL BIAS COST · LARGE VARIANCE REDUCTION · NET MSE DROPS · OLS IS UNBIASED BUT HIGH-VARIANCE</div>
+      <textarea class="ai-eval-input" id="aiInput4" placeholder="Type your answer here…"></textarea>
+      <div class="ai-eval-btn-row">
+        <button class="ai-eval-btn" onclick="evalAI(4)">⟁ Evaluate My Answer</button>
+        <button class="ai-eval-btn ghost" onclick="clearAI(4)">Clear</button>
+      </div>
+      <div class="ai-eval-result" id="aiResult4"></div>
+    </div>
+
+    <div class="ai-eval-card">
+      <div class="ai-eval-q"><span class="qnum">AI-Q5</span>Walk through how you'd use <strong>K-fold cross-validation</strong> to pick the regularization strength λ for a Ridge regression model. What does the result look like?</div>
+      <div class="ai-eval-hint">◉ STEPS: GRID OF λ · K FOLDS · TRAIN/HOLDOUT EACH · AVERAGE ERROR · PICK BEST · OPTIONAL ONE-SE RULE</div>
+      <textarea class="ai-eval-input" id="aiInput5" placeholder="Type your answer here…"></textarea>
+      <div class="ai-eval-btn-row">
+        <button class="ai-eval-btn" onclick="evalAI(5)">⟁ Evaluate My Answer</button>
+        <button class="ai-eval-btn ghost" onclick="clearAI(5)">Clear</button>
+      </div>
+      <div class="ai-eval-result" id="aiResult5"></div>
+    </div>
+  </section>
+
+  <section class="section reveal">
+    <div class="section-header">
+      <div class="section-num">RECAP</div>
+      <h2 class="section-title">Module 5.7 — Master Recap</h2>
+      <div class="section-line"></div>
+    </div>
+
+    <div class="ai-panel">
+      <div class="ai-head">
+        <div class="ai-avatar">Σ</div>
+        <div class="ai-meta">
+          <div class="ai-name">QNA-Σ // Synthesis Core</div>
+          <div class="ai-role">Bias-Variance &amp; Regularization Master — Complete</div>
+        </div>
+      </div>
+
+      <div class="takeaway">
+        <div class="takeaway-num">01</div>
+        <div class="takeaway-text"><strong>Underfit vs overfit</strong> = too simple vs too complex. Diagnose by comparing train and test error. Big gap = overfit; both bad = underfit.</div>
+      </div>
+      <div class="takeaway">
+        <div class="takeaway-num">02</div>
+        <div class="takeaway-text"><strong>Bias-Variance Decomposition:</strong> E[(y − f̂)²] = Bias² + Variance + σ². Three sources of error, added.</div>
+      </div>
+      <div class="takeaway">
+        <div class="takeaway-num">03</div>
+        <div class="takeaway-text"><strong>Complexity ↑</strong> reduces bias but raises variance. Total error is U-shaped: the minimum is somewhere in the middle, never at zero training error.</div>
+      </div>
+      <div class="takeaway">
+        <div class="takeaway-num">04</div>
+        <div class="takeaway-text"><strong>Irreducible noise σ²</strong> is the floor. No model can beat it — it sets a hard limit on achievable performance.</div>
+      </div>
+      <div class="takeaway">
+        <div class="takeaway-num">05</div>
+        <div class="takeaway-text"><strong>Ridge (L2):</strong> add λ·Σ wⱼ². Smoothly shrinks all weights toward zero. Has a closed form: w = (XᵀX + λI)⁻¹ Xᵀy.</div>
+      </div>
+      <div class="takeaway">
+        <div class="takeaway-num">06</div>
+        <div class="takeaway-text"><strong>Lasso (L1):</strong> add λ·Σ |wⱼ|. Drives some weights to <em>exactly zero</em> — automatic feature selection. No closed form; solved iteratively.</div>
+      </div>
+      <div class="takeaway">
+        <div class="takeaway-num">07</div>
+        <div class="takeaway-text"><strong>Why regularization works:</strong> pays a small bias premium to buy a large variance discount. Net MSE drops.</div>
+      </div>
+      <div class="takeaway">
+        <div class="takeaway-num">08</div>
+        <div class="takeaway-text"><strong>Elastic Net</strong> = L1 + L2 combined. Gets sparsity from L1 and stability with correlated features from L2.</div>
+      </div>
+      <div class="takeaway">
+        <div class="takeaway-num">09</div>
+        <div class="takeaway-text"><strong>Bayesian view:</strong> Ridge ≡ Gaussian prior on weights; Lasso ≡ Laplace prior. Regularization is principled, not a hack.</div>
+      </div>
+      <div class="takeaway">
+        <div class="takeaway-num">10</div>
+        <div class="takeaway-text"><strong>Choosing λ:</strong> K-fold cross-validation over a log-spaced grid. Variant: pick the largest λ within 1 SE of the minimum (one-SE rule) for simpler models.</div>
+      </div>
+      <div class="takeaway">
+        <div class="takeaway-num">11</div>
+        <div class="takeaway-text"><strong>Where you'll see it:</strong> scikit-learn (<code>Ridge</code>, <code>Lasso</code>, <code>ElasticNet</code>), XGBoost (<code>reg_alpha</code>, <code>reg_lambda</code>), deep learning (<code>weight_decay</code> = L2 on net weights).</div>
+      </div>
+      <div class="takeaway">
+        <div class="takeaway-num">12</div>
+        <div class="takeaway-text"><strong>Coming next:</strong> we extend these ideas to classification (logistic regression with regularization), trees and ensembles, and finally cross-validation strategy in depth.</div>
+      </div>
+    </div>
+  </section>
+
+  <div class="module-footer">⟁ END OF MODULE 5.7 // Bias-variance reasoning calibrated · Regularization toolkit unlocked ⟁</div>
+</div>
+
+<script>
+/* PARTICLE BACKGROUND */
+const canvas = document.getElementById('particle-canvas');
+const ctx = canvas.getContext('2d');
+let particles = [];
+function sizeCanvas() { canvas.width = window.innerWidth; canvas.height = window.innerHeight; }
+sizeCanvas();
+window.addEventListener('resize', sizeCanvas);
+function initParticles() {
+  particles = [];
+  const n = Math.min(80, Math.floor(window.innerWidth * window.innerHeight / 24000));
+  for (let i = 0; i < n; i++) {
+    particles.push({
+      x: Math.random() * canvas.width, y: Math.random() * canvas.height,
+      vx: (Math.random() - 0.5) * 0.3, vy: (Math.random() - 0.5) * 0.3,
+      r: Math.random() * 1.4 + 0.4, hue: Math.random() < 0.5 ? 188 : 280
+    });
+  }
+}
+initParticles();
+function tickParticles() {
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+  particles.forEach(p => {
+    p.x += p.vx; p.y += p.vy;
+    if (p.x < 0 || p.x > canvas.width) p.vx *= -1;
+    if (p.y < 0 || p.y > canvas.height) p.vy *= -1;
+    ctx.beginPath();
+    ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2);
+    ctx.fillStyle = `hsla(${p.hue}, 100%, 65%, 0.55)`;
+    ctx.fill();
+  });
+  requestAnimationFrame(tickParticles);
+}
+tickParticles();
+
+/* ═══════════ DEMO 1 — POLYNOMIAL FIT EXPLORER ═══════════ */
+const fitCanvas = document.getElementById('fitCanvas');
+const fitCtx = fitCanvas.getContext('2d');
+let fitData = null;
+
+function seededRand(seed) {
+  let s = seed % 2147483647;
+  return () => { s = (s * 16807) % 2147483647; return (s - 1) / 2147483646; };
+}
+
+function generateFitData(seed, noise) {
+  const rand = seededRand(seed);
+  const trainX = [], trainY = [], testX = [], testY = [];
+  for (let i = 0; i < 22; i++) {
+    const x = i / 22 * 2 * Math.PI;
+    const truth = Math.sin(x);
+    trainX.push(x);
+    trainY.push(truth + (rand() - 0.5) * 2 * noise);
+  }
+  for (let i = 0; i < 60; i++) {
+    const x = (i + 0.4) / 60 * 2 * Math.PI;
+    const truth = Math.sin(x);
+    testX.push(x);
+    testY.push(truth + (rand() - 0.5) * 2 * noise);
+  }
+  return { trainX, trainY, testX, testY };
+}
+
+function polyFit(xs, ys, degree) {
+  const xMin = Math.min(...xs), xMax = Math.max(...xs);
+  const xN = xs.map(x => 2 * (x - xMin) / (xMax - xMin) - 1);
+  const n = xs.length, p = degree + 1;
+  const XtX = Array.from({length: p}, () => Array(p).fill(0));
+  const Xty = Array(p).fill(0);
+  for (let i = 0; i < n; i++) {
+    const row = [1];
+    for (let j = 1; j < p; j++) row.push(row[j-1] * xN[i]);
+    for (let a = 0; a < p; a++) {
+      Xty[a] += row[a] * ys[i];
+      for (let b = 0; b < p; b++) XtX[a][b] += row[a] * row[b];
+    }
+  }
+  for (let k = 0; k < p; k++) XtX[k][k] += 1e-8;
+  const M = XtX.map((r, i) => r.concat([Xty[i]]));
+  for (let i = 0; i < p; i++) {
+    let piv = i;
+    for (let k = i+1; k < p; k++) if (Math.abs(M[k][i]) > Math.abs(M[piv][i])) piv = k;
+    [M[i], M[piv]] = [M[piv], M[i]];
+    if (Math.abs(M[i][i]) < 1e-14) continue;
+    for (let k = i+1; k < p; k++) {
+      const f = M[k][i] / M[i][i];
+      for (let j = i; j <= p; j++) M[k][j] -= f * M[i][j];
+    }
+  }
+  const w = Array(p).fill(0);
+  for (let i = p-1; i >= 0; i--) {
+    let s = M[i][p];
+    for (let j = i+1; j < p; j++) s -= M[i][j] * w[j];
+    w[i] = M[i][i] !== 0 ? s / M[i][i] : 0;
+  }
+  return { w, xMin, xMax };
+}
+
+function polyEval(fit, x) {
+  const xN = 2 * (x - fit.xMin) / (fit.xMax - fit.xMin) - 1;
+  let r = 0, pow = 1;
+  for (let j = 0; j < fit.w.length; j++) { r += fit.w[j] * pow; pow *= xN; }
+  return r;
+}
+
+function drawFit() {
+  const W = fitCanvas.width, H = fitCanvas.height;
+  fitCtx.clearRect(0, 0, W, H);
+
+  const deg = parseInt(document.getElementById('degSlider').value);
+  const noise = parseFloat(document.getElementById('noiseSlider').value);
+  document.getElementById('degVal').textContent = deg;
+  document.getElementById('noiseVal').textContent = noise.toFixed(2);
+
+  if (!fitData) fitData = generateFitData(7, noise);
+  const fit = polyFit(fitData.trainX, fitData.trainY, deg);
+
+  const padL = 40, padR = 20, padT = 20, padB = 30;
+  const xMin = 0, xMax = 2 * Math.PI, yMin = -2.2, yMax = 2.2;
+  const toX = x => padL + (x - xMin) / (xMax - xMin) * (W - padL - padR);
+  const toY = y => padT + (yMax - y) / (yMax - yMin) * (H - padT - padB);
+
+  fitCtx.strokeStyle = 'rgba(0,240,255,0.06)';
+  fitCtx.lineWidth = 1;
+  for (let x = 0; x <= 6; x++) {
+    fitCtx.beginPath(); fitCtx.moveTo(toX(x), padT); fitCtx.lineTo(toX(x), H - padB); fitCtx.stroke();
+  }
+  for (let y = -2; y <= 2; y++) {
+    fitCtx.beginPath(); fitCtx.moveTo(padL, toY(y)); fitCtx.lineTo(W - padR, toY(y)); fitCtx.stroke();
+  }
+  fitCtx.strokeStyle = 'rgba(122,139,191,0.4)';
+  fitCtx.beginPath(); fitCtx.moveTo(padL, toY(0)); fitCtx.lineTo(W - padR, toY(0)); fitCtx.stroke();
+
+  fitCtx.strokeStyle = 'rgba(0,255,170,0.4)';
+  fitCtx.lineWidth = 2;
+  fitCtx.setLineDash([6, 4]);
+  fitCtx.beginPath();
+  for (let i = 0; i <= 200; i++) {
+    const x = xMin + i / 200 * (xMax - xMin);
+    const y = Math.sin(x);
+    if (i === 0) fitCtx.moveTo(toX(x), toY(y)); else fitCtx.lineTo(toX(x), toY(y));
+  }
+  fitCtx.stroke();
+  fitCtx.setLineDash([]);
+
+  fitCtx.strokeStyle = '#00f0ff';
+  fitCtx.lineWidth = 2.5;
+  fitCtx.shadowColor = '#00f0ff';
+  fitCtx.shadowBlur = 12;
+  fitCtx.beginPath();
+  for (let i = 0; i <= 300; i++) {
+    const x = xMin + i / 300 * (xMax - xMin);
+    const y = Math.max(-3, Math.min(3, polyEval(fit, x)));
+    if (i === 0) fitCtx.moveTo(toX(x), toY(y)); else fitCtx.lineTo(toX(x), toY(y));
+  }
+  fitCtx.stroke();
+  fitCtx.shadowBlur = 0;
+
+  fitCtx.fillStyle = '#ff2bd6';
+  fitData.trainX.forEach((x, i) => {
+    fitCtx.beginPath();
+    fitCtx.arc(toX(x), toY(fitData.trainY[i]), 4, 0, Math.PI * 2);
+    fitCtx.fill();
+  });
+
+  let trainMSE = 0, testMSE = 0;
+  fitData.trainX.forEach((x, i) => {
+    const pred = polyEval(fit, x);
+    trainMSE += (pred - fitData.trainY[i]) ** 2;
+  });
+  trainMSE /= fitData.trainX.length;
+  fitData.testX.forEach((x, i) => {
+    const pred = polyEval(fit, x);
+    testMSE += (pred - fitData.testY[i]) ** 2;
+  });
+  testMSE /= fitData.testX.length;
+  const gap = testMSE - trainMSE;
+
+  document.getElementById('trainMse').textContent = trainMSE.toFixed(3);
+  document.getElementById('testMse').textContent = testMSE.toFixed(3);
+  document.getElementById('genGap').textContent = gap.toFixed(3);
+
+  let verdict;
+  if (deg <= 2) verdict = 'UNDERFIT';
+  else if (gap > 0.5 || testMSE > 1.5) verdict = 'OVERFIT';
+  else if (testMSE < 0.3) verdict = 'GOOD FIT ✓';
+  else verdict = 'OKAY';
+  const v = document.getElementById('fitVerdict');
+  v.textContent = verdict;
+  v.style.color = verdict === 'GOOD FIT ✓' ? 'var(--neon-green)' :
+                  verdict === 'UNDERFIT' ? 'var(--neon-red)' :
+                  verdict === 'OVERFIT' ? 'var(--neon-amber)' : 'var(--neon-cyan)';
+
+  fitCtx.font = '11px JetBrains Mono';
+  fitCtx.fillStyle = 'rgba(0,255,170,0.7)';
+  fitCtx.fillText('— TRUE sin(x)', W - 170, padT + 14);
+  fitCtx.fillStyle = '#00f0ff';
+  fitCtx.fillText('— FITTED poly', W - 170, padT + 30);
+  fitCtx.fillStyle = '#ff2bd6';
+  fitCtx.fillText('● TRAIN points', W - 170, padT + 46);
+}
+
+function regenFit() {
+  const noise = parseFloat(document.getElementById('noiseSlider').value);
+  fitData = generateFitData(Math.floor(Math.random() * 1e6), noise);
+  drawFit();
+}
+
+document.getElementById('degSlider').addEventListener('input', drawFit);
+document.getElementById('noiseSlider').addEventListener('input', () => {
+  const noise = parseFloat(document.getElementById('noiseSlider').value);
+  fitData = generateFitData(7, noise);
+  drawFit();
+});
+drawFit();
+
+/* ═══════════ DEMO 2 — BIAS-VARIANCE CURVE ═══════════ */
+const bvCanvas = document.getElementById('bvCanvas');
+const bvCtx = bvCanvas.getContext('2d');
+
+function bvBias(c) {
+  return 1.6 * Math.exp(-c / 4);
+}
+function bvVar(c) {
+  return 0.05 * Math.exp(c / 6);
+}
+
+function drawBV() {
+  const W = bvCanvas.width, H = bvCanvas.height;
+  bvCtx.clearRect(0, 0, W, H);
+  const c = parseInt(document.getElementById('cmpSlider').value);
+  const sig2 = parseFloat(document.getElementById('sigSlider').value);
+  document.getElementById('cmpVal').textContent = c;
+  document.getElementById('sigVal').textContent = sig2.toFixed(2);
+
+  const padL = 50, padR = 30, padT = 30, padB = 40;
+  const cMin = 1, cMax = 20, yMax = 2.5;
+  const toX = c => padL + (c - cMin) / (cMax - cMin) * (W - padL - padR);
+  const toY = y => padT + (yMax - y) / yMax * (H - padT - padB);
+
+  bvCtx.strokeStyle = 'rgba(0,240,255,0.06)';
+  bvCtx.lineWidth = 1;
+  for (let i = 1; i <= 20; i += 4) {
+    bvCtx.beginPath(); bvCtx.moveTo(toX(i), padT); bvCtx.lineTo(toX(i), H - padB); bvCtx.stroke();
+  }
+  for (let y = 0; y <= 2.5; y += 0.5) {
+    bvCtx.beginPath(); bvCtx.moveTo(padL, toY(y)); bvCtx.lineTo(W - padR, toY(y)); bvCtx.stroke();
+  }
+  bvCtx.strokeStyle = 'rgba(122,139,191,0.4)';
+  bvCtx.beginPath(); bvCtx.moveTo(padL, H - padB); bvCtx.lineTo(W - padR, H - padB); bvCtx.stroke();
+  bvCtx.beginPath(); bvCtx.moveTo(padL, padT); bvCtx.lineTo(padL, H - padB); bvCtx.stroke();
+  bvCtx.font = '11px JetBrains Mono';
+  bvCtx.fillStyle = '#7a8bbf';
+  bvCtx.fillText('LOW', padL, H - 18);
+  bvCtx.fillText('COMPLEXITY →', padL + 60, H - 18);
+  bvCtx.fillText('HIGH', W - padR - 30, H - 18);
+  bvCtx.save();
+  bvCtx.translate(14, H/2);
+  bvCtx.rotate(-Math.PI/2);
+  bvCtx.fillText('ERROR', 0, 0);
+  bvCtx.restore();
+
+  bvCtx.strokeStyle = '#ff4d6d';
+  bvCtx.lineWidth = 2;
+  bvCtx.beginPath();
+  for (let cc = cMin; cc <= cMax; cc += 0.1) {
+    const y = bvBias(cc);
+    const x = toX(cc), py = toY(y);
+    if (cc === cMin) bvCtx.moveTo(x, py); else bvCtx.lineTo(x, py);
+  }
+  bvCtx.stroke();
+
+  bvCtx.strokeStyle = '#00ffaa';
+  bvCtx.lineWidth = 2;
+  bvCtx.beginPath();
+  for (let cc = cMin; cc <= cMax; cc += 0.1) {
+    const y = bvVar(cc);
+    const x = toX(cc), py = toY(y);
+    if (cc === cMin) bvCtx.moveTo(x, py); else bvCtx.lineTo(x, py);
+  }
+  bvCtx.stroke();
+
+  bvCtx.strokeStyle = '#00f0ff';
+  bvCtx.lineWidth = 1.5;
+  bvCtx.setLineDash([5, 4]);
+  bvCtx.beginPath();
+  bvCtx.moveTo(padL, toY(sig2));
+  bvCtx.lineTo(W - padR, toY(sig2));
+  bvCtx.stroke();
+  bvCtx.setLineDash([]);
+
+  bvCtx.strokeStyle = '#b14dff';
+  bvCtx.lineWidth = 3;
+  bvCtx.shadowColor = '#b14dff';
+  bvCtx.shadowBlur = 10;
+  bvCtx.beginPath();
+  for (let cc = cMin; cc <= cMax; cc += 0.1) {
+    const y = bvBias(cc) + bvVar(cc) + sig2;
+    const x = toX(cc), py = toY(Math.min(y, yMax));
+    if (cc === cMin) bvCtx.moveTo(x, py); else bvCtx.lineTo(x, py);
+  }
+  bvCtx.stroke();
+  bvCtx.shadowBlur = 0;
+
+  const bias2 = bvBias(c), variance = bvVar(c), total = bias2 + variance + sig2;
+  bvCtx.fillStyle = '#ff2bd6';
+  bvCtx.beginPath();
+  bvCtx.arc(toX(c), toY(Math.min(total, yMax)), 7, 0, Math.PI * 2);
+  bvCtx.fill();
+  bvCtx.strokeStyle = '#fff';
+  bvCtx.lineWidth = 2;
+  bvCtx.stroke();
+  bvCtx.strokeStyle = 'rgba(255,43,214,0.4)';
+  bvCtx.setLineDash([3, 3]);
+  bvCtx.beginPath();
+  bvCtx.moveTo(toX(c), toY(Math.min(total, yMax)));
+  bvCtx.lineTo(toX(c), H - padB);
+  bvCtx.stroke();
+  bvCtx.setLineDash([]);
+
+  bvCtx.font = '11px JetBrains Mono';
+  bvCtx.fillStyle = '#ff4d6d'; bvCtx.fillText('— BIAS²',    W - 130, padT + 14);
+  bvCtx.fillStyle = '#00ffaa'; bvCtx.fillText('— VARIANCE', W - 130, padT + 30);
+  bvCtx.fillStyle = '#00f0ff'; bvCtx.fillText('-- NOISE σ²', W - 130, padT + 46);
+  bvCtx.fillStyle = '#b14dff'; bvCtx.fillText('— TOTAL',    W - 130, padT + 62);
+
+  document.getElementById('biasVal').textContent = bias2.toFixed(3);
+  document.getElementById('varVal').textContent = variance.toFixed(3);
+  document.getElementById('noiseFloor').textContent = sig2.toFixed(3);
+  document.getElementById('totalErr').textContent = total.toFixed(3);
+}
+document.getElementById('cmpSlider').addEventListener('input', drawBV);
+document.getElementById('sigSlider').addEventListener('input', drawBV);
+drawBV();
+
+/* ═══════════ DEMO 3 — REGULARIZATION LAB ═══════════ */
+const regCanvas = document.getElementById('regCanvas');
+const regCtx = regCanvas.getContext('2d');
+let regType = 'ridge';
+
+const trueWeights = [2.4, -1.8, 1.2, 0.6, 0.15, -0.08, 0.03, 0.01];
+const featNames = ['x₁', 'x₂', 'x₃', 'x₄', 'x₅', 'x₆', 'x₇', 'x₈'];
+const featColors = ['#00f0ff','#b14dff','#ff2bd6','#00ffaa','#ffb547','#ff4d6d','#7ad8ff','#d28cff'];
+
+function ridgeShrink(w, lam) {
+  return w / (1 + lam);
+}
+function lassoShrink(w, lam) {
+  const s = Math.sign(w);
+  return s * Math.max(Math.abs(w) - lam, 0);
+}
+
+function drawReg() {
+  const W = regCanvas.width, H = regCanvas.height;
+  regCtx.clearRect(0, 0, W, H);
+  const logLam = parseFloat(document.getElementById('lamSlider').value);
+  const lam = Math.pow(10, logLam);
+  document.getElementById('lamVal').textContent = logLam.toFixed(1);
+
+  const padL = 50, padR = 130, padT = 30, padB = 40;
+  const xMin = -4, xMax = 2, yMin = -2.5, yMax = 3;
+  const toX = x => padL + (x - xMin) / (xMax - xMin) * (W - padL - padR);
+  const toY = y => padT + (yMax - y) / (yMax - yMin) * (H - padT - padB);
+
+  regCtx.strokeStyle = 'rgba(0,240,255,0.06)';
+  regCtx.lineWidth = 1;
+  for (let i = -4; i <= 2; i++) {
+    regCtx.beginPath(); regCtx.moveTo(toX(i), padT); regCtx.lineTo(toX(i), H - padB); regCtx.stroke();
+  }
+  for (let y = -2; y <= 3; y++) {
+    regCtx.beginPath(); regCtx.moveTo(padL, toY(y)); regCtx.lineTo(W - padR, toY(y)); regCtx.stroke();
+  }
+  regCtx.strokeStyle = 'rgba(122,139,191,0.5)';
+  regCtx.lineWidth = 1.5;
+  regCtx.beginPath(); regCtx.moveTo(padL, toY(0)); regCtx.lineTo(W - padR, toY(0)); regCtx.stroke();
+  regCtx.font = '11px JetBrains Mono';
+  regCtx.fillStyle = '#7a8bbf';
+  regCtx.fillText('LOG λ →', (padL + W - padR) / 2 - 30, H - 18);
+  regCtx.save();
+  regCtx.translate(14, H/2);
+  regCtx.rotate(-Math.PI/2);
+  regCtx.fillText('COEFFICIENT', 0, 0);
+  regCtx.restore();
+
+  trueWeights.forEach((w, i) => {
+    regCtx.strokeStyle = featColors[i];
+    regCtx.lineWidth = 2;
+    regCtx.beginPath();
+    let first = true;
+    for (let ll = xMin; ll <= xMax; ll += 0.05) {
+      const l = Math.pow(10, ll);
+      const wAdj = regType === 'ridge' ? ridgeShrink(w, l) : lassoShrink(w, l);
+      const x = toX(ll), y = toY(wAdj);
+      if (first) { regCtx.moveTo(x, y); first = false; } else regCtx.lineTo(x, y);
+    }
+    regCtx.stroke();
+
+    const wNow = regType === 'ridge' ? ridgeShrink(w, lam) : lassoShrink(w, lam);
+    regCtx.fillStyle = featColors[i];
+    regCtx.beginPath();
+    regCtx.arc(toX(logLam), toY(wNow), 5, 0, Math.PI * 2);
+    regCtx.fill();
+    regCtx.strokeStyle = '#fff';
+    regCtx.lineWidth = 1;
+    regCtx.stroke();
+
+    regCtx.fillStyle = featColors[i];
+    regCtx.font = '11px JetBrains Mono';
+    regCtx.fillText(`${featNames[i]}: ${wNow.toFixed(2)}`, W - padR + 8, toY(wNow) + 4);
+  });
+
+  regCtx.strokeStyle = 'rgba(255,43,214,0.5)';
+  regCtx.setLineDash([4, 4]);
+  regCtx.lineWidth = 1.5;
+  regCtx.beginPath();
+  regCtx.moveTo(toX(logLam), padT);
+  regCtx.lineTo(toX(logLam), H - padB);
+  regCtx.stroke();
+  regCtx.setLineDash([]);
+
+  let active = 0, l1 = 0, l2 = 0;
+  trueWeights.forEach(w => {
+    const wA = regType === 'ridge' ? ridgeShrink(w, lam) : lassoShrink(w, lam);
+    if (Math.abs(wA) > 1e-6) active++;
+    l1 += Math.abs(wA);
+    l2 += wA * wA;
+  });
+  document.getElementById('activeCount').textContent = active + ' / 8';
+  document.getElementById('l1Norm').textContent = l1.toFixed(3);
+  document.getElementById('l2Norm').textContent = l2.toFixed(3);
+  document.getElementById('penaltyType').textContent = regType === 'ridge' ? 'RIDGE (L2)' : 'LASSO (L1)';
+}
+
+function setReg(t) {
+  regType = t;
+  document.getElementById('btnRidge').classList.toggle('active', t === 'ridge');
+  document.getElementById('btnLasso').classList.toggle('active', t === 'lasso');
+  drawReg();
+}
+document.getElementById('lamSlider').addEventListener('input', drawReg);
+drawReg();
+
+/* ═══════════ QUIZ ═══════════ */
+const _quizAnswered = new Set();
+let _quizCorrect = 0;
+
+function checkQ(el, correct, explanation) {
+  const card = el.closest('.quiz-card');
+  const opts = el.parentElement.querySelectorAll('.quiz-opt');
+  opts.forEach(o => o.classList.remove('correct','wrong'));
+  const fb = el.parentElement.parentElement.querySelector('.quiz-feedback');
+  if (card && !_quizAnswered.has(card)) {
+    _quizAnswered.add(card);
+    if (correct) _quizCorrect++;
+    updateQuizScore();
+  }
+  if (correct) {
+    el.classList.add('correct');
+    fb.className = 'quiz-feedback show ok';
+    fb.innerHTML = '<span class="fb-title">✓ Correct — regularization reasoning confirmed.</span>' +
+                   (explanation ? '<span class="fb-explain">' + explanation + '</span>' : '');
+  } else {
+    el.classList.add('wrong');
+    fb.className = 'quiz-feedback show no';
+    fb.innerHTML = '<span class="fb-title">✗ Not quite — try again or read the explanation.</span>' +
+                   (explanation ? '<span class="fb-explain">' + explanation + '</span>' : '');
+  }
+}
+
+function updateQuizScore() {
+  const total = 16;
+  const numEl = document.getElementById('quizScoreNum');
+  const barEl = document.getElementById('quizScoreBar');
+  const statusEl = document.getElementById('quizScoreStatus');
+  if (!numEl || !barEl || !statusEl) return;
+  numEl.textContent = _quizCorrect;
+  barEl.style.width = (_quizCorrect / total * 100) + '%';
+  const answered = _quizAnswered.size;
+  let status, color;
+  if (answered === 0) { status = 'AWAITING INPUT'; color = 'var(--neon-magenta)'; }
+  else if (answered < total) { status = 'IN PROGRESS — ' + answered + '/' + total; color = 'var(--neon-cyan)'; }
+  else if (_quizCorrect === total) { status = '✓ PERFECT SCORE'; color = 'var(--neon-green)'; }
+  else if (_quizCorrect >= 13) { status = '✓ MASTERY ACHIEVED'; color = 'var(--neon-green)'; }
+  else if (_quizCorrect >= 10) { status = '◉ SOLID GRASP'; color = 'var(--neon-cyan)'; }
+  else if (_quizCorrect >= 6)  { status = '◐ KEEP STUDYING'; color = 'var(--neon-amber)'; }
+  else                         { status = '⚠ REVIEW RECOMMENDED'; color = 'var(--neon-red)'; }
+  statusEl.textContent = status;
+  statusEl.style.color = color;
+}
+
+/* ═══════════ AI EVALUATION ═══════════ */
+const _aiRubrics = {
+  1: {
+    title: `Underfit vs Overfit`,
+    concepts: [
+      { name: `Underfit = model too simple / can't capture pattern`, keys: ["too simple", "underfit", "can't capture", "cannot capture", "too weak", "not enough", "too rigid", "too few", "low capacity"] },
+      { name: `Overfit = model too complex / memorizes noise`, keys: ["too complex", "overfit", "memoriz", "too flexible", "too many", "noise", "random", "captures noise", "fits noise", "too high capacity"] },
+      { name: `Train vs test error pattern`, keys: ["train error", "test error", "training error", "test set", "validation", "training data", "generalization", "holdout", "out-of-sample", "training accuracy"] },
+      { name: `Mentions the gap or generalization gap`, keys: ["gap", "generalization gap", "close together", "far apart", "difference", "big difference", "huge gap", "small gap", "differ"] }
+    ],
+    model: `Underfitting happens when a model is too simple to capture the real pattern in the data — for example, fitting a straight line to a clearly curved relationship. Both train error and test error are high, and they're close together. Overfitting happens when a model is too complex and memorizes the training data including its random noise — for example, a degree-15 polynomial through 20 points. Train error is near zero but test error is huge. The key diagnostic is the generalization gap (test_error − train_error): tiny gap with low errors = good fit; tiny gap with high errors = underfit; huge gap = overfit.`
+  },
+  2: {
+    title: `Bias-Variance Decomposition`,
+    concepts: [
+      { name: `States the formula Total = Bias² + Variance + Noise (σ²)`, keys: ["bias² + variance", "bias^2 + variance", "bias squared + variance", "bias² + var", "total = bias", "mse = bias", "noise", "σ²", "sigma²", "sigma squared", "irreducible"] },
+      { name: `Bias decreases with complexity`, keys: ["bias decreases", "bias goes down", "bias drops", "less bias", "reduces bias", "bias falls", "low bias", "bias shrinks"] },
+      { name: `Variance increases with complexity`, keys: ["variance increases", "variance goes up", "variance rises", "more variance", "higher variance", "variance grows", "variance climbs"] },
+      { name: `Total forms a U-shape / minimum in the middle`, keys: ["u-shape", "u shape", "u-curve", "u curve", "minimum", "sweet spot", "middle", "optimal complexity", "best in the middle", "trade off", "tradeoff"] }
+    ],
+    model: `The bias-variance decomposition says expected total error = Bias² + Variance + σ² (irreducible noise). As model complexity rises, bias shrinks (the model can capture more of the true pattern) but variance grows (the model becomes more sensitive to which training data it saw). Noise σ² is fixed by the world. Since total error is the sum, it follows a U-shape against complexity: high on the left because bias dominates, high on the right because variance dominates, and the minimum sits somewhere in the middle. That minimum, not zero training error, is the actual goal — and it's why the best model is rarely the most complex one.`
+  },
+  3: {
+    title: `Ridge vs Lasso`,
+    concepts: [
+      { name: `Ridge uses L2 penalty (squared weights)`, keys: ["l2", "sum of squares", "squared weight", "wⱼ²", "w²", "ridge", "squared", "σ w"] },
+      { name: `Lasso uses L1 penalty (absolute values)`, keys: ["l1", "absolute", "|w|", "sum of absolute", "abs", "lasso"] },
+      { name: `Lasso produces sparsity / sets weights to zero`, keys: ["exactly zero", "sparsity", "sparse", "drops", "feature selection", "select features", "zero out", "exactly 0", "== 0", "wipe out", "eliminates"] },
+      { name: `Use-case: many features mostly useless → Lasso; most features matter → Ridge`, keys: ["many features", "few features", "correlated", "high-dimensional", "irrelevant", "useless features", "default", "interpret", "small number", "most matter"] }
+    ],
+    model: `Ridge regression adds an L2 penalty λ·Σwⱼ² to the OLS loss; Lasso adds an L1 penalty λ·Σ|wⱼ|. The L2 penalty is smooth, so it shrinks all weights toward zero but never exactly to zero. The L1 penalty is non-smooth at zero, so it tends to land weights exactly at zero — giving you automatic feature selection. Practical guidance: reach for Lasso when you have many features and expect most to be useless (e.g., 20,000 genes, 200 patients), because sparsity gives you an interpretable model. Reach for Ridge when most features carry some signal or when features are highly correlated, since Ridge spreads weight across them gracefully. When in doubt, Elastic Net combines both.`
+  },
+  4: {
+    title: `Why Regularization Helps Test Error`,
+    concepts: [
+      { name: `OLS is unbiased but high-variance`, keys: ["ols", "unbiased", "no bias", "zero bias", "high variance", "noisy", "fluctuates", "overfits", "varies", "wiggles"] },
+      { name: `Regularization adds a small bias`, keys: ["small bias", "little bias", "introduces bias", "accept bias", "bias premium", "adds bias", "some bias", "slight bias", "biased"] },
+      { name: `Regularization cuts variance a lot`, keys: ["variance reduction", "reduces variance", "lower variance", "cuts variance", "large variance drop", "much lower variance", "damps variance", "shrinks variance", "variance discount"] },
+      { name: `Net MSE drops / better generalization`, keys: ["total error", "mse", "net", "overall", "total", "better generalization", "test error", "generalize", "wins", "overall lower", "net lower", "total drops"] }
+    ],
+    model: `OLS is the unbiased estimator that minimizes training squared error — but unbiased doesn't mean best. Because MSE = Bias² + Variance, an estimator can have zero bias and still have terrible total error if its variance is huge. Regularization deliberately shrinks the weights away from their OLS values, which introduces a small bias. But shrinking by λ also dramatically reduces variance — the model becomes much less sensitive to the specific training set. As long as the variance reduction is bigger than the bias² increase, total MSE drops, which means test error drops. You're paying a small bias premium to buy a large variance discount, and the net trade is positive over a wide range of λ.`
+  },
+  5: {
+    title: `Cross-Validation for λ`,
+    concepts: [
+      { name: `Try a grid of λ values`, keys: ["grid", "range of", "log-spaced", "log spaced", "many λ", "candidate λ", "set of values", "sweep", "search", "10^", "log scale"] },
+      { name: `Use K-fold splits`, keys: ["k-fold", "k fold", "5-fold", "10-fold", "folds", "split", "partition", "divide", "5 folds", "10 folds"] },
+      { name: `Train on K-1 folds, evaluate on held-out fold; average across folds`, keys: ["held out", "holdout", "validation", "evaluate", "test fold", "averag", "mean error", "mean", "cv score", "validation error"] },
+      { name: `Pick the λ with lowest average validation error`, keys: ["lowest", "minimum", "pick", "choose", "select", "best", "one-standard-error", "one-se", "lowest cv", "minim", "smallest"] }
+    ],
+    model: `To pick λ for Ridge regression: (1) build a log-spaced grid of candidate λ values, typically from about 10⁻⁴ to 10². (2) Split the training set into K folds (5 or 10 is standard). (3) For each candidate λ, train the model on K−1 folds and compute error on the held-out fold; repeat for all K folds and average. (4) Pick the λ with the lowest average validation error. The result is a plot of validation error vs log λ that's typically U-shaped, mirroring the bias-variance curve: small λ overfits, large λ underfits, and the minimum sits in the middle. A common variant is the "one standard error rule" — pick the largest λ whose error is within 1 SE of the minimum, favoring simpler models with similar performance.`
+  }
+};
+
+function evalAI(qNum) {
+  const input = document.getElementById('aiInput' + qNum);
+  const result = document.getElementById('aiResult' + qNum);
+  if (!input || !result) return;
+  const text = (input.value || '').trim();
+  const rubric = _aiRubrics[qNum];
+  if (!text) {
+    result.className = 'ai-eval-result show';
+    result.innerHTML = '<div class="ai-eval-score-row">' +
+      '<div class="ai-eval-avatar">Σ</div>' +
+      '<div><div class="ai-eval-tag">QNA-Σ // Evaluator</div></div>' +
+      '<div class="ai-eval-score weak">EMPTY</div></div>' +
+      '<div class="ai-eval-feedback">Please type an answer before requesting an evaluation. Aim for 3–5 sentences in your own words.</div>';
+    return;
+  }
+  const lower = text.toLowerCase();
+  const wordCount = text.split(/\s+/).filter(Boolean).length;
+
+  const hits = [];
+  const misses = [];
+  rubric.concepts.forEach(c => {
+    const matched = c.keys.some(k => lower.includes(k.toLowerCase()));
+    if (matched) hits.push(c.name);
+    else misses.push(c.name);
+  });
+  const conceptScore = hits.length / rubric.concepts.length;
+
+  let lengthFactor = 1;
+  if (wordCount < 15) lengthFactor = 0.55;
+  else if (wordCount < 30) lengthFactor = 0.85;
+
+  const finalScore = Math.round(conceptScore * lengthFactor * 100);
+
+  let tier, tierClass, tierMsg;
+  if (finalScore >= 85) { tier = 'EXCELLENT'; tierClass = 'excellent'; tierMsg = 'Strong, complete answer. You have captured the key concepts in your own words — mastery-level understanding.'; }
+  else if (finalScore >= 65) { tier = 'GOOD'; tierClass = 'good'; tierMsg = 'Solid answer. You hit most of the key ideas. Tighten the missing concept(s) below and you are fully there.'; }
+  else if (finalScore >= 40) { tier = 'PARTIAL'; tierClass = 'partial'; tierMsg = 'Partial answer. You have got some of the right pieces but a few core concepts are missing. Review the items below and try expanding your response.'; }
+  else { tier = 'NEEDS WORK'; tierClass = 'weak'; tierMsg = 'Your answer is missing most of the key concepts this question is testing. Read the model answer below, then take another pass.'; }
+
+  let html = '<div class="ai-eval-score-row">' +
+    '<div class="ai-eval-avatar">Σ</div>' +
+    '<div><div class="ai-eval-tag">QNA-Σ // Evaluator · ' + rubric.title + '</div></div>' +
+    '<div class="ai-eval-score ' + tierClass + '">' + finalScore + '% · ' + tier + '</div></div>' +
+    '<div class="ai-eval-feedback">' + tierMsg;
+
+  html += '<ul>';
+  hits.forEach(h => { html += '<li><span class="keyword-hit">✓ HIT</span> &nbsp;' + h + '</li>'; });
+  misses.forEach(m => { html += '<li><span class="keyword-miss">○ MISSING</span> &nbsp;' + m + '</li>'; });
+  html += '</ul>';
+
+  html += '<div class="ai-eval-model"><span class="model-label">◉ Model Answer (for comparison)</span>' + rubric.model + '</div>';
+  html += '</div>';
+
+  result.className = 'ai-eval-result show';
+  result.innerHTML = html;
+}
+
+function clearAI(qNum) {
+  const input = document.getElementById('aiInput' + qNum);
+  const result = document.getElementById('aiResult' + qNum);
+  if (input) input.value = '';
+  if (result) { result.className = 'ai-eval-result'; result.innerHTML = ''; }
+}
+
+/* ═══════════ SCROLL REVEAL ═══════════ */
+(function() {
+  const reveals = document.querySelectorAll('.reveal');
+  if (!reveals.length) return;
+  const obs = new IntersectionObserver((entries) => {
+    entries.forEach(e => { if (e.isIntersecting) { e.target.classList.add('visible'); obs.unobserve(e.target); } });
+  }, { threshold: 0, rootMargin: '0px 0px -40px 0px' });
+  reveals.forEach(r => obs.observe(r));
+})();
+</script>
+</body>
+</html>

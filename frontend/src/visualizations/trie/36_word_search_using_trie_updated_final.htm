@@ -1,0 +1,321 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Word Search using Trie - Visualization</title>
+    <style>
+        :root {
+            --bg-page: #0d1117;
+            --bg-surface: #161b22;
+            --bg-input: #0d1117;
+            --border-main: #30363d;
+            --btn-bg: #21262d;
+            --btn-hover: #2d333b;
+            --text-main: #c9d1d9;
+            --text-dim: #8b949e;
+            --text-log: #58a6ff;
+            --accent-orange: #e3b341;
+            --accent-blue: #388bfd;
+            --accent-green: #3fb950;
+            --accent-red: #f85149;
+            --accent-purple: #a371f7;
+        }
+
+        * { box-sizing: border-box; }
+        body {
+            background-color: var(--bg-page);
+            color: var(--text-main);
+            font-family: system-ui, -apple-system, sans-serif;
+            margin: 0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            min-height: 100vh;
+            padding-bottom: 40px;
+        }
+
+        .input-bar {
+            width: 100%;
+            background-color: var(--bg-surface);
+            padding: 12px 16px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 12px;
+            border-bottom: 1px solid var(--border-main);
+            flex-wrap: wrap;
+        }
+        button {
+            height: 32px; border-radius: 6px; padding: 0 16px; background: var(--btn-bg);
+            border: 1px solid var(--border-main); color: var(--text-main); font-size: 13px; cursor: pointer;
+        }
+        button:hover { background: var(--btn-hover); }
+
+        .visual-container {
+            margin-top: 30px;
+            display: flex;
+            gap: 40px;
+            width: 100%;
+            max-width: 1200px;
+            justify-content: center;
+            flex-wrap: wrap;
+        }
+
+        .board-area {
+            text-align: center;
+        }
+        .board {
+            display: grid;
+            gap: 4px;
+            background: var(--bg-surface);
+            padding: 12px;
+            border: 2px solid var(--border-main);
+            border-radius: 8px;
+        }
+        .cell {
+            width: 52px;
+            height: 52px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 24px;
+            font-weight: bold;
+            background: #21262d;
+            border: 2px solid var(--border-main);
+            border-radius: 6px;
+            transition: all 0.3s ease;
+        }
+        .cell.current { background: #2a1600; border-color: var(--accent-orange); transform: scale(1.1); }
+        .cell.found { background: #0f2a1a; border-color: var(--accent-green); }
+
+        .result-area {
+            background: var(--bg-surface);
+            border: 2px solid var(--accent-green);
+            border-radius: 8px;
+            padding: 15px;
+            width: 260px;
+        }
+
+        .action-panel {
+            margin-top: 25px;
+            background: var(--bg-surface);
+            border: 1px solid var(--border-main);
+            border-radius: 6px;
+            padding: 16px 22px;
+            width: 860px;
+            text-align: center;
+            font-family: monospace;
+            min-height: 90px;
+            font-size: 15px;
+            line-height: 1.5;
+        }
+
+        .controls {
+            margin-top: 20px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .log-panel {
+            margin-top: 15px;
+            background: var(--bg-surface);
+            border: 1px solid var(--border-main);
+            border-radius: 6px;
+            padding: 12px 16px;
+            width: 860px;
+            height: 160px;
+            overflow-y: auto;
+            font-family: 'Courier New', monospace;
+            font-size: 13.5px;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="input-bar">
+        <button onclick="loadExample(0)">Example 1</button>
+        <button onclick="loadExample(1)">Example 2</button>
+        <button onclick="resetAll()">Reset</button>
+    </div>
+
+    <div class="visual-container">
+        <!-- Board -->
+        <div class="board-area">
+            <div style="margin-bottom:8px; font-weight:bold; color:var(--accent-blue);">Board</div>
+            <div id="board" class="board"></div>
+        </div>
+
+        <!-- Current Path -->
+        <div style="text-align:center; min-width:280px;">
+            <div style="color:var(--accent-orange); font-weight:bold; margin-bottom:8px;">Current Path</div>
+            <div id="current-path" style="font-size:28px; font-weight:bold; background:var(--bg-surface); padding:20px; border-radius:8px; border:2px solid var(--accent-orange); min-height:80px;"></div>
+        </div>
+
+        <!-- Found Words -->
+        <div class="result-area">
+            <h3 style="margin:0 0 12px 0; color:var(--accent-green);">Found Words</h3>
+            <div id="result-list" style="display:flex; flex-direction:column; gap:8px;"></div>
+        </div>
+    </div>
+
+    <div class="action-panel" id="main-panel">Click Play to start demonstration</div>
+
+    <div class="controls">
+        <button onclick="resetAll()">↺ Reset</button>
+        <button onclick="backStep()">← Back</button>
+        <button onclick="togglePlay()" id="play-btn">▶ Play</button>
+        <button onclick="nextStep()">Next →</button>
+        <span style="margin-left:20px; font-size:13px;">Speed:</span>
+        <input type="range" id="speed-slider" min="0" max="2" value="1">
+    </div>
+
+    <div class="log-panel" id="log-container"></div>
+
+    <script>
+        let board = [];
+        let words = [];
+        let result = [];
+        let steps = [];
+        let stepIndex = 0;
+        let timer = null;
+        const delays = [1650, 950, 480];
+
+        function init() {
+            loadExample(0);
+        }
+
+        function loadExample(ex) {
+            if (ex === 0) {
+                board = [['a','b'],['c','d']];
+                words = ['ab','ac','bd','abcd'];
+            } else {
+                board = [['o','a','a','n'],['e','t','a','e'],['i','h','k','r'],['i','f','l','v']];
+                words = ['oath','pea','eat','rain'];
+            }
+            result = [];
+            steps = [];
+            document.getElementById('log-container').innerHTML = '';
+
+            addStep("Board and words loaded. Starting DFS from each cell with Trie-like prefix check.", true);
+
+            if (ex === 0) {
+                addStep("Start at (0,0) 'a' → right to 'b' → path 'ab' (found)");
+                result.push("ab");
+                addStep("From (0,0) 'a' → down to 'c' → path 'ac' (found)");
+                result.push("ac");
+                addStep("Start at (0,1) 'b' → down to 'd' → path 'bd' (found)");
+                result.push("bd");
+                addStep("'abcd' not possible (no valid path of length 4)");
+            } else {
+                addStep("Start at (0,0) 'o' → right 'a' → down 't' → down 'h' → path 'oath' (found)");
+                result.push("oath");
+                addStep("Start at (1,0) 'e' → right 'a' → right 't' → path 'eat' (found)");
+                result.push("eat");
+                addStep("'pea' and 'rain' have no valid contiguous paths");
+            }
+
+            addStep(`Final Result: [${result.join(', ')}]`, true);
+
+            stepIndex = 0;
+            renderStep(0);
+        }
+
+        function addStep(text) {
+            steps.push({
+                panel: text,
+                result: [...result],
+                log: text
+            });
+        }
+
+        function renderBoard() {
+            const container = document.getElementById('board');
+            container.innerHTML = '';
+            container.style.gridTemplateColumns = `repeat(${board[0].length}, 1fr)`;
+            board.forEach((row, i) => {
+                row.forEach((ch, j) => {
+                    const cell = document.createElement('div');
+                    cell.className = 'cell';
+                    cell.textContent = ch;
+                    container.appendChild(cell);
+                });
+            });
+        }
+
+        function renderResult() {
+            const container = document.getElementById('result-list');
+            container.innerHTML = '';
+            result.forEach(w => {
+                const div = document.createElement('div');
+                div.style.padding = '10px';
+                div.style.background = '#0f2a1a';
+                div.style.border = '2px solid var(--accent-green)';
+                div.style.borderRadius = '6px';
+                div.style.fontWeight = 'bold';
+                div.textContent = w;
+                container.appendChild(div);
+            });
+        }
+
+        function renderStep(idx) {
+            const step = steps[idx];
+            if (!step) return;
+
+            renderBoard();
+            renderResult();
+            document.getElementById('current-path').innerHTML = step.panel.includes('path') ? step.panel : 'Exploring board...';
+            document.getElementById('main-panel').innerHTML = step.panel;
+
+            const logDiv = document.getElementById('log-container');
+            logDiv.innerHTML = '';
+            for (let i = 0; i <= idx; i++) {
+                const line = document.createElement('div');
+                line.style.margin = '4px 0';
+                line.innerHTML = steps[i].log;
+                logDiv.appendChild(line);
+            }
+            logDiv.scrollTop = logDiv.scrollHeight;
+        }
+
+        function nextStep() {
+            if (stepIndex < steps.length - 1) {
+                stepIndex++;
+                renderStep(stepIndex);
+            } else pause();
+        }
+
+        function backStep() {
+            if (stepIndex > 0) {
+                stepIndex--;
+                renderStep(stepIndex);
+            }
+        }
+
+        function resetAll() {
+            pause();
+            stepIndex = 0;
+            renderStep(0);
+        }
+
+        function togglePlay() {
+            const btn = document.getElementById('play-btn');
+            if (timer) pause();
+            else {
+                btn.textContent = 'Pause';
+                if (stepIndex >= steps.length - 1) stepIndex = 0;
+                timer = setInterval(nextStep, delays[document.getElementById('speed-slider').value]);
+            }
+        }
+
+        function pause() {
+            clearInterval(timer);
+            timer = null;
+            document.getElementById('play-btn').textContent = 'Play';
+        }
+
+        window.onload = init;
+    </script>
+</body>
+</html>

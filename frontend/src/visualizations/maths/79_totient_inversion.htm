@@ -1,0 +1,398 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Totient Inversion - Visualization</title>
+    <style>
+        :root {
+            --bg-page: #0d1117;
+            --bg-surface: #161b22;
+            --bg-input: #0d1117;
+            --border-main: #30363d;
+            --btn-bg: #21262d;
+            --btn-hover: #2d333b;
+            --text-main: #c9d1d9;
+            --text-dim: #8b949e;
+            --accent-orange: #e3b341;
+            --accent-blue: #388bfd;
+            --accent-green: #3fb950;
+            --accent-red: #f85149;
+            --accent-purple: #a371f7;
+        }
+
+        * { box-sizing: border-box; }
+        body {
+            background-color: var(--bg-page);
+            color: var(--text-main);
+            font-family: system-ui, -apple-system, sans-serif;
+            margin: 0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            min-height: 100vh;
+            padding-bottom: 40px;
+        }
+
+        /* INPUT BAR */
+        .input-bar {
+            width: 100%;
+            background-color: var(--bg-surface);
+            padding: 12px 16px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 8px;
+            border-bottom: 1px solid var(--border-main);
+            flex-wrap: wrap;
+        }
+        label.ui-label { font-family: 'Courier New', monospace; font-size: 13px; color: var(--text-dim); }
+        input[type="number"] {
+            background: var(--bg-input);
+            border: 1px solid var(--border-main);
+            color: var(--text-main);
+            height: 32px;
+            border-radius: 6px;
+            padding: 0 10px;
+            width: 120px;
+            font-size: 13px;
+        }
+
+        button {
+            height: 32px; border-radius: 6px; padding: 0 14px; background: var(--btn-bg);
+            border: 1px solid var(--border-main); color: var(--text-main); font-size: 13px; cursor: pointer;
+            transition: background 0.2s ease;
+        }
+        button:hover { background: var(--btn-hover); }
+
+        /* VISUALIZATION */
+        .visual-container { margin-top: 30px; display: flex; flex-direction: column; align-items: center; gap: 20px; width: 100%; }
+        .tiles-wrapper { 
+            display: flex; gap: 14px; flex-wrap: wrap; justify-content: center; 
+            max-width: 920px; min-height: 110px; position: relative;
+        }
+        
+        .tile-unit { display: flex; flex-direction: column; align-items: center; gap: 6px; position: relative; }
+        .tile {
+            min-width: 58px; height: 58px; display: flex; align-items: center; justify-content: center;
+            border-radius: 8px; font-size: 21px; font-weight: 600; font-family: 'Courier New', monospace;
+            transition: all 0.3s ease; border: 2px solid var(--border-main); background: #21262d;
+            color: var(--text-main);
+        }
+        .tile-index { font-size: 11px; color: var(--text-dim); font-family: monospace; }
+
+        /* Highlight States */
+        .tile.candidate { background: #2a1600; border-color: var(--accent-orange); color: var(--accent-orange); transform: scale(1.12); box-shadow: 0 0 14px rgba(227,179,65,0.5); z-index: 2; }
+        .tile.winning { background: #0f2a1a; border-color: var(--accent-green); color: var(--accent-green); transform: scale(1.1); box-shadow: 0 0 12px var(--accent-green); z-index: 3; }
+        .tile.failed { background: #2a0d0d; border-color: var(--accent-red); color: var(--accent-red); transform: scale(1.15); box-shadow: 0 0 12px var(--accent-red); }
+        .tile.done { opacity: 0.55; background: #161b22; border-color: var(--border-main); color: var(--text-dim); }
+
+        /* PANEL */
+        .action-panel {
+            margin-top: 40px; background: var(--bg-surface); border: 1px solid var(--border-main);
+            border-radius: 6px; padding: 16px 26px; width: 760px; text-align: center; 
+            font-family: monospace; min-height: 95px; line-height: 1.55;
+        }
+
+        /* INFO PANEL */
+        .info-panel { margin-top: 16px; display: flex; gap: 16px; flex-wrap: wrap; justify-content: center; }
+        .info-cell {
+            background: var(--bg-surface); border: 1px solid var(--border-main); border-radius: 6px;
+            padding: 11px 20px; display: flex; flex-direction: column; align-items: center; 
+            min-width: 135px; gap: 6px;
+        }
+        .info-label { font-size: 11px; color: var(--text-dim); }
+        .info-value { font-family: monospace; font-size: 17px; font-weight: 700; }
+
+        /* RESULT */
+        .result-display { margin-top: 16px; display: flex; flex-direction: column; align-items: center; }
+        #res-val { font-size: 23px; color: var(--text-dim); font-family: monospace; transition: all 0.3s; font-weight: bold; }
+        .pop { animation: popAnim 420ms ease; color: var(--accent-green) !important; font-size: 29px !important; text-shadow: 0 0 16px var(--accent-green); }
+
+        @keyframes popAnim { 0%{transform:scale(1)} 50%{transform:scale(1.2)} 100%{transform:scale(1)} }
+
+        .status-bar { margin-top: 12px; font-size: 13px; color: var(--text-dim); height: 1.5em; text-align: center; width: 720px; }
+
+        /* CONTROLS */
+        .controls { margin-top: 30px; display: flex; align-items: center; gap: 12px; }
+        input[type="range"] { accent-color: var(--accent-blue); width: 130px; cursor: pointer; }
+
+        /* LEGEND */
+        .legend { margin-top: 18px; display: flex; gap: 22px; flex-wrap: wrap; justify-content: center; max-width: 900px; }
+        .legend-item { display: flex; align-items: center; font-size: 12.5px; color: var(--text-dim); }
+        .dot { width: 13px; height: 13px; border-radius: 3px; margin-right: 8px; display: inline-block; }
+
+        /* LOG */
+        .log-panel {
+            margin-top: 18px; background: var(--bg-page); border: 1px solid var(--border-main);
+            border-radius: 6px; padding: 16px 22px; width: 780px; max-width: 95%; height: 150px;
+            overflow-y: auto; font-family: 'Courier New', monospace; font-size: 13px; line-height: 1.45;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="input-bar">
+        <label class="ui-label">φ(n) =</label>
+        <input type="number" id="phi-input" value="4" style="width:120px;">
+        <button onclick="loadCustom()">Load</button>
+        <button onclick="loadExample(4)">Ex 1 (φ=4 → n=5)</button>
+        <button onclick="loadExample(6)">Ex 2 (φ=6 → n=7)</button>
+    </div>
+
+    <div class="visual-container">
+        <div class="ui-label">Totient Inversion: Find smallest n such that φ(n) = target</div>
+        <div class="tiles-wrapper" id="tiles-container"></div>
+    </div>
+
+    <div class="action-panel" id="main-panel">—</div>
+
+    <div class="info-panel">
+        <div class="info-cell">
+            <span class="info-label">Current n</span>
+            <span class="info-value" id="val-n" style="color: var(--accent-orange);">—</span>
+        </div>
+        <div class="info-cell">
+            <span class="info-label">φ(n)</span>
+            <span class="info-value" id="val-phi" style="color: var(--accent-blue);">—</span>
+        </div>
+        <div class="info-cell">
+            <span class="info-label">Status</span>
+            <span class="info-value" id="val-status" style="color: var(--accent-green);">—</span>
+        </div>
+    </div>
+
+    <div class="result-display">
+        <span class="ui-label" style="margin-bottom: 6px;">Found n =</span>
+        <span id="res-val">—</span>
+    </div>
+
+    <div class="status-bar" id="status-text"></div>
+
+    <div class="controls">
+        <button onclick="reset()">↺ Reset</button>
+        <button onclick="back()">← Back</button>
+        <button onclick="togglePlay()" id="play-btn">Play</button>
+        <button onclick="next()">Next →</button>
+        <div class="controls" style="margin-top:0">
+            <span class="ui-label" style="margin-right:5px; font-size:11px">Speed</span>
+            <input type="range" id="speed-slider" min="0" max="2" value="1">
+        </div>
+    </div>
+
+    <div class="legend">
+        <div class="legend-item"><span class="dot" style="background:var(--bg-surface); border:1px solid var(--accent-orange)"></span> Testing n</div>
+        <div class="legend-item"><span class="dot" style="background:var(--accent-green); border:1px solid var(--accent-green)"></span> Match Found</div>
+        <div class="legend-item"><span class="dot" style="background:var(--accent-red); border:1px solid var(--accent-red)"></span> No Match</div>
+    </div>
+
+    <div class="log-panel" id="log"></div>
+
+    <script>
+        let phiTarget = 4;
+        let steps = [];
+        let stepIndex = 0;
+        let timer = null;
+        const delays = [1400, 700, 350];
+
+        function init() { loadExample(4); }
+
+        function loadExample(newPhi) {
+            phiTarget = parseInt(newPhi);
+            document.getElementById('phi-input').value = phiTarget;
+            generateSteps();
+            reset();
+        }
+
+        function loadCustom() {
+            const val = parseInt(document.getElementById('phi-input').value);
+            if (!isNaN(val) && val >= 1) {
+                phiTarget = val;
+                generateSteps();
+                reset();
+            } else {
+                alert("Please enter valid φ(n) ≥ 1");
+            }
+        }
+
+        function computePhi(n) {
+            if (n === 1) return 1;
+            let result = n;
+            let p = 2;
+            while (p * p <= n) {
+                if (n % p === 0) {
+                    while (n % p === 0) n /= p;
+                    result -= result / p;
+                }
+                p++;
+            }
+            if (n > 1) result -= result / n;
+            return Math.floor(result);
+        }
+
+        function generateSteps() {
+            steps = [];
+            let n = 1;
+
+            steps.push({
+                type: 'init',
+                panel: `Totient Inversion<br>Find smallest n such that φ(n) = <b>${phiTarget}</b>`,
+                statusText: `Starting search from n=1`,
+                log: `Target φ(n) = ${phiTarget}\nIterating n=1,2,3,...`,
+                logColor: 'var(--text-dim)',
+                currentN: '—',
+                currentPhi: '—',
+                status: 'Searching...'
+            });
+
+            while (true) {
+                const phiVal = computePhi(n);
+
+                steps.push({
+                    type: 'test',
+                    panel: `n = <b>${n}</b><br>φ(${n}) = <b>${phiVal}</b>`,
+                    statusText: `n=${n}, φ(n)=${phiVal}`,
+                    log: `n=${n} → φ(n)=${phiVal}`,
+                    logColor: phiVal === phiTarget ? 'var(--accent-green)' : 'var(--text-main)',
+                    currentN: n,
+                    currentPhi: phiVal,
+                    status: phiVal === phiTarget ? 'MATCH!' : 'No match'
+                });
+
+                if (phiVal === phiTarget) {
+                    steps.push({
+                        type: 'match',
+                        panel: `<span style="color:var(--accent-green)">Found solution!</span><br>Smallest n = <b>${n}</b> where φ(${n}) = ${phiTarget}`,
+                        statusText: `Solution found: n=${n}`,
+                        log: `✓ Solution: n=${n}`,
+                        logColor: 'var(--accent-green)',
+                        currentN: n,
+                        currentPhi: phiVal,
+                        status: 'Success'
+                    });
+                    break;
+                }
+
+                if (n > 1000) { // safety bound
+                    steps.push({
+                        type: 'final',
+                        panel: `<span style="color:var(--accent-red)">No solution found within reasonable bound</span>`,
+                        statusText: `Search limit reached`,
+                        log: `No solution found up to n=1000`,
+                        logColor: 'var(--accent-red)',
+                        currentN: n,
+                        currentPhi: phiVal,
+                        status: 'No solution'
+                    });
+                    break;
+                }
+                n++;
+            }
+
+            // Final summary step
+            steps.push({
+                type: 'final',
+                panel: `Search complete!<br>Smallest n with φ(n) = ${phiTarget} is <b>${steps[steps.length-2].currentN}</b>`,
+                statusText: `Completed`,
+                log: `Final result: n = ${steps[steps.length-2].currentN}`,
+                logColor: 'var(--accent-green)',
+                bold: true,
+                currentN: steps[steps.length-2].currentN,
+                currentPhi: phiTarget,
+                status: 'Done'
+            });
+        }
+
+        function renderStep(idx) {
+            const step = steps[idx];
+            if (!step) return;
+
+            const container = document.getElementById('tiles-container');
+            container.innerHTML = '';
+
+            const wrapper = document.createElement('div');
+            wrapper.className = 'tile-unit';
+
+            const tile = document.createElement('div');
+            tile.className = `tile ${step.type === 'match' || step.type === 'final' && step.logColor.includes('green') ? 'winning' : (step.type === 'test' ? 'candidate' : 'done')}`;
+            tile.innerText = step.currentN !== undefined ? step.currentN : '?';
+
+            const idxLabel = document.createElement('div');
+            idxLabel.className = 'tile-index';
+            idxLabel.innerText = `n = ${step.currentN !== undefined ? step.currentN : '?'}`;
+
+            wrapper.append(tile, idxLabel);
+            container.appendChild(wrapper);
+
+            document.getElementById('main-panel').innerHTML = step.panel;
+            document.getElementById('val-n').innerText = step.currentN !== undefined ? step.currentN : '—';
+            document.getElementById('val-phi').innerText = step.currentPhi !== undefined ? step.currentPhi : '—';
+            document.getElementById('val-status').innerText = step.status || '—';
+
+            const resVal = document.getElementById('res-val');
+            resVal.innerText = step.type === 'match' || step.type === 'final' ? step.currentN : '—';
+            if (step.type === 'match' || step.type === 'final') {
+                resVal.className = 'pop';
+            } else {
+                resVal.className = '';
+            }
+
+            document.getElementById('status-text').innerText = step.statusText || '';
+
+            // Log
+            const logPanel = document.getElementById('log');
+            logPanel.innerHTML = '';
+            for (let k = 0; k <= idx; k++) {
+                if (steps[k].log) {
+                    const line = document.createElement('div');
+                    line.style.marginBottom = '4px';
+                    line.style.whiteSpace = 'pre-wrap';
+                    if (steps[k].logColor) line.style.color = steps[k].logColor;
+                    if (steps[k].bold) line.style.fontWeight = 'bold';
+                    line.innerText = steps[k].log;
+                    logPanel.appendChild(line);
+                }
+            }
+            logPanel.scrollTop = logPanel.scrollHeight;
+        }
+
+        function next() {
+            if (stepIndex < steps.length - 1) {
+                stepIndex++;
+                renderStep(stepIndex);
+            } else pause();
+        }
+
+        function back() {
+            if (stepIndex > 0) {
+                stepIndex--;
+                renderStep(stepIndex);
+            }
+        }
+
+        function reset() {
+            pause();
+            stepIndex = 0;
+            renderStep(0);
+        }
+
+        function togglePlay() {
+            const btn = document.getElementById('play-btn');
+            if (timer) pause();
+            else {
+                btn.innerText = 'Pause';
+                if (stepIndex >= steps.length - 1) stepIndex = 0;
+                timer = setInterval(next, delays[document.getElementById('speed-slider').value]);
+            }
+        }
+
+        function pause() {
+            clearInterval(timer);
+            timer = null;
+            document.getElementById('play-btn').innerText = 'Play';
+        }
+
+        window.onload = init;
+    </script>
+</body>
+</html>
