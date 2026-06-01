@@ -21,6 +21,7 @@ class User(Base):
     google_uid: Mapped[Optional[str]] = mapped_column(
         String(128), unique=True, index=True, nullable=True
     )
+    heard_from: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
     is_active: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
     is_admin: Mapped[bool] = mapped_column(
         Boolean, default=False, server_default="false", nullable=False

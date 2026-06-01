@@ -72,6 +72,7 @@ export default function Signup({ onLogin, onSignupSuccess }) {
                     email: formData.email,
                     username,
                     password: formData.password,
+                    heard_from: localStorage.getItem('heardFrom')
                 }),
             });
 
@@ -102,6 +103,7 @@ export default function Signup({ onLogin, onSignupSuccess }) {
             const response = await fetch(`${API}/auth/google`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ id_token: idToken, heard_from: localStorage.getItem('heardFrom'),}),
                 body: JSON.stringify({
     id_token: idToken,
     display_name: displayName

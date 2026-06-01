@@ -33,6 +33,24 @@ def test_signup_then_login(client):
     assert tokens["token_type"] == "bearer"
 
 
+def test_signup_saves_heard_from(client, db_session):
+    r = client.post(
+        "/auth/signup",
+        json={
+            "username": "alice",
+            "email": "alice@example.com",
+            "password": "Password1",
+            "heard_from": "friend",
+        },
+    )
+    assert r.status_code == 201, r.text
+
+    from app.auth.models.user import User
+
+    user = db_session.query(User).filter_by(email="alice@example.com").one()
+    assert user.heard_from == "friend"
+
+
 def test_signup_duplicate_email_rejected(client):
     signup(client)
     r = signup(client, username="bob")
@@ -70,6 +88,28 @@ def test_me_returns_user_with_access_token(client):
     r = client.get("/auth/me", headers={"Authorization": f"Bearer {tokens['access_token']}"})
     assert r.status_code == 200
     assert r.json()["email"] == "alice@example.com"
+
+
+def test_google_signup_saves_heard_from(client, db_session, monkeypatch):
+    from app.auth.services import auth_service as auth_service_module
+
+    monkeypatch.setattr(
+        auth_service_module,
+        "verify_google_id_token",
+        lambda id_token: {"uid": "google-uid-1", "email": "google@example.com"},
+    )
+
+    r = client.post(
+        "/auth/google",
+        json={"id_token": "fake-token", "heard_from": "youtube"},
+    )
+    assert r.status_code == 200, r.text
+
+    from app.auth.models.user import User
+
+    user = db_session.query(User).filter_by(email="google@example.com").one()
+    assert user.heard_from == "youtube"
+    assert user.google_uid == "google-uid-1"
 
 
 def test_refresh_rotates_token_and_revokes_old(client):
