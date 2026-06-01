@@ -204,6 +204,7 @@ class AuthService:
         email: str,
         username: str,
         password: str,
+        heard_from: Optional[str] = None,
     ) -> User:
         # Lowercase email for storage; usernames are case-sensitive but unique.
         email_normalized = email.lower().strip()
@@ -218,6 +219,7 @@ class AuthService:
             email=email_normalized,
             username=username_clean,
             password_hash=hash_password(password),
+            heard_from=heard_from,
             is_active=True,
         )
         db.add(user)
@@ -284,6 +286,7 @@ class AuthService:
         db: Session,
         *,
         id_token: str,
+        heard_from: Optional[str] = None,
         display_name: Optional[str],
         ip: Optional[str],
         user_agent: Optional[str],
@@ -318,6 +321,12 @@ class AuthService:
 
         # 3. create new user (Google-only)
         if user is None:
+            user = self._create_google_user(
+                db,
+                email=email,
+                google_uid=google_uid,
+                heard_from=heard_from,
+            )
             user = self._create_google_user(db, email=email, name=name, google_uid=google_uid)
 
         self._ensure_usable(user)
@@ -340,6 +349,17 @@ class AuthService:
         )
         return self._issue_token_pair(user=user, session=session)
 
+    def _create_google_user(
+        self,
+        db: Session,
+        *,
+        email: str,
+        google_uid: str,
+        heard_from: Optional[str] = None,
+    ) -> User:
+        # Synthesize a username from the email. Loop until unique.
+        base = email.split("@")[0].replace(".", "_").replace("+", "_")[:40]
+        # Strip any chars that won't pass our pattern.
     def _create_google_user(self, db: Session, *, email: str, name: str, google_uid: str) -> User:
         # Build a safe, human-friendly base username from the provided name.
         base = (name or "user").strip()
@@ -364,6 +384,7 @@ class AuthService:
             username=username,
             password_hash=None,
             google_uid=google_uid,
+            heard_from=heard_from,
             is_active=True,
         )
         db.add(user)
