@@ -1,0 +1,561 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LRU Cache - Visualization</title>
+    <style>
+        :root {
+            --bg-page: #0d1117;
+            --bg-surface: #161b22;
+            --bg-input: #0d1117;
+            --border-main: #30363d;
+            --btn-bg: #21262d;
+            --btn-hover: #2d333b;
+            --text-main: #c9d1d9;
+            --text-dim: #8b949e;
+            --text-log: #58a6ff;
+            --accent-orange: #e3b341;
+            --accent-blue: #388bfd;
+            --accent-green: #3fb950;
+            --accent-red: #f85149;
+            --accent-purple: #a371f7;
+        }
+
+        * { box-sizing: border-box; }
+        body {
+            background-color: var(--bg-page);
+            color: var(--text-main);
+            font-family: system-ui, -apple-system, sans-serif;
+            margin: 0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            min-height: 100vh;
+            padding-bottom: 40px;
+        }
+
+        /* ROW 1: INPUT BAR */
+        .input-bar {
+            width: 100%;
+            background-color: var(--bg-surface);
+            padding: 12px 16px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 8px;
+            border-bottom: 1px solid var(--border-main);
+            flex-wrap: wrap;
+        }
+        label.ui-label { font-family: 'Courier New', monospace; font-size: 13px; color: var(--text-dim); }
+        input[type="text"] {
+            background: var(--bg-input);
+            border: 1px solid var(--border-main);
+            color: var(--text-main);
+            height: 32px;
+            border-radius: 6px;
+            padding: 0 10px;
+            font-size: 13px;
+        }
+        .capacity-input { width: 80px; }
+
+        button {
+            height: 32px; border-radius: 6px; padding: 0 14px; background: var(--btn-bg);
+            border: 1px solid var(--border-main); color: var(--text-main); font-size: 13px; cursor: pointer;
+            transition: background 0.2s ease;
+        }
+        button:hover { background: var(--btn-hover); }
+
+        /* ROW 2: VISUAL */
+        .visual-container { margin-top: 30px; display: flex; flex-direction: column; align-items: center; gap: 30px; width: 100%; }
+        .cache-container { display: flex; gap: 40px; align-items: flex-start; width: 100%; max-width: 1100px; justify-content: center; }
+        
+        /* HashMap */
+        .hashmap-box {
+            background: var(--bg-surface);
+            border: 2px solid var(--accent-purple);
+            border-radius: 8px;
+            padding: 12px;
+            min-width: 320px;
+            text-align: center;
+        }
+        .hashmap-title { font-size: 13px; color: var(--accent-purple); margin-bottom: 8px; }
+        .hashmap-content { font-family: monospace; font-size: 15px; display: flex; flex-direction: column; gap: 4px; align-items: center; }
+
+        /* DLL */
+        .dll-container {
+            text-align: center;
+        }
+        .dll-wrapper { display: flex; align-items: center; gap: 8px; flex-wrap: nowrap; justify-content: center; max-width: 900px; min-height: 90px; position: relative; }
+        
+        .node-unit { display: flex; flex-direction: column; align-items: center; gap: 4px; position: relative; }
+        .node {
+            min-width: 64px; height: 64px; display: flex; align-items: center; justify-content: center;
+            border-radius: 8px; font-size: 15px; font-weight: 700; font-family: 'Courier New', monospace;
+            transition: all 0.3s ease; border: 3px solid var(--border-main); background: #21262d;
+            color: var(--text-main); position: relative;
+            flex-direction: column;
+        }
+        .node-key { font-size: 11px; color: var(--text-dim); }
+        .node-value { font-size: 17px; }
+        .node.current { border-color: var(--accent-orange); box-shadow: 0 0 14px rgba(227, 179, 65, 0.5); }
+        .node.mru { border-color: var(--accent-green); }
+        .node.lru { border-color: var(--accent-red); }
+        .node-index { font-size: 11px; color: var(--text-dim); font-family: monospace; }
+        
+        .arrow { font-size: 24px; color: var(--accent-blue); font-weight: bold; line-height: 1; padding: 0 6px; }
+        .prev-arrow { color: var(--accent-purple); transform: rotate(180deg); }
+
+        /* ROW 3: PANEL */
+        .action-panel {
+            margin-top: 40px; background: var(--bg-surface); border: 1px solid var(--border-main);
+            border-radius: 6px; padding: 12px 20px; width: 680px; text-align: center; font-family: monospace; min-height: 72px;
+            display: flex; flex-direction: column; justify-content: center; font-size: 15px; line-height: 1.5;
+        }
+
+        /* ROW 4: INFO PANEL */
+        .info-panel { margin-top: 10px; display: flex; gap: 10px; flex-wrap: wrap; justify-content: center; }
+        .info-cell {
+            background: var(--bg-surface); border: 1px solid var(--border-main); border-radius: 6px;
+            padding: 8px 14px; display: flex; flex-direction: column; align-items: center; min-width: 92px; gap: 4px;
+        }
+        .info-label { font-size: 11px; color: var(--text-dim); }
+        .info-value { font-family: monospace; font-size: 15px; font-weight: 700; text-align: center; }
+
+        /* ROW 5: RESULT DISPLAY */
+        .result-display { margin-top: 10px; display: flex; flex-direction: column; align-items: center; }
+        #res-val { font-size: 18px; color: var(--text-dim); font-family: monospace; transition: all 0.3s; font-weight: bold; }
+        .pop { animation: popAnim 400ms ease; color: var(--accent-green) !important; font-size: 24px !important; text-shadow: 0 0 12px var(--accent-green); }
+
+        @keyframes popAnim { 0%{transform:scale(1)} 50%{transform:scale(1.15)} 100%{transform:scale(1)} }
+
+        /* ROW 6: STATUS BAR */
+        .status-bar { margin-top: 8px; font-size: 13px; color: var(--text-dim); height: 1.2em; text-align: center; width: 600px;}
+
+        /* ROW 7: CONTROLS */
+        .controls { margin-top: 24px; display: flex; align-items: center; gap: 8px; }
+        input[type="range"] { accent-color: var(--accent-blue); width: 100px; cursor: pointer; }
+
+        /* ROW 8: LEGEND */
+        .legend { margin-top: 12px; display: flex; gap: 16px; flex-wrap: wrap; justify-content: center; max-width: 800px; }
+        .legend-item { display: flex; align-items: center; font-size: 12px; color: var(--text-dim); }
+        .dot { width: 10px; height: 10px; border-radius: 2px; margin-right: 6px; display: inline-block; }
+
+        /* ROW 9: LOG PANEL */
+        .log-panel {
+            margin-top: 12px; background: var(--bg-page); border: 1px solid var(--border-main);
+            border-radius: 6px; padding: 12px 16px; width: 700px; max-width: 90%; height: 120px;
+            overflow-y: auto; font-family: 'Courier New', monospace; font-size: 13px;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="input-bar">
+        <label class="ui-label">capacity =</label>
+        <input type="text" id="capacity-input" class="capacity-input" placeholder="2" value="2">
+        <button onclick="loadCustom()">Load</button>
+        <button onclick="loadExample(2)">Ex 1 (capacity 2)</button>
+        <button onclick="loadExample(3)">Ex 2 (capacity 3)</button>
+    </div>
+
+    <div class="visual-container">
+        <div class="ui-label">LRU Cache (HashMap + Doubly Linked List)</div>
+        
+        <div class="cache-container">
+            <!-- HashMap -->
+            <div class="hashmap-box">
+                <div class="hashmap-title">HashMap (key → node)</div>
+                <div class="hashmap-content" id="hashmap-content"></div>
+            </div>
+            
+            <!-- DLL -->
+            <div class="dll-container">
+                <div class="ui-label" style="margin-bottom:6px">Doubly Linked List (head = MRU, tail = LRU)</div>
+                <div class="dll-wrapper" id="dll-wrapper"></div>
+            </div>
+            
+            <!-- Capacity Indicator -->
+            <div style="text-align:center; min-width:120px;">
+                <div class="ui-label">Capacity</div>
+                <div id="capacity-display" style="font-size:28px; font-weight:700; font-family:monospace; color:var(--accent-green);">2</div>
+                <div id="size-display" style="font-size:13px; color:var(--text-dim);">size: 0 / 2</div>
+            </div>
+        </div>
+    </div>
+
+    <div class="action-panel" id="main-panel">—</div>
+
+    <div class="info-panel">
+        <div class="info-cell">
+            <span class="info-label">operation</span>
+            <span class="info-value" id="val-op" style="color: var(--accent-orange);">—</span>
+        </div>
+        <div class="info-cell">
+            <span class="info-label">key</span>
+            <span class="info-value" id="val-key" style="color: var(--accent-purple);">—</span>
+        </div>
+        <div class="info-cell">
+            <span class="info-label">value</span>
+            <span class="info-value" id="val-value" style="color: var(--accent-blue);">—</span>
+        </div>
+        <div class="info-cell">
+            <span class="info-label">evicted</span>
+            <span class="info-value" id="val-evicted" style="color: var(--accent-red);">—</span>
+        </div>
+    </div>
+
+    <div class="result-display">
+        <span class="ui-label" style="margin-bottom: 4px;">cache state (key:value)</span>
+        <span id="res-val">—</span>
+    </div>
+
+    <div class="status-bar" id="status-text"></div>
+
+    <div class="controls">
+        <button onclick="reset()">↺ Reset</button>
+        <button onclick="back()">← Back</button>
+        <button onclick="togglePlay()" id="play-btn">Play</button>
+        <button onclick="next()">Next →</button>
+        <div class="controls" style="margin-top:0">
+            <span class="ui-label" style="margin-right:4px; font-size:11px">Speed</span>
+            <input type="range" id="speed-slider" min="0" max="2" value="1">
+        </div>
+    </div>
+
+    <div class="legend">
+        <div class="legend-item"><span class="dot" style="background:#21262d; border:3px solid var(--accent-orange)"></span> current node</div>
+        <div class="legend-item"><span class="dot" style="background:#21262d; border:3px solid var(--accent-green)"></span> MRU (head)</div>
+        <div class="legend-item"><span class="dot" style="background:#21262d; border:3px solid var(--accent-red)"></span> LRU (tail)</div>
+        <div class="legend-item"><span class="dot" style="background:#21262d; border:3px solid var(--border-main); opacity:0.4"></span> normal node</div>
+    </div>
+
+    <div class="log-panel" id="log"></div>
+
+    <script>
+        let capacity = 2;
+        let cacheMap = new Map(); // key -> node
+        let head = null;
+        let tail = null;
+        let size = 0;
+        let steps = [];
+        let stepIndex = 0;
+        let timer = null;
+        const delays = [1800, 900, 450];
+
+        class Node {
+            constructor(key, value) {
+                this.key = key;
+                this.value = value;
+                this.prev = null;
+                this.next = null;
+            }
+        }
+
+        function initDLL() {
+            head = new Node(-1, -1);
+            tail = new Node(-1, -1);
+            head.next = tail;
+            tail.prev = head;
+            size = 0;
+            cacheMap.clear();
+        }
+
+        function addNode(node) {
+            node.prev = head;
+            node.next = head.next;
+            head.next.prev = node;
+            head.next = node;
+            size++;
+        }
+
+        function removeNode(node) {
+            node.prev.next = node.next;
+            node.next.prev = node.prev;
+            size--;
+        }
+
+        function moveToFront(node) {
+            removeNode(node);
+            addNode(node);
+        }
+
+        function generateSteps() {
+            steps = [];
+            initDLL();
+
+            // Example 1 operations
+            const ops = [
+                {type: 'put', key: 1, val: 1},
+                {type: 'put', key: 2, val: 2},
+                {type: 'get', key: 1},
+                {type: 'put', key: 3, val: 3},
+                {type: 'get', key: 2},
+                {type: 'put', key: 4, val: 4},
+                {type: 'get', key: 1},
+                {type: 'get', key: 3},
+                {type: 'get', key: 4}
+            ];
+
+            steps.push({
+                type: 'init',
+                mapState: {},
+                dll: [],
+                panel: `LRU Cache (capacity = ${capacity})<br>HashMap + Doubly Linked List<br>MRU at head, LRU at tail`,
+                statusText: `Initialized`,
+                log: `capacity = ${capacity}`,
+                logColor: 'var(--text-dim)'
+            });
+
+            ops.forEach(op => {
+                let logText = '';
+                let evicted = null;
+
+                if (op.type === 'put') {
+                    steps.push({
+                        type: 'put-start',
+                        mapState: Object.fromEntries(cacheMap),
+                        dll: getDLLState(),
+                        panel: `put(${op.key}, ${op.val})`,
+                        statusText: `put`,
+                        log: `put ${op.key}:${op.val}`,
+                        logColor: 'var(--accent-purple)'
+                    });
+
+                    if (cacheMap.has(op.key)) {
+                        const node = cacheMap.get(op.key);
+                        node.value = op.val;
+                        moveToFront(node);
+                        logText = `updated ${op.key}`;
+                    } else {
+                        if (size === capacity) {
+                            const lru = tail.prev;
+                            evicted = lru.key;
+                            removeNode(lru);
+                            cacheMap.delete(lru.key);
+                            logText = `evicted ${evicted}`;
+                        }
+                        const newNode = new Node(op.key, op.val);
+                        addNode(newNode);
+                        cacheMap.set(op.key, newNode);
+                        logText = `added ${op.key}`;
+                    }
+                } else if (op.type === 'get') {
+                    steps.push({
+                        type: 'get-start',
+                        mapState: Object.fromEntries(cacheMap),
+                        dll: getDLLState(),
+                        panel: `get(${op.key})`,
+                        statusText: `get`,
+                        log: `get ${op.key}`,
+                        logColor: 'var(--accent-orange)'
+                    });
+
+                    if (cacheMap.has(op.key)) {
+                        const node = cacheMap.get(op.key);
+                        moveToFront(node);
+                        logText = `hit ${op.key} = ${node.value}`;
+                    } else {
+                        logText = `miss ${op.key}`;
+                    }
+                }
+
+                steps.push({
+                    type: op.type,
+                    mapState: Object.fromEntries(cacheMap),
+                    dll: getDLLState(),
+                    panel: logText,
+                    statusText: logText,
+                    log: logText + (evicted ? ` (evicted ${evicted})` : ''),
+                    logColor: 'var(--accent-green)'
+                });
+            });
+
+            steps.push({
+                type: 'final',
+                mapState: Object.fromEntries(cacheMap),
+                dll: getDLLState(),
+                complete: true,
+                finalStr: JSON.stringify(Object.fromEntries(cacheMap)),
+                panel: `Final cache state: <b>${JSON.stringify(Object.fromEntries(cacheMap))}</b>`,
+                statusText: `Completed`,
+                log: `final state`,
+                logColor: 'var(--accent-green)',
+                bold: true
+            });
+        }
+
+        function getDLLState() {
+            const state = [];
+            let curr = head.next;
+            while (curr !== tail) {
+                state.push({key: curr.key, value: curr.value});
+                curr = curr.next;
+            }
+            return state;
+        }
+
+        function renderHashMap(mapState) {
+            const container = document.getElementById('hashmap-content');
+            container.innerHTML = '';
+            if (Object.keys(mapState).length === 0) {
+                const empty = document.createElement('div');
+                empty.style.color = 'var(--text-dim)';
+                empty.style.fontStyle = 'italic';
+                empty.innerText = 'empty';
+                container.appendChild(empty);
+                return;
+            }
+            Object.entries(mapState).forEach(([key, val]) => {
+                const el = document.createElement('div');
+                el.style.background = '#21262d';
+                el.style.border = '1px solid var(--border-main)';
+                el.style.padding = '4px 12px';
+                el.style.borderRadius = '6px';
+                el.style.marginBottom = '4px';
+                el.style.width = '100%';
+                el.style.textAlign = 'left';
+                el.innerHTML = `<b>${key}</b> → <span style="color:var(--accent-green)">${val}</span>`;
+                container.appendChild(el);
+            });
+        }
+
+        function renderDLL(dllState) {
+            const container = document.getElementById('dll-wrapper');
+            container.innerHTML = '';
+            if (dllState.length === 0) {
+                const empty = document.createElement('div');
+                empty.style.color = 'var(--text-dim)';
+                empty.style.fontFamily = 'monospace';
+                empty.innerText = 'empty';
+                container.appendChild(empty);
+                return;
+            }
+            // Head sentinel
+            const headNode = document.createElement('div');
+            headNode.style.fontSize = '12px';
+            headNode.style.color = 'var(--accent-green)';
+            headNode.innerText = 'MRU';
+            container.appendChild(headNode);
+
+            for (let i = 0; i < dllState.length; i++) {
+                const unit = document.createElement('div');
+                unit.className = 'node-unit';
+                const nodeEl = document.createElement('div');
+                nodeEl.className = 'node';
+                if (i === 0) nodeEl.classList.add('mru');
+                if (i === dllState.length - 1) nodeEl.classList.add('lru');
+                nodeEl.innerHTML = `<div class="node-key">${dllState[i].key}</div><div class="node-value">${dllState[i].value}</div>`;
+                const idxLabel = document.createElement('div');
+                idxLabel.className = 'node-index';
+                idxLabel.innerText = '';
+                unit.append(nodeEl, idxLabel);
+                container.appendChild(unit);
+
+                // Next arrow
+                const arrow = document.createElement('div');
+                arrow.className = 'arrow';
+                arrow.innerText = '→';
+                container.appendChild(arrow);
+            }
+
+            // Tail sentinel
+            const tailNode = document.createElement('div');
+            tailNode.style.fontSize = '12px';
+            tailNode.style.color = 'var(--accent-red)';
+            tailNode.innerText = 'LRU';
+            container.appendChild(tailNode);
+        }
+
+        function renderStep(idx) {
+            const step = steps[idx];
+            if (!step) return;
+
+            renderHashMap(step.mapState || {});
+            renderDLL(step.dll || []);
+
+            document.getElementById('main-panel').innerHTML = step.panel || '—';
+            document.getElementById('capacity-display').innerText = capacity;
+            document.getElementById('size-display').innerText = `size: ${Object.keys(step.mapState || {}).length} / ${capacity}`;
+            document.getElementById('val-op').innerText = step.type ? step.type.toUpperCase() : '—';
+            document.getElementById('val-key').innerText = step.key !== undefined ? step.key : '—';
+            document.getElementById('val-value').innerText = step.val !== undefined ? step.val : '—';
+            document.getElementById('val-evicted').innerText = step.evicted || '—';
+
+            const resVal = document.getElementById('res-val');
+            resVal.innerText = step.complete ? step.finalStr : '—';
+            if (step.complete) resVal.className = 'pop';
+            else resVal.className = '';
+
+            document.getElementById('status-text').innerText = step.statusText || '';
+
+            const logPanel = document.getElementById('log');
+            logPanel.innerHTML = '';
+            for (let k = 0; k <= idx; k++) {
+                if (steps[k].log) {
+                    const line = document.createElement('div');
+                    line.style.marginBottom = '3px';
+                    line.style.whiteSpace = 'pre-wrap';
+                    if (steps[k].logColor) line.style.color = steps[k].logColor;
+                    if (steps[k].bold) line.style.fontWeight = 'bold';
+                    line.innerText = steps[k].log;
+                    logPanel.appendChild(line);
+                }
+            }
+            logPanel.scrollTop = logPanel.scrollHeight;
+        }
+
+        function next() {
+            if (stepIndex < steps.length - 1) {
+                stepIndex++;
+                renderStep(stepIndex);
+            } else pause();
+        }
+
+        function back() {
+            if (stepIndex > 0) {
+                stepIndex--;
+                renderStep(stepIndex);
+            }
+        }
+
+        function reset() {
+            pause();
+            stepIndex = 0;
+            renderStep(0);
+        }
+
+        function togglePlay() {
+            const btn = document.getElementById('play-btn');
+            if (timer) pause();
+            else {
+                btn.innerText = 'Pause';
+                if (stepIndex >= steps.length - 1) stepIndex = 0;
+                timer = setInterval(next, delays[document.getElementById('speed-slider').value]);
+            }
+        }
+
+        function pause() {
+            clearInterval(timer);
+            timer = null;
+            document.getElementById('play-btn').innerText = 'Play';
+        }
+
+        function loadExample(cap) {
+            capacity = cap;
+            generateSteps();
+            reset();
+        }
+
+        function loadCustom() {
+            capacity = parseInt(document.getElementById('capacity-input').value) || 2;
+            generateSteps();
+            reset();
+        }
+
+        window.onload = () => {
+            loadExample(2);
+        };
+    </script>
+</body>
+</html>

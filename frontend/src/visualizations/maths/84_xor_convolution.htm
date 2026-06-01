@@ -1,0 +1,393 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>XOR Convolution - Visualization</title>
+    <style>
+        :root {
+            --bg-page: #0d1117;
+            --bg-surface: #161b22;
+            --bg-input: #0d1117;
+            --border-main: #30363d;
+            --btn-bg: #21262d;
+            --btn-hover: #2d333b;
+            --text-main: #c9d1d9;
+            --text-dim: #8b949e;
+            --accent-orange: #e3b341;
+            --accent-blue: #388bfd;
+            --accent-green: #3fb950;
+            --accent-red: #f85149;
+            --accent-purple: #a371f7;
+        }
+
+        * { box-sizing: border-box; }
+        body {
+            background-color: var(--bg-page);
+            color: var(--text-main);
+            font-family: system-ui, -apple-system, sans-serif;
+            margin: 0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            min-height: 100vh;
+            padding-bottom: 40px;
+        }
+
+        /* INPUT BAR */
+        .input-bar {
+            width: 100%;
+            background-color: var(--bg-surface);
+            padding: 12px 16px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 8px;
+            border-bottom: 1px solid var(--border-main);
+            flex-wrap: wrap;
+        }
+        label.ui-label { font-family: 'Courier New', monospace; font-size: 13px; color: var(--text-dim); }
+        input[type="text"] {
+            background: var(--bg-input);
+            border: 1px solid var(--border-main);
+            color: var(--text-main);
+            height: 32px;
+            border-radius: 6px;
+            padding: 0 10px;
+            font-size: 13px;
+            width: 180px;
+        }
+
+        button {
+            height: 32px; border-radius: 6px; padding: 0 14px; background: var(--btn-bg);
+            border: 1px solid var(--border-main); color: var(--text-main); font-size: 13px; cursor: pointer;
+            transition: background 0.2s ease;
+        }
+        button:hover { background: var(--btn-hover); }
+
+        /* VISUALIZATION */
+        .visual-container { margin-top: 30px; display: flex; flex-direction: column; align-items: center; gap: 20px; width: 100%; }
+        .tiles-wrapper { 
+            display: flex; gap: 12px; flex-wrap: wrap; justify-content: center; 
+            max-width: 900px; min-height: 120px; position: relative; 
+        }
+        
+        .tile-unit { display: flex; flex-direction: column; align-items: center; gap: 4px; position: relative; }
+        .tile {
+            min-width: 54px; height: 54px; display: flex; align-items: center; justify-content: center;
+            border-radius: 8px; font-size: 20px; font-weight: 600; font-family: 'Courier New', monospace;
+            transition: all 0.3s ease; border: 2px solid var(--border-main); background: #21262d;
+            color: var(--text-main);
+        }
+        .tile-index { font-size: 11px; color: var(--text-dim); font-family: monospace; }
+
+        /* Highlight States */
+        .tile.candidate { background: #2a1600; border-color: var(--accent-orange); color: var(--accent-orange); transform: scale(1.15); box-shadow: 0 0 12px rgba(227,179,65,0.4); }
+        .tile.evaluating { background: #0d2244; border-color: var(--accent-blue); color: var(--accent-blue); }
+        .tile.winning { background: #0f2a1a; border-color: var(--accent-green); color: var(--accent-green); transform: scale(1.18); box-shadow: 0 0 15px var(--accent-green); }
+        .tile.past { opacity: 0.35; background: #161b22; border-color: var(--border-main); }
+
+        /* PANEL */
+        .action-panel {
+            margin-top: 20px; background: var(--bg-surface); border: 1px solid var(--border-main);
+            border-radius: 6px; padding: 14px 20px; width: 720px; text-align: center; 
+            font-family: monospace; min-height: 90px; font-size: 15px; line-height: 1.5;
+        }
+
+        /* INFO PANEL */
+        .info-panel { margin-top: 10px; display: flex; gap: 10px; flex-wrap: wrap; justify-content: center; }
+        .info-cell {
+            background: var(--bg-surface); border: 1px solid var(--border-main); border-radius: 6px;
+            padding: 8px 14px; display: flex; flex-direction: column; align-items: center; min-width: 110px; gap: 4px;
+        }
+        .info-label { font-size: 11px; color: var(--text-dim); }
+        .info-value { font-family: monospace; font-size: 16px; font-weight: 700; }
+
+        /* RESULT */
+        .result-display { margin-top: 15px; display: flex; flex-direction: column; align-items: center; }
+        #res-val { font-size: 22px; color: var(--text-dim); font-family: monospace; font-weight: bold; transition: all 0.4s; }
+        .pop { animation: popAnim 400ms ease; color: var(--accent-green) !important; font-size: 28px !important; text-shadow: 0 0 15px var(--accent-green); }
+
+        @keyframes popAnim { 0%{transform:scale(1)} 50%{transform:scale(1.18)} 100%{transform:scale(1)} }
+
+        /* STATUS & CONTROLS */
+        .status-bar { margin-top: 8px; font-size: 13px; color: var(--text-dim); height: 1.3em; text-align: center; width: 700px;}
+        .controls { margin-top: 25px; display: flex; align-items: center; gap: 10px; flex-wrap: wrap; justify-content: center; }
+        input[type="range"] { accent-color: var(--accent-blue); width: 120px; }
+
+        /* LEGEND */
+        .legend { margin-top: 15px; display: flex; gap: 18px; flex-wrap: wrap; justify-content: center; max-width: 900px; }
+        .legend-item { display: flex; align-items: center; font-size: 12px; color: var(--text-dim); }
+        .dot { width: 11px; height: 11px; border-radius: 3px; margin-right: 7px; display: inline-block; }
+
+        /* LOG */
+        .log-panel {
+            margin-top: 15px; background: var(--bg-page); border: 1px solid var(--border-main);
+            border-radius: 6px; padding: 12px 16px; width: 720px; max-width: 95%; height: 130px;
+            overflow-y: auto; font-family: 'Courier New', monospace; font-size: 13px; line-height: 1.4;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="input-bar">
+        <label class="ui-label">A =</label>
+        <input type="text" id="a-input" value="[1, 2]">
+        <label class="ui-label">B =</label>
+        <input type="text" id="b-input" value="[3, 4]">
+        <button onclick="loadCustom()">Load</button>
+        <button onclick="loadExample(0)">Ex 1 ([1,2] ⊕ [3,4])</button>
+        <button onclick="loadExample(1)">Ex 2 (4 elements)</button>
+    </div>
+
+    <div class="visual-container">
+        <div class="ui-label">Current pair (i, j) → k = i XOR j</div>
+        <div class="tiles-wrapper" id="tiles-container"></div>
+    </div>
+
+    <div class="action-panel" id="main-panel">—</div>
+
+    <div class="info-panel">
+        <div class="info-cell">
+            <span class="info-label">i (from A)</span>
+            <span class="info-value" id="val-i" style="color: var(--accent-orange);">—</span>
+        </div>
+        <div class="info-cell">
+            <span class="info-label">j (from B)</span>
+            <span class="info-value" id="val-j" style="color: var(--accent-blue);">—</span>
+        </div>
+        <div class="info-cell">
+            <span class="info-label">k = i XOR j</span>
+            <span class="info-value" id="val-k" style="color: var(--accent-purple);">—</span>
+        </div>
+        <div class="info-cell">
+            <span class="info-label">A[i] * B[j]</span>
+            <span class="info-value" id="val-product" style="color: var(--accent-green);">—</span>
+        </div>
+        <div class="info-cell">
+            <span class="info-label">C[k] updated to</span>
+            <span class="info-value" id="val-c" style="color: var(--text-main);">—</span>
+        </div>
+    </div>
+
+    <div class="result-display">
+        <span class="ui-label" style="margin-bottom: 6px;">XOR Convolution C =</span>
+        <span id="res-val">—</span>
+    </div>
+
+    <div class="status-bar" id="status-text"></div>
+
+    <div class="controls">
+        <button onclick="reset()">↺ Reset</button>
+        <button onclick="back()">← Back</button>
+        <button onclick="togglePlay()" id="play-btn">Play</button>
+        <button onclick="next()">Next →</button>
+        <div style="display:flex; align-items:center; gap:6px;">
+            <span class="ui-label" style="font-size:11px">Speed</span>
+            <input type="range" id="speed-slider" min="0" max="2" value="1">
+        </div>
+    </div>
+
+    <div class="legend">
+        <div class="legend-item"><span class="dot" style="background:var(--bg-surface); border:1px solid var(--accent-orange)"></span> i from A</div>
+        <div class="legend-item"><span class="dot" style="background:var(--bg-surface); border:1px solid var(--accent-blue)"></span> j from B</div>
+        <div class="legend-item"><span class="dot" style="background:var(--accent-green); border:1px solid var(--accent-green)"></span> Add to C[k]</div>
+    </div>
+
+    <div class="log-panel" id="log"></div>
+
+    <script>
+        let A = [1, 2];
+        let B = [3, 4];
+        let n = 2;
+        let steps = [];
+        let stepIndex = 0;
+        let timer = null;
+        const delays = [1600, 800, 350];
+
+        function init() {
+            loadExample(0);
+        }
+
+        function loadExample(ex) {
+            if (ex === 0) {
+                A = [1, 2];
+                B = [3, 4];
+                document.getElementById('a-input').value = "[1, 2]";
+                document.getElementById('b-input').value = "[3, 4]";
+            } else {
+                A = [1, 0, 1, 0];
+                B = [2, 1, 3, 0];
+                document.getElementById('a-input').value = "[1, 0, 1, 0]";
+                document.getElementById('b-input').value = "[2, 1, 3, 0]";
+            }
+            generateSteps();
+            reset();
+        }
+
+        function loadCustom() {
+            try {
+                A = JSON.parse(document.getElementById('a-input').value.trim());
+                B = JSON.parse(document.getElementById('b-input').value.trim());
+            } catch(e) {
+                alert("Invalid array format. Use [1, 2] style.");
+                return;
+            }
+            if (A.length !== B.length || A.length === 0) {
+                alert("Arrays must be non-empty and of equal length.");
+                return;
+            }
+            generateSteps();
+            reset();
+        }
+
+        function generateSteps() {
+            steps = [];
+            n = A.length;
+            let C = new Array(n).fill(0);
+            let currentC = [...C];
+
+            steps.push({
+                type: 'init',
+                i: '—', j: '—', k: '—', product: '—', cval: '—',
+                panel: `Computing XOR Convolution of A = [${A}] and B = [${B}]<br>C[k] += A[i] * B[j] where k = i XOR j`,
+                status: `n = ${n}. Initializing C = [${C}]`,
+                log: `A = [${A}]\nB = [${B}]\nComputing C where C[k] = sum(A[i]*B[j]) for i^j = k`,
+                logColor: 'var(--text-dim)'
+            });
+
+            for (let i = 0; i < n; i++) {
+                for (let j = 0; j < n; j++) {
+                    const k = i ^ j;
+                    const product = A[i] * B[j];
+                    const oldVal = currentC[k];
+                    currentC[k] += product;
+
+                    steps.push({
+                        type: 'pair',
+                        i: i,
+                        j: j,
+                        k: k,
+                        product: product,
+                        cval: currentC[k],
+                        panel: `Pair (i=${i}, j=${j}) → k = ${i} XOR ${j} = <b>${k}</b><br>Add ${A[i]} * ${B[j]} = ${product} to C[${k}]`,
+                        status: `i=${i}, j=${j}, k=${k}, adding ${product}`,
+                        log: `i=${i}, j=${j} → k=${k}, +${product}  (C[${k}] : ${oldVal} → ${currentC[k]})`,
+                        logColor: 'var(--accent-blue)'
+                    });
+                }
+            }
+
+            steps.push({
+                type: 'final',
+                i: '—', j: '—', k: '—', product: '—', cval: '—',
+                panel: `Computation complete.<br>Final XOR Convolution C = <b>[${currentC}]</b>`,
+                status: `Done. C = [${currentC}]`,
+                log: `Final Result: [${currentC.join(', ')}]`,
+                logColor: 'var(--accent-green)',
+                complete: true,
+                result: currentC
+            });
+        }
+
+        function renderStep(idx) {
+            const step = steps[idx];
+            if (!step) return;
+
+            const container = document.getElementById('tiles-container');
+            container.innerHTML = '';
+
+            // Show current i and j as tiles
+            const makeTile = (val, label, colorClass) => {
+                const wrapper = document.createElement('div');
+                wrapper.className = 'tile-unit';
+                const tile = document.createElement('div');
+                tile.className = `tile ${colorClass || 'idle'}`;
+                tile.innerText = val;
+                const idxLabel = document.createElement('div');
+                idxLabel.className = 'tile-index';
+                idxLabel.innerText = label;
+                wrapper.append(tile, idxLabel);
+                return wrapper;
+            };
+
+            if (step.i !== '—') {
+                container.appendChild(makeTile(A[step.i], `A[${step.i}]`, 'candidate'));
+                container.appendChild(makeTile(B[step.j], `B[${step.j}]`, 'candidate'));
+                container.appendChild(makeTile(step.k, `k = i⊕j`, 'evaluating'));
+            }
+
+            document.getElementById('main-panel').innerHTML = step.panel || '—';
+            document.getElementById('val-i').innerText = step.i;
+            document.getElementById('val-j').innerText = step.j;
+            document.getElementById('val-k').innerText = step.k;
+            document.getElementById('val-product').innerText = step.product;
+            document.getElementById('val-c').innerText = step.cval;
+
+            const resVal = document.getElementById('res-val');
+            if (step.complete) {
+                resVal.innerText = `[${step.result.join(', ')}]`;
+                resVal.className = 'pop';
+            } else {
+                resVal.innerText = '—';
+                resVal.className = '';
+            }
+
+            document.getElementById('status-text').innerText = step.status || '';
+
+            // Log
+            const logPanel = document.getElementById('log');
+            logPanel.innerHTML = '';
+            for (let k = 0; k <= idx; k++) {
+                if (steps[k].log) {
+                    const line = document.createElement('div');
+                    line.style.marginBottom = '3px';
+                    line.style.whiteSpace = 'pre-wrap';
+                    if (steps[k].logColor) line.style.color = steps[k].logColor;
+                    line.innerText = steps[k].log;
+                    logPanel.appendChild(line);
+                }
+            }
+            logPanel.scrollTop = logPanel.scrollHeight;
+        }
+
+        function next() {
+            if (stepIndex < steps.length - 1) {
+                stepIndex++;
+                renderStep(stepIndex);
+            } else pause();
+        }
+
+        function back() {
+            if (stepIndex > 0) {
+                stepIndex--;
+                renderStep(stepIndex);
+            }
+        }
+
+        function reset() {
+            pause();
+            stepIndex = 0;
+            renderStep(0);
+        }
+
+        function togglePlay() {
+            const btn = document.getElementById('play-btn');
+            if (timer) pause();
+            else {
+                btn.innerText = 'Pause';
+                if (stepIndex >= steps.length - 1) stepIndex = 0;
+                timer = setInterval(next, delays[document.getElementById('speed-slider').value]);
+            }
+        }
+
+        function pause() {
+            clearInterval(timer);
+            timer = null;
+            document.getElementById('play-btn').innerText = 'Play';
+        }
+
+        window.onload = init;
+    </script>
+</body>
+</html>

@@ -534,11 +534,15 @@ class ChatService:
         hidden = moderation_service.hidden_user_ids_for(db, viewer_id=exclude_user_id)
         excluded = hidden | {exclude_user_id}
 
+        # Escape special SQL LIKE characters
+        escaped_q = q.replace(chr(92), chr(92)*2).replace('%', r'\%').replace('_', r'\_')
+        pattern = f"%{escaped_q}%"
+
         rows = (
             db.execute(
                 select(User)
                 .where(User.username.ilike(
-                    f"%{q.replace(chr(92), chr(92)*2).replace('%', r'\%').replace('_', r'\_')}%",
+                    pattern,
                     escape='\\',
                 ))
                 .where(User.is_active.is_(True))

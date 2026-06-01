@@ -1,0 +1,1753 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Module 5.2 (Part 2) — Multicollinearity &amp; Residual Analysis | Quantum Neural Analytics OS</title>
+<style>
+:root {
+  --bg-deep: #03040a;
+  --bg-navy: #060818;
+  --bg-panel: rgba(10, 15, 35, 0.55);
+  --neon-cyan: #00f0ff;
+  --neon-purple: #b14dff;
+  --neon-magenta: #ff2bd6;
+  --neon-amber: #ffb547;
+  --neon-green: #00ffaa;
+  --neon-red: #ff4d6d;
+  --text-primary: #e6f4ff;
+  --text-soft: #d8e6ff;
+  --text-dim: #7a8bbf;
+  --border-glow: rgba(0, 240, 255, 0.25);
+  --glass-blur: blur(18px);
+  --mono: 'JetBrains Mono', 'Fira Code', 'Consolas', monospace;
+}
+* { margin: 0; padding: 0; box-sizing: border-box; }
+html { scroll-behavior: smooth; }
+body {
+  background: var(--bg-deep);
+  color: var(--text-soft);
+  font-family: 'Inter', 'Segoe UI', system-ui, sans-serif;
+  overflow-x: hidden;
+  line-height: 1.65;
+  min-height: 100vh;
+  position: relative;
+}
+body::before {
+  content: '';
+  position: fixed; inset: 0;
+  background-image:
+    linear-gradient(rgba(0, 240, 255, 0.04) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(0, 240, 255, 0.04) 1px, transparent 1px);
+  background-size: 60px 60px;
+  pointer-events: none; z-index: 0;
+  animation: gridShift 30s linear infinite;
+}
+body::after {
+  content: '';
+  position: fixed; inset: 0;
+  background:
+    radial-gradient(circle at 18% 22%, rgba(0, 240, 255, 0.12), transparent 42%),
+    radial-gradient(circle at 82% 65%, rgba(177, 77, 255, 0.13), transparent 45%),
+    radial-gradient(circle at 50% 95%, rgba(255, 43, 214, 0.08), transparent 40%);
+  pointer-events: none; z-index: 0;
+}
+@keyframes gridShift { 0% { background-position: 0 0,0 0; } 100% { background-position: 60px 60px,60px 60px; } }
+#particle-canvas { position: fixed; inset: 0; z-index: 1; pointer-events: none; }
+.container { position: relative; z-index: 10; max-width: 1280px; margin: 0 auto; padding: 32px 24px 120px; }
+.hud {
+  display: flex; justify-content: space-between; align-items: center;
+  padding: 14px 22px; background: var(--bg-panel); backdrop-filter: var(--glass-blur);
+  border: 1px solid var(--border-glow); border-radius: 14px;
+  font-family: var(--mono); font-size: 11px; letter-spacing: 1.8px; text-transform: uppercase;
+  margin-bottom: 50px; box-shadow: 0 0 30px rgba(0,240,255,0.1);
+  flex-wrap: wrap; gap: 10px;
+}
+.hud-left { color: var(--neon-cyan); }
+.hud-center { color: var(--text-soft); }
+.hud-right { color: var(--neon-purple); display: flex; align-items: center; gap: 8px; }
+.hud-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--neon-cyan); box-shadow: 0 0 12px var(--neon-cyan); animation: pulse 1.6s ease-in-out infinite; }
+@keyframes pulse { 0%,100% { opacity: 1; transform: scale(1); } 50% { opacity: 0.4; transform: scale(1.3); } }
+.hero {
+  position: relative; text-align: center; padding: 90px 24px 60px; margin-bottom: 80px;
+  border: 1px solid var(--border-glow); border-radius: 28px;
+  background: linear-gradient(135deg, rgba(10,15,40,0.6), rgba(20,5,40,0.4));
+  backdrop-filter: var(--glass-blur); overflow: hidden;
+  box-shadow: 0 0 60px rgba(0,240,255,0.1), inset 0 0 80px rgba(177,77,255,0.06);
+}
+.hero-bg-svg { position: absolute; inset: 0; width: 100%; height: 100%; opacity: 0.45; pointer-events: none; }
+.hero-tag {
+  display: inline-block; font-family: var(--mono); font-size: 11px; letter-spacing: 3px;
+  color: var(--neon-cyan); padding: 6px 18px; border: 1px solid var(--neon-cyan);
+  border-radius: 999px; margin-bottom: 26px; text-transform: uppercase;
+  background: rgba(0,240,255,0.05); box-shadow: 0 0 20px rgba(0,240,255,0.2); position: relative; z-index: 2;
+}
+.hero h1 {
+  font-family: 'Inter','Segoe UI',system-ui,sans-serif; font-size: clamp(2.2rem, 5.5vw, 4.4rem);
+  font-weight: 900; line-height: 1.05; letter-spacing: -2px;
+  background: linear-gradient(135deg, #ffffff 0%, var(--neon-cyan) 40%, var(--neon-purple) 80%, var(--neon-magenta) 100%);
+  background-size: 200% 200%; -webkit-background-clip: text; background-clip: text;
+  -webkit-text-fill-color: transparent; animation: gradientShift 8s ease infinite;
+  margin: 0 auto 18px; text-shadow: 0 0 80px rgba(177,77,255,0.2); text-align: center; position: relative; z-index: 2;
+}
+@keyframes gradientShift { 0%,100% { background-position: 0% 50%; } 50% { background-position: 100% 50%; } }
+.hero .subtitle { font-size: 1.15rem; color: var(--text-soft); max-width: 800px; margin: 0 auto 26px; position: relative; z-index: 2; }
+.hero .overview { font-size: 0.95rem; color: var(--text-dim); max-width: 860px; margin: 0 auto 30px; position: relative; z-index: 2; font-style: italic; }
+.hero-meta { display: flex; justify-content: center; flex-wrap: wrap; gap: 12px; position: relative; z-index: 2; margin-top: 20px; }
+.meta-chip {
+  display: inline-flex; align-items: center; gap: 10px; padding: 10px 18px;
+  background: rgba(10,15,35,0.6); border: 1px solid var(--border-glow); border-radius: 10px;
+  font-family: var(--mono); font-size: 11px; letter-spacing: 1.5px; text-transform: uppercase; transition: all 0.3s;
+}
+.meta-chip:hover { border-color: var(--neon-cyan); box-shadow: 0 0 18px rgba(0,240,255,0.2); transform: translateY(-2px); }
+.meta-chip .label { color: var(--text-dim); }
+.meta-chip .value { color: var(--neon-cyan); font-weight: 700; }
+.section { margin-bottom: 90px; position: relative; }
+.section-header { display: flex; align-items: center; gap: 18px; margin-bottom: 36px; }
+.section-num {
+  font-family: var(--mono); font-size: 13px; color: var(--neon-cyan);
+  padding: 8px 14px; border: 1px solid var(--neon-cyan); border-radius: 8px;
+  background: rgba(0,240,255,0.06); letter-spacing: 2px; white-space: nowrap;
+}
+.section-title {
+  font-size: clamp(1.5rem, 3vw, 2.1rem); font-weight: 700;
+  background: linear-gradient(90deg, #fff, var(--neon-cyan));
+  -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent;
+}
+.section-line { flex: 1; height: 1px; background: linear-gradient(90deg, var(--neon-cyan), transparent); margin-left: 8px; }
+.sub-section-marker {
+  font-family: var(--mono); font-size: 11px; color: var(--neon-purple); letter-spacing: 3px;
+  text-transform: uppercase; margin-bottom: 14px; padding: 6px 12px; display: inline-block;
+  border: 1px solid var(--neon-purple); border-radius: 6px; background: rgba(177,77,255,0.05);
+}
+.concept-block {
+  background: var(--bg-panel); backdrop-filter: var(--glass-blur);
+  border: 1px solid var(--border-glow); border-radius: 20px; padding: 32px;
+  margin-bottom: 24px; position: relative; overflow: hidden;
+}
+.concept-block::after {
+  content: ''; position: absolute; bottom: -50%; right: -10%; width: 320px; height: 320px;
+  background: radial-gradient(circle, rgba(0,240,255,0.08), transparent 70%); pointer-events: none;
+}
+.concept-block h3 { font-size: 1.35rem; color: var(--neon-cyan); margin-bottom: 14px; display: flex; align-items: center; gap: 12px; }
+.concept-block h3::before { content: '◆'; color: var(--neon-purple); font-size: 1rem; }
+.concept-block h4 { font-size: 1.05rem; color: var(--neon-magenta); margin-top: 18px; margin-bottom: 10px; }
+.concept-block p { color: var(--text-soft); margin-bottom: 14px; font-size: 1rem; }
+.concept-block strong { color: #fff; }
+.concept-block em { color: var(--neon-magenta); font-style: normal; }
+.concept-block ul { list-style: none; padding-left: 0; }
+.concept-block ul li { padding: 6px 0 6px 22px; position: relative; color: var(--text-soft); }
+.concept-block ul li::before { content: '▸'; position: absolute; left: 0; color: var(--neon-cyan); }
+.highlight-box { background: linear-gradient(135deg, rgba(0,240,255,0.07), rgba(177,77,255,0.06)); border-left: 3px solid var(--neon-cyan); padding: 16px 22px; border-radius: 10px; margin: 18px 0; font-size: 0.95rem; }
+.success-box { background: linear-gradient(135deg, rgba(0,255,170,0.06), rgba(0,240,255,0.05)); border-left: 3px solid var(--neon-green); padding: 16px 22px; border-radius: 10px; margin: 18px 0; font-size: 0.95rem; }
+.warning-box { background: linear-gradient(135deg, rgba(255,77,109,0.08), rgba(255,181,71,0.06)); border-left: 3px solid var(--neon-red); padding: 16px 22px; border-radius: 10px; margin: 18px 0; font-size: 0.95rem; }
+.warning-box strong { color: var(--neon-red); }
+.viz-wrap { background: var(--bg-panel); backdrop-filter: var(--glass-blur); border: 1px solid var(--border-glow); border-radius: 22px; padding: 30px; margin-bottom: 28px; position: relative; }
+.viz-title { font-size: 1.15rem; color: var(--neon-cyan); margin-bottom: 8px; font-family: var(--mono); letter-spacing: 1px; text-transform: uppercase; }
+.viz-desc { font-size: 0.92rem; color: var(--text-soft); margin-bottom: 22px; }
+.viz-canvas { width: 100%; background: rgba(0,0,0,0.35); border-radius: 12px; border: 1px solid rgba(0,240,255,0.2); display: block; }
+input[type="range"] { width: 100%; -webkit-appearance: none; appearance: none; background: transparent; height: 24px; }
+input[type="range"]::-webkit-slider-runnable-track { height: 4px; background: linear-gradient(90deg, var(--neon-cyan), var(--neon-purple)); border-radius: 4px; }
+input[type="range"]::-moz-range-track { height: 4px; background: linear-gradient(90deg, var(--neon-cyan), var(--neon-purple)); border-radius: 4px; }
+input[type="range"]::-webkit-slider-thumb { -webkit-appearance: none; appearance: none; width: 18px; height: 18px; border-radius: 50%; background: #fff; margin-top: -7px; cursor: pointer; box-shadow: 0 0 12px rgba(0,240,255,0.8); }
+input[type="range"]::-moz-range-thumb { width: 18px; height: 18px; border-radius: 50%; background: #fff; border: 0; cursor: pointer; box-shadow: 0 0 12px rgba(0,240,255,0.8); }
+.slider-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 20px; margin-bottom: 18px; }
+.slider-cell { background: rgba(0,0,0,0.25); border: 1px solid var(--border-glow); border-radius: 12px; padding: 16px; }
+.slider-label { display: flex; justify-content: space-between; font-family: var(--mono); font-size: 11px; text-transform: uppercase; letter-spacing: 1.5px; color: var(--text-dim); margin-bottom: 10px; }
+.slider-label span:last-child { color: var(--neon-cyan); font-size: 14px; font-weight: 700; }
+.stat-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px; margin-top: 14px; }
+.stat-box { background: rgba(0,240,255,0.05); border: 1px solid var(--border-glow); border-radius: 10px; padding: 14px; text-align: center; }
+.stat-label { font-family: var(--mono); font-size: 10px; color: var(--text-dim); text-transform: uppercase; letter-spacing: 1.5px; margin-bottom: 6px; }
+.stat-value { font-size: 1.4rem; font-weight: 700; color: var(--neon-cyan); font-family: var(--mono); }
+.stat-value.purple { color: var(--neon-purple); }
+.stat-value.magenta { color: var(--neon-magenta); }
+.stat-value.amber { color: var(--neon-amber); }
+.stat-value.green { color: var(--neon-green); }
+.stat-value.red { color: var(--neon-red); }
+.btn-row { display: flex; flex-wrap: wrap; gap: 12px; margin-bottom: 20px; }
+.btn { background: rgba(0,240,255,0.06); border: 1px solid var(--border-glow); color: var(--neon-cyan); padding: 10px 20px; border-radius: 10px; font-family: var(--mono); font-size: 12px; letter-spacing: 1.5px; cursor: pointer; text-transform: uppercase; transition: all 0.25s; }
+.btn:hover { background: rgba(0,240,255,0.15); box-shadow: 0 0 22px rgba(0,240,255,0.3); transform: translateY(-2px); }
+.btn.purple { border-color: rgba(177,77,255,0.4); color: var(--neon-purple); }
+.btn.purple:hover { background: rgba(177,77,255,0.15); box-shadow: 0 0 22px rgba(177,77,255,0.3); }
+.btn.magenta { border-color: rgba(255,43,214,0.4); color: var(--neon-magenta); }
+.btn.magenta:hover { background: rgba(255,43,214,0.15); box-shadow: 0 0 22px rgba(255,43,214,0.3); }
+.btn.green { border-color: rgba(0,255,170,0.4); color: var(--neon-green); }
+.btn.green:hover { background: rgba(0,255,170,0.15); box-shadow: 0 0 22px rgba(0,255,170,0.3); }
+.btn.amber { border-color: rgba(255,181,71,0.4); color: var(--neon-amber); }
+.btn.amber:hover { background: rgba(255,181,71,0.15); box-shadow: 0 0 22px rgba(255,181,71,0.3); }
+.btn.active { background: linear-gradient(135deg, rgba(0,240,255,0.3), rgba(177,77,255,0.2)); border-color: var(--neon-cyan); color: #fff; box-shadow: 0 0 18px rgba(0,240,255,0.4); }
+.formula-card { background: linear-gradient(135deg, rgba(10,15,40,0.85), rgba(30,10,50,0.75)); border: 1px solid var(--border-glow); border-radius: 16px; padding: 28px; margin-bottom: 22px; position: relative; overflow: hidden; }
+.formula-card::before { content: ''; position: absolute; top: 0; left: 0; width: 4px; height: 100%; background: linear-gradient(180deg, var(--neon-cyan), var(--neon-purple), var(--neon-magenta)); }
+.formula-label { font-family: var(--mono); font-size: 11px; color: var(--neon-cyan); letter-spacing: 2px; text-transform: uppercase; margin-bottom: 14px; }
+.formula { font-family: var(--mono); font-size: 1.18rem; color: #fff; text-align: center; padding: 18px 12px; background: rgba(0,0,0,0.35); border-radius: 10px; margin: 14px 0; letter-spacing: 1px; overflow-x: auto; }
+.formula-explain { color: var(--text-soft); font-size: 0.95rem; margin-top: 12px; }
+.var-list { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 10px; margin-top: 14px; }
+.var-item { background: rgba(0,0,0,0.3); border: 1px solid rgba(0,240,255,0.15); border-radius: 8px; padding: 10px 14px; font-size: 0.88rem; }
+.var-item code { font-family: var(--mono); color: var(--neon-cyan); font-weight: 700; }
+.dual-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 18px; margin-top: 16px; }
+.dual-cell { background: rgba(0,0,0,0.25); border: 1px solid var(--border-glow); border-radius: 12px; padding: 20px; }
+.dual-cell h4 { font-family: var(--mono); font-size: 12px; color: var(--neon-cyan); letter-spacing: 2px; text-transform: uppercase; margin-bottom: 12px; }
+.dual-cell.purple h4 { color: var(--neon-purple); }
+.dual-cell.magenta h4 { color: var(--neon-magenta); }
+.dual-cell.green h4 { color: var(--neon-green); }
+.dual-cell.amber h4 { color: var(--neon-amber); }
+.dual-cell ul { list-style: none; padding-left: 0; }
+.dual-cell li { padding: 6px 0 6px 18px; color: var(--text-soft); font-size: 0.92rem; border-bottom: 1px dashed rgba(0,240,255,0.08); position: relative; }
+.dual-cell li:last-child { border-bottom: 0; }
+.dual-cell li::before { content: '▸'; position: absolute; left: 0; color: var(--neon-cyan); }
+.deep-dive { background: linear-gradient(135deg, rgba(10,15,35,0.7), rgba(20,5,40,0.55)); border: 1px solid var(--border-glow); border-radius: 18px; padding: 26px; margin: 18px 0; }
+.deep-dive .dd-label { font-family: var(--mono); font-size: 11px; color: var(--neon-magenta); letter-spacing: 2px; text-transform: uppercase; margin-bottom: 10px; padding: 4px 10px; display: inline-block; border: 1px solid var(--neon-magenta); border-radius: 6px; background: rgba(255,43,214,0.05); }
+.deep-dive h4 { font-size: 1.1rem; color: #fff; margin-bottom: 10px; }
+.deep-dive p { color: var(--text-soft); font-size: 0.95rem; margin-bottom: 12px; }
+.deep-dive ul { list-style: none; padding-left: 0; }
+.deep-dive li { padding: 5px 0 5px 20px; color: var(--text-soft); font-size: 0.95rem; position: relative; }
+.deep-dive li::before { content: '▸'; position: absolute; left: 0; color: var(--neon-magenta); }
+.part-nav { display: flex; justify-content: space-between; flex-wrap: wrap; gap: 14px; margin-top: 50px; padding: 22px; background: var(--bg-panel); backdrop-filter: var(--glass-blur); border: 1px solid var(--border-glow); border-radius: 16px; }
+.part-nav-item { flex: 1; min-width: 200px; padding: 14px 18px; background: rgba(0,240,255,0.04); border: 1px solid rgba(0,240,255,0.15); border-radius: 10px; }
+.part-nav-item.current { background: linear-gradient(135deg, rgba(0,240,255,0.15), rgba(177,77,255,0.12)); border-color: var(--neon-cyan); box-shadow: 0 0 18px rgba(0,240,255,0.2); }
+.part-nav-item.done { background: rgba(0,255,170,0.04); border-color: rgba(0,255,170,0.3); }
+.part-nav-label { font-family: var(--mono); font-size: 10px; letter-spacing: 2px; color: var(--text-dim); text-transform: uppercase; margin-bottom: 6px; }
+.part-nav-item.current .part-nav-label { color: var(--neon-cyan); }
+.part-nav-item.done .part-nav-label { color: var(--neon-green); }
+.part-nav-title { font-size: 0.92rem; color: #fff; font-weight: 600; }
+.quiz-card { background: var(--bg-panel); backdrop-filter: var(--glass-blur); border: 1px solid var(--border-glow); border-radius: 18px; padding: 28px; margin-bottom: 22px; }
+.quiz-q { font-size: 1.05rem; color: #fff; margin-bottom: 18px; font-weight: 500; }
+.quiz-q .qnum { font-family: var(--mono); color: var(--neon-cyan); margin-right: 10px; }
+.quiz-q .qlevel { font-family: var(--mono); font-size: 10px; letter-spacing: 1.5px; padding: 3px 10px; border-radius: 5px; margin-left: 8px; text-transform: uppercase; font-weight: 700; }
+.qlevel.easy { background: rgba(0,255,170,0.12); color: var(--neon-green); border: 1px solid rgba(0,255,170,0.4); }
+.qlevel.mod { background: rgba(255,181,71,0.12); color: var(--neon-amber); border: 1px solid rgba(255,181,71,0.4); }
+.qlevel.hard { background: rgba(255,77,109,0.12); color: var(--neon-red); border: 1px solid rgba(255,77,109,0.4); }
+.quiz-options { display: grid; gap: 10px; }
+.quiz-opt { padding: 14px 18px; background: rgba(0,240,255,0.04); border: 1px solid var(--border-glow); border-radius: 10px; cursor: pointer; color: var(--text-soft); transition: all 0.25s; font-size: 0.95rem; }
+.quiz-opt:hover { background: rgba(0,240,255,0.12); border-color: var(--neon-cyan); color: #fff; transform: translateX(4px); }
+.quiz-opt.correct { background: rgba(0,255,170,0.15); border-color: var(--neon-green); color: var(--neon-green); box-shadow: 0 0 18px rgba(0,255,170,0.3); }
+.quiz-opt.wrong { background: rgba(255,77,109,0.15); border-color: var(--neon-red); color: var(--neon-red); }
+.quiz-feedback { margin-top: 14px; padding: 12px 16px; border-radius: 10px; font-size: 0.9rem; display: none; }
+.quiz-feedback.show { display: block; }
+.quiz-feedback.ok { background: rgba(0,255,170,0.08); border: 1px solid rgba(0,255,170,0.4); color: var(--neon-green); }
+.quiz-feedback.no { background: rgba(255,77,109,0.08); border: 1px solid rgba(255,77,109,0.4); color: #ff7e9d; }
+.ai-panel { position: relative; background: linear-gradient(135deg, rgba(0,240,255,0.06), rgba(177,77,255,0.06)); border: 1px solid var(--border-glow); border-radius: 24px; padding: 38px 30px; backdrop-filter: var(--glass-blur); overflow: hidden; }
+.ai-head { display: flex; align-items: center; gap: 16px; margin-bottom: 26px; }
+.ai-avatar { width: 54px; height: 54px; border-radius: 50%; background: linear-gradient(135deg, var(--neon-cyan), var(--neon-purple)); display: flex; align-items: center; justify-content: center; font-family: var(--mono); font-weight: 800; color: var(--bg-deep); font-size: 18px; box-shadow: 0 0 24px rgba(0,240,255,0.5); animation: aiPulse 2.4s ease-in-out infinite; }
+@keyframes aiPulse { 0%,100% { box-shadow: 0 0 24px rgba(0,240,255,0.5); } 50% { box-shadow: 0 0 40px rgba(177,77,255,0.6); } }
+.ai-meta .ai-name { font-size: 1.05rem; color: #fff; font-weight: 600; }
+.ai-meta .ai-role { font-family: var(--mono); font-size: 11px; color: var(--neon-cyan); letter-spacing: 2px; text-transform: uppercase; }
+.takeaway { display: flex; gap: 14px; align-items: flex-start; padding: 14px 0; border-bottom: 1px dashed rgba(0,240,255,0.15); }
+.takeaway:last-child { border-bottom: 0; }
+.takeaway-num { font-family: var(--mono); font-size: 13px; color: var(--neon-cyan); background: rgba(0,240,255,0.08); border: 1px solid var(--border-glow); padding: 4px 10px; border-radius: 6px; flex-shrink: 0; font-weight: 600; }
+.takeaway-text { color: var(--text-soft); font-size: 0.95rem; }
+.takeaway-text strong { color: #fff; }
+.module-footer { margin-top: 60px; padding: 26px; text-align: center; font-family: var(--mono); font-size: 11px; color: var(--text-dim); letter-spacing: 2px; text-transform: uppercase; border-top: 1px solid var(--border-glow); }
+.real-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 18px; margin-top: 14px; }
+.real-card { background: rgba(10,15,35,0.6); border: 1px solid var(--border-glow); border-radius: 14px; padding: 20px; transition: all 0.3s; }
+.real-card:hover { transform: translateY(-4px); border-color: var(--neon-purple); box-shadow: 0 8px 24px rgba(177,77,255,0.2); }
+.real-card h4 { color: var(--neon-magenta); margin-bottom: 8px; font-size: 1rem; }
+.real-card p { color: var(--text-soft); font-size: 0.9rem; }
+.step-list { counter-reset: stepc; list-style: none; padding: 0; margin-top: 14px; }
+.step-list li { counter-increment: stepc; position: relative; padding: 14px 16px 14px 60px; background: rgba(0,0,0,0.28); border: 1px solid var(--border-glow); border-radius: 10px; margin-bottom: 10px; color: var(--text-soft); font-size: 0.95rem; }
+.step-list li::before { content: counter(stepc, decimal-leading-zero); position: absolute; left: 14px; top: 14px; font-family: var(--mono); font-size: 12px; color: var(--neon-cyan); background: rgba(0,240,255,0.08); border: 1px solid var(--neon-cyan); padding: 4px 8px; border-radius: 6px; font-weight: 700; }
+.step-list li strong { color: #fff; }
+.calc-table { width: 100%; border-collapse: collapse; margin-top: 14px; font-family: var(--mono); font-size: 0.88rem; }
+.calc-table th, .calc-table td { padding: 10px 12px; border: 1px solid rgba(0,240,255,0.15); text-align: center; color: var(--text-soft); }
+.calc-table th { background: rgba(0,240,255,0.08); color: var(--neon-cyan); font-weight: 700; letter-spacing: 1px; text-transform: uppercase; font-size: 0.78rem; }
+.calc-table tr.total { background: rgba(177,77,255,0.08); }
+.calc-table tr.total td { color: var(--neon-purple); font-weight: 700; }
+.written-eval { background: linear-gradient(135deg, rgba(255,43,214,0.06), rgba(177,77,255,0.06)); border: 1px solid rgba(255,43,214,0.35); border-radius: 22px; padding: 32px; margin-bottom: 24px; }
+.we-label { font-family: var(--mono); font-size: 11px; color: var(--neon-magenta); letter-spacing: 3px; text-transform: uppercase; margin-bottom: 14px; padding: 6px 12px; display: inline-block; border: 1px solid var(--neon-magenta); border-radius: 6px; background: rgba(255,43,214,0.05); }
+.write-q { margin: 22px 0; }
+.write-q .qhead { display: flex; align-items: baseline; gap: 10px; margin-bottom: 10px; flex-wrap: wrap; }
+.write-q .qhead .qnum { font-family: var(--mono); color: var(--neon-magenta); font-weight: 700; font-size: 0.95rem; }
+.write-q .qhead .qfrom { font-family: var(--mono); font-size: 9.5px; letter-spacing: 1.5px; padding: 3px 9px; border-radius: 5px; text-transform: uppercase; font-weight: 700; background: rgba(0,240,255,0.1); color: var(--neon-cyan); border: 1px solid rgba(0,240,255,0.4); }
+textarea.ans-area { width: 100%; min-height: 130px; background: rgba(0,0,0,0.38); border: 1px solid rgba(255,43,214,0.3); border-radius: 10px; padding: 14px; color: var(--text-soft); font-family: 'Inter','Segoe UI',system-ui,sans-serif; font-size: 0.95rem; line-height: 1.6; resize: vertical; outline: none; transition: all 0.25s; }
+textarea.ans-area:focus { border-color: var(--neon-magenta); box-shadow: 0 0 18px rgba(255,43,214,0.25); }
+.eval-out { display: none; margin-top: 20px; padding: 20px; background: rgba(0,0,0,0.4); border-radius: 14px; border: 1px solid var(--border-glow); }
+.eval-out.show { display: block; }
+.eval-out h4 { color: var(--neon-cyan); font-family: var(--mono); font-size: 12px; letter-spacing: 2px; text-transform: uppercase; margin-bottom: 14px; }
+.eval-q-result { margin: 18px 0; padding: 16px; background: rgba(10,15,40,0.6); border: 1px solid var(--border-glow); border-radius: 10px; }
+.eval-q-result .qhead2 { display: flex; justify-content: space-between; flex-wrap: wrap; gap: 8px; margin-bottom: 10px; align-items: baseline; }
+.eval-q-result .qhead2 strong { color: #fff; font-size: 0.95rem; }
+.eval-q-result .grade { font-family: var(--mono); font-size: 11px; letter-spacing: 1.5px; padding: 4px 10px; border-radius: 5px; text-transform: uppercase; font-weight: 700; }
+.eval-q-result .grade.high { background: rgba(0,255,170,0.12); color: var(--neon-green); border: 1px solid rgba(0,255,170,0.4); }
+.eval-q-result .grade.mid { background: rgba(255,181,71,0.12); color: var(--neon-amber); border: 1px solid rgba(255,181,71,0.4); }
+.eval-q-result .grade.low { background: rgba(255,77,109,0.12); color: var(--neon-red); border: 1px solid rgba(255,77,109,0.4); }
+.score-pill-row { display: flex; gap: 8px; flex-wrap: wrap; margin: 10px 0 14px; }
+.score-pill { background: rgba(0,0,0,0.4); padding: 6px 12px; border-radius: 20px; font-family: var(--mono); font-size: 10.5px; letter-spacing: 1.2px; border: 1px solid var(--border-glow); color: var(--text-soft); }
+.cov-list { font-size: 0.9rem; line-height: 1.7; color: var(--text-soft); margin: 8px 0; }
+.cov-list .covered { color: var(--neon-green); }
+.cov-list .missing { color: var(--neon-amber); }
+.cov-list strong { color: #fff; }
+.eval-q-result details { margin-top: 10px; }
+.eval-q-result summary { cursor: pointer; color: var(--neon-cyan); font-family: var(--mono); font-size: 11px; letter-spacing: 1.5px; text-transform: uppercase; font-weight: 700; padding: 6px 0; }
+.eval-q-result summary:hover { color: var(--neon-magenta); }
+.model-ans { margin-top: 10px; padding: 12px 14px; background: rgba(0,240,255,0.04); border-left: 2px solid var(--neon-cyan); border-radius: 0 8px 8px 0; font-size: 0.92rem; color: var(--text-soft); line-height: 1.65; }
+.overall-msg { margin-top: 22px; padding: 16px 18px; background: linear-gradient(135deg, rgba(0,240,255,0.05), rgba(177,77,255,0.05)); border-left: 3px solid var(--neon-cyan); border-radius: 0 10px 10px 0; font-size: 0.95rem; color: var(--text-soft); line-height: 1.65; }
+.overall-msg strong { color: #fff; }
+@media (max-width: 720px) {
+  .container { padding: 20px 14px 80px; }
+  .hero { padding: 60px 18px 50px; }
+  .section { margin-bottom: 60px; }
+  .concept-block, .viz-wrap, .ai-panel, .quiz-card, .written-eval { padding: 22px 18px; }
+  .formula { font-size: 0.92rem; padding: 14px 8px; }
+  .calc-table { font-size: 0.78rem; }
+  .calc-table th, .calc-table td { padding: 6px 4px; }
+}
+
+  /* â”€â”€ SCROLL REVEAL â”€â”€ */
+  .reveal {
+    opacity: 0;
+    transform: translateY(30px);
+    transition: all 0.8s cubic-bezier(0.16, 1, 0.3, 1);
+  }
+  .reveal.visible { opacity: 1; transform: translateY(0); }
+
+  /* â”€â”€ GRID DRIFT â”€â”€ */
+  @keyframes gridDrift {
+    0%   { background-position: 0 0, 0 0; }
+    100% { background-position: 60px 60px, 60px 60px; }
+  }
+
+  /* â”€â”€ SLIDE IN (quiz feedback) â”€â”€ */
+  @keyframes slideIn {
+    from { opacity: 0; transform: translateY(8px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+  .quiz-feedback.show { animation: slideIn 0.4s; }
+
+  /* â”€â”€ AI PANEL ROTATE â”€â”€ */
+  @keyframes rotate { to { transform: rotate(360deg); } }
+  .ai-panel { overflow: hidden; }
+  .ai-panel::before {
+    content: ''; position: absolute; top: -50%; left: -50%;
+    width: 200%; height: 200%;
+    background: conic-gradient(from 0deg, transparent, rgba(0,240,255,0.05), transparent, rgba(177,77,255,0.05), transparent);
+    animation: rotate 20s linear infinite;
+    pointer-events: none; z-index: 0;
+  }
+  .ai-panel > * { position: relative; z-index: 1; }
+
+  /* â”€â”€ SCANLINES â”€â”€ */
+  .scanlines {
+    position: fixed; inset: 0;
+    background: repeating-linear-gradient(0deg,
+      rgba(0,240,255,0.012) 0px, rgba(0,240,255,0.012) 1px,
+      transparent 1px, transparent 4px);
+    pointer-events: none; z-index: 999; mix-blend-mode: screen;
+  }
+</style>
+</head>
+<body>
+<div class="scanlines"></div>
+
+<canvas id="particle-canvas"></canvas>
+
+<div class="container">
+
+  <div class="hud">
+    <div class="hud-left">⟁ QNA-OS v4.7 // Module 5.2 — Part 2</div>
+    <div class="hud-center">Multicollinearity · Residual Diagnostics</div>
+    <div class="hud-right"><span class="hud-dot"></span>Diagnostic Core Online</div>
+  </div>
+
+  <section class="hero">
+    <svg class="hero-bg-svg" viewBox="0 0 1200 400" preserveAspectRatio="none">
+      <defs>
+        <linearGradient id="vifGrad" x1="0" y1="0" x2="1" y2="0">
+          <stop offset="0%" stop-color="#00f0ff" stop-opacity="0.8"/>
+          <stop offset="100%" stop-color="#ff2bd6" stop-opacity="0.8"/>
+        </linearGradient>
+      </defs>
+      <!-- correlated predictor cluster -->
+      <g opacity="0.7">
+        <circle cx="200" cy="200" r="36" fill="rgba(0,240,255,0.15)" stroke="#00f0ff" stroke-width="1.8"/>
+        <text x="200" y="205" fill="#00f0ff" font-family="JetBrains Mono" font-size="13" text-anchor="middle" font-weight="700">x₁</text>
+        <circle cx="260" cy="220" r="36" fill="rgba(177,77,255,0.15)" stroke="#b14dff" stroke-width="1.8"/>
+        <text x="260" y="225" fill="#b14dff" font-family="JetBrains Mono" font-size="13" text-anchor="middle" font-weight="700">x₂</text>
+        <text x="230" y="290" fill="#ff2bd6" font-family="JetBrains Mono" font-size="11" text-anchor="middle">OVERLAP</text>
+        <text x="230" y="125" fill="#fff" font-family="JetBrains Mono" font-size="13" text-anchor="middle">COLLINEAR PREDICTORS</text>
+      </g>
+      <!-- residual diagnostic pattern -->
+      <g transform="translate(620,130)" opacity="0.85">
+        <text x="170" y="-5" fill="#00f0ff" font-family="JetBrains Mono" font-size="13" text-anchor="middle">RESIDUAL DIAGNOSTICS</text>
+        <line x1="0" y1="100" x2="340" y2="100" stroke="#ff2bd6" stroke-width="1.5" stroke-dasharray="5,4" opacity="0.7"/>
+        <text x="350" y="105" fill="#ff2bd6" font-family="JetBrains Mono" font-size="10">e=0</text>
+        <g fill="#b14dff" opacity="0.85">
+          <circle cx="20" cy="105" r="3"/>
+          <circle cx="50" cy="95" r="3"/>
+          <circle cx="80" cy="108" r="3"/>
+          <circle cx="110" cy="92" r="3"/>
+          <circle cx="140" cy="103" r="3"/>
+          <circle cx="170" cy="97" r="3"/>
+          <circle cx="200" cy="106" r="3"/>
+          <circle cx="230" cy="94" r="3"/>
+          <circle cx="260" cy="102" r="3"/>
+          <circle cx="290" cy="99" r="3"/>
+          <circle cx="320" cy="104" r="3"/>
+        </g>
+        <line x1="0" y1="150" x2="0" y2="50" stroke="#7a8bbf" stroke-width="1" opacity="0.5"/>
+        <line x1="0" y1="150" x2="340" y2="150" stroke="#7a8bbf" stroke-width="1" opacity="0.5"/>
+        <text x="170" y="170" fill="#7a8bbf" font-family="JetBrains Mono" font-size="10" text-anchor="middle">FITTED ŷ</text>
+        <text x="-30" y="100" fill="#7a8bbf" font-family="JetBrains Mono" font-size="10" text-anchor="middle" transform="rotate(-90 -30 100)">RES e</text>
+      </g>
+      <!-- VIF badge -->
+      <rect x="380" y="350" width="440" height="35" rx="10" fill="rgba(10,15,40,0.6)" stroke="#00f0ff" stroke-opacity="0.5"/>
+      <text x="600" y="373" fill="#fff" font-family="JetBrains Mono" font-size="14" text-anchor="middle" font-weight="700">VIF · LEVERAGE · Q-Q PLOT · COOK'S D</text>
+    </svg>
+    <div class="hero-tag">◉ MODULE 5.2 — PART 2 of 2</div>
+    <h1>Multicollinearity &amp; Residual Analysis</h1>
+    <p class="subtitle">When two predictors carry the same information, the model gets confused. When residuals show patterns, the model is hiding a flaw. Let's learn to spot both — the two most common reasons regressions go wrong in real work.</p>
+    <p class="overview">Part 2 closes Module 5.2. First, <strong>multicollinearity</strong> — what happens when predictors overlap heavily, why it makes coefficients shaky, and the diagnostic number (VIF) every analyst uses to detect it. Second, <strong>residual analysis</strong> — the full diagnostic toolkit for inspecting a fitted model, including residual-vs-fitted plots, Q-Q plots, outlier detection, leverage and influence measures. At the end you will take a multiple-choice quiz covering both parts of Module 5.2, plus an AI-graded written challenge with 5 open-response questions.</p>
+    <div class="hero-meta">
+      <div class="meta-chip"><span class="label">Duration:</span><span class="value">60 Min</span></div>
+      <div class="meta-chip"><span class="label">Level:</span><span class="value">Intermediate</span></div>
+      <div class="meta-chip"><span class="label">Topics:</span><span class="value">04 / 04</span></div>
+      <div class="meta-chip"><span class="label">Formulas:</span><span class="value">03</span></div>
+      <div class="meta-chip"><span class="label">Practice:</span><span class="value">6 Mcq + 5 Written</span></div>
+      <div class="meta-chip"><span class="label">Prereq:</span><span class="value">M-5.2 Part 1</span></div>
+    </div>
+  </section>
+
+  <div class="part-nav">
+    <div class="part-nav-item done">
+      <div class="part-nav-label">✓ Part 1 —Complete</div>
+      <div class="part-nav-title">Multiple Predictors · Assumptions</div>
+    </div>
+    <div class="part-nav-item current">
+      <div class="part-nav-label">⟁ Part 2 —Now</div>
+      <div class="part-nav-title">Multicollinearity · Residual Analysis</div>
+    </div>
+  </div>
+
+  <section class="section reveal">
+    <div class="section-header">
+      <div class="section-num">⟁ Objectives</div>
+      <h2 class="section-title">What You'll Learn in Part 2</h2>
+      <div class="section-line"></div>
+    </div>
+    <div class="dual-grid">
+      <div class="dual-cell">
+        <h4>🔗 Multicollinearity</h4>
+        <ul>
+          <li>When two predictors carry the same info</li>
+          <li>Why this makes coefficients unstable</li>
+          <li>The VIF diagnostic and how to read it</li>
+          <li>Practical fixes — drop, combine, regularise</li>
+        </ul>
+      </div>
+      <div class="dual-cell purple">
+        <h4>🔍 Residual Analysis</h4>
+        <ul>
+          <li>The four core diagnostic plots</li>
+          <li>Outliers vs leverage vs influence</li>
+          <li>Cook's distance and standardised residuals</li>
+          <li>How to fix common problems</li>
+        </ul>
+      </div>
+      <div class="dual-cell magenta">
+        <h4>🌍 Where It Lives</h4>
+        <ul>
+          <li>Marketing channel attribution</li>
+          <li>Genomics &amp; clinical models</li>
+          <li>ML feature selection pipelines</li>
+          <li>Econometrics &amp; policy research</li>
+        </ul>
+      </div>
+      <div class="dual-cell green">
+        <h4>🧮 Practice &amp; Eval</h4>
+        <ul>
+          <li>VIF stress test (live)</li>
+          <li>4-panel residual diagnostic dashboard</li>
+          <li>6 MCQ + 5 AI-graded written answers</li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <!-- ═══════════════════ TOPIC 3 — MULTICOLLINEARITY ═══════════════════ -->
+  <section class="section reveal">
+    <div class="section-header">
+      <div class="section-num">Topic 3</div>
+      <h2 class="section-title">Multicollinearity</h2>
+      <div class="section-line"></div>
+    </div>
+
+    <!-- WHAT -->
+    <div class="concept-block">
+      <div class="sub-section-marker">What it is</div>
+      <h3>What is Multicollinearity?</h3>
+      <p>So far we treated each predictor as if it contributed a separate piece of information. In practice, the predictors we collect often <strong>overlap</strong>. Two columns may carry the same story told in different units.</p>
+      <p>Take a salary dataset. Suppose you include both "years of experience" and "age." For most working adults these two are tightly linked — older usually means more experienced. The data points (age, experience) lie close to a straight line. The two columns are not identical, but they carry almost the same information.</p>
+      <p><strong>Multicollinearity</strong> is the name for this overlap between predictors. It happens when one predictor can be predicted well from a combination of the others.</p>
+      <div class="highlight-box">
+        <strong>Simple meaning:</strong> Multicollinearity is when two or more predictors say roughly the same thing about the data. The model has trouble deciding which one to credit for the effect, so the coefficients become shaky.
+      </div>
+      <h4>Two flavours of the same problem</h4>
+      <ul>
+        <li><strong>Perfect multicollinearity</strong> — one predictor is an exact linear combination of others (for example, including height in cm and height in inches). The model literally cannot fit; software will refuse or drop a column.</li>
+        <li><strong>High multicollinearity</strong> — predictors are strongly correlated but not identical (age and experience). The model fits, but the coefficients become unstable and hard to interpret.</li>
+      </ul>
+    </div>
+
+    <!-- WHY -->
+    <div class="concept-block">
+      <div class="sub-section-marker">Why it matters</div>
+      <h3>Why Overlapping Predictors Make the Model Wobble</h3>
+      <p>When two predictors carry nearly the same information, the least-squares method cannot tell which one deserves the credit. The result is three visible symptoms:</p>
+      <div class="dual-grid">
+        <div class="dual-cell magenta">
+          <h4>1. Unstable coefficients</h4>
+          <ul>
+            <li>Coefficient values jump around if a single data point is added or removed</li>
+            <li>Same data, slight reshuffle — completely different β values</li>
+            <li>Trust in the numbers drops</li>
+          </ul>
+        </div>
+        <div class="dual-cell amber">
+          <h4>2. Inflated standard errors</h4>
+          <ul>
+            <li>Confidence intervals become very wide</li>
+            <li>p-values look insignificant even when the variable truly matters</li>
+            <li>Hard to declare any predictor "important"</li>
+          </ul>
+        </div>
+        <div class="dual-cell purple">
+          <h4>3. Strange coefficient signs</h4>
+          <ul>
+            <li>Coefficients may flip sign from what you'd expect</li>
+            <li>"More experience → lower salary" — counterintuitive</li>
+            <li>The model is just balancing redundant variables</li>
+          </ul>
+        </div>
+      </div>
+      <div class="warning-box">
+        <strong>What it does NOT hurt:</strong> Multicollinearity does not damage <em>predictions</em> for new cases (within the range of the training data). If you only care about ŷ accuracy, you can largely ignore it. But if you care about <em>interpreting each coefficient</em> — and most scientific and policy work does — multicollinearity is a serious problem.
+      </div>
+    </div>
+
+    <!-- WHY USED -->
+    <div class="concept-block">
+      <div class="sub-section-marker">Why we check for it</div>
+      <h3>Why Every Serious Regression Workflow Checks for Multicollinearity</h3>
+      <ul>
+        <li><strong>Honest interpretation:</strong> publishing "the effect of age on salary is X" while age is heavily entangled with experience is misleading without a flag.</li>
+        <li><strong>Policy decisions:</strong> if a model says "education has no effect" because it's collinear with experience, removing one or the other can flip the conclusion entirely.</li>
+        <li><strong>Model maintenance:</strong> highly collinear models are fragile — small data updates can change conclusions. Identifying multicollinearity lets you build a sturdier model.</li>
+        <li><strong>Auditing &amp; regulation:</strong> regulated industries (insurance, lending, healthcare) require diagnostic reports including multicollinearity checks.</li>
+      </ul>
+    </div>
+
+    <!-- HOW WORKS -->
+    <div class="concept-block">
+      <div class="sub-section-marker">How to detect it</div>
+      <h3>The VIF Diagnostic — How to Spot Multicollinearity</h3>
+      <p>The standard diagnostic is the <strong>Variance Inflation Factor (VIF)</strong>. Each predictor gets its own VIF number that tells you how much that predictor's variance is "inflated" by overlap with the other predictors.</p>
+      <h4>How to read VIF</h4>
+      <ul>
+        <li><strong>VIF = 1:</strong> the predictor is completely uncorrelated with the others. No multicollinearity issue.</li>
+        <li><strong>VIF 1 – 5:</strong> mild correlation. Usually safe — coefficients are reliable.</li>
+        <li><strong>VIF 5 – 10:</strong> moderate concern. Worth investigating, especially if you care about interpretation.</li>
+        <li><strong>VIF &gt; 10:</strong> serious multicollinearity. Coefficients are likely unstable; fix needed.</li>
+      </ul>
+      <h4>How VIF is computed</h4>
+      <p>For each predictor xⱼ, fit a regression of xⱼ on all the <em>other</em> predictors. Get the R² of that fit, call it R²ⱼ. Then:</p>
+      <div class="formula">VIFⱼ = 1 / (1 − R²ⱼ)</div>
+      <ul>
+        <li>If xⱼ is unrelated to the other predictors, R²ⱼ is near 0, so VIFⱼ ≈ 1.</li>
+        <li>If xⱼ is well-explained by the others (R²ⱼ near 1), then 1 − R²ⱼ is tiny, and VIFⱼ explodes.</li>
+        <li>VIF measures how predictable each predictor is from the others — a direct quantification of overlap.</li>
+      </ul>
+      <h4>Other quick checks</h4>
+      <ul>
+        <li><strong>Correlation matrix:</strong> compute pairwise correlations between predictors. Any |r| above ~0.8 between two predictors is a red flag.</li>
+        <li><strong>Drop-one-predictor test:</strong> refit the model after removing a suspect predictor; if other coefficients change dramatically, multicollinearity is likely.</li>
+      </ul>
+    </div>
+
+    <!-- INTERACTIVE 1: VIF EXPLORER -->
+    <div class="viz-wrap">
+      <div class="viz-title">⟁ Interactive — VIF Stress Test</div>
+      <div class="viz-desc">A synthetic salary dataset has 3 predictors: experience, age, and education. Use the slider to control how strongly age and experience overlap. Watch the VIFs climb, the coefficients become unstable, and the standard errors balloon as overlap grows. R² (prediction accuracy) barely moves — because multicollinearity only damages interpretation, not prediction.</div>
+      <div class="slider-row">
+        <div class="slider-cell">
+          <div class="slider-label"><span>Correlation between Age &amp; Experience</span><span id="t3CorrVal">0.40</span></div>
+          <input type="range" id="t3Corr" min="0" max="0.99" value="0.40" step="0.01">
+        </div>
+      </div>
+      <canvas id="t3Canvas" class="viz-canvas" width="900" height="380"></canvas>
+      <div class="stat-grid">
+        <div class="stat-box"><div class="stat-label">VIF — Experience</div><div class="stat-value" id="t3VifExp">—</div></div>
+        <div class="stat-box"><div class="stat-label">VIF — Age</div><div class="stat-value purple" id="t3VifAge">—</div></div>
+        <div class="stat-box"><div class="stat-label">VIF — Education</div><div class="stat-value magenta" id="t3VifEdu">—</div></div>
+        <div class="stat-box"><div class="stat-label">Model R²</div><div class="stat-value green" id="t3R2">—</div></div>
+      </div>
+      <div class="highlight-box" style="margin-top:18px;" id="t3Insight">
+        Slide the correlation between Age and Experience. Notice how their VIFs climb dramatically while the model's overall R² barely changes.
+      </div>
+    </div>
+
+    <!-- HOW TO FIX -->
+    <div class="concept-block">
+      <div class="sub-section-marker">How to fix it</div>
+      <h3>Three Practical Fixes for Multicollinearity</h3>
+      <ol class="step-list">
+        <li><strong>Drop one of the overlapping predictors.</strong> If experience and age both say roughly the same thing, keep the one that is more interpretable or more reliably measured. The model becomes simpler and the remaining coefficient becomes stable.</li>
+        <li><strong>Combine the predictors into one composite.</strong> If two predictors are conceptually related (e.g., height and weight → BMI), build a single combined variable. Principal Component Analysis (PCA) is a formal version of this for many predictors.</li>
+        <li><strong>Use regularisation (Ridge / Lasso).</strong> These modified regression methods accept multicollinearity gracefully — they shrink unstable coefficients toward zero in a controlled way. Module 5.7 covers these in depth.</li>
+      </ol>
+      <p>The right fix depends on the goal. For interpretation, dropping or combining is cleaner. For prediction, regularisation often gives the best results without losing information.</p>
+    </div>
+
+    <!-- WHEN -->
+    <div class="concept-block">
+      <div class="sub-section-marker">When to worry vs not</div>
+      <h3>How Strict Should You Be?</h3>
+      <div class="dual-grid">
+        <div class="dual-cell magenta">
+          <h4>Worry strongly when</h4>
+          <ul>
+            <li>You need to interpret individual coefficients</li>
+            <li>You're publishing or making policy decisions</li>
+            <li>The model is regulated or audited</li>
+            <li>VIF > 10 for any predictor</li>
+          </ul>
+        </div>
+        <div class="dual-cell green">
+          <h4>You can mostly ignore it when</h4>
+          <ul>
+            <li>You only care about predicting ŷ for new cases</li>
+            <li>You're using regularised methods (Ridge / Lasso)</li>
+            <li>Predictions for new data stay inside the training range</li>
+            <li>VIF below 5 for all predictors</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+
+    <!-- WORKED EXAMPLE -->
+    <div class="deep-dive">
+      <div class="dd-label">⟁ Worked Example</div>
+      <h4>Example: A Salary Model With and Without Age</h4>
+      <p>An analyst fits a model of monthly salary against three predictors: years of experience, age in years, and years of education.</p>
+      <p><strong>Run 1 — All three predictors included:</strong></p>
+      <div class="formula">Salary = 18,000 + 1,200·Exp + 800·Age + 4,500·Edu</div>
+      <p>Looks reasonable at first. But the diagnostic report shows:</p>
+      <ul>
+        <li><strong>VIF for Experience = 9.2</strong> (high)</li>
+        <li><strong>VIF for Age = 8.7</strong> (high)</li>
+        <li><strong>VIF for Education = 1.3</strong> (fine)</li>
+        <li>Standard error on Experience = ±900 (huge)</li>
+        <li>p-value for Experience = 0.18 (not significant!)</li>
+      </ul>
+      <p>The high VIFs for Age and Experience flag the problem — these two are saying nearly the same thing. The analyst drops Age and refits.</p>
+      <p><strong>Run 2 — Age removed:</strong></p>
+      <div class="formula">Salary = 22,500 + 2,100·Exp + 4,400·Edu</div>
+      <p>Now:</p>
+      <ul>
+        <li><strong>VIF for Experience = 1.2</strong> (fine)</li>
+        <li><strong>VIF for Education = 1.2</strong> (fine)</li>
+        <li>Standard error on Experience = ±150 (tight)</li>
+        <li>p-value for Experience = 0.001 (highly significant)</li>
+      </ul>
+      <p>The new coefficient on Experience is larger (₹2,100 vs ₹1,200) and much more reliable. The previous Run 1 was splitting credit between two overlapping predictors.</p>
+      <div class="success-box">
+        <strong>The lesson:</strong> Multicollinearity hides the true effect of each predictor by splitting it across the overlapping pair. Removing or combining redundant predictors restores stability and reveals the real relationship.
+      </div>
+    </div>
+
+    <!-- REAL LIFE -->
+    <div class="concept-block">
+      <div class="sub-section-marker">Real-life examples</div>
+      <h3>Where Multicollinearity Hides in Real Data</h3>
+      <div class="real-grid">
+        <div class="real-card">
+          <h4>📣 Marketing Channels</h4>
+          <p>TV, digital and out-of-home ad spend often move together — campaigns ramp up across channels simultaneously. Multicollinearity makes it hard to attribute sales to a single channel.</p>
+        </div>
+        <div class="real-card">
+          <h4>🧬 Genetic Studies</h4>
+          <p>Genes in the same pathway are highly correlated. Naive regression of disease risk on many genes produces unstable coefficients. Specialised methods (Lasso, group regularisation) are used.</p>
+        </div>
+        <div class="real-card">
+          <h4>📐 Body Measurements</h4>
+          <p>Height, weight, BMI, waist, hip — all carry overlapping info about body size. Health studies must carefully choose which to include to avoid multicollinearity.</p>
+        </div>
+        <div class="real-card">
+          <h4>📉 Economic Indicators</h4>
+          <p>GDP, employment, consumer spending, retail sales all move together. Macroeconomic models often face severe multicollinearity, hence Ridge regression is common.</p>
+        </div>
+        <div class="real-card">
+          <h4>🏠 Real-Estate Features</h4>
+          <p>House size, number of rooms, and number of bathrooms are linked. Including all three blindly creates multicollinearity. Often analysts combine into "total liveable area."</p>
+        </div>
+        <div class="real-card">
+          <h4>🤖 ML Feature Engineering</h4>
+          <p>Engineered features (ratios, differences, lags) are often heavily correlated with their parents. Feature-selection pipelines explicitly remove highly collinear features.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ═══════════════════ TOPIC 4 — RESIDUAL ANALYSIS ═══════════════════ -->
+  <section class="section reveal">
+    <div class="section-header">
+      <div class="section-num">Topic 4</div>
+      <h2 class="section-title">Residual Analysis</h2>
+      <div class="section-line"></div>
+    </div>
+
+    <!-- WHAT -->
+    <div class="concept-block">
+      <div class="sub-section-marker">What it is</div>
+      <h3>What is Residual Analysis?</h3>
+      <p>In Part 1 we met residuals — the gaps between actual y and predicted ŷ. Residual analysis is the practice of <strong>inspecting these residuals systematically</strong> to check whether the fitted model is trustworthy.</p>
+      <p>The fitted coefficients alone do not tell you whether a model is good. Even a poorly chosen model will return some β values — those are just numbers from the least-squares formula. The real question is: did the model capture the structure of the data, or did it leave hidden patterns in the residuals?</p>
+      <p>If residuals look random and shapeless, the model has done its job. If residuals show structure — a curve, a fan, a clustered tail — the model has missed something. Residual analysis is how we find out.</p>
+      <div class="highlight-box">
+        <strong>Simple meaning:</strong> Residual analysis is the after-fit inspection. Once the line (or hyperplane) is drawn, you look at what's left over. Random leftovers = a good fit. Patterned leftovers = a hidden problem.
+      </div>
+    </div>
+
+    <!-- WHY -->
+    <div class="concept-block">
+      <div class="sub-section-marker">Why we do it</div>
+      <h3>Why Coefficients Without Diagnostics Are Half the Story</h3>
+      <p>Three reasons every fitted model deserves a diagnostic check before being shared:</p>
+      <ul>
+        <li><strong>Assumption verification:</strong> the four LINE assumptions (Linearity, Independence, Normality, Equal variance) all show up in residual plots. Without checking, you cannot trust standard errors, p-values, or confidence intervals.</li>
+        <li><strong>Outlier detection:</strong> a single unusual point can dominate a fit. Residuals are the natural place to spot such points and decide whether to keep, transform, or remove them.</li>
+        <li><strong>Model improvement:</strong> patterns in residuals tell you what's missing. A curve in residuals suggests adding a non-linear term. A fan suggests log-transforming y. Diagnostics drive the next iteration of the model.</li>
+      </ul>
+      <div class="success-box">
+        <strong>Big idea:</strong> Diagnostics are not a bureaucratic step. They are the feedback loop that turns "ran the regression" into "actually understand the relationship." Skipping them is like writing code without testing it.
+      </div>
+    </div>
+
+    <!-- WHY USED -->
+    <div class="concept-block">
+      <div class="sub-section-marker">Why it's used in practice</div>
+      <h3>The Four Core Diagnostic Plots</h3>
+      <div class="dual-grid">
+        <div class="dual-cell">
+          <h4>1. Residuals vs Fitted</h4>
+          <ul>
+            <li>x-axis: predicted ŷ, y-axis: residual e</li>
+            <li>Detects: linearity, equal variance, outliers</li>
+            <li>Healthy = shapeless cloud around zero</li>
+          </ul>
+        </div>
+        <div class="dual-cell purple">
+          <h4>2. Q-Q Plot of Residuals</h4>
+          <ul>
+            <li>Plots sorted residual values vs theoretical bell-curve values</li>
+            <li>Detects: normality of residuals</li>
+            <li>Healthy = points lie on a straight diagonal</li>
+          </ul>
+        </div>
+        <div class="dual-cell magenta">
+          <h4>3. Scale-Location Plot</h4>
+          <ul>
+            <li>x-axis: fitted ŷ, y-axis: √|standardised residual|</li>
+            <li>Detects: equal variance more sensitively</li>
+            <li>Healthy = flat horizontal trend</li>
+          </ul>
+        </div>
+        <div class="dual-cell green">
+          <h4>4. Residuals vs Leverage</h4>
+          <ul>
+            <li>x-axis: leverage, y-axis: standardised residual</li>
+            <li>Detects: influential points</li>
+            <li>Healthy = no points outside Cook's distance lines</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+
+    <!-- HOW WORKS -->
+    <div class="concept-block">
+      <div class="sub-section-marker">How to use them</div>
+      <h3>Outliers · Leverage · Influence — Three Different Things</h3>
+      <p>Beginners often lump these together. They are related but distinct concepts:</p>
+      <div class="dual-grid">
+        <div class="dual-cell magenta">
+          <h4>Outlier</h4>
+          <ul>
+            <li>A point with a large residual</li>
+            <li>The line missed it badly</li>
+            <li>Not all outliers move the line — only the ones with leverage do</li>
+          </ul>
+        </div>
+        <div class="dual-cell amber">
+          <h4>Leverage</h4>
+          <ul>
+            <li>A point with extreme predictor values</li>
+            <li>Sits far from the average x</li>
+            <li>Has potential to pull the line, but might still be on it</li>
+          </ul>
+        </div>
+        <div class="dual-cell purple">
+          <h4>Influence</h4>
+          <ul>
+            <li>Outlier + Leverage = real influence</li>
+            <li>Removing the point would change the coefficients significantly</li>
+            <li>Measured by Cook's distance</li>
+          </ul>
+        </div>
+      </div>
+      <p style="margin-top:18px;">A high-leverage point that sits perfectly on the line is fine — it stabilises the fit. An outlier with low leverage adds noise but doesn't pull the line. Only an outlier <em>with</em> leverage is dangerous — that's the combination that distorts coefficients.</p>
+      <h4>Standardised vs raw residuals</h4>
+      <p>Diagnostic plots usually show <strong>standardised residuals</strong> — residuals divided by their estimated standard deviation. This makes them comparable across observations regardless of leverage. As a rule of thumb, any standardised residual with absolute value above 2 deserves a look, above 3 is concerning.</p>
+      <h4>Cook's distance — the single influence number</h4>
+      <p><strong>Cook's distance</strong> combines residual size and leverage into one number per observation. It measures how much the fitted line would shift if that single point were removed. Points with Cook's distance above 1 (or above 4/n for smaller samples) are flagged as influential.</p>
+    </div>
+
+    <!-- MATHEMATICAL -->
+    <div class="formula-card">
+      <div class="formula-label">⟁ Key Diagnostic Quantities</div>
+      <div class="formula">Standardised residual rᵢ = eᵢ / (s × √(1 − hᵢᵢ))</div>
+      <p class="formula-explain"><strong>What each symbol means:</strong></p>
+      <div class="var-list">
+        <div class="var-item"><code>eᵢ</code> — raw residual for observation i</div>
+        <div class="var-item"><code>s</code> — estimated standard deviation of residuals (overall noise level)</div>
+        <div class="var-item"><code>hᵢᵢ</code> — leverage of observation i (between 0 and 1)</div>
+        <div class="var-item"><code>rᵢ</code> — standardised residual, comparable across all observations</div>
+      </div>
+      <p class="formula-explain">The standardised version puts every residual on the same scale. Without this scaling, a small residual at a high-leverage point can look harmless but actually be unusual relative to what we'd expect there.</p>
+      <div class="formula">Cook's distance Dᵢ = (rᵢ²/p) × (hᵢᵢ / (1 − hᵢᵢ))</div>
+      <p class="formula-explain"><strong>What each symbol means:</strong></p>
+      <div class="var-list">
+        <div class="var-item"><code>p</code> — total number of predictors (plus intercept)</div>
+        <div class="var-item"><code>rᵢ</code> — standardised residual for observation i</div>
+        <div class="var-item"><code>hᵢᵢ</code> — leverage of observation i</div>
+        <div class="var-item"><code>Dᵢ</code> — Cook's distance — a single influence score per observation</div>
+      </div>
+      <p class="formula-explain"><strong>How to read it:</strong> Cook's distance multiplies "how big is the residual" (rᵢ²) by "how leveraged is the point" (hᵢᵢ / (1 − hᵢᵢ)). Both factors must be substantial to produce a large Cook's distance. A point can have a huge residual but tiny leverage and still be harmless; or huge leverage but tiny residual and still be fine. Only when both are present does the point pull the line significantly.</p>
+      <p class="formula-explain"><strong>Threshold:</strong> Dᵢ > 1 is a strong warning. Dᵢ > 4/n is a milder flag for smaller samples. Software typically marks any flagged point on the residuals-vs-leverage plot.</p>
+    </div>
+
+    <!-- HOW TO USE -->
+    <div class="concept-block">
+      <div class="sub-section-marker">How to use them</div>
+      <h3>The Diagnostic Workflow — Step by Step</h3>
+      <ol class="step-list">
+        <li><strong>Fit the model.</strong> You now have β coefficients and residuals.</li>
+        <li><strong>Plot Residuals vs Fitted.</strong> Look for shapeless cloud around zero. Flag any curve or fan.</li>
+        <li><strong>Plot Q-Q.</strong> Look for points on the diagonal. Heavy tails or S-shapes signal non-normal residuals.</li>
+        <li><strong>Plot Scale-Location.</strong> Look for flat trend. Rising trend signals growing variance.</li>
+        <li><strong>Plot Residuals vs Leverage.</strong> Look for points outside Cook's distance lines.</li>
+        <li><strong>Investigate flagged points.</strong> For each outlier or influential point, ask: data error, genuine unusual case, or hint at a missing variable?</li>
+        <li><strong>Take action.</strong> Transform variables, add terms, drop bad data, or use a different model class.</li>
+        <li><strong>Refit and recheck.</strong> Diagnostics is iterative — keep going until residuals look healthy.</li>
+      </ol>
+    </div>
+
+    <!-- INTERACTIVE 2: DIAGNOSTIC DASHBOARD -->
+    <div class="viz-wrap">
+      <div class="viz-title">⟁ Interactive — Diagnostic Dashboard</div>
+      <div class="viz-desc">Switch between four different fitted models. Each scenario shows the residual-vs-fitted plot on the left and the Q-Q plot on the right. Learn to read each pattern: healthy, curved, fan, and a model with an influential point. The pattern is your fingerprint for diagnosing the problem.</div>
+      <div class="btn-row" id="t4Row">
+        <button class="btn active" data-mode="healthy">Healthy fit</button>
+        <button class="btn purple" data-mode="curve">Linearity broken</button>
+        <button class="btn amber" data-mode="fan">Variance grows (fan)</button>
+        <button class="btn magenta" data-mode="outlier">Influential point</button>
+      </div>
+      <canvas id="t4Canvas" class="viz-canvas" width="900" height="420"></canvas>
+      <div class="stat-grid">
+        <div class="stat-box"><div class="stat-label">Max |std residual|</div><div class="stat-value" id="t4MaxRes">—</div></div>
+        <div class="stat-box"><div class="stat-label">Outliers (|r| > 2)</div><div class="stat-value amber" id="t4Out">—</div></div>
+        <div class="stat-box"><div class="stat-label">Max leverage</div><div class="stat-value purple" id="t4Lev">—</div></div>
+        <div class="stat-box"><div class="stat-label">Max Cook's D</div><div class="stat-value magenta" id="t4Cook">—</div></div>
+      </div>
+      <div class="highlight-box" style="margin-top:18px;" id="t4Insight">
+        Click each scenario to see what its diagnostic plots look like.
+      </div>
+    </div>
+
+    <!-- WHEN -->
+    <div class="concept-block">
+      <div class="sub-section-marker">When &amp; how often</div>
+      <h3>How Often Should You Run Diagnostics?</h3>
+      <ul>
+        <li><strong>Every time</strong> you fit a regression you intend to share, publish, or deploy. No exceptions.</li>
+        <li><strong>After any data update</strong> — new observations can introduce new outliers or change leverage patterns.</li>
+        <li><strong>After adding or removing predictors</strong> — model structure changes the residual landscape.</li>
+        <li><strong>Before drawing strong conclusions</strong> — especially around p-values, effect sizes, and policy implications.</li>
+      </ul>
+    </div>
+
+    <!-- WORKED EXAMPLE -->
+    <div class="deep-dive">
+      <div class="dd-label">⟁ Worked Example</div>
+      <h4>Example: Diagnosing a Marketing Regression</h4>
+      <p>A marketing team fits a model of weekly sales against TV spend, digital spend, and promotional discount intensity:</p>
+      <div class="formula">Sales = 120 + 0.85·TV + 1.4·Digital + 22·Discount</div>
+      <p>The fit looks reasonable. But before deploying, the team runs diagnostics on 100 weeks of data:</p>
+      <ul>
+        <li><strong>Residual vs Fitted:</strong> shapeless cloud around zero — ✅ linearity holds.</li>
+        <li><strong>Q-Q plot:</strong> points lie on the diagonal except for two clearly above the line on the right tail — ⚠️ two high-residual weeks.</li>
+        <li><strong>Scale-Location:</strong> flat — ✅ equal variance holds.</li>
+        <li><strong>Residuals vs Leverage:</strong> one point sits outside Cook's distance threshold (Dᵢ = 1.4) — ⚠️ influential point.</li>
+      </ul>
+      <p><strong>Investigation:</strong> the influential week was Diwali, when discount went to 60% (vs typical 10-15%) and sales spiked. The week is genuine, not a data error — but it's an extreme observation pulling the discount coefficient upward.</p>
+      <p><strong>Action taken:</strong> the team refits the model without that week, gets a discount coefficient of 18 (vs 22). They report both — "discount effect is ₹18 on typical weeks, ₹22 if extreme promotional weeks are included." Honest, more useful, and decision-makers now know about the dependence on extreme weeks.</p>
+      <div class="success-box">
+        <strong>The lesson:</strong> Diagnostics turn a single number into a nuanced understanding. Influential points are not automatic problems — they are signals to investigate. The right response is rarely "delete" — it's usually "report transparently and refit to understand."
+      </div>
+    </div>
+
+    <!-- REAL LIFE -->
+    <div class="concept-block">
+      <div class="sub-section-marker">Real-life examples</div>
+      <h3>Where Residual Analysis Saves Real Models</h3>
+      <div class="real-grid">
+        <div class="real-card">
+          <h4>🏦 Credit Scoring</h4>
+          <p>Banks run residual diagnostics on credit risk models monthly. Drifting residual patterns flag changes in customer behaviour (e.g. recession indicators).</p>
+        </div>
+        <div class="real-card">
+          <h4>🌡️ Climate Modelling</h4>
+          <p>Climate scientists check residuals from temperature models for autocorrelation and trend leftovers. Diagnostic failures indicate missing physical mechanisms.</p>
+        </div>
+        <div class="real-card">
+          <h4>🚚 Logistics Forecasting</h4>
+          <p>Delivery time models are diagnosed weekly. Fan-shaped residuals reveal that long-distance deliveries have more variable times — handled by log-transform.</p>
+        </div>
+        <div class="real-card">
+          <h4>💊 Clinical Trials</h4>
+          <p>Drug efficacy models are required to include diagnostics in regulatory submissions. Outlier patients are flagged, investigated, and reported — never silently dropped.</p>
+        </div>
+        <div class="real-card">
+          <h4>🎓 Education Research</h4>
+          <p>Models of student outcomes against school inputs are checked for influential schools. Often a single outlier school changes the whole policy conclusion.</p>
+        </div>
+        <div class="real-card">
+          <h4>⚙️ Industrial Quality Control</h4>
+          <p>Manufacturing process models run continuous diagnostics. Pattern changes in residuals signal equipment drift before defects appear in production.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ═══════════════════ QUIZ — MCQ (Parts 1 & 2) ═══════════════════ -->
+  <section class="section reveal">
+    <div class="section-header">
+      <div class="section-num">Quiz — Mcq</div>
+      <h2 class="section-title">Multiple-Choice — Parts 1 &amp; 2</h2>
+      <div class="section-line"></div>
+    </div>
+
+    <div class="quiz-card">
+      <div class="quiz-q"><span class="qnum">Q1</span>In multiple linear regression, what does the coefficient β₂ in ŷ = β₀ + β₁x₁ + β₂x₂ + β₃x₃ represent?<span class="qlevel easy">Easy</span></div>
+      <div class="quiz-options">
+        <div class="quiz-opt" onclick="checkQ(this,false)">The slope when only x₂ is used</div>
+        <div class="quiz-opt" onclick="checkQ(this,true)">The change in predicted y per 1-unit increase in x₂, while x₁ and x₃ are held fixed</div>
+        <div class="quiz-opt" onclick="checkQ(this,false)">The total contribution of x₂ to all of y</div>
+        <div class="quiz-opt" onclick="checkQ(this,false)">The correlation between x₂ and y</div>
+      </div>
+      <div class="quiz-feedback"></div>
+    </div>
+
+    <div class="quiz-card">
+      <div class="quiz-q"><span class="qnum">Q2</span>The "N" in the LINE assumptions stands for…<span class="qlevel easy">Easy</span></div>
+      <div class="quiz-options">
+        <div class="quiz-opt" onclick="checkQ(this,false)">Numerical data only</div>
+        <div class="quiz-opt" onclick="checkQ(this,true)">Normality of the residuals</div>
+        <div class="quiz-opt" onclick="checkQ(this,false)">No outliers allowed</div>
+        <div class="quiz-opt" onclick="checkQ(this,false)">Negative correlation between predictors</div>
+      </div>
+      <div class="quiz-feedback"></div>
+    </div>
+
+    <div class="quiz-card">
+      <div class="quiz-q"><span class="qnum">Q3</span>A regression model has predictors x₁ and x₂ with VIF = 12 and VIF = 11 respectively. What does this most likely indicate?<span class="qlevel mod">Moderate</span></div>
+      <div class="quiz-options">
+        <div class="quiz-opt" onclick="checkQ(this,false)">The model is excellent — high VIFs mean strong predictors</div>
+        <div class="quiz-opt" onclick="checkQ(this,false)">The residuals are non-normal</div>
+        <div class="quiz-opt" onclick="checkQ(this,true)">x₁ and x₂ are highly correlated with each other — serious multicollinearity</div>
+        <div class="quiz-opt" onclick="checkQ(this,false)">The sample size is too small</div>
+      </div>
+      <div class="quiz-feedback"></div>
+    </div>
+
+    <div class="quiz-card">
+      <div class="quiz-q"><span class="qnum">Q4</span>Which statement about multicollinearity is TRUE?<span class="qlevel mod">Moderate</span></div>
+      <div class="quiz-options">
+        <div class="quiz-opt" onclick="checkQ(this,false)">It makes predictions completely unreliable</div>
+        <div class="quiz-opt" onclick="checkQ(this,true)">It mainly damages coefficient interpretation, not prediction accuracy</div>
+        <div class="quiz-opt" onclick="checkQ(this,false)">It only affects single-predictor models</div>
+        <div class="quiz-opt" onclick="checkQ(this,false)">It cannot be detected without removing all predictors</div>
+      </div>
+      <div class="quiz-feedback"></div>
+    </div>
+
+    <div class="quiz-card">
+      <div class="quiz-q"><span class="qnum">Q5</span>A residual-vs-fitted plot shows a clear U-shape. What problem does this most directly suggest?<span class="qlevel mod">Moderate</span></div>
+      <div class="quiz-options">
+        <div class="quiz-opt" onclick="checkQ(this,true)">Linearity is broken — the true relationship is curved</div>
+        <div class="quiz-opt" onclick="checkQ(this,false)">Multicollinearity between predictors</div>
+        <div class="quiz-opt" onclick="checkQ(this,false)">The intercept is wrong</div>
+        <div class="quiz-opt" onclick="checkQ(this,false)">The sample size is too small</div>
+      </div>
+      <div class="quiz-feedback"></div>
+    </div>
+
+    <div class="quiz-card">
+      <div class="quiz-q"><span class="qnum">Q6</span>An observation has a small residual but very high leverage. What does this mean?<span class="qlevel hard">Hard</span></div>
+      <div class="quiz-options">
+        <div class="quiz-opt" onclick="checkQ(this,false)">It is automatically an outlier that should be removed</div>
+        <div class="quiz-opt" onclick="checkQ(this,false)">Its Cook's distance must be very large</div>
+        <div class="quiz-opt" onclick="checkQ(this,true)">It has extreme predictor values but sits close to the fitted line — it stabilises the fit rather than distorting it</div>
+        <div class="quiz-opt" onclick="checkQ(this,false)">The model has failed completely</div>
+      </div>
+      <div class="quiz-feedback"></div>
+    </div>
+  </section>
+
+  <!-- ═══════════════════ WRITTEN EVALUATION ═══════════════════ -->
+  <section class="section reveal">
+    <div class="section-header">
+      <div class="section-num">Ai Eval</div>
+      <h2 class="section-title">Written Answer Challenge — Parts 1 &amp; 2</h2>
+      <div class="section-line"></div>
+    </div>
+
+    <div class="written-eval">
+      <div class="we-label">▲ AI Written Evaluation</div>
+      <p style="color:var(--text-soft); margin-top:6px; margin-bottom:18px;">Five open-response questions covering all four topics of Module 5.2 (multiple predictors, LINE assumptions, multicollinearity, residual analysis). Write each answer in your own words — the AI evaluator checks which key concepts you covered, flags any gaps, scores your coverage, and reveals a model answer. Exact wording is not required; the evaluator looks for the underlying ideas.</p>
+
+      <div class="write-q" data-q="1">
+        <div class="qhead">
+          <span class="qnum">Q1</span>
+          <span class="qfrom">From Part 1 · Multiple Predictors</span>
+        </div>
+        <p style="color:#fff; font-size:1rem; margin-bottom:10px;">Explain in your own words what multiple linear regression is and how it differs from single regression. What is the correct way to interpret a single coefficient βⱼ in a model with several predictors? Give an everyday example if helpful.</p>
+        <textarea class="ans-area" id="ans1" placeholder="Type your answer here..."></textarea>
+      </div>
+
+      <div class="write-q" data-q="2">
+        <div class="qhead">
+          <span class="qnum">Q2</span>
+          <span class="qfrom">From Part 1 · LINE Assumptions</span>
+        </div>
+        <p style="color:#fff; font-size:1rem; margin-bottom:10px;">Name the four LINE assumptions of linear regression. For each one, briefly say what it means and give one concrete sign in a residual plot or diagnostic that would indicate the assumption has been broken.</p>
+        <textarea class="ans-area" id="ans2" placeholder="Type your answer here..."></textarea>
+      </div>
+
+      <div class="write-q" data-q="3">
+        <div class="qhead">
+          <span class="qnum">Q3</span>
+          <span class="qfrom">From Part 2 · Multicollinearity</span>
+        </div>
+        <p style="color:#fff; font-size:1rem; margin-bottom:10px;">What is multicollinearity? Explain why it makes coefficients unstable but does not necessarily hurt predictions. Describe how the VIF (Variance Inflation Factor) helps detect it, and name at least two ways to fix it in practice.</p>
+        <textarea class="ans-area" id="ans3" placeholder="Type your answer here..."></textarea>
+      </div>
+
+      <div class="write-q" data-q="4">
+        <div class="qhead">
+          <span class="qnum">Q4</span>
+          <span class="qfrom">From Part 2 · Residual Analysis</span>
+        </div>
+        <p style="color:#fff; font-size:1rem; margin-bottom:10px;">Explain the difference between an outlier, a high-leverage point, and an influential point. Why is it possible for a point to be a strong outlier but not influential? Mention how Cook's distance combines these ideas into a single number.</p>
+        <textarea class="ans-area" id="ans4" placeholder="Type your answer here..."></textarea>
+      </div>
+
+      <div class="write-q" data-q="5">
+        <div class="qhead">
+          <span class="qnum">Q5</span>
+          <span class="qfrom">Cross-module · End-to-End Workflow</span>
+        </div>
+        <p style="color:#fff; font-size:1rem; margin-bottom:10px;">A data analyst fits a salary model with three predictors: experience, age, and education. Walk through the full diagnostic workflow you would run before trusting the coefficients. Mention at least three different checks (assumptions, multicollinearity, residual patterns) and what action you would take if each check flagged a problem.</p>
+        <textarea class="ans-area" id="ans5" placeholder="Type your answer here..."></textarea>
+      </div>
+
+      <div class="btn-row" style="margin-top:24px;">
+        <button class="btn magenta" id="submitWritten">▲ Submit for AI Evaluation</button>
+        <button class="btn purple" id="resetWritten">Reset Answers</button>
+      </div>
+
+      <div class="eval-out" id="evalOut">
+        <h4>⟁ Evaluation Report</h4>
+        <div id="evalBody"></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ═══════════════════ AI SYNTHESIS — MODULE COMPLETE ═══════════════════ -->
+  <section class="section reveal">
+    <div class="section-header">
+      <div class="section-num">Module Recap</div>
+      <h2 class="section-title">AI Synthesis — Full Module 5.2</h2>
+      <div class="section-line"></div>
+    </div>
+    <div class="ai-panel">
+      <div class="ai-head">
+        <div class="ai-avatar">Ξ</div>
+        <div class="ai-meta">
+          <div class="ai-name">QNA-Σ // Synthesis Core</div>
+          <div class="ai-role">Multi-Input Regression Analyst — Complete</div>
+        </div>
+      </div>
+      <div>
+        <div class="takeaway">
+          <div class="takeaway-num">01</div>
+          <div class="takeaway-text"><strong>Multiple linear regression</strong> extends the single-input line to many predictors: ŷ = β₀ + β₁x₁ + … + βₚxₚ. The geometry becomes a plane (2 predictors) or a hyperplane (3+).</div>
+        </div>
+        <div class="takeaway">
+          <div class="takeaway-num">02</div>
+          <div class="takeaway-text"><strong>The coefficient interpretation rule:</strong> "βⱼ is the change in ŷ per 1-unit increase in xⱼ, while all other predictors are held fixed." This phrase changes everything.</div>
+        </div>
+        <div class="takeaway">
+          <div class="takeaway-num">03</div>
+          <div class="takeaway-text"><strong>Same engine, more terms:</strong> coefficients are still found by least squares — minimise the total sum of squared residuals — across all predictors at once.</div>
+        </div>
+        <div class="takeaway">
+          <div class="takeaway-num">04</div>
+          <div class="takeaway-text"><strong>LINE assumptions:</strong> Linearity, Independence, Normality of residuals, Equal variance. These are what the model quietly expects from the noise terms.</div>
+        </div>
+        <div class="takeaway">
+          <div class="takeaway-num">05</div>
+          <div class="takeaway-text"><strong>When LINE breaks:</strong> coefficient estimates usually survive, but standard errors, confidence intervals, and p-values become unreliable.</div>
+        </div>
+        <div class="takeaway">
+          <div class="takeaway-num">06</div>
+          <div class="takeaway-text"><strong>Multicollinearity</strong> is when two or more predictors carry overlapping information. The model has trouble splitting credit between them.</div>
+        </div>
+        <div class="takeaway">
+          <div class="takeaway-num">07</div>
+          <div class="takeaway-text"><strong>Symptoms of multicollinearity:</strong> unstable coefficients, inflated standard errors, counterintuitive signs. Predictions usually still work, but interpretation breaks.</div>
+        </div>
+        <div class="takeaway">
+          <div class="takeaway-num">08</div>
+          <div class="takeaway-text"><strong>VIF (Variance Inflation Factor):</strong> the standard diagnostic. VIFⱼ = 1/(1 − R²ⱼ). Above 5 = concerning, above 10 = serious problem. Fix by dropping, combining, or regularising.</div>
+        </div>
+        <div class="takeaway">
+          <div class="takeaway-num">09</div>
+          <div class="takeaway-text"><strong>Residual analysis</strong> is the diagnostic toolkit after fitting. Four core plots: Residuals vs Fitted, Q-Q, Scale-Location, Residuals vs Leverage.</div>
+        </div>
+        <div class="takeaway">
+          <div class="takeaway-num">10</div>
+          <div class="takeaway-text"><strong>Three distinct concepts:</strong> outlier (large residual), leverage (extreme x), influence (both combined). Cook's distance = the single number per observation that combines them.</div>
+        </div>
+        <div class="takeaway">
+          <div class="takeaway-num">11</div>
+          <div class="takeaway-text"><strong>Coming next (Module 5.3):</strong> what happens when the outcome is yes/no instead of a number? Logistic regression — binary classification, odds, log-odds, the sigmoid curve, and decision boundaries.</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <div class="part-nav">
+    <div class="part-nav-item done">
+      <div class="part-nav-label">✓ Module 5.2 — Complete</div>
+      <div class="part-nav-title">Multiple Linear Regression &amp; Assumptions</div>
+    </div>
+    <div class="part-nav-item current">
+      <div class="part-nav-label">⟁ Module 5.3 — Up Next</div>
+      <div class="part-nav-title">Logistic Regression: Binary Outcomes</div>
+    </div>
+  </div>
+
+  <div class="module-footer">⟁ END OF MODULE 5.2 // Multi-input regression engine fully calibrated. Continue → Module 5.3: Logistic Regression &amp; Binary Outcomes ⟁</div>
+</div>
+
+<script>
+/* PARTICLE BACKGROUND */
+const canvas = document.getElementById('particle-canvas');
+const ctx = canvas.getContext('2d');
+let particles = [];
+function sizeCanvas() { canvas.width = window.innerWidth; canvas.height = window.innerHeight; }
+sizeCanvas();
+window.addEventListener('resize', sizeCanvas);
+function initParticles() {
+  particles = [];
+  const count = Math.min(60, Math.floor(window.innerWidth / 25));
+  for (let i = 0; i < count; i++) {
+    particles.push({ x: Math.random()*canvas.width, y: Math.random()*canvas.height, vx: (Math.random()-0.5)*0.4, vy: (Math.random()-0.5)*0.4, r: Math.random()*1.6+0.5, hue: Math.random()<0.5?'0,240,255':'177,77,255' });
+  }
+}
+initParticles();
+window.addEventListener('resize', initParticles);
+function drawParticles() {
+  ctx.clearRect(0,0,canvas.width,canvas.height);
+  particles.forEach(p => {
+    p.x += p.vx; p.y += p.vy;
+    if (p.x<0||p.x>canvas.width) p.vx*=-1;
+    if (p.y<0||p.y>canvas.height) p.vy*=-1;
+    ctx.beginPath();
+    ctx.fillStyle = `rgba(${p.hue},0.7)`;
+    ctx.shadowColor = `rgba(${p.hue},1)`;
+    ctx.shadowBlur = 12;
+    ctx.arc(p.x,p.y,p.r,0,Math.PI*2);
+    ctx.fill();
+  });
+  ctx.shadowBlur = 0;
+  for (let i=0;i<particles.length;i++) {
+    for (let j=i+1;j<particles.length;j++) {
+      const dx = particles[i].x-particles[j].x;
+      const dy = particles[i].y-particles[j].y;
+      const d = Math.sqrt(dx*dx+dy*dy);
+      if (d<130) {
+        ctx.strokeStyle = `rgba(0,240,255,${0.12*(1-d/130)})`;
+        ctx.lineWidth = 0.5;
+        ctx.beginPath();
+        ctx.moveTo(particles[i].x,particles[i].y);
+        ctx.lineTo(particles[j].x,particles[j].y);
+        ctx.stroke();
+      }
+    }
+  }
+  requestAnimationFrame(drawParticles);
+}
+drawParticles();
+
+/* HELPERS */
+function gaussRand() {
+  let u = 0, v = 0;
+  while (u === 0) u = Math.random();
+  while (v === 0) v = Math.random();
+  return Math.sqrt(-2*Math.log(u)) * Math.cos(2*Math.PI*v);
+}
+function mean(arr) { return arr.reduce((s,v)=>s+v,0)/arr.length; }
+function corr(a,b) {
+  const ma = mean(a), mb = mean(b);
+  let num=0, da=0, db=0;
+  for (let i=0; i<a.length; i++) {
+    num += (a[i]-ma)*(b[i]-mb);
+    da += (a[i]-ma)**2;
+    db += (b[i]-mb)**2;
+  }
+  return num / Math.sqrt(da*db);
+}
+function olsMulti(X, y) {
+  // X is array of rows, each row is array of [1, x1, x2, ...]
+  const n = X.length, k = X[0].length;
+  const XtX = Array.from({length:k}, ()=>new Array(k).fill(0));
+  const Xty = new Array(k).fill(0);
+  for (let i=0; i<n; i++) {
+    for (let r=0; r<k; r++) {
+      Xty[r] += X[i][r]*y[i];
+      for (let c=0; c<k; c++) XtX[r][c] += X[i][r]*X[i][c];
+    }
+  }
+  const m = XtX.map((row,i) => [...row, Xty[i]]);
+  for (let i=0; i<k; i++) {
+    let piv = m[i][i];
+    if (Math.abs(piv) < 1e-12) {
+      for (let r=i+1; r<k; r++) if (Math.abs(m[r][i]) > 1e-12) { [m[i],m[r]] = [m[r],m[i]]; piv = m[i][i]; break; }
+    }
+    for (let c=0; c<=k; c++) m[i][c] /= piv;
+    for (let r=0; r<k; r++) {
+      if (r===i) continue;
+      const f = m[r][i];
+      for (let c=0; c<=k; c++) m[r][c] -= f*m[i][c];
+    }
+  }
+  return m.map(row => row[k]);
+}
+function r2(X, y, beta) {
+  const n = X.length;
+  const my = mean(y);
+  let ssRes=0, ssTot=0;
+  for (let i=0; i<n; i++) {
+    let yhat=0; for (let c=0; c<beta.length; c++) yhat += beta[c]*X[i][c];
+    ssRes += (y[i]-yhat)**2;
+    ssTot += (y[i]-my)**2;
+  }
+  return 1 - ssRes/ssTot;
+}
+
+/* ═══════════════ TOPIC 3 — VIF STRESS TEST ═══════════════ */
+const t3Canvas = document.getElementById('t3Canvas');
+const t3Ctx = t3Canvas.getContext('2d');
+
+function buildSalaryData(targetCorr) {
+  const N = 100;
+  const exp = [], age = [], edu = [], sal = [];
+  for (let i=0; i<N; i++) {
+    // experience: 0-30 yrs
+    const ex = Math.random()*30;
+    // age strongly tied to experience by targetCorr
+    const z = gaussRand();
+    const ag = ex + 22 + targetCorr*0 + Math.sqrt(1-targetCorr*targetCorr)*z*8 + (1-targetCorr)*8;
+    // simpler: build age from exp + noise; noise sd controlled by (1-targetCorr)
+    const noiseSd = 12 * Math.sqrt(1 - targetCorr*targetCorr);
+    const agAdj = 22 + ex*0.8 + gaussRand()*noiseSd + ex*targetCorr*0.2;
+    // education independent
+    const ed = 10 + Math.random()*10;
+    // salary
+    const s = 18000 + 1500*ex + 200*agAdj + 3500*ed + gaussRand()*4000;
+    exp.push(ex);
+    age.push(agAdj);
+    edu.push(ed);
+    sal.push(s);
+  }
+  return { exp, age, edu, sal };
+}
+
+function vifFor(predictors, idx) {
+  // regress predictors[idx] on the others; return 1/(1-R²)
+  const n = predictors[0].length;
+  const others = predictors.filter((_,i)=>i!==idx);
+  const target = predictors[idx];
+  const X = [];
+  for (let i=0; i<n; i++) {
+    const row = [1];
+    others.forEach(arr => row.push(arr[i]));
+    X.push(row);
+  }
+  const beta = olsMulti(X, target);
+  const R2 = r2(X, target, beta);
+  const R2clipped = Math.min(0.9999, Math.max(0, R2));
+  return 1 / (1 - R2clipped);
+}
+
+function t3Draw() {
+  const targetCorr = parseFloat(document.getElementById('t3Corr').value);
+  document.getElementById('t3CorrVal').textContent = targetCorr.toFixed(2);
+
+  const data = buildSalaryData(targetCorr);
+  const obsCorr = corr(data.exp, data.age);
+
+  const vifExp = vifFor([data.exp, data.age, data.edu], 0);
+  const vifAge = vifFor([data.exp, data.age, data.edu], 1);
+  const vifEdu = vifFor([data.exp, data.age, data.edu], 2);
+
+  // model R²
+  const X = [], y = data.sal;
+  for (let i=0; i<data.exp.length; i++) X.push([1, data.exp[i], data.age[i], data.edu[i]]);
+  const beta = olsMulti(X, y);
+  const modelR2 = r2(X, y, beta);
+
+  // draw scatter of exp vs age
+  const w = t3Canvas.width, h = t3Canvas.height;
+  t3Ctx.clearRect(0,0,w,h);
+  const padL = 80, padR = 30, padT = 40, padB = 60;
+  const plotW = (w - padL - padR);
+  const plotH = h - padT - padB;
+  const xLo = 0, xHi = 30, yLo = 15, yHi = 75;
+  const xToPx = v => padL + (v-xLo)/(xHi-xLo)*plotW;
+  const yToPx = v => padT + plotH - (v-yLo)/(yHi-yLo)*plotH;
+
+  t3Ctx.strokeStyle = 'rgba(0,240,255,0.06)'; t3Ctx.lineWidth = 1;
+  for (let gx=0; gx<=30; gx+=5) {
+    t3Ctx.beginPath(); t3Ctx.moveTo(xToPx(gx), padT); t3Ctx.lineTo(xToPx(gx), padT+plotH); t3Ctx.stroke();
+  }
+  for (let gy=15; gy<=75; gy+=10) {
+    t3Ctx.beginPath(); t3Ctx.moveTo(padL, yToPx(gy)); t3Ctx.lineTo(padL+plotW, yToPx(gy)); t3Ctx.stroke();
+  }
+
+  t3Ctx.strokeStyle = '#9fb4d6'; t3Ctx.lineWidth = 1.5;
+  t3Ctx.beginPath();
+  t3Ctx.moveTo(padL, padT); t3Ctx.lineTo(padL, padT+plotH); t3Ctx.lineTo(padL+plotW, padT+plotH);
+  t3Ctx.stroke();
+  t3Ctx.fillStyle = '#9fb4d6'; t3Ctx.font = '11px JetBrains Mono'; t3Ctx.textAlign = 'center';
+  for (let v=0; v<=30; v+=5) t3Ctx.fillText(v, xToPx(v), padT+plotH+18);
+  t3Ctx.textAlign = 'right';
+  for (let v=15; v<=75; v+=10) t3Ctx.fillText(v, padL-8, yToPx(v)+4);
+  t3Ctx.fillStyle = '#00f0ff'; t3Ctx.font = 'bold 12px JetBrains Mono'; t3Ctx.textAlign = 'center';
+  t3Ctx.fillText('EXPERIENCE (YEARS)', padL+plotW/2, padT+plotH+38);
+  t3Ctx.save();
+  t3Ctx.translate(22, padT+plotH/2);
+  t3Ctx.rotate(-Math.PI/2);
+  t3Ctx.fillText('AGE (YEARS)', 0, 0);
+  t3Ctx.restore();
+
+  t3Ctx.fillStyle = '#fff'; t3Ctx.font = 'bold 13px JetBrains Mono'; t3Ctx.textAlign = 'left';
+  t3Ctx.fillText(`OVERLAP BETWEEN EXP & AGE  •  observed r = ${obsCorr.toFixed(2)}`, padL, padT-15);
+
+  // points
+  for (let i=0; i<data.exp.length; i++) {
+    const x = data.exp[i], y2 = data.age[i];
+    if (x<xLo||x>xHi||y2<yLo||y2>yHi) continue;
+    t3Ctx.fillStyle = '#00f0ff';
+    t3Ctx.shadowColor = '#00f0ff'; t3Ctx.shadowBlur = 5;
+    t3Ctx.beginPath();
+    t3Ctx.arc(xToPx(x), yToPx(y2), 3.5, 0, Math.PI*2);
+    t3Ctx.fill();
+    t3Ctx.shadowBlur = 0;
+  }
+
+  // stats
+  document.getElementById('t3VifExp').textContent = vifExp.toFixed(2);
+  document.getElementById('t3VifAge').textContent = vifAge.toFixed(2);
+  document.getElementById('t3VifEdu').textContent = vifEdu.toFixed(2);
+  document.getElementById('t3R2').textContent = modelR2.toFixed(3);
+
+  // color the boxes by VIF severity
+  function colourFor(v) {
+    if (v < 5) return 'var(--neon-green)';
+    if (v < 10) return 'var(--neon-amber)';
+    return 'var(--neon-red)';
+  }
+  document.getElementById('t3VifExp').style.color = colourFor(vifExp);
+  document.getElementById('t3VifAge').style.color = colourFor(vifAge);
+
+  const maxVif = Math.max(vifExp, vifAge);
+  const ins = document.getElementById('t3Insight');
+  if (maxVif < 5) {
+    ins.innerHTML = `<strong>No multicollinearity issue.</strong> Both VIFs are well below 5. Coefficients in the salary model will be stable and interpretable. Model R² = ${modelR2.toFixed(2)}.`;
+  } else if (maxVif < 10) {
+    ins.innerHTML = `<strong>Mild multicollinearity.</strong> VIFs are climbing — Exp and Age are starting to overlap noticeably. Coefficients are still usable but with caution. Model R² remains ${modelR2.toFixed(2)} — predictions unaffected.`;
+  } else {
+    ins.innerHTML = `<strong>Serious multicollinearity.</strong> VIFs above 10 mean Exp and Age are saying nearly the same thing. Their coefficients become unstable and unreliable. Yet model R² = ${modelR2.toFixed(2)} — predictions still work. Time to drop one variable or use regularisation.`;
+  }
+}
+document.getElementById('t3Corr').addEventListener('input', t3Draw);
+t3Draw();
+
+/* ═══════════════ TOPIC 4 — DIAGNOSTIC DASHBOARD ═══════════════ */
+const t4Canvas = document.getElementById('t4Canvas');
+const t4Ctx = t4Canvas.getContext('2d');
+let t4Mode = 'healthy';
+
+function t4Generate(mode) {
+  const arr=[];
+  for (let i=0; i<60; i++) {
+    const x = Math.random()*10;
+    let y;
+    if (mode === 'healthy') y = 5 + 2.5*x + gaussRand()*2;
+    else if (mode === 'curve') y = 5 + 1.2*x + 0.55*x*x + gaussRand()*2;
+    else if (mode === 'fan') y = 5 + 2.5*x + gaussRand()*(0.4 + 0.5*x);
+    else if (mode === 'outlier') {
+      y = 5 + 2.5*x + gaussRand()*2;
+      if (i === 7) { /* high-leverage influential point */ arr.push({x: 14, y: 20}); return arr; }
+    }
+    arr.push({x,y});
+  }
+  if (mode === 'outlier') {
+    arr.push({x: 14, y: 20}); // influential point with extreme x and bad residual
+  }
+  return arr;
+}
+function olsSimple(data) {
+  const n=data.length;
+  const mx=mean(data.map(d=>d.x));
+  const my=mean(data.map(d=>d.y));
+  let num=0, den=0;
+  data.forEach(p=>{ num+=(p.x-mx)*(p.y-my); den+=(p.x-mx)*(p.x-mx); });
+  const b1=num/den, b0=my-b1*mx;
+  // leverage for simple regression: hii = 1/n + (xi-mx)^2 / Σ(xi-mx)^2
+  const Sxx = den;
+  const leverage = data.map(p => 1/n + (p.x-mx)**2 / Sxx);
+  const residuals = data.map(p => p.y - (b0+b1*p.x));
+  const sse = residuals.reduce((s,e)=>s+e*e,0);
+  const sigma = Math.sqrt(sse / (n - 2));
+  const stdRes = residuals.map((e,i) => e / (sigma * Math.sqrt(Math.max(1e-6, 1 - leverage[i]))));
+  const p = 2; // intercept + slope
+  const cookD = stdRes.map((r,i) => (r*r/p) * (leverage[i] / Math.max(1e-6, 1-leverage[i])));
+  return {b0, b1, residuals, leverage, stdRes, cookD};
+}
+
+function t4Draw() {
+  const data = t4Generate(t4Mode);
+  const fit = olsSimple(data);
+  const fitted = data.map(p => fit.b0 + fit.b1*p.x);
+
+  const w = t4Canvas.width, h = t4Canvas.height;
+  t4Ctx.clearRect(0,0,w,h);
+  const padL = 70, padR = 30, padT = 40, padB = 50;
+  const gapX = 60;
+  const halfW = (w - padL - padR - gapX) / 2;
+  const plotH = h - padT - padB;
+
+  // ─── LEFT: Residuals vs Fitted ───
+  const xLo1 = Math.min(...fitted)-1, xHi1 = Math.max(...fitted)+1;
+  const eLo1 = Math.min(...fit.residuals)-2, eHi1 = Math.max(...fit.residuals)+2;
+  const xToPx1 = v => padL + (v-xLo1)/(xHi1-xLo1)*halfW;
+  const yToPx1 = v => padT + plotH - (v-eLo1)/(eHi1-eLo1)*plotH;
+
+  t4Ctx.strokeStyle = '#9fb4d6'; t4Ctx.lineWidth = 1.5;
+  t4Ctx.beginPath();
+  t4Ctx.moveTo(padL, padT); t4Ctx.lineTo(padL, padT+plotH); t4Ctx.lineTo(padL+halfW, padT+plotH);
+  t4Ctx.stroke();
+
+  t4Ctx.strokeStyle = '#ff2bd6'; t4Ctx.lineWidth = 1.5; t4Ctx.setLineDash([5,4]);
+  t4Ctx.beginPath();
+  t4Ctx.moveTo(padL, yToPx1(0)); t4Ctx.lineTo(padL+halfW, yToPx1(0));
+  t4Ctx.stroke();
+  t4Ctx.setLineDash([]);
+
+  t4Ctx.fillStyle = '#00f0ff'; t4Ctx.font = 'bold 12px JetBrains Mono'; t4Ctx.textAlign = 'left';
+  t4Ctx.fillText('RESIDUALS vs FITTED', padL, padT - 12);
+  t4Ctx.fillStyle = '#9fb4d6'; t4Ctx.font = '10px JetBrains Mono'; t4Ctx.textAlign = 'center';
+  t4Ctx.fillText('FITTED ŷ →', padL+halfW/2, padT+plotH+30);
+  t4Ctx.save();
+  t4Ctx.translate(20, padT+plotH/2);
+  t4Ctx.rotate(-Math.PI/2);
+  t4Ctx.fillText('RESIDUAL e', 0, 0);
+  t4Ctx.restore();
+
+  data.forEach((p,i) => {
+    const isExtreme = Math.abs(fit.stdRes[i]) > 2 || fit.cookD[i] > 0.5;
+    t4Ctx.fillStyle = isExtreme ? '#ff4d6d' : '#b14dff';
+    t4Ctx.shadowColor = isExtreme ? '#ff4d6d' : '#b14dff';
+    t4Ctx.shadowBlur = isExtreme ? 12 : 5;
+    t4Ctx.beginPath();
+    t4Ctx.arc(xToPx1(fitted[i]), yToPx1(fit.residuals[i]), isExtreme ? 6 : 4, 0, Math.PI*2);
+    t4Ctx.fill();
+    t4Ctx.shadowBlur = 0;
+  });
+
+  // ─── RIGHT: Q-Q plot ───
+  const rightL = padL + halfW + gapX;
+  // sort std residuals
+  const sortedRes = [...fit.stdRes].sort((a,b)=>a-b);
+  const n = sortedRes.length;
+  // theoretical normal quantiles using approximate inverse
+  function invNorm(p) {
+    // Beasley-Springer-Moro approximation
+    if (p <= 0 || p >= 1) p = Math.min(0.9999, Math.max(0.0001, p));
+    const a = [-3.969683028665376e+01, 2.209460984245205e+02, -2.759285104469687e+02, 1.383577518672690e+02, -3.066479806614716e+01, 2.506628277459239e+00];
+    const b = [-5.447609879822406e+01, 1.615858368580409e+02, -1.556989798598866e+02, 6.680131188771972e+01, -1.328068155288572e+01];
+    const c = [-7.784894002430293e-03, -3.223964580411365e-01, -2.400758277161838e+00, -2.549732539343734e+00, 4.374664141464968e+00, 2.938163982698783e+00];
+    const d = [7.784695709041462e-03, 3.224671290700398e-01, 2.445134137142996e+00, 3.754408661907416e+00];
+    const pLow=0.02425, pHigh=1-pLow;
+    let q,r2v;
+    if (p < pLow) { q = Math.sqrt(-2*Math.log(p)); return (((((c[0]*q+c[1])*q+c[2])*q+c[3])*q+c[4])*q+c[5]) / ((((d[0]*q+d[1])*q+d[2])*q+d[3])*q+1); }
+    if (p <= pHigh) { q = p - 0.5; r2v = q*q; return (((((a[0]*r2v+a[1])*r2v+a[2])*r2v+a[3])*r2v+a[4])*r2v+a[5])*q / (((((b[0]*r2v+b[1])*r2v+b[2])*r2v+b[3])*r2v+b[4])*r2v+1); }
+    q = Math.sqrt(-2*Math.log(1-p));
+    return -(((((c[0]*q+c[1])*q+c[2])*q+c[3])*q+c[4])*q+c[5]) / ((((d[0]*q+d[1])*q+d[2])*q+d[3])*q+1);
+  }
+  const theoreticals = sortedRes.map((_,i) => invNorm((i+0.5)/n));
+  const tLo = Math.min(...theoreticals)-0.3, tHi = Math.max(...theoreticals)+0.3;
+  const rLo = Math.min(...sortedRes)-0.5, rHi = Math.max(...sortedRes)+0.5;
+  const xToPx2 = v => rightL + (v-tLo)/(tHi-tLo)*halfW;
+  const yToPx2 = v => padT + plotH - (v-rLo)/(rHi-rLo)*plotH;
+
+  t4Ctx.strokeStyle = '#9fb4d6'; t4Ctx.lineWidth = 1.5;
+  t4Ctx.beginPath();
+  t4Ctx.moveTo(rightL, padT); t4Ctx.lineTo(rightL, padT+plotH); t4Ctx.lineTo(rightL+halfW, padT+plotH);
+  t4Ctx.stroke();
+
+  // diagonal reference line: from (tLo,tLo) to (tHi,tHi) clipped to plot
+  t4Ctx.strokeStyle = '#ffb547'; t4Ctx.lineWidth = 2; t4Ctx.setLineDash([5,4]);
+  t4Ctx.beginPath();
+  const refLo = Math.max(tLo, rLo);
+  const refHi = Math.min(tHi, rHi);
+  t4Ctx.moveTo(xToPx2(refLo), yToPx2(refLo));
+  t4Ctx.lineTo(xToPx2(refHi), yToPx2(refHi));
+  t4Ctx.stroke();
+  t4Ctx.setLineDash([]);
+
+  t4Ctx.fillStyle = '#00f0ff'; t4Ctx.font = 'bold 12px JetBrains Mono'; t4Ctx.textAlign = 'left';
+  t4Ctx.fillText('Q-Q PLOT (NORMALITY)', rightL, padT - 12);
+  t4Ctx.fillStyle = '#9fb4d6'; t4Ctx.font = '10px JetBrains Mono'; t4Ctx.textAlign = 'center';
+  t4Ctx.fillText('THEORETICAL QUANTILES →', rightL+halfW/2, padT+plotH+30);
+  t4Ctx.save();
+  t4Ctx.translate(rightL-50, padT+plotH/2);
+  t4Ctx.rotate(-Math.PI/2);
+  t4Ctx.fillText('STD RESIDUALS', 0, 0);
+  t4Ctx.restore();
+
+  for (let i=0; i<sortedRes.length; i++) {
+    const isExtreme = Math.abs(sortedRes[i]) > 2;
+    t4Ctx.fillStyle = isExtreme ? '#ff4d6d' : '#00f0ff';
+    t4Ctx.shadowColor = isExtreme ? '#ff4d6d' : '#00f0ff';
+    t4Ctx.shadowBlur = isExtreme ? 12 : 5;
+    t4Ctx.beginPath();
+    t4Ctx.arc(xToPx2(theoreticals[i]), yToPx2(sortedRes[i]), isExtreme ? 5 : 3.5, 0, Math.PI*2);
+    t4Ctx.fill();
+    t4Ctx.shadowBlur = 0;
+  }
+
+  // stats
+  const maxAbsR = Math.max(...fit.stdRes.map(r=>Math.abs(r))).toFixed(2);
+  const outCount = fit.stdRes.filter(r => Math.abs(r) > 2).length;
+  const maxLev = Math.max(...fit.leverage).toFixed(3);
+  const maxCook = Math.max(...fit.cookD).toFixed(3);
+  document.getElementById('t4MaxRes').textContent = maxAbsR;
+  document.getElementById('t4Out').textContent = outCount;
+  document.getElementById('t4Lev').textContent = maxLev;
+  document.getElementById('t4Cook').textContent = maxCook;
+
+  const ins = document.getElementById('t4Insight');
+  if (t4Mode === 'healthy') ins.innerHTML = '<strong>Healthy diagnostics.</strong> Left: residuals form a shapeless cloud around zero. Right: Q-Q points hug the diagonal. All four LINE assumptions are happy. ✅';
+  else if (t4Mode === 'curve') ins.innerHTML = '<strong>Linearity broken.</strong> Left: residuals show a clear U-shape — first negative, then positive, then negative. The straight line is the wrong model. The Q-Q plot may also show issues at the tails. Fix: add a non-linear term (x²) or transform x.';
+  else if (t4Mode === 'fan') ins.innerHTML = '<strong>Equal variance broken.</strong> Left: residual cloud is narrow on the left, wide on the right. Q-Q plot may still look reasonable in the middle but tails diverge. Fix: log-transform y or use weighted least squares.';
+  else if (t4Mode === 'outlier') ins.innerHTML = `<strong>Influential point detected.</strong> One observation has extreme predictor value (high leverage) AND a large residual — exactly the dangerous combination. Cook's D = ${maxCook} (> 1 = flag). Investigate the point before trusting the coefficients.`;
+}
+document.querySelectorAll('#t4Row .btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('#t4Row .btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    t4Mode = btn.dataset.mode;
+    t4Draw();
+  });
+});
+t4Draw();
+
+/* ═══════════════ QUIZ MCQ ═══════════════ */
+function checkQ(el, correct) {
+  const opts = el.parentElement.querySelectorAll('.quiz-opt');
+  opts.forEach(o => o.classList.remove('correct','wrong'));
+  const fb = el.parentElement.parentElement.querySelector('.quiz-feedback');
+  if (correct) {
+    el.classList.add('correct');
+    fb.className = 'quiz-feedback show ok';
+    fb.textContent = '✓ Correct! Diagnostic reasoning confirmed.';
+  } else {
+    el.classList.add('wrong');
+    fb.className = 'quiz-feedback show no';
+    fb.textContent = '✗ Not quite — review the relevant section and try again.';
+  }
+}
+
+/* ═══════════════ AI WRITTEN EVALUATION ═══════════════ */
+const rubric = {
+  1: {
+    concepts: [
+      { name: 'Multiple regression = many predictors at once', keys: ['multiple','several','many','more than one','predictor','variable','input'] },
+      { name: 'Equation extends with more β terms', keys: ['β','beta','coefficient','x1','x2','equation','term','sum','additional'] },
+      { name: 'Each coefficient interpreted "holding others fixed"', keys: ['hold','fixed','constant','other','controlling','remain','same'] },
+      { name: 'Concrete example (salary, house, etc.)', keys: ['salary','house','age','experience','education','price','example','room','sqft','size'] },
+      { name: 'Difference from single regression (only one input there)', keys: ['single','one input','one predictor','compared','differs','unlike','versus']}
+    ],
+    model: "Multiple linear regression extends the single-predictor line into an equation that uses several predictors at once: ŷ = β₀ + β₁x₁ + β₂x₂ + … + βₚxₚ. Each predictor has its own coefficient. The key interpretation rule is: 'βⱼ is the change in predicted y per 1-unit increase in xⱼ, while all other predictors are held fixed.' That phrase is crucial — it means each coefficient measures the unique effect of its predictor after controlling for the others. For example, in a salary model with experience, education, and age, the coefficient on experience tells us how salary changes per extra year of experience, assuming education and age stay the same. Single regression has only one predictor and therefore no 'others to hold fixed' — multiple regression is needed whenever the outcome is influenced by more than one factor."
+  },
+  2: {
+    concepts: [
+      { name: 'Linearity — straight relationship', keys: ['linear','straight','curve','non-linear','bent']},
+      { name: 'Independence — observations don\'t leak into each other', keys: ['independ','autocorrel','time','series','leak','separate']},
+      { name: 'Normality of residuals — bell-shaped', keys: ['normal','bell','gaussian','q-q','skew','tail']},
+      { name: 'Equal variance / homoscedasticity', keys: ['equal','homosc','variance','spread','constant','fan','widening']},
+      { name: 'At least one concrete diagnostic sign mentioned', keys: ['residual plot','q-q','curve','fan','pattern','shape','tail','autocorrelation']}
+    ],
+    model: "The LINE assumptions are: Linearity — the relationship between each predictor and y is straight; Independence — observations are independent of each other (no leakage); Normality — the residuals follow a roughly bell-shaped distribution; Equal variance (homoscedasticity) — the spread of residuals stays constant across the predictor range. Diagnostic signs: a curved residual-vs-fitted plot signals linearity broken; clear autocorrelation between consecutive residuals signals independence broken; a Q-Q plot whose points stray from the diagonal at the tails signals normality broken; a widening fan in the residual-vs-fitted plot signals equal variance broken."
+  },
+  3: {
+    concepts: [
+      { name: 'Multicollinearity = predictors carry overlapping info', keys: ['overlap','correlated','similar','same information','redundant','related']},
+      { name: 'Makes coefficients unstable / shaky', keys: ['unstable','shaky','vary','sensitive','wobble','change','flip']},
+      { name: 'Does not damage predictions / R²', keys: ['prediction','ŷ','accuracy','r²','r2','still work','unaffected']},
+      { name: 'VIF = 1/(1-R²) formula and threshold', keys: ['vif','variance inflation','1/(1','r²','r2','5','10','threshold']},
+      { name: 'At least two fixes (drop, combine, regularise, pca)', keys: ['drop','remove','combine','merge','regularis','ridge','lasso','pca']}
+    ],
+    model: "Multicollinearity is when two or more predictors carry overlapping information — they are highly correlated with each other. The least-squares method has trouble splitting credit between them, so the coefficients become unstable: small changes in the data can flip their values, and standard errors balloon. Predictions for new data are usually unaffected — the model still produces accurate ŷ values — but the individual coefficients can no longer be interpreted reliably. The standard diagnostic is the Variance Inflation Factor: VIFⱼ = 1/(1 − R²ⱼ), where R²ⱼ is the R² of regressing predictor j on all the others. VIF below 5 is fine; above 10 is a serious problem. Practical fixes include dropping one of the overlapping predictors, combining them into a composite (e.g., BMI from height and weight, or principal components), or using regularised regression such as Ridge or Lasso, which handle multicollinearity gracefully."
+  },
+  4: {
+    concepts: [
+      { name: 'Outlier = point with large residual', keys: ['outlier','large residual','far','miss']},
+      { name: 'Leverage = point with extreme predictor value', keys: ['leverage','extreme','far from mean','unusual x','predictor value']},
+      { name: 'Influence = outlier + leverage combined', keys: ['influence','both','combine','distort','pull']},
+      { name: 'Outlier without leverage doesn\'t move the line', keys: ['not influential','doesn\'t move','no effect','no pull','centre','middle','low leverage']},
+      { name: 'Cook\'s distance combines residual size + leverage', keys: ['cook','distance','single','combine','remove','threshold','one number']}
+    ],
+    model: "An outlier is a data point with a large residual — the line missed it badly in the y direction. A high-leverage point is one with an extreme predictor value (extreme x) but it might still sit close to the line. An influential point is one that combines both: it has both an unusual x and a large residual, and removing it would meaningfully change the fitted coefficients. It is possible for a point to be a strong outlier without being influential — if it sits near the mean of x, its leverage is small, so even a large residual cannot pull the line much. Cook's distance combines both ideas into a single number: Dᵢ = (rᵢ²/p) × (hᵢᵢ / (1 − hᵢᵢ)), where rᵢ is the standardised residual and hᵢᵢ is leverage. Points with Cook's D above 1 are flagged as influential."
+  },
+  5: {
+    concepts: [
+      { name: 'Plot scatter / inspect data before fitting', keys: ['scatter','plot','inspect','look','visual','data first']},
+      { name: 'Check LINE assumptions via residual plots', keys: ['line','assumption','residual plot','linearity','variance','q-q','normality']},
+      { name: 'Compute VIF for multicollinearity', keys: ['vif','multicollin','correlation','overlap']},
+      { name: 'Identify outliers / influential points (Cook\'s D)', keys: ['outlier','cook','influence','leverage','flag','investigate']},
+      { name: 'Take action on flagged problem (drop, transform, refit)', keys: ['drop','transform','refit','log','remove','combine','action','fix']}
+    ],
+    model: "A solid diagnostic workflow for the salary model would go: first, plot a scatter or pair-plot of the data to look at relationships visually. Fit the model and obtain coefficients. Then check the LINE assumptions: a Residuals-vs-Fitted plot for linearity and equal variance, a Q-Q plot for normality of residuals, and independence by domain knowledge (here, separate employees, so independence is fine). Next, compute VIF for each predictor — experience and age are likely highly correlated, so expect VIF > 10 for both. If so, drop one (probably age, since experience is more directly tied to salary) and refit. Finally, check the Residuals-vs-Leverage plot and Cook's distance to flag any influential observations — maybe a CEO outlier with extreme salary and high experience. If found, investigate (genuine case or data error?), report transparently, and possibly refit with and without it. After each fix, re-check all diagnostics until the residuals look healthy."
+  }
+};
+
+function evalAnswer(text, conceptList) {
+  const lower = text.toLowerCase();
+  const covered = [], missing = [];
+  conceptList.forEach(c => {
+    const hit = c.keys.some(k => lower.includes(k));
+    if (hit) covered.push(c.name); else missing.push(c.name);
+  });
+  return { covered, missing, score: covered.length / conceptList.length };
+}
+
+document.getElementById('submitWritten').addEventListener('click', () => {
+  const out = document.getElementById('evalBody');
+  const ans = [1,2,3,4,5].map(i => document.getElementById('ans'+i).value.trim());
+
+  if (ans.every(a => a.length === 0)) {
+    out.innerHTML = '<p style="color:#ff7e9d;">Please write at least one answer before submitting.</p>';
+    document.getElementById('evalOut').classList.add('show');
+    return;
+  }
+
+  let html = '';
+  let totalScore = 0, answered = 0, totalWords = 0;
+
+  ans.forEach((text, i) => {
+    const q = i + 1;
+    const rubricEntry = rubric[q];
+    if (text.length < 5) {
+      html += `<div class="eval-q-result">
+        <div class="qhead2"><strong>Question ${q}</strong>
+        <span class="grade low">No answer</span></div>
+        <p style="color:#fde68a; font-size:0.92rem; margin:0;">No substantial answer provided — skipping evaluation for this question.</p>
+      </div>`;
+      return;
+    }
+    const wordCount = text.split(/\s+/).filter(Boolean).length;
+    totalWords += wordCount;
+    const ev = evalAnswer(text, rubricEntry.concepts);
+    totalScore += ev.score;
+    answered++;
+    const pct = Math.round(ev.score * 100);
+    let grade, gradeClass;
+    if (pct >= 75) { grade = 'Strong'; gradeClass = 'high'; }
+    else if (pct >= 50) { grade = 'Solid'; gradeClass = 'mid'; }
+    else if (pct >= 25) { grade = 'Partial'; gradeClass = 'mid'; }
+    else { grade = 'Needs depth'; gradeClass = 'low'; }
+
+    html += `<div class="eval-q-result">
+      <div class="qhead2">
+        <strong>Question ${q}</strong>
+        <span class="grade ${gradeClass}">${grade} · ${pct}%</span>
+      </div>
+      <div class="score-pill-row">
+        <span class="score-pill">Concepts: ${ev.covered.length} / ${rubricEntry.concepts.length}</span>
+        <span class="score-pill">Words: ${wordCount}</span>
+      </div>`;
+
+    if (ev.covered.length) {
+      html += `<div class="cov-list"><strong class="covered">✓ Concepts you addressed:</strong><br>
+        ${ev.covered.map(c => '&nbsp;&nbsp;▸ ' + c).join('<br>')}
+      </div>`;
+    }
+    if (ev.missing.length) {
+      html += `<div class="cov-list"><strong class="missing">! Could strengthen by adding:</strong><br>
+        ${ev.missing.map(c => '&nbsp;&nbsp;▸ ' + c).join('<br>')}
+      </div>`;
+    }
+    html += `<details>
+      <summary>▸ Show model answer</summary>
+      <div class="model-ans">${rubricEntry.model}</div>
+    </details></div>`;
+  });
+
+  const avgPct = answered ? Math.round((totalScore / answered) * 100) : 0;
+  let overall;
+  if (totalWords < 100) {
+    overall = `Your answers are brief (${totalWords} words total across ${answered} questions). Try elaborating each point with a short example or by walking through the reasoning step by step. Overall concept coverage: ${avgPct}%.`;
+  } else if (totalWords < 350) {
+    overall = `Good level of detail (${totalWords} words across ${answered} questions). To go deeper, link each idea to a concrete example or to other topics from the module. Overall concept coverage: ${avgPct}%.`;
+  } else {
+    overall = `Thorough explanations — ${totalWords} words across ${answered} questions. Excellent depth. Make sure every concept is clearly explained rather than just mentioned. Overall concept coverage: ${avgPct}%.`;
+  }
+
+  html += `<div class="overall-msg"><strong>Overall feedback:</strong> ${overall}</div>`;
+
+  out.innerHTML = html;
+  document.getElementById('evalOut').classList.add('show');
+  document.getElementById('evalOut').scrollIntoView({ behavior: 'smooth', block: 'start' });
+});
+
+document.getElementById('resetWritten').addEventListener('click', () => {
+  [1,2,3,4,5].forEach(i => { document.getElementById('ans'+i).value = ''; });
+  document.getElementById('evalOut').classList.remove('show');
+  document.getElementById('evalBody').innerHTML = '';
+});
+
+/* â”€â”€ SCROLL REVEAL OBSERVER â”€â”€ */
+(function() {
+  const reveals = document.querySelectorAll('.reveal');
+  if (!reveals.length) return;
+  const obs = new IntersectionObserver((entries) => {
+    entries.forEach(e => { if (e.isIntersecting) { e.target.classList.add('visible'); obs.unobserve(e.target); } });
+  }, { threshold: 0, rootMargin: '0px 0px -40px 0px' });
+  reveals.forEach(r => obs.observe(r));
+})();
+</script>
+</body>
+</html>

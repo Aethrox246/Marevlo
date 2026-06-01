@@ -1,0 +1,337 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Modulo Cycles - Visualization</title>
+    <style>
+        :root {
+            --bg-page: #0d1117;
+            --bg-surface: #161b22;
+            --bg-input: #0d1117;
+            --border-main: #30363d;
+            --btn-bg: #21262d;
+            --btn-hover: #2d333b;
+            --text-main: #c9d1d9;
+            --text-dim: #8b949e;
+            --accent-orange: #e3b341;
+            --accent-blue: #388bfd;
+            --accent-green: #3fb950;
+            --accent-red: #f85149;
+            --accent-purple: #a371f7;
+        }
+
+        * { box-sizing: border-box; }
+        body {
+            background-color: var(--bg-page);
+            color: var(--text-main);
+            font-family: system-ui, -apple-system, sans-serif;
+            margin: 0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            min-height: 100vh;
+            padding-bottom: 40px;
+        }
+
+        .input-bar {
+            width: 100%;
+            background-color: var(--bg-surface);
+            padding: 12px 16px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 12px;
+            border-bottom: 1px solid var(--border-main);
+            flex-wrap: wrap;
+        }
+        label.ui-label { font-family: 'Courier New', monospace; font-size: 13px; color: var(--text-dim); }
+        input[type="text"] {
+            background: var(--bg-input);
+            border: 1px solid var(--border-main);
+            color: var(--text-main);
+            height: 32px;
+            border-radius: 6px;
+            padding: 0 10px;
+            font-size: 13px;
+            width: 220px;
+        }
+
+        button {
+            height: 32px; border-radius: 6px; padding: 0 14px; background: var(--btn-bg);
+            border: 1px solid var(--border-main); color: var(--text-main); font-size: 13px; cursor: pointer;
+            transition: background 0.2s ease;
+        }
+        button:hover { background: var(--btn-hover); }
+
+        .visual-container { margin-top: 30px; display: flex; flex-direction: column; align-items: center; gap: 20px; width: 100%; }
+        .array-bar {
+            display: flex;
+            gap: 12px;
+            flex-wrap: wrap;
+            justify-content: center;
+        }
+        .num-tile {
+            width: 68px; height: 68px; display: flex; align-items: center; justify-content: center;
+            border-radius: 12px; font-size: 24px; font-weight: 700; font-family: 'Courier New', monospace;
+            border: 3px solid var(--border-main); background: #21262d; color: var(--text-main);
+            transition: all 0.3s ease;
+        }
+        .num-tile.highlight { border-color: var(--accent-orange); color: var(--accent-orange); transform: scale(1.1); }
+
+        .action-panel {
+            margin-top: 20px; background: var(--bg-surface); border: 1px solid var(--border-main);
+            border-radius: 6px; padding: 16px 24px; width: 720px; text-align: center; font-family: monospace;
+            min-height: 110px; font-size: 15px; line-height: 1.5;
+        }
+
+        .info-panel { margin-top: 15px; display: flex; gap: 14px; flex-wrap: wrap; justify-content: center; }
+        .info-cell {
+            background: var(--bg-surface); border: 1px solid var(--border-main); border-radius: 6px;
+            padding: 10px 18px; display: flex; flex-direction: column; align-items: center; min-width: 130px;
+        }
+        .info-label { font-size: 11px; color: var(--text-dim); }
+        .info-value { font-family: monospace; font-size: 19px; font-weight: 700; }
+
+        .result-display { margin-top: 18px; text-align: center; }
+        #res-val { font-size: 42px; font-weight: bold; font-family: monospace; transition: all 0.4s; }
+        .pop { animation: popAnim 600ms ease; color: var(--accent-green) !important; }
+
+        @keyframes popAnim { 0%{transform:scale(0.6)} 50%{transform:scale(1.25)} 100%{transform:scale(1)} }
+
+        .status-bar { margin-top: 10px; font-size: 13.5px; color: var(--text-dim); height: 1.6em; text-align: center; width: 700px; }
+        .controls { margin-top: 28px; display: flex; align-items: center; gap: 12px; flex-wrap: wrap; justify-content: center; }
+        input[type="range"] { accent-color: var(--accent-blue); width: 160px; }
+
+        .legend { margin-top: 18px; display: flex; gap: 22px; flex-wrap: wrap; justify-content: center; max-width: 800px; }
+        .legend-item { display: flex; align-items: center; font-size: 13px; color: var(--text-dim); }
+
+        .log-panel {
+            margin-top: 22px; background: var(--bg-page); border: 1px solid var(--border-main);
+            border-radius: 6px; padding: 14px 20px; width: 720px; max-width: 95%; height: 170px;
+            overflow-y: auto; font-family: 'Courier New', monospace; font-size: 13.2px; line-height: 1.45;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="input-bar">
+        <label class="ui-label">Array =</label>
+        <input type="text" id="arr-input" value="[3, 7, 11, 15]">
+        <button onclick="loadCustom()">Load</button>
+        <button onclick="loadExample(0)">Example 1</button>
+        <button onclick="loadExample(1)">Example 2</button>
+    </div>
+
+    <div class="visual-container">
+        <div class="ui-label">Sequence Elements</div>
+        <div class="array-bar" id="array-bar"></div>
+    </div>
+
+    <div class="action-panel" id="main-panel">—</div>
+
+    <div class="info-panel">
+        <div class="info-cell">
+            <span class="info-label">Pair (i,j)</span>
+            <span class="info-value" id="val-pair" style="color: var(--accent-orange);">—</span>
+        </div>
+        <div class="info-cell">
+            <span class="info-label">Difference</span>
+            <span class="info-value" id="val-diff" style="color: var(--accent-purple);">—</span>
+        </div>
+        <div class="info-cell">
+            <span class="info-label">Has m&gt;1?</span>
+            <span class="info-value" id="val-valid" style="color: var(--accent-green);">—</span>
+        </div>
+        <div class="info-cell">
+            <span class="info-label">Total Pairs</span>
+            <span class="info-value" id="val-count" style="color: var(--accent-green);">—</span>
+        </div>
+    </div>
+
+    <div class="result-display">
+        <span class="ui-label">Total Modular Cycles =</span>
+        <span id="res-val">—</span>
+    </div>
+
+    <div class="status-bar" id="status-text"></div>
+
+    <div class="controls">
+        <button onclick="reset()">↺ Reset</button>
+        <button onclick="back()">← Back</button>
+        <button onclick="togglePlay()" id="play-btn">Play</button>
+        <button onclick="next()">Next →</button>
+        <div>
+            <span class="ui-label" style="margin-right:6px; font-size:12px">Speed</span>
+            <input type="range" id="speed-slider" min="0" max="2" value="1">
+        </div>
+    </div>
+
+    <div class="legend">
+        <div class="legend-item"><span style="display:inline-block;width:16px;height:16px;background:var(--accent-green);border-radius:4px;margin-right:8px;"></span>Valid Cycle Pair</div>
+        <div class="legend-item"><span style="display:inline-block;width:16px;height:16px;background:var(--accent-red);border-radius:4px;margin-right:8px;"></span>No Cycle (diff=1)</div>
+    </div>
+
+    <div class="log-panel" id="log"></div>
+
+    <script>
+        let arr = [3, 7, 11, 15];
+        let steps = [];
+        let stepIndex = 0;
+        let timer = null;
+        const delays = [950, 480, 240];
+
+        const examples = [[3,7,11,15], [1,2,3,4,5]];
+
+        function loadCustom() {
+            try {
+                arr = JSON.parse(document.getElementById('arr-input').value);
+                if (!Array.isArray(arr)) arr = [];
+                generateSteps();
+                reset();
+            } catch(e) {
+                alert("Invalid array format. Use e.g. [3, 7, 11, 15]");
+            }
+        }
+
+        function loadExample(idx) {
+            arr = examples[idx];
+            document.getElementById('arr-input').value = JSON.stringify(arr);
+            generateSteps();
+            reset();
+        }
+
+        function hasCommonModulus(a, b) {
+            let d = Math.abs(a - b);
+            if (d === 0) return true;
+            if (d === 1) return false;
+            for (let m = 2; m * m <= d; m++) {
+                if (d % m === 0) return true;
+            }
+            return false;
+        }
+
+        function generateSteps() {
+            steps = [];
+            let n = arr.length;
+            let validPairs = 0;
+
+            steps.push({
+                type: 'init',
+                i: -1,
+                j: -1,
+                diff: 0,
+                hasMod: false,
+                count: 0,
+                panel: `Finding modular cycle pairs in [<b>${arr.join(', ')}</b>]<br>Total pairs: ${n*(n-1)/2}`,
+                statusText: `Starting pair enumeration...`,
+                log: `Array: [${arr.join(', ')}]\nCount = 0`,
+                logColor: 'var(--text-dim)'
+            });
+
+            for (let i = 0; i < n; i++) {
+                for (let j = i + 1; j < n; j++) {
+                    let diff = Math.abs(arr[i] - arr[j]);
+                    let hasMod = hasCommonModulus(arr[i], arr[j]);
+
+                    if (hasMod) validPairs++;
+
+                    steps.push({
+                        type: 'check',
+                        i: i,
+                        j: j,
+                        diff: diff,
+                        hasMod: hasMod,
+                        count: validPairs,
+                        panel: `Pair (<b>${i}</b>, <b>${j}</b>) → diff = <b>${diff}</b><br>Has m&gt;1? <b>${hasMod ? 'Yes ✓' : 'No ✗'}</b>`,
+                        statusText: `Checking pair (${i},${j})`,
+                        log: `Pair (${i},${j}) diff=${diff} → ${hasMod ? 'Valid' : 'Invalid'}`,
+                        logColor: hasMod ? 'var(--accent-green)' : 'var(--accent-red)'
+                    });
+                }
+            }
+
+            steps.push({
+                type: 'final',
+                i: -1,
+                j: -1,
+                diff: 0,
+                hasMod: false,
+                count: validPairs,
+                panel: `Found <b>${validPairs}</b> modular cycle pairs`,
+                statusText: `Done! Total = ${validPairs}`,
+                log: `\nFinal Count = ${validPairs}`,
+                logColor: 'var(--accent-green)',
+                bold: true
+            });
+        }
+
+        function renderStep(idx) {
+            const step = steps[idx];
+            if (!step) return;
+
+            const container = document.getElementById('array-bar');
+            container.innerHTML = '';
+            for (let k = 0; k < arr.length; k++) {
+                const tile = document.createElement('div');
+                tile.className = 'num-tile';
+                tile.innerText = arr[k];
+                if (step.i === k || step.j === k) tile.classList.add('highlight');
+                container.appendChild(tile);
+            }
+
+            document.getElementById('main-panel').innerHTML = step.panel;
+            document.getElementById('val-pair').innerText = step.i >= 0 ? `(${step.i}, ${step.j})` : '—';
+            document.getElementById('val-diff').innerText = step.diff || '—';
+            document.getElementById('val-valid').innerText = step.hasMod ? 'Yes ✓' : 'No ✗';
+            document.getElementById('val-count').innerText = step.count;
+
+            const resVal = document.getElementById('res-val');
+            if (step.type === 'final') {
+                resVal.innerText = step.count;
+                resVal.classList.add('pop');
+            } else {
+                resVal.classList.remove('pop');
+            }
+
+            document.getElementById('status-text').innerText = step.statusText;
+
+            const logPanel = document.getElementById('log');
+            logPanel.innerHTML = '';
+            for (let k = 0; k <= idx; k++) {
+                if (steps[k].log) {
+                    const line = document.createElement('div');
+                    line.style.marginBottom = '4px';
+                    line.style.whiteSpace = 'pre-wrap';
+                    if (steps[k].logColor) line.style.color = steps[k].logColor;
+                    if (steps[k].bold) line.style.fontWeight = 'bold';
+                    line.innerText = steps[k].log;
+                    logPanel.appendChild(line);
+                }
+            }
+            logPanel.scrollTop = logPanel.scrollHeight;
+        }
+
+        function next() { if (stepIndex < steps.length-1) { stepIndex++; renderStep(stepIndex); } else pause(); }
+        function back() { if (stepIndex > 0) { stepIndex--; renderStep(stepIndex); } }
+        function reset() { pause(); stepIndex = 0; renderStep(0); }
+
+        function togglePlay() {
+            const btn = document.getElementById('play-btn');
+            if (timer) pause();
+            else {
+                btn.innerText = 'Pause';
+                if (stepIndex >= steps.length-1) stepIndex = 0;
+                timer = setInterval(next, delays[parseInt(document.getElementById('speed-slider').value)]);
+            }
+        }
+        function pause() {
+            clearInterval(timer);
+            timer = null;
+            document.getElementById('play-btn').innerText = 'Play';
+        }
+
+        window.onload = () => loadExample(0);
+    </script>
+</body>
+</html>

@@ -1,0 +1,408 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Decode String - Stack Visualization</title>
+    <style>
+        :root {
+            --bg-page: #0d1117;
+            --bg-surface: #161b22;
+            --bg-input: #0d1117;
+            --border-main: #30363d;
+            --btn-bg: #21262d;
+            --btn-hover: #2d333b;
+            --text-main: #c9d1d9;
+            --text-dim: #8b949e;
+            --accent-orange: #e3b341;
+            --accent-blue: #388bfd;
+            --accent-green: #3fb950;
+            --accent-red: #f85149;
+            --accent-purple: #a371f7;
+        }
+
+        * { box-sizing: border-box; }
+        body {
+            background-color: var(--bg-page);
+            color: var(--text-main);
+            font-family: system-ui, -apple-system, sans-serif;
+            margin: 0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            min-height: 100vh;
+            padding-bottom: 40px;
+        }
+
+        .input-bar {
+            width: 100%;
+            background-color: var(--bg-surface);
+            padding: 12px 16px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 12px;
+            border-bottom: 1px solid var(--border-main);
+            flex-wrap: wrap;
+        }
+        label.ui-label { font-family: 'Courier New', monospace; font-size: 13px; color: var(--text-dim); }
+        input[type="text"] {
+            background: var(--bg-input);
+            border: 1px solid var(--border-main);
+            color: var(--text-main);
+            height: 32px;
+            border-radius: 6px;
+            padding: 0 12px;
+            width: 420px;
+            font-size: 14px;
+        }
+
+        button {
+            height: 32px; border-radius: 6px; padding: 0 14px; background: var(--btn-bg);
+            border: 1px solid var(--border-main); color: var(--text-main); font-size: 13px; cursor: pointer;
+        }
+        button:hover { background: var(--btn-hover); }
+
+        .visual-container { 
+            margin-top: 30px; 
+            display: flex; 
+            flex-direction: column; 
+            align-items: center; 
+            gap: 30px; 
+            width: 100%; 
+            max-width: 1100px; 
+        }
+
+        .input-string {
+            background: #161b22;
+            border: 3px solid var(--accent-blue);
+            border-radius: 12px;
+            padding: 20px;
+            font-family: monospace;
+            font-size: 18px;
+            letter-spacing: 4px;
+        }
+        .char {
+            display: inline-block;
+            padding: 4px 8px;
+            margin: 0 2px;
+            border-radius: 4px;
+            transition: all 0.3s;
+        }
+        .char.current { background: var(--accent-orange); color: black; font-weight: bold; }
+
+        .stack-row {
+            display: flex;
+            gap: 80px;
+            justify-content: center;
+        }
+        .stack-container {
+            background: #161b22;
+            border: 3px solid var(--accent-purple);
+            border-radius: 12px;
+            padding: 16px;
+            width: 220px;
+        }
+        .stack-label { color: var(--accent-purple); font-weight: bold; text-align: center; margin-bottom: 10px; }
+        .stack-box {
+            background: #21262d;
+            border: 2px solid var(--border-main);
+            border-radius: 8px;
+            padding: 12px;
+            min-height: 260px;
+            display: flex;
+            flex-direction: column-reverse;
+            gap: 8px;
+            align-items: center;
+        }
+        .stack-tile {
+            width: 58px; height: 58px; display: flex; align-items: center; justify-content: center;
+            border-radius: 8px; font-size: 18px; font-weight: 700; font-family: monospace;
+            border: 2px solid var(--accent-purple); background: #1a1f2e; color: var(--accent-purple);
+        }
+
+        .current-string {
+            background: #161b22;
+            border: 3px solid var(--accent-green);
+            border-radius: 12px;
+            padding: 20px;
+            font-family: monospace;
+            font-size: 22px;
+            min-width: 420px;
+            text-align: center;
+            min-height: 68px;
+        }
+
+        .action-panel {
+            margin-top: 20px; background: var(--bg-surface); border: 1px solid var(--border-main);
+            border-radius: 8px; padding: 18px 26px; width: 820px; min-height: 160px;
+            font-family: monospace; font-size: 15px; line-height: 1.65;
+        }
+
+        .controls { margin-top: 20px; display: flex; align-items: center; gap: 14px; flex-wrap: wrap; justify-content: center; }
+        input[type="range"] { accent-color: var(--accent-blue); width: 180px; }
+
+        .legend { margin-top: 15px; display: flex; gap: 22px; flex-wrap: wrap; justify-content: center; font-size: 13px; }
+        .legend-item { display: flex; align-items: center; gap: 8px; }
+
+        .log-panel {
+            margin-top: 20px; background: var(--bg-page); border: 1px solid var(--border-main);
+            border-radius: 8px; padding: 16px 20px; width: 820px; height: 210px;
+            overflow-y: auto; font-family: 'Courier New', monospace; font-size: 13.5px; line-height: 1.55;
+        }
+
+        @keyframes pulse { 0%,100% { transform: scale(1); } 50% { transform: scale(1.1); } }
+    </style>
+</head>
+<body>
+
+    <div class="input-bar">
+        <label class="ui-label">Encoded String:</label>
+        <input type="text" id="input-str" value="3[a2[c]]" style="width:420px;">
+        <button onclick="loadCustom()">Load</button>
+        <button onclick="loadExample(0)">Ex 1</button>
+        <button onclick="loadExample(1)">Ex 2</button>
+    </div>
+
+    <div class="visual-container">
+        <div>
+            <div class="ui-label">Input String (Current Position)</div>
+            <div class="input-string" id="input-display"></div>
+        </div>
+
+        <div class="stack-row">
+            <div class="stack-container">
+                <div class="stack-label">Count Stack</div>
+                <div class="stack-box" id="count-stack"></div>
+            </div>
+            <div class="stack-container">
+                <div class="stack-label">String Stack</div>
+                <div class="stack-box" id="string-stack"></div>
+            </div>
+        </div>
+
+        <div>
+            <div class="ui-label">Current String Being Built</div>
+            <div class="current-string" id="current-str">—</div>
+        </div>
+
+        <div class="current-string" id="final-result" style="border-color: var(--accent-green); margin-top: 10px;">
+            Final Decoded: <span id="final-text">—</span>
+        </div>
+    </div>
+
+    <div class="action-panel" id="main-panel">—</div>
+
+    <div class="controls">
+        <button onclick="reset()">↺ Reset</button>
+        <button onclick="back()">← Back</button>
+        <button onclick="togglePlay()" id="play-btn">▶ Play</button>
+        <button onclick="next()">Next →</button>
+        <div>
+            <span class="ui-label" style="margin-right:6px;font-size:12px">Speed</span>
+            <input type="range" id="speed-slider" min="0" max="2" value="1">
+        </div>
+    </div>
+
+    <div class="legend">
+        <div class="legend-item"><span style="display:inline-block;width:18px;height:18px;background:#2a1600;border:2px solid #e3b341;border-radius:6px;"></span> Current Char</div>
+    </div>
+
+    <div class="log-panel" id="log"></div>
+
+    <script>
+        let s = "";
+        let steps = [];
+        let stepIndex = 0;
+        let timer = null;
+        const delays = [1650, 900, 420];
+
+        const examples = [
+            "3[a2[c]]",
+            "2[abc]3[cd]ef"
+        ];
+
+        function generateSteps(input) {
+            s = input;
+            steps = [];
+
+            let countStack = [];
+            let strStack = [];
+            let currCount = 0;
+            let currStr = "";
+            let i = 0;
+
+            steps.push({
+                type: 'init',
+                i: 0,
+                countStack: [],
+                strStack: [],
+                currCount: 0,
+                currStr: "",
+                final: "",
+                panel: `<b>Decode String</b><br>Input: <b>${s}</b>`,
+                statusText: `Start`,
+                log: `Start`,
+                logColor: 'var(--text-dim)'
+            });
+
+            while (i < s.length) {
+                const ch = s[i];
+
+                steps.push({
+                    type: 'process',
+                    i: i,
+                    ch: ch,
+                    countStack: [...countStack],
+                    strStack: [...strStack],
+                    currCount: currCount,
+                    currStr: currStr,
+                    panel: `Char <b>${ch}</b> at index ${i}`,
+                    statusText: `Processing ${ch}`,
+                    log: `  i=${i}, char='${ch}'`,
+                    logColor: 'var(--accent-orange)'
+                });
+
+                if (ch >= '0' && ch <= '9') {
+                    currCount = currCount * 10 + parseInt(ch);
+                } else if (ch === '[') {
+                    countStack.push(currCount);
+                    strStack.push(currStr);
+                    currCount = 0;
+                    currStr = "";
+                } else if (ch === ']') {
+                    const repeat = countStack.pop();
+                    const prev = strStack.pop();
+                    currStr = prev + currStr.repeat(repeat);
+                } else {
+                    currStr += ch;
+                }
+
+                i++;
+
+                steps.push({
+                    type: 'after',
+                    i: i,
+                    countStack: [...countStack],
+                    strStack: [...strStack],
+                    currCount: currCount,
+                    currStr: currStr,
+                    panel: `After processing <b>${ch}</b>`,
+                    statusText: `Updated`,
+                    log: `    Updated: currStr='${currStr}', currCount=${currCount}`,
+                    logColor: 'var(--accent-green)'
+                });
+            }
+
+            steps.push({
+                type: 'final',
+                i: i,
+                countStack: [],
+                strStack: [],
+                currCount: 0,
+                currStr: currStr,
+                final: currStr,
+                panel: `<b>Final Decoded: <span style="color:var(--accent-green)">${currStr}</span></b>`,
+                statusText: `Done`,
+                log: `\nFinal: ${currStr}`,
+                logColor: 'var(--accent-green)',
+                bold: true
+            });
+        }
+
+        function renderInput(pos) {
+            const container = document.getElementById('input-display');
+            container.innerHTML = '';
+            for (let j = 0; j < s.length; j++) {
+                const span = document.createElement('span');
+                span.className = 'char';
+                if (j === pos) span.classList.add('current');
+                span.textContent = s[j];
+                container.appendChild(span);
+            }
+        }
+
+        function renderStack(containerId, items) {
+            const container = document.getElementById(containerId);
+            container.innerHTML = '';
+            for (let i = items.length - 1; i >= 0; i--) {
+                const tile = document.createElement('div');
+                tile.className = 'stack-tile';
+                tile.textContent = items[i];
+                container.appendChild(tile);
+            }
+        }
+
+        function renderStep(idx) {
+            const step = steps[idx];
+            if (!step) return;
+
+            renderInput(step.i !== undefined ? step.i : s.length);
+
+            renderStack('count-stack', step.countStack || []);
+            renderStack('string-stack', step.strStack || []);
+
+            document.getElementById('current-str').textContent = step.currStr || '—';
+            document.getElementById('final-text').textContent = step.final || '—';
+
+            document.getElementById('main-panel').innerHTML = step.panel || '—';
+
+            const logPanel = document.getElementById('log');
+            logPanel.innerHTML = '';
+            for (let k = 0; k <= idx; k++) {
+                const s = steps[k];
+                if (s.log) {
+                    const line = document.createElement('div');
+                    line.style.marginBottom = '5px';
+                    line.style.whiteSpace = 'pre-wrap';
+                    if (s.logColor) line.style.color = s.logColor;
+                    if (s.bold) line.style.fontWeight = 'bold';
+                    line.innerText = s.log;
+                    logPanel.appendChild(line);
+                }
+            }
+            logPanel.scrollTop = logPanel.scrollHeight;
+        }
+
+        function next() { if (stepIndex < steps.length - 1) { stepIndex++; renderStep(stepIndex); } else pause(); }
+        function back() { if (stepIndex > 0) { stepIndex--; renderStep(stepIndex); } }
+        function reset() { pause(); stepIndex = 0; renderStep(0); }
+
+        function togglePlay() {
+            const btn = document.getElementById('play-btn');
+            if (timer) pause();
+            else {
+                btn.innerText = 'Pause';
+                if (stepIndex >= steps.length - 1) stepIndex = 0;
+                timer = setInterval(next, delays[document.getElementById('speed-slider').value]);
+            }
+        }
+
+        function pause() {
+            clearInterval(timer);
+            timer = null;
+            document.getElementById('play-btn').innerText = '▶ Play';
+        }
+
+        function loadCustom() {
+            const input = document.getElementById('input-str').value.trim();
+            if (input) {
+                generateSteps(input);
+                reset();
+            }
+        }
+
+        function loadExample(idx) {
+            document.getElementById('input-str').value = examples[idx];
+            generateSteps(examples[idx]);
+            reset();
+        }
+
+        function init() {
+            loadExample(0);
+        }
+
+        window.onload = init;
+    </script>
+</body>
+</html>

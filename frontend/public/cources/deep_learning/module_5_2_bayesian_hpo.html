@@ -1,0 +1,1059 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Module 5.2 — Bayesian HPO · NeuralNet Track</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;500;600;700;800&family=DM+Mono:ital,wght@0,300;0,400;1,300&display=swap" rel="stylesheet">
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --ink:#04060d;--paper:#f0edea;--nerve:#6e28d9;--axon:#ff3a6e;
+  --dim:#5c5778;--muted:#a09ab8;--card:#0e0f1c;--card-2:#181930;
+  --line:rgba(110,40,217,0.18);--line-strong:rgba(110,40,217,0.35);
+  --good:#7fc28a;--warn:#f0c674;--red:#e26a6a;
+}
+html{scroll-behavior:smooth}
+body{background:var(--ink);color:var(--paper);font-family:'Syne',sans-serif;overflow-x:hidden;min-height:100vh;font-weight:400}
+canvas#brain{position:fixed;top:0;left:0;width:100%;height:100%;z-index:0;opacity:0.45;pointer-events:none}
+
+/* ============ NAV ============ */
+nav.top{position:sticky;top:0;z-index:50;display:flex;align-items:center;justify-content:space-between;padding:1.2rem 3.5rem;border-bottom:.5px solid var(--line);background:rgba(4,6,13,.78);backdrop-filter:blur(12px)}
+.logo{font-family:'DM Mono',monospace;font-size:10px;letter-spacing:.16em;color:var(--nerve);text-transform:uppercase}
+.crumb{font-family:'DM Mono',monospace;font-size:10px;letter-spacing:.13em;color:var(--dim);text-transform:uppercase}
+.crumb b{color:var(--paper);font-weight:400}
+.nav-links{display:flex;gap:2rem;list-style:none}
+.nav-links a{font-size:12px;letter-spacing:.06em;color:var(--dim);text-decoration:none;transition:color .2s;border:none}
+.nav-links a:hover{color:var(--paper)}
+.nav-btn{font-family:'Syne',sans-serif;font-size:12px;font-weight:700;letter-spacing:.04em;color:var(--ink);background:var(--paper);border:none;padding:8px 22px;border-radius:100px;cursor:pointer;transition:opacity .2s}
+.nav-btn:hover{opacity:.82}
+
+/* ============ HERO ============ */
+.hero{position:relative;z-index:2;max-width:1100px;margin:0 auto;padding:5rem 3.5rem 3rem;display:grid;grid-template-columns:1.05fr .95fr;gap:3.5rem;align-items:center}
+.tag{display:inline-flex;align-items:center;gap:8px;font-family:'DM Mono',monospace;font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:var(--nerve);border:.5px solid rgba(110,40,217,.32);padding:5px 14px;border-radius:100px;margin-bottom:1.8rem;animation:fu .6s ease both}
+.tdot{width:5px;height:5px;background:var(--nerve);border-radius:50%;animation:bl 1.8s infinite}
+@keyframes bl{0%,100%{opacity:1}50%{opacity:.15}}
+h1.title{font-size:54px;font-weight:800;line-height:1.04;letter-spacing:-1.8px;color:var(--paper);margin-bottom:1.4rem;animation:fu .7s .1s ease both}
+h1.title .vio{color:var(--nerve)}
+h1.title .red{color:var(--axon)}
+.lede{font-size:14.5px;font-weight:400;color:var(--dim);line-height:1.85;max-width:520px;margin-bottom:2.2rem;animation:fu .7s .2s ease both}
+.lede em{color:var(--muted);font-style:italic}
+.meta-row{display:flex;gap:2rem;flex-wrap:wrap;padding-top:1.6rem;border-top:.5px solid var(--line);animation:fu .7s .3s ease both}
+.meta-item{display:flex;flex-direction:column;gap:5px}
+.meta-label{font-family:'DM Mono',monospace;font-size:9.5px;letter-spacing:.14em;text-transform:uppercase;color:var(--dim)}
+.meta-val{font-size:13px;color:var(--paper);font-weight:600;letter-spacing:-.1px}
+@keyframes fu{from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:translateY(0)}}
+
+.hero-illo{display:flex;justify-content:center;align-items:center;animation:fu .8s .2s ease both}
+.hero-illo svg{width:100%;max-width:380px;height:auto;overflow:visible}
+
+/* ============ STATS BAND ============ */
+.stats-band{position:relative;z-index:2;border-top:.5px solid var(--line);border-bottom:.5px solid var(--line)}
+.stats-in{max-width:1100px;margin:0 auto;padding:0 3.5rem;display:grid;grid-template-columns:repeat(4,1fr)}
+.si{padding:1.4rem 0;border-right:.5px solid var(--line)}
+.si:last-child{border-right:none}
+.si:not(:first-child){padding-left:1.6rem}
+.sn{font-size:24px;font-weight:800;color:var(--paper);letter-spacing:-.8px;line-height:1;margin-bottom:4px}
+.sn .u{font-size:15px;color:var(--nerve)}
+.sl{font-family:'DM Mono',monospace;font-size:10px;letter-spacing:.09em;text-transform:uppercase;color:var(--dim)}
+
+/* ============ MAIN ============ */
+main{position:relative;z-index:2;max-width:1100px;margin:0 auto;padding:5rem 3.5rem 4rem}
+section{margin-bottom:5rem}
+.sh{display:flex;align-items:baseline;justify-content:space-between;border-top:.5px solid var(--line);padding-top:1.2rem;margin-bottom:1.8rem}
+.st{font-family:'DM Mono',monospace;font-size:10px;letter-spacing:.13em;text-transform:uppercase;color:var(--nerve)}
+.sc{font-family:'DM Mono',monospace;font-size:10px;color:var(--dim);letter-spacing:.08em}
+
+h2.section-title{font-size:34px;font-weight:700;letter-spacing:-.8px;color:var(--paper);margin-bottom:1.4rem;line-height:1.18;max-width:760px}
+h2.section-title .vio{color:var(--nerve)}
+h2.section-title .red{color:var(--axon)}
+h3{font-size:20px;font-weight:700;letter-spacing:-.3px;color:var(--paper);margin:2.5rem 0 1rem}
+
+p{font-size:14.5px;line-height:1.85;color:var(--muted);margin-bottom:1.1rem;max-width:760px}
+p strong{color:var(--paper);font-weight:600}
+p em{color:var(--paper);font-style:italic;font-weight:500}
+a{color:var(--nerve);text-decoration:none;border-bottom:1px solid rgba(110,40,217,.3)}
+a:hover{border-bottom-color:var(--nerve)}
+
+/* ============ CODE BLOCKS ============ */
+pre{background:var(--card);border:.5px solid var(--line);border-left:2px solid var(--nerve);padding:1.4rem 1.6rem;margin:1.8rem 0;border-radius:6px;overflow-x:auto;font-family:'DM Mono',monospace;font-size:13px;line-height:1.7;position:relative}
+pre::before{content:'PYTHON';position:absolute;top:8px;right:14px;font-family:'DM Mono',monospace;font-size:9px;letter-spacing:.2em;color:var(--dim);font-weight:400}
+pre code{color:var(--paper)}
+.k{color:var(--axon);font-weight:500}
+.s{color:#a8c8d8}
+.n{color:#f0c674}
+.c{color:var(--dim);font-style:italic}
+.f{color:var(--nerve)}
+.v{color:var(--muted)}
+code.inline{font-family:'DM Mono',monospace;font-size:13px;background:var(--card);padding:2px 8px;border-radius:3px;color:var(--warn);border:.5px solid var(--line)}
+
+/* ============ INSIGHT BOX ============ */
+.insight{background:var(--card);border:.5px solid var(--line-strong);border-left:2px solid var(--axon);padding:1.6rem 1.8rem;margin:2rem 0;border-radius:6px}
+.insight .key{font-family:'DM Mono',monospace;font-size:10px;letter-spacing:.16em;text-transform:uppercase;color:var(--axon);font-weight:400;margin-bottom:.7rem}
+.insight p{font-size:15px;line-height:1.65;color:var(--paper);font-weight:500;margin:0;max-width:none}
+
+/* ============ PITFALL ============ */
+.pitfall{background:var(--card);border:.5px solid rgba(226,106,106,.25);border-left:2px solid var(--red);padding:1.6rem 1.8rem;margin:2rem 0;border-radius:6px}
+.pitfall .lbl{font-family:'DM Mono',monospace;font-size:10px;letter-spacing:.16em;text-transform:uppercase;color:var(--red);font-weight:400;margin-bottom:.7rem}
+.pitfall h4{font-size:16px;font-weight:700;color:var(--paper);margin-bottom:.6rem;letter-spacing:-.2px}
+.pitfall p{font-size:13.5px;color:var(--muted);margin:0;line-height:1.75;max-width:none}
+
+/* ============ CINEMATCH ============ */
+.cinematch{background:linear-gradient(135deg,rgba(110,40,217,.13) 0%,rgba(255,58,110,.05) 100%);border:.5px solid var(--line-strong);border-left:2px solid var(--nerve);padding:2rem 2rem;margin:2.5rem 0;border-radius:6px;position:relative}
+.cinematch .tag-pill{position:absolute;top:-10px;left:1.6rem;background:var(--ink);color:var(--nerve);font-family:'DM Mono',monospace;font-size:10px;font-weight:400;letter-spacing:.2em;padding:0 12px;text-transform:uppercase}
+.cinematch h4{font-size:18px;font-weight:700;color:var(--paper);margin-bottom:.8rem;letter-spacing:-.2px;line-height:1.35}
+.cinematch p{color:var(--muted);font-size:13.5px;line-height:1.75;margin-bottom:.7rem;max-width:none}
+.cinematch p:last-child{margin-bottom:0}
+
+/* ============ PHASE DONE ============ */
+.phase-done{background:linear-gradient(135deg,rgba(127,194,138,.08),transparent);border:.5px solid rgba(127,194,138,.3);border-left:2px solid var(--good);padding:2.2rem 2.2rem;margin:3rem 0;border-radius:6px;position:relative}
+.phase-done .tag-pill{position:absolute;top:-10px;left:1.6rem;background:var(--ink);color:var(--good);font-family:'DM Mono',monospace;font-size:10px;font-weight:600;letter-spacing:.22em;padding:0 12px;text-transform:uppercase}
+.phase-done h4{font-size:22px;font-weight:700;color:var(--paper);margin-bottom:1rem;letter-spacing:-.3px;line-height:1.3}
+.phase-done p{color:var(--muted);font-size:14.5px;line-height:1.8;margin-bottom:.9rem;max-width:none}
+.phase-done p:last-child{margin-bottom:0}
+.phase-done strong{color:var(--good)}
+
+/* ============ EQUATION ============ */
+.eq{margin:1.8rem 0;padding:1.4rem 1.8rem;background:var(--card);border:.5px solid var(--line);border-radius:6px;font-family:'Syne',sans-serif;font-size:17px;font-style:italic;text-align:center;color:var(--paper);line-height:1.6;position:relative}
+.eq .num{position:absolute;right:14px;top:50%;transform:translateY(-50%);font-family:'DM Mono',monospace;font-size:10px;color:var(--dim);font-style:normal;letter-spacing:.1em}
+
+/* ============ TABLE ============ */
+table{width:100%;border-collapse:collapse;margin:1.8rem 0;font-family:'DM Mono',monospace;font-size:12.5px;background:var(--card);border:.5px solid var(--line);border-radius:6px;overflow:hidden}
+th,td{padding:.85rem 1.1rem;text-align:left;border-bottom:.5px solid var(--line)}
+th{font-family:'DM Mono',monospace;font-weight:400;font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:var(--nerve);background:var(--card-2)}
+td{color:var(--paper)}
+tr:last-child td{border-bottom:none}
+
+/* ============ CALCBOX ============ */
+.calcbox{background:var(--card);border:.5px solid var(--line);border-radius:6px;padding:1.4rem 1.6rem;margin:1.8rem 0}
+.calcbox .ch{font-family:'DM Mono',monospace;font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:var(--nerve);margin-bottom:1rem}
+.calcbox .step{position:relative;padding:.75rem 0 .75rem 2.4rem;border-top:.5px solid var(--line);font-size:13.5px;color:var(--paper);line-height:1.65}
+.calcbox .step:first-of-type{border-top:none}
+.calcbox .step::before{content:attr(data-s);position:absolute;left:0;top:.85rem;font-family:'DM Mono',monospace;font-size:11px;color:var(--axon);letter-spacing:.08em}
+.calcbox .val{display:block;font-family:'DM Mono',monospace;font-size:12px;color:var(--muted);margin-top:.4rem;line-height:1.6}
+.calcbox .val strong{color:var(--paper)}
+
+/* ============ MCQ ============ */
+.mcq{background:var(--card);border:.5px solid var(--line-strong);border-left:2px solid var(--axon);padding:1.6rem 1.8rem;margin:2.2rem 0;border-radius:6px}
+.mcq .mh{font-family:'DM Mono',monospace;font-size:10px;letter-spacing:.16em;text-transform:uppercase;color:var(--axon);font-weight:400;margin-bottom:1rem;display:flex;justify-content:space-between;align-items:center}
+.mcq .mh .qnum{font-family:'DM Mono',monospace;color:var(--dim);font-size:10px;letter-spacing:.08em;font-weight:400}
+.mcq .mq{font-size:17px;font-weight:600;color:var(--paper);line-height:1.5;margin-bottom:1.2rem;letter-spacing:-.2px}
+.mcq .opts{display:flex;flex-direction:column;gap:.6rem}
+.mcq .opt{background:var(--card-2);border:.5px solid var(--line);padding:.85rem 1.1rem;border-radius:4px;cursor:pointer;font-family:'Syne',sans-serif;font-size:14px;color:var(--paper);transition:all .15s;display:flex;align-items:flex-start;gap:.9rem;line-height:1.55}
+.mcq .opt:hover{border-color:var(--nerve);background:#1c1d36}
+.mcq .opt .key{font-family:'DM Mono',monospace;font-size:11px;color:var(--dim);font-weight:400;min-width:18px;margin-top:2px;letter-spacing:.05em}
+.mcq .opt .text{flex:1;color:var(--muted)}
+.mcq .opt.correct{border-color:var(--good);background:linear-gradient(90deg,rgba(127,194,138,.10),transparent)}
+.mcq .opt.correct .key{color:var(--good)}
+.mcq .opt.correct .text{color:var(--paper)}
+.mcq .opt.wrong{border-color:var(--axon);background:linear-gradient(90deg,rgba(255,58,110,.10),transparent)}
+.mcq .opt.wrong .key{color:var(--axon)}
+.mcq .opt.disabled{cursor:default}
+.mcq .opt.disabled:hover{border-color:var(--line);background:var(--card-2)}
+.mcq .opt.correct.disabled:hover{border-color:var(--good);background:linear-gradient(90deg,rgba(127,194,138,.10),transparent)}
+.mcq .opt.wrong.disabled:hover{border-color:var(--axon);background:linear-gradient(90deg,rgba(255,58,110,.10),transparent)}
+.mcq .feedback{margin-top:1.2rem;padding:1rem 1.2rem;background:var(--ink);border-left:2px solid var(--nerve);border-radius:4px;font-family:'Syne',sans-serif;font-size:13.5px;line-height:1.7;color:var(--muted);display:none}
+.mcq .feedback.show{display:block}
+.mcq .feedback .verdict{font-family:'DM Mono',monospace;font-size:10px;letter-spacing:.18em;text-transform:uppercase;font-weight:400;margin-bottom:.5rem;display:block}
+.mcq .feedback.right .verdict{color:var(--good)}
+.mcq .feedback.wrong .verdict{color:var(--axon)}
+.mcq .feedback strong{color:var(--paper);font-weight:600}
+
+/* ============ CHECKPOINT ============ */
+.checkpoint{background:var(--card);border:.5px solid var(--line-strong);padding:2rem 2rem;margin:2rem 0;border-radius:12px}
+.checkpoint h4{font-family:'DM Mono',monospace;font-size:10px;letter-spacing:.16em;text-transform:uppercase;color:var(--axon);font-weight:400;margin-bottom:1.6rem}
+.checkpoint ol{list-style:none;counter-reset:item}
+.checkpoint li{counter-increment:item;padding:1rem 0 1rem 3.2rem;border-bottom:.5px solid var(--line);position:relative;font-size:14.5px;font-weight:500;color:var(--paper);line-height:1.6;letter-spacing:-.05px}
+.checkpoint li:last-child{border-bottom:none}
+.checkpoint li::before{content:counter(item,decimal-leading-zero);position:absolute;left:0;top:1rem;font-family:'DM Mono',monospace;font-size:11px;color:var(--nerve);letter-spacing:.1em}
+
+/* ============ FOOTER NAV ============ */
+.footnav{position:relative;z-index:2;max-width:1100px;margin:0 auto;padding:3rem 3.5rem;display:flex;justify-content:space-between;align-items:center;gap:1.5rem;flex-wrap:wrap;border-top:.5px solid var(--line)}
+.footnav a{border:none;text-decoration:none;display:block;transition:transform .2s}
+.footnav a:hover{transform:translateY(-2px)}
+.footnav .lbl{font-family:'DM Mono',monospace;font-size:10px;letter-spacing:.16em;text-transform:uppercase;color:var(--dim);margin-bottom:.4rem}
+.footnav .ttl{font-size:18px;color:var(--paper);font-weight:700;letter-spacing:-.3px}
+.footnav .prev .ttl::before{content:'← '}
+.footnav .next{text-align:right}
+.footnav .next .ttl{color:var(--nerve)}
+.footnav .next .ttl::after{content:' →'}
+
+footer.foot{position:relative;z-index:2;max-width:1100px;margin:0 auto;padding:1.8rem 3.5rem;display:flex;align-items:center;justify-content:space-between;gap:1rem;flex-wrap:wrap}
+.fl{font-family:'DM Mono',monospace;font-size:11px;color:var(--dim)}
+.fr{display:flex;align-items:center;gap:7px;font-family:'DM Mono',monospace;font-size:11px;color:var(--dim)}
+.fd{width:6px;height:6px;background:var(--nerve);border-radius:50%;animation:bl 2s infinite}
+
+/* ============ REVEAL ============ */
+.reveal{opacity:0;transform:translateY(20px);transition:opacity .9s cubic-bezier(.2,.7,.2,1),transform .9s cubic-bezier(.2,.7,.2,1)}
+.reveal.on{opacity:1;transform:translateY(0)}
+
+/* ============ RESPONSIVE ============ */
+@media (max-width:900px){
+  nav.top{padding:1rem 1.5rem;flex-wrap:wrap;gap:.8rem}
+  .nav-links{display:none}
+  .hero{grid-template-columns:1fr;padding:3rem 1.5rem 2rem;gap:2rem}
+  h1.title{font-size:38px;letter-spacing:-1.2px}
+  .stats-in{padding:0 1.5rem;grid-template-columns:repeat(2,1fr)}
+  .si{border-right:none;border-bottom:.5px solid var(--line)}
+  .si:nth-child(odd){border-right:.5px solid var(--line)}
+  .si:not(:first-child){padding-left:1rem}
+  .si:nth-child(odd):not(:first-child){padding-left:0}
+  main{padding:3rem 1.5rem 2rem}
+  h2.section-title{font-size:26px}
+  pre{padding:1rem 1.1rem;font-size:11.5px}
+  .footnav,footer.foot{padding-left:1.5rem;padding-right:1.5rem}
+  .footnav{flex-direction:column;align-items:flex-start}
+  .footnav .next{text-align:left}
+  table{font-size:11px;display:block;overflow-x:auto}
+  .mcq{padding:1.2rem 1.2rem}
+  .mcq .mq{font-size:15px}
+}
+
+
+/* ============ LEARNING RESOURCES ============ */
+.resources-section{max-width:860px;margin:5rem auto 4rem}
+.resources-kicker{display:flex;justify-content:center;margin-bottom:1.6rem}
+.resources-kicker span{display:inline-flex;align-items:center;gap:8px;font-family:'DM Mono',monospace;font-size:10px;letter-spacing:.18em;text-transform:uppercase;color:var(--nerve);border:.5px solid var(--line-strong);border-radius:100px;padding:6px 16px;background:rgba(110,40,217,.06)}
+.resources-kicker span::before{content:'';width:6px;height:6px;border-radius:50%;background:var(--nerve);box-shadow:0 0 12px var(--nerve)}
+.resources-title{text-align:center;font-size:46px;font-weight:800;letter-spacing:-1.4px;line-height:1.05;color:var(--paper);margin-bottom:.8rem}
+.resources-title .vio{color:var(--nerve)}
+.resources-title .red{color:var(--axon)}
+.resources-sub{text-align:center;color:var(--muted);font-size:14px;line-height:1.65;margin:0 auto 2.8rem;max-width:560px}
+.resource-card{background:linear-gradient(135deg,rgba(14,15,28,.98),rgba(10,11,24,.96));border:.5px solid var(--line-strong);border-radius:12px;padding:1.6rem 1.7rem;margin:1rem auto;box-shadow:0 18px 50px rgba(0,0,0,.18);max-width:760px;position:relative;overflow:hidden}
+.resource-card::after{content:'';position:absolute;inset:0;border-radius:12px;pointer-events:none;border-right:.5px solid rgba(255,58,110,.45)}
+.resource-head{display:grid;grid-template-columns:34px 1fr;gap:12px;align-items:center;margin-bottom:1rem}
+.resource-icon{width:34px;height:34px;border-radius:7px;display:flex;align-items:center;justify-content:center;font-family:'DM Mono',monospace;font-size:13px;border:.5px solid var(--line-strong);background:rgba(110,40,217,.12);color:var(--nerve)}
+.resource-card.progressive .resource-icon{background:rgba(110,40,217,.10);color:var(--nerve)}
+.resource-card.canonical .resource-icon{background:rgba(255,58,110,.10);color:var(--axon);border-color:rgba(255,58,110,.28)}
+.resource-card.github .resource-icon{background:rgba(240,198,116,.08);color:var(--warn);border-color:rgba(240,198,116,.25)}
+.resource-type{font-size:16px;font-weight:700;color:var(--paper);letter-spacing:-.2px;margin-bottom:2px}
+.resource-desc{font-size:12px;color:var(--dim);line-height:1.5;margin:0;max-width:none}
+.resource-item{padding:.6rem 0;border-top:.5px solid var(--line)}
+.resource-item:first-of-type{border-top:none;padding-top:0}
+.resource-name{font-size:13.5px;font-weight:700;color:var(--nerve);line-height:1.45;margin-bottom:.28rem}
+.resource-card.canonical .resource-name{color:var(--axon)}
+.resource-card.github .resource-name{color:var(--warn)}
+.resource-note{font-size:12.5px;color:var(--muted);line-height:1.65;margin:0;max-width:none}
+.resource-actions{display:flex;gap:.7rem;flex-wrap:wrap;margin-top:1rem}
+.resource-btn{display:inline-flex;align-items:center;gap:8px;font-family:'DM Mono',monospace;font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:var(--paper);border:.5px solid var(--line-strong);border-radius:7px;padding:10px 14px;background:rgba(110,40,217,.08);text-decoration:none;transition:transform .18s,border-color .18s,background .18s}
+.resource-btn::before{content:'>';font-size:12px;color:var(--nerve)}
+.resource-btn:hover{transform:translateY(-1px);border-color:var(--nerve);background:rgba(110,40,217,.15)}
+@media (max-width:900px){.resources-section{margin:3rem 0}.resources-title{font-size:32px;letter-spacing:-.8px}.resource-card{padding:1.25rem}.resource-head{grid-template-columns:30px 1fr}.resource-icon{width:30px;height:30px}.resource-actions{flex-direction:column}.resource-btn{justify-content:center}}
+
+</style>
+</head>
+<body>
+
+<canvas id="brain"></canvas>
+
+<nav class="top">
+  <div class="logo">// NeuralNet · Deep Learning</div>
+  <ul class="nav-links">
+    <li><a href="#">Curriculum</a></li>
+    <li><a href="#">Labs</a></li>
+    <li><a href="#">Resources</a></li>
+    <li><a href="#">Community</a></li>
+  </ul>
+  <div class="crumb">Phase 5 · <b>Module 5.2</b> · Track Finale</div>
+</nav>
+
+<header class="hero">
+  <div>
+    <div class="tag"><span class="tdot"></span>Phase 5 — Uncertainty · Module 5.2</div>
+    <h1 class="title">Bayesian<br><span class="vio">HPO</span>.<br>The GP optimizes<br>the <span class="red">optimizer</span>.</h1>
+    <p class="lede">
+      Every model in this track has hyperparameters — learning rate, dropout, number of layers, batch size. We've picked them by intuition, rules of thumb, and tables from earlier modules. Bayesian Hyperparameter Optimization (HPO) replaces intuition with a <em>principled search</em>: a GP surrogate models the relationship between hyperparameters and validation performance, then an acquisition function uses the GP's uncertainty to decide <em>what to try next</em>. In 20-50 evaluations, it finds configurations that grid search would need thousands of trials to reach.
+    </p>
+    <div class="meta-row">
+      <div class="meta-item"><span class="meta-label">Phase</span><span class="meta-val">5 — Uncertainty (finale)</span></div>
+      <div class="meta-item"><span class="meta-label">Module</span><span class="meta-val">5.2</span></div>
+      <div class="meta-item"><span class="meta-label">Time</span><span class="meta-val">~35 min</span></div>
+      <div class="meta-item"><span class="meta-label">Covers</span><span class="meta-val">BO loop · EI · UCB · Optuna</span></div>
+    </div>
+  </div>
+
+  <div class="hero-illo">
+    <svg viewBox="0 0 360 360" xmlns="http://www.w3.org/2000/svg" aria-label="Bayesian acquisition function over hyperparameter space">
+      <defs>
+        <radialGradient id="hg" cx="50%" cy="50%" r="60%">
+          <stop offset="0%" stop-color="#6e28d9" stop-opacity="0.28"/>
+          <stop offset="100%" stop-color="#6e28d9" stop-opacity="0"/>
+        </radialGradient>
+        <linearGradient id="hl" x1="0%" y1="0%" x2="100%" y2="0%">
+          <stop offset="0%" stop-color="#6e28d9" stop-opacity=".55"/>
+          <stop offset="100%" stop-color="#ff3a6e" stop-opacity=".55"/>
+        </linearGradient>
+        <linearGradient id="confBand" x1="0%" y1="0%" x2="0%" y2="100%">
+          <stop offset="0%" stop-color="#6e28d9" stop-opacity=".22"/>
+          <stop offset="100%" stop-color="#6e28d9" stop-opacity=".02"/>
+        </linearGradient>
+      </defs>
+      <circle cx="180" cy="180" r="160" fill="url(#hg)"/>
+
+      <!-- Axes -->
+      <line x1="40" y1="280" x2="320" y2="280" stroke="#6e28d9" stroke-opacity=".35" stroke-width="1"/>
+      <line x1="40" y1="60" x2="40" y2="280" stroke="#6e28d9" stroke-opacity=".35" stroke-width="1"/>
+
+      <!-- GP confidence band (uncertainty) -->
+      <path id="confBandPath" fill="url(#confBand)" stroke="none"/>
+
+      <!-- True objective (faint, hidden landscape with peaks and valleys) -->
+      <path id="truePath" stroke="#a09ab8" stroke-opacity=".35" stroke-width="1" stroke-dasharray="3 3" fill="none"/>
+
+      <!-- GP posterior mean -->
+      <path id="meanPath" stroke="#6e28d9" stroke-width="1.8" fill="none" stroke-opacity=".85"/>
+
+      <!-- Acquisition function (EI) -->
+      <path id="acqPath" stroke="#ff3a6e" stroke-width="1.4" fill="none" stroke-opacity=".75"/>
+
+      <!-- Sampled evaluation points -->
+      <g id="samplePoints"></g>
+
+      <!-- Next pick marker (peak of acquisition) -->
+      <g id="nextPick"></g>
+
+      <!-- Labels -->
+      <text x="20" y="32" font-family="DM Mono,monospace" font-size="9" fill="#6e28d9" fill-opacity="0.7" letter-spacing="1">VAL LOSS</text>
+      <text x="270" y="32" font-family="DM Mono,monospace" font-size="9" fill="#ff3a6e" fill-opacity="0.7" letter-spacing="1">ACQ · EI</text>
+      <text x="180" y="300" text-anchor="middle" font-family="DM Mono,monospace" font-size="9" fill="#a09ab8" letter-spacing="1.5">HYPERPARAMETER · θ</text>
+      <text x="180" y="342" text-anchor="middle" font-family="DM Mono,monospace" font-size="9" fill="#5c5778" letter-spacing="1.5">GP · POSTERIOR · ACQUISITION</text>
+    </svg>
+  </div>
+</header>
+
+<div class="stats-band">
+  <div class="stats-in">
+    <div class="si"><div class="sn">07<span class="u"> sec</span></div><div class="sl">Sections</div></div>
+    <div class="si"><div class="sn">35<span class="u"> min</span></div><div class="sl">Read time</div></div>
+    <div class="si"><div class="sn">50<span class="u">×</span></div><div class="sl">Fewer trials vs grid</div></div>
+    <div class="si"><div class="sn">5.2</div><div class="sl">Track finale</div></div>
+  </div>
+</div>
+
+<main>
+
+<section>
+  <div class="sh"><span class="st">Section 01 — The problem</span><span class="sc">01 / 07</span></div>
+  <h2 class="section-title">The <span class="vio">hyperparameter</span> problem.</h2>
+
+  <p>CineMatchTransformer has at least 8 hyperparameters: learning rate, warmup steps, weight decay, dropout, number of layers, d<sub>model</sub>, number of heads, d<sub>ff</sub>. If you try 5 values per hyperparameter, grid search needs 5⁸ = 390,625 evaluations. Each evaluation trains the model for ~30 minutes. Total: 22 years of GPU time.</p>
+
+  <p>Random search is better — Bergstra &amp; Bengio (2012) showed that random samples find good configurations faster than grid search because they don't waste trials on irrelevant dimensions. But random search is still blind — it doesn't learn from past evaluations. Trial 50 is no smarter than trial 1.</p>
+
+  <p><strong>Bayesian optimization</strong> (BO) fixes this: it uses past evaluations to build a model of the hyperparameter-to-performance landscape, then uses that model to choose the <em>most informative</em> next configuration to try.</p>
+
+  <div class="insight">
+    <div class="key">The BO principle</div>
+    <p>Don't evaluate hyperparameters randomly. Use a GP to model what you've seen so far, then choose the next trial to maximize expected improvement — balancing exploitation (try configurations the GP thinks are good) with exploration (try configurations the GP is uncertain about).</p>
+  </div>
+
+  <div class="mcq" data-correct="c">
+    <div class="mh"><span>Search strategies</span><span class="qnum">Question 01 / 07</span></div>
+    <div class="mq">Why does random search outperform grid search for hyperparameter tuning?</div>
+    <div class="opts">
+      <div class="opt" data-key="a"><span class="key">A</span><span class="text">Random search uses more compute per trial.</span></div>
+      <div class="opt" data-key="b"><span class="key">B</span><span class="text">Random search always finds the global optimum.</span></div>
+      <div class="opt" data-key="c"><span class="key">C</span><span class="text">In most problems, only 2-3 hyperparameters matter significantly. Grid search wastes trials on a regular lattice — many points differ only in irrelevant dimensions. Random search projects more unique values onto each important dimension, covering the important subspace more efficiently with the same budget.</span></div>
+      <div class="opt" data-key="d"><span class="key">D</span><span class="text">Random search is faster to implement in Python.</span></div>
+    </div>
+    <div class="feedback" data-right="<strong>Right.</strong> If only LR and dropout matter (out of 8 hyperparameters), a 5⁸ grid evaluates only 5 unique LR values and 5 unique dropout values — the same 5 values repeated across irrelevant dimensions. Random search with 50 trials evaluates 50 unique LR values and 50 unique dropout values. More coverage of the important dimensions with far fewer total trials." data-wrong="<strong>Not quite.</strong> The key insight is dimensional importance. Most tasks have 2-3 important hyperparameters. Grid search wastes trials on a regular lattice that duplicates values along important dimensions. Random search covers each important dimension more efficiently. BO goes further by learning from results."></div>
+  </div>
+</section>
+
+<section>
+  <div class="sh"><span class="st">Section 02 — The loop</span><span class="sc">02 / 07</span></div>
+  <h2 class="section-title">The Bayesian optimization <span class="red">loop</span>.</h2>
+
+  <p>BO is a loop with four steps, repeated until the budget is exhausted:</p>
+
+  <p><strong>Step 1: Initialize.</strong> Evaluate 5-10 random configurations to seed the GP. You need initial data before the GP can model anything.</p>
+
+  <p><strong>Step 2: Fit the GP surrogate.</strong> Train a GP on all (hyperparameter, validation-loss) pairs observed so far. The GP provides a posterior mean (predicted performance for any untried configuration) and posterior variance (uncertainty about that prediction).</p>
+
+  <p><strong>Step 3: Maximize the acquisition function.</strong> Choose the next configuration by optimizing an acquisition function over the GP's posterior. The acquisition function balances exploitation (low predicted loss) and exploration (high uncertainty).</p>
+
+  <p><strong>Step 4: Evaluate.</strong> Train the model with the chosen hyperparameters. Record the validation loss. Add to the GP's dataset. Go to Step 2.</p>
+
+  <pre><code><span class="c"># Simplified Bayesian Optimization loop</span>
+<span class="k">import</span> numpy <span class="k">as</span> np
+<span class="k">from</span> scipy.optimize <span class="k">import</span> minimize
+<span class="k">from</span> scipy.stats <span class="k">import</span> norm
+
+<span class="k">def</span> <span class="f">expected_improvement</span>(x, gp, best_y):
+    <span class="s">"""EI acquisition function."""</span>
+    mu, var = gp.predict(x)
+    sigma = np.sqrt(var + <span class="n">1e-8</span>)
+    z = (best_y - mu) / sigma
+    <span class="k">return</span> sigma * (z * norm.cdf(z) + norm.pdf(z))
+
+<span class="k">def</span> <span class="f">bayesian_optimization</span>(objective, bounds, n_init=<span class="n">5</span>, n_iter=<span class="n">30</span>):
+    <span class="c"># Step 1: Initialize with random samples</span>
+    X = np.random.uniform(bounds[:, <span class="n">0</span>], bounds[:, <span class="n">1</span>], (n_init, bounds.shape[<span class="n">0</span>]))
+    y = np.array([objective(x) <span class="k">for</span> x <span class="k">in</span> X])
+
+    <span class="k">for</span> i <span class="k">in</span> <span class="k">range</span>(n_iter):
+        <span class="c"># Step 2: Fit GP</span>
+        gp = fit_gp(X, y)
+
+        <span class="c"># Step 3: Maximize acquisition function</span>
+        best_y = y.min()
+        next_x = maximize_ei(gp, best_y, bounds)
+
+        <span class="c"># Step 4: Evaluate</span>
+        next_y = objective(next_x)
+        X = np.vstack([X, next_x])
+        y = np.append(y, next_y)
+
+    <span class="k">return</span> X[y.argmin()], y.min()</code></pre>
+
+  <div class="mcq" data-correct="d">
+    <div class="mh"><span>BO loop</span><span class="qnum">Question 02 / 07</span></div>
+    <div class="mq">In the BO loop, why do we need 5-10 random initial evaluations before starting GP-guided search?</div>
+    <div class="opts">
+      <div class="opt" data-key="a"><span class="key">A</span><span class="text">To warm up the GPU.</span></div>
+      <div class="opt" data-key="b"><span class="key">B</span><span class="text">To determine the number of hyperparameters.</span></div>
+      <div class="opt" data-key="c"><span class="key">C</span><span class="text">To compute the kernel matrix dimensions.</span></div>
+      <div class="opt" data-key="d"><span class="key">D</span><span class="text">The GP needs initial data to fit a meaningful posterior. With zero observations, the GP's posterior is its prior — it knows nothing about the landscape. With 5-10 random points, it has enough signal to start distinguishing promising regions from poor ones, making the acquisition function informative.</span></div>
+    </div>
+    <div class="feedback" data-right="<strong>Right.</strong> A GP with no data is just a prior — flat mean, uniform variance, no information about the landscape. The acquisition function (EI or UCB) needs the GP's posterior to be at least roughly calibrated before it can usefully guide the search. 5-10 random points provide enough data for the GP to learn the basic shape of the loss landscape: which regions are high-loss, which are low-loss, and where it's uncertain." data-wrong="<strong>Not quite.</strong> The GP needs observed data to form a useful posterior. With zero points, the posterior equals the prior — uniform uncertainty everywhere, so the acquisition function can't distinguish any configuration from any other. Random initialization provides the seed data the GP needs to start modeling the landscape."></div>
+  </div>
+</section>
+
+<section>
+  <div class="sh"><span class="st">Section 03 — Acquisition</span><span class="sc">03 / 07</span></div>
+  <h2 class="section-title">Acquisition functions — <span class="vio">EI</span> and <span class="red">UCB</span>.</h2>
+
+  <p>The acquisition function decides <em>where to look next</em>. Two dominant choices:</p>
+
+  <h3>Expected Improvement (EI).</h3>
+
+  <p>Given the best validation loss f* observed so far, EI measures the expected amount by which a new evaluation at x might improve over f*:</p>
+
+  <div class="eq">
+    EI(x) = E[max(f* − f(x), 0)] = σ(x) · [z · Φ(z) + φ(z)]
+    <span class="num">(3.1)</span>
+  </div>
+
+  <p>Where z = (f* − μ(x)) / σ(x), Φ is the standard normal CDF, and φ is its PDF. EI is high when the GP predicts low loss (μ(x) &lt; f*) OR when uncertainty is high (σ(x) is large). It naturally balances exploitation and exploration.</p>
+
+  <h3>Math Core — deriving the EI closed form.</h3>
+
+  <p>EI starts from the definition: the expected value of max(f* − f(x), 0) under the GP posterior f(x) ~ N(μ, σ²):</p>
+
+  <div class="eq">
+    EI(x) = ∫<sub>−∞</sub><sup>f*</sup> (f* − f) · φ((f − μ)/σ) / σ &nbsp;df
+    <span class="num">(3.3)</span>
+  </div>
+
+  <p>Substituting u = (f − μ)/σ and integrating by parts:</p>
+
+  <div class="eq">
+    EI(x) = (f* − μ) · Φ(z) + σ · φ(z) &nbsp;&nbsp; where z = (f* − μ)/σ
+    <span class="num">(3.4)</span>
+  </div>
+
+  <p>The two terms have clear meanings: <strong>(f* − μ)·Φ(z)</strong> is the exploitation term — large when the GP predicts the point is good (μ &lt; f*). <strong>σ·φ(z)</strong> is the exploration term — large when uncertainty is high. Neither dominates; EI balances them without any tuning parameter.</p>
+
+  <h3>Worked example — computing EI for two candidate configurations.</h3>
+
+  <div class="calcbox">
+    <div class="ch">EI computation with f* = 0.16 (best validation loss so far)</div>
+    <div class="step" data-s="1.">Config A: μ_A = 0.15, σ_A = 0.01. z_A = (0.16 − 0.15) / 0.01 = 1.0<span class="val">GP is fairly confident A is slightly better than f*</span></div>
+    <div class="step" data-s="2.">EI(A) = (0.16 − 0.15) · Φ(1.0) + 0.01 · φ(1.0) = 0.01 · 0.8413 + 0.01 · 0.2420<span class="val">= 0.00841 + 0.00242 = <strong>0.01083</strong></span></div>
+    <div class="step" data-s="3.">Config B: μ_B = 0.18, σ_B = 0.12. z_B = (0.16 − 0.18) / 0.12 = −0.167<span class="val">GP thinks B is slightly worse than f*, but very uncertain</span></div>
+    <div class="step" data-s="4.">EI(B) = (0.16 − 0.18) · Φ(−0.167) + 0.12 · φ(−0.167) = −0.02 · 0.4338 + 0.12 · 0.3939<span class="val">= −0.00868 + 0.04727 = <strong>0.03859</strong></span></div>
+    <div class="step" data-s="5.">EI(B) = 0.039 &gt; EI(A) = 0.011 — BO picks B, the uncertain option!<span class="val">The exploration term (σ·φ) dominates. BO bets on B's upside potential.</span></div>
+  </div>
+
+  <h3>Upper Confidence Bound (UCB).</h3>
+
+  <div class="eq">
+    UCB(x) = μ(x) − κ · σ(x)
+    <span class="num">(3.2)</span>
+  </div>
+
+  <p>For minimization, we <em>subtract</em> κ · σ — optimistic in the face of uncertainty. Pick x that has the lowest optimistic estimate. The parameter κ controls the exploration-exploitation balance: κ = 0 is pure exploitation (just pick the lowest predicted loss), κ = 3 is aggressive exploration (heavily explore uncertain regions).</p>
+
+  <table>
+    <thead><tr><th>Acquisition</th><th>Exploration</th><th>Exploitation</th><th>Tuning</th></tr></thead>
+    <tbody>
+      <tr><td>EI</td><td>Automatic (via σ in the formula)</td><td>Automatic (via μ)</td><td>None — parameter-free</td></tr>
+      <tr><td>UCB</td><td>Controlled by κ</td><td>Controlled by κ</td><td>Must choose κ (typically 1-3)</td></tr>
+    </tbody>
+  </table>
+
+  <div class="mcq" data-correct="b">
+    <div class="mh"><span>Acquisition functions</span><span class="qnum">Question 03 / 07</span></div>
+    <div class="mq">The GP predicts two configurations: A has μ=0.15, σ=0.01 (low loss, confident). B has μ=0.18, σ=0.12 (slightly higher loss, very uncertain). Current best f*=0.16. Which has higher EI?</div>
+    <div class="opts">
+      <div class="opt" data-key="a"><span class="key">A</span><span class="text">A — its predicted loss is lower.</span></div>
+      <div class="opt" data-key="b"><span class="key">B</span><span class="text">B — even though its predicted loss is slightly higher, its high uncertainty means there's a substantial probability it could be much better than f*=0.16. EI rewards this upside potential. A is likely 0.15 ± 0.01, so EI ≈ Φ(1)·0.01 ≈ 0.008. B could be anywhere from 0.06 to 0.30, so EI captures the significant probability mass below 0.16.</span></div>
+      <div class="opt" data-key="c"><span class="key">C</span><span class="text">Both have equal EI.</span></div>
+      <div class="opt" data-key="d"><span class="key">D</span><span class="text">Neither — EI is always zero when μ &gt; f*.</span></div>
+    </div>
+    <div class="feedback" data-right="<strong>Right.</strong> EI captures the probability-weighted improvement over f*. A is a near-certain small improvement (0.16→0.15, so EI ≈ 0.01·Φ(1) ≈ 0.008). B has μ=0.18 > f*=0.16 but σ=0.12, so there's substantial probability mass below 0.16 — the GP thinks there's maybe a 30-40% chance B is actually great. That upside potential gives B higher EI. This is exactly the exploration-exploitation balance at work." data-wrong="<strong>Not quite.</strong> EI isn't just about the predicted mean — it accounts for uncertainty. B's high σ means substantial probability of being much better than f*, even though the mean is slightly worse. A's low σ means the improvement is nearly guaranteed but tiny. EI rewards the expected magnitude of improvement, which favors B's upside potential."></div>
+  </div>
+</section>
+
+<section>
+  <div class="sh"><span class="st">Section 04 — CineMatch HPO</span><span class="sc">04 / 07</span></div>
+  <h2 class="section-title">CineMatch HPO — a <span class="vio">practical</span> example.</h2>
+
+  <p>Let's optimize CineMatchTransformer's hyperparameters with BO. The search space:</p>
+
+  <table>
+    <thead><tr><th>Hyperparameter</th><th>Range</th><th>Scale</th></tr></thead>
+    <tbody>
+      <tr><td>Learning rate</td><td>[1e-5, 1e-2]</td><td>Log-uniform</td></tr>
+      <tr><td>Weight decay</td><td>[1e-5, 0.1]</td><td>Log-uniform</td></tr>
+      <tr><td>Dropout</td><td>[0.0, 0.5]</td><td>Uniform</td></tr>
+      <tr><td>Number of layers</td><td>{2, 4, 6, 8}</td><td>Categorical</td></tr>
+      <tr><td>d_model</td><td>{128, 256, 512}</td><td>Categorical</td></tr>
+      <tr><td>Number of heads</td><td>{4, 8}</td><td>Categorical</td></tr>
+      <tr><td>Warmup steps</td><td>[100, 2000]</td><td>Log-uniform</td></tr>
+      <tr><td>Batch size</td><td>{32, 64, 128, 256}</td><td>Categorical</td></tr>
+    </tbody>
+  </table>
+
+  <p>In practice, you'd use a library. <strong>Optuna</strong> is the standard in 2026 — it uses a Tree-structured Parzen Estimator (TPE) by default (a BO variant that's faster than GP-based BO for high-dimensional spaces) and supports pruning (early-stopping bad trials).</p>
+
+  <pre><code><span class="k">import</span> optuna
+
+<span class="k">def</span> <span class="f">objective</span>(trial):
+    <span class="c"># Define search space</span>
+    lr = trial.suggest_float(<span class="s">'lr'</span>, <span class="n">1e-5</span>, <span class="n">1e-2</span>, log=<span class="k">True</span>)
+    wd = trial.suggest_float(<span class="s">'weight_decay'</span>, <span class="n">1e-5</span>, <span class="n">0.1</span>, log=<span class="k">True</span>)
+    dropout = trial.suggest_float(<span class="s">'dropout'</span>, <span class="n">0.0</span>, <span class="n">0.5</span>)
+    n_layers = trial.suggest_categorical(<span class="s">'n_layers'</span>, [<span class="n">2</span>, <span class="n">4</span>, <span class="n">6</span>, <span class="n">8</span>])
+    d_model = trial.suggest_categorical(<span class="s">'d_model'</span>, [<span class="n">128</span>, <span class="n">256</span>, <span class="n">512</span>])
+    n_heads = trial.suggest_categorical(<span class="s">'n_heads'</span>, [<span class="n">4</span>, <span class="n">8</span>])
+    warmup = trial.suggest_int(<span class="s">'warmup'</span>, <span class="n">100</span>, <span class="n">2000</span>, log=<span class="k">True</span>)
+    batch = trial.suggest_categorical(<span class="s">'batch_size'</span>, [<span class="n">32</span>, <span class="n">64</span>, <span class="n">128</span>, <span class="n">256</span>])
+
+    <span class="c"># Build model</span>
+    model = CineMatchTransformer(
+        d=d_model, heads=n_heads, layers=n_layers,
+        d_ff=d_model*<span class="n">4</span>, dropout=dropout
+    )
+
+    <span class="c"># Train with early stopping; report intermediate values for pruning</span>
+    val_loss = train_and_evaluate(model, lr=lr, wd=wd,
+                                  warmup=warmup, batch_size=batch,
+                                  trial=trial)  <span class="c"># trial enables pruning</span>
+    <span class="k">return</span> val_loss
+
+study = optuna.create_study(direction=<span class="s">'minimize'</span>)
+study.optimize(objective, n_trials=<span class="n">50</span>)
+
+<span class="f">print</span>(<span class="s">f"Best val loss: {study.best_value:.4f}"</span>)
+<span class="f">print</span>(<span class="s">f"Best params: {study.best_params}"</span>)</code></pre>
+
+  <div class="cinematch">
+    <div class="tag-pill">CineMatch Integration</div>
+    <h4>50 trials vs 390,625.</h4>
+    <p>BO with 50 trials (each training CineMatchTransformer for ~30 min) takes ~25 hours of GPU time. Grid search over the same 8 hyperparameters needs 390,625 trials = 22 GPU-years. BO typically finds a configuration within 2-5% of the global optimum. The result on CineMatch: Hits@10 improves from ~35% (hand-tuned from Module 4.2) to ~38% (BO-tuned) — a meaningful production improvement from automated search alone.</p>
+  </div>
+
+  <h3>Failure case — BO gets stuck in a local basin.</h3>
+
+  <div class="pitfall">
+    <div class="lbl">Common BO failure mode</div>
+    <h4>The GP over-exploits a good-looking region and misses better ones.</h4>
+    <p>After 10 trials, the GP finds that lr ≈ 3e-4 with 4 layers works well (val loss 0.17). Subsequent trials cluster tightly around this region — the GP is confident here (low σ), so EI for nearby points is dominated by the exploitation term. Meanwhile, the GP has never tried lr ≈ 1e-5 with 8 layers — it has high σ there, but the exploration term isn't enough to overcome the exploitation pull. Symptoms: the Optuna "optimization history" plot shows rapid early improvement then a long plateau. Fixes: (1) increase n_startup_trials from 5 to 15 (more initial random exploration), (2) use Hyperband instead of pure BO (forces diversity), (3) periodically inject random trials (Optuna's <code class="inline">CmaEsSampler</code> with restart).</p>
+  </div>
+
+  <h3>Build It — minimal GP-BO from scratch (no libraries).</h3>
+
+  <pre><code><span class="k">import</span> numpy <span class="k">as</span> np
+<span class="k">from</span> scipy.stats <span class="k">import</span> norm
+
+<span class="k">class</span> <span class="f">SimpleGPBO</span>:
+    <span class="s">"""GP-based Bayesian Optimization from scratch. No Optuna, no GPyTorch."""</span>
+    <span class="k">def</span> <span class="f">__init__</span>(self, bounds, l=<span class="n">0.5</span>, sigma=<span class="n">1.0</span>, noise=<span class="n">1e-4</span>):
+        self.bounds = np.array(bounds)  <span class="c"># (D, 2) min/max per dim</span>
+        self.l, self.sigma, self.noise = l, sigma, noise
+        self.X, self.y = [], []
+
+    <span class="k">def</span> <span class="f">_rbf</span>(self, X1, X2):
+        sq = np.sum((X1[:, <span class="k">None</span>] - X2[<span class="k">None</span>, :])**<span class="n">2</span>, axis=-<span class="n">1</span>)
+        <span class="k">return</span> self.sigma**<span class="n">2</span> * np.exp(-sq / (<span class="n">2</span> * self.l**<span class="n">2</span>))
+
+    <span class="k">def</span> <span class="f">_predict</span>(self, X_test):
+        X = np.array(self.X)
+        K = self._rbf(X, X) + self.noise * np.eye(<span class="f">len</span>(X))
+        Ks = self._rbf(X, X_test)
+        Kss = self._rbf(X_test, X_test)
+        L = np.linalg.cholesky(K + <span class="n">1e-6</span> * np.eye(<span class="f">len</span>(K)))
+        alpha = np.linalg.solve(L.T, np.linalg.solve(L, self.y))
+        mu = Ks.T @ alpha
+        v = np.linalg.solve(L, Ks)
+        var = np.diag(Kss) - np.sum(v**<span class="n">2</span>, axis=<span class="n">0</span>)
+        <span class="k">return</span> mu, np.maximum(var, <span class="n">1e-8</span>)
+
+    <span class="k">def</span> <span class="f">_ei</span>(self, X_test):
+        mu, var = self._predict(X_test)
+        sigma = np.sqrt(var)
+        best = np.min(self.y)
+        z = (best - mu) / sigma
+        <span class="k">return</span> (best - mu) * norm.cdf(z) + sigma * norm.pdf(z)
+
+    <span class="k">def</span> <span class="f">suggest</span>(self, n_candidates=<span class="n">5000</span>):
+        <span class="s">"""Suggest next point by maximizing EI over random candidates."""</span>
+        cands = np.random.uniform(self.bounds[:, <span class="n">0</span>], self.bounds[:, <span class="n">1</span>],
+                                  (n_candidates, self.bounds.shape[<span class="n">0</span>]))
+        ei = self._ei(cands)
+        <span class="k">return</span> cands[np.argmax(ei)]
+
+    <span class="k">def</span> <span class="f">tell</span>(self, x, y):
+        self.X.append(x); self.y.append(y)
+
+<span class="c"># Usage:</span>
+<span class="c"># bo = SimpleGPBO(bounds=[[1e-5, 1e-2], [0.0, 0.5]])  # LR, dropout</span>
+<span class="c"># for _ in range(5): bo.tell(random_config(), train_and_eval(...))</span>
+<span class="c"># for _ in range(20):</span>
+<span class="c">#     x = bo.suggest()</span>
+<span class="c">#     y = train_and_eval(lr=x[0], dropout=x[1])</span>
+<span class="c">#     bo.tell(x, y)</span></code></pre>
+
+  <div class="mcq" data-correct="a">
+    <div class="mh"><span>Practical HPO</span><span class="qnum">Question 04 / 07</span></div>
+    <div class="mq">Why does Optuna use TPE (Tree-structured Parzen Estimator) instead of a standard GP for Bayesian optimization?</div>
+    <div class="opts">
+      <div class="opt" data-key="a"><span class="key">A</span><span class="text">GP-based BO requires inverting an N×N kernel matrix, which scales poorly as the number of completed trials grows. More critically, GPs struggle with mixed continuous/categorical hyperparameters. TPE models P(hyperparameters | good results) and P(hyperparameters | bad results) separately, which handles categorical variables naturally and scales to higher-dimensional search spaces.</span></div>
+      <div class="opt" data-key="b"><span class="key">B</span><span class="text">TPE is always more accurate than GPs.</span></div>
+      <div class="opt" data-key="c"><span class="key">C</span><span class="text">Optuna can't use GPs because of licensing.</span></div>
+      <div class="opt" data-key="d"><span class="key">D</span><span class="text">TPE doesn't require any data to work.</span></div>
+    </div>
+    <div class="feedback" data-right="<strong>Right.</strong> Standard GP-BO works beautifully for low-dimensional continuous spaces (2-5 hyperparameters, all continuous). But CineMatch's search space has 8 dimensions including categoricals. GPs need specialized kernels for categorical variables and scale O(N³) with trials. TPE sidesteps both issues: it models the hyperparameter density separately for good and bad results, naturally handles mixed types, and scales linearly. For 50-200 trials in 5-15 dimensions with mixed types, TPE is the practical choice." data-wrong="<strong>Not quite.</strong> The practical issues are dimensionality, mixed types, and scaling. GPs struggle with categorical hyperparameters (number of layers, batch size) and get expensive as trial count grows. TPE handles mixed continuous/categorical variables naturally and scales linearly. For small, all-continuous problems (2-3 dims), GP-BO is excellent. For real-world HPO with mixed types, TPE is more practical."></div>
+  </div>
+</section>
+
+<section>
+  <div class="sh"><span class="st">Section 05 — Multi-fidelity</span><span class="sc">05 / 07</span></div>
+  <h2 class="section-title">Multi-fidelity methods — don't train to <span class="red">convergence</span> every time.</h2>
+
+  <p>The biggest cost in HPO is training time per evaluation. A CineMatch trial training for 20 epochs takes 30 minutes. But you can often tell a bad configuration after 3 epochs — its validation loss is already worse than the best completed trial. <strong>Multi-fidelity</strong> methods exploit this: start many trials at low fidelity (few epochs), and only promote promising ones to full training.</p>
+
+  <p><strong>Successive Halving / Hyperband.</strong> Start 64 random configurations, each training for 1 epoch. Keep the best 32 and train 2 more epochs. Keep the best 16, train 4 more. Continue halving until one remains. Total compute: ~16 full trainings instead of 64.</p>
+
+  <p><strong>ASHA (Asynchronous SHA).</strong> The asynchronous variant — doesn't wait for all trials at a rung to finish before promoting. Better GPU utilization, especially on multi-GPU clusters.</p>
+
+  <pre><code><span class="c"># Optuna with pruning (built-in early stopping for bad trials)</span>
+<span class="k">def</span> <span class="f">objective</span>(trial):
+    <span class="c">... # define hyperparameters as before</span>
+
+    <span class="k">for</span> epoch <span class="k">in</span> <span class="k">range</span>(<span class="n">20</span>):
+        train_one_epoch(model, ...)
+        val_loss = evaluate(model, ...)
+
+        <span class="c"># Report intermediate value; Optuna may prune this trial</span>
+        trial.report(val_loss, epoch)
+        <span class="k">if</span> trial.should_prune():
+            <span class="k">raise</span> optuna.TrialPruned()
+
+    <span class="k">return</span> val_loss
+
+<span class="c"># MedianPruner: prune if worse than median of completed trials at this epoch</span>
+study = optuna.create_study(
+    direction=<span class="s">'minimize'</span>,
+    pruner=optuna.pruners.MedianPruner(n_startup_trials=<span class="n">5</span>)
+)</code></pre>
+
+  <div class="mcq" data-correct="c">
+    <div class="mh"><span>Multi-fidelity</span><span class="qnum">Question 05 / 07</span></div>
+    <div class="mq">With 50 trials and pruning, Optuna runs some trials for only 3 epochs. Doesn't this miss configurations that start slow but finish strong?</div>
+    <div class="opts">
+      <div class="opt" data-key="a"><span class="key">A</span><span class="text">Yes — pruning always misses the best configuration.</span></div>
+      <div class="opt" data-key="b"><span class="key">B</span><span class="text">No — all configurations converge at the same rate.</span></div>
+      <div class="opt" data-key="c"><span class="key">C</span><span class="text">Occasionally yes — some good configs start slow. But empirically, early validation loss is a strong predictor of final performance (rank correlation ~0.7-0.9 between epoch-3 and epoch-20 loss). Pruning bad trials after 3 epochs frees compute to evaluate more candidates, which more than compensates for the rare missed late-bloomer. The net effect: ~3× more configurations explored for the same total compute.</span></div>
+      <div class="opt" data-key="d"><span class="key">D</span><span class="text">Pruning is never used in practice because of this issue.</span></div>
+    </div>
+    <div class="feedback" data-right="<strong>Right.</strong> Early-stopping via pruning is a computed trade-off. You occasionally miss a late-blooming configuration, but you gain 3× more trials in the same budget, which overwhelmingly compensates. The rank correlation between early and final loss is high enough that most truly good configurations show promise early. Pruning is standard in production HPO systems — the compute savings are too large to ignore." data-wrong="<strong>Not quite.</strong> Pruning occasionally misses late-bloomers, but this is more than compensated by exploring 3× more configurations. Early loss is a strong predictor of final loss (rank correlation 0.7-0.9), so most promising configurations show signs early. The net effect of pruning is always positive in practice."></div>
+  </div>
+</section>
+
+<section>
+  <div class="sh"><span class="st">Section 06 — Strategy</span><span class="sc">06 / 07</span></div>
+  <h2 class="section-title">Choosing the right <span class="vio">HPO</span> strategy.</h2>
+
+  <table>
+    <thead><tr><th>Strategy</th><th>Budget (trials)</th><th>Dimensions</th><th>Best for</th></tr></thead>
+    <tbody>
+      <tr><td>Grid search</td><td>&gt; 10,000</td><td>1-3</td><td>Publication-grade sweeps on 1-2 HPs</td></tr>
+      <tr><td>Random search</td><td>20-100</td><td>Any</td><td>Strong baseline; embarrassingly parallel</td></tr>
+      <tr><td>GP-based BO</td><td>10-50</td><td>2-6 continuous</td><td>Small, continuous spaces (e.g., just LR + WD)</td></tr>
+      <tr><td>TPE (Optuna)</td><td>20-200</td><td>5-20 mixed</td><td>Real-world HPO with mixed types; the default</td></tr>
+      <tr><td>Hyperband/ASHA</td><td>50-500</td><td>Any</td><td>When each trial is expensive; multi-GPU clusters</td></tr>
+      <tr><td>Population-based training</td><td>Ongoing</td><td>Any</td><td>Evolving HP schedules during training</td></tr>
+    </tbody>
+  </table>
+
+  <p>For CineMatch: TPE with pruning (Optuna's default) is the right starting point. 50 trials with median pruning. If the team has a GPU cluster, ASHA for parallel exploration. GP-based BO only if the search is restricted to 2-3 continuous hyperparameters (e.g., just LR and weight decay).</p>
+
+  <div class="mcq" data-correct="b">
+    <div class="mh"><span>Strategy choice</span><span class="qnum">Question 06 / 07</span></div>
+    <div class="mq">You have budget for exactly 20 HPO trials on CineMatchTransformer (8 mixed hyperparameters). What's your best strategy?</div>
+    <div class="opts">
+      <div class="opt" data-key="a"><span class="key">A</span><span class="text">Grid search — 20 trials covers a sparse grid.</span></div>
+      <div class="opt" data-key="b"><span class="key">B</span><span class="text">TPE (Optuna) with pruning. TPE handles mixed continuous/categorical variables, learns from past trials, and pruning lets you effectively evaluate more than 20 configurations by cutting bad ones early. Start with 5 random trials for initialization, then 15 TPE-guided trials.</span></div>
+      <div class="opt" data-key="c"><span class="key">C</span><span class="text">Pure random search — 20 random points in 8 dimensions.</span></div>
+      <div class="opt" data-key="d"><span class="key">D</span><span class="text">GP-based BO — the GP handles 8 dimensions and categoricals well.</span></div>
+    </div>
+    <div class="feedback" data-right="<strong>Right.</strong> At 20 trials with 8 mixed dimensions: grid search is useless (20 points in 8D covers nothing). Random search works but doesn't learn from results. GP-BO struggles with categoricals and 8 dimensions. TPE is designed exactly for this setting: mixed types, moderate dimensionality, small budget. Pruning effectively doubles the budget by cutting bad trials early." data-wrong="<strong>Not quite.</strong> With only 20 trials in 8 mixed dimensions: grid search can't cover the space. Random search is a reasonable baseline but doesn't learn. GP-BO struggles with categorical variables. TPE with pruning is the optimal choice — it handles mixed types, learns from past trials, and pruning amplifies the effective budget."></div>
+  </div>
+</section>
+
+<section>
+  <div class="sh"><span class="st">Section 07 — Complete</span><span class="sc">07 / 07</span></div>
+  <h2 class="section-title">The track is <span class="red">complete</span>.</h2>
+
+  <div class="mcq" data-correct="d">
+    <div class="mh"><span>Full-track synthesis</span><span class="qnum">Question 07 / 07</span></div>
+    <div class="mq">You're deploying CineMatch end-to-end. Put these in the correct development order: (A) Bayesian HPO, (B) pretrained transformer retrieval, (C) linear baseline, (D) poster CNN features, (E) GP uncertainty on ranking output.</div>
+    <div class="opts">
+      <div class="opt" data-key="a"><span class="key">A</span><span class="text">B → D → A → C → E</span></div>
+      <div class="opt" data-key="b"><span class="key">B</span><span class="text">A → B → C → D → E</span></div>
+      <div class="opt" data-key="c"><span class="key">C</span><span class="text">E → D → C → B → A</span></div>
+      <div class="opt" data-key="d"><span class="key">D</span><span class="text">C → D → B → A → E. Start with a linear baseline (C, Phase 1) to set the floor. Add CNN poster features (D, Phase 3) for visual signal. Build the pretrained transformer retrieval model (B, Phase 4). Tune it with Bayesian HPO (A, Phase 5). Add GP uncertainty to the ranking output (E, Phase 5) for exploration-aware serving. Each step builds on the previous, exactly tracing the track's progression.</span></div>
+    </div>
+    <div class="feedback" data-right="<strong>Right.</strong> This sequence exactly mirrors the track: Phase 1 (linear baseline) → Phase 3 (CNN features) → Phase 4 (pretrained transformer) → Phase 5 (HPO to tune, GP for uncertainty). You always start simple, validate that each addition improves the metric, and only add complexity when it's justified. The baseline grounds everything; each subsequent step is an incremental, measurable improvement." data-wrong="<strong>Not quite.</strong> The correct order traces the track: (C) linear baseline first — set the floor. (D) CNN features — add visual signal. (B) pretrained transformer — replace the linear model with something powerful. (A) HPO — tune the transformer's hyperparameters. (E) GP uncertainty — add calibrated confidence for exploration-aware serving. Always simple first, then incremental complexity."></div>
+  </div>
+
+  <div class="checkpoint">
+    <h4>Module 5.2 — Mastery checkpoint</h4>
+    <ol>
+      <li>Explain why grid search is wasteful and how random search improves upon it.</li>
+      <li>Describe the four steps of the Bayesian optimization loop.</li>
+      <li>Write the EI acquisition function and explain how it balances exploration and exploitation.</li>
+      <li>Compare EI and UCB acquisition functions.</li>
+      <li>Set up a CineMatch HPO study in Optuna with mixed hyperparameter types.</li>
+      <li>Explain multi-fidelity methods (Successive Halving, ASHA) and pruning.</li>
+      <li>Choose the right HPO strategy for a given budget and dimensionality.</li>
+    </ol>
+  </div>
+
+  <div class="phase-done">
+    <div class="tag-pill">Deep Learning Track — Complete</div>
+    <h4>From a single neuron to a production recommender with calibrated uncertainty.</h4>
+    <p>Twenty-seven modules. Five phases. One through-line: CineMatch, a fictional streaming platform that grew from a logistic regression baseline (Phase 1) to a pretrained transformer recommender with CNN poster features, LSTM sequence modeling, attention-based retrieval, GAN-augmented data, and GP-calibrated uncertainty (Phase 5).</p>
+    <p>What you now have is every piece of the production deep learning stack: <strong>foundations</strong> (tensors, autograd, loss landscapes), <strong>deep networks</strong> (MLPs, backprop, optimization, regularization, computational performance), <strong>specialized architectures</strong> (CNNs, RNNs, LSTMs, transfer learning), <strong>the modern stack</strong> (attention, transformers, embeddings, pretraining, GANs), and <strong>uncertainty quantification</strong> (GPs, Bayesian HPO). Each piece connects to the next. Each is grounded in production code you can ship.</p>
+    <p>The track ends here. The building doesn't. Every frontier model in 2026 — every large language model, every recommendation system, every vision system — is built from the components covered in these modules. The difference between reading about them and building with them is practice. <strong>Go build.</strong></p>
+  </div>
+</section>
+
+
+<!-- ============ LEARNING RESOURCES ============ -->
+<section class="mod-sec resources-section">
+  <div class="resources-kicker"><span>// Learning Resources</span></div>
+  <h2 class="resources-title">Learn &amp; <span class="vio">Practice</span></h2>
+  <p class="resources-sub">Deepen this module with a progressive explanation, the canonical source, and hands-on reference code.</p>
+    <article class="resource-card progressive">
+      <div class="resource-head">
+        <div class="resource-icon">P</div>
+        <div>
+          <div class="resource-type">Progressive Article</div>
+          <p class="resource-desc">Stuck? Start here - beginner-friendly explanation</p>
+        </div>
+      </div>
+      <div class="resource-item">
+        <div class="resource-name">Peter Frazier - A Tutorial on Bayesian Optimization</div>
+        <p class="resource-note">Accessible introduction to surrogate models, acquisition functions, and the BO loop.</p>
+      </div>
+      <div class="resource-actions">
+      <a class="resource-btn" href="https://arxiv.org/abs/1807.02811" target="_blank" rel="noopener">Read article</a>
+      </div>
+    </article>
+    <article class="resource-card canonical">
+      <div class="resource-head">
+        <div class="resource-icon">C</div>
+        <div>
+          <div class="resource-type">Canonical Article</div>
+          <p class="resource-desc">Authoritative source - paper, docs, or textbook chapter</p>
+        </div>
+      </div>
+      <div class="resource-item">
+        <div class="resource-name">Snoek, Larochelle &amp; Adams - Practical Bayesian Optimization</div>
+        <p class="resource-note">Canonical BO for machine learning algorithms paper.</p>
+      </div>
+      <div class="resource-actions">
+      <a class="resource-btn" href="https://arxiv.org/abs/1206.2944" target="_blank" rel="noopener">Read source</a>
+      </div>
+    </article>
+    <article class="resource-card github">
+      <div class="resource-head">
+        <div class="resource-icon">&lt;/&gt;</div>
+        <div>
+          <div class="resource-type">GitHub Repository</div>
+          <p class="resource-desc">Hands-on implementation and runnable examples</p>
+        </div>
+      </div>
+      <div class="resource-item">
+        <div class="resource-name">optuna/optuna</div>
+        <p class="resource-note">Popular hyperparameter optimization library with BO and multi-fidelity methods.</p>
+      </div>
+      <div class="resource-item">
+        <div class="resource-name">facebook/Ax</div>
+        <p class="resource-note">Adaptive experimentation platform.</p>
+      </div>
+      <div class="resource-item">
+        <div class="resource-name">pytorch/botorch</div>
+        <p class="resource-note">Bayesian optimization in PyTorch.</p>
+      </div>
+      <div class="resource-actions">
+      <a class="resource-btn" href="https://github.com/optuna/optuna" target="_blank" rel="noopener">Explore repo</a>
+      <a class="resource-btn" href="https://github.com/facebook/Ax" target="_blank" rel="noopener">Explore repo</a>
+      <a class="resource-btn" href="https://github.com/pytorch/botorch" target="_blank" rel="noopener">Explore repo</a>
+      </div>
+    </article>
+</section>
+
+</main>
+
+<nav class="footnav">
+  <a href="module_5_1_gaussian_processes.html" class="prev">
+    <div class="lbl">Previous module</div>
+    <div class="ttl">5.1 — Gaussian Processes</div>
+  </a>
+  <a href="module_0_1_why_deep_learning.html" class="next">
+    <div class="lbl">Back to the beginning</div>
+    <div class="ttl">0.1 — Why Deep Learning</div>
+  </a>
+</nav>
+
+<footer class="foot">
+  <div class="fl">Deep Learning &amp; Neural Networks · Module 5.2 · 2025</div>
+  <div class="fr"><div class="fd"></div> Phase 5 · Track Finale</div>
+</footer>
+
+<script>
+/* ============ Particle network background ============ */
+(function(){
+  const cv=document.getElementById('brain'),cx=cv.getContext('2d');
+  function rs(){cv.width=window.innerWidth;cv.height=window.innerHeight}rs();
+  window.addEventListener('resize',rs);
+  const pts=[];
+  const n = window.innerWidth < 700 ? 50 : 90;
+  for(let i=0;i<n;i++)pts.push({
+    x:Math.random()*window.innerWidth,
+    y:Math.random()*window.innerHeight,
+    vx:(Math.random()-.5)*.22,
+    vy:(Math.random()-.5)*.22,
+    r:Math.random()*1.8+.7,
+    ph:Math.random()*Math.PI*2
+  });
+  (function loop(){
+    cx.clearRect(0,0,cv.width,cv.height);
+    const t=Date.now()*.001;
+    for(let i=0;i<pts.length;i++){
+      const a=pts[i];a.x+=a.vx;a.y+=a.vy;
+      if(a.x<0||a.x>cv.width)a.vx*=-1;
+      if(a.y<0||a.y>cv.height)a.vy*=-1;
+      for(let j=i+1;j<pts.length;j++){
+        const b=pts[j],dx=b.x-a.x,dy=b.y-a.y,d=Math.sqrt(dx*dx+dy*dy);
+        if(d<130){
+          cx.beginPath();cx.moveTo(a.x,a.y);cx.lineTo(b.x,b.y);
+          cx.strokeStyle=`rgba(100,35,200,${(1-d/130)*.14})`;
+          cx.lineWidth=.5;cx.stroke();
+        }
+      }
+    }
+    for(let i=0;i<pts.length;i++){
+      const a=pts[i],g=.5+.5*Math.sin(t*1.4+a.ph);
+      cx.beginPath();cx.arc(a.x,a.y,a.r,0,Math.PI*2);
+      cx.fillStyle=`rgba(100,35,200,${.22+g*.48})`;cx.fill();
+    }
+    requestAnimationFrame(loop);
+  })();
+})();
+
+/* ============ Hero: Bayesian acquisition over hyperparameter space ============ */
+(function(){
+  const ns='http://www.w3.org/2000/svg';
+  // domain: theta in [0,1] mapped to x in [40,320], val-loss y in [60,260]
+  const x0=40, x1=320, y0=60, y1=260;
+  const W = x1-x0;
+
+  // True objective: peaks and valleys
+  function trueLoss(t){
+    // t in [0,1]; lower is better — multi-modal "loss landscape"
+    return 0.55
+      + 0.30*Math.sin(t*Math.PI*2.2 + 0.4)
+      - 0.18*Math.cos(t*Math.PI*4.1)
+      + 0.10*Math.sin(t*Math.PI*7.3 + 1.1);
+  }
+  // map loss [0,1] to svg y
+  function ly(v){ return y0 + Math.max(0, Math.min(1, v)) * (y1-y0); }
+
+  // Sampled points (sparse, deterministic-looking)
+  const samples = [
+    {t:0.08, jitter: 0.04},
+    {t:0.22, jitter:-0.02},
+    {t:0.42, jitter: 0.03},
+    {t:0.58, jitter:-0.05},
+    {t:0.78, jitter: 0.02},
+    {t:0.91, jitter:-0.03}
+  ].map(s=>({t:s.t, v: trueLoss(s.t)+s.jitter}));
+
+  // GP posterior mean approximated by smooth interp through samples
+  function gpMean(t){
+    // inverse-distance weighting on samples + slight bias to true at extremes
+    let num=0, den=0;
+    for(const s of samples){
+      const d = Math.abs(t-s.t);
+      const w = 1/(d*d + 0.004);
+      num += w * s.v;
+      den += w;
+    }
+    return num/den;
+  }
+  // GP posterior std — small at samples, large between
+  function gpStd(t){
+    let minD = 1;
+    for(const s of samples) minD = Math.min(minD, Math.abs(t-s.t));
+    return 0.02 + 0.32 * Math.min(1, minD*3.2);
+  }
+  // Acquisition: Expected Improvement-like (peak where uncertainty is high & predicted loss low)
+  function acq(t){
+    const mu = gpMean(t);
+    const sig = gpStd(t);
+    const fStar = Math.min(...samples.map(s=>s.v));
+    const z = (fStar - mu) / Math.max(sig, 1e-6);
+    // normal pdf/cdf approximations
+    const pdf = Math.exp(-0.5*z*z) / Math.sqrt(2*Math.PI);
+    const cdf = 0.5*(1 + Math.tanh(z*1.2533));
+    return Math.max(0, (fStar - mu)*cdf + sig*pdf);
+  }
+
+  // Build paths
+  const N = 140;
+  let truePts = [], meanPts = [], upPts = [], loPts = [], acqPts = [];
+  let acqMax = 0, acqArgMax = 0.5;
+  for(let i=0;i<=N;i++){
+    const t = i/N;
+    const px = x0 + t*W;
+    const mu = gpMean(t);
+    const sg = gpStd(t);
+    truePts.push([px, ly(trueLoss(t))]);
+    meanPts.push([px, ly(mu)]);
+    upPts.push([px, ly(mu + sg*0.7)]);
+    loPts.push([px, ly(mu - sg*0.7)]);
+    const a = acq(t);
+    if(a > acqMax){ acqMax = a; acqArgMax = t; }
+    acqPts.push([px, a]);
+  }
+  // Normalize acquisition to lower band of svg (axon, near top edge)
+  const acqYTop = 35, acqYBot = 78;
+  const acqScale = (a)=> acqYBot - (a/(acqMax+1e-9))*(acqYBot-acqYTop);
+
+  const toPath = (pts)=>'M ' + pts.map(p=>`${p[0].toFixed(1)} ${p[1].toFixed(1)}`).join(' L ');
+  const toBand = (up, lo)=>{
+    let d = 'M ' + up.map(p=>`${p[0].toFixed(1)} ${p[1].toFixed(1)}`).join(' L ');
+    for(let i=lo.length-1;i>=0;i--) d += ` L ${lo[i][0].toFixed(1)} ${lo[i][1].toFixed(1)}`;
+    return d + ' Z';
+  };
+
+  document.getElementById('truePath').setAttribute('d', toPath(truePts));
+  document.getElementById('meanPath').setAttribute('d', toPath(meanPts));
+  document.getElementById('confBandPath').setAttribute('d', toBand(upPts, loPts));
+  document.getElementById('acqPath').setAttribute('d', toPath(acqPts.map(p=>[p[0], acqScale(p[1])])));
+
+  // Sample points
+  const sg = document.getElementById('samplePoints');
+  samples.forEach(s=>{
+    const cx = x0 + s.t*W;
+    const cy = ly(s.v);
+    const c = document.createElementNS(ns,'circle');
+    c.setAttribute('cx', cx);
+    c.setAttribute('cy', cy);
+    c.setAttribute('r','4');
+    c.setAttribute('fill','#6e28d9');
+    c.setAttribute('stroke','#0e0f1c');
+    c.setAttribute('stroke-width','1.2');
+    sg.appendChild(c);
+  });
+
+  // Next pick marker (peak of acquisition)
+  const npg = document.getElementById('nextPick');
+  const nx = x0 + acqArgMax*W;
+  const ny = acqScale(acqMax);
+  const myMean = ly(gpMean(acqArgMax));
+  const vline = document.createElementNS(ns,'line');
+  vline.setAttribute('x1', nx); vline.setAttribute('y1', acqYTop);
+  vline.setAttribute('x2', nx); vline.setAttribute('y2', y1);
+  vline.setAttribute('stroke','#ff3a6e');
+  vline.setAttribute('stroke-opacity','.4');
+  vline.setAttribute('stroke-dasharray','2 3');
+  vline.setAttribute('stroke-width','1');
+  npg.appendChild(vline);
+  const star = document.createElementNS(ns,'circle');
+  star.setAttribute('cx', nx); star.setAttribute('cy', ny);
+  star.setAttribute('r','4.5');
+  star.setAttribute('fill','#ff3a6e');
+  star.setAttribute('stroke','#0e0f1c');
+  star.setAttribute('stroke-width','1.2');
+  npg.appendChild(star);
+  // tiny "next" label
+  const lab = document.createElementNS(ns,'text');
+  lab.setAttribute('x', nx+8); lab.setAttribute('y', ny+3);
+  lab.setAttribute('font-family','DM Mono,monospace');
+  lab.setAttribute('font-size','8');
+  lab.setAttribute('fill','#ff3a6e');
+  lab.setAttribute('letter-spacing','1');
+  lab.textContent='NEXT';
+  npg.appendChild(lab);
+
+  // Pulse the next-pick marker
+  let t=0;
+  function pulse(){
+    t+=0.04;
+    const k = 0.5+0.5*Math.sin(t);
+    star.setAttribute('r', (4.5 + k*1.6).toFixed(2));
+    star.setAttribute('opacity', (0.7 + k*0.3).toFixed(2));
+    requestAnimationFrame(pulse);
+  }
+  pulse();
+})();
+
+/* ============ Reveal on scroll ============ */
+(function(){
+  const els=document.querySelectorAll('section, .insight, .mcq, .cinematch, .pitfall, .calcbox, .checkpoint, .phase-done, .eq, table, pre');
+  els.forEach(e=>e.classList.add('reveal'));
+  const io=new IntersectionObserver((entries)=>{
+    entries.forEach(e=>{
+      if(e.isIntersecting){ e.target.classList.add('on'); io.unobserve(e.target); }
+    });
+  },{threshold:.12});
+  els.forEach(e=>io.observe(e));
+})();
+
+/* ============ MCQ interaction ============ */
+document.querySelectorAll('.mcq').forEach(mcq=>{
+  const correct=mcq.dataset.correct;
+  const opts=mcq.querySelectorAll('.opt');
+  const fb=mcq.querySelector('.feedback');
+  opts.forEach(opt=>{
+    opt.addEventListener('click',()=>{
+      if(opt.classList.contains('disabled'))return;
+      const chosen=opt.dataset.key;
+      const isRight=chosen===correct;
+      opts.forEach(o=>{
+        o.classList.add('disabled');
+        if(o.dataset.key===correct)o.classList.add('correct');
+        else if(o===opt&&!isRight)o.classList.add('wrong');
+      });
+      if(isRight){
+        fb.classList.add('show','right');
+        fb.innerHTML='<span class="verdict">Correct</span>'+fb.dataset.right;
+      }else{
+        fb.classList.add('show','wrong');
+        fb.innerHTML='<span class="verdict">Not quite</span>'+fb.dataset.wrong;
+      }
+    });
+  });
+});
+</script>
+
+</body>
+</html>

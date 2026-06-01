@@ -1,0 +1,318 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Median Finder with Deletion</title>
+    <style>
+        :root {
+            --bg-page: #0d1117;
+            --bg-surface: #161b22;
+            --border-main: #30363d;
+            --btn-bg: #21262d;
+            --btn-hover: #2d333b;
+            --text-main: #c9d1d9;
+            --text-dim: #8b949e;
+            --accent-purple: #a371f7;
+            --accent-blue: #388bfd;
+            --accent-green: #3fb950;
+            --accent-orange: #e3b341;
+        }
+
+        * { box-sizing: border-box; }
+        body {
+            background-color: var(--bg-page);
+            color: var(--text-main);
+            font-family: system-ui, -apple-system, sans-serif;
+            margin: 0;
+            padding: 20px 0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        h1 { color: var(--accent-purple); margin: 0 0 8px 0; }
+
+        .input-bar {
+            width: 100%;
+            max-width: 1100px;
+            background: var(--bg-surface);
+            padding: 12px;
+            display: flex;
+            gap: 12px;
+            flex-wrap: wrap;
+            justify-content: center;
+            border-bottom: 1px solid var(--border-main);
+            margin-bottom: 20px;
+        }
+        button {
+            padding: 8px 16px;
+            background: var(--btn-bg);
+            border: 1px solid var(--border-main);
+            color: var(--text-main);
+            border-radius: 6px;
+            cursor: pointer;
+        }
+        button:hover { background: var(--btn-hover); }
+
+        .viz {
+            background: var(--bg-surface);
+            border: 3px solid var(--accent-purple);
+            border-radius: 12px;
+            padding: 20px;
+            width: 100%;
+            max-width: 900px;
+        }
+
+        .sorted-list {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+            padding: 20px;
+            background: #21262d;
+            border-radius: 10px;
+            min-height: 90px;
+        }
+
+        .tile {
+            padding: 14px 20px;
+            border-radius: 8px;
+            font-family: monospace;
+            font-size: 18px;
+            min-width: 58px;
+            text-align: center;
+            transition: all 0.3s;
+            border: 2px solid var(--accent-blue);
+        }
+
+        .tile.highlight {
+            border-color: var(--accent-green);
+            transform: scale(1.15);
+            box-shadow: 0 0 15px var(--accent-green);
+        }
+
+        .info {
+            text-align: center;
+            margin: 16px 0;
+            font-family: monospace;
+            font-size: 15px;
+        }
+
+        .action-panel {
+            background: var(--bg-surface);
+            border: 1px solid var(--border-main);
+            border-radius: 10px;
+            padding: 18px;
+            width: 100%;
+            max-width: 900px;
+            min-height: 140px;
+            margin: 20px 0;
+            font-family: monospace;
+        }
+
+        .controls {
+            margin: 20px 0;
+            display: flex;
+            align-items: center;
+            gap: 16px;
+            flex-wrap: wrap;
+            justify-content: center;
+        }
+
+        .log-panel {
+            background: var(--bg-page);
+            border: 1px solid var(--border-main);
+            border-radius: 10px;
+            padding: 16px;
+            width: 100%;
+            max-width: 900px;
+            height: 240px;
+            overflow-y: auto;
+            font-family: 'Courier New', monospace;
+            font-size: 14px;
+        }
+    </style>
+</head>
+<body>
+
+    <h1>Median Finder with Deletion</h1>
+    <p style="color:var(--text-dim);margin-bottom:20px;">Brute Force — Sorted List + Binary Search Delete</p>
+
+    <div class="input-bar">
+        <button onclick="loadExample(0)">Example 1</button>
+        <button onclick="loadExample(1)">Example 2</button>
+        <button onclick="resetSim()">Reset</button>
+    </div>
+
+    <div class="viz">
+        <div style="text-align:center;margin-bottom:8px;color:var(--accent-purple);font-weight:bold;">Sorted List</div>
+        <div class="sorted-list" id="list-vis"></div>
+        
+        <div class="info" id="info">
+            Length: <span id="len-val">0</span> | 
+            Median: <span id="median-val" style="color:var(--accent-green)">—</span>
+        </div>
+    </div>
+
+    <div class="action-panel" id="action">Click an example to begin</div>
+
+    <div class="controls">
+        <button onclick="prevStep()">← Back</button>
+        <button onclick="togglePlay()" id="play-btn">▶ Play</button>
+        <button onclick="nextStep()">Next →</button>
+        <label>Speed <input type="range" id="speed" min="0" max="2" value="1"></label>
+    </div>
+
+    <div class="log-panel" id="log"></div>
+
+    <script>
+        let nums = [];
+        let steps = [];
+        let stepIdx = 0;
+        let timer = null;
+        let isPlaying = false;
+        const delays = [1650, 850, 380];
+
+        const examples = [
+            ["insert(5)", "insert(3)", "findMedian()", "delete(5)", "findMedian()"],
+            ["insert(10)", "insert(20)", "insert(30)", "delete(20)", "insert(5)", "findMedian()"]
+        ];
+
+        function binarySearch(arr, target) {
+            let left = 0, right = arr.length - 1;
+            while (left <= right) {
+                const mid = Math.floor((left + right) / 2);
+                if (arr[mid] === target) return mid;
+                if (arr[mid] < target) left = mid + 1;
+                else right = mid - 1;
+            }
+            return -1;
+        }
+
+        function generateSteps(ops) {
+            nums = [];
+            steps = [];
+
+            steps.push({
+                panel: `<b>Initialize</b><br>nums = []`,
+                log: `Initialized empty list`,
+                list: [],
+                median: null
+            });
+
+            for (let op of ops) {
+                let action = op;
+
+                if (op.startsWith("insert")) {
+                    const val = parseInt(op.match(/\d+/)[0]);
+                    nums.push(val);
+                    nums.sort((a,b) => a - b);
+                    action += ` → [${nums.join(', ')}]`;
+                } else if (op.startsWith("delete")) {
+                    const val = parseInt(op.match(/\d+/)[0]);
+                    const idx = binarySearch(nums, val);
+                    if (idx !== -1) {
+                        nums.splice(idx, 1);
+                        action += ` (found at ${idx}) → [${nums.join(', ')}]`;
+                    } else {
+                        action += ` (not found)`;
+                    }
+                } else if (op === "findMedian()") {
+                    const n = nums.length;
+                    let med;
+                    if (n === 0) med = "None";
+                    else if (n % 2 === 1) med = nums[Math.floor(n/2)];
+                    else med = (nums[n/2 - 1] + nums[n/2]) / 2;
+                    action += ` → ${med}`;
+                }
+
+                const n = nums.length;
+                let med = null;
+                if (n > 0) {
+                    if (n % 2 === 1) med = nums[Math.floor(n/2)];
+                    else med = (nums[n/2 - 1] + nums[n/2]) / 2;
+                }
+
+                steps.push({
+                    panel: `<b>${op}</b><br>${action}`,
+                    log: action,
+                    list: [...nums],
+                    median: med
+                });
+            }
+        }
+
+        function renderList(lst) {
+            const container = document.getElementById('list-vis');
+            container.innerHTML = '';
+            lst.forEach(val => {
+                const tile = document.createElement('div');
+                tile.className = 'tile';
+                tile.textContent = val;
+                container.appendChild(tile);
+            });
+            document.getElementById('len-val').textContent = lst.length;
+        }
+
+        function renderStep(idx) {
+            stepIdx = idx;
+            const step = steps[idx];
+            if (!step) return;
+
+            document.getElementById('action').innerHTML = step.panel || '—';
+            renderList(step.list);
+
+            const medEl = document.getElementById('median-val');
+            medEl.textContent = step.median !== null ? step.median : '—';
+
+            const logEl = document.getElementById('log');
+            logEl.innerHTML = steps.slice(0, idx+1).map(s => 
+                `<div style="margin:5px 0;">${s.log}</div>`
+            ).join('');
+            logEl.scrollTop = logEl.scrollHeight;
+        }
+
+        function nextStep() {
+            if (stepIdx < steps.length - 1) renderStep(stepIdx + 1);
+            else pause();
+        }
+
+        function prevStep() {
+            if (stepIdx > 0) renderStep(stepIdx - 1);
+        }
+
+        function resetSim() {
+            pause();
+            stepIdx = 0;
+            renderStep(0);
+        }
+
+        function togglePlay() {
+            const btn = document.getElementById('play-btn');
+            if (isPlaying) {
+                pause();
+            } else {
+                isPlaying = true;
+                btn.textContent = '❚❚ Pause';
+                timer = setInterval(() => {
+                    if (stepIdx < steps.length - 1) nextStep();
+                    else pause();
+                }, delays[document.getElementById('speed').value]);
+            }
+        }
+
+        function pause() {
+            clearInterval(timer);
+            isPlaying = false;
+            document.getElementById('play-btn').textContent = '▶ Play';
+        }
+
+        function loadExample(n) {
+            generateSteps(examples[n]);
+            resetSim();
+        }
+
+        window.onload = () => loadExample(0);
+    </script>
+</body>
+</html>

@@ -1,0 +1,502 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Diophantine Equation - Visualization</title>
+    <style>
+        :root {
+            --bg-page: #0d1117;
+            --bg-surface: #161b22;
+            --bg-input: #0d1117;
+            --border-main: #30363d;
+            --btn-bg: #21262d;
+            --btn-hover: #2d333b;
+            --text-main: #c9d1d9;
+            --text-dim: #8b949e;
+            --accent-orange: #e3b341;
+            --accent-blue: #388bfd;
+            --accent-green: #3fb950;
+            --accent-red: #f85149;
+            --accent-purple: #a371f7;
+        }
+
+        * { box-sizing: border-box; }
+        body {
+            background-color: var(--bg-page);
+            color: var(--text-main);
+            font-family: system-ui, -apple-system, sans-serif;
+            margin: 0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            min-height: 100vh;
+            padding-bottom: 40px;
+        }
+
+        /* INPUT BAR */
+        .input-bar {
+            width: 100%;
+            background-color: var(--bg-surface);
+            padding: 12px 16px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 8px;
+            border-bottom: 1px solid var(--border-main);
+            flex-wrap: wrap;
+        }
+        label.ui-label { font-family: 'Courier New', monospace; font-size: 13px; color: var(--text-dim); }
+        input[type="number"] {
+            background: var(--bg-input);
+            border: 1px solid var(--border-main);
+            color: var(--text-main);
+            height: 32px;
+            border-radius: 6px;
+            padding: 0 10px;
+            width: 80px;
+            font-size: 13px;
+        }
+
+        button {
+            height: 32px; border-radius: 6px; padding: 0 14px; background: var(--btn-bg);
+            border: 1px solid var(--border-main); color: var(--text-main); font-size: 13px; cursor: pointer;
+            transition: background 0.2s ease;
+        }
+        button:hover { background: var(--btn-hover); }
+
+        /* VISUALIZATION */
+        .visual-container { margin-top: 30px; display: flex; flex-direction: column; align-items: center; gap: 20px; width: 100%; }
+        .equation-box {
+            font-family: 'Courier New', monospace;
+            font-size: 24px;
+            font-weight: 600;
+            background: var(--bg-surface);
+            padding: 12px 24px;
+            border-radius: 8px;
+            border: 1px solid var(--border-main);
+        }
+
+        .solutions-wrapper {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 12px;
+            justify-content: center;
+            max-width: 900px;
+            min-height: 120px;
+        }
+
+        .solution-tile {
+            background: #21262d;
+            border: 2px solid var(--border-main);
+            border-radius: 8px;
+            padding: 12px 18px;
+            font-family: 'Courier New', monospace;
+            font-size: 18px;
+            min-width: 110px;
+            text-align: center;
+            transition: all 0.3s ease;
+        }
+
+        .solution-tile.candidate {
+            border-color: var(--accent-orange);
+            color: var(--accent-orange);
+            transform: scale(1.08);
+            box-shadow: 0 0 15px rgba(227, 179, 65, 0.5);
+        }
+
+        .solution-tile.winning {
+            border-color: var(--accent-green);
+            color: var(--accent-green);
+            transform: scale(1.12);
+            box-shadow: 0 0 15px var(--accent-green);
+        }
+
+        .solution-tile.failed {
+            border-color: var(--accent-red);
+            color: var(--accent-red);
+            opacity: 0.6;
+        }
+
+        /* PANEL */
+        .action-panel {
+            margin-top: 30px;
+            background: var(--bg-surface);
+            border: 1px solid var(--border-main);
+            border-radius: 6px;
+            padding: 16px 24px;
+            width: 720px;
+            text-align: center;
+            font-family: monospace;
+            min-height: 90px;
+            font-size: 15px;
+            line-height: 1.6;
+        }
+
+        /* INFO PANEL */
+        .info-panel {
+            margin-top: 15px;
+            display: flex;
+            gap: 12px;
+            flex-wrap: wrap;
+            justify-content: center;
+        }
+        .info-cell {
+            background: var(--bg-surface);
+            border: 1px solid var(--border-main);
+            border-radius: 6px;
+            padding: 10px 16px;
+            min-width: 130px;
+            text-align: center;
+        }
+        .info-label { font-size: 11px; color: var(--text-dim); }
+        .info-value { font-family: monospace; font-size: 17px; font-weight: 700; }
+
+        /* RESULT */
+        .result-display {
+            margin-top: 20px;
+            text-align: center;
+        }
+        #res-val {
+            font-size: 22px;
+            font-family: monospace;
+            font-weight: bold;
+            transition: all 0.4s;
+        }
+        .pop { animation: popAnim 500ms ease; color: var(--accent-green) !important; font-size: 28px !important; }
+        .pop-false { animation: popAnim 500ms ease; color: var(--accent-red) !important; font-size: 28px !important; }
+
+        @keyframes popAnim { 0%{transform:scale(1)} 50%{transform:scale(1.2)} 100%{transform:scale(1)} }
+
+        /* CONTROLS & STATUS */
+        .status-bar { margin-top: 10px; font-size: 13px; color: var(--text-dim); height: 1.4em; }
+        .controls {
+            margin-top: 25px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            flex-wrap: wrap;
+            justify-content: center;
+        }
+        input[type="range"] { accent-color: var(--accent-blue); width: 120px; }
+
+        .legend {
+            margin-top: 15px;
+            display: flex;
+            gap: 20px;
+            flex-wrap: wrap;
+            justify-content: center;
+            font-size: 12px;
+            color: var(--text-dim);
+        }
+        .legend-item { display: flex; align-items: center; gap: 6px; }
+
+        .log-panel {
+            margin-top: 20px;
+            background: var(--bg-page);
+            border: 1px solid var(--border-main);
+            border-radius: 6px;
+            padding: 14px 18px;
+            width: 720px;
+            max-width: 95%;
+            height: 140px;
+            overflow-y: auto;
+            font-family: 'Courier New', monospace;
+            font-size: 13px;
+            line-height: 1.5;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="input-bar">
+        <label class="ui-label">a =</label>
+        <input type="number" id="a-input" value="2">
+        <label class="ui-label">b =</label>
+        <input type="number" id="b-input" value="3">
+        <label class="ui-label">c =</label>
+        <input type="number" id="c-input" value="10">
+        <button onclick="loadCustom()">Load</button>
+        <button onclick="loadExample(2,3,10)">Ex 1 (2x+3y=10)</button>
+        <button onclick="loadExample(1,1,5)">Ex 2 (x+y=5)</button>
+    </div>
+
+    <div class="visual-container">
+        <div class="equation-box" id="equation-display">2x + 3y = 10</div>
+        <div class="solutions-wrapper" id="solutions-container"></div>
+    </div>
+
+    <div class="action-panel" id="main-panel">—</div>
+
+    <div class="info-panel">
+        <div class="info-cell">
+            <span class="info-label">gcd(a,b)</span>
+            <span class="info-value" id="val-gcd" style="color:var(--accent-purple);">—</span>
+        </div>
+        <div class="info-cell">
+            <span class="info-label">Current x</span>
+            <span class="info-value" id="val-x" style="color:var(--accent-orange);">—</span>
+        </div>
+        <div class="info-cell">
+            <span class="info-label">Computed y</span>
+            <span class="info-value" id="val-y" style="color:var(--accent-blue);">—</span>
+        </div>
+        <div class="info-cell">
+            <span class="info-label">Solutions Found</span>
+            <span class="info-value" id="val-count" style="color:var(--accent-green);">0</span>
+        </div>
+    </div>
+
+    <div class="result-display">
+        <span class="ui-label">Solutions exist?</span><br>
+        <span id="res-val">—</span>
+    </div>
+
+    <div class="status-bar" id="status-text"></div>
+
+    <div class="controls">
+        <button onclick="reset()">↺ Reset</button>
+        <button onclick="back()">← Back</button>
+        <button onclick="togglePlay()" id="play-btn">Play</button>
+        <button onclick="next()">Next →</button>
+        <span class="ui-label" style="margin-left:10px; font-size:11px">Speed</span>
+        <input type="range" id="speed-slider" min="0" max="2" value="1">
+    </div>
+
+    <div class="legend">
+        <div class="legend-item"><span style="display:inline-block;width:12px;height:12px;background:#2a1600;border:1px solid var(--accent-orange);border-radius:3px;"></span> Testing x</div>
+        <div class="legend-item"><span style="display:inline-block;width:12px;height:12px;background:#0f2a1a;border:1px solid var(--accent-green);border-radius:3px;"></span> Valid Solution</div>
+        <div class="legend-item"><span style="display:inline-block;width:12px;height:12px;background:#2a0d0d;border:1px solid var(--accent-red);border-radius:3px;"></span> Not Integer</div>
+    </div>
+
+    <div class="log-panel" id="log"></div>
+
+    <script>
+        let a = 2, b = 3, c = 10;
+        let steps = [];
+        let stepIndex = 0;
+        let timer = null;
+        const delays = [1600, 800, 400];
+
+        function init() {
+            loadExample(2, 3, 10);
+        }
+
+        function loadExample(newA, newB, newC) {
+            a = parseInt(newA);
+            b = parseInt(newB);
+            c = parseInt(newC);
+            document.getElementById('a-input').value = a;
+            document.getElementById('b-input').value = b;
+            document.getElementById('c-input').value = c;
+            generateSteps();
+            reset();
+        }
+
+        function loadCustom() {
+            const na = parseInt(document.getElementById('a-input').value);
+            const nb = parseInt(document.getElementById('b-input').value);
+            const nc = parseInt(document.getElementById('c-input').value);
+            if (!isNaN(na) && !isNaN(nb) && !isNaN(nc)) {
+                loadExample(na, nb, nc);
+            } else {
+                alert("Please enter valid integers for a, b, and c.");
+            }
+        }
+
+        function gcd(x, y) {
+            x = Math.abs(x);
+            y = Math.abs(y);
+            while (y !== 0) {
+                let t = y;
+                y = x % y;
+                x = t;
+            }
+            return x;
+        }
+
+        function generateSteps() {
+            steps = [];
+            const equationStr = `${a}x + ${b}y = ${c}`;
+            document.getElementById('equation-display').innerText = equationStr;
+
+            // Step 0: Initialization
+            const g = gcd(a, b);
+            const hasSolution = (c % g === 0) || (g === 0 && c === 0);
+
+            steps.push({
+                type: 'init',
+                panel: `Equation: <b>${equationStr}</b><br>gcd(${a}, ${b}) = <b>${g}</b><br>Solutions exist only if gcd divides c.`,
+                statusText: `Computing gcd and checking existence...`,
+                log: `ax + by = c → ${a}x + ${b}y = ${c}\ngcd(a,b) = ${g}\nDoes ${g} divide ${c}? ${hasSolution ? 'Yes' : 'No'}`,
+                logColor: 'var(--text-dim)',
+                solutions: [],
+                currentX: '—',
+                currentY: '—',
+                count: 0
+            });
+
+            if (!hasSolution && g !== 0) {
+                steps.push({
+                    type: 'final',
+                    panel: `<span style="color:var(--accent-red)">No integer solutions exist</span><br>Because gcd(${a},${b}) = ${g} does not divide ${c}.`,
+                    statusText: `No solutions.`,
+                    log: `Final Result: No integer solutions exist.`,
+                    logColor: 'var(--accent-red)',
+                    isTrue: false,
+                    solutions: []
+                });
+                return;
+            }
+
+            let solutions = [];
+            let bound = 15; // generous bound to show several solutions (like in examples)
+
+            for (let x = -bound; x <= bound; x++) {
+                if (b === 0) {
+                    if (a !== 0 && a * x === c) {
+                        solutions.push([x, 'any']);
+                    }
+                    continue;
+                }
+                const numerator = c - a * x;
+                if (numerator % b === 0) {
+                    const y = numerator / b;
+                    solutions.push([x, y]);
+                }
+            }
+
+            // Add checking steps
+            for (let i = 0; i < solutions.length; i++) {
+                const [x, y] = solutions[i];
+
+                steps.push({
+                    type: 'test',
+                    panel: `Testing x = <b>${x}</b><br>Compute: ${c} - ${a}×${x} = ${c - a*x}<br>${c - a*x} ÷ ${b} = <b>${y}</b> (integer)`,
+                    statusText: `x = ${x} → y = ${y}`,
+                    log: `x = ${x} → (c - a*x) = ${c - a*x}, divisible by b → y = ${y}`,
+                    logColor: 'var(--accent-orange)',
+                    solutions: solutions.slice(0, i+1),
+                    currentX: x,
+                    currentY: y,
+                    count: i + 1
+                });
+
+                steps.push({
+                    type: 'accept',
+                    panel: `<span style="color:var(--accent-green)">Valid solution found: (${x}, ${y})</span><br>Verify: ${a}×${x} + ${b}×${y} = ${a*x + b*y} = ${c}`,
+                    statusText: `Solution accepted (${x}, ${y})`,
+                    log: `✓ Solution: (${x}, ${y})`,
+                    logColor: 'var(--accent-green)',
+                    solutions: solutions.slice(0, i+1),
+                    currentX: x,
+                    currentY: y,
+                    count: i + 1
+                });
+            }
+
+            // Final step
+            steps.push({
+                type: 'final',
+                panel: `Search complete.<br>Found <b>${solutions.length}</b> integer solutions within the search bound.`,
+                statusText: `Done. ${solutions.length} solutions found.`,
+                log: `Final Result: ${solutions.length} solutions found.`,
+                logColor: 'var(--accent-green)',
+                isTrue: true,
+                solutions: solutions,
+                currentX: '—',
+                currentY: '—',
+                count: solutions.length
+            });
+        }
+
+        function renderStep(idx) {
+            const step = steps[idx];
+            if (!step) return;
+
+            const container = document.getElementById('solutions-container');
+            container.innerHTML = '';
+
+            step.solutions.forEach(([x, y], i) => {
+                const tile = document.createElement('div');
+                tile.className = `solution-tile ${i === step.solutions.length - 1 && step.type === 'accept' ? 'winning' : 'candidate'}`;
+                tile.innerHTML = `(${x}, ${y})`;
+                container.appendChild(tile);
+            });
+
+            document.getElementById('main-panel').innerHTML = step.panel || '—';
+            document.getElementById('val-gcd').innerText = gcd(a, b);
+            document.getElementById('val-x').innerText = step.currentX;
+            document.getElementById('val-y').innerText = step.currentY;
+            document.getElementById('val-count').innerText = step.count;
+
+            const resVal = document.getElementById('res-val');
+            if (step.type === 'final') {
+                resVal.innerText = step.isTrue ? "Solutions Exist" : "No Solutions";
+                resVal.className = step.isTrue ? 'pop' : 'pop-false';
+            } else {
+                resVal.innerText = '—';
+                resVal.className = '';
+            }
+
+            document.getElementById('status-text').innerText = step.statusText || '';
+
+            // Log
+            const logPanel = document.getElementById('log');
+            logPanel.innerHTML = '';
+            for (let k = 0; k <= idx; k++) {
+                if (steps[k].log) {
+                    const line = document.createElement('div');
+                    line.style.marginBottom = '4px';
+                    line.style.whiteSpace = 'pre-wrap';
+                    if (steps[k].logColor) line.style.color = steps[k].logColor;
+                    line.innerText = steps[k].log;
+                    logPanel.appendChild(line);
+                }
+            }
+            logPanel.scrollTop = logPanel.scrollHeight;
+        }
+
+        function next() {
+            if (stepIndex < steps.length - 1) {
+                stepIndex++;
+                renderStep(stepIndex);
+            } else {
+                pause();
+            }
+        }
+
+        function back() {
+            if (stepIndex > 0) {
+                stepIndex--;
+                renderStep(stepIndex);
+            }
+        }
+
+        function reset() {
+            pause();
+            stepIndex = 0;
+            renderStep(0);
+        }
+
+        function togglePlay() {
+            const btn = document.getElementById('play-btn');
+            if (timer) {
+                pause();
+            } else {
+                btn.innerText = 'Pause';
+                if (stepIndex >= steps.length - 1) stepIndex = 0;
+                timer = setInterval(next, delays[document.getElementById('speed-slider').value]);
+            }
+        }
+
+        function pause() {
+            clearInterval(timer);
+            timer = null;
+            document.getElementById('play-btn').innerText = 'Play';
+        }
+
+        window.onload = init;
+    </script>
+</body>
+</html>

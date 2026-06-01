@@ -127,7 +127,13 @@ def create_app() -> FastAPI:
     # ── Middleware ──────────────────────────────────────────────────────
     app.add_middleware(
         CORSMiddleware,
-        allow_origins=settings.cors_origin_list,
+        allow_origins=[
+            "http://localhost:5173",
+            "http://localhost:5174",
+            "http://localhost:3000",
+            "http://127.0.0.1:5173",
+            "http://127.0.0.1:5174",
+        ],
         allow_credentials=True,
         allow_methods=["*"],
         allow_headers=["*"],
@@ -205,7 +211,7 @@ def create_app() -> FastAPI:
     @app.get("/metrics", tags=["meta"])
     def prometheus_metrics():
         """Prometheus exposition endpoint.
-
+    
         Restrict access at the ALB / security-group level in production —
         the metrics body is not authenticated here.
         """

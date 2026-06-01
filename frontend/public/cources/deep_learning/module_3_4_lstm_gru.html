@@ -1,0 +1,1107 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Module 3.4 — LSTM &amp; GRU · NeuralNet Track</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;500;600;700;800&family=DM+Mono:ital,wght@0,300;0,400;1,300&display=swap" rel="stylesheet">
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --ink:#04060d;--paper:#f0edea;--nerve:#6e28d9;--axon:#ff3a6e;
+  --dim:#5c5778;--muted:#a09ab8;--card:#0e0f1c;--card-2:#181930;
+  --line:rgba(110,40,217,0.18);--line-strong:rgba(110,40,217,0.35);
+  --good:#7fc28a;--warn:#f0c674;
+}
+html{scroll-behavior:smooth}
+body{background:var(--ink);color:var(--paper);font-family:'Syne',sans-serif;overflow-x:hidden;min-height:100vh;font-weight:400}
+canvas#brain{position:fixed;top:0;left:0;width:100%;height:100%;z-index:0;opacity:0.45;pointer-events:none}
+
+/* ============ NAV ============ */
+nav.top{position:sticky;top:0;z-index:50;display:flex;align-items:center;justify-content:space-between;padding:1.2rem 3.5rem;border-bottom:.5px solid var(--line);background:rgba(4,6,13,.78);backdrop-filter:blur(12px)}
+.logo{font-family:'DM Mono',monospace;font-size:10px;letter-spacing:.16em;color:var(--nerve);text-transform:uppercase}
+.crumb{font-family:'DM Mono',monospace;font-size:10px;letter-spacing:.13em;color:var(--dim);text-transform:uppercase}
+.crumb b{color:var(--paper);font-weight:400}
+.nav-links{display:flex;gap:2rem;list-style:none}
+.nav-links a{font-size:12px;letter-spacing:.06em;color:var(--dim);text-decoration:none;transition:color .2s}
+.nav-links a:hover{color:var(--paper)}
+
+/* ============ HERO ============ */
+.hero{position:relative;z-index:2;max-width:1100px;margin:0 auto;padding:5rem 3.5rem 3rem;display:grid;grid-template-columns:1.05fr .95fr;gap:3.5rem;align-items:center}
+.tag{display:inline-flex;align-items:center;gap:8px;font-family:'DM Mono',monospace;font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:var(--nerve);border:.5px solid rgba(110,40,217,.32);padding:5px 14px;border-radius:100px;margin-bottom:1.8rem;animation:fu .6s ease both}
+.tdot{width:5px;height:5px;background:var(--nerve);border-radius:50%;animation:bl 1.8s infinite}
+@keyframes bl{0%,100%{opacity:1}50%{opacity:.15}}
+h1.title{font-size:54px;font-weight:800;line-height:1.04;letter-spacing:-1.8px;color:var(--paper);margin-bottom:1.4rem;animation:fu .7s .1s ease both}
+h1.title .vio{color:var(--nerve)}
+h1.title .red{color:var(--axon)}
+.lede{font-size:14.5px;font-weight:400;color:var(--dim);line-height:1.85;max-width:520px;margin-bottom:2.2rem;animation:fu .7s .2s ease both}
+.lede em{color:var(--muted);font-style:italic}
+.meta-row{display:flex;gap:2rem;flex-wrap:wrap;padding-top:1.6rem;border-top:.5px solid var(--line);animation:fu .7s .3s ease both}
+.meta-item{display:flex;flex-direction:column;gap:5px}
+.meta-label{font-family:'DM Mono',monospace;font-size:9.5px;letter-spacing:.14em;text-transform:uppercase;color:var(--dim)}
+.meta-val{font-size:13px;color:var(--paper);font-weight:600;letter-spacing:-.1px}
+@keyframes fu{from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:translateY(0)}}
+
+.hero-illo{display:flex;justify-content:center;align-items:center;animation:fu .8s .2s ease both}
+.hero-illo svg{width:100%;max-width:400px;height:auto;overflow:visible}
+
+/* ============ STATS BAND ============ */
+.stats-band{position:relative;z-index:2;border-top:.5px solid var(--line);border-bottom:.5px solid var(--line)}
+.stats-in{max-width:1100px;margin:0 auto;padding:0 3.5rem;display:grid;grid-template-columns:repeat(4,1fr)}
+.si{padding:1.4rem 0;border-right:.5px solid var(--line)}
+.si:last-child{border-right:none}
+.si:not(:first-child){padding-left:1.6rem}
+.sn{font-size:24px;font-weight:800;color:var(--paper);letter-spacing:-.8px;line-height:1;margin-bottom:4px}
+.sn .u{font-size:15px;color:var(--nerve)}
+.sl{font-family:'DM Mono',monospace;font-size:10px;letter-spacing:.09em;text-transform:uppercase;color:var(--dim)}
+
+/* ============ MAIN ============ */
+main{position:relative;z-index:2;max-width:1100px;margin:0 auto;padding:5rem 3.5rem 4rem}
+section.mod-sec{margin-bottom:5rem}
+.sh{display:flex;align-items:baseline;justify-content:space-between;border-top:.5px solid var(--line);padding-top:1.2rem;margin-bottom:1.8rem}
+.st{font-family:'DM Mono',monospace;font-size:10px;letter-spacing:.13em;text-transform:uppercase;color:var(--nerve)}
+.sc{font-family:'DM Mono',monospace;font-size:10px;color:var(--dim);letter-spacing:.08em}
+
+h2.section-title{font-size:34px;font-weight:700;letter-spacing:-.8px;color:var(--paper);margin-bottom:1.4rem;line-height:1.18;max-width:760px}
+h2.section-title .vio{color:var(--nerve)}
+h2.section-title .red{color:var(--axon)}
+h3.sub{font-size:20px;font-weight:700;letter-spacing:-.3px;color:var(--paper);margin:2.5rem 0 1rem}
+h4.subsub{font-size:16px;font-weight:700;letter-spacing:-.2px;color:var(--paper);margin:1.6rem 0 .6rem}
+
+p{font-size:14.5px;line-height:1.85;color:var(--muted);margin-bottom:1.1rem;max-width:760px}
+p.dim{color:var(--dim)}
+p strong{color:var(--paper);font-weight:600}
+p em{color:var(--paper);font-style:italic;font-weight:500}
+a{color:var(--nerve);text-decoration:none;border-bottom:1px solid rgba(110,40,217,.3)}
+a:hover{border-bottom-color:var(--nerve)}
+
+ul.list{margin:0 0 1.4rem 1.4rem;max-width:760px}
+ul.list li{font-size:14.5px;line-height:1.8;color:var(--muted);margin-bottom:.55rem;padding-left:.3rem}
+ul.list li strong{color:var(--paper);font-weight:600}
+ul.list li em{color:var(--paper);font-style:italic;font-weight:500}
+
+/* ============ INLINE CODE ============ */
+code.inline{font-family:'DM Mono',monospace;font-size:13px;background:var(--card);padding:1px 7px;border-radius:3px;color:var(--axon);border:.5px solid var(--line)}
+
+/* ============ CODE BLOCK ============ */
+pre{background:var(--card);border:.5px solid var(--line);border-left:2px solid var(--nerve);padding:1.4rem 1.6rem;margin:1.6rem 0;border-radius:6px;overflow-x:auto;font-family:'DM Mono',monospace;font-size:13px;line-height:1.7;position:relative;max-width:760px}
+pre::before{content:'PYTHON';position:absolute;top:7px;right:14px;font-family:'DM Mono',monospace;font-size:9px;letter-spacing:.22em;color:var(--dim);font-weight:400}
+pre code{color:var(--paper)}
+.k{color:var(--axon);font-weight:500}
+.s{color:#a8c8d8}
+.n{color:#f0c674}
+.c{color:var(--dim);font-style:italic}
+.f{color:var(--nerve)}
+.v{color:var(--muted)}
+
+/* ============ EQUATIONS ============ */
+.eq{margin:1.4rem 0;padding:1.1rem 1.6rem;background:var(--card);border:.5px solid var(--line);border-radius:6px;font-family:'Syne',sans-serif;font-size:16px;text-align:center;color:var(--paper);line-height:1.65;position:relative;max-width:760px}
+.eq em{font-style:italic;color:var(--paper)}
+.eq .num{position:absolute;right:14px;top:50%;transform:translateY(-50%);font-family:'DM Mono',monospace;font-size:10px;color:var(--dim);font-style:normal}
+
+/* ============ INSIGHT BOX ============ */
+.insight{background:var(--card);border:.5px solid var(--line-strong);border-left:2px solid var(--axon);padding:1.6rem 1.8rem;margin:2rem 0;border-radius:6px;max-width:760px}
+.insight .key{font-family:'DM Mono',monospace;font-size:10px;letter-spacing:.16em;text-transform:uppercase;color:var(--axon);font-weight:400;margin-bottom:.7rem}
+.insight p{font-size:15px;line-height:1.65;color:var(--paper);font-weight:500;margin:0;max-width:none}
+.insight p em{color:var(--nerve);font-style:italic}
+
+/* ============ PITFALL ============ */
+.pitfall{background:linear-gradient(135deg,rgba(255,58,110,.06),transparent);border:.5px solid rgba(255,58,110,.28);border-left:2px solid var(--axon);padding:1.4rem 1.6rem;margin:2rem 0;border-radius:6px;max-width:760px}
+.pitfall .lbl{font-family:'DM Mono',monospace;font-size:10px;letter-spacing:.16em;text-transform:uppercase;color:var(--axon);font-weight:400;margin-bottom:.5rem}
+.pitfall h4{font-size:15px;font-weight:700;color:var(--paper);margin-bottom:.55rem;letter-spacing:-.1px}
+.pitfall p{font-size:13.5px;color:var(--muted);line-height:1.7;margin:0;max-width:none}
+
+/* ============ CINEMATCH ============ */
+.cinematch{background:linear-gradient(135deg,rgba(110,40,217,.13) 0%,rgba(255,58,110,.05) 100%);border:.5px solid var(--line-strong);border-left:2px solid var(--nerve);padding:2rem 2rem;margin:2.5rem 0;border-radius:6px;position:relative;max-width:760px}
+.cinematch .tag-pill{position:absolute;top:-10px;left:1.6rem;background:var(--ink);color:var(--nerve);font-family:'DM Mono',monospace;font-size:10px;font-weight:400;letter-spacing:.2em;padding:0 12px;text-transform:uppercase}
+.cinematch h4{font-size:18px;font-weight:700;color:var(--paper);margin-bottom:.8rem;letter-spacing:-.2px;line-height:1.35}
+.cinematch p{color:var(--muted);font-size:13.5px;line-height:1.75;margin-bottom:.7rem;max-width:none}
+.cinematch p:last-child{margin-bottom:0}
+
+/* ============ HISTORICAL ============ */
+.historical{background:linear-gradient(135deg,rgba(160,154,184,.07),transparent);border:.5px solid rgba(160,154,184,.22);border-left:2px solid var(--muted);padding:1.8rem 2rem;margin:2.2rem 0;border-radius:6px;position:relative;max-width:760px}
+.historical .tag-pill{position:absolute;top:-10px;left:1.6rem;background:var(--ink);color:var(--muted);font-family:'DM Mono',monospace;font-size:10px;font-weight:400;letter-spacing:.2em;padding:0 12px;text-transform:uppercase}
+.historical h4{font-size:18px;font-weight:700;color:var(--paper);margin-bottom:.8rem;letter-spacing:-.2px;line-height:1.35}
+.historical p{color:var(--muted);font-size:13.5px;line-height:1.75;margin-bottom:.7rem;max-width:none}
+.historical p:last-child{margin-bottom:0}
+
+/* ============ DIAGRAM ============ */
+.diagram-wrap{margin:2.4rem 0;max-width:760px}
+.diagram-wrap svg{width:100%;height:auto;display:block;background:var(--card);border:.5px solid var(--line);padding:1.2rem;border-radius:8px}
+.caption{font-family:'DM Mono',monospace;font-size:11px;color:var(--dim);margin-top:.8rem;text-align:center;line-height:1.6}
+.caption b{color:var(--paper);font-weight:600}
+.caption em{color:var(--nerve);font-style:italic}
+
+/* ============ TABLE ============ */
+table{width:100%;border-collapse:collapse;margin:1.8rem 0;font-family:'DM Mono',monospace;font-size:12.5px;background:var(--card);border:.5px solid var(--line);border-radius:8px;overflow:hidden;max-width:760px}
+th,td{padding:.85rem 1.1rem;text-align:left;border-bottom:.5px solid var(--line)}
+th{font-family:'DM Mono',monospace;font-weight:400;font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:var(--nerve);background:var(--card-2)}
+td{color:var(--paper)}
+tr:last-child td{border-bottom:none}
+
+/* ============ CALC BOX ============ */
+.calcbox{background:var(--card);border:.5px solid var(--line);border-radius:8px;padding:1.5rem 1.7rem;margin:1.8rem 0;max-width:760px}
+.calcbox .ch{font-family:'DM Mono',monospace;font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:var(--nerve);margin-bottom:1rem}
+.calcbox .step{position:relative;padding:.7rem 0 .7rem 2.8rem;border-top:.5px solid var(--line);font-size:13.5px;color:var(--paper);line-height:1.65}
+.calcbox .step:first-of-type{border-top:none}
+.calcbox .step::before{content:attr(data-s);position:absolute;left:0;top:.85rem;font-family:'DM Mono',monospace;font-size:10px;color:var(--axon);letter-spacing:.08em}
+.calcbox .step .val{display:block;font-family:'DM Mono',monospace;font-size:12px;color:var(--muted);margin-top:.4rem;line-height:1.7}
+.calcbox .step .val strong{color:var(--axon);font-weight:600}
+.calcbox .step em{color:var(--nerve);font-style:italic}
+
+/* ============ MCQ ============ */
+.mcq{background:var(--card);border:.5px solid var(--line-strong);border-left:2px solid var(--axon);padding:1.6rem 1.8rem;margin:2.2rem 0;border-radius:6px;max-width:760px}
+.mcq .mh{font-family:'DM Mono',monospace;font-size:10px;letter-spacing:.16em;text-transform:uppercase;font-weight:400;color:var(--axon);margin-bottom:1rem;display:flex;justify-content:space-between;align-items:center}
+.mcq .mh .qnum{font-family:'DM Mono',monospace;color:var(--dim);font-size:10px;letter-spacing:.1em;font-weight:400}
+.mcq .mq{font-size:16px;font-weight:600;color:var(--paper);line-height:1.55;margin-bottom:1.1rem;letter-spacing:-.1px}
+.mcq .mq em{color:var(--nerve);font-style:italic}
+.mcq .mq code{font-family:'DM Mono',monospace;font-size:14px;background:var(--ink);padding:1px 7px;border-radius:3px;color:var(--axon);border:.5px solid var(--line);font-weight:400}
+.mcq .opts{display:flex;flex-direction:column;gap:.55rem}
+.mcq .opt{background:var(--card-2);border:.5px solid var(--line);padding:.85rem 1.1rem;border-radius:5px;cursor:pointer;font-family:'Syne',sans-serif;font-size:14px;color:var(--muted);transition:all .15s;display:flex;align-items:flex-start;gap:.85rem;line-height:1.6}
+.mcq .opt:hover{border-color:var(--line-strong);background:var(--card)}
+.mcq .opt .key{font-family:'DM Mono',monospace;font-size:11px;color:var(--dim);font-weight:400;min-width:16px;margin-top:2px;letter-spacing:.06em}
+.mcq .opt .text{flex:1}
+.mcq .opt .text em{color:var(--paper);font-style:italic}
+.mcq .opt code{font-family:'DM Mono',monospace;font-size:12.5px;background:var(--ink);padding:1px 6px;border-radius:3px;color:var(--axon);border:.5px solid var(--line)}
+.mcq .opt.correct{border-color:var(--good);background:linear-gradient(90deg,rgba(127,194,138,.10),transparent);color:var(--paper)}
+.mcq .opt.correct .key{color:var(--good)}
+.mcq .opt.wrong{border-color:var(--axon);background:linear-gradient(90deg,rgba(255,58,110,.10),transparent);color:var(--paper)}
+.mcq .opt.wrong .key{color:var(--axon)}
+.mcq .opt.disabled{cursor:default}
+.mcq .opt.disabled:hover{border-color:var(--line);background:var(--card-2)}
+.mcq .opt.correct.disabled:hover{border-color:var(--good);background:linear-gradient(90deg,rgba(127,194,138,.10),transparent)}
+.mcq .opt.wrong.disabled:hover{border-color:var(--axon);background:linear-gradient(90deg,rgba(255,58,110,.10),transparent)}
+.mcq .feedback{margin-top:1.1rem;padding:1rem 1.2rem;background:var(--ink);border-left:2px solid var(--nerve);border-radius:4px;font-family:'Syne',sans-serif;font-size:13.5px;line-height:1.75;color:var(--muted);display:none}
+.mcq .feedback.show{display:block}
+.mcq .feedback .verdict{font-family:'DM Mono',monospace;font-size:10px;letter-spacing:.18em;text-transform:uppercase;font-weight:400;margin-bottom:.45rem;display:block}
+.mcq .feedback.right .verdict{color:var(--good)}
+.mcq .feedback.wrong .verdict{color:var(--axon)}
+.mcq .feedback strong{color:var(--paper);font-weight:600}
+.mcq .feedback em{color:var(--nerve);font-style:italic}
+.mcq .feedback code{font-family:'DM Mono',monospace;font-size:12px;background:var(--card);padding:1px 6px;border-radius:3px;color:var(--axon);border:.5px solid var(--line)}
+
+/* ============ CHECKPOINT ============ */
+.checkpoint{background:var(--card);border:.5px solid var(--line-strong);padding:2rem 2rem;margin:2.5rem 0;border-radius:12px;max-width:760px}
+.checkpoint h4{font-family:'DM Mono',monospace;font-size:10px;letter-spacing:.16em;text-transform:uppercase;color:var(--axon);font-weight:400;margin-bottom:1.4rem}
+.checkpoint ol{list-style:none;counter-reset:item}
+.checkpoint li{counter-increment:item;padding:1rem 0 1rem 3.2rem;border-bottom:.5px solid var(--line);position:relative;font-size:14.5px;font-weight:500;color:var(--paper);line-height:1.6;letter-spacing:-.05px}
+.checkpoint li:last-child{border-bottom:none}
+.checkpoint li::before{content:counter(item,decimal-leading-zero);position:absolute;left:0;top:1.05rem;font-family:'DM Mono',monospace;font-size:11px;color:var(--nerve);letter-spacing:.08em}
+
+/* ============ FOOTER NAV ============ */
+.footnav{position:relative;z-index:2;max-width:1100px;margin:0 auto;padding:3rem 3.5rem;display:flex;justify-content:space-between;align-items:center;gap:1.5rem;flex-wrap:wrap;border-top:.5px solid var(--line)}
+.footnav a{border:none;text-decoration:none;display:block;transition:transform .2s}
+.footnav a:hover{transform:translateY(-2px)}
+.footnav .lbl{font-family:'DM Mono',monospace;font-size:10px;letter-spacing:.16em;text-transform:uppercase;color:var(--dim);margin-bottom:.4rem}
+.footnav .ttl{font-size:18px;color:var(--paper);font-weight:700;letter-spacing:-.3px}
+.footnav .prev .ttl::before{content:'← '}
+.footnav .next{text-align:right}
+.footnav .next .ttl{color:var(--nerve)}
+.footnav .next .ttl::after{content:' →'}
+
+footer.foot{position:relative;z-index:2;max-width:1100px;margin:0 auto;padding:1.8rem 3.5rem;display:flex;align-items:center;justify-content:space-between;gap:1rem;flex-wrap:wrap}
+.fl{font-family:'DM Mono',monospace;font-size:11px;color:var(--dim)}
+.fr{display:flex;align-items:center;gap:7px;font-family:'DM Mono',monospace;font-size:11px;color:var(--dim)}
+.fd{width:6px;height:6px;background:var(--nerve);border-radius:50%;animation:bl 2s infinite}
+
+/* ============ REVEAL ============ */
+.reveal{opacity:0;transform:translateY(20px);transition:opacity .9s cubic-bezier(.2,.7,.2,1),transform .9s cubic-bezier(.2,.7,.2,1)}
+.reveal.on{opacity:1;transform:translateY(0)}
+
+/* ============ RESPONSIVE ============ */
+@media (max-width:900px){
+  nav.top{padding:1rem 1.5rem;flex-wrap:wrap;gap:.8rem}
+  .nav-links{display:none}
+  .hero{grid-template-columns:1fr;padding:3rem 1.5rem 2rem;gap:2rem}
+  h1.title{font-size:38px;letter-spacing:-1.2px}
+  .stats-in{padding:0 1.5rem;grid-template-columns:repeat(2,1fr)}
+  .si{border-right:none;border-bottom:.5px solid var(--line)}
+  .si:nth-child(odd){border-right:.5px solid var(--line)}
+  .si:not(:first-child){padding-left:1rem}
+  .si:nth-child(odd):not(:first-child){padding-left:0}
+  main{padding:3rem 1.5rem 2rem}
+  h2.section-title{font-size:26px}
+  pre{padding:1rem 1.1rem;font-size:12px}
+  .eq{font-size:14px;padding:.9rem 1.1rem}
+  .footnav,footer.foot{padding-left:1.5rem;padding-right:1.5rem}
+  table{font-size:11.5px}
+  th,td{padding:.6rem .7rem}
+}
+
+
+/* ============ LEARNING RESOURCES ============ */
+.resources-section{max-width:860px;margin:5rem auto 4rem}
+.resources-kicker{display:flex;justify-content:center;margin-bottom:1.6rem}
+.resources-kicker span{display:inline-flex;align-items:center;gap:8px;font-family:'DM Mono',monospace;font-size:10px;letter-spacing:.18em;text-transform:uppercase;color:var(--nerve);border:.5px solid var(--line-strong);border-radius:100px;padding:6px 16px;background:rgba(110,40,217,.06)}
+.resources-kicker span::before{content:'';width:6px;height:6px;border-radius:50%;background:var(--nerve);box-shadow:0 0 12px var(--nerve)}
+.resources-title{text-align:center;font-size:46px;font-weight:800;letter-spacing:-1.4px;line-height:1.05;color:var(--paper);margin-bottom:.8rem}
+.resources-title .vio{color:var(--nerve)}
+.resources-title .red{color:var(--axon)}
+.resources-sub{text-align:center;color:var(--muted);font-size:14px;line-height:1.65;margin:0 auto 2.8rem;max-width:560px}
+.resource-card{background:linear-gradient(135deg,rgba(14,15,28,.98),rgba(10,11,24,.96));border:.5px solid var(--line-strong);border-radius:12px;padding:1.6rem 1.7rem;margin:1rem auto;box-shadow:0 18px 50px rgba(0,0,0,.18);max-width:760px;position:relative;overflow:hidden}
+.resource-card::after{content:'';position:absolute;inset:0;border-radius:12px;pointer-events:none;border-right:.5px solid rgba(255,58,110,.45)}
+.resource-head{display:grid;grid-template-columns:34px 1fr;gap:12px;align-items:center;margin-bottom:1rem}
+.resource-icon{width:34px;height:34px;border-radius:7px;display:flex;align-items:center;justify-content:center;font-family:'DM Mono',monospace;font-size:13px;border:.5px solid var(--line-strong);background:rgba(110,40,217,.12);color:var(--nerve)}
+.resource-card.progressive .resource-icon{background:rgba(110,40,217,.10);color:var(--nerve)}
+.resource-card.canonical .resource-icon{background:rgba(255,58,110,.10);color:var(--axon);border-color:rgba(255,58,110,.28)}
+.resource-card.github .resource-icon{background:rgba(240,198,116,.08);color:var(--warn);border-color:rgba(240,198,116,.25)}
+.resource-type{font-size:16px;font-weight:700;color:var(--paper);letter-spacing:-.2px;margin-bottom:2px}
+.resource-desc{font-size:12px;color:var(--dim);line-height:1.5;margin:0;max-width:none}
+.resource-item{padding:.6rem 0;border-top:.5px solid var(--line)}
+.resource-item:first-of-type{border-top:none;padding-top:0}
+.resource-name{font-size:13.5px;font-weight:700;color:var(--nerve);line-height:1.45;margin-bottom:.28rem}
+.resource-card.canonical .resource-name{color:var(--axon)}
+.resource-card.github .resource-name{color:var(--warn)}
+.resource-note{font-size:12.5px;color:var(--muted);line-height:1.65;margin:0;max-width:none}
+.resource-actions{display:flex;gap:.7rem;flex-wrap:wrap;margin-top:1rem}
+.resource-btn{display:inline-flex;align-items:center;gap:8px;font-family:'DM Mono',monospace;font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:var(--paper);border:.5px solid var(--line-strong);border-radius:7px;padding:10px 14px;background:rgba(110,40,217,.08);text-decoration:none;transition:transform .18s,border-color .18s,background .18s}
+.resource-btn::before{content:'>';font-size:12px;color:var(--nerve)}
+.resource-btn:hover{transform:translateY(-1px);border-color:var(--nerve);background:rgba(110,40,217,.15)}
+@media (max-width:900px){.resources-section{margin:3rem 0}.resources-title{font-size:32px;letter-spacing:-.8px}.resource-card{padding:1.25rem}.resource-head{grid-template-columns:30px 1fr}.resource-icon{width:30px;height:30px}.resource-actions{flex-direction:column}.resource-btn{justify-content:center}}
+
+</style>
+</head>
+<body>
+
+<canvas id="brain"></canvas>
+
+<nav class="top">
+  <div class="logo">// NeuralNet · Deep Learning</div>
+  <ul class="nav-links">
+    <li><a href="#">Curriculum</a></li>
+    <li><a href="#">Labs</a></li>
+    <li><a href="#">Resources</a></li>
+    <li><a href="#">Community</a></li>
+  </ul>
+  <div class="crumb">Phase 3 · <b>Module 3.4</b></div>
+</nav>
+
+<header class="hero">
+  <div>
+    <div class="tag"><span class="tdot"></span>Phase 3 — Specialized Architectures · Module 3.4</div>
+    <h1 class="title">LSTM &amp;<br><span class="vio">GRU</span>.<br>Gating saves<br>the <span class="red">RNN</span>.</h1>
+    <p class="lede">
+      Plain RNNs have a beautiful idea — one cell, applied repeatedly — crippled by vanishing gradients. The fix, published by Hochreiter and Schmidhuber in 1997 and not fully appreciated for fifteen years, is <em>gating</em>: small learned networks at each step that decide what to remember, what to forget, and what to expose. The resulting architectures — LSTM and its simpler cousin GRU — were the workhorse of sequence modeling from 2014 until transformers replaced them for large-scale language.
+    </p>
+    <div class="meta-row">
+      <div class="meta-item"><span class="meta-label">Phase</span><span class="meta-val">3 — Specialized</span></div>
+      <div class="meta-item"><span class="meta-label">Module</span><span class="meta-val">3.4</span></div>
+      <div class="meta-item"><span class="meta-label">Read time</span><span class="meta-val">≈ 40 minutes</span></div>
+      <div class="meta-item"><span class="meta-label">Covers</span><span class="meta-val">Gates · LSTM · GRU</span></div>
+    </div>
+  </div>
+
+  <div class="hero-illo">
+    <svg viewBox="0 0 400 400" xmlns="http://www.w3.org/2000/svg" aria-label="LSTM cell — gated information flow">
+      <defs>
+        <radialGradient id="hg" cx="50%" cy="50%" r="60%">
+          <stop offset="0%" stop-color="#6e28d9" stop-opacity="0.28"/>
+          <stop offset="100%" stop-color="#6e28d9" stop-opacity="0"/>
+        </radialGradient>
+        <linearGradient id="hl" x1="0%" y1="0%" x2="100%" y2="0%">
+          <stop offset="0%" stop-color="#6e28d9" stop-opacity=".6"/>
+          <stop offset="100%" stop-color="#ff3a6e" stop-opacity=".6"/>
+        </linearGradient>
+      </defs>
+      <circle cx="200" cy="200" r="180" fill="url(#hg)"/>
+
+      <!-- outer cell box -->
+      <rect x="60" y="120" width="280" height="200" fill="none" stroke="rgba(110,40,217,0.45)" stroke-width="1" rx="8" stroke-dasharray="3,3"/>
+      <text x="72" y="112" font-family="DM Mono,monospace" font-size="9" fill="#6e28d9" letter-spacing="1.5">LSTM CELL</text>
+
+      <!-- cell-state highway (top) -->
+      <line x1="40" y1="150" x2="360" y2="150" stroke="url(#hl)" stroke-width="2.5"/>
+      <text x="40" y="138" font-family="DM Mono,monospace" font-size="9" fill="#f0c674" letter-spacing="1">c_{t-1}</text>
+      <text x="345" y="138" font-family="DM Mono,monospace" font-size="9" fill="#f0c674" letter-spacing="1">c_t</text>
+
+      <!-- forget gate (sigma, nerve) -->
+      <g id="gForget">
+        <circle cx="130" cy="150" r="16" fill="#0e0f1c" stroke="#6e28d9" stroke-width="1.4"/>
+        <text x="130" y="155" text-anchor="middle" font-family="Syne" font-size="14" fill="#6e28d9" font-style="italic">×</text>
+        <line x1="130" y1="220" x2="130" y2="166" stroke="#6e28d9" stroke-width="1"/>
+        <rect x="105" y="220" width="50" height="26" fill="#0e0f1c" stroke="#6e28d9" stroke-width="1.2" rx="3"/>
+        <text x="130" y="237" text-anchor="middle" font-family="DM Mono,monospace" font-size="10" fill="#6e28d9">σ f</text>
+      </g>
+
+      <!-- input gate (sigma, nerve) + candidate (tanh, axon) -->
+      <g id="gInput">
+        <circle cx="210" cy="150" r="16" fill="#0e0f1c" stroke="#ff3a6e" stroke-width="1.4"/>
+        <text x="210" y="155" text-anchor="middle" font-family="Syne" font-size="14" fill="#ff3a6e">+</text>
+
+        <!-- merge × -->
+        <circle cx="210" cy="200" r="11" fill="#0e0f1c" stroke="#a09ab8" stroke-width="1.2"/>
+        <text x="210" y="204" text-anchor="middle" font-family="Syne" font-size="11" fill="#a09ab8">×</text>
+        <line x1="210" y1="166" x2="210" y2="189" stroke="#a09ab8" stroke-width="1"/>
+
+        <!-- input sigma -->
+        <rect x="170" y="240" width="50" height="26" fill="#0e0f1c" stroke="#6e28d9" stroke-width="1.2" rx="3"/>
+        <text x="195" y="257" text-anchor="middle" font-family="DM Mono,monospace" font-size="10" fill="#6e28d9">σ i</text>
+        <line x1="195" y1="240" x2="205" y2="211" stroke="#6e28d9" stroke-width="1"/>
+
+        <!-- candidate tanh -->
+        <rect x="230" y="240" width="50" height="26" fill="#0e0f1c" stroke="#ff3a6e" stroke-width="1.2" rx="3"/>
+        <text x="255" y="257" text-anchor="middle" font-family="DM Mono,monospace" font-size="10" fill="#ff3a6e">tanh g</text>
+        <line x1="255" y1="240" x2="215" y2="211" stroke="#ff3a6e" stroke-width="1"/>
+      </g>
+
+      <!-- output gate (sigma, nerve) + tanh(c) -->
+      <g id="gOut">
+        <circle cx="300" cy="150" r="3" fill="#f0c674"/>
+        <line x1="300" y1="150" x2="300" y2="240" stroke="#f0c674" stroke-width="1" stroke-dasharray="3,3"/>
+        <rect x="275" y="240" width="50" height="26" fill="#0e0f1c" stroke="#ff3a6e" stroke-width="1.2" rx="3"/>
+        <text x="300" y="257" text-anchor="middle" font-family="DM Mono,monospace" font-size="10" fill="#ff3a6e">tanh</text>
+
+        <!-- merge × -->
+        <circle cx="300" cy="300" r="11" fill="#0e0f1c" stroke="#a09ab8" stroke-width="1.2"/>
+        <text x="300" y="304" text-anchor="middle" font-family="Syne" font-size="11" fill="#a09ab8">×</text>
+        <line x1="300" y1="266" x2="300" y2="289" stroke="#a09ab8" stroke-width="1"/>
+
+        <!-- output sigma -->
+        <rect x="225" y="290" width="50" height="26" fill="#0e0f1c" stroke="#6e28d9" stroke-width="1.2" rx="3"/>
+        <text x="250" y="307" text-anchor="middle" font-family="DM Mono,monospace" font-size="10" fill="#6e28d9">σ o</text>
+        <line x1="275" y1="303" x2="289" y2="301" stroke="#6e28d9" stroke-width="1"/>
+      </g>
+
+      <!-- inputs from left bottom -->
+      <text x="50" y="358" font-family="DM Mono,monospace" font-size="9" fill="#6e28d9" letter-spacing="1">x_t</text>
+      <text x="80" y="358" font-family="DM Mono,monospace" font-size="9" fill="#a09ab8" letter-spacing="1">· h_{t-1}</text>
+      <line x1="80" y1="345" x2="80" y2="328" stroke="#6e28d9" stroke-opacity=".5" stroke-width="0.8"/>
+
+      <!-- h_t out -->
+      <line x1="311" y1="300" x2="360" y2="300" stroke="#f0c674" stroke-width="1.5"/>
+      <text x="350" y="290" font-family="DM Mono,monospace" font-size="9" fill="#f0c674" letter-spacing="1">h_t</text>
+
+      <!-- legend bracket -->
+      <line x1="60" y1="380" x2="340" y2="380" stroke="#6e28d9" stroke-opacity=".35" stroke-width="1"/>
+      <line x1="60" y1="376" x2="60" y2="384" stroke="#6e28d9" stroke-opacity=".35"/>
+      <line x1="340" y1="376" x2="340" y2="384" stroke="#6e28d9" stroke-opacity=".35"/>
+      <text x="200" y="396" text-anchor="middle" font-family="DM Mono,monospace" font-size="9" fill="#a09ab8" letter-spacing="1.5">GATED INFORMATION FLOW</text>
+    </svg>
+  </div>
+</header>
+
+<div class="stats-band">
+  <div class="stats-in">
+    <div class="si"><div class="sn">06<span class="u"> sec</span></div><div class="sl">Sections</div></div>
+    <div class="si"><div class="sn">40<span class="u"> min</span></div><div class="sl">Read time</div></div>
+    <div class="si"><div class="sn">03</div><div class="sl">LSTM gates</div></div>
+    <div class="si"><div class="sn">1997</div><div class="sl">Hochreiter &amp; Schmidhuber</div></div>
+  </div>
+</div>
+
+<main>
+
+<!-- ============ SECTION 1 ============ -->
+<section class="mod-sec">
+  <div class="sh"><span class="st">Section 01 — The gating idea</span><span class="sc">01 / 06</span></div>
+  <h2 class="section-title">The <span class="vio">gating</span> idea.</h2>
+
+  <p>Go back to where the plain RNN failed. The issue was the one-step Jacobian <em>∂h<sub>s</sub> / ∂h<sub>s−1</sub> = diag(1 − h<sub>s</sub><sup>2</sup>) · W<sub>hh</sub></em>. Multiply many of these together for long sequences and gradients vanish (or explode). The state update was <em>purely multiplicative</em> — each new state is a function of the weighted previous state — which is exactly what causes the exponential decay.</p>
+
+  <p>The insight behind LSTM: what if part of the state were updated <em>additively</em> — where <em>h<sub>t</sub></em> = <em>h<sub>t−1</sub></em> + (something small) — so the Jacobian has an identity contribution, just like ResNet's skip connections had for CNNs? Then gradients flowing back through the state wouldn't have to multiply by a potentially-shrinking matrix each step.</p>
+
+  <div class="insight">
+    <div class="key">The gating principle in one sentence</div>
+    <p>Maintain a long-term memory that updates mostly by <em>addition</em> (cheap gradient flow through many steps), controlled by small learned <em>gates</em> that decide — at every timestep and every dimension — what to add, what to forget, and what to expose. The gates are the learnable part; the addition is what keeps gradients alive.</p>
+  </div>
+
+  <p>That principle generates a family of architectures. We'll cover the two that matter: the full LSTM (three gates, separate cell state) and the simpler GRU (two gates, no separate cell state).</p>
+</section>
+
+<!-- ============ SECTION 2 ============ -->
+<section class="mod-sec">
+  <div class="sh"><span class="st">Section 02 — The LSTM cell</span><span class="sc">02 / 06</span></div>
+  <h2 class="section-title">The <span class="red">LSTM</span> cell.</h2>
+
+  <p>An LSTM cell maintains <em>two</em> things at each timestep, not just one. Alongside the hidden state <em>h<sub>t</sub></em> there's a <strong>cell state</strong> <em>c<sub>t</sub></em>. The hidden state is what the network outputs at each step; the cell state is the long-term memory that carries information across many steps.</p>
+
+  <p>Three learned gates — each a small sigmoid-activated linear layer — control what happens to the cell state:</p>
+
+  <ul class="list">
+    <li><strong>Forget gate <em>f<sub>t</sub></em>.</strong> For each dimension of the cell state, outputs a number in [0, 1]: multiply the previous cell state by this to decide how much to keep.</li>
+    <li><strong>Input gate <em>i<sub>t</sub></em>.</strong> For each dimension, outputs in [0, 1]: multiply by the candidate update to decide how much new information to write.</li>
+    <li><strong>Output gate <em>o<sub>t</sub></em>.</strong> For each dimension, outputs in [0, 1]: multiply by the tanh of the cell state to decide how much of the cell state to expose as the hidden state this step.</li>
+  </ul>
+
+  <h3 class="sub">The equations.</h3>
+
+  <p>All gates are functions of the concatenation of the current input <em>x<sub>t</sub></em> and the previous hidden state <em>h<sub>t−1</sub></em>:</p>
+
+  <div class="eq">
+    <em>f<sub>t</sub></em> = σ(<em>W<sub>f</sub></em> · [<em>x<sub>t</sub></em>, <em>h<sub>t−1</sub></em>] + <em>b<sub>f</sub></em>)
+    <span class="num">(2.1)</span>
+  </div>
+
+  <div class="eq">
+    <em>i<sub>t</sub></em> = σ(<em>W<sub>i</sub></em> · [<em>x<sub>t</sub></em>, <em>h<sub>t−1</sub></em>] + <em>b<sub>i</sub></em>)
+    <span class="num">(2.2)</span>
+  </div>
+
+  <div class="eq">
+    <em>o<sub>t</sub></em> = σ(<em>W<sub>o</sub></em> · [<em>x<sub>t</sub></em>, <em>h<sub>t−1</sub></em>] + <em>b<sub>o</sub></em>)
+    <span class="num">(2.3)</span>
+  </div>
+
+  <p>A candidate new state <em>g<sub>t</sub></em>, computed like a plain RNN's next state:</p>
+
+  <div class="eq">
+    <em>g<sub>t</sub></em> = tanh(<em>W<sub>g</sub></em> · [<em>x<sub>t</sub></em>, <em>h<sub>t−1</sub></em>] + <em>b<sub>g</sub></em>)
+    <span class="num">(2.4)</span>
+  </div>
+
+  <p>The cell-state update — the one that matters — combines forget gate and input gate with elementwise multiplication:</p>
+
+  <div class="eq">
+    <em>c<sub>t</sub></em> = <em>f<sub>t</sub></em> ⊙ <em>c<sub>t−1</sub></em> + <em>i<sub>t</sub></em> ⊙ <em>g<sub>t</sub></em>
+    <span class="num">(2.5)</span>
+  </div>
+
+  <p>And the hidden state is the cell state "filtered" through the output gate:</p>
+
+  <div class="eq">
+    <em>h<sub>t</sub></em> = <em>o<sub>t</sub></em> ⊙ tanh(<em>c<sub>t</sub></em>)
+    <span class="num">(2.6)</span>
+  </div>
+
+  <div class="diagram-wrap">
+    <svg viewBox="0 0 700 380" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="LSTM cell">
+      <!-- outer box -->
+      <rect x="40" y="40" width="620" height="300" fill="#0e0f1c" stroke="rgba(110,40,217,0.35)" stroke-width="1" rx="6"/>
+      <text x="60" y="30" font-family="DM Mono,monospace" font-size="11" fill="#6e28d9" letter-spacing="2" font-weight="400">LSTM CELL</text>
+
+      <!-- inputs -->
+      <text x="25" y="130" text-anchor="middle" font-family="DM Mono,monospace" font-size="11" fill="#6e28d9">x_t</text>
+      <line x1="35" y1="130" x2="100" y2="130" stroke="#6e28d9" stroke-width="1.2"/>
+      <text x="25" y="190" text-anchor="middle" font-family="DM Mono,monospace" font-size="11" fill="#f0c674">h_{t-1}</text>
+      <line x1="35" y1="190" x2="100" y2="190" stroke="#f0c674" stroke-width="1.2"/>
+      <circle cx="100" cy="160" r="5" fill="#0e0f1c" stroke="#a09ab8" stroke-width="1"/>
+      <text x="100" y="164" text-anchor="middle" font-family="DM Mono,monospace" font-size="10" fill="#a09ab8">[,]</text>
+
+      <!-- gates: forget, input, candidate, output -->
+      <g transform="translate(160,80)">
+        <rect width="80" height="36" fill="#181930" stroke="#6e28d9" stroke-width="1.2" rx="3"/>
+        <text x="40" y="22" text-anchor="middle" font-family="DM Mono,monospace" font-size="11" fill="#6e28d9">σ (forget)</text>
+        <text x="95" y="22" font-family="Syne" font-style="italic" font-size="13" fill="#6e28d9">f_t</text>
+      </g>
+      <line x1="100" y1="160" x2="160" y2="98" stroke="#5c5778" stroke-width="0.8"/>
+
+      <g transform="translate(160,138)">
+        <rect width="80" height="36" fill="#181930" stroke="#6e28d9" stroke-width="1.2" rx="3"/>
+        <text x="40" y="22" text-anchor="middle" font-family="DM Mono,monospace" font-size="11" fill="#6e28d9">σ (input)</text>
+        <text x="95" y="22" font-family="Syne" font-style="italic" font-size="13" fill="#6e28d9">i_t</text>
+      </g>
+      <line x1="100" y1="160" x2="160" y2="156" stroke="#5c5778" stroke-width="0.8"/>
+
+      <g transform="translate(160,196)">
+        <rect width="80" height="36" fill="#181930" stroke="#ff3a6e" stroke-width="1.2" rx="3"/>
+        <text x="40" y="22" text-anchor="middle" font-family="DM Mono,monospace" font-size="11" fill="#ff3a6e">tanh (cand)</text>
+        <text x="95" y="22" font-family="Syne" font-style="italic" font-size="13" fill="#ff3a6e">g_t</text>
+      </g>
+      <line x1="100" y1="160" x2="160" y2="214" stroke="#5c5778" stroke-width="0.8"/>
+
+      <g transform="translate(160,256)">
+        <rect width="80" height="36" fill="#181930" stroke="#6e28d9" stroke-width="1.2" rx="3"/>
+        <text x="40" y="22" text-anchor="middle" font-family="DM Mono,monospace" font-size="11" fill="#6e28d9">σ (output)</text>
+        <text x="95" y="22" font-family="Syne" font-style="italic" font-size="13" fill="#6e28d9">o_t</text>
+      </g>
+      <line x1="100" y1="160" x2="160" y2="274" stroke="#5c5778" stroke-width="0.8"/>
+
+      <!-- cell state line at top -->
+      <text x="360" y="60" text-anchor="middle" font-family="DM Mono,monospace" font-size="11" fill="#f0c674">c_{t-1} ───────────────────────── c_t</text>
+      <line x1="280" y1="76" x2="600" y2="76" stroke="#f0c674" stroke-width="2"/>
+
+      <!-- × (forget × c_{t-1}) -->
+      <circle cx="310" cy="76" r="12" fill="#0e0f1c" stroke="#6e28d9" stroke-width="1.3"/>
+      <text x="310" y="81" text-anchor="middle" font-family="DM Mono,monospace" font-size="14" fill="#6e28d9">×</text>
+      <line x1="310" y1="98" x2="310" y2="88" stroke="#6e28d9" stroke-width="1"/>
+
+      <!-- + (add i_t*g_t) -->
+      <circle cx="420" cy="76" r="12" fill="#0e0f1c" stroke="#f0c674" stroke-width="1.3"/>
+      <text x="420" y="81" text-anchor="middle" font-family="DM Mono,monospace" font-size="14" fill="#f0c674">+</text>
+
+      <!-- i_t * g_t merger -->
+      <circle cx="380" cy="165" r="12" fill="#0e0f1c" stroke="#a09ab8" stroke-width="1.3"/>
+      <text x="380" y="170" text-anchor="middle" font-family="DM Mono,monospace" font-size="14" fill="#a09ab8">×</text>
+      <line x1="240" y1="156" x2="368" y2="165" stroke="#6e28d9" stroke-width="1"/>
+      <line x1="240" y1="214" x2="370" y2="170" stroke="#ff3a6e" stroke-width="1"/>
+      <line x1="380" y1="153" x2="420" y2="88" stroke="#f0c674" stroke-width="1"/>
+
+      <!-- tanh(c_t) path to output multiplier -->
+      <circle cx="500" cy="76" r="3" fill="#f0c674"/>
+      <line x1="500" y1="76" x2="500" y2="260" stroke="#f0c674" stroke-width="1" stroke-dasharray="3,3"/>
+      <rect x="475" y="260" width="50" height="28" fill="#181930" stroke="#ff3a6e" stroke-width="1" rx="3"/>
+      <text x="500" y="279" text-anchor="middle" font-family="DM Mono,monospace" font-size="11" fill="#ff3a6e">tanh</text>
+      <circle cx="560" cy="274" r="12" fill="#0e0f1c" stroke="#a09ab8" stroke-width="1.3"/>
+      <text x="560" y="279" text-anchor="middle" font-family="DM Mono,monospace" font-size="14" fill="#a09ab8">×</text>
+      <line x1="525" y1="274" x2="548" y2="274" stroke="#f0c674" stroke-width="1"/>
+      <line x1="240" y1="274" x2="548" y2="274" stroke="#6e28d9" stroke-width="1"/>
+
+      <!-- h_t output -->
+      <line x1="572" y1="274" x2="640" y2="274" stroke="#f0c674" stroke-width="1.5"/>
+      <text x="655" y="278" font-family="DM Mono,monospace" font-size="11" fill="#f0c674">h_t</text>
+
+      <!-- Key callout -->
+      <text x="360" y="330" text-anchor="middle" font-family="Syne" font-style="italic" font-size="12" fill="#7fc28a">the cell-state highway: additive updates → gradients flow</text>
+    </svg>
+    <div class="caption"><b>Figure 1.</b> The LSTM cell. The top warm line is the cell state <em>c</em>, updated additively: <em>c<sub>t</sub></em> = <em>f<sub>t</sub></em>·<em>c<sub>t−1</sub></em> + <em>i<sub>t</sub></em>·<em>g<sub>t</sub></em>. Because the update is addition (not matrix multiplication), gradients flow backward through <em>c</em> without multiplicative decay — as long as the forget gate <em>f<sub>t</sub></em> stays near 1, information (and gradient) passes through cleanly.</div>
+  </div>
+
+  <h3 class="sub">Worked example — one LSTM timestep by hand.</h3>
+
+  <div class="calcbox">
+    <div class="ch">Tiny LSTM: d_input=2, d_hidden=3. Processing one timestep.</div>
+    <div class="step" data-s="1.">Previous state: h_{t-1} = [0.2, −0.1, 0.5], c_{t-1} = [1.0, −0.5, 0.8]. Input: x_t = [0.7, −0.3]<span class="val">Concatenated [x_t, h_{t-1}] = [0.7, −0.3, 0.2, −0.1, 0.5] — length 5</span></div>
+    <div class="step" data-s="2.">Forget gate: f_t = σ(W_f · [x, h] + b_f). Suppose result = σ([0.8, 1.2, 0.9]) = [0.69, 0.77, 0.71]<span class="val">All near 0.7 — retains ~70% of each cell state dimension</span></div>
+    <div class="step" data-s="3.">Input gate: i_t = σ(W_i · [x, h] + b_i) = σ([−0.5, 1.5, 0.3]) = [0.38, 0.82, 0.57]<span class="val">Dimension 1 is strongly gated open — the LSTM wants to write new info there</span></div>
+    <div class="step" data-s="4.">Candidate: g_t = tanh(W_g · [x, h] + b_g) = tanh([0.3, −0.8, 1.2]) = [0.29, −0.66, 0.83]<span class="val">The proposed new content — dimension 2 is negative, dimension 3 strongly positive</span></div>
+    <div class="step" data-s="5.">Cell update: c_t = f_t ⊙ c_{t-1} + i_t ⊙ g_t
+      <span class="val">= [0.69·1.0, 0.77·(−0.5), 0.71·0.8] + [0.38·0.29, 0.82·(−0.66), 0.57·0.83]<br>= [0.69, −0.39, 0.57] + [0.11, −0.54, 0.47] = [<strong>0.80, −0.93, 1.04</strong>]</span></div>
+    <div class="step" data-s="6.">Output gate: o_t = σ(W_o · [x, h] + b_o) = σ([1.0, 0.2, −0.4]) = [0.73, 0.55, 0.40]</div>
+    <div class="step" data-s="7.">Hidden state: h_t = o_t ⊙ tanh(c_t) = [0.73, 0.55, 0.40] ⊙ tanh([0.80, −0.93, 1.04])
+      <span class="val">= [0.73·0.66, 0.55·(−0.73), 0.40·0.78] = [<strong>0.48, −0.40, 0.31</strong>]</span></div>
+    <div class="step" data-s="8.">Key observation: c_{t-1} dim 0 was 1.0, now 0.80 (f=0.69 retained 69%, plus new input). The cell state changes <em>additively</em> — no matrix multiply, just element-wise gate-and-add.<span class="val">This is why gradients flow: ∂c_t/∂c_{t-1} = diag(f_t) = diag([0.69, 0.77, 0.71]) — no vanishing!</span></div>
+  </div>
+
+  <div class="pitfall">
+    <div class="lbl">Debugging tip</div>
+    <h4>If LSTM training stalls, check the forget gate bias initialization.</h4>
+    <p>At initialization, gate biases are zero, so f_t ≈ σ(0) = 0.5 — the LSTM immediately forgets half of c_{t-1} every step. After 10 steps: 0.5¹⁰ = 0.001 of the original signal remains. The fix (Jozefowicz et al., 2015): initialize the forget gate bias to 1.0 or 2.0, so f_t starts near σ(1) = 0.73 or σ(2) = 0.88. This simple trick dramatically improves LSTM training on long sequences. PyTorch doesn't do this by default — you must set it manually.</p>
+  </div>
+
+  <h3 class="sub">Why this solves vanishing gradients.</h3>
+
+  <p>The derivative of <em>c<sub>t</sub></em> with respect to <em>c<sub>t−1</sub></em> is:</p>
+
+  <div class="eq">
+    ∂<em>c<sub>t</sub></em> / ∂<em>c<sub>t−1</sub></em> = diag(<em>f<sub>t</sub></em>)
+    <span class="num">(2.7)</span>
+  </div>
+
+  <p>Just the forget gate, elementwise. The product over <em>k</em> timesteps is <em>Π<sub>s</sub> diag(f<sub>s</sub>)</em>. If the network learns to keep <em>f<sub>s</sub></em> near 1 for dimensions where long-range memory is needed, the product stays near 1 and gradients flow through all those timesteps. The network can <em>choose</em> how long to remember each dimension — an astonishingly flexible property.</p>
+
+  <p>Compare to plain RNN's ∂h/∂h term: <em>diag(1 − h<sup>2</sup>) · W<sub>hh</sub></em> — a shared weight matrix that has the same multiplicative effect regardless of the data. The LSTM's gate is <em>data-dependent</em> and <em>per-dimension</em>. That's the qualitative difference.</p>
+
+  <div class="mcq" data-correct="c">
+    <div class="mh"><span>Check your understanding</span><span class="qnum">Q1 / 06</span></div>
+    <div class="mq">Why does LSTM's cell-state update avoid the vanishing-gradient problem that plain RNNs have?</div>
+    <div class="opts">
+      <div class="opt" data-key="a"><span class="key">A</span><span class="text">LSTM uses sigmoid activations, which don't saturate.</span></div>
+      <div class="opt" data-key="b"><span class="key">B</span><span class="text">LSTM has more parameters, which means more gradient flow.</span></div>
+      <div class="opt" data-key="c"><span class="key">C</span><span class="text">The cell state is updated by <em>addition</em> (<em>c_t = f_t·c_{t-1} + i_t·g_t</em>) rather than matrix multiplication. So ∂c_t/∂c_{t-1} is just diag(f_t), not a full matrix. When the network learns to keep f near 1 for a given dimension, gradients pass through unchanged across many timesteps. The forget gate gives the network per-dimension, data-dependent control over memory duration.</span></div>
+      <div class="opt" data-key="d"><span class="key">D</span><span class="text">LSTM's tanh is replaced with ReLU for better gradient flow.</span></div>
+    </div>
+    <div class="feedback" data-right="The key is the additive update of the cell state. In a plain RNN, ∂h/∂h involves the shared weight matrix multiplicatively — gradients over long sequences involve multiplying many matrices, and the result shrinks or grows exponentially. In an LSTM, ∂c_t/∂c_{t-1} is just diag(f_t) — a single vector, elementwise applied. When the network decides 'remember this dimension for a long time,' it keeps f near 1, and gradients pass through across arbitrary numbers of timesteps. Importantly, this is <em>data-dependent</em>: the LSTM can forget some dimensions quickly while remembering others indefinitely. Options A, B, D are wrong — sigmoids can saturate badly, more parameters doesn't help gradient flow, and LSTMs use tanh." data-wrong="The cell-state update is additive (c_t = f_t·c_{t-1} + i_t·g_t) rather than matrix-multiplicative. So ∂c_t/∂c_{t-1} is just diag(f_t), not a full W_hh matrix. When the network learns to keep f near 1, gradients pass through many steps unchanged. The LSTM can decide per-dimension how long to remember information — a flexibility plain RNNs lack. Options A, B, D mischaracterize the mechanism; the crucial design is the additive cell state."></div>
+  </div>
+</section>
+
+<!-- ============ SECTION 3 ============ -->
+<section class="mod-sec">
+  <div class="sh"><span class="st">Section 03 — LSTM implementation</span><span class="sc">03 / 06</span></div>
+  <h2 class="section-title">LSTM <span class="vio">implementation</span>.</h2>
+
+  <p>PyTorch's <code class="inline">nn.LSTM</code> fuses all the gate computations into one big linear layer for efficiency. But it helps to see the explicit version first:</p>
+
+  <pre><code><span class="k">import</span> torch
+<span class="k">import</span> torch.nn <span class="k">as</span> nn
+
+<span class="k">class</span> <span class="f">LSTMCell</span>(nn.Module):
+    <span class="s">"""Explicit LSTM cell — one timestep.
+
+    For production use nn.LSTMCell or nn.LSTM (fused, CUDA-optimized).
+    This is for understanding the mechanics.
+    """</span>
+    <span class="k">def</span> <span class="f">__init__</span>(self, input_size, hidden_size):
+        <span class="f">super</span>().<span class="f">__init__</span>()
+        self.hidden_size = hidden_size
+        <span class="c"># One big linear layer computing all four gate pre-activations at once.</span>
+        <span class="c"># Input is concat of x_t and h_{t-1}; output is 4*hidden stacked gates.</span>
+        self.gates = nn.<span class="f">Linear</span>(input_size + hidden_size, <span class="n">4</span> * hidden_size)
+
+    <span class="k">def</span> <span class="f">forward</span>(self, x, state):
+        h_prev, c_prev = state
+        combined = torch.<span class="f">cat</span>([x, h_prev], dim=-<span class="n">1</span>)
+        gates = self.<span class="f">gates</span>(combined)
+        <span class="c"># Split into four chunks: forget, input, candidate, output</span>
+        f, i, g, o = gates.<span class="f">chunk</span>(<span class="n">4</span>, dim=-<span class="n">1</span>)
+        f = torch.<span class="f">sigmoid</span>(f)
+        i = torch.<span class="f">sigmoid</span>(i)
+        g = torch.<span class="f">tanh</span>(g)
+        o = torch.<span class="f">sigmoid</span>(o)
+        c_new = f * c_prev + i * g
+        h_new = o * torch.<span class="f">tanh</span>(c_new)
+        <span class="k">return</span> h_new, (h_new, c_new)
+
+
+<span class="k">class</span> <span class="f">LSTMModel</span>(nn.Module):
+    <span class="k">def</span> <span class="f">__init__</span>(self, input_size, hidden_size):
+        <span class="f">super</span>().<span class="f">__init__</span>()
+        self.hidden_size = hidden_size
+        self.cell = <span class="f">LSTMCell</span>(input_size, hidden_size)
+
+    <span class="k">def</span> <span class="f">forward</span>(self, x):
+        <span class="c"># x: (B, T, input_size)</span>
+        B, T, _ = x.shape
+        h = torch.<span class="f">zeros</span>(B, self.hidden_size, device=x.device)
+        c = torch.<span class="f">zeros</span>(B, self.hidden_size, device=x.device)
+        outputs = []
+        <span class="k">for</span> t <span class="k">in</span> <span class="f">range</span>(T):
+            out, (h, c) = self.<span class="f">cell</span>(x[:, t], (h, c))
+            outputs.<span class="f">append</span>(out)
+        <span class="k">return</span> torch.<span class="f">stack</span>(outputs, dim=<span class="n">1</span>), (h, c)</code></pre>
+
+  <h3 class="sub">Production: use nn.LSTM.</h3>
+
+  <p>PyTorch's built-in <code class="inline">nn.LSTM</code> calls a fused cuDNN kernel that computes the full sequence in one optimized GPU call — several times faster than a Python for-loop. Use it unless you have a specific reason not to:</p>
+
+  <pre><code>lstm = nn.<span class="f">LSTM</span>(
+    input_size=<span class="n">64</span>,          <span class="c"># embedding dim</span>
+    hidden_size=<span class="n">128</span>,
+    num_layers=<span class="n">2</span>,           <span class="c"># stacked LSTM</span>
+    batch_first=<span class="k">True</span>,
+    dropout=<span class="n">0.2</span>,            <span class="c"># dropout between layers</span>
+    bidirectional=<span class="k">False</span>,    <span class="c"># True for sentiment-style tasks</span>
+)
+
+<span class="c"># x: (B, T, 64)</span>
+output, (h_final, c_final) = <span class="f">lstm</span>(x)
+<span class="c"># output: (B, T, 128) — hidden state at every timestep</span>
+<span class="c"># h_final, c_final: (num_layers, B, 128) — final states</span></code></pre>
+
+  <h3 class="sub">Parameter count.</h3>
+
+  <p>For one LSTM layer with input size <em>D</em> and hidden size <em>H</em>:</p>
+
+  <div class="eq">
+    params = 4 · <em>H</em> · (<em>D</em> + <em>H</em>) + 4 · <em>H</em>
+    <span class="num">(3.1)</span>
+  </div>
+
+  <p>The 4 comes from four gate-weight matrices (forget, input, candidate, output). Compare to a plain RNN's <em>H·(D+H) + H</em> — an LSTM has roughly 4× the parameters for the same <em>D</em> and <em>H</em>. That's the cost of the gating machinery. Almost always worth it.</p>
+
+  <div class="mcq" data-correct="b">
+    <div class="mh"><span>Check your understanding</span><span class="qnum">Q2 / 06</span></div>
+    <div class="mq">You replace your plain RNN (input 64, hidden 128) with an LSTM of the same dimensions. By roughly how much does the parameter count increase?</div>
+    <div class="opts">
+      <div class="opt" data-key="a"><span class="key">A</span><span class="text">2× — LSTM doubles the parameters.</span></div>
+      <div class="opt" data-key="b"><span class="key">B</span><span class="text">4× — LSTM has four gate-weight matrices (forget, input, candidate, output) instead of one. Plain RNN: 128·(64+128) + 128 = 24,704. LSTM: 4·128·(64+128) + 4·128 = 98,816. Ratio ~4×, which is the structural cost of gating.</span></div>
+      <div class="opt" data-key="c"><span class="key">C</span><span class="text">10× — LSTM is an order of magnitude bigger.</span></div>
+      <div class="opt" data-key="d"><span class="key">D</span><span class="text">Same — LSTM doesn't have additional parameters.</span></div>
+    </div>
+    <div class="feedback" data-right="An LSTM has four gate-weight matrices (for forget, input, candidate, output) where a plain RNN has one. Concretely: plain RNN with D=64, H=128 has 128·(64+128) + 128 = 24,704 parameters. LSTM of the same dimensions has 4·128·(64+128) + 4·128 = 98,816. The ratio is ~4×. This is a fixed structural cost — you pay 4× the parameters for the gating machinery. In practice it's almost always worth it because the alternative (plain RNN) can't learn the long-range dependencies that make the model useful." data-wrong="Exactly 4× (nearly). LSTMs have four gate-weight matrices (forget, input, candidate, output) where plain RNNs have one W_hh. With D=64, H=128: plain RNN has 128·(64+128) + 128 = 24,704; LSTM has 4·128·(64+128) + 4·128 = 98,816. Formula: <code>params = 4·H·(D+H) + 4·H</code>. This is a fixed structural cost of the gating architecture."></div>
+  </div>
+</section>
+
+<!-- ============ SECTION 4 ============ -->
+<section class="mod-sec">
+  <div class="sh"><span class="st">Section 04 — GRU</span><span class="sc">04 / 06</span></div>
+  <h2 class="section-title"><span class="red">GRU</span> — the simpler cousin.</h2>
+
+  <p>The LSTM has three gates plus a separate cell state. Can we simplify? Cho et al. (2014) proposed the <strong>Gated Recurrent Unit (GRU)</strong>, which achieves most of the LSTM's benefit with less machinery: two gates, no separate cell state.</p>
+
+  <h3 class="sub">The GRU equations.</h3>
+
+  <p>A <strong>reset gate <em>r<sub>t</sub></em></strong> controls how much of the previous hidden state to use when computing the candidate:</p>
+
+  <div class="eq">
+    <em>r<sub>t</sub></em> = σ(<em>W<sub>r</sub></em> · [<em>x<sub>t</sub></em>, <em>h<sub>t−1</sub></em>] + <em>b<sub>r</sub></em>)
+    <span class="num">(4.1)</span>
+  </div>
+
+  <p>An <strong>update gate <em>z<sub>t</sub></em></strong> that plays the combined role of forget and input — it controls how much to keep from the previous hidden state versus how much to replace with the candidate:</p>
+
+  <div class="eq">
+    <em>z<sub>t</sub></em> = σ(<em>W<sub>z</sub></em> · [<em>x<sub>t</sub></em>, <em>h<sub>t−1</sub></em>] + <em>b<sub>z</sub></em>)
+    <span class="num">(4.2)</span>
+  </div>
+
+  <p>The candidate hidden state, computed from the input and a reset-gated version of the previous hidden state:</p>
+
+  <div class="eq">
+    <em>h̃<sub>t</sub></em> = tanh(<em>W<sub>h</sub></em> · [<em>x<sub>t</sub></em>, <em>r<sub>t</sub></em> ⊙ <em>h<sub>t−1</sub></em>] + <em>b<sub>h</sub></em>)
+    <span class="num">(4.3)</span>
+  </div>
+
+  <p>Finally the update — a convex combination of old and new, mediated by the update gate:</p>
+
+  <div class="eq">
+    <em>h<sub>t</sub></em> = (1 − <em>z<sub>t</sub></em>) ⊙ <em>h<sub>t−1</sub></em> + <em>z<sub>t</sub></em> ⊙ <em>h̃<sub>t</sub></em>
+    <span class="num">(4.4)</span>
+  </div>
+
+  <h3 class="sub">What's removed and what's kept.</h3>
+
+  <ul class="list">
+    <li><strong>Removed: separate cell state.</strong> GRU has only the hidden state; there's no long-term memory track distinct from the output.</li>
+    <li><strong>Removed: output gate.</strong> The hidden state is exposed directly, not filtered.</li>
+    <li><strong>Kept: additive update structure.</strong> Equation (4.4) is still <em>h<sub>t</sub></em> = something · <em>h<sub>t−1</sub></em> + something · <em>h̃<sub>t</sub></em>, so ∂h_t / ∂h_{t-1} has an identity-like contribution (1 − z_t), preserving the gradient-flow fix.</li>
+  </ul>
+
+  <h3 class="sub">Parameter count vs LSTM.</h3>
+
+  <p>A GRU layer has three weight matrices (reset, update, candidate) instead of an LSTM's four. Cost:</p>
+
+  <div class="eq">
+    GRU params = 3 · <em>H</em> · (<em>D</em> + <em>H</em>) + 3 · <em>H</em>
+    <span class="num">(4.5)</span>
+  </div>
+
+  <p>So GRU is 3/4 the size of an LSTM with the same dimensions. On many tasks they perform nearly identically; on tasks requiring very long-range memory, the LSTM's separate cell state can help marginally.</p>
+
+  <pre><code>gru = nn.<span class="f">GRU</span>(
+    input_size=<span class="n">64</span>,
+    hidden_size=<span class="n">128</span>,
+    num_layers=<span class="n">2</span>,
+    batch_first=<span class="k">True</span>,
+    dropout=<span class="n">0.2</span>,
+)
+
+<span class="c"># x: (B, T, 64)</span>
+output, h_final = <span class="f">gru</span>(x)
+<span class="c"># output: (B, T, 128). Only one state (no cell state).</span></code></pre>
+
+  <div class="insight">
+    <div class="key">Practical choice between LSTM and GRU</div>
+    <p>Start with GRU. If it underfits, try LSTM. If either underfits, add capacity (more layers, larger hidden). On most sequence tasks they perform within a percentage point of each other. GRU trains slightly faster and has fewer knobs. LSTM has a small edge on very long or highly structured sequences where the separate cell state's added capacity matters.</p>
+  </div>
+
+  <div class="mcq" data-correct="d">
+    <div class="mh"><span>Check your understanding</span><span class="qnum">Q3 / 06</span></div>
+    <div class="mq">GRU's update equation is <em>h_t = (1 − z_t) ⊙ h_{t−1} + z_t ⊙ h̃_t</em>. What does this mean when the update gate <em>z_t</em> is close to 0 across the whole vector?</div>
+    <div class="opts">
+      <div class="opt" data-key="a"><span class="key">A</span><span class="text">The hidden state is replaced by the candidate.</span></div>
+      <div class="opt" data-key="b"><span class="key">B</span><span class="text">The hidden state becomes zero.</span></div>
+      <div class="opt" data-key="c"><span class="key">C</span><span class="text">The candidate is multiplied by (1 − 0) = 1.</span></div>
+      <div class="opt" data-key="d"><span class="key">D</span><span class="text">The hidden state stays equal to the previous timestep: <em>h_t ≈ h_{t−1}</em>. When <em>z_t</em> is near 0, the weight on <em>h̃_t</em> is near 0 and the weight on <em>h_{t−1}</em> is near 1. The gradient ∂h_t/∂h_{t−1} ≈ identity, so gradients pass through this step unchanged. This is how the GRU can carry information (and gradients) across arbitrary numbers of timesteps without vanishing.</span></div>
+    </div>
+    <div class="feedback" data-right="This is the key gradient-preservation mechanism in GRU. When <em>z_t</em> ≈ 0, the update becomes <em>h_t ≈ 1·h_{t−1} + 0·h̃_t = h_{t−1}</em> — the state passes through unchanged. The gradient ∂h_t/∂h_{t−1} ≈ I, so information (and gradients) flow through that timestep as if there were a skip connection. The GRU can learn to set <em>z_t</em> near 0 for dimensions where memory should persist, giving it per-dimension control over how long to remember each feature — just like the LSTM's forget gate. Option A is backwards (z=0 means keep old, not replace)." data-wrong="When <em>z_t</em> ≈ 0, (1 − z_t) ≈ 1 and the update becomes <em>h_t ≈ h_{t−1}</em> — the state passes through essentially unchanged. The gradient ∂h_t/∂h_{t−1} ≈ identity, which is why long-range gradients survive in GRUs. The network can learn to set z near 0 for dimensions where memory needs to persist, and near 1 where it wants to write new information. Option A has the gate polarity backwards."></div>
+  </div>
+</section>
+
+<!-- ============ SECTION 5 ============ -->
+<section class="mod-sec">
+  <div class="sh"><span class="st">Section 05 — CineMatch upgrade</span><span class="sc">05 / 06</span></div>
+  <h2 class="section-title">CineMatch — upgrading the RNN to an <span class="vio">LSTM</span>.</h2>
+
+  <p>Back to the CineMatch next-movie predictor from Module 3.3. We built it with a plain RNN. Let's swap in an LSTM and see what changes.</p>
+
+  <pre><code><span class="k">import</span> torch
+<span class="k">import</span> torch.nn <span class="k">as</span> nn
+
+<span class="k">class</span> <span class="f">CineMatchLSTM</span>(nn.Module):
+    <span class="s">"""Next-movie predictor with stacked LSTM."""</span>
+    <span class="k">def</span> <span class="f">__init__</span>(self, vocab_size=<span class="n">50000</span>, embed_dim=<span class="n">64</span>,
+                 hidden_dim=<span class="n">128</span>, num_layers=<span class="n">2</span>, dropout=<span class="n">0.2</span>):
+        <span class="f">super</span>().<span class="f">__init__</span>()
+        self.embedding = nn.<span class="f">Embedding</span>(vocab_size, embed_dim)
+        self.lstm = nn.<span class="f">LSTM</span>(
+            input_size=embed_dim,
+            hidden_size=hidden_dim,
+            num_layers=num_layers,
+            batch_first=<span class="k">True</span>,
+            dropout=dropout <span class="k">if</span> num_layers &gt; <span class="n">1</span> <span class="k">else</span> <span class="n">0.0</span>,
+        )
+        self.output = nn.<span class="f">Linear</span>(hidden_dim, vocab_size)
+
+    <span class="k">def</span> <span class="f">forward</span>(self, movie_ids):
+        emb = self.<span class="f">embedding</span>(movie_ids)           <span class="c"># (B, T, embed_dim)</span>
+        out, (h_final, c_final) = self.<span class="f">lstm</span>(emb)  <span class="c"># out: (B, T, hidden_dim)</span>
+        last_hidden = out[:, -<span class="n">1</span>]                   <span class="c"># (B, hidden_dim) — final step</span>
+        logits = self.<span class="f">output</span>(last_hidden)          <span class="c"># (B, vocab_size)</span>
+        <span class="k">return</span> logits</code></pre>
+
+  <p>Three lines changed: <code class="inline">nn.RNN</code> → <code class="inline">nn.LSTM</code>, the tuple state unpacking, and <code class="inline">num_layers=2</code> to give us some stacking. The training loop is completely unchanged.</p>
+
+  <h3 class="sub">Expected behavior change.</h3>
+
+  <table>
+    <tr><th>Metric</th><th>Plain RNN</th><th>LSTM (2-layer)</th></tr>
+    <tr><td>Params (without embed/output)</td><td>~25K</td><td>~430K</td></tr>
+    <tr><td>Hits@10 on next-movie (CineMatch)</td><td>~18%</td><td>~26%</td></tr>
+    <tr><td>Max useful history length</td><td>~20 movies</td><td>~100+ movies</td></tr>
+    <tr><td>Training wall time</td><td>1×</td><td>~1.3× (cuDNN fused is fast)</td></tr>
+  </table>
+
+  <p>The headline: the LSTM uses longer histories effectively. The plain RNN's accuracy plateaus once input history exceeds ~20 movies — beyond that, gradients can't reach the early tokens, so including them adds noise but not signal. An LSTM keeps extracting signal from longer histories up to ~100+ movies.</p>
+
+  <h3 class="sub">Stacking and dropout.</h3>
+
+  <p>PyTorch's <code class="inline">nn.LSTM</code> with <code class="inline">num_layers=2</code> stacks two LSTMs: the output sequence of the first becomes the input sequence of the second. Dropout is applied to the output of each layer except the last. This is a simple way to add capacity; 2-3 layers is typical, beyond that training becomes unstable even with LSTMs.</p>
+
+  <p>Common tricks that generalize:</p>
+
+  <ul class="list">
+    <li><strong>Layer normalization</strong> between layers — stabilizes training at larger hidden dims.</li>
+    <li><strong>Residual connections</strong> across layers — same idea as ResNet applied to the temporal axis.</li>
+    <li><strong>Weight tying</strong> — share the embedding and output-projection matrices (both are <em>V</em>×<em>H</em>). Saves millions of parameters on large vocabularies, often with no accuracy loss.</li>
+  </ul>
+
+  <div class="cinematch">
+    <div class="tag-pill">CineMatch · 2020-era recipe</div>
+    <h4>The recommender that shipped when LSTMs ruled.</h4>
+    <p>From roughly 2016 to 2019, the standard for next-item recommendation (Netflix, YouTube, Spotify, and similar) was a 2-3 layer LSTM on user interaction sequences, sometimes with attention over the hidden states, combined with user/item embeddings. Models like GRU4Rec (2016) were the academic standard; production systems were variations on the same theme. These were replaced around 2019-2021 by transformer-based sequential recommenders (SASRec, BERT4Rec). But for offline analysis or smaller-scale deployments, a well-tuned LSTM recommender is still competitive and significantly cheaper to serve.</p>
+  </div>
+
+  <div class="mcq" data-correct="b">
+    <div class="mh"><span>Check your understanding</span><span class="qnum">Q4 / 06</span></div>
+    <div class="mq">You train CineMatchLSTM with <em>num_layers=2, dropout=0.2, hidden_dim=128</em> on 40-movie watch histories. Validation accuracy is poor. Which change is most likely to help first?</div>
+    <div class="opts">
+      <div class="opt" data-key="a"><span class="key">A</span><span class="text">Switch to a plain RNN — simpler model, less overfitting.</span></div>
+      <div class="opt" data-key="b"><span class="key">B</span><span class="text">First check whether you're underfitting or overfitting by comparing train vs val loss. If train loss is also high, the model is underfitting — increase capacity (hidden_dim=256, num_layers=3) or train longer. If train is good but val is bad, overfitting — add weight decay, increase dropout to 0.3-0.4, or augment data. Random hyperparameter changes without this diagnostic waste time.</span></div>
+      <div class="opt" data-key="c"><span class="key">C</span><span class="text">Remove dropout entirely — it hurts LSTMs.</span></div>
+      <div class="opt" data-key="d"><span class="key">D</span><span class="text">Add batch normalization inside every LSTM cell.</span></div>
+    </div>
+    <div class="feedback" data-right="Every training-diagnosis story starts here: compare train vs val loss. Without that, you're guessing. If train loss is high → underfit → more capacity, more training, or better features. If train low but val high → overfit → more regularization or more data. The plain RNN (A) would make things worse — it has the vanishing-gradient limitation. Dropout (C) is standard and helpful. Applying BN inside an LSTM cell (D) is actually problematic — BN statistics are computed across a batch at each timestep, which interferes with the recurrence. Layer norm (not batch norm) is the right choice inside LSTM/GRU cells, but even that's not the first thing to try without a diagnostic." data-wrong="Always diagnose before fixing. Compare train and val loss: underfitting (both high) calls for more capacity or more training; overfitting (gap between them) calls for more regularization. Random changes waste time. A plain RNN would make things worse. Removing dropout is dangerous without knowing whether you're overfitting. Batch norm inside LSTM cells is actively problematic because BN's batch statistics interact badly with recurrence (layer norm is the right choice if you must normalize inside a recurrent cell)."></div>
+  </div>
+</section>
+
+<!-- ============ SECTION 6 ============ -->
+<section class="mod-sec">
+  <div class="sh"><span class="st">Section 06 — The bigger picture</span><span class="sc">06 / 06</span></div>
+  <h2 class="section-title">Where LSTMs fit, and why they got <span class="red">replaced</span>.</h2>
+
+  <h3 class="sub">What LSTMs did well.</h3>
+
+  <p>Between 2014 and 2018, LSTMs were the default for:</p>
+
+  <ul class="list">
+    <li>Machine translation (Google Translate shipped LSTM-based systems in 2016).</li>
+    <li>Speech recognition (stacked bidirectional LSTMs dominated acoustic models).</li>
+    <li>Language modeling (used for character-level and word-level language models).</li>
+    <li>Sequence labeling (POS tagging, named entity recognition, part-of-speech).</li>
+    <li>Sequential recommendation (CineMatch-style next-item prediction).</li>
+  </ul>
+
+  <h3 class="sub">What broke the dominance.</h3>
+
+  <p>LSTMs have a structural limitation that became binding as scale grew: they're <strong>inherently sequential in time</strong>. To compute <em>h_t</em> you need <em>h_{t-1}</em>, which needs <em>h_{t-2}</em>, and so on. This means training cannot be parallelized across the time axis — the <em>T</em> forward passes happen one after another, no matter how many GPUs you have. For sequences of length 500 or 5000, this is a severe bottleneck on modern hardware that wants to do many independent operations in parallel.</p>
+
+  <p>Transformers (Module 4.2) replaced the recurrence with <strong>self-attention</strong>, which computes the relationships between all pairs of positions in parallel. Every timestep sees every other timestep directly — no chain of 100 one-step applications, just one attention operation over the whole sequence. The compute is O(T<sup>2</sup>) in sequence length instead of O(T), but crucially that O(T<sup>2</sup>) work can be fully parallelized on modern GPUs. On sequences where T is manageable (hundreds to thousands), transformers train dramatically faster.</p>
+
+  <div class="historical">
+    <div class="tag-pill">Why 2017 was sequence modeling's ResNet moment</div>
+    <h4>"Attention is all you need" — the clarifying realization.</h4>
+    <p>For years, sequence models combined LSTMs with attention: encoder-decoder architectures with attention mechanisms over the encoder's hidden states. The 2017 transformer paper asked — crucially — <em>what if the LSTM isn't needed?</em> What if attention alone, with positional encodings, is enough? The answer was yes, and the consequence was that sequence models became massively more parallelizable, which enabled the scale that produced GPT, BERT, and everything after. LSTMs aren't gone — they still power latency-critical or resource-constrained sequence systems — but for anything large-scale, transformers have replaced them.</p>
+  </div>
+
+  <h3 class="sub">When to still reach for LSTM/GRU in 2026.</h3>
+
+  <ul class="list">
+    <li><strong>On-device / low-latency systems</strong> where a transformer's O(T<sup>2</sup>) memory doesn't fit, but an LSTM's O(T) does.</li>
+    <li><strong>Streaming tasks</strong> where you process data token-by-token without access to future tokens. LSTMs are natively causal and streaming-friendly.</li>
+    <li><strong>Very long sequences</strong> where transformer attention scales quadratically. For 10,000+ token contexts, efficient attention variants or state-space models (which are loosely RNN-inspired) are competitive.</li>
+    <li><strong>Small-data regimes</strong> where LSTM's inductive bias (recurrent structure) helps more than transformer's flexibility.</li>
+  </ul>
+
+  <div class="insight">
+    <div class="key">Phase 3's closing thought</div>
+    <p>CNNs, RNNs, LSTMs, and GRUs all share one deep design principle: bake the structure of the data into the architecture. Grid structure → convolutions. Sequential structure → recurrence with gating. Inductive biases beat raw capacity, at scales where data is limited. That principle stops being binding only when scale is large enough for transformers to rediscover the structure from data. Phase 4 is that story.</p>
+  </div>
+
+  <div class="mcq" data-correct="b">
+    <div class="mh"><span>Check your understanding</span><span class="qnum">Q5 / 06</span></div>
+    <div class="mq">Why did transformers replace LSTMs for large-scale sequence modeling?</div>
+    <div class="opts">
+      <div class="opt" data-key="a"><span class="key">A</span><span class="text">Transformers have better accuracy on every task, regardless of scale.</span></div>
+      <div class="opt" data-key="b"><span class="key">B</span><span class="text">LSTMs can't parallelize across the time axis — h_t requires h_{t-1}, which requires h_{t-2}, etc. So T timesteps take T sequential steps no matter how many GPUs you have. Transformers' self-attention computes all pairwise relationships in parallel, which is O(T²) work but fully parallelizable. On modern GPUs with massive parallel compute, that's a dramatically better fit.</span></div>
+      <div class="opt" data-key="c"><span class="key">C</span><span class="text">LSTMs are too expensive to run at inference.</span></div>
+      <div class="opt" data-key="d"><span class="key">D</span><span class="text">Transformers don't need backpropagation.</span></div>
+    </div>
+    <div class="feedback" data-right="The answer is parallelism. An LSTM's h_t depends on h_{t-1}, forcing sequential computation across T timesteps regardless of hardware parallelism. Transformers replaced the recurrence with attention over all pairs of positions, which is O(T²) FLOPs but fully parallelizable — modern GPUs do 10,000+ operations in parallel and waste that capacity on LSTMs. At small scale, LSTMs are often fine or better. At large scale, the ability to parallelize training is worth more than compute efficiency. Option A is overstated (LSTMs still win on some tasks); C is reversed (LSTMs are cheaper at inference per token); D is nonsense." data-wrong="The answer is parallelism. LSTMs force sequential computation across timesteps because h_t needs h_{t-1}. Transformers compute all pairs of positions in parallel via self-attention — O(T²) work but fully parallelizable on modern GPUs, which have massive parallel compute that LSTMs can't use. At small scale LSTMs are often equal or better, but at large scale, throughput wins. Option A overstates the claim; transformers are not universally better. C has it backwards — LSTMs are cheaper <em>per token</em> at inference."></div>
+  </div>
+
+  <div class="mcq" data-correct="d">
+    <div class="mh"><span>Synthesis question</span><span class="qnum">Q6 / 06</span></div>
+    <div class="mq">Given a new sequence modeling task with the constraints below, what's the right default choice?<br><br>Task: detect whether an SMS is spam. Inputs are up to 160 characters. You have 10K labeled SMS messages. Compute budget: modest.</div>
+    <div class="opts">
+      <div class="opt" data-key="a"><span class="key">A</span><span class="text">A 12-layer transformer trained from scratch.</span></div>
+      <div class="opt" data-key="b"><span class="key">B</span><span class="text">A plain RNN.</span></div>
+      <div class="opt" data-key="c"><span class="key">C</span><span class="text">An MLP on bag-of-words features.</span></div>
+      <div class="opt" data-key="d"><span class="key">D</span><span class="text">A small bidirectional LSTM or GRU with pretrained word embeddings, or a pretrained small transformer (like DistilBERT) fine-tuned on your 10K examples. For this data size (small) and sequence length (short), LSTM/GRU with pretrained embeddings is a strong baseline; DistilBERT is even stronger if you have the budget to use it.</span></div>
+    </div>
+    <div class="feedback" data-right="For short sequences (160 chars) with small labeled data (10K), you want to leverage pretrained representations — either pretrained word embeddings feeding a small LSTM/GRU, or a small pretrained transformer (DistilBERT) fine-tuned. Training a large transformer from scratch (A) on 10K examples would catastrophically overfit. A plain RNN (B) has vanishing gradients and worse performance than LSTM at no benefit. A bag-of-words MLP (C) ignores word order — 'free money' vs 'money free' looks identical — which matters for spam detection. The principle: pretrained + fine-tune is the default for small-data sequence tasks." data-wrong="For small labeled data (10K) and short sequences, use pretrained representations. Options: a small LSTM/GRU with pretrained word embeddings (lightweight, fast), or a pretrained small transformer (DistilBERT) fine-tuned (stronger accuracy, more compute). Both leverage knowledge learned from billions of tokens and specialize it to your 10K labeled messages. A large transformer from scratch would overfit. A plain RNN has vanishing gradients with no accuracy benefit. Bag-of-words ignores word order."></div>
+  </div>
+
+  <div class="checkpoint">
+    <h4>Module 3.4 — Mastery checkpoint</h4>
+    <ol>
+      <li>Explain why plain RNN's vanishing gradient is structural and why gating fixes it.</li>
+      <li>Write the six LSTM equations (three gates, candidate, cell-state update, hidden-state output).</li>
+      <li>Explain why ∂c_t/∂c_{t-1} = diag(f_t) gives the LSTM its gradient-flow advantage.</li>
+      <li>Write the GRU's update equation and explain why z_t near 0 implies identity gradient flow.</li>
+      <li>Compare LSTM vs GRU parameter counts and describe when to prefer each.</li>
+      <li>State why LSTMs were replaced by transformers for large-scale modeling (parallelism, not accuracy).</li>
+    </ol>
+  </div>
+
+  <h3 class="sub">Phase 3 — recap and what's next.</h3>
+
+  <p>Phase 3 covered <strong>specialized architectures</strong> for two of the most common data modalities: CNNs for grid data (images), RNNs/LSTMs/GRUs for sequential data. Both share the deep principle: encode the structure of the data into the architecture itself. CNNs do this with convolution (locality + translation equivariance); RNNs do this with recurrence (parameter sharing over time); LSTMs add gating to make long-range dependencies learnable.</p>
+
+  <p>Phase 4 turns to the <strong>modern stack</strong>: attention, transformers, embeddings, and pretraining. The thread that connects them: at scale, flexibility beats inductive bias. Transformers have less built-in structure than CNNs or LSTMs but learn the necessary structure from enormous datasets. Understanding how — and when flexibility finally becomes the right choice — is Phase 4's story.</p>
+
+</section>
+
+
+<!-- ============ LEARNING RESOURCES ============ -->
+<section class="mod-sec resources-section">
+  <div class="resources-kicker"><span>// Learning Resources</span></div>
+  <h2 class="resources-title">Learn &amp; <span class="vio">Practice</span></h2>
+  <p class="resources-sub">Deepen this module with a progressive explanation, the canonical source, and hands-on reference code.</p>
+    <article class="resource-card progressive">
+      <div class="resource-head">
+        <div class="resource-icon">P</div>
+        <div>
+          <div class="resource-type">Progressive Article</div>
+          <p class="resource-desc">Stuck? Start here - beginner-friendly explanation</p>
+        </div>
+      </div>
+      <div class="resource-item">
+        <div class="resource-name">Christopher Olah - Understanding LSTM Networks</div>
+        <p class="resource-note">Universally-cited visual walkthrough of the LSTM cell.</p>
+      </div>
+      <div class="resource-actions">
+      <a class="resource-btn" href="https://colah.github.io/posts/2015-08-Understanding-LSTMs/" target="_blank" rel="noopener">Read article</a>
+      </div>
+    </article>
+    <article class="resource-card canonical">
+      <div class="resource-head">
+        <div class="resource-icon">C</div>
+        <div>
+          <div class="resource-type">Canonical Article</div>
+          <p class="resource-desc">Authoritative source - paper, docs, or textbook chapter</p>
+        </div>
+      </div>
+      <div class="resource-item">
+        <div class="resource-name">Hochreiter &amp; Schmidhuber - Long Short-Term Memory</div>
+        <p class="resource-note">Original 1997 LSTM paper.</p>
+      </div>
+      <div class="resource-actions">
+      <a class="resource-btn" href="https://www.bioinf.jku.at/publications/older/2604.pdf" target="_blank" rel="noopener">Read source</a>
+      </div>
+    </article>
+    <article class="resource-card github">
+      <div class="resource-head">
+        <div class="resource-icon">&lt;/&gt;</div>
+        <div>
+          <div class="resource-type">GitHub Repository</div>
+          <p class="resource-desc">Hands-on implementation and runnable examples</p>
+        </div>
+      </div>
+      <div class="resource-item">
+        <div class="resource-name">pytorch/pytorch - nn.LSTM source</div>
+        <p class="resource-note">Production LSTM implementation in PyTorch.</p>
+      </div>
+      <div class="resource-item">
+        <div class="resource-name">d2l-ai/d2l-en - LSTM chapter</div>
+        <p class="resource-note">Runnable LSTM chapter notebooks.</p>
+      </div>
+      <div class="resource-actions">
+      <a class="resource-btn" href="https://github.com/pytorch/pytorch" target="_blank" rel="noopener">Explore repo</a>
+      <a class="resource-btn" href="https://github.com/d2l-ai/d2l-en" target="_blank" rel="noopener">Explore repo</a>
+      </div>
+    </article>
+</section>
+
+</main>
+
+<!-- ============ FOOTER NAV ============ -->
+<nav class="footnav">
+  <a href="module_3_3_rnns.html" class="prev">
+    <div class="lbl">Previous module</div>
+    <div class="ttl">3.3 — Recurrent Networks</div>
+  </a>
+  <a href="module_3_5_capstone.html" class="next">
+    <div class="lbl">Next module</div>
+    <div class="ttl">3.5 — Phase 3 Capstone</div>
+  </a>
+</nav>
+
+<footer class="foot">
+  <div class="fl">Deep Learning &amp; Neural Networks · Module 3.4 · 2025</div>
+  <div class="fr"><div class="fd"></div> Phase 3 · LSTM &amp; GRU</div>
+</footer>
+
+<script>
+/* ============ Particle network background ============ */
+(function(){
+  const cv=document.getElementById('brain'),cx=cv.getContext('2d');
+  function rs(){cv.width=window.innerWidth;cv.height=window.innerHeight}rs();
+  window.addEventListener('resize',rs);
+  const pts=[];
+  const n = window.innerWidth < 700 ? 50 : 90;
+  for(let i=0;i<n;i++)pts.push({
+    x:Math.random()*window.innerWidth,
+    y:Math.random()*window.innerHeight,
+    vx:(Math.random()-.5)*.22,
+    vy:(Math.random()-.5)*.22,
+    r:Math.random()*1.8+.7,
+    ph:Math.random()*Math.PI*2
+  });
+  (function loop(){
+    cx.clearRect(0,0,cv.width,cv.height);
+    const t=Date.now()*.001;
+    for(let i=0;i<pts.length;i++){
+      const a=pts[i];a.x+=a.vx;a.y+=a.vy;
+      if(a.x<0||a.x>cv.width)a.vx*=-1;
+      if(a.y<0||a.y>cv.height)a.vy*=-1;
+      for(let j=i+1;j<pts.length;j++){
+        const b=pts[j],dx=b.x-a.x,dy=b.y-a.y,d=Math.sqrt(dx*dx+dy*dy);
+        if(d<130){
+          cx.beginPath();cx.moveTo(a.x,a.y);cx.lineTo(b.x,b.y);
+          cx.strokeStyle=`rgba(100,35,200,${(1-d/130)*.14})`;
+          cx.lineWidth=.5;cx.stroke();
+        }
+      }
+    }
+    for(let i=0;i<pts.length;i++){
+      const a=pts[i],g=.5+.5*Math.sin(t*1.4+a.ph);
+      cx.beginPath();cx.arc(a.x,a.y,a.r,0,Math.PI*2);
+      cx.fillStyle=`rgba(100,35,200,${.22+g*.48})`;cx.fill();
+    }
+    requestAnimationFrame(loop);
+  })();
+})();
+
+/* ============ Reveal on scroll ============ */
+(function(){
+  const els=document.querySelectorAll('section.mod-sec, .insight, .pitfall, .cinematch, .historical, .diagram-wrap, .calcbox, .checkpoint, .mcq, pre, table');
+  els.forEach(e=>e.classList.add('reveal'));
+  const io=new IntersectionObserver((entries)=>{
+    entries.forEach(e=>{
+      if(e.isIntersecting){ e.target.classList.add('on'); io.unobserve(e.target); }
+    });
+  },{threshold:.12});
+  els.forEach(e=>io.observe(e));
+})();
+
+/* ============ MCQ interaction ============ */
+document.querySelectorAll('.mcq').forEach(mcq => {
+  const correct = mcq.dataset.correct;
+  const opts = mcq.querySelectorAll('.opt');
+  const fb = mcq.querySelector('.feedback');
+  opts.forEach(opt => {
+    opt.addEventListener('click', () => {
+      if (opt.classList.contains('disabled')) return;
+      const chosen = opt.dataset.key;
+      const isRight = chosen === correct;
+      opts.forEach(o => {
+        o.classList.add('disabled');
+        if (o.dataset.key === correct) o.classList.add('correct');
+        else if (o === opt && !isRight) o.classList.add('wrong');
+      });
+      if (isRight) {
+        fb.classList.add('show', 'right');
+        fb.innerHTML = '<span class="verdict">Correct</span>' + fb.dataset.right;
+      } else {
+        fb.classList.add('show', 'wrong');
+        fb.innerHTML = '<span class="verdict">Not quite</span>' + fb.dataset.wrong;
+      }
+    });
+  });
+});
+</script>
+
+</body>
+</html>

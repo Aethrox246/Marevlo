@@ -1,0 +1,431 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Online GCD Queries - Visualization</title>
+    <style>
+        :root {
+            --bg-page: #0d1117;
+            --bg-surface: #161b22;
+            --bg-input: #0d1117;
+            --border-main: #30363d;
+            --btn-bg: #21262d;
+            --btn-hover: #2d333b;
+            --text-main: #c9d1d9;
+            --text-dim: #8b949e;
+            --accent-orange: #e3b341;
+            --accent-blue: #388bfd;
+            --accent-green: #3fb950;
+            --accent-red: #f85149;
+            --accent-purple: #a371f7;
+        }
+
+        * { box-sizing: border-box; }
+        body {
+            background-color: var(--bg-page);
+            color: var(--text-main);
+            font-family: system-ui, -apple-system, sans-serif;
+            margin: 0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            min-height: 100vh;
+            padding-bottom: 40px;
+        }
+
+        /* INPUT BAR */
+        .input-bar {
+            width: 100%;
+            background-color: var(--bg-surface);
+            padding: 12px 16px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 8px;
+            border-bottom: 1px solid var(--border-main);
+            flex-wrap: wrap;
+        }
+        label.ui-label { font-family: 'Courier New', monospace; font-size: 13px; color: var(--text-dim); }
+        input[type="text"] {
+            background: var(--bg-input);
+            border: 1px solid var(--border-main);
+            color: var(--text-main);
+            height: 32px;
+            border-radius: 6px;
+            padding: 0 10px;
+            font-size: 13px;
+            width: 320px;
+        }
+
+        button {
+            height: 32px; border-radius: 6px; padding: 0 14px; background: var(--btn-bg);
+            border: 1px solid var(--border-main); color: var(--text-main); font-size: 13px; cursor: pointer;
+            transition: background 0.2s ease;
+        }
+        button:hover { background: var(--btn-hover); }
+
+        /* VISUALIZATION */
+        .visual-container { margin-top: 30px; display: flex; flex-direction: column; align-items: center; gap: 20px; width: 100%; }
+        .tiles-wrapper { display: flex; gap: 10px; flex-wrap: wrap; justify-content: center; max-width: 900px; min-height: 90px; position: relative; }
+
+        .tile-unit { display: flex; flex-direction: column; align-items: center; gap: 4px; position: relative; }
+        .tile {
+            min-width: 58px; height: 58px; display: flex; align-items: center; justify-content: center;
+            border-radius: 8px; font-size: 18px; font-weight: 600; font-family: 'Courier New', monospace;
+            transition: all 0.3s ease; border: 2px solid var(--border-main); background: #21262d;
+            color: var(--text-main);
+        }
+        .tile-index { font-size: 11px; color: var(--text-dim); font-family: monospace; }
+
+        /* Highlight States */
+        .tile.candidate { background: #2a1600; border-color: var(--accent-orange); color: var(--accent-orange); transform: scale(1.12); box-shadow: 0 0 12px rgba(227, 179, 65, 0.5); }
+        .tile.winning { background: #0f2a1a; border-color: var(--accent-green); color: var(--accent-green); transform: scale(1.1); box-shadow: 0 0 12px var(--accent-green); }
+        .tile.current-gcd { background: #1e2a1e; border-color: var(--accent-purple); color: var(--accent-purple); transform: scale(1.08); }
+        .tile.done { opacity: 0.55; background: #161b22; border-color: var(--border-main); color: var(--text-dim); }
+
+        /* PANEL */
+        .action-panel {
+            margin-top: 25px; background: var(--bg-surface); border: 1px solid var(--border-main);
+            border-radius: 6px; padding: 14px 22px; width: 740px; text-align: center; font-family: monospace; min-height: 85px;
+            display: flex; flex-direction: column; justify-content: center; font-size: 15px; line-height: 1.5;
+        }
+
+        /* INFO PANEL */
+        .info-panel { margin-top: 12px; display: flex; gap: 12px; flex-wrap: wrap; justify-content: center; }
+        .info-cell {
+            background: var(--bg-surface); border: 1px solid var(--border-main); border-radius: 6px;
+            padding: 9px 16px; display: flex; flex-direction: column; align-items: center; min-width: 110px; gap: 4px;
+        }
+        .info-label { font-size: 11px; color: var(--text-dim); }
+        .info-value { font-family: monospace; font-size: 17px; font-weight: 700; }
+
+        /* RESULT */
+        .result-display { margin-top: 12px; display: flex; flex-direction: column; align-items: center; }
+        #res-val { font-size: 24px; color: var(--text-dim); font-family: monospace; font-weight: bold; transition: all 0.4s; }
+        .pop { animation: popAnim 500ms ease; color: var(--accent-green) !important; font-size: 30px !important; text-shadow: 0 0 15px var(--accent-green); }
+
+        @keyframes popAnim { 0%{transform:scale(1)} 50%{transform:scale(1.2)} 100%{transform:scale(1)} }
+
+        .status-bar { margin-top: 10px; font-size: 13px; color: var(--text-dim); height: 1.3em; text-align: center; width: 700px; }
+
+        /* CONTROLS */
+        .controls { margin-top: 26px; display: flex; align-items: center; gap: 10px; }
+        input[type="range"] { accent-color: var(--accent-blue); width: 130px; cursor: pointer; }
+
+        /* LEGEND */
+        .legend { margin-top: 14px; display: flex; gap: 18px; flex-wrap: wrap; justify-content: center; max-width: 900px; }
+        .legend-item { display: flex; align-items: center; font-size: 12px; color: var(--text-dim); }
+        .dot { width: 11px; height: 11px; border-radius: 3px; margin-right: 7px; display: inline-block; }
+
+        /* LOG */
+        .log-panel {
+            margin-top: 16px; background: var(--bg-page); border: 1px solid var(--border-main);
+            border-radius: 6px; padding: 14px 18px; width: 740px; max-width: 95%; height: 150px;
+            overflow-y: auto; font-family: 'Courier New', monospace; font-size: 13.2px; line-height: 1.45;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="input-bar">
+        <label class="ui-label">Array =</label>
+        <input type="text" id="arr-input" placeholder="[12, 18, 24, 36]" value="[12, 18, 24, 36]">
+        <label class="ui-label">Queries =</label>
+        <input type="text" id="query-input" placeholder="[[0,2],[1,3]]" value="[[0,2],[1,3]]">
+        <button onclick="loadCustom()">Load</button>
+        <button onclick="loadExample(0)">Ex 1: [12,18,24,36]</button>
+        <button onclick="loadExample(1)">Ex 2: [7,14,21,28,35]</button>
+    </div>
+
+    <div class="visual-container">
+        <div class="ui-label" id="arr-label">Current Subarray for Query</div>
+        <div class="tiles-wrapper" id="tiles-container"></div>
+    </div>
+
+    <div class="action-panel" id="main-panel">—</div>
+
+    <div class="info-panel">
+        <div class="info-cell">
+            <span class="info-label">Current Query</span>
+            <span class="info-value" id="val-query" style="color: var(--accent-orange);">[0, 0]</span>
+        </div>
+        <div class="info-cell">
+            <span class="info-label">Running GCD</span>
+            <span class="info-value" id="val-gcd" style="color: var(--accent-purple);">—</span>
+        </div>
+        <div class="info-cell">
+            <span class="info-label">Current Index</span>
+            <span class="info-value" id="val-idx" style="color: var(--accent-blue);">—</span>
+        </div>
+    </div>
+
+    <div class="result-display">
+        <span class="ui-label" style="margin-bottom: 6px;">Query Results</span>
+        <span id="res-val">—</span>
+    </div>
+
+    <div class="status-bar" id="status-text"></div>
+
+    <div class="controls">
+        <button onclick="reset()">↺ Reset</button>
+        <button onclick="back()">← Back</button>
+        <button onclick="togglePlay()" id="play-btn">Play</button>
+        <button onclick="next()">Next →</button>
+        <div style="display:flex;align-items:center;gap:6px;">
+            <span class="ui-label" style="font-size:11px">Speed</span>
+            <input type="range" id="speed-slider" min="0" max="2" value="1">
+        </div>
+    </div>
+
+    <div class="legend">
+        <div class="legend-item"><span class="dot" style="background:#2a1600;border:1px solid var(--accent-orange)"></span> Processing</div>
+        <div class="legend-item"><span class="dot" style="background:var(--accent-purple);border:1px solid var(--accent-purple)"></span> Current GCD</div>
+        <div class="legend-item"><span class="dot" style="background:var(--accent-green);border:1px solid var(--accent-green)"></span> Final GCD</div>
+        <div class="legend-item"><span class="dot" style="background:var(--bg-surface);border:1px solid var(--border-main);opacity:0.5"></span> Processed</div>
+    </div>
+
+    <div class="log-panel" id="log"></div>
+
+    <script>
+        let array = [];
+        let queries = [];
+        let steps = [];
+        let stepIndex = 0;
+        let timer = null;
+        const delays = [1400, 700, 350];
+
+        const examples = [
+            { arr: [12, 18, 24, 36], queries: [[0,2], [1,3]] },
+            { arr: [7, 14, 21, 28, 35], queries: [[0,4], [2,3]] }
+        ];
+
+        function gcd(a, b) {
+            a = Math.abs(a);
+            b = Math.abs(b);
+            while (b !== 0) {
+                let t = b;
+                b = a % b;
+                a = t;
+            }
+            return a;
+        }
+
+        function generateSteps() {
+            steps = [];
+            if (!array.length || !queries.length) return;
+
+            // Init step
+            steps.push({
+                type: 'init',
+                queryIdx: -1,
+                panel: `Online GCD Queries (Brute Force)<br>Array: <b>[${array.join(', ')}]</b><br>Processing ${queries.length} queries by recomputing GCD for each range.`,
+                statusText: `Ready. ${queries.length} queries to process.`,
+                log: `Array = [${array.join(', ')}]\nQueries = ${JSON.stringify(queries)}\nStarting brute-force GCD computation for each query...`,
+                logColor: 'var(--text-dim)'
+            });
+
+            let results = [];
+
+            queries.forEach((q, qIdx) => {
+                const [l, r] = q;
+                let currentGCD = array[l];
+                let subarray = array.slice(l, r+1);
+
+                steps.push({
+                    type: 'newquery',
+                    queryIdx: qIdx,
+                    l: l,
+                    r: r,
+                    currentGCD: currentGCD,
+                    currentIdx: l,
+                    panel: `Query ${qIdx+1}: GCD of subarray [${l}, ${r}] → elements <b>[${subarray.join(', ')}]</b><br>Starting with GCD = ${currentGCD}`,
+                    statusText: `Processing query [${l}, ${r}]...`,
+                    log: `\n--- Query ${qIdx+1}: [${l}, ${r}] ---\nInitial GCD = arr[${l}] = ${currentGCD}`,
+                    logColor: 'var(--accent-orange)'
+                });
+
+                for (let i = l + 1; i <= r; i++) {
+                    const oldGCD = currentGCD;
+                    currentGCD = gcd(currentGCD, array[i]);
+
+                    steps.push({
+                        type: 'step',
+                        queryIdx: qIdx,
+                        l: l,
+                        r: r,
+                        currentGCD: currentGCD,
+                        currentIdx: i,
+                        panel: `Computing gcd(${oldGCD}, arr[${i}]=${array[i]}) = <b>${currentGCD}</b>`,
+                        statusText: `gcd(${oldGCD}, ${array[i]}) = ${currentGCD}`,
+                        log: `  gcd(${oldGCD}, ${array[i]}) = ${currentGCD}`,
+                        logColor: currentGCD === oldGCD ? 'var(--accent-green)' : 'var(--text-main)'
+                    });
+                }
+
+                results.push(currentGCD);
+
+                steps.push({
+                    type: 'querydone',
+                    queryIdx: qIdx,
+                    result: currentGCD,
+                    panel: `Query [${l}, ${r}] complete.<br>GCD = <b>${currentGCD}</b>`,
+                    statusText: `Query [${l}, ${r}] → ${currentGCD}`,
+                    log: `→ Final GCD for query [${l}, ${r}] = ${currentGCD}`,
+                    logColor: 'var(--accent-green)',
+                    bold: true
+                });
+            });
+
+            // Final result
+            steps.push({
+                type: 'final',
+                results: results,
+                panel: `All queries processed.<br>Results: <b>[${results.join(', ')}]</b>`,
+                statusText: `Done. All queries answered.`,
+                log: `\nFinal Results: [${results.join(', ')}]`,
+                logColor: 'var(--accent-green)',
+                bold: true,
+                complete: true
+            });
+        }
+
+        function renderStep(idx) {
+            const step = steps[idx];
+            if (!step) return;
+
+            const container = document.getElementById('tiles-container');
+            container.innerHTML = '';
+
+            if (step.type === 'init' || step.type === 'final') {
+                array.forEach((val, i) => {
+                    const wrapper = document.createElement('div');
+                    wrapper.className = 'tile-unit';
+                    const tile = document.createElement('div');
+                    tile.className = `tile ${step.type === 'final' ? 'winning' : 'done'}`;
+                    tile.innerText = val;
+                    const idxLabel = document.createElement('div');
+                    idxLabel.className = 'tile-index';
+                    idxLabel.innerText = `[${i}]`;
+                    wrapper.append(tile, idxLabel);
+                    container.appendChild(wrapper);
+                });
+            } else {
+                // Show subarray for current query
+                const [l, r] = [step.l, step.r];
+                for (let i = 0; i < array.length; i++) {
+                    const wrapper = document.createElement('div');
+                    wrapper.className = 'tile-unit';
+                    const tile = document.createElement('div');
+                    let cls = 'done';
+                    if (i >= l && i <= r) {
+                        if (i === step.currentIdx) cls = 'candidate';
+                        else if (i < step.currentIdx) cls = 'done';
+                        else cls = 'idle';
+                    }
+                    if (step.type === 'querydone' && i >= l && i <= r) cls = 'winning';
+                    tile.className = `tile ${cls}`;
+                    tile.innerText = array[i];
+                    const idxLabel = document.createElement('div');
+                    idxLabel.className = 'tile-index';
+                    idxLabel.innerText = `[${i}]`;
+                    wrapper.append(tile, idxLabel);
+                    container.appendChild(wrapper);
+                }
+            }
+
+            document.getElementById('main-panel').innerHTML = step.panel || '—';
+            document.getElementById('val-query').innerText = step.queryIdx >= 0 ? `[${step.l}, ${step.r}]` : '—';
+            document.getElementById('val-gcd').innerText = step.currentGCD !== undefined ? step.currentGCD : '—';
+            document.getElementById('val-idx').innerText = step.currentIdx !== undefined ? step.currentIdx : '—';
+
+            const resVal = document.getElementById('res-val');
+            if (step.complete) {
+                resVal.innerText = `[${step.results.join(', ')}]`;
+                resVal.className = 'pop';
+            } else {
+                resVal.innerText = '—';
+                resVal.className = '';
+            }
+
+            document.getElementById('status-text').innerText = step.statusText || '';
+
+            // Log
+            const logPanel = document.getElementById('log');
+            logPanel.innerHTML = '';
+            for (let k = 0; k <= idx; k++) {
+                if (steps[k].log) {
+                    const line = document.createElement('div');
+                    line.style.marginBottom = '3px';
+                    line.style.whiteSpace = 'pre-wrap';
+                    if (steps[k].logColor) line.style.color = steps[k].logColor;
+                    if (steps[k].bold) line.style.fontWeight = 'bold';
+                    line.innerText = steps[k].log;
+                    logPanel.appendChild(line);
+                }
+            }
+            logPanel.scrollTop = logPanel.scrollHeight;
+        }
+
+        function next() {
+            if (stepIndex < steps.length - 1) {
+                stepIndex++;
+                renderStep(stepIndex);
+            } else pause();
+        }
+
+        function back() {
+            if (stepIndex > 0) {
+                stepIndex--;
+                renderStep(stepIndex);
+            }
+        }
+
+        function reset() {
+            pause();
+            stepIndex = 0;
+            renderStep(0);
+        }
+
+        function togglePlay() {
+            const btn = document.getElementById('play-btn');
+            if (timer) pause();
+            else {
+                btn.innerText = 'Pause';
+                if (stepIndex >= steps.length - 1) stepIndex = 0;
+                timer = setInterval(next, delays[document.getElementById('speed-slider').value]);
+            }
+        }
+
+        function pause() {
+            clearInterval(timer);
+            timer = null;
+            document.getElementById('play-btn').innerText = 'Play';
+        }
+
+        function loadExample(idx) {
+            array = examples[idx].arr.slice();
+            queries = examples[idx].queries.slice();
+            document.getElementById('arr-input').value = JSON.stringify(array);
+            document.getElementById('query-input').value = JSON.stringify(queries);
+            generateSteps();
+            reset();
+        }
+
+        function loadCustom() {
+            try {
+                array = JSON.parse(document.getElementById('arr-input').value);
+                queries = JSON.parse(document.getElementById('query-input').value);
+                generateSteps();
+                reset();
+            } catch(e) {
+                alert("Invalid JSON format. Use e.g. [12,18,24,36] and [[0,2],[1,3]]");
+            }
+        }
+
+        window.onload = () => {
+            loadExample(0);
+        };
+    </script>
+</body>
+</html>

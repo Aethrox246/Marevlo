@@ -1,0 +1,602 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Regex Matching - Visualization</title>
+    <style>
+        :root {
+            --bg-page: #0d1117;
+            --bg-surface: #161b22;
+            --bg-input: #0d1117;
+            --border-main: #30363d;
+            --btn-bg: #21262d;
+            --btn-hover: #2d333b;
+            --text-main: #c9d1d9;
+            --text-dim: #8b949e;
+            --accent-orange: #e3b341;
+            --accent-blue: #388bfd;
+            --accent-green: #3fb950;
+            --accent-red: #f85149;
+            --accent-purple: #a371f7;
+        }
+
+        * { box-sizing: border-box; }
+        body {
+            background-color: var(--bg-page);
+            color: var(--text-main);
+            font-family: system-ui, -apple-system, sans-serif;
+            margin: 0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            min-height: 100vh;
+            padding-bottom: 40px;
+        }
+
+        /* INPUT BAR */
+        .input-bar {
+            width: 100%;
+            background-color: var(--bg-surface);
+            padding: 12px 16px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 10px;
+            border-bottom: 1px solid var(--border-main);
+            flex-wrap: wrap;
+        }
+        label.ui-label { font-family: 'Courier New', monospace; font-size: 13px; color: var(--text-dim); }
+        input[type="text"] {
+            background: var(--bg-input);
+            border: 1px solid var(--border-main);
+            color: var(--text-main);
+            height: 32px;
+            border-radius: 6px;
+            padding: 0 10px;
+            font-size: 13px;
+        }
+        button {
+            height: 32px; border-radius: 6px; padding: 0 14px; background: var(--btn-bg);
+            border: 1px solid var(--border-main); color: var(--text-main); font-size: 13px; cursor: pointer;
+            transition: background 0.2s ease;
+        }
+        button:hover { background: var(--btn-hover); }
+
+        /* VISUALIZATION AREA */
+        .visual-container { 
+            margin-top: 30px; 
+            display: flex; 
+            gap: 60px; 
+            width: 100%; 
+            max-width: 1100px;
+            flex-wrap: wrap;
+            justify-content: center;
+        }
+        
+        /* Recursion Stack */
+        .stack-area {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 10px;
+        }
+        .stack-container {
+            display: flex;
+            flex-direction: column-reverse;
+            align-items: center;
+            gap: 8px;
+            width: 240px;
+            height: 360px;
+            border-bottom: 4px solid var(--border-main);
+            border-left: 2px dashed var(--border-main);
+            border-right: 2px dashed var(--border-main);
+            padding: 12px;
+            background: rgba(22, 27, 34, 0.5);
+            overflow-y: auto;
+            border-radius: 8px;
+        }
+        .stack-frame {
+            width: 100%;
+            padding: 10px 12px;
+            background: var(--btn-bg);
+            border: 1px solid var(--border-main);
+            border-radius: 6px;
+            font-family: monospace;
+            font-size: 13.5px;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.3);
+        }
+        .stack-frame.active {
+            background: #0d2244;
+            border-color: var(--accent-blue);
+            color: var(--accent-blue);
+            transform: scale(1.05);
+            box-shadow: 0 0 14px var(--accent-blue);
+            font-weight: bold;
+        }
+
+        /* Matching Area */
+        .match-area {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 12px;
+            width: 460px;
+        }
+        .string-display {
+            width: 100%;
+            background: var(--bg-surface);
+            border: 1px solid var(--border-main);
+            border-radius: 8px;
+            padding: 14px;
+            font-family: monospace;
+            font-size: 18px;
+            letter-spacing: 2px;
+        }
+        .highlight {
+            background: #2d3b4f;
+            padding: 2px 6px;
+            border-radius: 4px;
+            color: var(--accent-green);
+        }
+
+        /* Result Tiles */
+        .result-tiles {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+            justify-content: center;
+            margin-top: 10px;
+        }
+        .tile {
+            min-width: 50px; height: 50px; display: flex; align-items: center; justify-content: center;
+            border-radius: 8px; font-size: 20px; font-weight: 700; font-family: monospace;
+            border: 3px solid var(--accent-green); background: #0f2a1a; color: var(--accent-green);
+            animation: popIn 0.4s ease forwards;
+        }
+
+        @keyframes popIn {
+            0% { transform: scale(0.4); opacity: 0; }
+            100% { transform: scale(1); opacity: 1; }
+        }
+
+        /* PANELS */
+        .action-panel {
+            margin-top: 25px; 
+            background: var(--bg-surface); 
+            border: 1px solid var(--border-main);
+            border-radius: 8px; 
+            padding: 18px 24px; 
+            width: 940px; 
+            text-align: left; 
+            font-family: monospace; 
+            min-height: 120px;
+            font-size: 15px;
+            line-height: 1.65;
+        }
+
+        .info-panel { 
+            margin-top: 18px; 
+            display: flex; 
+            gap: 16px; 
+            flex-wrap: wrap; 
+            justify-content: center; 
+        }
+        .info-cell {
+            background: var(--bg-surface); 
+            border: 1px solid var(--border-main); 
+            border-radius: 6px;
+            padding: 12px 18px; 
+            min-width: 140px; 
+        }
+        .info-label { font-size: 11px; color: var(--text-dim); }
+        .info-value { 
+            font-family: monospace; 
+            font-size: 18px; 
+            font-weight: 700; 
+        }
+
+        .result-display { 
+            margin-top: 20px; 
+            font-size: 22px; 
+            font-family: monospace; 
+            color: var(--accent-green);
+            text-align: center;
+        }
+
+        .status-bar { 
+            margin-top: 12px; 
+            font-size: 13.5px; 
+            color: var(--text-dim); 
+            text-align: center; 
+            width: 800px;
+        }
+
+        .controls { 
+            margin-top: 30px; 
+            display: flex; 
+            align-items: center; 
+            gap: 12px; 
+            flex-wrap: wrap;
+            justify-content: center;
+        }
+
+        .legend { 
+            margin-top: 20px; 
+            display: flex; 
+            gap: 22px; 
+            flex-wrap: wrap; 
+            justify-content: center; 
+            font-size: 12.8px;
+        }
+        .legend-item { display: flex; align-items: center; color: var(--text-dim); }
+        .dot { width: 12px; height: 12px; border-radius: 3px; margin-right: 8px; }
+
+        .log-panel {
+            margin-top: 22px; 
+            background: var(--bg-page); 
+            border: 1px solid var(--border-main);
+            border-radius: 8px; 
+            padding: 16px 20px; 
+            width: 940px; 
+            max-width: 95%; 
+            height: 170px;
+            overflow-y: auto; 
+            font-family: 'Courier New', monospace; 
+            font-size: 13.5px;
+            line-height: 1.5;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="input-bar">
+        <label class="ui-label">s =</label>
+        <input type="text" id="s-input" value="aa" style="width:180px;">
+        <label class="ui-label">p =</label>
+        <input type="text" id="p-input" value="a*" style="width:180px;">
+        <button onclick="loadCustom()">Load</button>
+        <button onclick="loadExample(0)">Ex 1 (aa, a)</button>
+        <button onclick="loadExample(1)">Ex 2 (aa, a*)</button>
+    </div>
+
+    <div class="visual-container">
+        <!-- Stack -->
+        <div class="stack-area">
+            <div class="ui-label" style="font-weight: bold; color: var(--accent-blue);">Recursion Stack (i, j)</div>
+            <div class="stack-container" id="stack-container"></div>
+        </div>
+
+        <!-- Matching Visualization -->
+        <div class="match-area">
+            <div class="ui-label" style="font-weight: bold; color: var(--accent-green);">String vs Pattern</div>
+            <div class="string-display" id="string-display"></div>
+            <div class="result-tiles" id="result-tiles"></div>
+        </div>
+    </div>
+
+    <div class="action-panel" id="main-panel">
+        Click <strong>Play</strong> or <strong>Next</strong> to visualize recursive regex matching with '.' and '*'.
+    </div>
+
+    <div class="info-panel">
+        <div class="info-cell">
+            <span class="info-label">String Index (i)</span>
+            <span class="info-value" id="val-i" style="color: var(--accent-orange);">—</span>
+        </div>
+        <div class="info-cell">
+            <span class="info-label">Pattern Index (j)</span>
+            <span class="info-value" id="val-j" style="color: var(--accent-blue);">—</span>
+        </div>
+        <div class="info-cell">
+            <span class="info-label">First Match</span>
+            <span class="info-value" id="val-match" style="color: var(--accent-green);">—</span>
+        </div>
+    </div>
+
+    <div class="result-display">
+        <span class="ui-label">Final Result:</span>
+        <span id="res-val" style="font-size:28px; font-weight:bold;">—</span>
+    </div>
+
+    <div class="status-bar" id="status-text">Ready — Enter s and p or choose an example.</div>
+
+    <div class="controls">
+        <button onclick="reset()">↺ Reset</button>
+        <button onclick="back()">← Back</button>
+        <button onclick="togglePlay()" id="play-btn">Play</button>
+        <button onclick="next()">Next →</button>
+        <div style="display:flex;align-items:center;gap:8px;">
+            <span class="ui-label" style="font-size:11px">Speed</span>
+            <input type="range" id="speed-slider" min="0" max="2" value="1">
+        </div>
+    </div>
+
+    <div class="legend">
+        <div class="legend-item"><span class="dot" style="background:var(--accent-blue)"></span> Active Call (i,j)</div>
+        <div class="legend-item"><span class="dot" style="background:var(--accent-green)"></span> Match / True Branch</div>
+        <div class="legend-item"><span class="dot" style="background:var(--accent-red)"></span> No Match / False Branch</div>
+    </div>
+
+    <div class="log-panel" id="log"></div>
+
+    <script>
+        let s = "aa";
+        let p = "a*";
+        let steps = [];
+        let stepIndex = 0;
+        let timer = null;
+        const delays = [1500, 750, 350];
+
+        function init() {
+            loadExample(1);
+        }
+
+        function loadExample(ex) {
+            if (ex === 0) {
+                s = "aa"; p = "a";
+            } else {
+                s = "aa"; p = "a*";
+            }
+            document.getElementById('s-input').value = s;
+            document.getElementById('p-input').value = p;
+            generateSteps();
+            reset();
+        }
+
+        function loadCustom() {
+            s = document.getElementById('s-input').value.trim();
+            p = document.getElementById('p-input').value.trim();
+            if (!s || !p) {
+                alert("Please enter both string s and pattern p");
+                return;
+            }
+            generateSteps();
+            reset();
+        }
+
+        function generateSteps() {
+            steps = [];
+            let callStack = [];
+
+            // INIT
+            steps.push({
+                type: 'init',
+                i: 0, j: 0,
+                stack: [],
+                panel: `Regex Matching Visualization<br><strong>s = "</strong><span style="color:var(--accent-orange)">${s}</span><strong>"</strong><br><strong>p = "</strong><span style="color:var(--accent-blue)">${p}</span><strong>"</strong><br><br>Recursive function: isMatch(s[i:], p[j:])`,
+                statusText: `Starting recursion at (i=0, j=0)`,
+                log: `isMatch("${s}", "${p}")`,
+                logColor: 'var(--text-dim)'
+            });
+
+            function isMatch(i, j) {
+                callStack.push([i, j]);
+
+                const firstMatch = (i < s.length) && (p[j] === '.' || p[j] === s[i]);
+
+                steps.push({
+                    type: 'call',
+                    i: i, j: j,
+                    stack: [...callStack],
+                    panel: `Call <code>isMatch(${i}, ${j})</code><br>s[${i}:] = "<span style="color:var(--accent-orange)">${s.slice(i)}</span>"<br>p[${j}:] = "<span style="color:var(--accent-blue)">${p.slice(j)}</span>"`,
+                    statusText: `Processing (i=${i}, j=${j})`,
+                    log: `  isMatch(${i}, ${j})`,
+                    logColor: 'var(--text-main)'
+                });
+
+                // Base cases
+                if (j === p.length) {
+                    const res = (i === s.length);
+                    steps.push({
+                        type: 'base',
+                        i: i, j: j,
+                        stack: [...callStack],
+                        panel: `Base case: Pattern exhausted.<br>Return ${res} (string ${res ? 'also exhausted' : 'still has characters'})`,
+                        statusText: `Base: ${res}`,
+                        log: `    → Base case: ${res}`,
+                        logColor: res ? 'var(--accent-green)' : 'var(--accent-red)'
+                    });
+                    callStack.pop();
+                    return res;
+                }
+
+                if (i === s.length && !(j + 1 < p.length && p[j + 1] === '*')) {
+                    steps.push({
+                        type: 'base',
+                        i: i, j: j,
+                        stack: [...callStack],
+                        panel: `String exhausted but pattern not finished and no '*' to consume.<br>Return false`,
+                        statusText: `Base: false`,
+                        log: `    → false (string done, pattern remains)`,
+                        logColor: 'var(--accent-red)'
+                    });
+                    callStack.pop();
+                    return false;
+                }
+
+                // '*' case
+                if (j + 1 < p.length && p[j + 1] === '*') {
+                    // Zero match
+                    steps.push({
+                        type: 'recurse',
+                        i: i, j: j + 2,
+                        stack: [...callStack],
+                        panel: `<span style="color:var(--accent-purple)">Zero match option:</span> Skip "${p[j]}*" → call isMatch(${i}, ${j+2})`,
+                        statusText: `Trying zero matches for ${p[j]}*`,
+                        log: `    Zero: isMatch(${i}, ${j+2})`,
+                        logColor: 'var(--accent-purple)'
+                    });
+
+                    let zero = isMatch(i, j + 2);
+
+                    // One or more
+                    let oneOrMore = false;
+                    if (firstMatch) {
+                        steps.push({
+                            type: 'recurse',
+                            i: i + 1, j: j,
+                            stack: [...callStack],
+                            panel: `<span style="color:var(--accent-green)">One-or-more option:</span> Use "${p[j]}" → call isMatch(${i+1}, ${j})`,
+                            statusText: `Trying one-or-more for ${p[j]}*`,
+                            log: `    One+: isMatch(${i+1}, ${j})`,
+                            logColor: 'var(--accent-green)'
+                        });
+                        oneOrMore = isMatch(i + 1, j);
+                    }
+
+                    const result = zero || oneOrMore;
+
+                    steps.push({
+                        type: 'unwind',
+                        i: i, j: j,
+                        stack: [...callStack],
+                        panel: `Result for ( ${i}, ${j} ): ${result}<br>Zero = ${zero}, One+ = ${oneOrMore}`,
+                        statusText: `Result: ${result}`,
+                        log: `  Return ${result} (zero:${zero} | one+:${oneOrMore})`,
+                        logColor: result ? 'var(--accent-green)' : 'var(--accent-red)'
+                    });
+
+                    callStack.pop();
+                    return result;
+                }
+
+                // Normal case (no *)
+                const res = firstMatch && isMatch(i + 1, j + 1);
+
+                steps.push({
+                    type: firstMatch ? 'print' : 'base',
+                    i: i, j: j,
+                    stack: [...callStack],
+                    panel: `Normal match: ${firstMatch ? '✅ Match' : '❌ No match'}<br>Result = ${firstMatch} && isMatch(${i+1}, ${j+1}) = ${res}`,
+                    statusText: `Normal case → ${res}`,
+                    log: `    Normal: ${firstMatch} && isMatch(${i+1},${j+1}) → ${res}`,
+                    logColor: res ? 'var(--accent-green)' : 'var(--accent-red)'
+                });
+
+                callStack.pop();
+                return res;
+            }
+
+            const finalResult = isMatch(0, 0);
+
+            // Final step
+            steps.push({
+                type: 'final',
+                i: s.length, j: p.length,
+                stack: [],
+                panel: `Recursion finished.<br><strong>Final Result: <span style="color:${finalResult ? 'var(--accent-green)' : 'var(--accent-red)'}">${finalResult}</span></strong><br>s = "${s}" matches p = "${p}" ?`,
+                complete: true,
+                finalStr: finalResult ? "true" : "false",
+                statusText: `Done. Result = ${finalResult}`,
+                log: `Final Result: ${finalResult}`,
+                logColor: finalResult ? 'var(--accent-green)' : 'var(--accent-red)',
+                bold: true
+            });
+        }
+
+        function renderStep(idx) {
+            const step = steps[idx];
+            if (!step) return;
+
+            // Stack
+            const stackContainer = document.getElementById('stack-container');
+            stackContainer.innerHTML = '';
+            step.stack.forEach(([i,j], k) => {
+                const frame = document.createElement('div');
+                const isTop = k === step.stack.length - 1;
+                frame.className = `stack-frame ${isTop ? 'active' : ''}`;
+                frame.innerHTML = `isMatch(<span style="color:var(--accent-orange)">${i}</span>, <span style="color:var(--accent-blue)">${j}</span>)`;
+                stackContainer.appendChild(frame);
+            });
+
+            // String Display
+            const strDisp = document.getElementById('string-display');
+            let html = '';
+            for (let k = 0; k < s.length; k++) {
+                if (k === step.i) html += `<span class="highlight">${s[k]}</span>`;
+                else html += s[k];
+            }
+            strDisp.innerHTML = html || '<span style="color:var(--text-dim)">[empty]</span>';
+
+            // Tiles for match status
+            const tiles = document.getElementById('result-tiles');
+            tiles.innerHTML = '';
+            if (step.type === 'print' || step.type === 'base') {
+                const tile = document.createElement('div');
+                tile.className = 'tile';
+                tile.style.borderColor = step.logColor || 'var(--accent-green)';
+                tile.innerText = step.finalStr || (step.log.includes('true') ? '✓' : '✗');
+                tiles.appendChild(tile);
+            }
+
+            // Panels
+            document.getElementById('main-panel').innerHTML = step.panel;
+            document.getElementById('val-i').innerText = step.i;
+            document.getElementById('val-j').innerText = step.j;
+            document.getElementById('val-match').innerText = step.firstMatch !== undefined ? (step.firstMatch ? 'Yes' : 'No') : '—';
+
+            const resVal = document.getElementById('res-val');
+            resVal.innerText = step.complete ? step.finalStr.toUpperCase() : '—';
+            if (step.complete) resVal.style.color = step.finalStr === "true" ? 'var(--accent-green)' : 'var(--accent-red)';
+
+            document.getElementById('status-text').innerText = step.statusText;
+
+            // Log
+            const logPanel = document.getElementById('log');
+            logPanel.innerHTML = '';
+            for (let k = 0; k <= idx; k++) {
+                if (steps[k].log) {
+                    const line = document.createElement('div');
+                    line.style.marginBottom = '4px';
+                    line.style.whiteSpace = 'pre-wrap';
+                    if (steps[k].logColor) line.style.color = steps[k].logColor;
+                    if (steps[k].bold) line.style.fontWeight = 'bold';
+                    line.innerText = steps[k].log;
+                    logPanel.appendChild(line);
+                }
+            }
+            logPanel.scrollTop = logPanel.scrollHeight;
+        }
+
+        function next() {
+            if (stepIndex < steps.length - 1) {
+                stepIndex++;
+                renderStep(stepIndex);
+            } else pause();
+        }
+
+        function back() {
+            if (stepIndex > 0) {
+                stepIndex--;
+                renderStep(stepIndex);
+            }
+        }
+
+        function reset() {
+            pause();
+            stepIndex = 0;
+            renderStep(0);
+        }
+
+        function togglePlay() {
+            const btn = document.getElementById('play-btn');
+            if (timer) pause();
+            else {
+                btn.innerText = 'Pause';
+                if (stepIndex >= steps.length - 1) stepIndex = 0;
+                timer = setInterval(next, delays[document.getElementById('speed-slider').value]);
+            }
+        }
+
+        function pause() {
+            clearInterval(timer);
+            timer = null;
+            document.getElementById('play-btn').innerText = 'Play';
+        }
+
+        window.onload = init;
+    </script>
+</body>
+</html>

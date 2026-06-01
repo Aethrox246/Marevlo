@@ -1,0 +1,436 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Flatten Multilevel List - Visualization</title>
+    <style>
+        :root {
+            --bg-page: #0d1117;
+            --bg-surface: #161b22;
+            --bg-input: #0d1117;
+            --border-main: #30363d;
+            --btn-bg: #21262d;
+            --btn-hover: #2d333b;
+            --text-main: #c9d1d9;
+            --text-dim: #8b949e;
+            --text-log: #58a6ff;
+            --accent-orange: #e3b341;
+            --accent-blue: #388bfd;
+            --accent-green: #3fb950;
+            --accent-red: #f85149;
+            --accent-purple: #a371f7;
+        }
+
+        * { box-sizing: border-box; }
+        body {
+            background-color: var(--bg-page);
+            color: var(--text-main);
+            font-family: system-ui, -apple-system, sans-serif;
+            margin: 0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            min-height: 100vh;
+            padding-bottom: 40px;
+        }
+
+        /* ROW 1: INPUT BAR */
+        .input-bar {
+            width: 100%;
+            background-color: var(--bg-surface);
+            padding: 12px 16px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 8px;
+            border-bottom: 1px solid var(--border-main);
+            flex-wrap: wrap;
+        }
+        label.ui-label { font-family: 'Courier New', monospace; font-size: 13px; color: var(--text-dim); }
+        button {
+            height: 32px; border-radius: 6px; padding: 0 14px; background: var(--btn-bg);
+            border: 1px solid var(--border-main); color: var(--text-main); font-size: 13px; cursor: pointer;
+            transition: background 0.2s ease;
+        }
+        button:hover { background: var(--btn-hover); }
+
+        /* ROW 2: VISUAL */
+        .visual-container { margin-top: 30px; display: flex; flex-direction: column; align-items: center; gap: 30px; width: 100%; }
+        .list-wrapper { display: flex; align-items: center; gap: 8px; flex-wrap: nowrap; justify-content: center; max-width: 900px; min-height: 90px; position: relative; }
+        
+        .node-unit { display: flex; flex-direction: column; align-items: center; gap: 4px; position: relative; }
+        .node {
+            min-width: 54px; height: 54px; display: flex; align-items: center; justify-content: center;
+            border-radius: 8px; font-size: 17px; font-weight: 700; font-family: 'Courier New', monospace;
+            transition: all 0.3s ease; border: 3px solid var(--border-main); background: #21262d;
+            color: var(--text-main); position: relative;
+        }
+        .node.current { border-color: var(--accent-orange); box-shadow: 0 0 14px rgba(227, 179, 65, 0.5); }
+        .node.child-start { border-color: var(--accent-purple); box-shadow: 0 0 14px rgba(163, 113, 247, 0.5); }
+        .node.inserted { border-color: var(--accent-green); box-shadow: 0 0 14px rgba(63, 185, 80, 0.5); }
+        .node-index { font-size: 11px; color: var(--text-dim); font-family: monospace; }
+        
+        .arrow { font-size: 24px; color: var(--accent-blue); font-weight: bold; line-height: 1; padding: 0 6px; }
+        .child-arrow { font-size: 20px; color: var(--accent-purple); transform: rotate(90deg); padding: 0 4px; }
+
+        /* CHILD PANEL */
+        .child-panel {
+            background: var(--bg-surface);
+            border: 2px solid var(--accent-purple);
+            border-radius: 8px;
+            padding: 12px;
+            min-width: 420px;
+            text-align: center;
+        }
+        .child-title { font-size: 13px; color: var(--accent-purple); margin-bottom: 8px; }
+
+        /* ROW 3: PANEL */
+        .action-panel {
+            margin-top: 40px; background: var(--bg-surface); border: 1px solid var(--border-main);
+            border-radius: 6px; padding: 12px 20px; width: 680px; text-align: center; font-family: monospace; min-height: 72px;
+            display: flex; flex-direction: column; justify-content: center; font-size: 15px; line-height: 1.5;
+        }
+
+        /* ROW 4: INFO PANEL */
+        .info-panel { margin-top: 10px; display: flex; gap: 10px; flex-wrap: wrap; justify-content: center; }
+        .info-cell {
+            background: var(--bg-surface); border: 1px solid var(--border-main); border-radius: 6px;
+            padding: 8px 14px; display: flex; flex-direction: column; align-items: center; min-width: 92px; gap: 4px;
+        }
+        .info-label { font-size: 11px; color: var(--text-dim); }
+        .info-value { font-family: monospace; font-size: 15px; font-weight: 700; text-align: center; }
+
+        /* ROW 5: RESULT DISPLAY */
+        .result-display { margin-top: 10px; display: flex; flex-direction: column; align-items: center; }
+        #res-val { font-size: 18px; color: var(--text-dim); font-family: monospace; transition: all 0.3s; font-weight: bold; }
+        .pop { animation: popAnim 400ms ease; color: var(--accent-green) !important; font-size: 24px !important; text-shadow: 0 0 12px var(--accent-green); }
+
+        @keyframes popAnim { 0%{transform:scale(1)} 50%{transform:scale(1.15)} 100%{transform:scale(1)} }
+
+        /* ROW 6: STATUS BAR */
+        .status-bar { margin-top: 8px; font-size: 13px; color: var(--text-dim); height: 1.2em; text-align: center; width: 600px;}
+
+        /* ROW 7: CONTROLS */
+        .controls { margin-top: 24px; display: flex; align-items: center; gap: 8px; }
+        input[type="range"] { accent-color: var(--accent-blue); width: 100px; cursor: pointer; }
+
+        /* ROW 8: LEGEND */
+        .legend { margin-top: 12px; display: flex; gap: 16px; flex-wrap: wrap; justify-content: center; max-width: 800px; }
+        .legend-item { display: flex; align-items: center; font-size: 12px; color: var(--text-dim); }
+        .dot { width: 10px; height: 10px; border-radius: 2px; margin-right: 6px; display: inline-block; }
+
+        /* ROW 9: LOG PANEL */
+        .log-panel {
+            margin-top: 12px; background: var(--bg-page); border: 1px solid var(--border-main);
+            border-radius: 6px; padding: 12px 16px; width: 700px; max-width: 90%; height: 120px;
+            overflow-y: auto; font-family: 'Courier New', monospace; font-size: 13px;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="input-bar">
+        <label class="ui-label">Multilevel List (recursive DFS flatten)</label>
+        <button onclick="loadExample(1)">Ex 1 (1-2-3-4-5 with child at 2)</button>
+        <button onclick="loadExample(2)">Ex 2 (1 with child 2-3 with child 4)</button>
+    </div>
+
+    <div class="visual-container">
+        <div class="ui-label">Flatten Multilevel List (Recursive DFS)</div>
+        
+        <div>
+            <div class="ui-label" style="margin-bottom:6px">Current List (main chain)</div>
+            <div class="list-wrapper" id="main-container"></div>
+        </div>
+
+        <div class="child-panel">
+            <div class="child-title">Current Child List (being flattened)</div>
+            <div class="list-wrapper" id="child-container"></div>
+        </div>
+
+        <div>
+            <div class="ui-label" style="margin-bottom:6px">Flattened List (building)</div>
+            <div class="list-wrapper" id="flattened-container"></div>
+        </div>
+    </div>
+
+    <div class="action-panel" id="main-panel">—</div>
+
+    <div class="info-panel">
+        <div class="info-cell">
+            <span class="info-label">current node</span>
+            <span class="info-value" id="val-current" style="color: var(--accent-orange);">—</span>
+        </div>
+        <div class="info-cell">
+            <span class="info-label">child found</span>
+            <span class="info-value" id="val-child" style="color: var(--accent-purple);">—</span>
+        </div>
+        <div class="info-cell">
+            <span class="info-label">tail after insert</span>
+            <span class="info-value" id="val-tail" style="color: var(--accent-green);">—</span>
+        </div>
+    </div>
+
+    <div class="result-display">
+        <span class="ui-label" style="margin-bottom: 4px;">final flattened list =</span>
+        <span id="res-val">—</span>
+    </div>
+
+    <div class="status-bar" id="status-text"></div>
+
+    <div class="controls">
+        <button onclick="reset()">↺ Reset</button>
+        <button onclick="back()">← Back</button>
+        <button onclick="togglePlay()" id="play-btn">Play</button>
+        <button onclick="next()">Next →</button>
+        <div class="controls" style="margin-top:0">
+            <span class="ui-label" style="margin-right:4px; font-size:11px">Speed</span>
+            <input type="range" id="speed-slider" min="0" max="2" value="1">
+        </div>
+    </div>
+
+    <div class="legend">
+        <div class="legend-item"><span class="dot" style="background:#21262d; border:3px solid var(--accent-orange)"></span> current node</div>
+        <div class="legend-item"><span class="dot" style="background:#21262d; border:3px solid var(--accent-purple)"></span> child start</div>
+        <div class="legend-item"><span class="dot" style="background:#21262d; border:3px solid var(--accent-green)"></span> inserted</div>
+        <div class="legend-item"><span class="dot" style="background:#21262d; border:3px solid var(--border-main); opacity:0.4"></span> node</div>
+    </div>
+
+    <div class="log-panel" id="log"></div>
+
+    <script>
+        let steps = [];
+        let stepIndex = 0;
+        let timer = null;
+        const delays = [1800, 900, 450];
+
+        // Example data (hard-coded from JSON to match exactly)
+        let exampleData = {
+            1: { // Ex 1
+                nodes: [1,2,3,4,5],
+                childMap: { 2: [6,7,8], 7: [9,10] }, // child indices in the main list
+                final: [1,2,6,7,9,10,8,3,4,5]
+            },
+            2: { // Ex 2
+                nodes: [1,2,3],
+                childMap: { 1: [2,3], 2: [4] },
+                final: [1,2,4,3]
+            }
+        };
+
+        function init() { loadExample(1); }
+
+        function loadExample(exId) {
+            const data = exampleData[exId];
+            document.getElementById('main-container').dataset.example = exId;
+            generateSteps(data);
+            reset();
+        }
+
+        function generateSteps(data) {
+            steps = [];
+            let flattened = [];
+
+            // Step 0: Init
+            steps.push({
+                type: 'init',
+                mainState: [...data.nodes],
+                childState: [],
+                flattenedState: [],
+                panel: `Recursive DFS flatten:<br>Traverse main list, flatten child lists first, splice into main`,
+                statusText: `Starting`,
+                log: `multilevel list loaded`,
+                logColor: 'var(--text-dim)'
+            });
+
+            // Simulate recursive flattening (step-by-step as per JSON trace)
+            let currentIdx = 0;
+            let currentNode = data.nodes[currentIdx];
+
+            while (currentIdx < data.nodes.length) {
+                // Check current
+                steps.push({
+                    type: 'check-current',
+                    mainState: [...data.nodes],
+                    childState: [],
+                    flattenedState: [...flattened],
+                    currentVal: currentNode,
+                    panel: `Current: <b>${currentNode}</b>`,
+                    statusText: `Check node`,
+                    log: `node ${currentNode}`,
+                    logColor: 'var(--accent-orange)'
+                });
+
+                // If has child
+                if (data.childMap[currentNode]) {
+                    let childList = data.childMap[currentNode];
+                    steps.push({
+                        type: 'child-found',
+                        mainState: [...data.nodes],
+                        childState: [...childList],
+                        flattenedState: [...flattened],
+                        currentVal: currentNode,
+                        panel: `Child found: <b>${childList.join('→')}</b> → Recurse`,
+                        statusText: `Child found`,
+                        log: `child list ${childList.join(',')}`,
+                        logColor: 'var(--accent-purple)'
+                    });
+
+                    // Simulate recursive flatten of child (simple insert for viz)
+                    flattened.push(...childList);
+                    steps.push({
+                        type: 'insert-child',
+                        mainState: [...data.nodes],
+                        childState: [],
+                        flattenedState: [...flattened],
+                        currentVal: currentNode,
+                        panel: `Inserted child → Flattened: <b>${flattened.join('→')}</b>`,
+                        statusText: `Inserted`,
+                        log: `inserted child`,
+                        logColor: 'var(--accent-green)'
+                    });
+                } else {
+                    flattened.push(currentNode);
+                    steps.push({
+                        type: 'no-child',
+                        mainState: [...data.nodes],
+                        childState: [],
+                        flattenedState: [...flattened],
+                        currentVal: currentNode,
+                        panel: `No child → Add to flattened`,
+                        statusText: `No child`,
+                        log: `added ${currentNode}`,
+                        logColor: 'var(--accent-green)'
+                    });
+                }
+
+                currentIdx++;
+                currentNode = data.nodes[currentIdx];
+            }
+
+            // Final
+            steps.push({
+                type: 'final',
+                mainState: [...data.nodes],
+                childState: [],
+                flattenedState: [...flattened],
+                complete: true,
+                finalStr: data.final.join('→'),
+                panel: `Fully flattened: <b>${data.final.join('→')}</b>`,
+                statusText: `Done`,
+                log: `final flattened list`,
+                logColor: 'var(--accent-green)',
+                bold: true
+            });
+        }
+
+        function renderList(containerId, state, highlightIdx = -1) {
+            const container = document.getElementById(containerId);
+            container.innerHTML = '';
+            if (state.length === 0) {
+                const empty = document.createElement('div');
+                empty.style.color = 'var(--text-dim)';
+                empty.style.fontFamily = 'monospace';
+                empty.innerText = 'null';
+                container.appendChild(empty);
+                return;
+            }
+            for (let i = 0; i < state.length; i++) {
+                const unit = document.createElement('div');
+                unit.className = 'node-unit';
+                const nodeEl = document.createElement('div');
+                let cls = 'node';
+                if (i === highlightIdx) cls += ' current';
+                nodeEl.className = cls;
+                nodeEl.innerText = state[i];
+                const idxLabel = document.createElement('div');
+                idxLabel.className = 'node-index';
+                idxLabel.innerText = '';
+                unit.append(nodeEl, idxLabel);
+                container.appendChild(unit);
+                if (i < state.length - 1) {
+                    const arrow = document.createElement('div');
+                    arrow.className = 'arrow';
+                    arrow.innerText = '→';
+                    container.appendChild(arrow);
+                }
+            }
+        }
+
+        function renderStep(idx) {
+            const step = steps[idx];
+            if (!step) return;
+
+            renderList('main-container', step.mainState || [], -1);
+            renderList('child-container', step.childState || [], -1);
+            renderList('flattened-container', step.flattenedState || [], -1);
+
+            document.getElementById('main-panel').innerHTML = step.panel || '—';
+            document.getElementById('val-current').innerText = step.currentVal !== undefined ? step.currentVal : '—';
+            document.getElementById('val-child').innerText = step.childState && step.childState.length ? step.childState.join('→') : 'none';
+            document.getElementById('val-tail').innerText = step.flattenedState ? step.flattenedState.length : '—';
+
+            const resVal = document.getElementById('res-val');
+            resVal.innerText = step.complete ? step.finalStr : '—';
+            if (step.complete) resVal.className = 'pop';
+            else resVal.className = '';
+
+            document.getElementById('status-text').innerText = step.statusText || '';
+
+            const logPanel = document.getElementById('log');
+            logPanel.innerHTML = '';
+            for (let k = 0; k <= idx; k++) {
+                if (steps[k].log) {
+                    const line = document.createElement('div');
+                    line.style.marginBottom = '3px';
+                    line.style.whiteSpace = 'pre-wrap';
+                    if (steps[k].logColor) line.style.color = steps[k].logColor;
+                    if (steps[k].bold) line.style.fontWeight = 'bold';
+                    line.innerText = steps[k].log;
+                    logPanel.appendChild(line);
+                }
+            }
+            logPanel.scrollTop = logPanel.scrollHeight;
+        }
+
+        function next() {
+            if (stepIndex < steps.length - 1) {
+                stepIndex++;
+                renderStep(stepIndex);
+            } else pause();
+        }
+
+        function back() {
+            if (stepIndex > 0) {
+                stepIndex--;
+                renderStep(stepIndex);
+            }
+        }
+
+        function reset() {
+            pause();
+            stepIndex = 0;
+            renderStep(0);
+        }
+
+        function togglePlay() {
+            const btn = document.getElementById('play-btn');
+            if (timer) pause();
+            else {
+                btn.innerText = 'Pause';
+                if (stepIndex >= steps.length - 1) stepIndex = 0;
+                timer = setInterval(next, delays[document.getElementById('speed-slider').value]);
+            }
+        }
+
+        function pause() {
+            clearInterval(timer);
+            timer = null;
+            document.getElementById('play-btn').innerText = 'Play';
+        }
+
+        window.onload = init;
+    </script>
+</body>
+</html>

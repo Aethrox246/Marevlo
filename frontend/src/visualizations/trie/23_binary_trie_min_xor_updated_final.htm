@@ -1,0 +1,519 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+<title>Minimum XOR using Binary Trie</title>
+
+<style>
+
+:root{
+    --bg:#0d1117;
+    --surface:#161b22;
+    --border:#30363d;
+    --text:#c9d1d9;
+    --purple:#a371f7;
+    --blue:#58a6ff;
+    --green:#3fb950;
+    --orange:#e3b341;
+}
+
+*{
+    box-sizing:border-box;
+}
+
+body{
+    margin:0;
+    padding:20px;
+    background:var(--bg);
+    color:var(--text);
+    font-family:Arial;
+}
+
+h1{
+    text-align:center;
+    color:var(--purple);
+}
+
+.subtitle{
+    text-align:center;
+    color:#8b949e;
+    margin-bottom:20px;
+}
+
+.controls{
+    display:flex;
+    justify-content:center;
+    gap:10px;
+    flex-wrap:wrap;
+    margin-bottom:20px;
+}
+
+button{
+    padding:10px 18px;
+    border:none;
+    border-radius:8px;
+    background:#21262d;
+    color:white;
+    cursor:pointer;
+}
+
+button:hover{
+    background:#30363d;
+}
+
+.panel{
+    background:var(--surface);
+    border:1px solid var(--border);
+    border-radius:12px;
+    padding:20px;
+    margin-bottom:20px;
+}
+
+.title{
+    color:var(--blue);
+    font-size:20px;
+    margin-bottom:10px;
+}
+
+.array{
+    display:flex;
+    gap:10px;
+    flex-wrap:wrap;
+}
+
+.tile{
+    padding:10px 16px;
+    border:2px solid var(--orange);
+    border-radius:8px;
+    background:#21262d;
+    font-family:monospace;
+}
+
+.result{
+    font-size:32px;
+    color:var(--green);
+    font-weight:bold;
+}
+
+.log{
+    background:#0b0f14;
+    border-radius:10px;
+    padding:15px;
+    font-family:monospace;
+    line-height:1.7;
+    max-height:300px;
+    overflow:auto;
+}
+
+.step-box{
+    background:#21262d;
+    padding:15px;
+    border-radius:10px;
+}
+
+</style>
+</head>
+
+<body>
+
+<h1>Minimum XOR using Binary Trie</h1>
+
+<div class="subtitle">
+Find Minimum XOR Pair using Trie
+</div>
+
+<div class="controls">
+
+    <button onclick="loadExample1()">
+        Example 1
+    </button>
+
+    <button onclick="loadExample2()">
+        Example 2
+    </button>
+
+</div>
+
+<div class="controls">
+
+    <button onclick="prevStep()">
+        ⬅ Prev
+    </button>
+
+    <button onclick="togglePlay()" id="playBtn">
+        ▶ Play
+    </button>
+
+    <button onclick="nextStep()">
+        Next ➡
+    </button>
+
+</div>
+
+<div class="panel">
+
+    <div class="title">
+        Current Step
+    </div>
+
+    <div id="stepInfo" class="step-box">
+        —
+    </div>
+
+</div>
+
+<div class="panel">
+
+    <div class="title">
+        Numbers
+    </div>
+
+    <div id="array" class="array"></div>
+
+</div>
+
+<div class="panel">
+
+    <div class="title">
+        Minimum XOR
+    </div>
+
+    <div id="result" class="result">
+        —
+    </div>
+
+</div>
+
+<div class="panel">
+
+    <div class="title">
+        Execution Logs
+    </div>
+
+    <div id="logs" class="log"></div>
+
+</div>
+
+<script>
+
+class TrieNode{
+
+    constructor(){
+
+        this.children = [null, null];
+    }
+}
+
+class BinaryTrie{
+
+    constructor(){
+
+        this.root = new TrieNode();
+    }
+
+    insert(num){
+
+        let node = this.root;
+
+        for(let i = 31; i >= 0; i--){
+
+            let bit = (num >> i) & 1;
+
+            if(!node.children[bit]){
+
+                node.children[bit] =
+                    new TrieNode();
+            }
+
+            node = node.children[bit];
+        }
+    }
+
+    getMinXOR(num){
+
+        let node = this.root;
+
+        let xor = 0;
+
+        for(let i = 31; i >= 0; i--){
+
+            let bit = (num >> i) & 1;
+
+            // Prefer same bit
+            if(node.children[bit]){
+
+                node =
+                    node.children[bit];
+            }
+            else{
+
+                xor |= (1 << i);
+
+                node =
+                    node.children[1 - bit];
+            }
+        }
+
+        return xor;
+    }
+}
+
+let steps = [];
+
+let currentStep = 0;
+
+let timer = null;
+
+let isPlaying = false;
+
+function renderArray(nums){
+
+    let html = "";
+
+    for(let n of nums){
+
+        html +=
+        `
+        <div class="tile">
+            ${n}
+        </div>
+        `;
+    }
+
+    document.getElementById(
+        "array"
+    ).innerHTML = html;
+}
+
+function renderStep(){
+
+    let step = steps[currentStep];
+
+    document.getElementById(
+        "stepInfo"
+    ).innerHTML = step.info;
+
+    document.getElementById(
+        "result"
+    ).innerHTML = step.result;
+
+    document.getElementById(
+        "logs"
+    ).innerHTML = step.logs;
+}
+
+function nextStep(){
+
+    if(currentStep < steps.length - 1){
+
+        currentStep++;
+
+        renderStep();
+    }
+    else{
+
+        pausePlay();
+    }
+}
+
+function prevStep(){
+
+    if(currentStep > 0){
+
+        currentStep--;
+
+        renderStep();
+    }
+}
+
+function togglePlay(){
+
+    if(isPlaying){
+
+        pausePlay();
+    }
+    else{
+
+        startPlay();
+    }
+}
+
+function startPlay(){
+
+    isPlaying = true;
+
+    document.getElementById(
+        "playBtn"
+    ).innerHTML = "⏸ Pause";
+
+    timer = setInterval(() => {
+
+        if(currentStep < steps.length - 1){
+
+            nextStep();
+        }
+        else{
+
+            pausePlay();
+        }
+
+    }, 1500);
+}
+
+function pausePlay(){
+
+    clearInterval(timer);
+
+    isPlaying = false;
+
+    document.getElementById(
+        "playBtn"
+    ).innerHTML = "▶ Play";
+}
+
+function generateSteps(nums){
+
+    steps = [];
+
+    renderArray(nums);
+
+    const trie =
+        new BinaryTrie();
+
+    let allLogs = [];
+
+    steps.push({
+
+        info:
+            `
+            Initialize Binary Trie
+            `,
+
+        result:
+            `—`,
+
+        logs:
+            `
+            Trie created
+            `
+    });
+
+    trie.insert(nums[0]);
+
+    allLogs.push(
+        `Insert first number ${nums[0]}`
+    );
+
+    steps.push({
+
+        info:
+            `
+            Insert ${nums[0]}
+            into Trie
+            `,
+
+        result:
+            `—`,
+
+        logs:
+            allLogs.join("<br>")
+    });
+
+    let minXor = Infinity;
+
+    for(let i = 1; i < nums.length; i++){
+
+        let num = nums[i];
+
+        let currXor =
+            trie.getMinXOR(num);
+
+        allLogs.push(
+            `
+            Check ${num}
+            → minimum XOR = ${currXor}
+            `
+        );
+
+        if(currXor < minXor){
+
+            minXor = currXor;
+
+            allLogs.push(
+                `
+                Update global minimum
+                → ${minXor}
+                `
+            );
+        }
+
+        trie.insert(num);
+
+        allLogs.push(
+            `
+            Insert ${num}
+            into Trie
+            `
+        );
+
+        steps.push({
+
+            info:
+                `
+                Process number
+                <span style="color:orange">
+                    ${num}
+                </span>
+                `,
+
+            result:
+                minXor,
+
+            logs:
+                allLogs.join("<br>")
+        });
+    }
+
+    steps.push({
+
+        info:
+            `
+            Final Minimum XOR
+            `,
+
+        result:
+            `
+            ${minXor}
+            `,
+
+        logs:
+            allLogs.join("<br>")
+    });
+
+    currentStep = 0;
+
+    renderStep();
+}
+
+function loadExample1(){
+
+    generateSteps(
+        [3,10,5,25,2,8]
+    );
+}
+
+function loadExample2(){
+
+    generateSteps(
+        [1,2,3,4,5]
+    );
+}
+
+loadExample1();
+
+</script>
+
+</body>
+</html>

@@ -284,36 +284,195 @@ export const COURSE_HTML_MAP = {
   "langgraph-module-6": "/cources/LangGraph/module6.html",
   "langgraph-module-7": "/cources/LangGraph/module7.html",
   "langgraph-module-8": "/cources/LangGraph/module8.html",
-  "transformer-0-1": "/cources/Data_Science/Transofmer/module_0_1_attention_refresher.html",
-  "transformer-0-2": "/cources/Data_Science/Transofmer/module_0_2_transformer_block.html",
-  "transformer-1-1": "/cources/Data_Science/Transofmer/module_1_1_bert.html",
-  "transformer-1-2": "/cources/Data_Science/Transofmer/module_1_2_roberta.html",
-  "transformer-1-3": "/cources/Data_Science/Transofmer/module_1_3_distilbert_albert.html",
-  "transformer-1-4": "/cources/Data_Science/Transofmer/module_1_4_deberta_electra.html",
-  "transformer-2-1": "/cources/Data_Science/Transofmer/module_2_1_gpt2.html",
-  "transformer-2-2": "/cources/Data_Science/Transofmer/module_2_2_gpt3_icl.html",
-  "transformer-2-3": "/cources/Data_Science/Transofmer/module_2_3_instructgpt_rlhf.html",
-  "transformer-2-4": "/cources/Data_Science/Transofmer/module_2_4_gpt4_scaling.html",
-  "transformer-3-1": "/cources/Data_Science/Transofmer/module_3_1_llama.html",
-  "transformer-3-2": "/cources/Data_Science/Transofmer/module_3_2_mistral_mixtral.html",
-  "transformer-3-3": "/cources/Data_Science/Transofmer/module_3_3_qwen.html",
-  "transformer-4-1": "/cources/Data_Science/Transofmer/module_4_1_t5_flan.html",
-  "transformer-4-2": "/cources/Data_Science/Transofmer/module_4_2_bart.html",
-  "transformer-5-1": "/cources/Data_Science/Transofmer/module_5_1_quadratic_bottleneck.html",
-  "transformer-5-2": "/cources/Data_Science/Transofmer/module_5_2_longformer_bigbird.html",
-  "transformer-5-3": "/cources/Data_Science/Transofmer/module_5_3_linear_attention.html",
-  "transformer-6-1": "/cources/Data_Science/Transofmer/module_6_1_vit_deit.html",
-  "transformer-6-2": "/cources/Data_Science/Transofmer/module_6_2_swin.html",
-  "transformer-6-3": "/cources/Data_Science/Transofmer/module_6_3_clip.html",
-  "transformer-6-4": "/cources/Data_Science/Transofmer/module_6_4_multimodal_llms.html",
-  "transformer-7-1": "/cources/Data_Science/Transofmer/module_7_1_moe.html",
-  "transformer-7-2": "/cources/Data_Science/Transofmer/module_7_2_ssm.html",
-  "transformer-7-3": "/cources/Data_Science/Transofmer/module_7_3_production_stack.html",
+  "transformer-0-1": "/cources/generative-ai/Tranformers/module_0_1_attention_refresher.html",
+  "transformer-0-2": "/cources/generative-ai/Tranformers/module_0_2_transformer_block.html",
+  "transformer-1-1": "/cources/generative-ai/Tranformers/module_1_1_bert.html",
+  "transformer-1-2": "/cources/generative-ai/Tranformers/module_1_2_roberta.html",
+  "transformer-1-3": "/cources/generative-ai/Tranformers/module_1_3_distilbert_albert.html",
+  "transformer-1-4": "/cources/generative-ai/Tranformers/module_1_4_deberta_electra.html",
+  "transformer-2-1": "/cources/generative-ai/Tranformers/module_2_1_gpt2.html",
+  "transformer-2-2": "/cources/generative-ai/Tranformers/module_2_2_gpt3_icl.html",
+  "transformer-2-3": "/cources/generative-ai/Tranformers/module_2_3_instructgpt_rlhf.html",
+  "transformer-2-4": "/cources/generative-ai/Tranformers/module_2_4_gpt4_scaling.html",
+  "transformer-3-1": "/cources/generative-ai/Tranformers/module_3_1_llama.html",
+  "transformer-3-2": "/cources/generative-ai/Tranformers/module_3_2_mistral_mixtral.html",
+  "transformer-3-3": "/cources/generative-ai/Tranformers/module_3_3_qwen.html",
+  "transformer-4-1": "/cources/generative-ai/Tranformers/module_4_1_t5_flan.html",
+  "transformer-4-2": "/cources/generative-ai/Tranformers/module_4_2_bart.html",
+  "transformer-5-1": "/cources/generative-ai/Tranformers/module_5_1_quadratic_bottleneck.html",
+  "transformer-5-2": "/cources/generative-ai/Tranformers/module_5_2_longformer_bigbird.html",
+  "transformer-5-3": "/cources/generative-ai/Tranformers/module_5_3_linear_attention.html",
+  "transformer-6-1": "/cources/generative-ai/Tranformers/module_6_1_vit_deit.html",
+  "transformer-6-2": "/cources/generative-ai/Tranformers/module_6_2_swin.html",
+  "transformer-6-3": "/cources/generative-ai/Tranformers/module_6_3_clip.html",
+  "transformer-6-4": "/cources/generative-ai/Tranformers/module_6_4_multimodal_llms.html",
+  "transformer-7-1": "/cources/generative-ai/Tranformers/module_7_1_moe.html",
+  "transformer-7-2": "/cources/generative-ai/Tranformers/module_7_2_ssm.html",
+  "transformer-7-3": "/cources/generative-ai/Tranformers/module_7_3_production_stack.html",
+
+  // API Security
+  "api-security-ch1": "/cources/API security/api-security-ch1.html",
+  "api-security-ch2": "/cources/API security/api-security-ch2.html",
+  "api-security-ch3": "/cources/API security/api-security-ch3.html",
+  "api-security-ch4": "/cources/API security/api-security-ch4.html",
+  "api-security-ch5": "/cources/API security/api-security-ch5.html",
+  "api-security-ch6": "/cources/API security/api-security-ch6.html",
+  "api-security-ch7": "/cources/API security/api-security-ch7.html",
+  "api-security-ch8": "/cources/API security/api-security-ch8.html",
+
+  // The Agent Atlas
+  "agent-atlas-ch1": "/cources/generative-ai/Agentic-AI/The Agent Atlas/chapter-01.html",
+  "agent-atlas-ch2": "/cources/generative-ai/Agentic-AI/The Agent Atlas/chapter-02.html",
+  "agent-atlas-ch3": "/cources/generative-ai/Agentic-AI/The Agent Atlas/chapter-03.html",
+  "agent-atlas-ch4": "/cources/generative-ai/Agentic-AI/The Agent Atlas/chapter-04.html",
+  "agent-atlas-ch5": "/cources/generative-ai/Agentic-AI/The Agent Atlas/chapter-05.html",
+  "agent-atlas-ch6": "/cources/generative-ai/Agentic-AI/The Agent Atlas/chapter-06.html",
+  "agent-atlas-ch7": "/cources/generative-ai/Agentic-AI/The Agent Atlas/chapter-07.html",
+  "agent-atlas-ch8": "/cources/generative-ai/Agentic-AI/The Agent Atlas/chapter-08.html",
+  "agent-atlas-ch9": "/cources/generative-ai/Agentic-AI/The Agent Atlas/chapter-09.html",
+
+  // Agentic AI Track 0: RAG Pipeline to Agent
+  "agentic-track0-0": "/cources/generative-ai/Agentic-AI/track_0_rag_pipeline_to_agent/module_0.0_welcome.html",
+  "agentic-track0-1": "/cources/generative-ai/Agentic-AI/track_0_rag_pipeline_to_agent/module_0.1_chatbot_to_agent.html",
+  "agentic-track0-2": "/cources/generative-ai/Agentic-AI/track_0_rag_pipeline_to_agent/module_0.2_function_calling_from_scratch.html",
+
+  // Agentic AI Track 1: Agent-Specific Structure
+  "agentic-track1-0": "/cources/generative-ai/Agentic-AI/track_1_agent_specifix_structure/module_1.0_pydantic_as_tool_Schema.html",
+
+  // Agentic AI Track 2: Building Agent
+  "agentic-track2-0": "/cources/generative-ai/Agentic-AI/track_2_building_agent/module_2.0_LangChain_LCEL_Foundations.html",
+  "agentic-track2-1": "/cources/generative-ai/Agentic-AI/track_2_building_agent/module_2.1_prompt_engineering_framework.html",
+  "agentic-track2-2": "/cources/generative-ai/Agentic-AI/track_2_building_agent/module_2.2_Map-Reduce_for_Agent_Workflows.html",
+  "agentic-track2-3": "/cources/generative-ai/Agentic-AI/track_2_building_agent/module_2.3_research_engine_summarize.html",
+  "agentic-track2-4": "/cources/generative-ai/Agentic-AI/track_2_building_agent/module_2.4_langgraph_for_agentic_workflow.html",
+  "agentic-track2-5": "/cources/generative-ai/Agentic-AI/track_2_building_agent/module_2.5_rag_as_bridge.html",
+  "agentic-track2-6": "/cources/generative-ai/Agentic-AI/track_2_building_agent/module_2.6_mcp_as_a_tool.html",
+  "agentic-track2-7": "/cources/generative-ai/Agentic-AI/track_2_building_agent/module_2.7_Production_AI_Agents.html",
+  "agentic-track2-8": "/cources/generative-ai/Agentic-AI/track_2_building_agent/module_2.8_multi_agent_system.html",
+  "agentic-track2-9": "/cources/generative-ai/Agentic-AI/track_2_building_agent/module_2.9_agentic_frame_work.html",
+  "agentic-track2-10": "/cources/generative-ai/Agentic-AI/track_2_building_agent/module_2.10_planning_pattern.html",
+  "agentic-track2-11": "/cources/generative-ai/Agentic-AI/track_2_building_agent/module_2.11_memory_gaurdrills.html",
+  "agentic-track2-12": "/cources/generative-ai/Agentic-AI/track_2_building_agent/module_2.12_desing_pattern_refrence.html",
+
+  // Agentic AI Track 3: Agent Evaluation
+  "agentic-track3-0": "/cources/generative-ai/Agentic-AI/track_3_agent_evaluation/module_3.0_rag_to_agent_eval.html",
+  "agentic-track3-1": "/cources/generative-ai/Agentic-AI/track_3_agent_evaluation/module_3.1_agentic_Ai_evaluation.html",
+  "agentic-track3-2": "/cources/generative-ai/Agentic-AI/track_3_agent_evaluation/module_3.2_multi_agent_evaluation.html",
+  "agentic-track3-3": "/cources/generative-ai/Agentic-AI/track_3_agent_evaluation/module_3.3_safty_and_gaurdrils.html",
+  "agentic-track3-4": "/cources/generative-ai/Agentic-AI/track_3_agent_evaluation/module_3.4_cost_latency.html",
+  "agentic-track3-5": "/cources/generative-ai/Agentic-AI/track_3_agent_evaluation/module_3.5_human_evaluation_protocol.html",
+  "agentic-track3-6": "/cources/generative-ai/Agentic-AI/track_3_agent_evaluation/module_3.6_llm_As_judge.html",
+  "agentic-track3-7": "/cources/generative-ai/Agentic-AI/track_3_agent_evaluation/module_3.7_benchmark_for_agent.html",
+  "agentic-track3-8": "/cources/generative-ai/Agentic-AI/track_3_agent_evaluation/module_3.8_decision_guide.html",
+
+  // Agentic AI Track 4: Agent Production
+  "agentic-track4-0": "/cources/generative-ai/Agentic-AI/track_4_agent_production/module_4.0_Agent_Production.html",
+  "agentic-track4-1": "/cources/generative-ai/Agentic-AI/track_4_agent_production/module_4.1_langgraph_platform.html",
+  "agentic-track4-2": "/cources/generative-ai/Agentic-AI/track_4_agent_production/module_4.2_agent_observaility.html",
+  "agentic-track4-3": "/cources/generative-ai/Agentic-AI/track_4_agent_production/module_4.3_agent_cost_engi.html",
+  "agentic-track4-4": "/cources/generative-ai/Agentic-AI/track_4_agent_production/module_4.4_memory_architecture.html",
+  "agentic-track4-5": "/cources/generative-ai/Agentic-AI/track_4_agent_production/module_4.5_versioning_ab.html",
+  "agentic-track4-6": "/cources/generative-ai/Agentic-AI/track_4_agent_production/module_4.6_agent_sandbox.html",
+  "agentic-track4-7": "/cources/generative-ai/Agentic-AI/track_4_agent_production/module_4.7_hitl_governance.html",
+  "agentic-track4-8": "/cources/generative-ai/Agentic-AI/track_4_agent_production/module_4.8_production_readiness.html",
+
+  // LLMOps
+  "llmops-00": "/cources/generative-ai/LLMOPS/00_master_index.html",
+  "llmops-01": "/cources/generative-ai/LLMOPS/01_foundations.html",
+  "llmops-02": "/cources/generative-ai/LLMOPS/02_quantization.html",
+  "llmops-03": "/cources/generative-ai/LLMOPS/03_attention.html",
+  "llmops-04": "/cources/generative-ai/LLMOPS/04_kv_cache.html",
+  "llmops-05": "/cources/generative-ai/LLMOPS/05_batching.html",
+  "llmops-06": "/cources/generative-ai/LLMOPS/06_pruning_distill_moe.html",
+  "llmops-07": "/cources/generative-ai/LLMOPS/07_production.html",
+  "llmops-08": "/cources/generative-ai/LLMOPS/08_scale_cost.html",
+
+  // Prompt Engineering Improved
+  "prompt-eng-improved-1": "/cources/generative-ai/Prompt_engineering_improved/Prompt_engineering_improved/prompt part 1.html",
+  "prompt-eng-improved-2": "/cources/generative-ai/Prompt_engineering_improved/Prompt_engineering_improved/Prompt part2.html",
+  "prompt-eng-improved-3": "/cources/generative-ai/Prompt_engineering_improved/Prompt_engineering_improved/prompt part 3_.html",
+  "prompt-eng-improved-4": "/cources/generative-ai/Prompt_engineering_improved/Prompt_engineering_improved/part4_prompt_engineering.html",
+
+  // RAG Track 0: Foundation
+  "rag-track0-0": "/cources/generative-ai/RAG/track_0_foundation/module_0.0_welcome.html",
+  "rag-track0-1": "/cources/generative-ai/RAG/track_0_foundation/module_0.1_dev_env.html",
+  "rag-track0-2": "/cources/generative-ai/RAG/track_0_foundation/module_0.2_python_for_ai_engineer.html",
+  "rag-track0-3": "/cources/generative-ai/RAG/track_0_foundation/module_0.3_what_is_llm.html",
+  "rag-track0-4": "/cources/generative-ai/RAG/track_0_foundation/module_0.4_firstt_api_call.html",
+  "rag-track0-5": "/cources/generative-ai/RAG/track_0_foundation/module_0.5_streaming_async.html",
+  "rag-track0-6": "/cources/generative-ai/RAG/track_0_foundation/module_0.6_what_is_rag.html",
+
+  // RAG Track 1: Representation
+  "rag-track1-0": "/cources/generative-ai/RAG/track_1_representation/module_1.0_embedding.html",
+  "rag-track1-1": "/cources/generative-ai/RAG/track_1_representation/module_1.1_vector_database.html",
+
+  // RAG Track 2: Data Schema & Structure
+  "rag-track2-0": "/cources/generative-ai/RAG/track_2_data_schema_structure/module_2.0_data_format.html",
+  "rag-track2-1": "/cources/generative-ai/RAG/track_2_data_schema_structure/module_2.1_json_schema_and_structure_output.html",
+  "rag-track2-3": "/cources/generative-ai/RAG/track_2_data_schema_structure/module_2.3_pydantic.html",
+  "rag-track2-4": "/cources/generative-ai/RAG/track_2_data_schema_structure/module_2.4_structured_output_across_provider.html",
+  "rag-track2-5": "/cources/generative-ai/RAG/track_2_data_schema_structure/module_2.5_ingestion_pipeline.html",
+  "rag-track2-6": "/cources/generative-ai/RAG/track_2_data_schema_structure/module_2.6_chunking_strategy.html",
+
+  // RAG Track 3: Retrieval
+  "rag-track3-0": "/cources/generative-ai/RAG/track_3_retrieval/module_3.0_bm25.html",
+  "rag-track3-1": "/cources/generative-ai/RAG/track_3_retrieval/module_3.1_dense_retrieval.html",
+  "rag-track3-2": "/cources/generative-ai/RAG/track_3_retrieval/module_3.2_hybrid_search_&_rrf.html",
+  "rag-track3-3": "/cources/generative-ai/RAG/track_3_retrieval/module_3.3_re-ranker.html",
+
+  // RAG Track 4: Generation
+  "rag-track4-0": "/cources/generative-ai/RAG/track_4_generation/module_4.0_grounded_generation.html",
+  "rag-track4-1": "/cources/generative-ai/RAG/track_4_generation/module_4.1_xml_markdown.html",
+  "rag-track4-2": "/cources/generative-ai/RAG/track_4_generation/module_4.2_jinja_prompt_template.html",
+
+  // RAG Track 5: Advanced RAG
+  "rag-track5-0": "/cources/generative-ai/RAG/track_5_advance_rag/module_5.0_query_transformation.html",
+  "rag-track5-1": "/cources/generative-ai/RAG/track_5_advance_rag/module_5.1_structure_rag.html",
+  "rag-track5-2": "/cources/generative-ai/RAG/track_5_advance_rag/module_5.2_agentic_rag.html",
+
+  // RAG Track 6: Evaluation
+  "rag-track6-0": "/cources/generative-ai/RAG/track_6_evaluation/module_6.0_evaluation_foundation.html",
+  "rag-track6-1": "/cources/generative-ai/RAG/track_6_evaluation/module_6.1_rag_metric.html",
+  "rag-track6-2": "/cources/generative-ai/RAG/track_6_evaluation/module_6.2_eval_in_production.html",
+
+  // RAG Track 7: RAG Production
+  "rag-track7-0": "/cources/generative-ai/RAG/track_7_rag_production/module_7.0_deployment_fundamental.html",
+  "rag-track7-1": "/cources/generative-ai/RAG/track_7_rag_production/module_7.1_contenrization_and_orchastration.html",
+  "rag-track7-2": "/cources/generative-ai/RAG/track_7_rag_production/module_7.2_obserbility.html",
+  "rag-track7-3": "/cources/generative-ai/RAG/track_7_rag_production/module_7.3_caching.html",
+  "rag-track7-4": "/cources/generative-ai/RAG/track_7_rag_production/module_7.4_auth_rate_limit.html",
+  "rag-track7-5": "/cources/generative-ai/RAG/track_7_rag_production/module_7.5_security_and_cost.html",
+  "rag-track7-6": "/cources/generative-ai/RAG/track_7_rag_production/module_7.6_cicd_for_ai_pipeline.html",
+
+  // RAG Track 8: RAG Failure
+  "rag-track8-0": "/cources/generative-ai/RAG/track_8_rag_failure/module_8.0_rag_failure.html",
+
+  // RAG Track 9: RAG to Agent
+  "rag-track9-0": "/cources/generative-ai/RAG/track_9_rag_to_agent/module_9.0_rag_to_agent.html",
 };
 
 export const COURSE_KEYS = Object.keys(COURSE_HTML_MAP);
 
 export const GROUP_PATTERNS = [
+  { prefix: "api-security-ch",          label: "API Security",             category: "Security"       },
+  { prefix: "agent-atlas-ch",           label: "The Agent Atlas",          category: "Generative AI" },
+  { prefix: "agentic-track0",           label: "Agentic — RAG to Agent",   category: "Generative AI" },
+  { prefix: "agentic-track1",           label: "Agentic — Structure",      category: "Generative AI" },
+  { prefix: "agentic-track2",           label: "Agentic — Building",       category: "Generative AI" },
+  { prefix: "agentic-track3",           label: "Agentic — Evaluation",     category: "Generative AI" },
+  { prefix: "agentic-track4",           label: "Agentic — Production",     category: "Generative AI" },
+  { prefix: "llmops-",                  label: "LLMOps",                   category: "Generative AI" },
+  { prefix: "prompt-eng-improved",      label: "Prompt Engineering+",      category: "Generative AI" },
+  { prefix: "rag-track0",               label: "RAG — Foundation",         category: "Generative AI" },
+  { prefix: "rag-track1",               label: "RAG — Representation",     category: "Generative AI" },
+  { prefix: "rag-track2",               label: "RAG — Data & Schema",      category: "Generative AI" },
+  { prefix: "rag-track3",               label: "RAG — Retrieval",          category: "Generative AI" },
+  { prefix: "rag-track4",               label: "RAG — Generation",         category: "Generative AI" },
+  { prefix: "rag-track5",               label: "RAG — Advanced",           category: "Generative AI" },
+  { prefix: "rag-track6",               label: "RAG — Evaluation",         category: "Generative AI" },
+  { prefix: "rag-track7",               label: "RAG — Production",         category: "Generative AI" },
+  { prefix: "rag-track8",               label: "RAG — Failure",            category: "Generative AI" },
+  { prefix: "rag-track9",               label: "RAG — to Agent",           category: "Generative AI" },
   { prefix: "mrag-agentic-ai-module",   label: "Agentic AI",               category: "Generative AI" },
   { prefix: "mrag-multiagent-module",   label: "Multi-Agent",              category: "Generative AI" },
   { prefix: "mrag-module",              label: "Multimodal RAG",           category: "Generative AI" },

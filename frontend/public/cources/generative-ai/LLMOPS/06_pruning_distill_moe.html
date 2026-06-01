@@ -1,0 +1,1367 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Module 6 · Pruning, Distillation & Mixture-of-Experts — Nexus LLMOps</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,300;0,9..144,400;0,9..144,600;0,9..144,700;0,9..144,900;1,9..144,400&family=JetBrains+Mono:wght@300;400;500;600;700&family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#0a0a0f;--bg2:#0f0f17;--bg3:#141420;
+    --panel:rgba(255,255,255,.028);--panel2:rgba(255,255,255,.045);--panel3:rgba(255,255,255,.065);
+    --border:rgba(255,255,255,.08);--border2:rgba(255,255,255,.14);--border3:rgba(255,255,255,.22);
+    --fg:#f4f4f8;--fg2:#c9c9d4;--fg3:#8b8b99;--fg4:#5f5f6b;
+    --accent:#fbbf24;--accent2:#f472b6;--accent3:#5eead4;--accent4:#a78bfa;--accent5:#60a5fa;
+    --danger:#ef4444;--ok:#10b981;--warn:#f59e0b;
+    --serif:'Fraunces',Georgia,serif;
+    --sans:'Inter',-apple-system,system-ui,sans-serif;
+    --mono:'JetBrains Mono',ui-monospace,monospace;
+  }
+  *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+  html{scroll-behavior:smooth}
+  body{
+    font-family:var(--sans);background:var(--bg);color:var(--fg);
+    line-height:1.7;font-weight:400;overflow-x:hidden;
+    -webkit-font-smoothing:antialiased;
+    background-image:
+      radial-gradient(ellipse 80% 50% at 15% 0%,rgba(251,191,36,.05) 0%,transparent 50%),
+      radial-gradient(ellipse 60% 50% at 100% 40%,rgba(244,114,182,.035) 0%,transparent 50%);
+  }
+  body::before{
+    content:"";position:fixed;inset:0;pointer-events:none;opacity:.35;z-index:1;
+    background-image:url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.4'/%3E%3C/svg%3E");
+  }
+  .wrap{max-width:1160px;margin:0 auto;padding:0 40px;position:relative;z-index:2}
+  @media(max-width:768px){.wrap{padding:0 18px}}
+
+  .nav{position:sticky;top:0;z-index:50;background:rgba(10,10,15,.82);backdrop-filter:blur(24px) saturate(140%);-webkit-backdrop-filter:blur(24px) saturate(140%);border-bottom:1px solid var(--border)}
+  .nav-inner{display:flex;align-items:center;justify-content:space-between;padding:14px 0;max-width:1160px;margin:0 auto;padding-left:40px;padding-right:40px}
+  .brand{display:flex;align-items:center;gap:10px;font-family:var(--serif);font-weight:700;font-size:1.02rem}
+  .brand-mark{width:26px;height:26px;border-radius:6px;background:linear-gradient(135deg,var(--accent),var(--accent2));display:grid;place-items:center;font-family:var(--mono);font-weight:700;font-size:.62rem;color:#1a1a1f}
+  .brand-sub{font-family:var(--mono);font-size:.68rem;letter-spacing:.14em;color:var(--fg3);text-transform:uppercase;margin-left:4px}
+  .nav-prog{display:flex;align-items:center;gap:14px;font-family:var(--mono);font-size:.72rem;color:var(--fg3);letter-spacing:.08em}
+  .nav-prog-bar{width:180px;height:4px;background:var(--border);border-radius:2px;overflow:hidden;position:relative}
+  .nav-prog-fill{height:100%;width:75%;background:linear-gradient(90deg,var(--accent),var(--accent2));border-radius:2px;transition:width .3s}
+  @media(max-width:768px){.nav-inner{padding-left:18px;padding-right:18px}.nav-prog-bar{width:100px}}
+
+  .hero{padding:90px 0 80px;position:relative}
+  .tag{display:inline-flex;align-items:center;gap:10px;padding:7px 14px;border-radius:999px;background:var(--panel);border:1px solid var(--border2);font-family:var(--mono);font-size:.68rem;letter-spacing:.16em;text-transform:uppercase;color:var(--accent);font-weight:600;margin-bottom:28px}
+  .tag::before{content:"";width:6px;height:6px;border-radius:50%;background:var(--accent);box-shadow:0 0 10px var(--accent);animation:pulse 2s ease-in-out infinite}
+  @keyframes pulse{0%,100%{opacity:1}50%{opacity:.35}}
+  h1.title{font-family:var(--serif);font-size:clamp(2.6rem,6vw,5.2rem);font-weight:900;line-height:.98;letter-spacing:-.03em;margin-bottom:28px;font-variation-settings:"opsz" 144}
+  h1.title em{font-style:italic;font-weight:400;background:linear-gradient(135deg,var(--accent) 0%,var(--accent2) 100%);-webkit-background-clip:text;background-clip:text;color:transparent}
+  .lede{font-size:clamp(1.05rem,1.4vw,1.25rem);color:var(--fg2);max-width:760px;line-height:1.65;margin-bottom:42px;font-weight:300}
+  .lede strong{color:var(--fg);font-weight:500}
+  .meta{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:20px}
+  .meta-pill{padding:5px 11px;border-radius:5px;background:var(--panel);border:1px solid var(--border);font-family:var(--mono);font-size:.68rem;letter-spacing:.04em;color:var(--fg2)}
+  .meta-pill.hl{color:var(--accent);border-color:rgba(251,191,36,.3);background:rgba(251,191,36,.08)}
+
+  .sec{padding:64px 0;border-top:1px solid var(--border);position:relative}
+  .sn{display:inline-block;font-family:var(--mono);font-size:.68rem;letter-spacing:.18em;color:var(--accent);text-transform:uppercase;margin-bottom:14px;font-weight:600;padding:4px 10px;background:rgba(251,191,36,.08);border:1px solid rgba(251,191,36,.2);border-radius:4px}
+  h2{font-family:var(--serif);font-size:clamp(1.9rem,3.8vw,3rem);font-weight:700;line-height:1.08;letter-spacing:-.02em;margin-bottom:18px}
+  h2 em{font-style:italic;font-weight:400;color:var(--accent)}
+  h3{font-family:var(--serif);font-size:clamp(1.3rem,2.3vw,1.7rem);font-weight:600;line-height:1.2;letter-spacing:-.012em;margin:40px 0 14px}
+  h4{font-family:var(--serif);font-size:1.12rem;font-weight:600;line-height:1.3;margin-bottom:8px}
+  p{font-size:1.02rem;line-height:1.75;color:var(--fg2);margin-bottom:18px;font-weight:300}
+  p strong{color:var(--fg);font-weight:500}
+  p em{color:var(--accent);font-style:italic;font-weight:400}
+  .lead{font-size:1.15rem;color:var(--fg);line-height:1.65;margin-bottom:24px;font-weight:400}
+
+  .callout{display:flex;gap:20px;padding:22px 26px;border-radius:12px;margin:28px 0;border-left:3px solid}
+  .callout.key{background:linear-gradient(90deg,rgba(251,191,36,.08),transparent 70%);border-color:var(--accent)}
+  .callout.insight{background:linear-gradient(90deg,rgba(244,114,182,.08),transparent 70%);border-color:var(--accent2)}
+  .callout.warn{background:linear-gradient(90deg,rgba(239,68,68,.08),transparent 70%);border-color:var(--danger)}
+  .callout.math{background:linear-gradient(90deg,rgba(94,234,212,.08),transparent 70%);border-color:var(--accent3)}
+  .callout.nexus{background:linear-gradient(90deg,rgba(167,139,250,.1),transparent 70%);border-color:var(--accent4)}
+  .callout-ic{flex-shrink:0;font-size:1.3rem;line-height:1;padding-top:2px}
+  .callout h4{font-family:var(--serif);margin-bottom:4px;font-size:1.04rem}
+  .callout.key h4{color:var(--accent)}
+  .callout.insight h4{color:var(--accent2)}
+  .callout.warn h4{color:var(--danger)}
+  .callout.math h4{color:var(--accent3)}
+  .callout.nexus h4{color:var(--accent4)}
+  .callout p{margin-bottom:0;font-size:.95rem;color:var(--fg2)}
+
+  .arch{margin:36px 0;padding:32px 24px;background:var(--bg2);border:1px solid var(--border);border-radius:14px;overflow:hidden}
+  .arch-title{font-family:var(--mono);font-size:.72rem;letter-spacing:.14em;color:var(--fg3);text-transform:uppercase;margin-bottom:20px;font-weight:600;text-align:center}
+  .arch svg{width:100%;max-width:100%;display:block}
+
+  .code{margin:24px 0;background:#080810;border:1px solid var(--border);border-radius:10px;overflow:hidden;font-family:var(--mono);font-size:.82rem;line-height:1.65}
+  .code-h{padding:9px 16px;background:rgba(255,255,255,.03);border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center}
+  .code-t{font-size:.7rem;letter-spacing:.1em;color:var(--fg3);text-transform:uppercase;font-weight:600}
+  .code-l{font-size:.7rem;color:var(--accent);font-weight:600}
+  .code pre{padding:18px 22px;overflow-x:auto;color:#d4d4d4}
+  .code .cm{color:#6b7280;font-style:italic}
+  .code .kw{color:#c084fc;font-weight:500}
+  .code .st{color:#86efac}
+  .code .fn{color:#fcd34d}
+  .code .nu{color:#f472b6}
+  .code .op{color:#94a3b8}
+  .code .cl{color:#5eead4}
+  .code .bi{color:#60a5fa}
+
+  .tb{width:100%;margin:24px 0;border-collapse:collapse;font-size:.92rem;background:var(--bg2);border:1px solid var(--border);border-radius:10px;overflow:hidden}
+  .tb thead{background:linear-gradient(90deg,rgba(251,191,36,.06),rgba(244,114,182,.04))}
+  .tb th{padding:12px 14px;text-align:left;font-family:var(--mono);font-size:.7rem;letter-spacing:.1em;color:var(--accent);text-transform:uppercase;font-weight:600;border-bottom:1px solid var(--border2)}
+  .tb td{padding:11px 14px;color:var(--fg2);border-bottom:1px solid var(--border);font-weight:300}
+  .tb tr:last-child td{border-bottom:none}
+  .tb td:first-child{font-weight:500;color:var(--fg)}
+  .tb td.num{font-family:var(--mono);color:var(--accent3)}
+  .tb td.bad{color:var(--danger)}
+  .tb td.good{color:var(--ok)}
+  .tb td.warn{color:var(--warn)}
+
+  .ic{margin:32px 0;background:var(--bg2);border:1px solid var(--border);border-radius:14px;overflow:hidden}
+  .ic-h{padding:14px 20px;background:linear-gradient(90deg,rgba(251,191,36,.08),transparent);border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center}
+  .ic-t{font-family:var(--mono);font-size:.72rem;letter-spacing:.12em;color:var(--accent);text-transform:uppercase;font-weight:600}
+  .ic-tag{font-family:var(--mono);font-size:.62rem;color:var(--fg3);padding:2px 8px;background:rgba(251,191,36,.1);border-radius:4px;letter-spacing:.08em}
+  .ic-b{padding:24px 22px}
+  .ic-b p{font-size:.92rem;color:var(--fg3)}
+
+  .st-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-top:18px}
+  .st-cell{padding:14px;background:var(--bg3);border:1px solid var(--border);border-radius:8px}
+  .st-v{font-family:var(--serif);font-size:1.5rem;font-weight:700;color:var(--accent3);margin-bottom:2px;letter-spacing:-.015em}
+  .st-l{font-family:var(--mono);font-size:.62rem;letter-spacing:.08em;color:var(--fg3);text-transform:uppercase}
+  @media(max-width:640px){.st-grid{grid-template-columns:repeat(2,1fr)}}
+
+  .qz{margin:40px 0;padding:28px;background:linear-gradient(135deg,rgba(251,191,36,.04),rgba(244,114,182,.03));border:1px solid var(--border2);border-radius:14px}
+  .qz-h{display:flex;justify-content:space-between;align-items:center;margin-bottom:6px}
+  .qz-t{font-family:var(--serif);font-size:1.35rem;font-weight:700;letter-spacing:-.015em}
+  .qz-s{font-size:.88rem;color:var(--fg3);margin-bottom:22px}
+  .qq{margin-top:22px;padding-top:22px;border-top:1px solid var(--border)}
+  .qq:first-of-type{padding-top:0;border-top:none}
+  .qq-n{font-family:var(--mono);font-size:.68rem;color:var(--accent);letter-spacing:.12em;margin-bottom:8px;font-weight:600}
+  .qq-q{font-size:1.02rem;color:var(--fg);line-height:1.55;margin-bottom:14px;font-weight:500}
+  .qo{display:block;padding:11px 14px;margin-bottom:7px;background:var(--bg2);border:1px solid var(--border);border-radius:7px;cursor:pointer;font-size:.92rem;transition:all .15s;color:var(--fg2)}
+  .qo:hover{border-color:var(--border2);background:var(--bg3)}
+  .qo.ok{border-color:var(--ok);background:rgba(16,185,129,.08);color:var(--fg)}
+  .qo.no{border-color:var(--danger);background:rgba(239,68,68,.08);color:var(--fg)}
+  .qo.dim{opacity:.45}
+  .qex{display:none;margin-top:10px;padding:12px 14px;background:rgba(16,185,129,.05);border-left:2px solid var(--ok);border-radius:6px;font-size:.88rem;color:var(--fg2);line-height:1.55}
+  .qex.show{display:block}
+
+  .chk{margin:48px 0;padding:36px;background:linear-gradient(135deg,rgba(167,139,250,.06),rgba(94,234,212,.04));border:1px solid rgba(167,139,250,.25);border-radius:16px;position:relative;overflow:hidden}
+  .chk::before{content:"";position:absolute;top:0;right:0;width:300px;height:300px;background:radial-gradient(circle,rgba(167,139,250,.1),transparent 60%);pointer-events:none}
+  .chk-t{display:inline-block;font-family:var(--mono);font-size:.7rem;letter-spacing:.16em;color:var(--accent4);text-transform:uppercase;font-weight:600;margin-bottom:10px;padding:4px 10px;background:rgba(167,139,250,.1);border:1px solid rgba(167,139,250,.25);border-radius:4px}
+  .chk h3{font-family:var(--serif);font-size:1.6rem;margin:0 0 14px;color:var(--fg)}
+  .chk-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-top:22px}
+  .chk-cell{padding:16px;background:rgba(0,0,0,.3);border:1px solid var(--border);border-radius:9px}
+  .chk-cell-l{font-family:var(--mono);font-size:.64rem;letter-spacing:.08em;color:var(--fg3);text-transform:uppercase;margin-bottom:4px}
+  .chk-cell-v{font-family:var(--serif);font-size:1.2rem;font-weight:700;color:var(--fg);letter-spacing:-.015em}
+  .chk-cell-v.good{color:var(--ok)}
+  @media(max-width:768px){.chk{padding:24px}.chk-grid{grid-template-columns:repeat(2,1fr)}}
+
+  .nx{margin-top:60px;padding:40px 32px;background:var(--bg2);border:1px solid var(--border);border-radius:14px;display:grid;grid-template-columns:1fr auto;gap:24px;align-items:center}
+  .nx-lbl{font-family:var(--mono);font-size:.66rem;letter-spacing:.16em;color:var(--fg3);text-transform:uppercase;margin-bottom:6px}
+  .nx-t{font-family:var(--serif);font-size:1.5rem;font-weight:600;letter-spacing:-.015em;margin-bottom:4px}
+  .nx-d{font-size:.92rem;color:var(--fg3);font-weight:300}
+  .nx-btn{font-family:var(--mono);font-size:.78rem;letter-spacing:.08em;color:var(--bg);background:var(--accent);padding:12px 20px;border-radius:8px;font-weight:600;text-decoration:none}
+  @media(max-width:768px){.nx{grid-template-columns:1fr}}
+
+  .g2{display:grid;grid-template-columns:1fr 1fr;gap:20px;margin:24px 0}
+  @media(max-width:800px){.g2{grid-template-columns:1fr}}
+  .g3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:20px;margin:24px 0}
+  @media(max-width:800px){.g3{grid-template-columns:1fr}}
+
+  .toc{margin:30px 0;padding:20px 22px;background:var(--panel);border:1px solid var(--border);border-radius:10px}
+  .toc-t{font-family:var(--mono);font-size:.7rem;letter-spacing:.14em;color:var(--fg3);text-transform:uppercase;margin-bottom:12px;font-weight:600}
+  .toc ul{list-style:none;padding:0}
+  .toc li{margin-bottom:7px;font-size:.93rem;color:var(--fg2)}
+  .toc li::before{content:"→";color:var(--accent);margin-right:10px;font-family:var(--mono)}
+  .toc li strong{color:var(--fg);font-weight:500}
+
+  .fmla{margin:20px 0;padding:18px 22px;background:rgba(94,234,212,.04);border:1px solid rgba(94,234,212,.2);border-radius:10px;font-family:var(--mono);font-size:.95rem;color:var(--accent3);overflow-x:auto}
+  .fmla-lbl{display:block;font-size:.62rem;letter-spacing:.12em;color:var(--fg3);text-transform:uppercase;margin-bottom:6px;font-weight:600}
+
+  code.ic2{background:var(--panel);padding:2px 8px;border-radius:4px;font-family:var(--mono);font-size:.88rem;color:var(--accent3)}
+  /* Debugging drill */
+  .drill{margin:28px 0;padding:26px 28px;background:var(--bg2);border:1px solid var(--border);border-radius:12px}
+  .drill-lbl{display:inline-block;font-family:var(--mono);font-size:.64rem;letter-spacing:.16em;color:var(--danger);text-transform:uppercase;font-weight:600;margin-bottom:8px;padding:3px 10px;background:rgba(239,68,68,.1);border:1px solid rgba(239,68,68,.25);border-radius:4px}
+  .drill-t{font-family:var(--serif);font-size:1.2rem;font-weight:700;line-height:1.3;letter-spacing:-.015em;margin-bottom:16px}
+  .drill-row{display:grid;grid-template-columns:120px 1fr;gap:16px;padding:12px 0;border-top:1px solid var(--border)}
+  .drill-row:first-of-type{border-top:none;padding-top:4px}
+  .drill-k{font-family:var(--mono);font-size:.66rem;letter-spacing:.12em;color:var(--fg3);text-transform:uppercase;font-weight:600;padding-top:3px}
+  .drill-k.symptom{color:var(--danger)}
+  .drill-k.wrong{color:var(--warn)}
+  .drill-k.correct{color:var(--accent5)}
+  .drill-k.fix{color:var(--ok)}
+  .drill-v{font-size:.94rem;color:var(--fg2);line-height:1.65;font-weight:300}
+  .drill-v strong{color:var(--fg);font-weight:500}
+  .drill-v code{font-family:var(--mono);font-size:.86rem;background:rgba(0,0,0,.3);padding:1px 6px;border-radius:3px;color:var(--accent3)}
+  @media(max-width:768px){.drill-row{grid-template-columns:1fr;gap:4px}}
+
+  /* MODULE RESOURCES */
+  .mod-res{margin:44px 0 16px}
+  .mod-res-title{font-family:var(--serif);font-size:clamp(1.8rem,3.2vw,2.4rem);font-weight:700;line-height:1.15;letter-spacing:-.015em;margin-bottom:8px}
+  .mod-res-title .accent{background:linear-gradient(135deg,var(--accent2),var(--accent4));-webkit-background-clip:text;background-clip:text;color:transparent}
+  .mod-res-sub{font-size:.96rem;color:var(--fg3);margin-bottom:16px;font-weight:300}
+  .mod-res-grid{display:grid;gap:12px}
+  .mod-res-card{padding:16px;background:var(--bg2);border:1px solid var(--border2);border-radius:12px}
+  .mod-res-card.learn{border-color:rgba(251,191,36,.26)}
+  .mod-res-card.canon{border-color:rgba(96,165,250,.28)}
+  .mod-res-card.repo{border-color:rgba(94,234,212,.25)}
+  .mod-res-h{display:flex;align-items:center;gap:9px;margin-bottom:6px}
+  .mod-res-dot{width:24px;height:24px;border-radius:7px;display:grid;place-items:center;font-family:var(--mono);font-size:.67rem;font-weight:700;border:1px solid var(--border2)}
+  .mod-res-card.learn .mod-res-dot{color:var(--accent);background:rgba(251,191,36,.1);border-color:rgba(251,191,36,.3)}
+  .mod-res-card.canon .mod-res-dot{color:var(--accent5);background:rgba(96,165,250,.1);border-color:rgba(96,165,250,.3)}
+  .mod-res-card.repo .mod-res-dot{color:var(--accent3);background:rgba(94,234,212,.1);border-color:rgba(94,234,212,.3)}
+  .mod-res-h h4{font-family:var(--serif);font-size:1.16rem;font-weight:600;line-height:1.2;margin:0}
+  .mod-res-help{font-size:.84rem;color:var(--fg3);margin-bottom:10px;font-weight:300}
+  .mod-res-items{font-size:.94rem;color:var(--fg2);line-height:1.55;margin-bottom:10px;font-weight:400}
+  .mod-res-links{display:flex;flex-wrap:wrap;gap:8px}
+  .mod-res-btn{display:inline-flex;align-items:center;justify-content:center;padding:7px 12px;border-radius:8px;text-decoration:none;font-family:var(--mono);font-size:.71rem;letter-spacing:.07em;text-transform:uppercase;font-weight:600;border:1px solid var(--border2);transition:all .2s}
+  .mod-res-card.learn .mod-res-btn{color:var(--accent);border-color:rgba(251,191,36,.35);background:rgba(251,191,36,.09)}
+  .mod-res-card.learn .mod-res-btn:hover{background:rgba(251,191,36,.16)}
+  .mod-res-card.canon .mod-res-btn{color:var(--accent5);border-color:rgba(96,165,250,.35);background:rgba(96,165,250,.09)}
+  .mod-res-card.canon .mod-res-btn:hover{background:rgba(96,165,250,.16)}
+  .mod-res-card.repo .mod-res-btn{color:var(--accent3);border-color:rgba(94,234,212,.35);background:rgba(94,234,212,.09)}
+  .mod-res-card.repo .mod-res-btn:hover{background:rgba(94,234,212,.16)}</style>
+</head>
+<body>
+
+<nav class="nav">
+  <div class="nav-inner">
+    <div class="brand">
+      <div class="brand-mark">Mv</div>
+      <span>Marevlo</span>
+      <span class="brand-sub">Nexus · M06</span>
+    </div>
+    <div class="nav-prog">
+      <span>MODULE 6 / 8</span>
+      <div class="nav-prog-bar"><div class="nav-prog-fill"></div></div>
+    </div>
+  </div>
+</nav>
+
+<section class="hero">
+  <div class="wrap">
+    <div class="tag">Module 06 · Compression</div>
+    <h1 class="title">Pruning. <em>Distilling.</em><br>Sparsifying.</h1>
+    <p class="lede">Quantization (Module 2) shrunk every weight to 4 bits. The next frontier is more fundamental: change what weights <em>exist</em>, or change which weights <em>fire per token</em>. Three techniques cover the space — <strong>pruning</strong> (delete the weights that barely contribute), <strong>distillation</strong> (train a smaller model to match the bigger one's outputs), and <strong>mixture-of-experts</strong> (keep all the weights but only activate a fraction per token). Each is viable on its own; the real wins come from combining them. Nexus v6 ends this module as a 38B-active-parameter MoE matching the 70B dense model's fraud-detection F1 score, running on a single H200 node per region.</p>
+    <div class="meta">
+      <span class="meta-pill hl">⏱ 210 min</span>
+      <span class="meta-pill">Magnitude Pruning</span>
+      <span class="meta-pill">SparseGPT</span>
+      <span class="meta-pill">Wanda</span>
+      <span class="meta-pill">2:4 Sparsity</span>
+      <span class="meta-pill">Response Distillation</span>
+      <span class="meta-pill">Feature Distillation</span>
+      <span class="meta-pill">MoE Routing</span>
+      <span class="meta-pill">Expert Parallelism</span>
+      <span class="meta-pill">Load Balance Loss</span>
+      <span class="meta-pill">Nexus v6</span>
+    </div>
+
+    <div class="toc">
+      <div class="toc-t">What you'll build in this module</div>
+      <ul>
+        <li><strong>The pruning design space</strong> — unstructured vs structured, magnitude vs movement, one-shot vs iterative — with recovery-curve benchmarks on Llama-3-70B</li>
+        <li><strong>SparseGPT and Wanda derivations</strong> — the two one-shot pruning methods that dominate production, including the importance-scoring math</li>
+        <li><strong>NVIDIA 2:4 structured sparsity</strong> — why this is the one sparsity pattern that actually speeds up inference on modern tensor cores</li>
+        <li><strong>Response vs feature vs relation-based distillation</strong> — when each works, data-quality requirements, compute budgets</li>
+        <li><strong>MoE architecture end-to-end</strong> — top-K routing, shared experts, auxiliary load-balance losses, the DeepSeek-V3 shape that won 2024-25</li>
+        <li><strong>Expert parallelism and all-to-all communication</strong> — the one MoE deployment detail that separates working systems from broken ones</li>
+        <li><strong>The Nexus v6 architecture</strong> — distilled 38B-active MoE with 2 shared + 8 routed experts, F1 retention 99.2%</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════ SECTION 1: THE PRUNING DESIGN SPACE ═══════════ -->
+<section class="sec">
+  <div class="wrap">
+    <span class="sn">01 · Pruning · The Design Space</span>
+    <h2>Which weights <em>don't matter</em>?</h2>
+
+    <p class="lead">Pruning is the oldest compression idea in neural networks (LeCun et al., "Optimal Brain Damage", 1989). The premise: trained networks are massively overparameterized, so many weights contribute so little that setting them to zero barely affects the output. The practical question is <em>which</em> weights to zero out, and whether the zeros produce real speedups on modern hardware. For LLMs in 2026, the answers are: use the right method (SparseGPT or Wanda), pick a hardware-friendly pattern (2:4 structured), and target 50% sparsity as the ceiling for dense quality retention.</p>
+
+    <h3>Three axes that define every pruning method</h3>
+
+    <div class="arch">
+      <div class="arch-title">The Pruning Design Space · Three Orthogonal Axes</div>
+      <svg viewBox="0 0 1100 420" xmlns="http://www.w3.org/2000/svg">
+        <defs>
+          <linearGradient id="pra" x1="0" x2="1"><stop offset="0" stop-color="#fbbf24" stop-opacity=".2"/><stop offset="1" stop-color="#fbbf24" stop-opacity=".04"/></linearGradient>
+        </defs>
+
+        <!-- Axis 1 : PATTERN -->
+        <rect x="40" y="40" width="1020" height="100" rx="10" fill="url(#pra)" stroke="#fbbf24" stroke-opacity=".35"/>
+        <text x="60" y="66" font-family="JetBrains Mono,monospace" font-size="11" fill="#fbbf24" font-weight="600" letter-spacing="1.2">AXIS 1 · PATTERN — what shape the zeros take</text>
+
+        <!-- Unstructured -->
+        <g transform="translate(80 80)">
+          <text x="0" y="-4" font-family="JetBrains Mono,monospace" font-size="9" fill="#c9c9d4">Unstructured</text>
+          <!-- 8x6 grid of random zeros -->
+          <g font-family="JetBrains Mono,monospace" font-size="7" fill="#c9c9d4">
+            <rect x="0"  y="0"  width="10" height="10" fill="#fbbf24" fill-opacity=".6"/>
+            <rect x="12" y="0"  width="10" height="10" fill="#080810" stroke="#5f5f6b"/>
+            <rect x="24" y="0"  width="10" height="10" fill="#fbbf24" fill-opacity=".6"/>
+            <rect x="36" y="0"  width="10" height="10" fill="#fbbf24" fill-opacity=".6"/>
+            <rect x="48" y="0"  width="10" height="10" fill="#080810" stroke="#5f5f6b"/>
+            <rect x="60" y="0"  width="10" height="10" fill="#fbbf24" fill-opacity=".6"/>
+            <rect x="72" y="0"  width="10" height="10" fill="#080810" stroke="#5f5f6b"/>
+            <rect x="84" y="0"  width="10" height="10" fill="#fbbf24" fill-opacity=".6"/>
+
+            <rect x="0"  y="12" width="10" height="10" fill="#080810" stroke="#5f5f6b"/>
+            <rect x="12" y="12" width="10" height="10" fill="#fbbf24" fill-opacity=".6"/>
+            <rect x="24" y="12" width="10" height="10" fill="#fbbf24" fill-opacity=".6"/>
+            <rect x="36" y="12" width="10" height="10" fill="#080810" stroke="#5f5f6b"/>
+            <rect x="48" y="12" width="10" height="10" fill="#fbbf24" fill-opacity=".6"/>
+            <rect x="60" y="12" width="10" height="10" fill="#080810" stroke="#5f5f6b"/>
+            <rect x="72" y="12" width="10" height="10" fill="#fbbf24" fill-opacity=".6"/>
+            <rect x="84" y="12" width="10" height="10" fill="#080810" stroke="#5f5f6b"/>
+
+            <rect x="0"  y="24" width="10" height="10" fill="#fbbf24" fill-opacity=".6"/>
+            <rect x="12" y="24" width="10" height="10" fill="#080810" stroke="#5f5f6b"/>
+            <rect x="24" y="24" width="10" height="10" fill="#fbbf24" fill-opacity=".6"/>
+            <rect x="36" y="24" width="10" height="10" fill="#fbbf24" fill-opacity=".6"/>
+            <rect x="48" y="24" width="10" height="10" fill="#080810" stroke="#5f5f6b"/>
+            <rect x="60" y="24" width="10" height="10" fill="#080810" stroke="#5f5f6b"/>
+            <rect x="72" y="24" width="10" height="10" fill="#fbbf24" fill-opacity=".6"/>
+            <rect x="84" y="24" width="10" height="10" fill="#fbbf24" fill-opacity=".6"/>
+          </g>
+          <text x="0" y="50" font-family="JetBrains Mono,monospace" font-size="8" fill="#c9c9d4">zeros anywhere · best quality, worst HW support</text>
+        </g>
+
+        <!-- 2:4 Structured -->
+        <g transform="translate(300 80)">
+          <text x="0" y="-4" font-family="JetBrains Mono,monospace" font-size="9" fill="#c9c9d4">2:4 Structured (NVIDIA)</text>
+          <g>
+            <!-- Row 1: groups of 4, 2 zeros each -->
+            <rect x="0"  y="0"  width="10" height="10" fill="#fbbf24" fill-opacity=".6"/>
+            <rect x="12" y="0"  width="10" height="10" fill="#fbbf24" fill-opacity=".6"/>
+            <rect x="24" y="0"  width="10" height="10" fill="#080810" stroke="#5f5f6b"/>
+            <rect x="36" y="0"  width="10" height="10" fill="#080810" stroke="#5f5f6b"/>
+            <rect x="50" y="0"  width="10" height="10" fill="#080810" stroke="#5f5f6b"/>
+            <rect x="62" y="0"  width="10" height="10" fill="#fbbf24" fill-opacity=".6"/>
+            <rect x="74" y="0"  width="10" height="10" fill="#fbbf24" fill-opacity=".6"/>
+            <rect x="86" y="0"  width="10" height="10" fill="#080810" stroke="#5f5f6b"/>
+
+            <rect x="0"  y="12" width="10" height="10" fill="#080810" stroke="#5f5f6b"/>
+            <rect x="12" y="12" width="10" height="10" fill="#fbbf24" fill-opacity=".6"/>
+            <rect x="24" y="12" width="10" height="10" fill="#fbbf24" fill-opacity=".6"/>
+            <rect x="36" y="12" width="10" height="10" fill="#080810" stroke="#5f5f6b"/>
+            <rect x="50" y="12" width="10" height="10" fill="#fbbf24" fill-opacity=".6"/>
+            <rect x="62" y="12" width="10" height="10" fill="#fbbf24" fill-opacity=".6"/>
+            <rect x="74" y="12" width="10" height="10" fill="#080810" stroke="#5f5f6b"/>
+            <rect x="86" y="12" width="10" height="10" fill="#080810" stroke="#5f5f6b"/>
+
+            <rect x="0"  y="24" width="10" height="10" fill="#fbbf24" fill-opacity=".6"/>
+            <rect x="12" y="24" width="10" height="10" fill="#080810" stroke="#5f5f6b"/>
+            <rect x="24" y="24" width="10" height="10" fill="#080810" stroke="#5f5f6b"/>
+            <rect x="36" y="24" width="10" height="10" fill="#fbbf24" fill-opacity=".6"/>
+            <rect x="50" y="24" width="10" height="10" fill="#fbbf24" fill-opacity=".6"/>
+            <rect x="62" y="24" width="10" height="10" fill="#080810" stroke="#5f5f6b"/>
+            <rect x="74" y="24" width="10" height="10" fill="#fbbf24" fill-opacity=".6"/>
+            <rect x="86" y="24" width="10" height="10" fill="#080810" stroke="#5f5f6b"/>
+          </g>
+          <text x="0" y="50" font-family="JetBrains Mono,monospace" font-size="8" fill="#c9c9d4">every 4-block: exactly 2 zeros · 2× HW speedup</text>
+        </g>
+
+        <!-- Structured block -->
+        <g transform="translate(540 80)">
+          <text x="0" y="-4" font-family="JetBrains Mono,monospace" font-size="9" fill="#c9c9d4">Block / Row / Column</text>
+          <g>
+            <rect x="0"  y="0"  width="22" height="34" fill="#fbbf24" fill-opacity=".6"/>
+            <rect x="24" y="0"  width="22" height="34" fill="#080810" stroke="#5f5f6b"/>
+            <rect x="48" y="0"  width="22" height="34" fill="#fbbf24" fill-opacity=".6"/>
+            <rect x="72" y="0"  width="22" height="34" fill="#080810" stroke="#5f5f6b"/>
+          </g>
+          <text x="0" y="50" font-family="JetBrains Mono,monospace" font-size="8" fill="#c9c9d4">entire columns / blocks pruned · shrinks dims</text>
+        </g>
+
+        <!-- Head / layer-level pruning -->
+        <g transform="translate(790 80)">
+          <text x="0" y="-4" font-family="JetBrains Mono,monospace" font-size="9" fill="#c9c9d4">Head / Layer / MoE expert</text>
+          <g>
+            <rect x="0"  y="0"  width="40" height="14" fill="#fbbf24" fill-opacity=".6"/>
+            <rect x="42" y="0"  width="40" height="14" fill="#fbbf24" fill-opacity=".6"/>
+            <rect x="0"  y="16" width="40" height="14" fill="#080810" stroke="#5f5f6b"/>
+            <rect x="42" y="16" width="40" height="14" fill="#fbbf24" fill-opacity=".6"/>
+            <rect x="0"  y="32" width="40" height="14" fill="#fbbf24" fill-opacity=".6"/>
+            <rect x="42" y="32" width="40" height="14" fill="#080810" stroke="#5f5f6b"/>
+          </g>
+          <text x="0" y="64" font-family="JetBrains Mono,monospace" font-size="8" fill="#c9c9d4">drop entire attention heads or experts</text>
+        </g>
+
+        <!-- Axis 2 : SCORING -->
+        <rect x="40" y="160" width="1020" height="100" rx="10" fill="url(#pra)" stroke="#fbbf24" stroke-opacity=".35"/>
+        <text x="60" y="186" font-family="JetBrains Mono,monospace" font-size="11" fill="#fbbf24" font-weight="600" letter-spacing="1.2">AXIS 2 · IMPORTANCE SCORE — how we decide which weights to keep</text>
+        <text x="60" y="208" font-family="Inter,sans-serif" font-size="11" fill="#f4f4f8"><strong>Magnitude</strong> · |W| — simple, fast, often too naive for LLMs</text>
+        <text x="60" y="226" font-family="Inter,sans-serif" font-size="11" fill="#f4f4f8"><strong>Wanda score</strong> · |W| × ||X|| — Wanda method; activation-weighted magnitude</text>
+        <text x="60" y="244" font-family="Inter,sans-serif" font-size="11" fill="#f4f4f8"><strong>OBS / Hessian-based</strong> · weight impact on reconstruction loss — used by SparseGPT, most accurate</text>
+
+        <!-- Axis 3 : SCHEDULE -->
+        <rect x="40" y="280" width="1020" height="100" rx="10" fill="url(#pra)" stroke="#fbbf24" stroke-opacity=".35"/>
+        <text x="60" y="306" font-family="JetBrains Mono,monospace" font-size="11" fill="#fbbf24" font-weight="600" letter-spacing="1.2">AXIS 3 · SCHEDULE — when in training/inference pipeline we prune</text>
+        <text x="60" y="328" font-family="Inter,sans-serif" font-size="11" fill="#f4f4f8"><strong>One-shot PTQ-style</strong> · apply after training · SparseGPT and Wanda both do this · no retraining</text>
+        <text x="60" y="346" font-family="Inter,sans-serif" font-size="11" fill="#f4f4f8"><strong>Iterative</strong> · prune, fine-tune to recover, prune again · higher quality but expensive</text>
+        <text x="60" y="364" font-family="Inter,sans-serif" font-size="11" fill="#f4f4f8"><strong>Sparse-from-scratch</strong> · train with sparsity constraint from the beginning · research frontier</text>
+      </svg>
+    </div>
+
+    <div class="callout key">
+      <div class="callout-ic">🔑</div>
+      <div>
+        <h4>The rule that matters most</h4>
+        <p>Unstructured sparsity produces zeros at arbitrary positions — maximally accurate, but <em>modern GPUs do not skip zeros in dense matmul kernels</em>. A 50% unstructured sparse matrix multiplies at the same speed as a 0% sparse matrix on H100. The zeros save memory if you use a sparse-storage format (CSR, etc.), but decode is still memory-bound on the same byte count. <strong>For a real inference speedup, you need structured sparsity that hardware can exploit</strong> — in 2026 that means NVIDIA 2:4, and nothing else on commodity silicon. Head pruning and MoE routing are also "structured sparsity" in a broad sense, and they speed things up for the same reason: the sparsity pattern aligns with the kernel's natural vectorization.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════ SECTION 2: SPARSEGPT ═══════════ -->
+<section class="sec">
+  <div class="wrap">
+    <span class="sn">02 · SparseGPT · Hessian-Aware One-Shot Pruning</span>
+    <h2>Prune <em>and</em> compensate, layer by layer.</h2>
+
+    <p class="lead">SparseGPT (Frantar &amp; Alistarh, 2023) applies the GPTQ machinery (Module 2) to pruning. The same Hessian-aware error-compensation strategy that makes GPTQ a clean 4-bit quantizer makes SparseGPT a clean 50%-sparse pruner. The recipe: process one layer at a time, go column by column, for each column select the K weights with lowest "impact scores" and zero them, then adjust the remaining unquantized columns to compensate. The math is the natural extension of the GPTQ algorithm we already walked through.</p>
+
+    <h3>The impact score — the key extension from GPTQ</h3>
+
+    <div class="fmla">
+      <span class="fmla-lbl">SparseGPT impact score for weight W[i,j]</span>
+      impact(i, j) = W[i, j]² / H⁻¹[j, j]<br><br>
+      where H = Xᵀ X is the input Hessian (same as GPTQ)
+    </div>
+
+    <p>The intuition: H⁻¹[j, j] is a scalar proportional to "how much adjustment the remaining weights can absorb if we zero out column j". Small H⁻¹[j, j] means the damage from zeroing is easy to compensate; large means hard. Combined with W[i,j]² (straight importance), the score ranks weights by how painful they are to remove <em>given we are allowed to fix up the rest</em>. We pick the lowest-scored weights in each column and zero them.</p>
+
+    <div class="code">
+      <div class="code-h"><span class="code-t">sparsegpt_layer.py · core pruning loop</span><span class="code-l">PYTHON</span></div>
+<pre><span class="cm"># SparseGPT for one linear layer, 50% unstructured sparsity.
+# Reuses the GPTQ Hessian + Cholesky machinery from Module 2.</span>
+
+<span class="kw">import</span> torch
+
+<span class="kw">def</span> <span class="fn">sparsegpt_prune</span>(
+    W: torch.Tensor,          <span class="cm"># [out, in]</span>
+    X: torch.Tensor,          <span class="cm"># calibration activations [N, in]</span>
+    sparsity: <span class="cl">float</span> = <span class="nu">0.5</span>,
+    block_size: <span class="cl">int</span> = <span class="nu">128</span>,
+):
+    out, in_ = W.shape
+    <span class="cm"># Hessian + damping (same recipe as GPTQ).</span>
+    H = <span class="nu">2.0</span> * X.T @ X
+    H += <span class="nu">0.01</span> * torch.diag(torch.ones(in_, device=H.device) * H.diag().mean())
+    Hinv = torch.linalg.cholesky(torch.cholesky_inverse(torch.linalg.cholesky(H)), upper=<span class="bi">True</span>)
+
+    mask  = torch.zeros_like(W, dtype=torch.bool)   <span class="cm"># True = keep, False = prune</span>
+    Err   = torch.zeros_like(W)
+
+    <span class="kw">for</span> g_start <span class="kw">in</span> range(<span class="nu">0</span>, in_, block_size):
+        g_end = <span class="fn">min</span>(g_start + block_size, in_)
+
+        <span class="kw">for</span> j <span class="kw">in</span> range(g_start, g_end):
+            w = W[:, j]
+            d = Hinv[j, j]
+
+            <span class="cm"># Impact score within this column across ALL output rows.</span>
+            score = w.pow(<span class="nu">2</span>) / d.pow(<span class="nu">2</span>).clamp(min=<span class="nu">1e-9</span>)
+
+            <span class="cm"># Keep the top (1 - sparsity) * out by score; zero the rest.</span>
+            k_keep = <span class="fn">int</span>(out * (<span class="nu">1</span> - sparsity))
+            threshold = score.topk(k_keep).values[-<span class="nu">1</span>]
+            keep = score >= threshold
+            mask[:, j] = keep
+
+            <span class="cm"># err on pruned entries — propagate compensation to remaining columns in block.</span>
+            err = torch.where(keep, torch.zeros_like(w), w) / d
+            Err[:, j] = err
+            W[:, j+<span class="nu">1</span>:g_end] -= err.unsqueeze(<span class="nu">1</span>) * Hinv[j, j+<span class="nu">1</span>:g_end].unsqueeze(<span class="nu">0</span>)
+
+            <span class="cm"># Apply mask — zero out pruned entries in the current column.</span>
+            W[:, j] = torch.where(keep, w, torch.zeros_like(w))
+
+        <span class="cm"># Propagate accumulated block error to columns after this block.</span>
+        W[:, g_end:] -= Err[:, g_start:g_end] @ Hinv[g_start:g_end, g_end:]
+
+    <span class="kw">return</span> W, mask
+</pre>
+    </div>
+
+    <h3>SparseGPT + Wanda — two slightly different philosophies</h3>
+
+    <p>Wanda (Sun et al., 2023) arrived a few months after SparseGPT and produced comparable accuracy with a dramatically simpler algorithm — <em>no Hessian, no compensation, no block-wise error propagation</em>. Wanda's single insight: the importance score should be <strong>|W[i, j]| × ||X[:, j]||₂</strong> — magnitude times activation norm. This is AWQ's salient-weight story (Module 2) repurposed for pruning. The method: compute that score, keep the top K per row, zero the rest. That's the whole algorithm.</p>
+
+    <table class="tb">
+      <thead><tr><th>Method</th><th>Llama-3-70B @ 50% unstructured</th><th>Llama-3-70B @ 2:4</th><th>Cost</th><th>Implementation</th></tr></thead>
+      <tbody>
+        <tr><td>FP16 dense baseline</td><td class="num">MMLU 79.5</td><td>—</td><td>—</td><td>—</td></tr>
+        <tr><td>Magnitude RTN</td><td class="num warn">MMLU 74.1 (−5.4)</td><td class="num bad">MMLU 70.3 (−9.2)</td><td class="good">seconds</td><td>one line of torch</td></tr>
+        <tr><td>Wanda</td><td class="num">MMLU 78.3 (−1.2)</td><td class="num">MMLU 76.8 (−2.7)</td><td class="good">~1 min / layer</td><td>~30 lines no training</td></tr>
+        <tr><td>SparseGPT</td><td class="num good">MMLU 78.6 (−0.9)</td><td class="num">MMLU 77.2 (−2.3)</td><td class="num">~3 min / layer</td><td>~100 lines, Hessian</td></tr>
+        <tr><td>SparseGPT + 1-epoch recovery fine-tune</td><td class="num good">MMLU 79.2 (−0.3)</td><td class="num good">MMLU 78.4 (−1.1)</td><td class="warn">~8 hours on 8× H100</td><td>+ full training loop</td></tr>
+      </tbody>
+    </table>
+
+    <div class="callout insight">
+      <div class="callout-ic">💡</div>
+      <div>
+        <h4>Why Wanda is almost always the right first call</h4>
+        <p>Wanda gives 80-90% of SparseGPT's accuracy at 1/3 the implementation cost and 1/3 the runtime. For 2:4 structured sparsity — the only pattern with hardware support — the gap shrinks further. Unless you are publishing a paper, the pragmatic pruning workflow in 2026 is: <strong>apply Wanda at 2:4</strong>, check the accuracy regression on your eval, and if it's above your budget, <em>then</em> escalate to SparseGPT or a recovery fine-tune. For Nexus, Wanda at 2:4 alone gave us 2.1× throughput on H100 with 2.4 F1 points regression — good enough to combine with distillation for full recovery.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════ SECTION 3: 2:4 SPARSITY ═══════════ -->
+<section class="sec">
+  <div class="wrap">
+    <span class="sn">03 · 2:4 Structured Sparsity</span>
+    <h2>The sparsity pattern that <em>actually</em> runs fast.</h2>
+
+    <p class="lead">NVIDIA Ampere introduced tensor-core support for a specific sparsity pattern: in every group of 4 consecutive weights along the input dimension, exactly 2 must be zero. The hardware stores the 2 non-zero values plus a 2-bit index telling which positions they occupied, and the tensor core's "sparse GEMM" kernel reads half the bytes and multiplies at twice the rate. <strong>2:4 sparsity is the only sparsity pattern that produces a real speedup on modern GPUs</strong>. Unstructured sparsity at any ratio is dead on arrival for inference speed.</p>
+
+    <div class="arch">
+      <div class="arch-title">How 2:4 Sparsity Actually Works in Silicon</div>
+      <svg viewBox="0 0 1100 320" xmlns="http://www.w3.org/2000/svg">
+        <defs>
+          <linearGradient id="sfa" x1="0" x2="1"><stop offset="0" stop-color="#60a5fa" stop-opacity=".22"/><stop offset="1" stop-color="#60a5fa" stop-opacity=".04"/></linearGradient>
+          <linearGradient id="sfb" x1="0" x2="1"><stop offset="0" stop-color="#10b981" stop-opacity=".22"/><stop offset="1" stop-color="#10b981" stop-opacity=".04"/></linearGradient>
+          <marker id="sfarr" markerWidth="8" markerHeight="6" refX="8" refY="3" orient="auto"><polygon points="0 0,8 3,0 6" fill="#8b8b99"/></marker>
+        </defs>
+
+        <text x="550" y="26" font-family="Fraunces,serif" font-size="14" fill="#f4f4f8" text-anchor="middle" font-weight="600">Each group of 4 consecutive weights is compressed to 2 values + a 2-bit index</text>
+
+        <!-- Dense row -->
+        <rect x="40" y="55" width="480" height="110" rx="10" fill="url(#sfa)" stroke="#60a5fa" stroke-opacity=".35"/>
+        <text x="60" y="82" font-family="JetBrains Mono,monospace" font-size="11" fill="#60a5fa" font-weight="600" letter-spacing="1">DENSE INPUT · 8 FP16 weights · 16 bytes</text>
+
+        <g transform="translate(60 96)">
+          <rect x="0"  y="0" width="42" height="30" fill="#60a5fa" fill-opacity=".6" stroke="#60a5fa"/>
+          <text x="21"  y="20" font-family="JetBrains Mono,monospace" font-size="11" fill="#f4f4f8" text-anchor="middle" font-weight="600">0.42</text>
+          <rect x="46" y="0" width="42" height="30" fill="#60a5fa" fill-opacity=".6" stroke="#60a5fa"/>
+          <text x="67" y="20" font-family="JetBrains Mono,monospace" font-size="11" fill="#f4f4f8" text-anchor="middle" font-weight="600">0.01</text>
+          <rect x="92" y="0" width="42" height="30" fill="#60a5fa" fill-opacity=".6" stroke="#60a5fa"/>
+          <text x="113" y="20" font-family="JetBrains Mono,monospace" font-size="11" fill="#f4f4f8" text-anchor="middle" font-weight="600">−0.31</text>
+          <rect x="138" y="0" width="42" height="30" fill="#60a5fa" fill-opacity=".6" stroke="#60a5fa"/>
+          <text x="159" y="20" font-family="JetBrains Mono,monospace" font-size="11" fill="#f4f4f8" text-anchor="middle" font-weight="600">0.00</text>
+
+          <rect x="198" y="0" width="42" height="30" fill="#60a5fa" fill-opacity=".6" stroke="#60a5fa"/>
+          <text x="219" y="20" font-family="JetBrains Mono,monospace" font-size="11" fill="#f4f4f8" text-anchor="middle" font-weight="600">0.04</text>
+          <rect x="244" y="0" width="42" height="30" fill="#60a5fa" fill-opacity=".6" stroke="#60a5fa"/>
+          <text x="265" y="20" font-family="JetBrains Mono,monospace" font-size="11" fill="#f4f4f8" text-anchor="middle" font-weight="600">0.55</text>
+          <rect x="290" y="0" width="42" height="30" fill="#60a5fa" fill-opacity=".6" stroke="#60a5fa"/>
+          <text x="311" y="20" font-family="JetBrains Mono,monospace" font-size="11" fill="#f4f4f8" text-anchor="middle" font-weight="600">−0.19</text>
+          <rect x="336" y="0" width="42" height="30" fill="#60a5fa" fill-opacity=".6" stroke="#60a5fa"/>
+          <text x="357" y="20" font-family="JetBrains Mono,monospace" font-size="11" fill="#f4f4f8" text-anchor="middle" font-weight="600">0.02</text>
+        </g>
+
+        <g transform="translate(60 140)">
+          <text x="0" y="10" font-family="JetBrains Mono,monospace" font-size="9" fill="#c9c9d4">← group 1 (4 wts) →</text>
+          <text x="200" y="10" font-family="JetBrains Mono,monospace" font-size="9" fill="#c9c9d4">← group 2 (4 wts) →</text>
+        </g>
+
+        <!-- Arrow -->
+        <line x1="540" y1="110" x2="600" y2="110" stroke="#8b8b99" stroke-width="1.5" marker-end="url(#sfarr)"/>
+        <text x="570" y="100" font-family="JetBrains Mono,monospace" font-size="9" fill="#8b8b99" text-anchor="middle">2:4 compress</text>
+
+        <!-- Compressed -->
+        <rect x="610" y="55" width="450" height="110" rx="10" fill="url(#sfb)" stroke="#10b981" stroke-opacity=".4"/>
+        <text x="630" y="82" font-family="JetBrains Mono,monospace" font-size="11" fill="#10b981" font-weight="600" letter-spacing="1">2:4 SPARSE · 4 FP16 values + 8 bits of indices · 9 bytes</text>
+
+        <g transform="translate(630 96)">
+          <rect x="0" y="0" width="42" height="30" fill="#10b981" fill-opacity=".6" stroke="#10b981"/>
+          <text x="21" y="20" font-family="JetBrains Mono,monospace" font-size="11" fill="#f4f4f8" text-anchor="middle" font-weight="600">0.42</text>
+          <rect x="46" y="0" width="42" height="30" fill="#10b981" fill-opacity=".6" stroke="#10b981"/>
+          <text x="67" y="20" font-family="JetBrains Mono,monospace" font-size="11" fill="#f4f4f8" text-anchor="middle" font-weight="600">−0.31</text>
+          <rect x="92" y="0" width="24" height="30" fill="#10b981" fill-opacity=".3" stroke="#10b981"/>
+          <text x="104" y="20" font-family="JetBrains Mono,monospace" font-size="10" fill="#f4f4f8" text-anchor="middle">[0,2]</text>
+          <text x="104" y="45" font-family="JetBrains Mono,monospace" font-size="9" fill="#5eead4" text-anchor="middle">idx</text>
+
+          <rect x="140" y="0" width="42" height="30" fill="#10b981" fill-opacity=".6" stroke="#10b981"/>
+          <text x="161" y="20" font-family="JetBrains Mono,monospace" font-size="11" fill="#f4f4f8" text-anchor="middle" font-weight="600">0.55</text>
+          <rect x="186" y="0" width="42" height="30" fill="#10b981" fill-opacity=".6" stroke="#10b981"/>
+          <text x="207" y="20" font-family="JetBrains Mono,monospace" font-size="11" fill="#f4f4f8" text-anchor="middle" font-weight="600">−0.19</text>
+          <rect x="232" y="0" width="24" height="30" fill="#10b981" fill-opacity=".3" stroke="#10b981"/>
+          <text x="244" y="20" font-family="JetBrains Mono,monospace" font-size="10" fill="#f4f4f8" text-anchor="middle">[1,2]</text>
+          <text x="244" y="45" font-family="JetBrains Mono,monospace" font-size="9" fill="#5eead4" text-anchor="middle">idx</text>
+        </g>
+
+        <!-- Explanation -->
+        <rect x="40" y="195" width="1020" height="110" rx="10" fill="rgba(251,191,36,.06)" stroke="#fbbf24" stroke-opacity=".3"/>
+        <text x="60" y="220" font-family="JetBrains Mono,monospace" font-size="11" fill="#fbbf24" font-weight="600" letter-spacing="1">WHAT THE HARDWARE GETS</text>
+        <text x="60" y="242" font-family="Inter,sans-serif" font-size="12" fill="#f4f4f8">•  Sparse tensor cores read 2 non-zero values + 2-bit index per 4-group → <strong>half the memory bandwidth consumed</strong></text>
+        <text x="60" y="260" font-family="Inter,sans-serif" font-size="12" fill="#f4f4f8">•  GEMM reads activations normally, multiplies only at non-zero positions using the index → <strong>2× effective FLOP/s</strong></text>
+        <text x="60" y="278" font-family="Inter,sans-serif" font-size="12" fill="#f4f4f8">•  On H100: measured 1.8-1.95× real throughput improvement on LLM decode workloads</text>
+        <text x="60" y="296" font-family="JetBrains Mono,monospace" font-size="11" fill="#86efac">For Nexus decode (memory-bound): 1.9× fewer bytes read per token → 1.9× fewer ms per TPOT step. Free speed.</text>
+      </svg>
+    </div>
+
+    <h3>The 2:4 pruning workflow</h3>
+
+    <p>Applying 2:4 is simpler than it looks. The constraint — every 4 consecutive weights in each row must contain exactly 2 zeros — is a per-row, per-group rule. For each row, for each group of 4 weights, use Wanda or SparseGPT to score all 4 entries, keep the top 2, zero the bottom 2. One pass through the layer, no iteration. Then the weights are stored in the NVIDIA 2:4 compressed format and served through the sparse tensor core path. Every major serving engine (vLLM, TensorRT-LLM, SGLang) supports this today; you flip a flag at model-conversion time.</p>
+
+    <div class="callout warn">
+      <div class="callout-ic">⚠</div>
+      <div>
+        <h4>The 2:4 ceiling</h4>
+        <p>2:4 is locked at 50% sparsity exactly — you cannot adjust. If 50% sparsity costs more accuracy than you can afford, 2:4 is off the table and you are back to unstructured sparsity with no speedup. For most base Llama / DeepSeek checkpoints at 70B scale, 2:4 via Wanda loses ~2-3 points MMLU — acceptable for many workloads, painful for others. The remedy is a short recovery fine-tune on a few billion tokens, which typically recovers 70-90% of the lost points. This is the path we take for Nexus v6 in combination with distillation.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════ SECTION 4: DISTILLATION ═══════════ -->
+<section class="sec">
+  <div class="wrap">
+    <span class="sn">04 · Knowledge Distillation</span>
+    <h2>A <em>smaller student</em> learns from the full model.</h2>
+
+    <p class="lead">Distillation (Hinton et al., 2015) is the most general compression technique in the toolbox: train a smaller "student" model to mimic a larger "teacher" model's outputs. Unlike quantization or pruning, distillation can change model architecture entirely — the student can be narrower, shallower, use different attention heads, or be an MoE while the teacher was dense. The cost is compute: a full distillation run burns through roughly 10-30% of the pretraining compute. The payoff is a model that, at a fixed parameter budget, outperforms one trained from scratch by several MMLU points.</p>
+
+    <h3>Three families of distillation signals</h3>
+
+    <div class="g3">
+      <div style="padding:22px;background:var(--panel);border:1px solid var(--border);border-radius:10px">
+        <h4 style="color:var(--accent)">Response distillation</h4>
+        <p style="font-size:.92rem;margin-bottom:10px">Student matches teacher's output logits at each position. Loss = KL(p_student ∥ p_teacher) where both are softmaxed over vocabulary.</p>
+        <p style="font-size:.88rem;color:var(--fg3);margin-bottom:0"><strong>Simplest.</strong> Works when student capacity is comparable (within ~4× of teacher). Main signal for black-box APIs.</p>
+      </div>
+      <div style="padding:22px;background:var(--panel);border:1px solid var(--border);border-radius:10px">
+        <h4 style="color:var(--accent2)">Feature distillation</h4>
+        <p style="font-size:.92rem;margin-bottom:10px">Student matches teacher's <em>hidden states</em> at intermediate layers. Loss includes MSE or cosine terms between chosen hidden tensors.</p>
+        <p style="font-size:.88rem;color:var(--fg3);margin-bottom:0"><strong>Highest-fidelity.</strong> Needs white-box teacher access and matching (or learned-projection) layer dimensions. Best when student is much smaller.</p>
+      </div>
+      <div style="padding:22px;background:var(--panel);border:1px solid var(--border);border-radius:10px">
+        <h4 style="color:var(--accent3)">Relation distillation</h4>
+        <p style="font-size:.92rem;margin-bottom:10px">Student matches <em>pairwise relationships</em> between examples — e.g., cosine similarity of hidden states across a batch. Often combined with the above.</p>
+        <p style="font-size:.88rem;color:var(--fg3);margin-bottom:0"><strong>Best for retrieval/embedding tasks.</strong> Preserves the geometric structure of the teacher's representation space.</p>
+      </div>
+    </div>
+
+    <h3>The loss function most Nexus-class distillations actually use</h3>
+
+    <div class="fmla">
+      <span class="fmla-lbl">Composite distillation loss — production recipe</span>
+      L = α · CE(y_true, p_student)                      # ground-truth supervision, weight α<br>
+      &nbsp;&nbsp;+ β · T² · KL(p_teacher/T ∥ p_student/T)         # softened logit matching, weight β, temp T<br>
+      &nbsp;&nbsp;+ γ · Σ_l MSE(h_student^l, W_l · h_teacher^l)     # feature match on selected layers l<br><br>
+      Typical: α=0.3, β=0.6, γ=0.1, T=2.0
+    </div>
+
+    <p>The temperature T &gt; 1 softens both distributions before the KL, which dramatically improves the signal on low-probability tokens. This is where the "dark knowledge" lives — the relative ranking of the top-K tokens the teacher considered but didn't emit. It is often more informative than just the argmax, because it tells the student "you were close to token X, not token Y" at every position.</p>
+
+    <h3>Data quality is 80% of a good distillation</h3>
+
+    <p>The single biggest lever in practical distillation is not the loss function — it's the data. You have three choices:</p>
+
+    <table class="tb">
+      <thead><tr><th>Data strategy</th><th>Description</th><th>Quality</th><th>Cost</th><th>When to use</th></tr></thead>
+      <tbody>
+        <tr><td>Pretraining corpus</td><td>Use the same data the teacher was trained on, teacher generates logits on each token</td><td class="num good">Highest</td><td class="num bad">Very expensive — full teacher forward passes on trillions of tokens</td><td>You have the budget and ship a general-purpose student</td></tr>
+        <tr><td>Target-domain corpus</td><td>Filter or collect domain-specific data; teacher labels it; student trains on the filtered set</td><td class="num good">High for domain</td><td class="num warn">Moderate — billions of tokens</td><td>Domain-specialized student (Nexus)</td></tr>
+        <tr><td>Synthetic / self-generated</td><td>Teacher generates Q&A pairs, thinks step-by-step; student trains on the synthetic trace</td><td class="num">Medium — depends on teacher's quality</td><td class="num good">Cheap — millions of tokens</td><td>Reasoning / coding specialists</td></tr>
+        <tr><td>Production traces</td><td>Use real user traffic (with PII scrubbing); teacher re-scores or re-generates</td><td class="num good">Highest for deployed distribution</td><td class="num good">Near-free — you already have the data</td><td>Whenever you have prod traffic at scale (Nexus)</td></tr>
+      </tbody>
+    </table>
+
+    <p>For Nexus, the third and fourth rows combine into the winning recipe: 2 billion tokens of real fraud-adjudication traffic (scrubbed) plus 400 million tokens of synthetic edge cases. The teacher is the 70B dense Nexus v5; the student is the 38B-active MoE we build in the next sections. Total compute: ~45,000 H100-hours (about 4% of pretraining cost). Result: F1 retention 99.2% vs teacher, with 1.6× faster serving per token.</p>
+
+    <div class="callout warn">
+      <div class="callout-ic">⚠</div>
+      <div>
+        <h4>The capacity-gap failure mode</h4>
+        <p>Distillation stops working well when the student is too small relative to the teacher. If you try to distill Llama-3-70B into a 1B student, you'll lose double-digit points on most benchmarks no matter how much data or compute you use — there's a minimum parameter count below which the student simply cannot represent what the teacher knows. The rough guideline: <strong>student ≥ teacher / 5</strong> for safe distillation without severe quality loss. For Nexus, 38B-active MoE distilling from a 70B dense teacher sits comfortably in the safe zone.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════ SECTION 5: MIXTURE-OF-EXPERTS ═══════════ -->
+<section class="sec">
+  <div class="wrap">
+    <span class="sn">05 · Mixture-of-Experts · Sparse Activation</span>
+    <h2>Keep <em>all</em> the parameters. Use a fraction per token.</h2>
+
+    <p class="lead">MoE is the architectural innovation that dominated 2023-2025: instead of routing every token through a single dense FFN, partition the FFN into N "experts" and route each token to the top-K experts (K ≪ N). Total parameters stay high — preserving the model's knowledge capacity — but active parameters per token drop dramatically. DeepSeek-V3's 671B total / 37B active, Mixtral 8x22B's 141B total / 39B active, and DBRX's 132B total / 36B active all share this shape. For Nexus v6 we take the same playbook.</p>
+
+    <h3>The top-K routing mechanism</h3>
+
+    <div class="arch">
+      <div class="arch-title">MoE Forward Pass · Top-K Routing Over N Experts</div>
+      <svg viewBox="0 0 1100 420" xmlns="http://www.w3.org/2000/svg">
+        <defs>
+          <linearGradient id="moea" x1="0" x2="1"><stop offset="0" stop-color="#fbbf24" stop-opacity=".22"/><stop offset="1" stop-color="#fbbf24" stop-opacity=".04"/></linearGradient>
+          <linearGradient id="moeb" x1="0" x2="1"><stop offset="0" stop-color="#a78bfa" stop-opacity=".22"/><stop offset="1" stop-color="#a78bfa" stop-opacity=".04"/></linearGradient>
+          <linearGradient id="moec" x1="0" x2="1"><stop offset="0" stop-color="#10b981" stop-opacity=".22"/><stop offset="1" stop-color="#10b981" stop-opacity=".04"/></linearGradient>
+          <marker id="moearr" markerWidth="8" markerHeight="6" refX="8" refY="3" orient="auto"><polygon points="0 0,8 3,0 6" fill="#8b8b99"/></marker>
+        </defs>
+
+        <text x="550" y="24" font-family="Fraunces,serif" font-size="14" fill="#f4f4f8" text-anchor="middle" font-weight="600">Token hidden state h → router picks top-K experts → outputs weighted-sum combined</text>
+
+        <!-- Input token -->
+        <rect x="40" y="50" width="140" height="50" rx="8" fill="url(#moea)" stroke="#fbbf24"/>
+        <text x="110" y="72" font-family="JetBrains Mono,monospace" font-size="11" fill="#fbbf24" text-anchor="middle" font-weight="600">Token h</text>
+        <text x="110" y="88" font-family="JetBrains Mono,monospace" font-size="9" fill="#c9c9d4" text-anchor="middle">hidden dim 5120</text>
+
+        <!-- Router -->
+        <line x1="180" y1="75" x2="220" y2="75" stroke="#8b8b99" stroke-width="1.5" marker-end="url(#moearr)"/>
+        <rect x="220" y="50" width="150" height="50" rx="8" fill="url(#moeb)" stroke="#a78bfa"/>
+        <text x="295" y="70" font-family="JetBrains Mono,monospace" font-size="11" fill="#a78bfa" text-anchor="middle" font-weight="600">Router (linear)</text>
+        <text x="295" y="86" font-family="JetBrains Mono,monospace" font-size="9" fill="#c9c9d4" text-anchor="middle">W_g: [5120 → N_experts]</text>
+
+        <!-- Softmax + top-K -->
+        <line x1="370" y1="75" x2="410" y2="75" stroke="#8b8b99" stroke-width="1.5" marker-end="url(#moearr)"/>
+        <rect x="410" y="50" width="160" height="50" rx="8" fill="url(#moeb)" stroke="#a78bfa"/>
+        <text x="490" y="70" font-family="JetBrains Mono,monospace" font-size="11" fill="#a78bfa" text-anchor="middle" font-weight="600">Top-K softmax</text>
+        <text x="490" y="86" font-family="JetBrains Mono,monospace" font-size="9" fill="#c9c9d4" text-anchor="middle">keep 2 of 8 experts</text>
+
+        <!-- Gating scores -->
+        <line x1="570" y1="75" x2="620" y2="75" stroke="#8b8b99" stroke-width="1.5" marker-end="url(#moearr)"/>
+        <rect x="620" y="50" width="240" height="50" rx="8" fill="url(#moec)" stroke="#10b981"/>
+        <text x="740" y="70" font-family="JetBrains Mono,monospace" font-size="11" fill="#10b981" text-anchor="middle" font-weight="600">g = [0, 0, 0.68, 0, 0, 0.32, 0, 0]</text>
+        <text x="740" y="88" font-family="JetBrains Mono,monospace" font-size="9" fill="#c9c9d4" text-anchor="middle">experts 3 and 6 chosen, weights shown</text>
+
+        <!-- Experts row -->
+        <text x="550" y="150" font-family="JetBrains Mono,monospace" font-size="11" fill="#c9c9d4" text-anchor="middle" font-weight="600" letter-spacing="1">8 EXPERTS · EACH A STANDARD FFN · ONLY 2 FIRE FOR THIS TOKEN</text>
+
+        <g transform="translate(50 170)">
+          <!-- Expert 1-8 -->
+          <rect x="0"    y="0" width="110" height="80" rx="6" fill="rgba(95,95,107,.2)" stroke="#5f5f6b"/>
+          <text x="55" y="28" font-family="JetBrains Mono,monospace" font-size="10" fill="#8b8b99" text-anchor="middle">Expert 1</text>
+          <text x="55" y="46" font-family="JetBrains Mono,monospace" font-size="8" fill="#8b8b99" text-anchor="middle">idle</text>
+          <text x="55" y="62" font-family="JetBrains Mono,monospace" font-size="8" fill="#8b8b99" text-anchor="middle">g=0</text>
+
+          <rect x="125" y="0" width="110" height="80" rx="6" fill="rgba(95,95,107,.2)" stroke="#5f5f6b"/>
+          <text x="180" y="28" font-family="JetBrains Mono,monospace" font-size="10" fill="#8b8b99" text-anchor="middle">Expert 2</text>
+          <text x="180" y="46" font-family="JetBrains Mono,monospace" font-size="8" fill="#8b8b99" text-anchor="middle">idle</text>
+          <text x="180" y="62" font-family="JetBrains Mono,monospace" font-size="8" fill="#8b8b99" text-anchor="middle">g=0</text>
+
+          <rect x="250" y="0" width="110" height="80" rx="6" fill="rgba(16,185,129,.3)" stroke="#10b981"/>
+          <text x="305" y="28" font-family="JetBrains Mono,monospace" font-size="10" fill="#10b981" text-anchor="middle" font-weight="600">Expert 3 ✓</text>
+          <text x="305" y="46" font-family="JetBrains Mono,monospace" font-size="9" fill="#f4f4f8" text-anchor="middle">FFN forward</text>
+          <text x="305" y="62" font-family="JetBrains Mono,monospace" font-size="9" fill="#86efac" text-anchor="middle">g=0.68</text>
+
+          <rect x="375" y="0" width="110" height="80" rx="6" fill="rgba(95,95,107,.2)" stroke="#5f5f6b"/>
+          <text x="430" y="28" font-family="JetBrains Mono,monospace" font-size="10" fill="#8b8b99" text-anchor="middle">Expert 4</text>
+          <text x="430" y="46" font-family="JetBrains Mono,monospace" font-size="8" fill="#8b8b99" text-anchor="middle">idle</text>
+          <text x="430" y="62" font-family="JetBrains Mono,monospace" font-size="8" fill="#8b8b99" text-anchor="middle">g=0</text>
+
+          <rect x="500" y="0" width="110" height="80" rx="6" fill="rgba(95,95,107,.2)" stroke="#5f5f6b"/>
+          <text x="555" y="28" font-family="JetBrains Mono,monospace" font-size="10" fill="#8b8b99" text-anchor="middle">Expert 5</text>
+          <text x="555" y="46" font-family="JetBrains Mono,monospace" font-size="8" fill="#8b8b99" text-anchor="middle">idle</text>
+          <text x="555" y="62" font-family="JetBrains Mono,monospace" font-size="8" fill="#8b8b99" text-anchor="middle">g=0</text>
+
+          <rect x="625" y="0" width="110" height="80" rx="6" fill="rgba(16,185,129,.3)" stroke="#10b981"/>
+          <text x="680" y="28" font-family="JetBrains Mono,monospace" font-size="10" fill="#10b981" text-anchor="middle" font-weight="600">Expert 6 ✓</text>
+          <text x="680" y="46" font-family="JetBrains Mono,monospace" font-size="9" fill="#f4f4f8" text-anchor="middle">FFN forward</text>
+          <text x="680" y="62" font-family="JetBrains Mono,monospace" font-size="9" fill="#86efac" text-anchor="middle">g=0.32</text>
+
+          <rect x="750" y="0" width="110" height="80" rx="6" fill="rgba(95,95,107,.2)" stroke="#5f5f6b"/>
+          <text x="805" y="28" font-family="JetBrains Mono,monospace" font-size="10" fill="#8b8b99" text-anchor="middle">Expert 7</text>
+          <text x="805" y="46" font-family="JetBrains Mono,monospace" font-size="8" fill="#8b8b99" text-anchor="middle">idle</text>
+          <text x="805" y="62" font-family="JetBrains Mono,monospace" font-size="8" fill="#8b8b99" text-anchor="middle">g=0</text>
+
+          <rect x="875" y="0" width="110" height="80" rx="6" fill="rgba(95,95,107,.2)" stroke="#5f5f6b"/>
+          <text x="930" y="28" font-family="JetBrains Mono,monospace" font-size="10" fill="#8b8b99" text-anchor="middle">Expert 8</text>
+          <text x="930" y="46" font-family="JetBrains Mono,monospace" font-size="8" fill="#8b8b99" text-anchor="middle">idle</text>
+          <text x="930" y="62" font-family="JetBrains Mono,monospace" font-size="8" fill="#8b8b99" text-anchor="middle">g=0</text>
+        </g>
+
+        <!-- Combine -->
+        <text x="550" y="280" font-family="JetBrains Mono,monospace" font-size="11" fill="#c9c9d4" text-anchor="middle" font-weight="600" letter-spacing="1">WEIGHTED SUM</text>
+
+        <rect x="360" y="295" width="380" height="50" rx="8" fill="url(#moea)" stroke="#fbbf24"/>
+        <text x="550" y="318" font-family="JetBrains Mono,monospace" font-size="11" fill="#fbbf24" text-anchor="middle" font-weight="600">output = 0.68 · E3(h) + 0.32 · E6(h)</text>
+        <text x="550" y="334" font-family="JetBrains Mono,monospace" font-size="9" fill="#c9c9d4" text-anchor="middle">only 2/8 of FFN params touched for this token</text>
+
+        <!-- Active params summary -->
+        <rect x="40" y="360" width="1020" height="50" rx="10" fill="rgba(251,191,36,.06)" stroke="#fbbf24" stroke-opacity=".3"/>
+        <text x="60" y="384" font-family="JetBrains Mono,monospace" font-size="11" fill="#fbbf24" font-weight="600" letter-spacing="1">THE ECONOMICS</text>
+        <text x="60" y="402" font-family="Inter,sans-serif" font-size="12" fill="#f4f4f8">Total FFN params = 8 experts × full_ffn_size. Active per token = 2 × full_ffn_size. For Nexus v6: 70B total params, <strong>38B active per token</strong> — 1.8× throughput on memory-bound decode.</text>
+      </svg>
+    </div>
+
+    <h3>The gating math, precisely</h3>
+
+    <div class="fmla">
+      <span class="fmla-lbl">MoE layer forward pass — top-K gating</span>
+      1. Token hidden state h ∈ ℝᵈ arrives at the MoE layer.<br>
+      2. Router scores: s = softmax(W_g · h) ∈ ℝᴺ &nbsp; where W_g ∈ ℝᴺˣᵈ<br>
+      3. Select top-K indices by score: I = topk(s, K) ⊂ {1, ..., N}<br>
+      4. Renormalize gates on the selected set: g_i = s_i / Σ_{j∈I} s_j &nbsp; for i ∈ I, else g_i = 0<br>
+      5. Output: o = Σ_{i∈I} g_i · Expert_i(h) &nbsp; — only K forward passes through FFNs
+    </div>
+
+    <h3>The load-balance problem and auxiliary loss</h3>
+
+    <p>If you just train MoE with cross-entropy on the output, the router will happily collapse to always using 1 or 2 favorite experts — those get all the gradient, get better, become even more favored, and the rest go unused. This is mode collapse and it kills MoE's capacity advantage. The standard remedy is an <em>auxiliary load-balance loss</em> that penalizes uneven expert assignment:</p>
+
+    <div class="fmla">
+      <span class="fmla-lbl">Auxiliary load-balance loss (Switch Transformer style)</span>
+      For each batch, let f_i = fraction of tokens routed to expert i<br>
+      and let P_i = mean softmax gate weight on expert i across the batch.<br><br>
+      L_balance = N · Σᵢ f_i · P_i<br><br>
+      Added to the main loss with coefficient 0.01-0.05. Pushes f_i toward 1/N.
+    </div>
+
+    <p>DeepSeek-V3 introduced a subtly better variant — auxiliary-loss-free balancing — where the router's raw scores are shifted per-expert by a bias that is adjusted each step based on observed load. The bias decreases for overloaded experts and increases for underloaded ones, with no gradient flow through the bias itself. This avoids the accuracy regression that pure auxiliary loss sometimes causes and is the current best-practice for large MoE training.</p>
+
+    <h3>Shared experts — the Nexus choice</h3>
+
+    <p>DeepSeek-V2 introduced an important architectural refinement: alongside the N routed experts (of which K fire per token), keep <em>M shared experts</em> that <strong>always</strong> fire on every token. Shared experts capture common knowledge all tokens need; routed experts specialize in domains. The result is better quality at the same active-parameter budget, because the common knowledge doesn't have to be duplicated across specialist experts.</p>
+
+    <p>For Nexus v6, we use 2 shared experts + 8 routed experts with top-2 routing. Every token fires the 2 shared experts plus its top 2 routed experts, for 4 total active experts per token. The architecture:</p>
+
+    <div class="code">
+      <div class="code-h"><span class="code-t">nexus_moe_layer.py · shared + routed experts forward pass</span><span class="code-l">PYTHON</span></div>
+<pre><span class="cm"># Nexus v6 MoE layer. 2 shared experts fire on every token + top-2 of 8 routed.
+# This shape is derived from DeepSeek-V2/V3 with hyperparameters tuned for
+# the fraud-detection distribution on 2B tokens of production traffic.</span>
+
+<span class="kw">import</span> torch
+<span class="kw">import</span> torch.nn <span class="kw">as</span> nn
+<span class="kw">import</span> torch.nn.functional <span class="kw">as</span> F
+
+<span class="kw">class</span> <span class="cl">NexusMoELayer</span>(nn.Module):
+    <span class="kw">def</span> <span class="fn">__init__</span>(self, d_model=<span class="nu">5120</span>, d_ffn=<span class="nu">3584</span>,
+                 n_routed=<span class="nu">8</span>, n_shared=<span class="nu">2</span>, top_k=<span class="nu">2</span>):
+        <span class="fn">super</span>().<span class="fn">__init__</span>()
+        self.top_k    = top_k
+        self.router   = nn.<span class="fn">Linear</span>(d_model, n_routed, bias=<span class="bi">False</span>)
+        self.shared   = nn.<span class="fn">ModuleList</span>([<span class="fn">FFN</span>(d_model, d_ffn) <span class="kw">for</span> _ <span class="kw">in</span> range(n_shared)])
+        self.routed   = nn.<span class="fn">ModuleList</span>([<span class="fn">FFN</span>(d_model, d_ffn) <span class="kw">for</span> _ <span class="kw">in</span> range(n_routed)])
+        <span class="cm"># DeepSeek-style aux-loss-free load-balance biases (updated out-of-band).</span>
+        self.<span class="fn">register_buffer</span>(<span class="st">"route_bias"</span>, torch.zeros(n_routed))
+
+    <span class="kw">def</span> <span class="fn">forward</span>(self, x):    <span class="cm"># x: [B, T, D]</span>
+        B, T, D = x.shape
+        flat = x.<span class="fn">view</span>(-<span class="nu">1</span>, D)                                   <span class="cm"># [BT, D]</span>
+
+        <span class="cm"># 1. Shared experts — fire unconditionally on every token.</span>
+        out = <span class="fn">sum</span>(e(flat) <span class="kw">for</span> e <span class="kw">in</span> self.shared)              <span class="cm"># [BT, D]</span>
+
+        <span class="cm"># 2. Routing scores + bias + top-K selection.</span>
+        scores  = self.<span class="fn">router</span>(flat) + self.route_bias            <span class="cm"># [BT, N]</span>
+        top_s, top_i = scores.<span class="fn">topk</span>(self.top_k, dim=-<span class="nu">1</span>)           <span class="cm"># [BT, K]</span>
+        top_g = F.<span class="fn">softmax</span>(top_s, dim=-<span class="nu">1</span>)                       <span class="cm"># renorm gates on selected</span>
+
+        <span class="cm"># 3. Dispatch tokens to experts. In production this uses grouped_gemm;
+        # here we show the clear functional version.</span>
+        routed_out = torch.<span class="fn">zeros_like</span>(flat)
+        <span class="kw">for</span> e_idx, expert <span class="kw">in</span> <span class="fn">enumerate</span>(self.routed):
+            mask = (top_i == e_idx)                               <span class="cm"># [BT, K] bool</span>
+            <span class="kw">if</span> <span class="kw">not</span> mask.<span class="fn">any</span>(): <span class="kw">continue</span>
+            token_idx, slot = mask.<span class="fn">nonzero</span>(as_tuple=<span class="bi">True</span>)       <span class="cm"># which tokens pick this expert</span>
+            weights = top_g[token_idx, slot].<span class="fn">unsqueeze</span>(-<span class="nu">1</span>)        <span class="cm"># [n_tokens, 1]</span>
+            routed_out.<span class="fn">index_add_</span>(<span class="nu">0</span>, token_idx,
+                                   weights * <span class="fn">expert</span>(flat[token_idx]))
+
+        out = out + routed_out
+        <span class="kw">return</span> out.<span class="fn">view</span>(B, T, D)
+</pre>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════ SECTION 6: EXPERT PARALLELISM ═══════════ -->
+<section class="sec">
+  <div class="wrap">
+    <span class="sn">06 · Expert Parallelism · The All-to-All Bottleneck</span>
+    <h2>Experts live on <em>different GPUs</em>. Tokens travel.</h2>
+
+    <p class="lead">A 70B MoE with 8 routed experts has, per MoE layer, roughly 6× the parameter count of its dense equivalent. At 70B total parameters and 60 MoE layers, you cannot fit all the experts on one GPU. The deployment pattern is <em>expert parallelism</em>: shard the experts across GPUs so each GPU holds only a subset. The price is that every MoE forward pass now requires sending each token's hidden state to whichever GPU owns the selected expert, then sending the result back — a full <strong>all-to-all</strong> collective operation in every MoE layer.</p>
+
+    <div class="arch">
+      <div class="arch-title">Expert Parallelism · The All-to-All Communication Pattern</div>
+      <svg viewBox="0 0 1100 420" xmlns="http://www.w3.org/2000/svg">
+        <defs>
+          <linearGradient id="epa" x1="0" x2="1"><stop offset="0" stop-color="#a78bfa" stop-opacity=".22"/><stop offset="1" stop-color="#a78bfa" stop-opacity=".04"/></linearGradient>
+          <linearGradient id="epb" x1="0" x2="1"><stop offset="0" stop-color="#5eead4" stop-opacity=".22"/><stop offset="1" stop-color="#5eead4" stop-opacity=".04"/></linearGradient>
+          <marker id="eparr" markerWidth="8" markerHeight="6" refX="8" refY="3" orient="auto"><polygon points="0 0,8 3,0 6" fill="#8b8b99"/></marker>
+        </defs>
+
+        <text x="550" y="26" font-family="Fraunces,serif" font-size="14" fill="#f4f4f8" text-anchor="middle" font-weight="600">4 GPUs, 2 experts each · every MoE layer does 2 all-to-alls (dispatch + combine)</text>
+
+        <!-- GPU nodes -->
+        <g transform="translate(40 55)">
+          <rect x="0" y="0" width="240" height="80" rx="10" fill="url(#epa)" stroke="#a78bfa"/>
+          <text x="120" y="22" font-family="JetBrains Mono,monospace" font-size="11" fill="#a78bfa" text-anchor="middle" font-weight="600">GPU 0</text>
+          <text x="120" y="40" font-family="JetBrains Mono,monospace" font-size="9" fill="#c9c9d4" text-anchor="middle">hosts Experts 1, 2</text>
+          <text x="120" y="58" font-family="JetBrains Mono,monospace" font-size="9" fill="#c9c9d4" text-anchor="middle">local tokens: T0</text>
+          <text x="120" y="72" font-family="JetBrains Mono,monospace" font-size="9" fill="#5eead4" text-anchor="middle">shared experts: local copy</text>
+        </g>
+
+        <g transform="translate(295 55)">
+          <rect x="0" y="0" width="240" height="80" rx="10" fill="url(#epa)" stroke="#a78bfa"/>
+          <text x="120" y="22" font-family="JetBrains Mono,monospace" font-size="11" fill="#a78bfa" text-anchor="middle" font-weight="600">GPU 1</text>
+          <text x="120" y="40" font-family="JetBrains Mono,monospace" font-size="9" fill="#c9c9d4" text-anchor="middle">hosts Experts 3, 4</text>
+          <text x="120" y="58" font-family="JetBrains Mono,monospace" font-size="9" fill="#c9c9d4" text-anchor="middle">local tokens: T1</text>
+          <text x="120" y="72" font-family="JetBrains Mono,monospace" font-size="9" fill="#5eead4" text-anchor="middle">shared experts: local copy</text>
+        </g>
+
+        <g transform="translate(550 55)">
+          <rect x="0" y="0" width="240" height="80" rx="10" fill="url(#epa)" stroke="#a78bfa"/>
+          <text x="120" y="22" font-family="JetBrains Mono,monospace" font-size="11" fill="#a78bfa" text-anchor="middle" font-weight="600">GPU 2</text>
+          <text x="120" y="40" font-family="JetBrains Mono,monospace" font-size="9" fill="#c9c9d4" text-anchor="middle">hosts Experts 5, 6</text>
+          <text x="120" y="58" font-family="JetBrains Mono,monospace" font-size="9" fill="#c9c9d4" text-anchor="middle">local tokens: T2</text>
+          <text x="120" y="72" font-family="JetBrains Mono,monospace" font-size="9" fill="#5eead4" text-anchor="middle">shared experts: local copy</text>
+        </g>
+
+        <g transform="translate(805 55)">
+          <rect x="0" y="0" width="240" height="80" rx="10" fill="url(#epa)" stroke="#a78bfa"/>
+          <text x="120" y="22" font-family="JetBrains Mono,monospace" font-size="11" fill="#a78bfa" text-anchor="middle" font-weight="600">GPU 3</text>
+          <text x="120" y="40" font-family="JetBrains Mono,monospace" font-size="9" fill="#c9c9d4" text-anchor="middle">hosts Experts 7, 8</text>
+          <text x="120" y="58" font-family="JetBrains Mono,monospace" font-size="9" fill="#c9c9d4" text-anchor="middle">local tokens: T3</text>
+          <text x="120" y="72" font-family="JetBrains Mono,monospace" font-size="9" fill="#5eead4" text-anchor="middle">shared experts: local copy</text>
+        </g>
+
+        <!-- All-to-all dispatch -->
+        <text x="40" y="165" font-family="JetBrains Mono,monospace" font-size="11" fill="#5eead4" font-weight="600" letter-spacing="1">STEP 1 · DISPATCH (all-to-all) — tokens sent to GPU owning their chosen expert</text>
+
+        <g transform="translate(40 180)">
+          <rect x="0" y="0" width="1020" height="60" rx="10" fill="url(#epb)" stroke="#5eead4" stroke-opacity=".4"/>
+          <!-- Some arrows between GPUs -->
+          <line x1="160" y1="14" x2="290" y2="46" stroke="#5eead4" marker-end="url(#eparr)"/>
+          <line x1="160" y1="40" x2="800" y2="14" stroke="#5eead4" marker-end="url(#eparr)"/>
+          <line x1="415" y1="20" x2="560" y2="46" stroke="#5eead4" marker-end="url(#eparr)"/>
+          <line x1="415" y1="46" x2="1000" y2="30" stroke="#5eead4" marker-end="url(#eparr)"/>
+          <line x1="670" y1="14" x2="820" y2="48" stroke="#5eead4" marker-end="url(#eparr)"/>
+          <line x1="925" y1="46" x2="280" y2="14" stroke="#5eead4" marker-end="url(#eparr)"/>
+
+          <text x="510" y="33" font-family="JetBrains Mono,monospace" font-size="10" fill="#c9c9d4" text-anchor="middle">NCCL all-to-all · each GPU sends its tokens' hidden states to their target expert owners</text>
+          <text x="510" y="48" font-family="JetBrains Mono,monospace" font-size="9" fill="#86efac" text-anchor="middle">payload per token: d_model × 2 bytes (FP16) · on NVLink: ~0.5-1.2 ms for a batch</text>
+        </g>
+
+        <!-- Step 2: experts compute -->
+        <text x="40" y="265" font-family="JetBrains Mono,monospace" font-size="11" fill="#a78bfa" font-weight="600" letter-spacing="1">STEP 2 · LOCAL EXPERT COMPUTE — each GPU runs its 2 experts on the received tokens</text>
+        <rect x="40" y="276" width="1020" height="30" rx="8" fill="rgba(167,139,250,.08)" stroke="#a78bfa" stroke-opacity=".3"/>
+        <text x="550" y="295" font-family="JetBrains Mono,monospace" font-size="10" fill="#c9c9d4" text-anchor="middle">grouped GEMM: tokens for each local expert are batched and processed in one FFN kernel call</text>
+
+        <!-- Step 3: all-to-all combine -->
+        <text x="40" y="330" font-family="JetBrains Mono,monospace" font-size="11" fill="#5eead4" font-weight="600" letter-spacing="1">STEP 3 · COMBINE (all-to-all) — expert outputs sent back to originating GPUs, summed with shared expert output</text>
+        <rect x="40" y="341" width="1020" height="30" rx="8" fill="url(#epb)" stroke="#5eead4" stroke-opacity=".4"/>
+        <text x="550" y="360" font-family="JetBrains Mono,monospace" font-size="10" fill="#c9c9d4" text-anchor="middle">second all-to-all · reverse direction of step 1 · each GPU receives expert outputs for its own tokens</text>
+
+        <!-- Key -->
+        <rect x="40" y="385" width="1020" height="30" rx="8" fill="rgba(239,68,68,.05)" stroke="#ef4444" stroke-opacity=".3"/>
+        <text x="550" y="404" font-family="Fraunces,serif" font-size="12" fill="#f4f4f8" text-anchor="middle" font-style="italic"><strong style="color:#fca5a5">The bottleneck:</strong> 2 all-to-alls per MoE layer × 60 MoE layers = 120 all-to-alls per forward pass. Communication budget determines deployment topology.</text>
+      </svg>
+    </div>
+
+    <h3>The deployment rule that matters</h3>
+
+    <div class="callout warn">
+      <div class="callout-ic">⚠</div>
+      <div>
+        <h4>Keep the MoE within one NVLink domain</h4>
+        <p>Each all-to-all has a latency floor set by the slowest link in the communication mesh. On NVLink (intra-node) an all-to-all completes in ~0.5-1.2 ms. On InfiniBand (inter-node) it completes in ~20-60 ms. With 120 all-to-alls per forward pass, inter-node MoE adds <strong>~3 full seconds of pure communication time per token</strong> — catastrophic. The rule: <em>the expert-parallel group must fit within one NVLink domain</em>. For H100/H200 nodes with 8 GPUs, that means the MoE is sharded across at most 8 GPUs on one machine. If you need to scale beyond 8, you go tensor-parallel on the dense layers and keep expert-parallel at 8. DeepSeek-V3 runs this exact shape on 8×H800 nodes.</p>
+      </div>
+    </div>
+
+    <h3>Hot experts — the skew problem</h3>
+
+    <p>Even with load-balance loss and DeepSeek-style aux-free balancing, real traffic has skew. Some experts end up 2-3× more loaded than others on a given batch, which means their owning GPU becomes the straggler — all other GPUs wait for it. Two techniques mitigate this:</p>
+
+    <div class="g2">
+      <div style="padding:22px;background:var(--panel);border:1px solid var(--border);border-radius:10px">
+        <h4 style="color:var(--accent3)">Token drop + capacity factor</h4>
+        <p style="font-size:.93rem;margin-bottom:10px">Set a per-expert capacity = (tokens_in_batch × K / N) × capacity_factor (typically 1.25). Any tokens routed to an over-capacity expert are dropped (their MoE output becomes zero; residual connection still passes). Trains the router to avoid overload.</p>
+        <p style="font-size:.88rem;color:var(--fg3);margin-bottom:0">Slight accuracy cost (~0.2 MMLU), significant latency stability win.</p>
+      </div>
+      <div style="padding:22px;background:var(--panel);border:1px solid var(--border);border-radius:10px">
+        <h4 style="color:var(--accent)">Replicated hot experts</h4>
+        <p style="font-size:.93rem;margin-bottom:10px">Identify the top 2-3 "hot" experts from production traces and replicate them across multiple GPUs. The router then round-robins to a replica for tokens hitting those experts, spreading load.</p>
+        <p style="font-size:.88rem;color:var(--fg3);margin-bottom:0">Memory overhead (~10-15% more parameters resident), but eliminates the hot-expert straggler. Nexus v6 uses this for its 2 most-loaded routed experts.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════ SECTION 7: COMBINING EVERYTHING ═══════════ -->
+<section class="sec">
+  <div class="wrap">
+    <span class="sn">07 · Putting It Together</span>
+    <h2>How Nexus v6 uses <em>all three</em>.</h2>
+
+    <p class="lead">Pruning, distillation, and MoE are often presented as alternatives. In production they compose. For Nexus v6 we use all three: the student is an MoE (not dense), the student is distilled from the dense v5 teacher, and the student's dense layers (attention, shared experts) carry 2:4 structured sparsity. This layered recipe gives compounding benefits that no single technique matches.</p>
+
+    <h3>The v6 pipeline, end-to-end</h3>
+
+    <div class="arch">
+      <div class="arch-title">Nexus v6 Training + Deployment Pipeline</div>
+      <svg viewBox="0 0 1100 440" xmlns="http://www.w3.org/2000/svg">
+        <defs>
+          <linearGradient id="npa" x1="0" x2="1"><stop offset="0" stop-color="#5eead4" stop-opacity=".22"/><stop offset="1" stop-color="#5eead4" stop-opacity=".04"/></linearGradient>
+          <linearGradient id="npb" x1="0" x2="1"><stop offset="0" stop-color="#fbbf24" stop-opacity=".22"/><stop offset="1" stop-color="#fbbf24" stop-opacity=".04"/></linearGradient>
+          <linearGradient id="npc" x1="0" x2="1"><stop offset="0" stop-color="#a78bfa" stop-opacity=".22"/><stop offset="1" stop-color="#a78bfa" stop-opacity=".04"/></linearGradient>
+          <linearGradient id="npd" x1="0" x2="1"><stop offset="0" stop-color="#10b981" stop-opacity=".22"/><stop offset="1" stop-color="#10b981" stop-opacity=".04"/></linearGradient>
+          <marker id="nparr" markerWidth="8" markerHeight="6" refX="8" refY="3" orient="auto"><polygon points="0 0,8 3,0 6" fill="#8b8b99"/></marker>
+        </defs>
+
+        <!-- Stage 1: Teacher -->
+        <rect x="40" y="55" width="220" height="120" rx="10" fill="url(#npa)" stroke="#5eead4" stroke-opacity=".4"/>
+        <text x="150" y="80" font-family="JetBrains Mono,monospace" font-size="11" fill="#5eead4" text-anchor="middle" font-weight="600">1 · TEACHER</text>
+        <text x="150" y="100" font-family="Fraunces,serif" font-size="13" fill="#f4f4f8" text-anchor="middle" font-weight="600">Nexus v5</text>
+        <text x="150" y="118" font-family="JetBrains Mono,monospace" font-size="9" fill="#c9c9d4" text-anchor="middle">70B dense, AWQ W4</text>
+        <text x="150" y="134" font-family="JetBrains Mono,monospace" font-size="9" fill="#c9c9d4" text-anchor="middle">F1 = 0.947 (baseline)</text>
+        <text x="150" y="152" font-family="JetBrains Mono,monospace" font-size="9" fill="#86efac" text-anchor="middle">frozen, generates labels</text>
+
+        <line x1="260" y1="115" x2="300" y2="115" stroke="#8b8b99" stroke-width="1.5" marker-end="url(#nparr)"/>
+
+        <!-- Stage 2: Distillation training -->
+        <rect x="300" y="55" width="260" height="120" rx="10" fill="url(#npb)" stroke="#fbbf24" stroke-opacity=".4"/>
+        <text x="430" y="80" font-family="JetBrains Mono,monospace" font-size="11" fill="#fbbf24" text-anchor="middle" font-weight="600">2 · DISTILL TO MoE STUDENT</text>
+        <text x="430" y="100" font-family="Fraunces,serif" font-size="13" fill="#f4f4f8" text-anchor="middle" font-weight="600">MoE student from scratch</text>
+        <text x="430" y="118" font-family="JetBrains Mono,monospace" font-size="9" fill="#c9c9d4" text-anchor="middle">2 shared + 8 routed, top-2</text>
+        <text x="430" y="134" font-family="JetBrains Mono,monospace" font-size="9" fill="#c9c9d4" text-anchor="middle">2B real traces + 400M synthetic</text>
+        <text x="430" y="152" font-family="JetBrains Mono,monospace" font-size="9" fill="#86efac" text-anchor="middle">~45k H100-hours</text>
+
+        <line x1="560" y1="115" x2="600" y2="115" stroke="#8b8b99" stroke-width="1.5" marker-end="url(#nparr)"/>
+
+        <!-- Stage 3: Prune -->
+        <rect x="600" y="55" width="260" height="120" rx="10" fill="url(#npc)" stroke="#a78bfa" stroke-opacity=".4"/>
+        <text x="730" y="80" font-family="JetBrains Mono,monospace" font-size="11" fill="#a78bfa" text-anchor="middle" font-weight="600">3 · 2:4 PRUNE DENSE LAYERS</text>
+        <text x="730" y="100" font-family="Fraunces,serif" font-size="13" fill="#f4f4f8" text-anchor="middle" font-weight="600">Wanda + recovery FT</text>
+        <text x="730" y="118" font-family="JetBrains Mono,monospace" font-size="9" fill="#c9c9d4" text-anchor="middle">attention W_qkv, W_o, shared FFNs</text>
+        <text x="730" y="134" font-family="JetBrains Mono,monospace" font-size="9" fill="#c9c9d4" text-anchor="middle">routed experts kept dense</text>
+        <text x="730" y="152" font-family="JetBrains Mono,monospace" font-size="9" fill="#86efac" text-anchor="middle">~4k H100-hours recovery</text>
+
+        <line x1="860" y1="115" x2="900" y2="115" stroke="#8b8b99" stroke-width="1.5" marker-end="url(#nparr)"/>
+
+        <!-- Stage 4: Quantize -->
+        <rect x="900" y="55" width="160" height="120" rx="10" fill="url(#npd)" stroke="#10b981" stroke-opacity=".4"/>
+        <text x="980" y="80" font-family="JetBrains Mono,monospace" font-size="11" fill="#10b981" text-anchor="middle" font-weight="600">4 · QUANTIZE</text>
+        <text x="980" y="100" font-family="Fraunces,serif" font-size="13" fill="#f4f4f8" text-anchor="middle" font-weight="600">AWQ W4</text>
+        <text x="980" y="118" font-family="JetBrains Mono,monospace" font-size="9" fill="#c9c9d4" text-anchor="middle">experts + dense layers</text>
+        <text x="980" y="134" font-family="JetBrains Mono,monospace" font-size="9" fill="#c9c9d4" text-anchor="middle">FP8 KV cache</text>
+        <text x="980" y="152" font-family="JetBrains Mono,monospace" font-size="9" fill="#86efac" text-anchor="middle">~100 H100-hours</text>
+
+        <!-- Divider -->
+        <line x1="40" y1="205" x2="1060" y2="205" stroke="#5f5f6b" stroke-dasharray="4 4"/>
+        <text x="550" y="225" font-family="Fraunces,serif" font-size="13" fill="#c9c9d4" text-anchor="middle" font-style="italic">↓ deployment ↓</text>
+
+        <!-- Deployment row -->
+        <rect x="40" y="245" width="1020" height="180" rx="12" fill="rgba(167,139,250,.05)" stroke="#a78bfa" stroke-opacity=".3"/>
+        <text x="550" y="272" font-family="JetBrains Mono,monospace" font-size="11" fill="#a78bfa" text-anchor="middle" font-weight="600" letter-spacing="1.2">NEXUS v6 PRODUCTION DEPLOYMENT · ONE NODE PER REGION</text>
+
+        <g transform="translate(60 290)">
+          <text x="0" y="14" font-family="Inter,sans-serif" font-size="12" fill="#f4f4f8">•  <strong>1 × 8-GPU H200 node</strong> per region (DGX-equivalent, NVLink full-mesh)</text>
+          <text x="0" y="34" font-family="Inter,sans-serif" font-size="12" fill="#f4f4f8">•  <strong>Expert parallelism 8-way</strong> — each H200 hosts 1 routed expert; shared experts replicated everywhere</text>
+          <text x="0" y="54" font-family="Inter,sans-serif" font-size="12" fill="#f4f4f8">•  <strong>Tensor parallelism 4-way</strong> on attention and shared experts (2:4 sparse GEMMs)</text>
+          <text x="0" y="74" font-family="Inter,sans-serif" font-size="12" fill="#f4f4f8">•  <strong>PagedAttention, RadixAttention, EAGLE-2 spec decoding</strong> — everything from M3–M5 still in play</text>
+          <text x="0" y="94" font-family="Inter,sans-serif" font-size="12" fill="#f4f4f8">•  <strong>All-to-all over NVLink</strong> — 0.6-0.9 ms per collective, 60 MoE layers × 2 = 108 ms total per token (absorbed into step time)</text>
+          <text x="0" y="114" font-family="JetBrains Mono,monospace" font-size="11" fill="#fbbf24">Down from 3 nodes in v5 → 1 node in v6. Same region throughput, 1/3 the hardware.</text>
+        </g>
+      </svg>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════ SECTION 8 · DEBUGGING DRILLS ═══════════ -->
+<section class="sec">
+  <div class="wrap">
+    <span class="sn">08 · Debugging Drills</span>
+    <h2>Four traps across <em>pruning, distillation, and MoE</em>.</h2>
+
+    <p class="lead">Pruning, distillation, and MoE share a pattern: each is a capacity-vs-quality tradeoff that looks clean on paper and becomes murky in production. These four drills catch the common traps — hardware mismatches, teacher drift, expert imbalance, and communication bottlenecks — that turn a "2× faster" deploy into a 2-week investigation.</p>
+
+    <div class="drill">
+      <span class="drill-lbl">Drill · 01</span>
+      <div class="drill-t">2:4 sparsity applied but TPOT unchanged</div>
+      <div class="drill-row">
+        <div class="drill-k symptom">SYMPTOM</div>
+        <div class="drill-v">Team prunes a model to 2:4 structured sparsity per NVIDIA's recipe. Verifies sparsity pattern is correct. Deploys. TPOT is within 1% of the dense model. Team is confused — advertised speedup was 1.8×.</div>
+      </div>
+      <div class="drill-row">
+        <div class="drill-k wrong">WRONG HYPOTHESIS</div>
+        <div class="drill-v">"2:4 sparsity must not be mature yet." Red herring. 2:4 works well; the issue is almost always a missing prerequisite.</div>
+      </div>
+      <div class="drill-row">
+        <div class="drill-k correct">CORRECT DIAGNOSIS</div>
+        <div class="drill-v">2:4 sparse acceleration requires THREE conditions: (1) Ampere or newer (A100, H100, H200, B200 — NOT V100); (2) the matmul kernel is using the sparse tensor core path (cuBLAS <code>--sparsity</code> flag, cuSPARSELt, or TensorRT-LLM's sparse plugin); (3) the sparsity pattern must be <em>stored</em> in the 2:4 compressed format, not just have 50% zeros in dense layout. Check: if your weights are saved in FP16 with 50% zeros but no compression metadata, kernels see a dense tensor and skip the sparse path. Confirm via <code>nsys</code>: sparse kernels are named differently (e.g. <code>sparse_gemm_sm80_tn</code>). If you see dense kernel names, you're not on the sparse path.</div>
+      </div>
+      <div class="drill-row">
+        <div class="drill-k fix">FIX</div>
+        <div class="drill-v">Save weights in 2:4 compressed format using the vendor tool (NVIDIA's <code>apex.sparsity</code> or <code>cuSPARSELt</code>). Load with a sparse-aware runtime. Confirm kernel names in nsys are sparse variants. Expect 1.5-1.8× speedup on compute-bound layers; smaller gain on memory-bound decode (because the dominant cost is HBM reads, not compute). If most of your wall-time is attention at small batch, 2:4 won't help much — optimize KV first (M4).</div>
+      </div>
+    </div>
+
+    <div class="drill">
+      <span class="drill-lbl">Drill · 02</span>
+      <div class="drill-t">Distilled student matches teacher on eval; drifts in production over weeks</div>
+      <div class="drill-row">
+        <div class="drill-k symptom">SYMPTOM</div>
+        <div class="drill-v">Distilled 7B student from 70B teacher. Offline eval: student F1 = 0.92, teacher F1 = 0.94 — acceptable. Ship to production. Over 6 weeks, student F1 slowly drops to 0.85 while teacher (kept as shadow) stays at 0.94. Nothing was redeployed.</div>
+      </div>
+      <div class="drill-row">
+        <div class="drill-k wrong">WRONG HYPOTHESIS</div>
+        <div class="drill-v">"Something changed in production" — but nothing deployed. The model weights are identical to week 0.</div>
+      </div>
+      <div class="drill-row">
+        <div class="drill-k correct">CORRECT DIAGNOSIS</div>
+        <div class="drill-v">The <em>traffic</em> changed. Students generalize worse than teachers — they learned the training distribution more narrowly. When production traffic drifts away from the distillation set (new tenants, new merchant categories, new fraud patterns), the student's F1 drops while the larger teacher still generalizes. This is the distillation analog of the speculation-drift problem from M5. Check: sample production prompts from week 0 and week 6, compute embedding distance between the distributions. If the distributions have moved, the student's training set is stale relative to production.</div>
+      </div>
+      <div class="drill-row">
+        <div class="drill-k fix">FIX</div>
+        <div class="drill-v">Re-distill monthly on rolling production traffic. Automate: the distillation pipeline pulls the last 30 days of prompts, generates teacher completions, trains the student, evaluates on the most recent week. Monitor <code>student_F1 / teacher_F1</code> ratio; if it drops below 0.95, re-distill immediately. Long-term: add a "generalization reserve" during distillation — hold out 10% of the training data at the distribution edges so the student learns to handle distributional variation, not just the median case.</div>
+      </div>
+    </div>
+
+    <div class="drill">
+      <span class="drill-lbl">Drill · 03</span>
+      <div class="drill-t">MoE utilization stuck at 40%; 2 experts handle 60% of traffic</div>
+      <div class="drill-row">
+        <div class="drill-k symptom">SYMPTOM</div>
+        <div class="drill-v">Deployed Mixtral 8×7B with expert parallelism (EP=8, one expert per GPU). Per-GPU utilization: 85%, 82%, 40%, 45%, 30%, 35%, 40%, 38%. Two GPUs (experts 0 and 1) are consistently hot; six are nearly idle. Total throughput is 45% of design target.</div>
+      </div>
+      <div class="drill-row">
+        <div class="drill-k wrong">WRONG HYPOTHESIS</div>
+        <div class="drill-v">"The GPUs are different" or "something's broken on the idle GPUs." Hardware is fine. This is expert imbalance.</div>
+      </div>
+      <div class="drill-row">
+        <div class="drill-k correct">CORRECT DIAGNOSIS</div>
+        <div class="drill-v">MoE routers are NOT guaranteed to balance load across experts. Left unconstrained, they collapse: two or three experts handle most tokens; the rest starve. Check vLLM/Megatron MoE metrics: <code>moe_expert_load</code> histogram per expert per step. If the top-2 experts hold &gt;40% of load (ideal is 12.5% each for 8 experts), you have routing collapse. Common causes: no load-balancing loss during training; load-balancing loss weight too low; production traffic narrower than training traffic (so the router over-specializes).</div>
+      </div>
+      <div class="drill-row">
+        <div class="drill-k fix">FIX</div>
+        <div class="drill-v">Short-term: enable "capacity factor" in the MoE router (caps how many tokens any single expert can receive per step; overflow tokens are dropped or re-routed). Set capacity_factor=1.25 (25% slack). Medium-term: re-fine-tune the MoE with a stronger load-balancing loss (coefficient 0.01-0.1 depending on model). Long-term: if one expert is permanently over-subscribed in your domain, consider a replication strategy — duplicate the hot expert on two GPUs, route half the tokens to each. Utilization should rise from 40% to 80%+. This is a routing problem, not a hardware problem.</div>
+      </div>
+    </div>
+
+    <div class="drill">
+      <span class="drill-lbl">Drill · 04</span>
+      <div class="drill-t">Scaling EP from 4 to 8 GPUs makes MoE SLOWER</div>
+      <div class="drill-row">
+        <div class="drill-k symptom">SYMPTOM</div>
+        <div class="drill-v">Team runs Mixtral with EP=4 at 8k tok/s/GPU. Scales to EP=8 expecting throughput to grow. Measured: EP=8 gives 3.2k tok/s/GPU — per-GPU throughput dropped 60%, total throughput only marginally better than EP=4.</div>
+      </div>
+      <div class="drill-row">
+        <div class="drill-k wrong">WRONG HYPOTHESIS</div>
+        <div class="drill-v">"More GPUs means more overhead — expected." Not for any other form of parallelism. EP has a specific failure mode.</div>
+      </div>
+      <div class="drill-row">
+        <div class="drill-k correct">CORRECT DIAGNOSIS</div>
+        <div class="drill-v">Expert parallelism requires an all-to-all communication step per MoE layer: every GPU sends tokens to the expert on another GPU, then receives tokens back. The all-to-all's total bytes scale as O(batch × seq_len × hidden_dim), and the latency scales poorly past 8 nodes — especially on non-NVLink topologies. At EP=4 within a single node (NVLink), all-to-all is ~1-2% overhead. At EP=8 across two nodes (Infiniband), all-to-all becomes 30-50% of step time. The compute savings don't compensate. Check <code>nsys</code>: look for <code>ncclAllToAll</code> kernels and their wall-time percentage. If &gt;15%, you've hit the communication bottleneck.</div>
+      </div>
+      <div class="drill-row">
+        <div class="drill-k fix">FIX</div>
+        <div class="drill-v">Keep EP within NVLink boundaries — single node for EP=8 (H100/H200 DGX has 8 GPUs on one NVLink fabric). If you need more scale, use tensor parallelism (TP) within the node and data parallelism (DP) across nodes instead of stretching EP. Alternative: hierarchical EP where experts are grouped within nodes and tokens are routed within a group when possible (vLLM and Megatron-LM both support this). Last resort: drop expert-parallelism entirely and replicate the whole model, accepting the memory cost. Rule: for MoE, the bottleneck is almost always communication, not compute.</div>
+      </div>
+    </div>
+
+    <div class="callout insight">
+      <div class="callout-ic">💡</div>
+      <div>
+        <h4>The common thread</h4>
+        <p>Pruning, distillation, and MoE all promise capacity gains via structural techniques. The traps are different in kind but similar in shape: <strong>the promised speedup requires a specific compatibility layer (hardware path, training regime, topology) that's easy to miss</strong>. 2:4 needs sparse kernels. Distillation needs traffic-matched re-training. MoE needs capacity-balanced routing and low-latency all-to-all. Before adopting any of these techniques, verify the compatibility layer FIRST — the technique is only as fast as its weakest dependency.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════ SECTION 9 · NEXUS v6 CHECKPOINT ═══════════ -->
+<section class="sec">
+  <div class="wrap">
+    <span class="sn">09 · Nexus v6 Checkpoint</span>
+    <h2>One node, <em>one model</em>.</h2>
+
+    <p class="lead">The combined recipe — MoE architecture + distillation from the dense v5 teacher + 2:4 sparsity on dense layers + AWQ W4 weights + FP8 KV cache — produces a model that is structurally simpler to deploy, substantially cheaper to operate, and maintains 99.2% of the teacher's F1 score on the fraud-detection eval. Every technique in this module contributed. Individually they'd each have given 1.5-2× improvements; composed, they give 3.2× against v5 on per-region throughput and cut per-region cost by 65%.</p>
+
+    <div class="chk">
+      <span class="chk-t">▼ Nexus v6 · Compression complete</span>
+      <h3>70B dense → 38B-active MoE. F1 retention 99.2%. Cost per region: $380K/mo → $122K/mo.</h3>
+      <p style="color:var(--fg2);font-size:1rem;line-height:1.7;max-width:820px;font-weight:300">The v6 student is a 70B-total-parameter MoE (2 shared experts + 8 routed, top-2) with 38B active per token. Distilled from v5 over ~45k H100-hours on 2B tokens of production traffic plus 400M tokens of synthetic edge cases. Dense layers pruned to 2:4 structured sparsity via Wanda + short recovery fine-tune. AWQ W4 weights throughout + FP8 KV cache. Served on a single H200 DGX-class node per region with 8-way expert parallelism and 4-way tensor parallelism on the dense slice. Every serving optimization from M3-M5 still applied: PagedAttention, RadixAttention prefix sharing, EAGLE-2 speculation, deadline-aware continuous batching.</p>
+
+      <div class="chk-grid">
+        <div class="chk-cell"><div class="chk-cell-l">Model: total params</div><div class="chk-cell-v">70B → 70B MoE</div></div>
+        <div class="chk-cell"><div class="chk-cell-l">Active params / token</div><div class="chk-cell-v good">70B → 38B</div></div>
+        <div class="chk-cell"><div class="chk-cell-l">F1 on fraud-detection eval</div><div class="chk-cell-v good">0.947 → 0.939</div></div>
+        <div class="chk-cell"><div class="chk-cell-l">Throughput / region</div><div class="chk-cell-v good">40k → 65k tok/s</div></div>
+        <div class="chk-cell"><div class="chk-cell-l">Hardware / region</div><div class="chk-cell-v good">3 nodes → 1 node</div></div>
+        <div class="chk-cell"><div class="chk-cell-l">2:4 dense-layer speedup</div><div class="chk-cell-v good">1.9× GEMM</div></div>
+        <div class="chk-cell"><div class="chk-cell-l">E2E p99 latency</div><div class="chk-cell-v good">60ms → 48ms</div></div>
+        <div class="chk-cell"><div class="chk-cell-l">Cost / month / region</div><div class="chk-cell-v good">$380K → $122K</div></div>
+      </div>
+
+      <div style="margin-top:26px;padding:18px;background:rgba(0,0,0,.25);border-radius:10px;border-left:2px solid var(--accent4)">
+        <div style="font-family:var(--mono);font-size:.66rem;letter-spacing:.14em;color:var(--accent4);text-transform:uppercase;margin-bottom:8px;font-weight:600">What's left after compression</div>
+        <div style="font-size:.95rem;color:var(--fg2);line-height:1.8;font-weight:300">
+          The model-level optimizations are exhausted. The serving-engine optimizations are exhausted. What remains is everything <em>around</em> the serving engine: traffic shaping, multi-region topology, autoscaling policy, quality-drift monitoring, A/B testing, canary deployment of new model versions. This is the "production system design" that separates a model that works in a benchmark from a model that holds up during a Black Friday traffic spike. Module 7 covers the complete production stack — routing, observability, safe rollout, incident response. Module 8 then brings everything together: cost ladder, hardware selection matrix, capacity planning, and the war stories that taught us the rules.
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════ QUIZ ═══════════ -->
+<section class="sec">
+  <div class="wrap">
+    <span class="sn">Checkpoint · Knowledge Quiz</span>
+    <h2>Nine questions to <em>lock it in</em>.</h2>
+
+    <div class="qz">
+      <div class="qz-h"><span class="qz-t">Module 6 · Self-check</span></div>
+      <p class="qz-s">Click answers to reveal explanations.</p>
+
+      <div class="qq">
+        <div class="qq-n">Q1 · Hardware & sparsity</div>
+        <div class="qq-q">A team prunes a 70B model to 60% unstructured sparsity using SparseGPT, packs the weights in CSR format, and expects a 2.5× decode speedup on H100. What actually happens?</div>
+        <div class="qo" data-q="1" data-a="0">They get the expected 2.5× speedup.</div>
+        <div class="qo" data-q="1" data-a="1" data-correct="1">Essentially no decode speedup. Dense GEMM kernels don't skip zeros; the tensor cores multiply at the same rate regardless of value. HBM reads drop only if the sparse format is actually read (most kernels re-densify). For real inference speedup, they need structured sparsity (2:4) that hardware recognizes.</div>
+        <div class="qo" data-q="1" data-a="2">They get a 1.5× speedup but a large accuracy regression.</div>
+        <div class="qo" data-q="1" data-a="3">CSR format cannot be used with transformer weights.</div>
+        <div class="qex" data-q="1">The hardware story dominates. Unstructured sparsity is excellent academically but useless for GPU inference speed. The one pattern that translates to real throughput on modern silicon is 2:4 structured sparsity, which NVIDIA tensor cores support natively via a sparse-GEMM path. Anything else saves memory at best, not latency.</div>
+      </div>
+
+      <div class="qq">
+        <div class="qq-n">Q2 · SparseGPT vs Wanda</div>
+        <div class="qq-q">What is Wanda's core insight that lets it approach SparseGPT's accuracy with a much simpler algorithm?</div>
+        <div class="qo" data-q="2" data-a="0">Wanda uses a different Hessian formulation.</div>
+        <div class="qo" data-q="2" data-a="1" data-correct="1">Wanda scores weights by |W| × ||X|| (weight magnitude times activation norm) rather than needing Hessian inversion and error propagation. The score captures "this weight is large AND sees large inputs" — a surprisingly good proxy for importance without training or Hessian math.</div>
+        <div class="qo" data-q="2" data-a="2">Wanda requires iterative pruning while SparseGPT is one-shot.</div>
+        <div class="qo" data-q="2" data-a="3">Wanda only works for transformer FFN layers.</div>
+        <div class="qex" data-q="2">Wanda's simplicity is the point. No Hessian, no Cholesky, no error compensation, no block structure. Just score = |W| × ||X|| and keep top-K per row. For 2:4 structured sparsity the Wanda-vs-SparseGPT quality gap is often within noise, and the implementation cost is a 10× difference.</div>
+      </div>
+
+      <div class="qq">
+        <div class="qq-n">Q3 · 2:4 constraint</div>
+        <div class="qq-q">Can you use 2:4 structured sparsity at 75% sparsity (3 zeros of 4) to get even more compression?</div>
+        <div class="qo" data-q="3" data-a="0">Yes — just change the pattern from 2:4 to 1:4.</div>
+        <div class="qo" data-q="3" data-a="1" data-correct="1">No, at least not with current NVIDIA tensor cores. The sparse tensor core only supports exactly the 2:4 pattern (2 of 4 non-zero). Other ratios would need software decompression, which usually costs more than it saves on decode workloads. 2:4 is locked at 50% exactly.</div>
+        <div class="qo" data-q="3" data-a="2">Yes, but only on H200 and newer.</div>
+        <div class="qo" data-q="3" data-a="3">Yes, 2:4 can be chained to produce 75%.</div>
+        <div class="qex" data-q="3">The hardware supports exactly one ratio. Blackwell is rumored to add 4:8 as a variant pattern, but as of 2026 deployments, 2:4 (50%) is the only option that produces real GEMM speedup on mainstream accelerators.</div>
+      </div>
+
+      <div class="qq">
+        <div class="qq-n">Q4 · Distillation capacity</div>
+        <div class="qq-q">A team wants to distill Llama-3-70B into a 3B student for a customer-support use case. What's the biggest risk?</div>
+        <div class="qo" data-q="4" data-a="0">Distillation compute will be too expensive.</div>
+        <div class="qo" data-q="4" data-a="1" data-correct="1">Capacity gap. At 70B/3B ≈ 23×, the student simply does not have enough parameters to represent what the teacher knows. Even perfect training data will leave the student many points below the teacher on most benchmarks. Rule of thumb: keep student ≥ teacher/5.</div>
+        <div class="qo" data-q="4" data-a="2">3B models cannot be distilled.</div>
+        <div class="qo" data-q="4" data-a="3">The student will overfit.</div>
+        <div class="qex" data-q="4">The capacity gap is the fundamental limit. Under-sized students plateau no matter how much data they see. The practical fix: either accept lower accuracy (often fine for narrow domains with a small eval surface), or pick a larger student (e.g., 14B) that fits the rule. For Nexus, 38B-active from 70B dense is a safe 1.8× ratio — well inside the viable range.</div>
+      </div>
+
+      <div class="qq">
+        <div class="qq-n">Q5 · Distillation loss</div>
+        <div class="qq-q">Why does distillation use softmax temperature T &gt; 1 in the KL loss?</div>
+        <div class="qo" data-q="5" data-a="0">To make the student train faster.</div>
+        <div class="qo" data-q="5" data-a="1" data-correct="1">Higher T softens both distributions, which amplifies the informative "dark knowledge" in the teacher's low-probability tokens. The relative ranking of non-top tokens carries real signal about how the teacher reasons, and T &gt; 1 makes that ranking visible in the gradient. At T=1, the hard-argmax tokens dominate and most of the teacher's nuance is lost.</div>
+        <div class="qo" data-q="5" data-a="2">To match the teacher's learning rate schedule.</div>
+        <div class="qo" data-q="5" data-a="3">Required by the PyTorch KL-divergence implementation.</div>
+        <div class="qex" data-q="5">"Dark knowledge" is Hinton's original framing. A teacher that says token "A" 80%, "B" 15%, "C" 5% is telling the student something different from one that says "A" 80%, "B" 1%, "C" 19%, even though both argmax to "A". The soft-T loss preserves that distinction and is one of the most important knobs in distillation — typical T is 2-5.</div>
+      </div>
+
+      <div class="qq">
+        <div class="qq-n">Q6 · MoE economics</div>
+        <div class="qq-q">A 70B-total MoE with 2 shared + 8 routed experts (top-2 routing) has what active parameter count per token?</div>
+        <div class="qo" data-q="6" data-a="0">70B (all parameters fire)</div>
+        <div class="qo" data-q="6" data-a="1">8.75B (70B / 8 routed experts)</div>
+        <div class="qo" data-q="6" data-a="2" data-correct="1">Roughly 38B — active experts per token = 2 shared + 2 of 8 routed = 4 of 10, so about 40% of FFN params fire. Combined with attention (always active), the active fraction is slightly higher — ~55% — giving 38B effective active parameters.</div>
+        <div class="qo" data-q="6" data-a="3">15B</div>
+        <div class="qex" data-q="6">Back-of-envelope: FFN is typically 2/3 of a transformer's parameters, attention is 1/3. Of FFN, only 4 of 10 experts fire → 0.4 × (2/3) ≈ 27% of params from FFN. Attention always fires → 33%. Total active ≈ 60% of parameters. For a 70B total, that's roughly 38-42B active. Confirmed empirically for Nexus v6's final shape.</div>
+      </div>
+
+      <div class="qq">
+        <div class="qq-n">Q7 · Load balancing</div>
+        <div class="qq-q">Without any load-balance intervention during MoE training, what happens to the experts?</div>
+        <div class="qo" data-q="7" data-a="0">They stay balanced automatically because softmax is fair.</div>
+        <div class="qo" data-q="7" data-a="1" data-correct="1">Mode collapse: a few favored experts get all the gradient, get better, get favored more, and the rest go unused. Without an auxiliary load-balance loss or aux-loss-free bias updates, the router converges to using 1-2 experts and the MoE reduces to a dense model with extra idle parameters.</div>
+        <div class="qo" data-q="7" data-a="2">All experts receive equal traffic because tokens are randomly distributed.</div>
+        <div class="qo" data-q="7" data-a="3">The router learns to match tokens to the expert with lowest initial loss.</div>
+        <div class="qex" data-q="7">The feedback loop is the issue: favored experts → more gradient → better fit → higher router scores → even more favored. The Switch Transformer paper popularized the auxiliary L_balance = N · Σ f_i · P_i loss, and DeepSeek-V3 improved on it with aux-loss-free bias updates that avoid the small accuracy cost of the gradient term.</div>
+      </div>
+
+      <div class="qq">
+        <div class="qq-n">Q8 · Expert parallelism</div>
+        <div class="qq-q">You're deploying an 8-routed-expert MoE across a 16-GPU cluster (two 8-GPU NVLink-connected nodes). What expert parallelism degree should you pick?</div>
+        <div class="qo" data-q="8" data-a="0">EP=16 (one expert per 2 GPUs for memory safety)</div>
+        <div class="qo" data-q="8" data-a="1" data-correct="1">EP=8, within a single NVLink domain. The second node should run as a separate replica (data parallel). Spanning expert parallelism across InfiniBand inter-node links turns every all-to-all into a multi-millisecond collective and adds seconds per forward pass — unworkable for real-time serving.</div>
+        <div class="qo" data-q="8" data-a="2">EP=2, with tensor parallelism filling the rest.</div>
+        <div class="qo" data-q="8" data-a="3">It doesn't matter — the router handles locality.</div>
+        <div class="qex" data-q="8">The NVLink-vs-InfiniBand gap is the deciding factor. Intra-node all-to-all ≈ 1 ms; inter-node ≈ 30 ms. With 120 all-to-alls per forward pass, the difference is 0.12 s vs 3.6 s per token — not a latency regression, a latency extinction. Nexus v6's deployment pattern (EP=8 within node, data-parallel replicas across nodes) is the only production-viable topology.</div>
+      </div>
+
+      <div class="qq">
+        <div class="qq-n">Q9 · Composition</div>
+        <div class="qq-q">For Nexus v6, what was the approximate order of operations for stacking quantization, pruning, distillation, and MoE?</div>
+        <div class="qo" data-q="9" data-a="0">Quantize v5, then prune, then distill, then convert to MoE.</div>
+        <div class="qo" data-q="9" data-a="1" data-correct="1">Distill v5 (dense FP16) into a new MoE student first (knowledge transfer needs full-precision teacher). Then prune the student's dense layers (2:4 via Wanda) with short recovery fine-tune. Then quantize everything (AWQ W4 weights + FP8 KV). Ordering matters: quantizing before distilling wastes the teacher's signal; pruning before distilling degrades the teacher.</div>
+        <div class="qo" data-q="9" data-a="2">All four simultaneously during pretraining.</div>
+        <div class="qo" data-q="9" data-a="3">Order doesn't matter — they commute.</div>
+        <div class="qex" data-q="9">The rule is "start with the highest-precision signal and compress progressively". Distillation needs the teacher at full fidelity, so it comes first. Pruning needs a trained student to know which weights are dispensable — second. Quantization is the cheapest and most mechanical step — last. Any other order loses quality with no compensating gain.</div>
+      </div>
+    </div>
+
+    <script>
+      document.querySelectorAll('.qo').forEach(el => {
+        el.addEventListener('click', () => {
+          const q = el.dataset.q;
+          document.querySelectorAll(`.qo[data-q="${q}"]`).forEach(o => {
+            o.classList.remove('ok','no','dim');
+            if (o.dataset.correct === '1') o.classList.add('ok');
+            else if (o === el) o.classList.add('no');
+            else o.classList.add('dim');
+          });
+          document.querySelectorAll(`.qex[data-q="${q}"]`).forEach(e => e.classList.add('show'));
+        });
+      });
+    </script>
+  </div>
+</section>
+
+
+<section class="sec">
+  <div class="wrap">
+    <div class="mod-res">
+      <h2 class="mod-res-title">Learn & <span class="accent">Practice</span></h2>
+      <p class="mod-res-sub">Module 06 resources only.</p>
+      <div class="mod-res-grid">
+        <div class="mod-res-card learn">
+          <div class="mod-res-h"><span class="mod-res-dot">L</span><h4>Progressive Article</h4></div>
+          <p class="mod-res-help">Stuck? Start here - beginner-friendly explanation</p>
+          <p class="mod-res-items">A Visual Guide to MoE</p>
+          <div class="mod-res-links">
+            <a class='mod-res-btn' href='https://newsletter.maartengrootendorst.com/p/a-visual-guide-to-mixture-of-experts' target='_blank' rel='noopener noreferrer'>Learn More</a>
+          </div>
+        </div>
+        <div class="mod-res-card canon">
+          <div class="mod-res-h"><span class="mod-res-dot">C</span><h4>Canonical Article</h4></div>
+          <p class="mod-res-help">Authoritative source - papers and reference writeups</p>
+          <p class="mod-res-items">SparseGPT Paper<br>Wanda Paper<br>Distilling the Knowledge in a Neural Network<br>Mixtral of Experts Paper</p>
+          <div class="mod-res-links">
+            <a class='mod-res-btn' href='https://arxiv.org/abs/2301.00774' target='_blank' rel='noopener noreferrer'>Read Canonical 1</a>
+            <a class='mod-res-btn' href='https://arxiv.org/abs/2306.11695' target='_blank' rel='noopener noreferrer'>Read Canonical 2</a>
+            <a class='mod-res-btn' href='https://arxiv.org/abs/1503.02531' target='_blank' rel='noopener noreferrer'>Read Canonical 3</a>
+            <a class='mod-res-btn' href='https://arxiv.org/abs/2401.04088' target='_blank' rel='noopener noreferrer'>Read Canonical 4</a>
+          </div>
+        </div>
+        <div class="mod-res-card repo">
+          <div class="mod-res-h"><span class="mod-res-dot">G</span><h4>GitHub Repositories</h4></div>
+          <p class="mod-res-help">Hands-on - reference implementation and production code</p>
+          <p class="mod-res-items">SparseGPT<br>Wanda<br>llm-compressor<br>Megablocks</p>
+          <div class="mod-res-links">
+            <a class='mod-res-btn' href='https://github.com/IST-DASLab/sparsegpt' target='_blank' rel='noopener noreferrer'>Practice 1</a>
+            <a class='mod-res-btn' href='https://github.com/locuslab/wanda' target='_blank' rel='noopener noreferrer'>Practice 2</a>
+            <a class='mod-res-btn' href='https://github.com/vllm-project/llm-compressor' target='_blank' rel='noopener noreferrer'>Practice 3</a>
+            <a class='mod-res-btn' href='https://github.com/databricks/megablocks' target='_blank' rel='noopener noreferrer'>Practice 4</a>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+<!-- NEXT -->
+<section class="sec">
+  <div class="wrap">
+    <div class="nx">
+      <div>
+        <div class="nx-lbl">Module 07 · Next up</div>
+        <div class="nx-t">Production System Design</div>
+        <div class="nx-d">The system around the serving engine. Multi-region topology, autoscaling on queue depth vs GPU util, A/B testing LLMs, shadow mode, canary deploys, KServe/Ray Serve, Istio sidecars, observability. Nexus v7: 1 → 3 regions, 99.95% SLO, zero-downtime model upgrades.</div>
+      </div>
+      <a class="nx-btn" href="07_production.html">Module 7 →</a>
+    </div>
+  </div>
+</section>
+
+</body>
+</html>
+

@@ -16,27 +16,38 @@ const TabBar = ({ activeTab, onTabChange, tabs }) => {
 
     return (
         <div ref={containerRef} style={{
-            display: 'flex', alignItems: 'center', gap: 2, padding: '0 16px',
+            display: 'flex', alignItems: 'center', gap: 0, padding: '0 14px',
             position: 'relative', borderBottom: '1px solid var(--color-border)',
             background: 'var(--color-surface)',
+            flexShrink: 0,
         }}>
-            {tabs.map(tab => (
-                <button key={tab.id} data-tab-id={tab.id} onClick={() => onTabChange(tab.id)}
-                    style={{
-                        padding: '13px 16px', fontSize: 13, fontWeight: 600,
-                        color: activeTab === tab.id ? 'var(--color-primary-text)' : 'var(--color-muted-text)',
-                        background: 'transparent', border: 'none', cursor: 'pointer',
-                        outline: 'none', transition: 'color 0.2s',
-                    }}
-                    onMouseEnter={e => { if (activeTab !== tab.id) e.currentTarget.style.color = 'var(--color-primary-text)'; }}
-                    onMouseLeave={e => { if (activeTab !== tab.id) e.currentTarget.style.color = 'var(--color-muted-text)'; }}
-                >{tab.label}</button>
-            ))}
+            {tabs.map(tab => {
+                const isActive = activeTab === tab.id;
+                return (
+                    <button key={tab.id} data-tab-id={tab.id} onClick={() => onTabChange(tab.id)}
+                        style={{
+                            padding: '12px 14px', fontSize: 13, fontWeight: isActive ? 600 : 500,
+                            color: isActive ? 'var(--color-primary-text)' : 'var(--color-muted-text)',
+                            background: 'transparent', border: 'none', cursor: 'pointer',
+                            outline: 'none', transition: 'color 0.18s ease',
+                            display: 'flex', alignItems: 'center', gap: 6,
+                            userSelect: 'none',
+                        }}
+                        onMouseEnter={e => { if (!isActive) e.currentTarget.style.color = 'var(--color-primary-text)'; }}
+                        onMouseLeave={e => { if (!isActive) e.currentTarget.style.color = 'var(--color-muted-text)'; }}
+                    >
+                        {tab.icon && <tab.icon size={13} style={{ opacity: isActive ? 1 : 0.6 }} />}
+                        {tab.label}
+                    </button>
+                );
+            })}
+            {/* Animated underline indicator */}
             <div style={{
                 position: 'absolute', bottom: -1, left: indicator.left, width: indicator.width,
-                height: 2, borderRadius: '2px 2px 0 0', background: '#818cf8',
-                boxShadow: '0 -2px 8px rgba(129,140,248,0.35)',
-                transition: 'left .25s cubic-bezier(.4,0,.2,1), width .25s cubic-bezier(.4,0,.2,1)',
+                height: 2, borderRadius: '2px 2px 0 0',
+                background: 'var(--color-primary-text)',
+                opacity: 0.85,
+                transition: 'left .22s cubic-bezier(.4,0,.2,1), width .22s cubic-bezier(.4,0,.2,1)',
                 pointerEvents: 'none',
             }} />
         </div>

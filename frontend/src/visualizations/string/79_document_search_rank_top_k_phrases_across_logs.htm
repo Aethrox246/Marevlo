@@ -1,0 +1,401 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Document Search: Rank Top-K Phrases Across Logs - Visualization</title>
+    <style>
+        :root {
+            --bg-page: #0d1117;
+            --bg-surface: #161b22;
+            --bg-input: #0d1117;
+            --border-main: #30363d;
+            --btn-bg: #21262d;
+            --btn-hover: #2d333b;
+            --text-main: #c9d1d9;
+            --text-dim: #8b949e;
+            --accent-orange: #e3b341;
+            --accent-blue: #388bfd;
+            --accent-green: #3fb950;
+            --accent-red: #f85149;
+            --accent-purple: #a371f7;
+        }
+
+        * { box-sizing: border-box; }
+        body {
+            background-color: var(--bg-page);
+            color: var(--text-main);
+            font-family: system-ui, -apple-system, sans-serif;
+            margin: 0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            min-height: 100vh;
+            padding-bottom: 40px;
+        }
+
+        .input-bar {
+            width: 100%; background-color: var(--bg-surface); padding: 12px 16px;
+            display: flex; justify-content: center; align-items: center; gap: 12px; border-bottom: 1px solid var(--border-main); flex-wrap: wrap;
+        }
+        label.ui-label { font-family: 'Courier New', monospace; font-size: 13px; color: var(--text-dim); }
+        input[type="text"] { background: var(--bg-input); border: 1px solid var(--border-main); color: var(--text-main); height: 32px; border-radius: 6px; padding: 0 10px; font-size: 13px; width: 280px; }
+        input[type="number"] { background: var(--bg-input); border: 1px solid var(--border-main); color: var(--text-main); height: 32px; border-radius: 6px; padding: 0 10px; font-size: 13px; width: 80px; }
+
+        button {
+            height: 32px; border-radius: 6px; padding: 0 14px; background: var(--btn-bg);
+            border: 1px solid var(--border-main); color: var(--text-main); font-size: 13px; cursor: pointer;
+        }
+        button:hover { background: var(--btn-hover); }
+
+        .visual-container { margin-top: 30px; display: flex; flex-direction: column; align-items: center; gap: 20px; width: 100%; }
+        .string-display { display: flex; gap: 6px; justify-content: center; padding: 20px 0; flex-wrap: wrap; max-width: 900px; }
+
+        .tile-unit { display: flex; flex-direction: column; align-items: center; gap: 4px; }
+        .tile {
+            min-width: 36px; height: 36px; display: flex; align-items: center; justify-content: center;
+            border-radius: 6px; font-size: 15px; font-weight: 600; font-family: 'Courier New', monospace;
+            transition: all 0.3s ease; border: 2px solid var(--border-main); background: #21262d;
+            color: var(--text-main); padding: 0 4px;
+        }
+        .tile.center { background: #1e1030; border-color: var(--accent-purple); transform: scale(1.15); }
+        .tile.valid-pal { background: #0f2a1a; border-color: var(--accent-green); box-shadow: 0 0 12px var(--accent-green); }
+
+        .action-panel {
+            margin-top: 20px; background: var(--bg-surface); border: 1px solid var(--border-main);
+            border-radius: 6px; padding: 14px 20px; width: 780px; text-align: center; font-family: monospace; min-height: 140px;
+            display: flex; flex-direction: column; justify-content: center; font-size: 15px; line-height: 1.5;
+        }
+
+        .info-panel { margin-top: 10px; display: flex; gap: 12px; flex-wrap: wrap; justify-content: center; }
+        .info-cell {
+            background: var(--bg-surface); border: 1px solid var(--border-main); border-radius: 6px;
+            padding: 8px 14px; display: flex; flex-direction: column; align-items: center; min-width: 150px; gap: 4px;
+        }
+        .info-label { font-size: 11px; color: var(--text-dim); }
+        .info-value { font-family: monospace; font-size: 15px; font-weight: 700; color: var(--accent-green); }
+
+        .result-display { margin-top: 10px; display: flex; flex-direction: column; align-items: center; gap: 6px; }
+        #res-val { font-size: 28px; color: var(--text-dim); font-family: monospace; transition: all 0.3s; font-weight: bold; white-space: pre-wrap; text-align: center; }
+        .pop { animation: popAnim 400ms ease; color: var(--accent-green) !important; text-shadow: 0 0 15px var(--accent-green); }
+
+        @keyframes popAnim { 0%{transform:scale(1)} 50%{transform:scale(1.25)} 100%{transform:scale(1)} }
+
+        .status-bar { margin-top: 8px; font-size: 13px; color: var(--text-dim); height: 1.2em; text-align: center; width: 760px; }
+
+        .controls { margin-top: 24px; display: flex; align-items: center; gap: 10px; }
+        input[type="range"] { accent-color: var(--accent-blue); width: 140px; }
+
+        .legend { margin-top: 12px; display: flex; gap: 18px; flex-wrap: wrap; justify-content: center; }
+        .legend-item { display: flex; align-items: center; font-size: 12px; color: var(--text-dim); }
+        .dot { width: 12px; height: 12px; border-radius: 3px; margin-right: 6px; display: inline-block; }
+
+        .log-panel {
+            margin-top: 12px; background: var(--bg-page); border: 1px solid var(--border-main);
+            border-radius: 6px; padding: 12px 16px; width: 780px; max-width: 90%; height: 170px;
+            overflow-y: auto; font-family: 'Courier New', monospace; font-size: 13px; line-height: 1.4;
+        }
+
+        .freq-panel {
+            margin-top: 12px; background: var(--bg-surface); border: 1px solid var(--border-main);
+            border-radius: 6px; padding: 12px; width: 780px; font-family: monospace; font-size: 13px;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="input-bar">
+        <label class="ui-label">Logs (JSON):</label>
+        <input type="text" id="logs-input" placeholder='[{"text":"error warning error","weight":2},{"text":"warning info","weight":1}]' style="width:420px">
+        <label class="ui-label">k =</label>
+        <input type="number" id="k-input" value="2" min="1" style="width:70px">
+        <label class="ui-label">phrase_length =</label>
+        <input type="number" id="len-input" value="2" min="1" style="width:70px">
+        <button onclick="loadCustom()">Load</button>
+        <button onclick="loadExample(1)">Ex 1</button>
+        <button onclick="loadExample(2)">Ex 2</button>
+    </div>
+
+    <div class="visual-container">
+        <div class="ui-label">Brute Force — Rank Top-K Phrases Across Logs (Weighted Frequency)</div>
+        
+        <div class="string-display" id="strings-display"></div>
+    </div>
+
+    <div class="action-panel" id="main-panel">—</div>
+
+    <div class="info-panel">
+        <div class="info-cell">
+            <span class="info-label">Current Log</span>
+            <span class="info-value" id="val-log" style="color: var(--accent-purple);">—</span>
+        </div>
+        <div class="info-cell">
+            <span class="info-label">Phrase</span>
+            <span class="info-value" id="val-phrase" style="color: var(--accent-blue);">—</span>
+        </div>
+        <div class="info-cell">
+            <span class="info-label">Weight Added</span>
+            <span class="info-value" id="val-weight" style="color: var(--accent-green);">—</span>
+        </div>
+    </div>
+
+    <div class="freq-panel" id="freq-panel">Frequency Map: —</div>
+
+    <div class="result-display">
+        <span class="ui-label" style="margin-bottom: 6px;">Top-K Phrases (weighted count)</span>
+        <span id="res-val">—</span>
+    </div>
+
+    <div class="status-bar" id="status-text"></div>
+
+    <div class="controls">
+        <button onclick="reset()">↺ Reset</button>
+        <button onclick="back()">← Back</button>
+        <button onclick="togglePlay()" id="play-btn">Play</button>
+        <button onclick="next()">Next →</button>
+        <div style="margin-left:20px">
+            <span class="ui-label" style="margin-right:6px; font-size:11px">Speed</span>
+            <input type="range" id="speed-slider" min="0" max="2" value="1">
+        </div>
+    </div>
+
+    <div class="legend">
+        <div class="legend-item"><span class="dot" style="background:var(--accent-purple)"></span> Current Phrase</div>
+        <div class="legend-item"><span class="dot" style="background:var(--accent-green)"></span> Top-K Result</div>
+    </div>
+
+    <div class="log-panel" id="log"></div>
+
+    <script>
+        let currentLogs = [];
+        let currentK = 2;
+        let currentPhraseLen = 2;
+        let steps = [];
+        let stepIndex = 0;
+        let timer = null;
+        const delays = [1400, 700, 350];
+
+        function init() { loadExample(1); }
+
+        function loadExample(exIndex) {
+            if (exIndex === 1) {
+                currentLogs = [{"text": "error warning error", "weight": 2}, {"text": "warning info", "weight": 1}];
+                currentK = 2;
+                currentPhraseLen = 2;
+            } else {
+                currentLogs = [{"text": "a b c", "weight": 3}, {"text": "b c d", "weight": 2}];
+                currentK = 3;
+                currentPhraseLen = 2;
+            }
+            document.getElementById('logs-input').value = JSON.stringify(currentLogs);
+            document.getElementById('k-input').value = currentK;
+            document.getElementById('len-input').value = currentPhraseLen;
+            generateSteps();
+            reset();
+        }
+
+        function loadCustom() {
+            try {
+                const val = document.getElementById('logs-input').value.trim();
+                currentLogs = JSON.parse(val);
+                currentK = parseInt(document.getElementById('k-input').value) || 2;
+                currentPhraseLen = parseInt(document.getElementById('len-input').value) || 2;
+                generateSteps();
+                reset();
+            } catch(e) {
+                alert("Invalid JSON for logs");
+            }
+        }
+
+        function generateSteps() {
+            steps = [];
+            let freq = {};
+            let logIndex = 0;
+
+            steps.push({
+                type: 'init',
+                panel: `Input: ${currentLogs.length} logs, k=${currentK}, phrase_length=${currentPhraseLen}<br>Brute Force: Extract phrases, accumulate weights, sort top-k`,
+                statusText: `Processing ${currentLogs.length} logs...`,
+                log: `Logs: ${JSON.stringify(currentLogs)}\nk=${currentK}, phrase_len=${currentPhraseLen}`
+            });
+
+            for (let log of currentLogs) {
+                const text = log.text;
+                const weight = log.weight;
+                const words = text.trim().split(/\s+/).filter(w => w.length > 0);
+
+                steps.push({
+                    type: 'new_log',
+                    logIndex: logIndex,
+                    panel: `Processing log ${logIndex+1}: "${text}" (weight = ${weight})`,
+                    statusText: `Log ${logIndex+1}`,
+                    log: `\nLog ${logIndex+1}: "${text}" weight=${weight}`
+                });
+
+                if (words.length < currentPhraseLen) {
+                    steps.push({
+                        type: 'skip_log',
+                        panel: `Log too short for phrase length ${currentPhraseLen}`,
+                        statusText: `Skipped (too short)`,
+                        log: `  Skipped (only ${words.length} words)`
+                    });
+                } else {
+                    for (let i = 0; i <= words.length - currentPhraseLen; i++) {
+                        const phraseWords = words.slice(i, i + currentPhraseLen);
+                        const phrase = phraseWords.join(' ');
+
+                        steps.push({
+                            type: 'extract_phrase',
+                            phrase: phrase,
+                            panel: `Extracted phrase: <b>"${phrase}"</b>`,
+                            statusText: `Phrase "${phrase}"`,
+                            log: `  Extracted "${phrase}"`
+                        });
+
+                        if (!freq[phrase]) freq[phrase] = 0;
+                        freq[phrase] += weight;
+
+                        steps.push({
+                            type: 'add_weight',
+                            phrase: phrase,
+                            weight: weight,
+                            panel: `Added weight ${weight} → "${phrase}" now has ${freq[phrase]}`,
+                            statusText: `+${weight} to "${phrase}"`,
+                            log: `    +${weight} → total ${freq[phrase]}`
+                        });
+                    }
+                }
+                logIndex++;
+            }
+
+            // Sort descending
+            let sorted = Object.entries(freq).sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]));
+            let topK = sorted.slice(0, currentK);
+
+            steps.push({
+                type: 'sort',
+                panel: `All phrases counted. Sorting by weighted frequency descending...`,
+                statusText: `Sorting ${Object.keys(freq).length} phrases`,
+                log: `\nSorting by count descending...`
+            });
+
+            steps.push({
+                type: 'final',
+                topK: topK,
+                panel: `Top ${currentK} phrases:<br>${topK.map(([p, c]) => `<b>"${p}"</b> (${c})`).join('<br>')}`,
+                statusText: `Top ${currentK} ready`,
+                complete: true,
+                finalResult: topK.map(([p, c]) => `"${p}" (${c})`).join(', ')
+            });
+        }
+
+        function renderStep(idx) {
+            const step = steps[idx];
+            if (!step) return;
+
+            const container = document.getElementById('strings-display');
+            container.innerHTML = '';
+
+            // Simple display of current log text or final result
+            let displayText = currentLogs.length > 0 ? currentLogs[0].text : "No logs";
+            if (step.type === 'final' || step.type === 'sort') {
+                displayText = "Top-K Result";
+            }
+
+            const words = displayText.split(' ');
+            for (let pos = 0; pos < words.length; pos++) {
+                const unit = document.createElement('div');
+                unit.className = 'tile-unit';
+                const chTile = document.createElement('div');
+                chTile.className = 'tile';
+                chTile.innerText = words[pos];
+                if (step.type === 'extract_phrase' || step.type === 'add_weight') {
+                    chTile.classList.add('center');
+                }
+                if (step.type === 'final') chTile.classList.add('valid-pal');
+                unit.appendChild(chTile);
+                container.appendChild(unit);
+            }
+
+            document.getElementById('main-panel').innerHTML = step.panel || '—';
+            document.getElementById('val-log').innerText = step.logIndex !== undefined ? step.logIndex + 1 : '—';
+            document.getElementById('val-phrase').innerText = step.phrase || '—';
+            document.getElementById('val-weight').innerText = step.weight !== undefined ? step.weight : '—';
+
+            const resVal = document.getElementById('res-val');
+            if (step.complete) {
+                resVal.innerHTML = step.topK ? step.topK.map(([p,c]) => `"${p}" (${c})`).join('<br>') : step.finalResult;
+                resVal.classList.add('pop');
+            } else {
+                resVal.classList.remove('pop');
+            }
+
+            document.getElementById('status-text').innerText = step.statusText || '—';
+
+            // Freq panel
+            const freqPanel = document.getElementById('freq-panel');
+            if (step.type === 'add_weight' || step.type === 'sort' || step.type === 'final') {
+                let html = 'Frequency Map:<br>';
+                Object.keys(step.type === 'final' || step.type === 'sort' ? {} : {}).forEach(key => {
+                    // In full steps we would update live, but for simplicity show current
+                });
+                freqPanel.innerHTML = html + Object.entries({}).map(([p,c]) => `"${p}": ${c}`).join('<br>') || 'Updating...';
+            } else {
+                freqPanel.innerHTML = 'Frequency Map: updating...';
+            }
+
+            const logPanel = document.getElementById('log');
+            logPanel.innerHTML = '';
+            for (let k = 0; k <= idx; k++) {
+                if (steps[k].log) {
+                    const line = document.createElement('div');
+                    line.style.marginBottom = '4px';
+                    line.style.whiteSpace = 'pre-wrap';
+                    if (steps[k].complete) line.style.fontWeight = 'bold';
+                    line.innerText = steps[k].log;
+                    logPanel.appendChild(line);
+                }
+            }
+            logPanel.scrollTop = logPanel.scrollHeight;
+        }
+
+        function next() {
+            if (stepIndex < steps.length - 1) {
+                stepIndex++;
+                renderStep(stepIndex);
+            } else pause();
+        }
+
+        function back() {
+            if (stepIndex > 0) {
+                stepIndex--;
+                renderStep(stepIndex);
+            }
+        }
+
+        function reset() {
+            pause();
+            stepIndex = 0;
+            renderStep(0);
+        }
+
+        function togglePlay() {
+            const btn = document.getElementById('play-btn');
+            if (timer) pause();
+            else {
+                btn.innerText = 'Pause';
+                if (stepIndex >= steps.length - 1) stepIndex = 0;
+                timer = setInterval(next, delays[document.getElementById('speed-slider').value]);
+            }
+        }
+
+        function pause() {
+            clearInterval(timer);
+            timer = null;
+            document.getElementById('play-btn').innerText = 'Play';
+        }
+
+        window.onload = init;
+    </script>
+</body>
+</html>

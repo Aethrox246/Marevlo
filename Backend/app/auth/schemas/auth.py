@@ -47,6 +47,7 @@ class UserOut(BaseModel):
 class GoogleLoginRequest(BaseModel):
     id_token: str
     heard_from: Optional[str] = None
+    display_name: str | None = None
 
 
 class WSTicketOut(BaseModel):

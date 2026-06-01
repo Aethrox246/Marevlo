@@ -324,9 +324,33 @@ function FeatureSidebar() {
 }
 
 export default function ProblemList({ onSelect }) {
+    const [topics, setTopics]                 = useState([]);
+const [expandedTopics, setExpandedTopics] = useState(() => {
+    const saved = sessionStorage.getItem('problemListExpandedTopics');
+    return saved ? JSON.parse(saved) : { arrays: true };
+});
+    const [visibleCounts, setVisibleCounts] = useState(() => {
+    const saved = sessionStorage.getItem('problemListVisibleCounts');
+    return saved ? JSON.parse(saved) : { arrays: 10 };
+});
+    const [loading, setLoading]               = useState(true);
     const [topics, setTopics] = useState([]);
     const [loading, setLoading] = useState(true);
     const navigate = useNavigate();
+
+    useEffect(() => {
+    sessionStorage.setItem(
+        'problemListExpandedTopics',
+        JSON.stringify(expandedTopics)
+    );
+}, [expandedTopics]);
+
+useEffect(() => {
+    sessionStorage.setItem(
+        'problemListVisibleCounts',
+        JSON.stringify(visibleCounts)
+    );
+}, [visibleCounts]);
 
     useEffect(() => {
         loadAllTopics()
@@ -440,6 +464,113 @@ export default function ProblemList({ onSelect }) {
                     }
                 </div>
 
+                                    <div className="flex items-center gap-3">
+                                        <span
+                                            className="text-xs px-3 py-1 rounded-full font-bold hidden sm:inline-block"
+                                            style={{ background: accent + '18', color: accent }}
+                                        >
+                                            {count}
+                                        </span>
+                                        <ChevronDown
+                                            size={18}
+                                            className="transition-transform duration-300 flex-shrink-0"
+                                            style={{ color: 'var(--color-muted-text)', transform: isOpen ? 'rotate(0deg)' : 'rotate(-90deg)' }}
+                                        />
+                                    </div>
+                                </button>
+
+                                {/* Problem rows */}
+                                {isOpen && (
+                                    <div style={{ borderTop: `1px solid ${accent}33` }}>
+                                        {count > 0 ? (
+                                            <>
+                                                {topic.problems.slice(0, visibleCounts[topic.id] || 10).map((problem, idx) => {
+                                                    const dc = difficultyConfig[problem.difficulty] || difficultyConfig.Hard;
+                                                    return (
+                                                <button
+                                                    key={problem.id}
+                                                   onClick={() => {
+    const mainElement = document.querySelector('main');
+
+    if (mainElement) {
+        sessionStorage.setItem(
+            'problemListScroll',
+            mainElement.scrollTop
+        );
+    }
+
+    onSelect(problem);
+}}
+                                                    className="w-full flex items-center justify-between px-5 py-3.5 text-left group transition-all"
+                                                    style={{
+                                                        borderTop: idx > 0 ? '1px solid var(--color-border)' : 'none',
+                                                        paddingLeft: '2.5rem',
+                                                    }}
+                                                    onMouseEnter={(e) => { e.currentTarget.style.background = 'var(--color-surface-hover)'; }}
+                                                    onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent'; }}
+                                                >
+                                                    <div className="flex items-center gap-3">
+                                                        {/* Index badge */}
+                                                        <span
+                                                            className="w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold flex-shrink-0"
+                                                            style={{ background: 'var(--color-surface-hover)', color: 'var(--color-muted-text)', border: '1px solid var(--color-border)' }}
+                                                        >
+                                                            {idx + 1}
+                                                        </span>
+                                                        <span
+                                                            className="font-medium text-sm"
+                                                            style={{ color: 'var(--color-primary-text)' }}
+                                                        >
+                                                            {problem.title}
+                                                        </span>
+                                                    </div>
+
+                                                    <div className="flex items-center gap-4 flex-shrink-0">
+                                                        <span className={`text-xs px-2.5 py-0.5 rounded-full font-semibold ${dc.classes}`}>
+                                                            {dc.label}
+                                                        </span>
+                                                        <ArrowRight
+                                                            size={15}
+                                                            className="transition-transform duration-200 group-hover:translate-x-1"
+                                                            style={{ color: 'var(--color-muted-text)' }}
+                                                        />
+                                                    </div>
+                                                </button>
+                                            );
+                                        })}
+                                        {(visibleCounts[topic.id] || 10) < count && (
+                                            <button
+                                                onClick={(e) => {
+                                                    e.stopPropagation();
+                                                    setVisibleCounts(prev => ({
+                                                        ...prev,
+                                                        [topic.id]: (prev[topic.id] || 10) + 10
+                                                    }));
+                                                }}
+                                                className="w-full text-center py-4 text-sm font-semibold transition-colors flex justify-center items-center gap-2 group"
+                                                style={{ color: accent, background: accent + '08', borderTop: '1px solid var(--color-border)' }}
+                                                onMouseEnter={(e) => { e.currentTarget.style.background = accent + '15'; }}
+                                                onMouseLeave={(e) => { e.currentTarget.style.background = accent + '08'; }}
+                                            >
+                                                <span>Load Next {Math.min(10, count - (visibleCounts[topic.id] || 10))} Problems</span>
+                                                <span style={{ fontSize: '0.75rem', opacity: 0.7, fontWeight: 'normal' }}>
+                                                    ({count - (visibleCounts[topic.id] || 10)} total remaining)
+                                                </span>
+                                                <ChevronDown size={14} className="transition-transform group-hover:translate-y-0.5" />
+                                            </button>
+                                        )}
+                                        </>
+                                        ) : (
+                                            <div className="px-5 py-6 pl-10 text-sm italic" style={{ color: 'var(--color-muted-text)' }}>
+                                                No problems found for this topic yet.
+                                            </div>
+                                        )}
+                                    </div>
+                                )}
+                            </div>
+                        );
+                    })
+                }
                 {/* Right — sticky feature sidebar (30%) */}
                 <aside style={{ position: 'sticky', top: 16 }}>
                     <FeatureSidebar />

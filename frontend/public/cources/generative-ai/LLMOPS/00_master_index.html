@@ -1,0 +1,939 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Nexus — The LLMOps Deep Dive · Marevlo Research</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,300;0,9..144,400;0,9..144,600;0,9..144,700;0,9..144,900;1,9..144,400&family=JetBrains+Mono:wght@300;400;500;600;700&family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#0a0a0f;
+    --bg2:#0f0f17;
+    --panel:rgba(255,255,255,.028);
+    --panel2:rgba(255,255,255,.045);
+    --border:rgba(255,255,255,.08);
+    --border2:rgba(255,255,255,.14);
+    --fg:#f4f4f8;
+    --fg2:#c9c9d4;
+    --fg3:#8b8b99;
+    --accent:#fbbf24;
+    --accent2:#f472b6;
+    --accent3:#5eead4;
+    --accent4:#a78bfa;
+    --accent5:#60a5fa;
+    --danger:#ef4444;
+    --ok:#10b981;
+    --serif:'Fraunces',Georgia,serif;
+    --sans:'Inter',-apple-system,system-ui,sans-serif;
+    --mono:'JetBrains Mono',ui-monospace,monospace;
+  }
+  *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+  html{scroll-behavior:smooth}
+  body{
+    font-family:var(--sans);
+    background:var(--bg);
+    color:var(--fg);
+    line-height:1.65;
+    font-weight:400;
+    overflow-x:hidden;
+    -webkit-font-smoothing:antialiased;
+    background-image:
+      radial-gradient(ellipse 80% 50% at 20% 0%,rgba(251,191,36,.05) 0%,transparent 50%),
+      radial-gradient(ellipse 60% 50% at 100% 30%,rgba(244,114,182,.04) 0%,transparent 50%),
+      radial-gradient(ellipse 80% 60% at 50% 100%,rgba(94,234,212,.03) 0%,transparent 50%);
+  }
+  /* grain overlay */
+  body::before{
+    content:"";position:fixed;inset:0;pointer-events:none;opacity:.35;z-index:1;
+    background-image:url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.4'/%3E%3C/svg%3E");
+  }
+
+  .wrap{max-width:1280px;margin:0 auto;padding:0 48px;position:relative;z-index:2}
+  @media(max-width:768px){.wrap{padding:0 20px}}
+
+  /* ─────── NAV ─────── */
+  .nav{
+    position:sticky;top:0;z-index:50;
+    background:rgba(10,10,15,.82);
+    backdrop-filter:blur(24px) saturate(140%);
+    -webkit-backdrop-filter:blur(24px) saturate(140%);
+    border-bottom:1px solid var(--border);
+  }
+  .nav-inner{display:flex;align-items:center;justify-content:space-between;padding:16px 0}
+  .brand{display:flex;align-items:center;gap:12px;font-family:var(--serif);font-weight:700;font-size:1.15rem;letter-spacing:.01em}
+  .brand-mark{width:30px;height:30px;border-radius:7px;background:linear-gradient(135deg,var(--accent),var(--accent2));display:grid;place-items:center;font-family:var(--mono);font-weight:700;font-size:.72rem;color:#1a1a1f}
+  .nav-links{display:flex;gap:28px;font-size:.83rem;color:var(--fg3);font-family:var(--mono);letter-spacing:.05em;text-transform:uppercase;font-weight:500}
+  .nav-links a{color:inherit;text-decoration:none;transition:color .2s}
+  .nav-links a:hover{color:var(--accent)}
+  @media(max-width:768px){.nav-links{display:none}}
+
+  /* ─────── HERO ─────── */
+  .hero{padding:120px 0 100px;position:relative;overflow:hidden}
+  .hero-tag{
+    display:inline-flex;align-items:center;gap:10px;
+    padding:8px 16px;border-radius:999px;
+    background:var(--panel);border:1px solid var(--border2);
+    font-family:var(--mono);font-size:.72rem;letter-spacing:.16em;
+    text-transform:uppercase;color:var(--accent);font-weight:600;
+    margin-bottom:36px;
+  }
+  .hero-tag::before{content:"";width:6px;height:6px;border-radius:50%;background:var(--accent);box-shadow:0 0 10px var(--accent);animation:pulse 2s ease-in-out infinite}
+  @keyframes pulse{0%,100%{opacity:1}50%{opacity:.4}}
+
+  .hero h1{
+    font-family:var(--serif);
+    font-size:clamp(3rem,7.5vw,6.8rem);
+    font-weight:900;
+    line-height:.96;
+    letter-spacing:-.035em;
+    margin-bottom:32px;
+    font-variation-settings:"opsz" 144;
+  }
+  .hero h1 em{
+    font-style:italic;font-weight:400;
+    background:linear-gradient(135deg,var(--accent) 0%,var(--accent2) 50%,var(--accent4) 100%);
+    -webkit-background-clip:text;background-clip:text;color:transparent;
+  }
+  .hero-sub{
+    font-size:clamp(1.1rem,1.5vw,1.35rem);
+    color:var(--fg2);max-width:760px;line-height:1.6;margin-bottom:48px;
+    font-weight:300;letter-spacing:-.005em;
+  }
+  .hero-sub strong{color:var(--fg);font-weight:500}
+
+  .hero-stats{
+    display:grid;grid-template-columns:repeat(4,1fr);gap:1px;
+    background:var(--border);border:1px solid var(--border);border-radius:14px;overflow:hidden;
+  }
+  .hero-stat{padding:28px 22px;background:var(--bg2)}
+  .hero-stat-num{font-family:var(--serif);font-size:2.4rem;font-weight:700;line-height:1;letter-spacing:-.02em;margin-bottom:8px}
+  .hero-stat-num.a1{color:var(--accent)}
+  .hero-stat-num.a2{color:var(--accent2)}
+  .hero-stat-num.a3{color:var(--accent3)}
+  .hero-stat-num.a4{color:var(--accent4)}
+  .hero-stat-lbl{font-family:var(--mono);font-size:.7rem;letter-spacing:.12em;text-transform:uppercase;color:var(--fg3);font-weight:500}
+  @media(max-width:768px){.hero-stats{grid-template-columns:repeat(2,1fr)}}
+
+  /* ─────── SECTION HEADER ─────── */
+  .sec{padding:100px 0;border-top:1px solid var(--border)}
+  .sec-head{margin-bottom:64px;max-width:820px}
+  .sec-num{
+    font-family:var(--mono);font-size:.72rem;letter-spacing:.2em;
+    color:var(--accent);text-transform:uppercase;margin-bottom:16px;font-weight:600;
+  }
+  .sec h2{
+    font-family:var(--serif);font-size:clamp(2.2rem,4.5vw,3.6rem);
+    font-weight:700;line-height:1.05;letter-spacing:-.025em;margin-bottom:20px;
+  }
+  .sec h2 em{font-style:italic;font-weight:400;color:var(--accent)}
+  .sec-sub{font-size:1.12rem;color:var(--fg2);line-height:1.65;font-weight:300}
+
+  /* ─────── CASE STUDY CALLOUT ─────── */
+  .case{
+    position:relative;
+    padding:56px 48px;
+    background:linear-gradient(135deg,rgba(251,191,36,.04),rgba(244,114,182,.04));
+    border:1px solid var(--border2);
+    border-radius:20px;
+    overflow:hidden;
+  }
+  .case::before{
+    content:"";position:absolute;top:-40%;right:-10%;width:600px;height:600px;
+    background:radial-gradient(circle,rgba(251,191,36,.08),transparent 60%);
+    pointer-events:none;
+  }
+  .case-tag{display:inline-block;font-family:var(--mono);font-size:.7rem;letter-spacing:.18em;
+    text-transform:uppercase;color:var(--accent);font-weight:600;margin-bottom:20px}
+  .case h3{font-family:var(--serif);font-size:clamp(1.8rem,3vw,2.6rem);font-weight:700;line-height:1.1;letter-spacing:-.02em;margin-bottom:20px}
+  .case p{color:var(--fg2);font-size:1.05rem;line-height:1.7;margin-bottom:16px;max-width:900px;position:relative}
+  .case p strong{color:var(--fg)}
+  .case-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:16px;margin-top:32px;position:relative}
+  .case-cell{padding:18px;background:rgba(0,0,0,.3);border:1px solid var(--border);border-radius:10px}
+  .case-cell-num{font-family:var(--serif);font-size:1.6rem;font-weight:700;color:var(--accent);margin-bottom:4px;letter-spacing:-.02em}
+  .case-cell-lbl{font-family:var(--mono);font-size:.7rem;letter-spacing:.1em;color:var(--fg3);text-transform:uppercase}
+  @media(max-width:768px){.case{padding:32px 24px}.case-grid{grid-template-columns:repeat(2,1fr)}}
+
+  /* ─────── MODULE GRID ─────── */
+  .modules{display:grid;grid-template-columns:1fr;gap:2px;background:var(--border);border:1px solid var(--border);border-radius:16px;overflow:hidden}
+  .mod{
+    display:grid;grid-template-columns:120px 1fr 220px;gap:32px;
+    padding:40px 36px;background:var(--bg2);
+    transition:background .25s;
+    cursor:pointer;position:relative;
+  }
+  .mod:hover{background:var(--panel2)}
+  .mod-num{
+    font-family:var(--serif);font-size:3.6rem;font-weight:300;
+    line-height:1;letter-spacing:-.03em;color:var(--fg3);
+    font-variation-settings:"opsz" 144;
+    transition:color .3s;
+  }
+  .mod:hover .mod-num{color:var(--accent)}
+  .mod-body h3{font-family:var(--serif);font-size:1.5rem;font-weight:600;line-height:1.2;letter-spacing:-.015em;margin-bottom:10px}
+  .mod-body .mod-cap{font-size:.98rem;color:var(--fg2);line-height:1.55;margin-bottom:14px;font-weight:300}
+  .mod-topics{display:flex;flex-wrap:wrap;gap:6px}
+  .mod-topic{font-family:var(--mono);font-size:.67rem;letter-spacing:.05em;padding:4px 9px;border-radius:4px;background:rgba(255,255,255,.04);color:var(--fg2);border:1px solid var(--border)}
+  .mod-topic.hl{color:var(--accent);border-color:rgba(251,191,36,.3);background:rgba(251,191,36,.08)}
+  .mod-topic.hl2{color:var(--accent3);border-color:rgba(94,234,212,.3);background:rgba(94,234,212,.08)}
+  .mod-right{display:flex;flex-direction:column;gap:8px;align-items:flex-end;justify-content:space-between}
+  .mod-actions{display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-end}
+  .mod-action-btn{
+    display:inline-flex;align-items:center;justify-content:center;
+    padding:7px 11px;border-radius:7px;
+    font-family:var(--mono);font-size:.66rem;letter-spacing:.08em;
+    text-transform:uppercase;font-weight:600;text-decoration:none;
+    border:1px solid var(--border2);transition:all .2s;
+  }
+  .mod-action-btn.learn{
+    color:var(--accent);background:rgba(251,191,36,.08);border-color:rgba(251,191,36,.28);
+  }
+  .mod-action-btn.learn:hover{background:rgba(251,191,36,.14);border-color:rgba(251,191,36,.42)}
+  .mod-action-btn.practice{
+    color:var(--accent3);background:rgba(94,234,212,.08);border-color:rgba(94,234,212,.28);
+  }
+  .mod-action-btn.practice:hover{background:rgba(94,234,212,.14);border-color:rgba(94,234,212,.42)}
+  .mod-phase{font-family:var(--mono);font-size:.65rem;letter-spacing:.15em;text-transform:uppercase;color:var(--fg3);font-weight:500}
+  .mod-nexus{font-family:var(--mono);font-size:.73rem;color:var(--accent2);text-align:right;line-height:1.4;font-weight:500}
+  .mod-arrow{font-size:1.4rem;color:var(--fg3);transition:color .3s,transform .3s}
+  .mod:hover .mod-arrow{color:var(--accent);transform:translateX(4px)}
+  @media(max-width:880px){
+    .mod{grid-template-columns:60px 1fr;gap:20px;padding:28px 24px}
+    .mod-num{font-size:2.4rem}
+    .mod-right{grid-column:2;flex-direction:row;justify-content:flex-start;gap:14px;align-items:center}
+    .mod-actions{justify-content:flex-start}
+  }
+
+  /* ─────── TECHNIQUES MAP ─────── */
+  .tech-map{
+    display:grid;grid-template-columns:repeat(4,1fr);gap:14px;
+  }
+  .tech{
+    padding:20px;background:var(--panel);border:1px solid var(--border);
+    border-radius:11px;transition:all .2s;position:relative;overflow:hidden;
+  }
+  .tech:hover{border-color:var(--border2);background:var(--panel2);transform:translateY(-2px)}
+  .tech-head{display:flex;align-items:center;gap:10px;margin-bottom:12px}
+  .tech-dot{width:8px;height:8px;border-radius:50%}
+  .tech.c1 .tech-dot{background:var(--accent);box-shadow:0 0 8px var(--accent)}
+  .tech.c2 .tech-dot{background:var(--accent2);box-shadow:0 0 8px var(--accent2)}
+  .tech.c3 .tech-dot{background:var(--accent3);box-shadow:0 0 8px var(--accent3)}
+  .tech.c4 .tech-dot{background:var(--accent4);box-shadow:0 0 8px var(--accent4)}
+  .tech-ttl{font-family:var(--mono);font-size:.75rem;font-weight:600;letter-spacing:.04em;color:var(--fg)}
+  .tech-desc{font-size:.85rem;color:var(--fg3);line-height:1.5;font-weight:300}
+  .tech-ref{position:absolute;top:14px;right:14px;font-family:var(--mono);font-size:.62rem;color:var(--fg3);letter-spacing:.1em}
+  @media(max-width:900px){.tech-map{grid-template-columns:repeat(2,1fr)}}
+  @media(max-width:500px){.tech-map{grid-template-columns:1fr}}
+
+  /* ─────── ARCHITECTURE PREVIEW SVG ─────── */
+  .arch-preview{
+    padding:48px 40px;background:var(--bg2);border:1px solid var(--border);
+    border-radius:16px;margin-top:40px;
+  }
+  .arch-preview svg{width:100%;max-width:100%;display:block}
+
+  /* ─────── LEARNING OUTCOMES ─────── */
+  .outcomes{display:grid;grid-template-columns:repeat(2,1fr);gap:24px}
+  .out{display:flex;gap:18px;padding:22px;background:var(--panel);border:1px solid var(--border);border-radius:12px}
+  .out-ic{
+    flex-shrink:0;width:40px;height:40px;border-radius:10px;
+    display:grid;place-items:center;
+    background:linear-gradient(135deg,rgba(251,191,36,.14),rgba(244,114,182,.14));
+    border:1px solid var(--border2);
+    font-family:var(--serif);font-weight:700;color:var(--accent);
+  }
+  .out h4{font-family:var(--serif);font-size:1.08rem;font-weight:600;margin-bottom:6px}
+  .out p{font-size:.9rem;color:var(--fg3);line-height:1.55;font-weight:300}
+  @media(max-width:768px){.outcomes{grid-template-columns:1fr}}
+
+  /* ─────── LEARN & PRACTICE ─────── */
+  .learn-practice-wrap{max-width:900px;margin:0 auto}
+  .lp-title{
+    font-family:var(--serif);font-size:clamp(2rem,4.5vw,3.2rem);
+    font-weight:700;line-height:1.1;letter-spacing:-.02em;text-align:center;
+    margin-bottom:10px;
+  }
+  .lp-title .accent{
+    background:linear-gradient(135deg,var(--accent2),var(--accent4));
+    -webkit-background-clip:text;background-clip:text;color:transparent;
+  }
+  .lp-sub{text-align:center;color:var(--fg2);font-size:1.02rem;font-weight:300;margin-bottom:28px}
+  .lp-mod{padding:18px 0 6px}
+  .lp-mod-title{
+    font-family:var(--mono);font-size:.78rem;letter-spacing:.12em;text-transform:uppercase;
+    color:var(--fg3);margin-bottom:14px;font-weight:600;
+  }
+  .lp-grid{display:grid;gap:14px}
+  .lp-card{
+    background:linear-gradient(135deg,rgba(14,14,22,.9),rgba(11,11,18,.96));
+    border:1px solid var(--border2);border-radius:14px;padding:18px 18px 16px;
+  }
+  .lp-card.learn{border-color:rgba(251,191,36,.26)}
+  .lp-card.practice{border-color:rgba(94,234,212,.24)}
+  .lp-head{display:flex;align-items:center;gap:10px;margin-bottom:6px}
+  .lp-dot{
+    width:26px;height:26px;border-radius:8px;display:grid;place-items:center;
+    font-family:var(--mono);font-size:.72rem;font-weight:700;
+    border:1px solid var(--border2);
+  }
+  .lp-card.learn .lp-dot{color:var(--accent);background:rgba(251,191,36,.09);border-color:rgba(251,191,36,.3)}
+  .lp-card.practice .lp-dot{color:var(--accent3);background:rgba(94,234,212,.09);border-color:rgba(94,234,212,.3)}
+  .lp-head h4{font-family:var(--serif);font-size:1.32rem;font-weight:600;letter-spacing:-.01em;line-height:1.2}
+  .lp-help{font-size:.86rem;color:var(--fg3);margin-bottom:10px;font-weight:300}
+  .lp-link-title{font-size:1.02rem;color:var(--fg2);font-weight:500;line-height:1.4;margin-bottom:12px;word-break:break-word}
+  .lp-btn{
+    display:inline-flex;align-items:center;justify-content:center;gap:6px;
+    padding:8px 14px;border-radius:9px;text-decoration:none;
+    font-family:var(--mono);font-size:.74rem;letter-spacing:.08em;text-transform:uppercase;font-weight:600;
+    border:1px solid var(--border2);transition:all .2s;
+  }
+  .lp-card.learn .lp-btn{color:var(--accent);border-color:rgba(251,191,36,.35);background:rgba(251,191,36,.09)}
+  .lp-card.learn .lp-btn:hover{background:rgba(251,191,36,.16)}
+  .lp-card.practice .lp-btn{color:var(--accent3);border-color:rgba(94,234,212,.35);background:rgba(94,234,212,.09)}
+  .lp-card.practice .lp-btn:hover{background:rgba(94,234,212,.16)}
+  @media(max-width:768px){.lp-card{padding:16px}}
+
+  /* ─────── FOOTER ─────── */
+  .foot{padding:80px 0 60px;border-top:1px solid var(--border);margin-top:60px}
+  .foot-grid{display:grid;grid-template-columns:2fr 1fr 1fr;gap:48px;margin-bottom:48px}
+  .foot h5{font-family:var(--mono);font-size:.72rem;letter-spacing:.16em;text-transform:uppercase;color:var(--fg3);margin-bottom:18px;font-weight:600}
+  .foot p{color:var(--fg2);font-size:.92rem;line-height:1.65;font-weight:300}
+  .foot ul{list-style:none}
+  .foot li{margin-bottom:8px}
+  .foot a{color:var(--fg2);text-decoration:none;font-size:.9rem;transition:color .2s}
+  .foot a:hover{color:var(--accent)}
+  .foot-bot{display:flex;justify-content:space-between;padding-top:30px;border-top:1px solid var(--border);font-family:var(--mono);font-size:.72rem;color:var(--fg3);letter-spacing:.06em}
+  @media(max-width:768px){.foot-grid{grid-template-columns:1fr;gap:32px}.foot-bot{flex-direction:column;gap:12px}}
+
+  /* ─────── PILLARS ─────── */
+  .pillars{display:grid;grid-template-columns:repeat(3,1fr);gap:20px}
+  .pill{padding:32px 28px;background:var(--panel);border:1px solid var(--border);border-radius:14px;position:relative;overflow:hidden}
+  .pill::before{content:"";position:absolute;top:0;left:0;right:0;height:2px;background:linear-gradient(90deg,transparent,var(--accent),transparent)}
+  .pill-num{font-family:var(--mono);font-size:.7rem;letter-spacing:.15em;color:var(--accent);margin-bottom:12px;font-weight:600}
+  .pill h4{font-family:var(--serif);font-size:1.32rem;font-weight:600;line-height:1.2;letter-spacing:-.01em;margin-bottom:10px}
+  .pill p{font-size:.9rem;color:var(--fg2);line-height:1.6;font-weight:300}
+  @media(max-width:880px){.pillars{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+
+<!-- NAV -->
+<nav class="nav">
+  <div class="wrap nav-inner">
+    <div class="brand">
+      <div class="brand-mark">Mv</div>
+      <span>Marevlo</span>
+    </div>
+    <div class="nav-links">
+      <a href="#case">Case</a>
+      <a href="#modules">Modules</a>
+      <a href="#techniques">Techniques</a>
+      <a href="#outcomes">Outcomes</a>
+    </div>
+  </div>
+</nav>
+
+<!-- HERO -->
+<section class="hero">
+  <div class="wrap">
+    <div class="hero-tag">The LLMOps Deep Dive · 2026 Edition</div>
+    <h1>Serving <em>billion-parameter</em><br>models<br>in production.</h1>
+    <p class="hero-sub">Eight modules that take you from the physics of GPU memory bandwidth to the full system design of a 10-million-request-per-day LLM platform. Every concept anchored in <strong>Nexus</strong> — a fictional real-time fraud-detection LLM we will architect together, one optimization layer at a time.</p>
+    <div class="hero-stats">
+      <div class="hero-stat"><div class="hero-stat-num a1">8</div><div class="hero-stat-lbl">Premium Modules</div></div>
+      <div class="hero-stat"><div class="hero-stat-num a2">47</div><div class="hero-stat-lbl">Optimization Techniques</div></div>
+      <div class="hero-stat"><div class="hero-stat-num a3">18</div><div class="hero-stat-lbl">Architecture Diagrams</div></div>
+      <div class="hero-stat"><div class="hero-stat-num a4">1</div><div class="hero-stat-lbl">Production System</div></div>
+    </div>
+  </div>
+</section>
+
+<!-- CASE STUDY -->
+<section class="sec" id="case">
+  <div class="wrap">
+    <div class="sec-head">
+      <div class="sec-num">00 · The Thread That Runs Through Everything</div>
+      <h2>Meet <em>Nexus</em>.</h2>
+      <p class="sec-sub">A large financial services firm has hired you to build their next-generation fraud detection platform. Rules engines miss novel attack patterns. Classical ML requires constant feature engineering. The mandate: deploy an LLM that reads transaction context — merchant history, device telemetry, session patterns, free-text chargeback reasons — and outputs a fraud score in under 80 ms, twenty-four hours a day, across three continents.</p>
+    </div>
+
+    <div class="case">
+      <div class="case-tag">Case Study · Nexus v0</div>
+      <h3>The naive deployment failed on day one.</h3>
+      <p>The platform team took a fine-tuned 70B-parameter model, wrapped it in a FastAPI server, and pointed production traffic at it. The first hour produced a predictable disaster: <strong>p99 latency at 4.2 seconds</strong>, <strong>GPU memory utilization at 34%</strong>, <strong>throughput capped at 1,100 tokens/sec</strong>, and a <strong>cloud bill projected at $2.8M per month</strong> for a single region. Fraud analysts rejected the deployment within 48 hours.</p>
+      <p>Over the next eight modules you will rebuild Nexus from first principles — applying every technique in the modern inference stack. By the final module, the same workload runs at <strong>p99 &lt; 60 ms</strong>, <strong>GPU utilization above 88%</strong>, <strong>throughput above 40,000 tokens/sec per node</strong>, and <strong>cost reduced by 23×</strong>. Each module ends with a "Nexus progresses" checkpoint showing exactly which lever moved which metric.</p>
+      <div class="case-grid">
+        <div class="case-cell"><div class="case-cell-num">4,200ms</div><div class="case-cell-lbl">Day-1 p99</div></div>
+        <div class="case-cell"><div class="case-cell-num">1.1k t/s</div><div class="case-cell-lbl">Day-1 Throughput</div></div>
+        <div class="case-cell"><div class="case-cell-num">34%</div><div class="case-cell-lbl">GPU Utilization</div></div>
+        <div class="case-cell"><div class="case-cell-num">$2.8M/mo</div><div class="case-cell-lbl">Projected Cost</div></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- PILLARS -->
+<section class="sec">
+  <div class="wrap">
+    <div class="sec-head">
+      <div class="sec-num">The Three Pillars</div>
+      <h2>What sets this course <em>apart</em>.</h2>
+      <p class="sec-sub">Every module is engineered around three non-negotiables that we believe separate world-class LLMOps material from generic tutorials.</p>
+    </div>
+    <div class="pillars">
+      <div class="pill">
+        <div class="pill-num">Pillar 01</div>
+        <h4>First-principles internals</h4>
+        <p>We do not just tell you that PagedAttention is faster. We derive the memory math, show the block table layout, compare fragmentation under identical workloads, and walk through the actual vLLM source. You leave understanding why — not just what.</p>
+      </div>
+      <div class="pill">
+        <div class="pill-num">Pillar 02</div>
+        <h4>A living case study</h4>
+        <p>Nexus is not a toy example bolted on at the end. Every chapter adds one concrete architectural decision to the Nexus platform. By module eight, you have co-designed a production-grade fraud detection LLM, end to end, with measurable improvements at every step.</p>
+      </div>
+      <div class="pill">
+        <div class="pill-num">Pillar 03</div>
+        <h4>Real numbers, real code</h4>
+        <p>No pseudocode. Every technique ships with production-grade vLLM, PyTorch, TensorRT-LLM, or Triton code. Every claim comes with benchmarks — tokens per second, dollars per million tokens, p50/p99 latency across H100, H200, A100, and MI300X. The numbers match published results.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- MODULES -->
+<section class="sec" id="modules">
+  <div class="wrap">
+    <div class="sec-head">
+      <div class="sec-num">The Curriculum · 8 Modules · 60+ Hours</div>
+      <h2>From roofline to <em>production</em>.</h2>
+      <p class="sec-sub">Each module is a standalone premium HTML experience with interactive visualizations, live code, system design exercises, and a Nexus checkpoint. Read in order for the full narrative or jump to any module as a reference.</p>
+    </div>
+
+    <div class="modules">
+
+      <div class="mod">
+        <div class="mod-num">01</div>
+        <div class="mod-body">
+          <h3>Foundations & The Physics of Inference</h3>
+          <p class="mod-cap">Why naive LLM serving falls apart. The autoregressive bottleneck, roofline models, memory-bandwidth-bound vs compute-bound regimes, arithmetic intensity, and the inference stack map. Build Nexus v1 — and watch it fail — so you understand exactly which problem each later module solves.</p>
+          <div class="mod-topics">
+            <span class="mod-topic hl">Roofline Model</span>
+            <span class="mod-topic">Memory Bandwidth</span>
+            <span class="mod-topic">TTFT vs TPOT</span>
+            <span class="mod-topic">Arithmetic Intensity</span>
+            <span class="mod-topic">Autoregressive Cost</span>
+            <span class="mod-topic">Serving Metrics</span>
+            <span class="mod-topic hl2">Nexus v1</span>
+          </div>
+        </div>
+        <div class="mod-right">
+          <span class="mod-phase">Phase 1 · Foundations</span>
+          <div class="mod-actions"></div>
+          <span class="mod-nexus">p99: 4,200ms<br>→ 4,200ms (baseline)</span>
+          <span class="mod-arrow">→</span>
+        </div>
+      </div>
+
+      <div class="mod">
+        <div class="mod-num">02</div>
+        <div class="mod-body">
+          <h3>Quantization — From FP32 to 1.58-bit</h3>
+          <p class="mod-cap">The complete quantization stack. Weight-only vs weight-activation, symmetric vs asymmetric, per-tensor vs per-channel vs per-group. GPTQ, AWQ, SmoothQuant, QAT, FP8, INT4, 2-bit QuIP#, BitNet. Calibration dataset design, outlier handling, mixed-precision strategies, and the accuracy-memory-speed frontier.</p>
+          <div class="mod-topics">
+            <span class="mod-topic hl">GPTQ</span>
+            <span class="mod-topic hl">AWQ</span>
+            <span class="mod-topic">SmoothQuant</span>
+            <span class="mod-topic">FP8 / E4M3 / E5M2</span>
+            <span class="mod-topic">INT4 Groupwise</span>
+            <span class="mod-topic">QuIP#</span>
+            <span class="mod-topic">BitNet 1.58</span>
+            <span class="mod-topic">QAT vs PTQ</span>
+            <span class="mod-topic hl2">Nexus v2</span>
+          </div>
+        </div>
+        <div class="mod-right">
+          <span class="mod-phase">Phase 2 · Compression</span>
+          <div class="mod-actions"></div>
+          <span class="mod-nexus">GPU memory: 140GB<br>→ 38GB (INT4)</span>
+          <span class="mod-arrow">→</span>
+        </div>
+      </div>
+
+      <div class="mod">
+        <div class="mod-num">03</div>
+        <div class="mod-body">
+          <h3>Attention Engineering — Tiling, GQA, MLA, Ring</h3>
+          <p class="mod-cap">The attention mechanism is where inference spends most of its time and memory. FlashAttention-1/2/3 tiling derivation, the SRAM vs HBM hierarchy, online softmax. Multi-Query Attention, Grouped-Query Attention, DeepSeek's Multi-head Latent Attention. Ring Attention for million-token context. Sparse attention patterns for long documents.</p>
+          <div class="mod-topics">
+            <span class="mod-topic hl">FlashAttention-3</span>
+            <span class="mod-topic hl">Multi-head Latent (MLA)</span>
+            <span class="mod-topic">Grouped-Query (GQA)</span>
+            <span class="mod-topic">Multi-Query (MQA)</span>
+            <span class="mod-topic">Ring Attention</span>
+            <span class="mod-topic">Online Softmax</span>
+            <span class="mod-topic">SRAM Tiling</span>
+            <span class="mod-topic">Sparse Attention</span>
+            <span class="mod-topic hl2">Nexus v3</span>
+          </div>
+        </div>
+        <div class="mod-right">
+          <span class="mod-phase">Phase 3 · Compute</span>
+          <div class="mod-actions"></div>
+          <span class="mod-nexus">Context: 8K<br>→ 128K (MLA)</span>
+          <span class="mod-arrow">→</span>
+        </div>
+      </div>
+
+      <div class="mod">
+        <div class="mod-num">04</div>
+        <div class="mod-body">
+          <h3>KV Cache Engineering — The Memory System</h3>
+          <p class="mod-cap">The single biggest throughput lever in LLM serving. PagedAttention block tables and fragmentation math. RadixAttention prefix caching with the automatic trie. KV cache quantization. Disaggregated prefill/decode serving. Chunked prefill scheduling. Offloading to CPU and NVMe. KV compression via SnapKV and H2O.</p>
+          <div class="mod-topics">
+            <span class="mod-topic hl">PagedAttention</span>
+            <span class="mod-topic hl">RadixAttention</span>
+            <span class="mod-topic">Disaggregated Prefill</span>
+            <span class="mod-topic">Chunked Prefill</span>
+            <span class="mod-topic">KV Quantization</span>
+            <span class="mod-topic">SnapKV / H2O</span>
+            <span class="mod-topic">CPU Offloading</span>
+            <span class="mod-topic">NVMe Tiering</span>
+            <span class="mod-topic hl2">Nexus v4</span>
+          </div>
+        </div>
+        <div class="mod-right">
+          <span class="mod-phase">Phase 3 · Compute</span>
+          <div class="mod-actions"></div>
+          <span class="mod-nexus">Throughput: 4.2k t/s<br>→ 18k t/s</span>
+          <span class="mod-arrow">→</span>
+        </div>
+      </div>
+
+      <div class="mod">
+        <div class="mod-num">05</div>
+        <div class="mod-body">
+          <h3>Batching, Scheduling & Speculative Decoding</h3>
+          <p class="mod-cap">How the serving engine decides who runs next. Continuous batching (Orca) versus static batching math. Iteration-level scheduling. Speculative decoding rejection sampling proof. Medusa heads, EAGLE-2, Lookahead decoding, self-speculation. Draft model selection. Latency-throughput Pareto curves.</p>
+          <div class="mod-topics">
+            <span class="mod-topic hl">Continuous Batching</span>
+            <span class="mod-topic hl">Speculative Decoding</span>
+            <span class="mod-topic">Medusa Heads</span>
+            <span class="mod-topic">EAGLE-2</span>
+            <span class="mod-topic">Lookahead Decoding</span>
+            <span class="mod-topic">Rejection Sampling</span>
+            <span class="mod-topic">Priority Scheduling</span>
+            <span class="mod-topic hl2">Nexus v5</span>
+          </div>
+        </div>
+        <div class="mod-right">
+          <span class="mod-phase">Phase 4 · Scheduling</span>
+          <div class="mod-actions"></div>
+          <span class="mod-nexus">p99: 1,400ms<br>→ 180ms</span>
+          <span class="mod-arrow">→</span>
+        </div>
+      </div>
+
+      <div class="mod">
+        <div class="mod-num">06</div>
+        <div class="mod-body">
+          <h3>Pruning, Distillation & Mixture-of-Experts</h3>
+          <p class="mod-cap">Making the model itself smaller. Structured vs unstructured pruning, magnitude vs movement pruning. SparseGPT and Wanda one-shot pruning. NVIDIA 2:4 structured sparsity. Knowledge distillation — response, feature, and relation-based. MoE routing, expert parallelism, DeepSeek-V3 shared experts, load balancing and auxiliary losses.</p>
+          <div class="mod-topics">
+            <span class="mod-topic hl">SparseGPT</span>
+            <span class="mod-topic hl">Wanda</span>
+            <span class="mod-topic">2:4 Sparsity</span>
+            <span class="mod-topic">Response Distillation</span>
+            <span class="mod-topic">Feature Distillation</span>
+            <span class="mod-topic">MoE Routing</span>
+            <span class="mod-topic">Expert Parallelism</span>
+            <span class="mod-topic">Auxiliary Loss</span>
+            <span class="mod-topic hl2">Nexus v6</span>
+          </div>
+        </div>
+        <div class="mod-right">
+          <span class="mod-phase">Phase 2 · Compression</span>
+          <div class="mod-actions"></div>
+          <span class="mod-nexus">Params: 70B → 38B<br>Quality: 99.2% retained</span>
+          <span class="mod-arrow">→</span>
+        </div>
+      </div>
+
+      <div class="mod">
+        <div class="mod-num">07</div>
+        <div class="mod-body">
+          <h3>Production System Design — End to End</h3>
+          <p class="mod-cap">The system design interview. Multi-region deployment topology. Autoscaling on queue depth vs GPU utilization. A/B testing LLMs safely. Shadow mode, canary releases, progressive rollout. Observability: latency percentiles, quality drift detection, cost attribution per tenant. Kubernetes, KServe, Ray Serve, Istio sidecars, the whole stack.</p>
+          <div class="mod-topics">
+            <span class="mod-topic hl">System Design</span>
+            <span class="mod-topic">Multi-Region</span>
+            <span class="mod-topic">Autoscaling</span>
+            <span class="mod-topic">A/B Testing</span>
+            <span class="mod-topic">Shadow Mode</span>
+            <span class="mod-topic">Canary Release</span>
+            <span class="mod-topic">KServe / Ray Serve</span>
+            <span class="mod-topic">Observability</span>
+            <span class="mod-topic hl2">Nexus v7</span>
+          </div>
+        </div>
+        <div class="mod-right">
+          <span class="mod-phase">Phase 5 · Production</span>
+          <div class="mod-actions"></div>
+          <span class="mod-nexus">Regions: 1 → 3<br>SLO: 99.95%</span>
+          <span class="mod-arrow">→</span>
+        </div>
+      </div>
+
+      <div class="mod">
+        <div class="mod-num">08</div>
+        <div class="mod-body">
+          <h3>Scale, Cost & War Stories</h3>
+          <p class="mod-cap">Real production failures and the fixes that held. H100 vs H200 vs MI300X vs Trainium2 vs TPU v5p — the full hardware selection matrix. Cost-per-token optimization ladder. Capacity planning for traffic spikes. The final Nexus architecture, end to end, with a cost model you can defend to the CFO.</p>
+          <div class="mod-topics">
+            <span class="mod-topic hl">Hardware Selection</span>
+            <span class="mod-topic">H100 / H200 / MI300X</span>
+            <span class="mod-topic">Cost Model</span>
+            <span class="mod-topic">Capacity Planning</span>
+            <span class="mod-topic">Incident Response</span>
+            <span class="mod-topic">SRE Runbooks</span>
+            <span class="mod-topic hl2">Nexus v8 · Final</span>
+          </div>
+        </div>
+        <div class="mod-right">
+          <span class="mod-phase">Phase 5 · Production</span>
+          <div class="mod-actions"></div>
+          <span class="mod-nexus">Cost: $2.8M/mo<br>→ $122K/mo</span>
+          <span class="mod-arrow">→</span>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</section>
+
+<!-- TECHNIQUES MAP -->
+<section class="sec" id="techniques">
+  <div class="wrap">
+    <div class="sec-head">
+      <div class="sec-num">The Technique Atlas · 47 Methods</div>
+      <h2>Every optimization <em>lever</em> in one map.</h2>
+      <p class="sec-sub">The modern LLM serving stack is deep. This is the complete set of techniques covered across the course, organized by the layer of the stack they operate on.</p>
+    </div>
+
+    <div class="tech-map">
+      <!-- Layer 1: Numerics / Compression -->
+      <div class="tech c1"><span class="tech-ref">M2</span><div class="tech-head"><span class="tech-dot"></span><span class="tech-ttl">GPTQ</span></div><div class="tech-desc">Layer-wise OBS-based 4-bit quantization using Hessian approximation.</div></div>
+      <div class="tech c1"><span class="tech-ref">M2</span><div class="tech-head"><span class="tech-dot"></span><span class="tech-ttl">AWQ</span></div><div class="tech-desc">Activation-aware weight quantization protecting salient channels.</div></div>
+      <div class="tech c1"><span class="tech-ref">M2</span><div class="tech-head"><span class="tech-dot"></span><span class="tech-ttl">SmoothQuant</span></div><div class="tech-desc">Migrate activation outliers into weights for W8A8.</div></div>
+      <div class="tech c1"><span class="tech-ref">M2</span><div class="tech-head"><span class="tech-dot"></span><span class="tech-ttl">FP8 E4M3 / E5M2</span></div><div class="tech-desc">Hopper-native 8-bit float formats with different dynamic ranges.</div></div>
+      <div class="tech c1"><span class="tech-ref">M2</span><div class="tech-head"><span class="tech-dot"></span><span class="tech-ttl">QuIP#</span></div><div class="tech-desc">2-bit quantization via lattice codebooks and incoherence processing.</div></div>
+      <div class="tech c1"><span class="tech-ref">M2</span><div class="tech-head"><span class="tech-dot"></span><span class="tech-ttl">BitNet b1.58</span></div><div class="tech-desc">Ternary {-1, 0, 1} weights with matmul-free inference.</div></div>
+      <div class="tech c1"><span class="tech-ref">M2</span><div class="tech-head"><span class="tech-dot"></span><span class="tech-ttl">QAT</span></div><div class="tech-desc">Quantization-aware training with straight-through estimators.</div></div>
+      <div class="tech c1"><span class="tech-ref">M2</span><div class="tech-head"><span class="tech-dot"></span><span class="tech-ttl">KV Quantization</span></div><div class="tech-desc">Per-channel INT4/INT8 quantization of the KV cache.</div></div>
+
+      <!-- Layer 2: Compute / Attention -->
+      <div class="tech c2"><span class="tech-ref">M3</span><div class="tech-head"><span class="tech-dot"></span><span class="tech-ttl">FlashAttention-2</span></div><div class="tech-desc">Work-partitioning + reduced non-matmul FLOPs over v1.</div></div>
+      <div class="tech c2"><span class="tech-ref">M3</span><div class="tech-head"><span class="tech-dot"></span><span class="tech-ttl">FlashAttention-3</span></div><div class="tech-desc">Async GEMM + softmax overlap, FP8 support on Hopper.</div></div>
+      <div class="tech c2"><span class="tech-ref">M3</span><div class="tech-head"><span class="tech-dot"></span><span class="tech-ttl">Multi-Head Latent</span></div><div class="tech-desc">DeepSeek's low-rank KV compression — 93% KV memory reduction.</div></div>
+      <div class="tech c2"><span class="tech-ref">M3</span><div class="tech-head"><span class="tech-dot"></span><span class="tech-ttl">Grouped-Query Attn</span></div><div class="tech-desc">Share K/V heads across groups of Q heads.</div></div>
+      <div class="tech c2"><span class="tech-ref">M3</span><div class="tech-head"><span class="tech-dot"></span><span class="tech-ttl">Multi-Query Attn</span></div><div class="tech-desc">Single KV head shared across all Q heads (aggressive).</div></div>
+      <div class="tech c2"><span class="tech-ref">M3</span><div class="tech-head"><span class="tech-dot"></span><span class="tech-ttl">Ring Attention</span></div><div class="tech-desc">Sequence-parallel attention with ring communication.</div></div>
+      <div class="tech c2"><span class="tech-ref">M3</span><div class="tech-head"><span class="tech-dot"></span><span class="tech-ttl">Sliding Window</span></div><div class="tech-desc">Local attention for long context (Mistral-7B, Longformer).</div></div>
+      <div class="tech c2"><span class="tech-ref">M3</span><div class="tech-head"><span class="tech-dot"></span><span class="tech-ttl">Sparse Attention</span></div><div class="tech-desc">BigBird / StreamingLLM attention sink patterns.</div></div>
+
+      <!-- Layer 3: Memory / KV -->
+      <div class="tech c3"><span class="tech-ref">M4</span><div class="tech-head"><span class="tech-dot"></span><span class="tech-ttl">PagedAttention</span></div><div class="tech-desc">OS-style paged KV memory with block tables.</div></div>
+      <div class="tech c3"><span class="tech-ref">M4</span><div class="tech-head"><span class="tech-dot"></span><span class="tech-ttl">RadixAttention</span></div><div class="tech-desc">SGLang's automatic prefix cache via a radix trie.</div></div>
+      <div class="tech c3"><span class="tech-ref">M4</span><div class="tech-head"><span class="tech-dot"></span><span class="tech-ttl">Disaggregated P/D</span></div><div class="tech-desc">Separate prefill and decode pools with KV transfer.</div></div>
+      <div class="tech c3"><span class="tech-ref">M4</span><div class="tech-head"><span class="tech-dot"></span><span class="tech-ttl">Chunked Prefill</span></div><div class="tech-desc">Split long prefills to share compute with decode batches.</div></div>
+      <div class="tech c3"><span class="tech-ref">M4</span><div class="tech-head"><span class="tech-dot"></span><span class="tech-ttl">SnapKV</span></div><div class="tech-desc">Observation-window-based KV compression at prefill end.</div></div>
+      <div class="tech c3"><span class="tech-ref">M4</span><div class="tech-head"><span class="tech-dot"></span><span class="tech-ttl">H2O / Scissorhands</span></div><div class="tech-desc">Heavy-hitter eviction policies for streaming KV.</div></div>
+      <div class="tech c3"><span class="tech-ref">M4</span><div class="tech-head"><span class="tech-dot"></span><span class="tech-ttl">CPU / NVMe Offload</span></div><div class="tech-desc">Tier inactive KV pages to cheaper memory.</div></div>
+
+      <!-- Layer 4: Scheduling / Decoding -->
+      <div class="tech c4"><span class="tech-ref">M5</span><div class="tech-head"><span class="tech-dot"></span><span class="tech-ttl">Continuous Batching</span></div><div class="tech-desc">Iteration-level scheduling (Orca, 2022).</div></div>
+      <div class="tech c4"><span class="tech-ref">M5</span><div class="tech-head"><span class="tech-dot"></span><span class="tech-ttl">Speculative Decoding</span></div><div class="tech-desc">Draft-and-verify with rejection sampling.</div></div>
+      <div class="tech c4"><span class="tech-ref">M5</span><div class="tech-head"><span class="tech-dot"></span><span class="tech-ttl">Medusa Heads</span></div><div class="tech-desc">Multiple decoding heads predicting several tokens ahead.</div></div>
+      <div class="tech c4"><span class="tech-ref">M5</span><div class="tech-head"><span class="tech-dot"></span><span class="tech-ttl">EAGLE-2</span></div><div class="tech-desc">Dynamic draft tree based on confidence.</div></div>
+      <div class="tech c4"><span class="tech-ref">M5</span><div class="tech-head"><span class="tech-dot"></span><span class="tech-ttl">Lookahead Decoding</span></div><div class="tech-desc">Self-speculative n-gram based drafting.</div></div>
+      <div class="tech c4"><span class="tech-ref">M5</span><div class="tech-head"><span class="tech-dot"></span><span class="tech-ttl">Priority Queues</span></div><div class="tech-desc">SLO-aware scheduling with preemption.</div></div>
+
+      <!-- Layer 5: Model / Architecture -->
+      <div class="tech c1"><span class="tech-ref">M6</span><div class="tech-head"><span class="tech-dot"></span><span class="tech-ttl">Magnitude Pruning</span></div><div class="tech-desc">Zero out smallest-magnitude weights.</div></div>
+      <div class="tech c1"><span class="tech-ref">M6</span><div class="tech-head"><span class="tech-dot"></span><span class="tech-ttl">SparseGPT</span></div><div class="tech-desc">One-shot post-training pruning with Hessian updates.</div></div>
+      <div class="tech c1"><span class="tech-ref">M6</span><div class="tech-head"><span class="tech-dot"></span><span class="tech-ttl">Wanda</span></div><div class="tech-desc">Pruning by |W| × ||X||, no retraining.</div></div>
+      <div class="tech c1"><span class="tech-ref">M6</span><div class="tech-head"><span class="tech-dot"></span><span class="tech-ttl">2:4 Sparsity</span></div><div class="tech-desc">Hardware-accelerated structured sparsity on Ampere+.</div></div>
+      <div class="tech c1"><span class="tech-ref">M6</span><div class="tech-head"><span class="tech-dot"></span><span class="tech-ttl">Response Distill</span></div><div class="tech-desc">Student matches teacher outputs on prompts.</div></div>
+      <div class="tech c1"><span class="tech-ref">M6</span><div class="tech-head"><span class="tech-dot"></span><span class="tech-ttl">Feature Distill</span></div><div class="tech-desc">Match intermediate hidden representations.</div></div>
+      <div class="tech c1"><span class="tech-ref">M6</span><div class="tech-head"><span class="tech-dot"></span><span class="tech-ttl">MoE Routing</span></div><div class="tech-desc">Top-K gating, shared experts, auxiliary load balance loss.</div></div>
+      <div class="tech c1"><span class="tech-ref">M6</span><div class="tech-head"><span class="tech-dot"></span><span class="tech-ttl">Expert Parallelism</span></div><div class="tech-desc">All-to-all dispatch across GPUs for MoE.</div></div>
+
+      <!-- Layer 6: Systems / Production -->
+      <div class="tech c3"><span class="tech-ref">M7</span><div class="tech-head"><span class="tech-dot"></span><span class="tech-ttl">Tensor Parallel</span></div><div class="tech-desc">Shard matmul across GPUs (Megatron-style).</div></div>
+      <div class="tech c3"><span class="tech-ref">M7</span><div class="tech-head"><span class="tech-dot"></span><span class="tech-ttl">Pipeline Parallel</span></div><div class="tech-desc">Layer-group sharding with microbatch pipelining.</div></div>
+      <div class="tech c3"><span class="tech-ref">M7</span><div class="tech-head"><span class="tech-dot"></span><span class="tech-ttl">Autoscaling</span></div><div class="tech-desc">Scale on queue depth and KV-cache utilization, not CPU.</div></div>
+      <div class="tech c3"><span class="tech-ref">M7</span><div class="tech-head"><span class="tech-dot"></span><span class="tech-ttl">Shadow Mode</span></div><div class="tech-desc">Send traffic to new model without serving its outputs.</div></div>
+      <div class="tech c3"><span class="tech-ref">M7</span><div class="tech-head"><span class="tech-dot"></span><span class="tech-ttl">Canary Release</span></div><div class="tech-desc">Progressive traffic ramp with SLO gates.</div></div>
+
+      <!-- Layer 7: Hardware -->
+      <div class="tech c4"><span class="tech-ref">M8</span><div class="tech-head"><span class="tech-dot"></span><span class="tech-ttl">H100 vs H200</span></div><div class="tech-desc">80GB HBM3 vs 141GB HBM3e — when it matters.</div></div>
+      <div class="tech c4"><span class="tech-ref">M8</span><div class="tech-head"><span class="tech-dot"></span><span class="tech-ttl">MI300X</span></div><div class="tech-desc">192GB HBM3 — the memory-capacity alternative.</div></div>
+      <div class="tech c4"><span class="tech-ref">M8</span><div class="tech-head"><span class="tech-dot"></span><span class="tech-ttl">Trainium2 / TPU v5p</span></div><div class="tech-desc">Custom silicon tradeoffs for inference workloads.</div></div>
+      <div class="tech c4"><span class="tech-ref">M8</span><div class="tech-head"><span class="tech-dot"></span><span class="tech-ttl">NVLink Topology</span></div><div class="tech-desc">NVSwitch all-to-all vs PCIe — bandwidth math.</div></div>
+    </div>
+
+    <!-- ARCHITECTURE PREVIEW SVG: Full Nexus inference stack -->
+    <div class="arch-preview">
+      <svg viewBox="0 0 1200 520" xmlns="http://www.w3.org/2000/svg" aria-label="The Full Nexus Inference Stack">
+        <defs>
+          <linearGradient id="pg1" x1="0" x2="1" y1="0" y2="1"><stop offset="0" stop-color="#fbbf24" stop-opacity=".12"/><stop offset="1" stop-color="#fbbf24" stop-opacity=".02"/></linearGradient>
+          <linearGradient id="pg2" x1="0" x2="1" y1="0" y2="1"><stop offset="0" stop-color="#f472b6" stop-opacity=".12"/><stop offset="1" stop-color="#f472b6" stop-opacity=".02"/></linearGradient>
+          <linearGradient id="pg3" x1="0" x2="1" y1="0" y2="1"><stop offset="0" stop-color="#5eead4" stop-opacity=".12"/><stop offset="1" stop-color="#5eead4" stop-opacity=".02"/></linearGradient>
+          <linearGradient id="pg4" x1="0" x2="1" y1="0" y2="1"><stop offset="0" stop-color="#a78bfa" stop-opacity=".12"/><stop offset="1" stop-color="#a78bfa" stop-opacity=".02"/></linearGradient>
+          <marker id="arr" markerWidth="8" markerHeight="6" refX="8" refY="3" orient="auto"><polygon points="0 0,8 3,0 6" fill="#8b8b99"/></marker>
+        </defs>
+
+        <!-- TITLE -->
+        <text x="600" y="28" font-family="Fraunces,serif" font-size="16" font-style="italic" fill="#f4f4f8" text-anchor="middle" font-weight="600">The Nexus Inference Stack</text>
+        <text x="600" y="48" font-family="JetBrains Mono,monospace" font-size="10" fill="#8b8b99" text-anchor="middle" letter-spacing="2">ONE REQUEST · SEVEN LAYERS · EIGHT MODULES OF OPTIMIZATION</text>
+
+        <!-- Layer 1: Client / Ingress -->
+        <rect x="40" y="70" width="1120" height="54" rx="8" fill="url(#pg1)" stroke="#fbbf24" stroke-opacity=".3"/>
+        <text x="60" y="92" font-family="JetBrains Mono,monospace" font-size="10" fill="#fbbf24" font-weight="600" letter-spacing="1">LAYER 1 · INGRESS</text>
+        <text x="60" y="110" font-family="Inter,sans-serif" font-size="11" fill="#c9c9d4">Load balancer  ·  Rate limiter  ·  Auth  ·  Request router  ·  Token budget check</text>
+        <text x="1140" y="102" font-family="JetBrains Mono,monospace" font-size="9" fill="#fbbf24" text-anchor="end" letter-spacing="1">M7 · M8</text>
+
+        <!-- Layer 2: Scheduler -->
+        <rect x="40" y="134" width="1120" height="54" rx="8" fill="url(#pg4)" stroke="#a78bfa" stroke-opacity=".3"/>
+        <text x="60" y="156" font-family="JetBrains Mono,monospace" font-size="10" fill="#a78bfa" font-weight="600" letter-spacing="1">LAYER 2 · SCHEDULER</text>
+        <text x="60" y="174" font-family="Inter,sans-serif" font-size="11" fill="#c9c9d4">Continuous batching  ·  Priority queues  ·  Chunked prefill  ·  Disaggregated P/D  ·  SLO-aware preemption</text>
+        <text x="1140" y="166" font-family="JetBrains Mono,monospace" font-size="9" fill="#a78bfa" text-anchor="end" letter-spacing="1">M4 · M5</text>
+
+        <!-- Layer 3: Decoding -->
+        <rect x="40" y="198" width="1120" height="54" rx="8" fill="url(#pg2)" stroke="#f472b6" stroke-opacity=".3"/>
+        <text x="60" y="220" font-family="JetBrains Mono,monospace" font-size="10" fill="#f472b6" font-weight="600" letter-spacing="1">LAYER 3 · DECODING</text>
+        <text x="60" y="238" font-family="Inter,sans-serif" font-size="11" fill="#c9c9d4">Speculative decoding  ·  Medusa  ·  EAGLE-2  ·  Lookahead  ·  Rejection sampling</text>
+        <text x="1140" y="230" font-family="JetBrains Mono,monospace" font-size="9" fill="#f472b6" text-anchor="end" letter-spacing="1">M5</text>
+
+        <!-- Layer 4: KV Memory -->
+        <rect x="40" y="262" width="1120" height="54" rx="8" fill="url(#pg3)" stroke="#5eead4" stroke-opacity=".3"/>
+        <text x="60" y="284" font-family="JetBrains Mono,monospace" font-size="10" fill="#5eead4" font-weight="600" letter-spacing="1">LAYER 4 · KV MEMORY</text>
+        <text x="60" y="302" font-family="Inter,sans-serif" font-size="11" fill="#c9c9d4">PagedAttention  ·  RadixAttention prefix cache  ·  KV quantization  ·  SnapKV / H2O  ·  CPU/NVMe offload</text>
+        <text x="1140" y="294" font-family="JetBrains Mono,monospace" font-size="9" fill="#5eead4" text-anchor="end" letter-spacing="1">M4</text>
+
+        <!-- Layer 5: Attention Kernel -->
+        <rect x="40" y="326" width="1120" height="54" rx="8" fill="url(#pg2)" stroke="#f472b6" stroke-opacity=".3"/>
+        <text x="60" y="348" font-family="JetBrains Mono,monospace" font-size="10" fill="#f472b6" font-weight="600" letter-spacing="1">LAYER 5 · ATTENTION</text>
+        <text x="60" y="366" font-family="Inter,sans-serif" font-size="11" fill="#c9c9d4">FlashAttention-3  ·  MLA (DeepSeek)  ·  GQA / MQA  ·  Ring Attention  ·  Sliding window</text>
+        <text x="1140" y="358" font-family="JetBrains Mono,monospace" font-size="9" fill="#f472b6" text-anchor="end" letter-spacing="1">M3</text>
+
+        <!-- Layer 6: Weights / Model -->
+        <rect x="40" y="390" width="1120" height="54" rx="8" fill="url(#pg1)" stroke="#fbbf24" stroke-opacity=".3"/>
+        <text x="60" y="412" font-family="JetBrains Mono,monospace" font-size="10" fill="#fbbf24" font-weight="600" letter-spacing="1">LAYER 6 · WEIGHTS</text>
+        <text x="60" y="430" font-family="Inter,sans-serif" font-size="11" fill="#c9c9d4">GPTQ / AWQ  ·  SmoothQuant  ·  FP8  ·  SparseGPT  ·  Wanda  ·  2:4  ·  MoE routing  ·  Distillation</text>
+        <text x="1140" y="422" font-family="JetBrains Mono,monospace" font-size="9" fill="#fbbf24" text-anchor="end" letter-spacing="1">M2 · M6</text>
+
+        <!-- Layer 7: Hardware -->
+        <rect x="40" y="454" width="1120" height="54" rx="8" fill="url(#pg4)" stroke="#a78bfa" stroke-opacity=".3"/>
+        <text x="60" y="476" font-family="JetBrains Mono,monospace" font-size="10" fill="#a78bfa" font-weight="600" letter-spacing="1">LAYER 7 · HARDWARE</text>
+        <text x="60" y="494" font-family="Inter,sans-serif" font-size="11" fill="#c9c9d4">H100 / H200 / MI300X / Trainium2  ·  NVLink  ·  Tensor + Pipeline parallel  ·  HBM3e bandwidth</text>
+        <text x="1140" y="486" font-family="JetBrains Mono,monospace" font-size="9" fill="#a78bfa" text-anchor="end" letter-spacing="1">M1 · M8</text>
+      </svg>
+    </div>
+  </div>
+</section>
+
+<!-- OUTCOMES -->
+<section class="sec" id="outcomes">
+  <div class="wrap">
+    <div class="sec-head">
+      <div class="sec-num">Learning Outcomes</div>
+      <h2>What you will be able to do <em>after</em>.</h2>
+    </div>
+
+    <div class="outcomes">
+      <div class="out"><div class="out-ic">A</div><div><h4>Derive the roofline model from scratch</h4><p>Given any GPU and model, compute arithmetic intensity, identify the bottleneck regime, and predict peak achievable throughput before writing a single line of code.</p></div></div>
+      <div class="out"><div class="out-ic">B</div><div><h4>Choose the right quantization method</h4><p>Select between GPTQ, AWQ, SmoothQuant, FP8, or QAT based on target hardware, accuracy budget, and calibration data availability — and defend the choice with numbers.</p></div></div>
+      <div class="out"><div class="out-ic">C</div><div><h4>Configure vLLM and TensorRT-LLM for any workload</h4><p>Tune PagedAttention block size, enable RadixAttention prefix caching, set up disaggregated prefill/decode, and benchmark speculative decoding acceptance rates for your domain.</p></div></div>
+      <div class="out"><div class="out-ic">D</div><div><h4>Prune and distill models in production</h4><p>Apply SparseGPT and Wanda for one-shot pruning, design a two-stage distillation pipeline, and configure 2:4 sparsity kernels with measurable quality retention.</p></div></div>
+      <div class="out"><div class="out-ic">E</div><div><h4>Design MoE serving infrastructure</h4><p>Lay out expert parallelism across GPUs, balance load with auxiliary losses, handle all-to-all communication overhead, and debug hot-expert skew in production.</p></div></div>
+      <div class="out"><div class="out-ic">F</div><div><h4>Own an LLM system design interview</h4><p>Walk any interviewer from a napkin sketch to a production-grade multi-region architecture with capacity math, failure modes, observability, and a defensible cost model.</p></div></div>
+    </div>
+  </div>
+</section>
+
+<!-- LEARN & PRACTICE -->
+<section class="sec" id="learn-practice">
+  <div class="wrap">
+    <div class="learn-practice-wrap">
+      <h2 class="lp-title">Learn & <span class="accent">Practice</span></h2>
+      <p class="lp-sub">Explore curated resources and practice with real code for this module.</p>
+      <div id="learn-practice-list"></div>
+    </div>
+  </div>
+</section>
+
+<!-- FOOTER -->
+<footer class="foot">
+  <div class="wrap">
+    <div class="foot-grid">
+      <div>
+        <h5>Marevlo Research</h5>
+        <p>Premium AI and machine learning education — built in India, for serious engineers. Every course is written to be the best in the world at what it covers. Nexus is our deepest dive into production LLMOps.</p>
+      </div>
+      <div>
+        <h5>The Course</h5>
+        <ul>
+          <li><a href="#case">Case Study</a></li>
+          <li><a href="#modules">Modules</a></li>
+          <li><a href="#techniques">Techniques</a></li>
+          <li><a href="#outcomes">Outcomes</a></li>
+        </ul>
+      </div>
+      <div>
+        <h5>Related Tracks</h5>
+        <ul>
+          <li><a href="#">Quantization Deep Dive</a></li>
+          <li><a href="#">Vectorless RAG</a></li>
+          <li><a href="#">LangGraph Mastery</a></li>
+          <li><a href="#">Bayesian Statistics</a></li>
+        </ul>
+      </div>
+    </div>
+    <div class="foot-bot">
+      <span>© 2026 Marevlo Research Pvt Ltd</span>
+      <span>v1.0 · NEXUS · 2026 Edition</span>
+    </div>
+  </div>
+</footer>
+
+<script>
+  const moduleResources = {
+    "01": {
+      moduleTitle: "Foundations & The Physics of Inference",
+      article: "https://www.spheron.network/blog/ai-memory-wall-inference-latency-guide-2026/",
+      articleLabel: "AI's Memory Wall Problem: Why More GPUs Don't Fix Inference Latency",
+      github: "https://github.com/vllm-project/vllm/tree/main/benchmarks"
+    },
+    "02": {
+      moduleTitle: "Quantization — From FP32 to 1.58-bit",
+      article: "https://newsletter.maartengrootendorst.com/p/which-quantization-method-is-right",
+      articleLabel: "Which Quantization Method is Right for You? GPTQ vs GGUF vs AWQ",
+      github: "https://github.com/vllm-project/llm-compressor"
+    },
+    "03": {
+      moduleTitle: "Attention Engineering — Tiling, GQA, MLA, Ring",
+      article: "https://gordicaleksa.medium.com/eli5-flash-attention-5c44017022ad",
+      articleLabel: "ELI5: Flash Attention",
+      github: "https://github.com/Dao-AILab/flash-attention"
+    },
+    "04": {
+      moduleTitle: "KV Cache Engineering — The Memory System",
+      article: "https://hamzaelshafie.bearblog.dev/paged-attention-from-first-principles-a-view-inside-vllm/",
+      articleLabel: "Paged Attention from First Principles: A View Inside vLLM",
+      github: "https://github.com/vllm-project/vllm"
+    },
+    "05": {
+      moduleTitle: "Batching, Scheduling & Speculative Decoding",
+      article: "https://bentoml.com/llm/inference-optimization/speculative-decoding",
+      articleLabel: "Speculative Decoding | LLM Inference Handbook",
+      github: "https://github.com/vllm-project/vllm"
+    },
+    "06": {
+      moduleTitle: "Pruning, Distillation & Mixture-of-Experts",
+      article: "https://newsletter.maartengrootendorst.com/p/a-visual-guide-to-mixture-of-experts",
+      articleLabel: "A Visual Guide to Mixture of Experts (MoE)",
+      github: "https://github.com/locuslab/wanda"
+    },
+    "07": {
+      moduleTitle: "Production System Design — End to End",
+      article: "https://www.zartis.com/scaling-llm-workloads-on-kubernetes-a-production-engineers-guide/",
+      articleLabel: "Scaling LLM Workloads on Kubernetes: A Production Engineer's Guide",
+      github: "https://github.com/kserve/kserve"
+    },
+    "08": {
+      moduleTitle: "Scale, Cost & War Stories",
+      article: "https://brlikhon.engineer/blog/gpu-economics-2026-h100-vs-a100-vs-l40s-complete-cost-performance-analysis-for-ai-workloads",
+      articleLabel: "GPU Economics 2026: H100 vs A100 vs L40S",
+      github: "https://github.com/ray-project/llmperf"
+    }
+  };
+
+  function makeActionButton(url, text, cls) {
+    if (!url) return null;
+    const a = document.createElement("a");
+    a.href = url;
+    a.target = "_blank";
+    a.rel = "noopener noreferrer";
+    a.className = "mod-action-btn " + cls;
+    a.textContent = text;
+    return a;
+  }
+
+  document.querySelectorAll(".modules .mod").forEach((moduleCard) => {
+    const modNum = moduleCard.querySelector(".mod-num")?.textContent?.trim();
+    const actions = moduleCard.querySelector(".mod-actions");
+    const links = moduleResources[modNum];
+    if (!actions || !links) return;
+
+    const learnBtn = makeActionButton(links.article, "Learn More", "learn");
+    const practiceBtn = makeActionButton(links.github, "Practice", "practice");
+
+    if (learnBtn) actions.appendChild(learnBtn);
+    if (practiceBtn) actions.appendChild(practiceBtn);
+    if (!learnBtn && !practiceBtn) actions.style.display = "none";
+  });
+
+  function makeResourceCard(type, title, helper, itemLabel, url, buttonText) {
+    if (!url) return "";
+    const icon = type === "learn" ? "L" : "G";
+    return `
+      <div class="lp-card ${type}">
+        <div class="lp-head">
+          <span class="lp-dot">${icon}</span>
+          <h4>${title}</h4>
+        </div>
+        <p class="lp-help">${helper}</p>
+        <p class="lp-link-title">${itemLabel || url}</p>
+        <a class="lp-btn" href="${url}" target="_blank" rel="noopener noreferrer">${buttonText}</a>
+      </div>
+    `;
+  }
+
+  const learnPracticeList = document.getElementById("learn-practice-list");
+  if (learnPracticeList) {
+    const module00Resource = {
+      moduleTitle: "Master Index",
+      article: "https://www.spheron.network/blog/ai-memory-wall-inference-latency-guide-2026/",
+      articleLabel: "AI's Memory Wall Problem: Why More GPUs Don't Fix Inference Latency",
+      github: "https://github.com/vllm-project/vllm/tree/main/benchmarks"
+    };
+
+    const learnCard = makeResourceCard(
+      "learn",
+      "Progressive Article",
+      "Stuck? Start here - beginner-friendly explanation",
+      module00Resource.articleLabel,
+      module00Resource.article,
+      "Learn More"
+    );
+    const practiceCard = makeResourceCard(
+      "practice",
+      "GitHub Repository",
+      "Hands-on - reference implementation & examples",
+      module00Resource.github,
+      module00Resource.github,
+      "Practice"
+    );
+    const cards = [learnCard, practiceCard].filter(Boolean).join("");
+    learnPracticeList.innerHTML = cards ? `
+      <div class="lp-mod">
+        <div class="lp-mod-title">Module 00 · ${module00Resource.moduleTitle}</div>
+        <div class="lp-grid">${cards}</div>
+      </div>
+    ` : "";
+  }
+</script>
+
+</body>
+</html>

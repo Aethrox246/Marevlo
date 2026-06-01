@@ -1,0 +1,445 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Word Search - Visualization</title>
+    <style>
+        :root {
+            --bg-page: #0d1117;
+            --bg-surface: #161b22;
+            --bg-input: #0d1117;
+            --border-main: #30363d;
+            --btn-bg: #21262d;
+            --btn-hover: #2d333b;
+            --text-main: #c9d1d9;
+            --text-dim: #8b949e;
+            --accent-orange: #e3b341;
+            --accent-blue: #388bfd;
+            --accent-green: #3fb950;
+            --accent-red: #f85149;
+            --accent-purple: #c678dd;
+        }
+
+        * { box-sizing: border-box; }
+        body {
+            background-color: var(--bg-page);
+            color: var(--text-main);
+            font-family: system-ui, -apple-system, sans-serif;
+            margin: 0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            min-height: 100vh;
+            padding-bottom: 40px;
+        }
+
+        .input-bar {
+            width: 100%;
+            background-color: var(--bg-surface);
+            padding: 12px 16px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 12px;
+            border-bottom: 1px solid var(--border-main);
+            flex-wrap: wrap;
+        }
+        .ui-label { font-family: 'Courier New', monospace; font-size: 13px; color: var(--text-dim); }
+        input[type="text"] {
+            background: var(--bg-input);
+            border: 1px solid var(--border-main);
+            color: var(--text-main);
+            height: 32px;
+            border-radius: 6px;
+            padding: 0 12px;
+            font-size: 14px;
+            font-family: monospace;
+        }
+
+        button {
+            height: 32px; border-radius: 6px; padding: 0 14px; background: var(--btn-bg);
+            border: 1px solid var(--border-main); color: var(--text-main); font-size: 13px; cursor: pointer;
+            transition: background 0.2s ease;
+        }
+        button:hover { background: var(--btn-hover); }
+
+        .visual-container { 
+            margin-top: 30px; 
+            display: flex; 
+            align-items: flex-end; 
+            justify-content: center;
+            gap: 60px; 
+            width: 100%; 
+            max-width: 860px;
+        }
+        
+        .grid-area {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 10px;
+        }
+        .board {
+            display: grid;
+            gap: 4px;
+            background: #21262d;
+            padding: 12px;
+            border-radius: 8px;
+        }
+        .cell {
+            width: 42px; height: 42px; display: flex; align-items: center; justify-content: center;
+            font-size: 22px; font-weight: bold; font-family: monospace;
+            border: 2px solid var(--border-main);
+            transition: all 0.3s ease;
+        }
+        .cell.empty { background: var(--bg-surface); color: var(--text-dim); }
+        .cell.match { background: var(--accent-green); color: #000; border-color: var(--accent-green); animation: popIn 0.4s ease; }
+        .cell.visited { background: var(--accent-blue); color: #fff; }
+
+        .action-panel {
+            margin-top: 24px; background: var(--bg-surface); border: 1px solid var(--border-main);
+            border-radius: 6px; padding: 16px 26px; width: 720px; text-align: center; font-family: monospace; min-height: 108px;
+            display: flex; flex-direction: column; justify-content: center; font-size: 15px; line-height: 1.5;
+        }
+
+        .info-panel { margin-top: 14px; display: flex; gap: 14px; flex-wrap: wrap; justify-content: center; }
+        .info-cell {
+            background: var(--bg-surface); border: 1px solid var(--border-main); border-radius: 6px;
+            padding: 10px 18px; display: flex; flex-direction: column; align-items: center; min-width: 130px; gap: 4px;
+        }
+        .info-label { font-size: 11px; color: var(--text-dim); }
+        .info-value { font-family: monospace; font-size: 18px; font-weight: 700; text-align: center; }
+
+        .result-display { margin-top: 16px; font-size: 22px; color: var(--accent-green); font-family: monospace; font-weight: bold; }
+
+        .status-bar { margin-top: 12px; font-size: 13px; color: var(--text-dim); height: 1.4em; text-align: center; width: 660px;}
+
+        .controls { margin-top: 28px; display: flex; align-items: center; gap: 12px; }
+        input[type="range"] { accent-color: var(--accent-blue); width: 130px; cursor: pointer; }
+
+        .legend { margin-top: 16px; display: flex; gap: 20px; flex-wrap: wrap; justify-content: center; max-width: 860px; }
+        .legend-item { display: flex; align-items: center; font-size: 13px; color: var(--text-dim); }
+        .dot { width: 12px; height: 12px; border-radius: 3px; margin-right: 8px; display: inline-block; }
+
+        .log-panel {
+            margin-top: 16px; background: var(--bg-page); border: 1px solid var(--border-main);
+            border-radius: 6px; padding: 16px 20px; width: 740px; max-width: 94%; height: 148px;
+            overflow-y: auto; font-family: 'Courier New', monospace; font-size: 13.5px; line-height: 1.45;
+        }
+
+        @keyframes popIn { 0%{transform:scale(0.6)} 100%{transform:scale(1)} }
+    </style>
+</head>
+<body>
+
+    <div class="input-bar">
+        <label class="ui-label">Word =</label>
+        <input type="text" id="input-word" value="ABCCED" style="width:180px;">
+        <button onclick="loadCustom()">Load</button>
+        <button onclick="loadExample('ABCCED')">Ex 1: ABCCED</button>
+        <button onclick="loadExample('SEE')">Ex 2: SEE</button>
+    </div>
+
+    <div class="visual-container">
+        <div class="grid-area">
+            <div class="ui-label" style="font-weight: bold; color: var(--accent-blue);">Grid</div>
+            <div class="board" id="board"></div>
+        </div>
+    </div>
+
+    <div class="action-panel" id="main-panel">—</div>
+
+    <div class="info-panel">
+        <div class="info-cell">
+            <span class="info-label">Position</span>
+            <span class="info-value" id="val-pos" style="color: var(--accent-orange);">—</span>
+        </div>
+        <div class="info-cell">
+            <span class="info-label">Index in Word</span>
+            <span class="info-value" id="val-index" style="color: var(--accent-green);">—</span>
+        </div>
+    </div>
+
+    <div class="result-display" id="res-val">—</div>
+
+    <div class="status-bar" id="status-text"></div>
+
+    <div class="controls">
+        <button onclick="reset()">↺ Reset</button>
+        <button onclick="back()">← Back</button>
+        <button onclick="togglePlay()" id="play-btn">Play</button>
+        <button onclick="next()">Next →</button>
+        <div style="display:flex; align-items:center; gap:8px;">
+            <span class="ui-label" style="font-size:12px;">Speed</span>
+            <input type="range" id="speed-slider" min="0" max="2" value="1">
+        </div>
+    </div>
+
+    <div class="legend">
+        <div class="legend-item"><span class="dot" style="background:var(--accent-green)"></span> Current Match</div>
+        <div class="legend-item"><span class="dot" style="background:var(--accent-blue)"></span> Visited</div>
+        <div class="legend-item"><span class="dot" style="background:var(--accent-red)"></span> Backtrack</div>
+    </div>
+
+    <div class="log-panel" id="log"></div>
+
+    <script>
+        let grid = [];
+        let word = "";
+        let m = 0;
+        let n = 0;
+        let steps = [];
+        let stepIndex = 0;
+        let timer = null;
+        const delays = [1200, 600, 300];
+
+        function init() {
+            grid = [['A','B','C','E'],['S','F','C','S'],['A','D','E','E']];
+            word = "ABCCED";
+            m = grid.length;
+            n = grid[0].length;
+            document.getElementById('input-word').value = word;
+            generateSteps();
+            reset();
+        }
+
+        function loadExample(w) {
+            word = w;
+            document.getElementById('input-word').value = word;
+            grid = [['A','B','C','E'],['S','F','C','S'],['A','D','E','E']];
+            m = grid.length;
+            n = grid[0].length;
+            generateSteps();
+            reset();
+        }
+
+        function loadCustom() {
+            word = document.getElementById('input-word').value.trim().toUpperCase();
+            if (word) {
+                grid = [['A','B','C','E'],['S','F','C','S'],['A','D','E','E']];
+                m = grid.length;
+                n = grid[0].length;
+                generateSteps();
+                reset();
+            }
+        }
+
+        function generateSteps() {
+            steps = [];
+            let found = false;
+
+            // INIT
+            steps.push({
+                type: 'init',
+                pos: [-1, -1],
+                idx: 0,
+                board: JSON.parse(JSON.stringify(grid)),
+                panel: `Start searching for word <span style="color:var(--accent-green)"><b>${word}</b></span> in ${m}×${n} grid.<br>Try every cell as starting point.`,
+                statusText: `Word Search - ${word}`,
+                log: `Initialize search for "${word}"`,
+                logColor: 'var(--text-dim)'
+            });
+
+            const directions = [[-1,0],[1,0],[0,-1],[0,1]];
+
+            function dfs(i, j, idx, visited) {
+                if (idx === word.length) {
+                    found = true;
+                    steps.push({
+                        type: 'record',
+                        pos: [i, j],
+                        idx: idx,
+                        board: JSON.parse(JSON.stringify(grid)),
+                        panel: `Found the word <span style="color:var(--accent-green)"><b>${word}</b></span>!`,
+                        statusText: `Success! Word found`,
+                        log: `→ Word found at index ${idx}`,
+                        logColor: 'var(--accent-green)'
+                    });
+                    return true;
+                }
+
+                steps.push({
+                    type: 'explore',
+                    pos: [i, j],
+                    idx: idx,
+                    board: JSON.parse(JSON.stringify(grid)),
+                    panel: `At (${i},${j}) checking for word[${idx}] = <span style="color:var(--accent-green)"><b>${word[idx]}</b></span>`,
+                    statusText: `Check (${i},${j}) for '${word[idx]}'`,
+                    log: `Explore (${i},${j}) idx=${idx}`,
+                    logColor: 'var(--accent-blue)'
+                });
+
+                if (i < 0 || i >= m || j < 0 || j >= n || visited[i][j] || grid[i][j] !== word[idx]) {
+                    steps.push({
+                        type: 'backtrack',
+                        pos: [i, j],
+                        idx: idx,
+                        board: JSON.parse(JSON.stringify(grid)),
+                        panel: `Invalid move at (${i},${j})`,
+                        statusText: `Backtrack`,
+                        log: `Backtrack - invalid`,
+                        logColor: 'var(--accent-red)'
+                    });
+                    return false;
+                }
+
+                visited[i][j] = true;
+
+                steps.push({
+                    type: 'place',
+                    pos: [i, j],
+                    idx: idx,
+                    board: JSON.parse(JSON.stringify(grid)),
+                    panel: `Match at (${i},${j}): <span style="color:var(--accent-green)"><b>${grid[i][j]}</b></span>`,
+                    statusText: `Matched ${grid[i][j]} at (${i},${j})`,
+                    log: `Match ${grid[i][j]} (${i},${j})`,
+                    logColor: 'var(--accent-green)'
+                });
+
+                for (let [di, dj] of directions) {
+                    if (dfs(i + di, j + dj, idx + 1, visited)) {
+                        return true;
+                    }
+                }
+
+                visited[i][j] = false;
+
+                steps.push({
+                    type: 'backtrack',
+                    pos: [i, j],
+                    idx: idx,
+                    board: JSON.parse(JSON.stringify(grid)),
+                    panel: `Backtrack from (${i},${j})`,
+                    statusText: `Backtrack`,
+                    log: `Backtrack from (${i},${j})`,
+                    logColor: 'var(--accent-red)'
+                });
+
+                return false;
+            }
+
+            let visited = Array.from({length: m}, () => Array(n).fill(false));
+
+            // Try every starting cell
+            for (let i = 0; i < m && !found; i++) {
+                for (let j = 0; j < n && !found; j++) {
+                    if (grid[i][j] === word[0]) {
+                        if (dfs(i, j, 0, visited)) {
+                            break;
+                        }
+                    }
+                }
+            }
+
+            // FINAL
+            steps.push({
+                type: 'final',
+                pos: [-1, -1],
+                idx: word.length,
+                board: JSON.parse(JSON.stringify(grid)),
+                panel: `Search complete.<br>Word <span style="color:var(--accent-green)"><b>${word}</b></span> ${found ? 'FOUND' : 'NOT found'}`,
+                complete: true,
+                finalStr: found ? "true" : "false",
+                statusText: `Done - ${found ? 'Found' : 'Not Found'}`,
+                log: `Final result: ${found}`,
+                logColor: found ? 'var(--accent-green)' : 'var(--accent-red)',
+                bold: true
+            });
+        }
+
+        function renderStep(idx) {
+            const step = steps[idx];
+            if (!step) return;
+
+            const boardEl = document.getElementById('board');
+            boardEl.innerHTML = '';
+            boardEl.style.gridTemplateColumns = `repeat(${n}, 42px)`;
+
+            let currentBoard = step.board || JSON.parse(JSON.stringify(grid));
+
+            for (let r = 0; r < m; r++) {
+                for (let c = 0; c < n; c++) {
+                    const cell = document.createElement('div');
+                    cell.className = 'cell';
+                    cell.innerText = currentBoard[r][c];
+
+                    if (step.pos && step.pos[0] === r && step.pos[1] === c) {
+                        if (step.type === 'place' || step.type === 'record') {
+                            cell.classList.add('match');
+                        } else if (step.type === 'explore') {
+                            cell.classList.add('visited');
+                        }
+                    }
+                    boardEl.appendChild(cell);
+                }
+            }
+
+            document.getElementById('main-panel').innerHTML = step.panel || '—';
+            document.getElementById('val-pos').innerText = step.pos && step.pos[0] !== -1 ? `(${step.pos[0]},${step.pos[1]})` : '—';
+            document.getElementById('val-index').innerText = step.idx !== undefined ? step.idx : '—';
+
+            const resEl = document.getElementById('res-val');
+            resEl.innerText = step.complete ? step.finalStr.toUpperCase() : '—';
+
+            document.getElementById('status-text').innerText = step.statusText || '—';
+
+            const logEl = document.getElementById('log');
+            logEl.innerHTML = '';
+            for (let k = 0; k <= idx; k++) {
+                if (steps[k].log) {
+                    const line = document.createElement('div');
+                    line.style.marginBottom = '4px';
+                    line.style.whiteSpace = 'pre-wrap';
+                    if (steps[k].logColor) line.style.color = steps[k].logColor;
+                    if (steps[k].bold) line.style.fontWeight = 'bold';
+                    line.innerText = steps[k].log;
+                    logEl.appendChild(line);
+                }
+            }
+            logEl.scrollTop = logEl.scrollHeight;
+        }
+
+        function next() {
+            if (stepIndex < steps.length - 1) {
+                stepIndex++;
+                renderStep(stepIndex);
+            } else {
+                pause();
+            }
+        }
+
+        function back() {
+            if (stepIndex > 0) {
+                stepIndex--;
+                renderStep(stepIndex);
+            }
+        }
+
+        function reset() {
+            pause();
+            stepIndex = 0;
+            renderStep(0);
+        }
+
+        function togglePlay() {
+            const btn = document.getElementById('play-btn');
+            if (timer) {
+                pause();
+            } else {
+                btn.innerText = 'Pause';
+                if (stepIndex >= steps.length - 1) stepIndex = 0;
+                timer = setInterval(next, delays[document.getElementById('speed-slider').value]);
+            }
+        }
+
+        function pause() {
+            clearInterval(timer);
+            timer = null;
+            document.getElementById('play-btn').innerText = 'Play';
+        }
+
+        window.onload = init;
+    </script>
+</body>
+</html>
