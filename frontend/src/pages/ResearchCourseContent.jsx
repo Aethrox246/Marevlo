@@ -1,4 +1,4 @@
-import React, { useState, useEffect, memo } from 'react';
+import React, { useState, useEffect, useRef, useCallback, memo } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import {
     BookOpen, ChevronLeft, ChevronRight, ChevronDown,
@@ -7,6 +7,7 @@ import {
 } from 'lucide-react';
 import ReactDOM from 'react-dom';
 import parse from 'html-react-parser';
+import { useTheme } from '../context/ThemeContext';
 
 //  HTML FILE MAP
 //  Maps lesson ID → public path to HTML file
@@ -475,6 +476,31 @@ ProseContent.displayName = 'ProseContent';
 export default function ResearchCourseContent() {
     const { id } = useParams();
     const navigate = useNavigate();
+    const { isDark } = useTheme();
+    const iframeRef = useRef(null);
+    const inlineIframeRef = useRef(null);
+
+    const injectThemeCSS = useCallback((iframe, dark) => {
+        try {
+            const doc = iframe.contentDocument || iframe.contentWindow?.document;
+            if (!doc || !doc.head) return;
+            let tag = doc.getElementById('__marevlo-theme');
+            if (!tag) {
+                tag = doc.createElement('style');
+                tag.id = '__marevlo-theme';
+                doc.head.appendChild(tag);
+            }
+            tag.textContent = dark ? '' : `
+                html { filter: invert(1) hue-rotate(180deg) !important; }
+                img, video, canvas, picture, .no-invert { filter: invert(1) hue-rotate(180deg) !important; }
+            `;
+        } catch (_) {}
+    }, []);
+
+    useEffect(() => {
+        if (iframeRef.current) injectThemeCSS(iframeRef.current, isDark);
+        if (inlineIframeRef.current) injectThemeCSS(inlineIframeRef.current, isDark);
+    }, [isDark, injectThemeCSS]);
 
     const config = RESEARCH_COURSE_CONFIGS[id];
     const htmlPath = RESEARCH_HTML_MAP[id];
@@ -535,13 +561,15 @@ export default function ResearchCourseContent() {
         return (
             <div style={{ width: '100%', height: '100%', overflow: 'hidden', position: 'relative' }}>
                 <iframe
+                    ref={iframeRef}
                     src={htmlPath}
                     title={config.title}
+                    onLoad={() => injectThemeCSS(iframeRef.current, isDark)}
                     style={{
                         width: '100%',
                         height: '100%',
                         border: 'none',
-                        background: '#08090b',
+                        background: isDark ? '#08090b' : '#ffffff',
                     }}
                 />
             </div>
@@ -742,8 +770,8 @@ export default function ResearchCourseContent() {
                                                     minHeight: 150,
                                                     padding: '20px',
                                                     borderRadius: 22,
-                                                    background: isActive ? 'rgba(99,102,241,0.16)' : 'rgba(255,255,255,0.04)',
-                                                    border: isActive ? '1px solid rgba(99,102,241,0.35)' : '1px solid rgba(255,255,255,0.08)',
+                                                    background: isActive ? 'rgba(99,102,241,0.16)' : 'var(--color-surface-hover)',
+                                                    border: isActive ? '1px solid rgba(99,102,241,0.35)' : '1px solid var(--color-border)',
                                                     boxShadow: isActive ? '0 14px 28px rgba(0,0,0,0.12)' : '0 10px 22px rgba(0,0,0,0.08)',
                                                     transition: 'transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease',
                                                 }}
@@ -768,18 +796,18 @@ export default function ResearchCourseContent() {
                                                             display: 'grid',
                                                             placeItems: 'center',
                                                             borderRadius: 14,
-                                                            background: 'rgba(255,255,255,0.08)',
+                                                            background: isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.06)',
                                                         }}>
-                                                            <span style={{ fontSize: '0.85rem', fontWeight: 800, color: '#fff' }}>
+                                                            <span style={{ fontSize: '0.85rem', fontWeight: 800, color: 'var(--foreground)' }}>
                                                                 {String(index).padStart(2, '0')}
                                                             </span>
                                                         </div>
                                                         <div style={{ minWidth: 0 }}>
-                                                            <div style={{ fontSize: '0.95rem', fontWeight: 800, color: isActive ? '#fff' : '#f4f4ff', lineHeight: 1.25, marginBottom: 6 }}>
+                                                            <div style={{ fontSize: '0.95rem', fontWeight: 800, color: 'var(--foreground)', lineHeight: 1.25, marginBottom: 6 }}>
                                                                 {cardLabel}
                                                             </div>
                                                             <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, alignItems: 'center' }}>
-                                                                <span style={{ fontSize: '0.72rem', color: 'rgba(255,255,255,0.75)' }}>
+                                                                <span style={{ fontSize: '0.72rem', color: 'var(--color-muted-text)' }}>
                                                                     {cardConfig.duration || config.duration}
                                                                 </span>
                                                             </div>
@@ -790,7 +818,7 @@ export default function ResearchCourseContent() {
                                                     </span>
                                                 </div>
                                                 <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
-                                                    <ArrowUpRight size={18} color={isActive ? '#fff' : '#818cf8'} />
+                                                    <ArrowUpRight size={18} color={isActive ? '#818cf8' : '#818cf8'} />
                                                 </div>
                                             </div>
                                         );
@@ -801,14 +829,16 @@ export default function ResearchCourseContent() {
                             {isFullDocumentModule && htmlPath && (
                                 <div style={{ maxWidth: 1100, margin: '0 auto' }}>
                                     <iframe
+                                        ref={inlineIframeRef}
                                         src={htmlPath}
                                         title={config.title}
+                                        onLoad={() => injectThemeCSS(inlineIframeRef.current, isDark)}
                                         style={{
                                             width: '100%',
                                             minHeight: '80vh',
                                             border: '1px solid var(--color-border)',
                                             borderRadius: 20,
-                                            background: '#08090b',
+                                            background: isDark ? '#08090b' : '#ffffff',
                                         }}
                                     />
                                 </div>

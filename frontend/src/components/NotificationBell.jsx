@@ -147,8 +147,8 @@ export default function NotificationBell() {
 
     if (!user) return null;
 
-    const iconColor = isDark ? '#d4a574' : '#3b82f6';
-    const unreadBg  = isDark ? 'rgba(212,165,116,0.07)' : 'rgba(59,130,246,0.06)';
+    const iconColor = 'var(--primary)';
+    const unreadBg  = 'color-mix(in srgb, var(--primary) 8%, transparent)';
 
     return (
         <div className="relative" ref={panelRef}>
@@ -160,9 +160,9 @@ export default function NotificationBell() {
                 aria-haspopup="dialog"
                 className="relative p-2.5 rounded-xl transition-all duration-200 hover:scale-110 active:scale-95"
                 style={{
-                    backgroundColor: isDark ? '#262626' : '#f5f5f5',
-                    border: `1px solid ${isDark ? '#404040' : '#e5e5e5'}`,
-                    color: open ? iconColor : 'var(--color-muted-text)',
+                    backgroundColor: 'var(--muted)',
+                    border: '1px solid var(--border)',
+                    color: open ? iconColor : 'var(--muted-foreground)',
                 }}
             >
                 <Bell size={20} />
@@ -183,18 +183,13 @@ export default function NotificationBell() {
                 <div
                     role="dialog"
                     aria-label="Notifications"
-                    className="absolute right-0 top-12 w-[340px] rounded-xl shadow-2xl z-50 overflow-hidden"
-                    style={{
-                        backgroundColor: 'var(--color-surface)',
-                        border: '1px solid var(--color-border)',
-                    }}
+                    className="absolute right-0 top-12 w-[340px] rounded-xl shadow-2xl z-50 overflow-hidden bg-card border border-border"
                 >
                     {/* Header */}
                     <div
-                        className="flex items-center justify-between px-4 py-3"
-                        style={{ borderBottom: '1px solid var(--color-border)' }}
+                        className="flex items-center justify-between px-4 py-3 border-b border-border"
                     >
-                        <span className="text-sm font-bold" style={{ color: 'var(--color-primary-text)' }}>
+                        <span className="text-sm font-bold text-foreground">
                             Notifications
                             {count > 0 && (
                                 <span
@@ -211,8 +206,7 @@ export default function NotificationBell() {
                                 <button
                                     onClick={markAll}
                                     title="Mark all as read"
-                                    className="flex items-center gap-1 text-xs px-2 py-1 rounded-lg transition-colors"
-                                    style={{ color: 'var(--color-muted-text)' }}
+                                    className="flex items-center gap-1 text-xs px-2 py-1 rounded-lg transition-colors text-muted-foreground"
                                     onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = 'var(--color-surface-hover)'; }}
                                     onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = 'transparent'; }}
                                 >
@@ -223,8 +217,7 @@ export default function NotificationBell() {
                             <button
                                 onClick={() => setOpen(false)}
                                 aria-label="Close notifications"
-                                className="p-1 rounded-lg transition-colors"
-                                style={{ color: 'var(--color-muted-text)' }}
+                                className="p-1 rounded-lg transition-colors text-muted-foreground"
                                 onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = 'var(--color-surface-hover)'; }}
                                 onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = 'transparent'; }}
                             >
@@ -239,12 +232,12 @@ export default function NotificationBell() {
                             /* Skeleton */
                             <div className="flex flex-col gap-0">
                                 {[1, 2, 3].map(i => (
-                                    <div key={i} className="flex gap-3 items-start px-4 py-3" style={{ borderBottom: '1px solid var(--color-border)' }}>
-                                        <div className="w-8 h-8 rounded-full shrink-0 animate-pulse" style={{ backgroundColor: 'var(--color-border)' }} />
+                                    <div key={i} className="flex gap-3 items-start px-4 py-3 border-b border-border">
+                                        <div className="w-8 h-8 rounded-full shrink-0 animate-pulse" style={{ backgroundColor: 'var(--border)' }} />
                                         <div className="flex-1 space-y-2 animate-pulse">
-                                            <div className="h-3 rounded w-3/4" style={{ backgroundColor: 'var(--color-border)' }} />
-                                            <div className="h-2.5 rounded w-full" style={{ backgroundColor: 'var(--color-border)' }} />
-                                            <div className="h-2 rounded w-1/3" style={{ backgroundColor: 'var(--color-border)' }} />
+                                            <div className="h-3 rounded w-3/4" style={{ backgroundColor: 'var(--border)' }} />
+                                            <div className="h-2.5 rounded w-full" style={{ backgroundColor: 'var(--border)' }} />
+                                            <div className="h-2 rounded w-1/3" style={{ backgroundColor: 'var(--border)' }} />
                                         </div>
                                     </div>
                                 ))}
@@ -253,7 +246,7 @@ export default function NotificationBell() {
                             /* Error state */
                             <div className="flex flex-col items-center justify-center py-12 gap-2">
                                 <Bell size={32} style={{ color: 'var(--color-border)' }} />
-                                <p className="text-sm" style={{ color: 'var(--color-muted-text)' }}>Couldn't load notifications</p>
+                                <p className="text-sm text-muted-foreground">Couldn't load notifications</p>
                                 <button
                                     onClick={loadNotifications}
                                     className="text-xs px-3 py-1 rounded-lg mt-1 transition-colors"
@@ -273,8 +266,8 @@ export default function NotificationBell() {
                                 >
                                     <Bell size={22} style={{ color: 'var(--color-border)' }} />
                                 </div>
-                                <p className="text-sm font-medium" style={{ color: 'var(--color-primary-text)' }}>You're all caught up</p>
-                                <p className="text-xs" style={{ color: 'var(--color-muted-text)' }}>New notifications will appear here</p>
+                                <p className="text-sm font-medium text-foreground">You're all caught up</p>
+                                <p className="text-xs text-muted-foreground">New notifications will appear here</p>
                             </div>
                         ) : (
                             /* Notification list */
@@ -285,10 +278,9 @@ export default function NotificationBell() {
                                         key={n.id}
                                         role="button"
                                         tabIndex={0}
-                                        className="flex gap-3 items-start px-4 py-3 cursor-pointer transition-colors outline-none"
+                                        className="flex gap-3 items-start px-4 py-3 cursor-pointer transition-colors outline-none border-b border-border"
                                         style={{
                                             backgroundColor: isUnread ? unreadBg : 'transparent',
-                                            borderBottom: '1px solid var(--color-border)',
                                         }}
                                         onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = 'var(--color-surface-hover)'; }}
                                         onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = isUnread ? unreadBg : 'transparent'; }}
@@ -299,9 +291,9 @@ export default function NotificationBell() {
                                         <div
                                             className="w-8 h-8 rounded-full shrink-0 flex items-center justify-center"
                                             style={{
-                                                backgroundColor: isUnread ? unreadBg : (isDark ? '#262626' : '#f0f0f0'),
+                                                backgroundColor: isUnread ? unreadBg : 'var(--muted)',
                                                 color: iconColor,
-                                                border: `1px solid ${isDark ? '#404040' : '#e5e5e5'}`,
+                                                border: '1px solid var(--border)',
                                             }}
                                         >
                                             <NotifIcon type={n.type} />
@@ -309,9 +301,8 @@ export default function NotificationBell() {
 
                                         <div className="flex-1 min-w-0">
                                             <p
-                                                className="text-sm leading-snug"
+                                                className="text-sm leading-snug text-foreground"
                                                 style={{
-                                                    color: 'var(--color-primary-text)',
                                                     fontWeight: isUnread ? 600 : 400,
                                                 }}
                                             >
@@ -319,15 +310,14 @@ export default function NotificationBell() {
                                             </p>
                                             {n.payload?.body && (
                                                 <p
-                                                    className="text-xs mt-0.5 line-clamp-2 leading-relaxed"
-                                                    style={{ color: 'var(--color-muted-text)' }}
+                                                    className="text-xs mt-0.5 line-clamp-2 leading-relaxed text-muted-foreground"
                                                 >
                                                     {n.payload.body}
                                                 </p>
                                             )}
                                             <p
-                                                className="text-[10px] mt-1.5"
-                                                style={{ color: 'var(--color-muted-text)', opacity: 0.65 }}
+                                                className="text-[10px] mt-1.5 text-muted-foreground"
+                                                style={{ opacity: 0.65 }}
                                             >
                                                 {relativeTime(n.created_at)}
                                             </p>

@@ -1,6 +1,7 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ArrowUpRight, GraduationCap, ScrollText, Radio, Cpu, FlaskConical, BrainCircuit, Layers, Users, Waves } from 'lucide-react';
+import { PAPERS } from '../data/papers';
 
 const preloadResearchCourses = () => import('./ResearchCourses');
 
@@ -9,7 +10,7 @@ export default function Research() {
 
     return (
         <>
-            <div className="overflow-y-auto h-full" style={{ backgroundColor: 'var(--color-app-bg)', color: 'var(--color-primary-text)' }}>
+            <div className="overflow-y-auto h-full text-foreground" style={{ backgroundColor: 'var(--background)' }}>
                 <div style={{ width: '70%', margin: '0 auto', padding: '64px 0 96px' }}>
 
                     {/* Page header */}
@@ -18,19 +19,19 @@ export default function Research() {
                             <div style={{ width: '28px', height: '2px', background: 'linear-gradient(90deg,#6366f1,#8b5cf6)' }} />
                             <span style={{
                                 fontSize: '11px', fontWeight: 700, letterSpacing: '0.22em',
-                                textTransform: 'uppercase', color: '#6366f1'
+                                textTransform: 'uppercase', color: 'var(--primary)'
                             }}>
                                 Explore
                             </span>
                         </div>
-                        <h1 style={{
+                        <h1 className="text-foreground" style={{
                             fontSize: 'clamp(2.4rem,5vw,4.2rem)', fontWeight: 900,
                             lineHeight: 1.06, letterSpacing: '-0.03em',
-                            marginBottom: '16px', color: 'var(--color-primary-text)'
+                            marginBottom: '16px'
                         }}>
                             Where do you<br />want to go?
                         </h1>
-                        <p style={{ color: 'var(--color-muted-text)', fontSize: '1.05rem', maxWidth: '460px', lineHeight: 1.7 }}>
+                        <p className="text-muted-foreground" style={{ fontSize: '1.05rem', maxWidth: '460px', lineHeight: 1.7 }}>
                             Master skills through structured courses or dive deep into curated research papers.
                         </p>
                     </div>
@@ -45,7 +46,7 @@ export default function Research() {
                             onFocus={preloadResearchCourses}
                             style={{ cursor: 'pointer' }}
                         >
-                        <div className="res-part-label" style={{ color: '#6366f1' }}>Part 01 &nbsp;·&nbsp; Courses</div>
+                        <div className="res-part-label" style={{ color: 'var(--primary)' }}>Part 01 &nbsp;·&nbsp; Courses</div>
                         <div
                             className="res-card res-card-1"
                             style={{
@@ -225,7 +226,7 @@ export default function Research() {
                                     lineHeight: 1.08, marginBottom: '14px', letterSpacing: '-0.02em'
                                 }}>Research Papers</h2>
                                 <p style={{ fontSize: '0.93rem', color: 'rgba(254,243,199,0.5)', lineHeight: 1.75, maxWidth: '310px' }}>
-                                    Foundational and cutting-edge papers across AI, ML, and systems research. Filter, search, and read.
+                                    {PAPERS.length} foundational and cutting-edge papers across AI, ML, and systems research. Filter, search, and read.
                                 </p>
                             </div>
 

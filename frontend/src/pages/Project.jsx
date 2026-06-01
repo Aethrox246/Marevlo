@@ -1,8 +1,8 @@
 import React, { useState, useMemo, useEffect, useRef } from 'react';
 import {
     Search, Eye, Heart, Clock, ExternalLink, Github, Download, X,
-    Zap, Star, TrendingUp, ChevronDown, Filter, BookOpen, Layers,
-    Cpu, BarChart2, MessageSquare, Globe, SlidersHorizontal, Award,
+    Zap, Star, ChevronDown, Filter, BookOpen,
+    Cpu, BarChart2, MessageSquare, Globe, SlidersHorizontal,
     ArrowUpRight, Code2, Database, Brain, Sparkles, FileText, Target,
     CheckCircle, FlaskConical, GraduationCap, ChevronRight
 } from 'lucide-react';
@@ -781,9 +781,7 @@ function ProjectCard({ project, isDark, onClick }) {
                 'group relative flex flex-col h-full overflow-hidden rounded-2xl cursor-pointer',
                 'transition-all duration-300 ease-out',
                 'hover:-translate-y-1.5',
-                isDark
-                    ? 'bg-[#1b1b21] border border-white/[0.07] hover:border-indigo-500/30 hover:shadow-[0_20px_60px_rgba(0,0,0,0.5),0_0_0_1px_rgba(99,102,241,0.15)]'
-                    : 'bg-white border border-black/[0.07] hover:border-indigo-400/40 hover:shadow-[0_20px_60px_rgba(0,0,0,0.1),0_0_0_1px_rgba(99,102,241,0.1)]',
+                'bg-card border border-border hover:border-primary/30 hover:shadow-[0_20px_60px_rgba(0,0,0,0.2),0_0_0_1px_rgba(99,102,241,0.15)]',
             ].join(' ')}
         >
             {/* Gradient accent bar — replaces thumbnail */}
@@ -798,11 +796,11 @@ function ProjectCard({ project, isDark, onClick }) {
                     {project.category}
                 </span>
 
-                <h3 className={`text-[0.95rem] font-extrabold leading-snug tracking-tight ${isDark ? 'text-[#e4e1ea]' : 'text-gray-900'}`}>
+                <h3 className="text-[0.95rem] font-extrabold leading-snug tracking-tight text-foreground">
                     {project.title}
                 </h3>
 
-                <p className={`text-[0.8rem] leading-relaxed line-clamp-2 ${isDark ? 'text-[#c7c4d7]' : 'text-gray-500'}`}>
+                <p className="text-[0.8rem] leading-relaxed line-clamp-2 text-muted-foreground">
                     {project.description}
                 </p>
 
@@ -812,7 +810,7 @@ function ProjectCard({ project, isDark, onClick }) {
                 </div>
 
                 {/* Stats */}
-                <div className={`flex items-center justify-between mt-auto pt-3 text-[0.73rem] border-t ${isDark ? 'border-white/[0.07] text-[#c7c4d7]' : 'border-black/[0.06] text-gray-400'}`}>
+                <div className="flex items-center justify-between mt-auto pt-3 text-[0.73rem] border-t border-border text-muted-foreground/70">
                     <div className="flex gap-3">
                         <span className="flex items-center gap-1.5"><Eye size={12}/>{fmtNum(project.views)}</span>
                         <button
@@ -838,116 +836,6 @@ function ProjectCard({ project, isDark, onClick }) {
 }
 
 // ProjectModal replaced by full-screen ProjectDetail (see ProjectDetail.jsx)
-
-// Sidebar
-function Sidebar({ isDark, projects, onProjectClick }) {
-    const trending = [...projects].sort((a, b) => b.views - a.views).slice(0, 4);
-    const totalViews = projects.reduce((s, p) => s + p.views, 0);
-    const totalLikes = projects.reduce((s, p) => s + p.likes, 0);
-
-    return (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 18 }}>
-            {/* My Stats */}
-            <div style={{
-                background: isDark ? 'var(--color-card-bg)' : '#ffffff',
-                border: '1px solid var(--color-border)',
-                borderRadius: 20, padding: '20px',
-                position: 'relative', overflow: 'hidden',
-            }}>
-                {/* Gradient accent line */}
-                <div style={{
-                    position: 'absolute', top: 0, left: 0, right: 0, height: 3,
-                    background: 'linear-gradient(90deg,#6366f1,#06b6d4,#8b5cf6)',
-                }} />
-                <div style={{
-                    fontSize: '0.72rem', fontWeight: 800, textTransform: 'uppercase',
-                    letterSpacing: '0.1em', color: 'var(--color-muted-text)', marginBottom: 16,
-                    display: 'flex', alignItems: 'center', gap: 6,
-                }}>
-                    <Award size={13} /> My Stats
-                </div>
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
-                    {[
-                        { label: 'Projects',    value: projects.length,       color: '#6366f1', icon: <Layers size={15} /> },
-                        { label: 'Total Views', value: fmtNum(totalViews),    color: '#06b6d4', icon: <Eye size={15} /> },
-                        { label: 'Total Likes', value: fmtNum(totalLikes),    color: '#f87171', icon: <Heart size={15} /> },
-                        { label: 'Featured',    value: projects.filter(p => p.featured).length, color: '#f59e0b', icon: <Star size={15} /> },
-                    ].map(({ label, value, color, icon }) => (
-                        <div key={label} style={{
-                            background: isDark ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.03)',
-                            border: '1px solid var(--color-border)',
-                            borderRadius: 12, padding: '12px 10px', textAlign: 'center',
-                        }}>
-                            <div style={{ color, marginBottom: 4, display: 'flex', justifyContent: 'center' }}>{icon}</div>
-                            <div style={{ fontSize: '1.1rem', fontWeight: 900, color: 'var(--color-primary-text)', letterSpacing: '-0.02em' }}>
-                                {value}
-                            </div>
-                            <div style={{ fontSize: '0.65rem', color: 'var(--color-muted-text)', fontWeight: 600, marginTop: 2 }}>
-                                {label}
-                            </div>
-                        </div>
-                    ))}
-                </div>
-            </div>
-
-            {/* Trending Projects */}
-            <div style={{
-                background: isDark ? 'var(--color-card-bg)' : '#ffffff',
-                border: '1px solid var(--color-border)',
-                borderRadius: 20, padding: '20px',
-            }}>
-                <div style={{
-                    fontSize: '0.72rem', fontWeight: 800, textTransform: 'uppercase',
-                    letterSpacing: '0.1em', color: 'var(--color-muted-text)', marginBottom: 14,
-                    display: 'flex', alignItems: 'center', gap: 6,
-                }}>
-                    <TrendingUp size={13} /> Trending
-                </div>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-                    {trending.map((p, i) => (
-                        <button
-                            key={p.id}
-                            onClick={() => onProjectClick(p)}
-                            style={{
-                                display: 'flex', alignItems: 'center', gap: 12,
-                                padding: '10px 8px', borderRadius: 12,
-                                background: 'none', border: 'none', cursor: 'pointer',
-                                textAlign: 'left', transition: 'background 0.15s',
-                                width: '100%',
-                            }}
-                            onMouseEnter={e => e.currentTarget.style.background = isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.04)'}
-                            onMouseLeave={e => e.currentTarget.style.background = 'none'}
-                        >
-                            <span style={{
-                                width: 22, height: 22, borderRadius: 6, flexShrink: 0,
-                                background: i === 0 ? 'linear-gradient(135deg,#f59e0b,#ef4444)'
-                                           : i === 1 ? 'linear-gradient(135deg,#6366f1,#8b5cf6)'
-                                           : 'rgba(161,161,170,0.2)',
-                                display: 'flex', alignItems: 'center', justifyContent: 'center',
-                                fontSize: '0.65rem', fontWeight: 900, color: i < 2 ? '#fff' : 'var(--color-muted-text)',
-                            }}>
-                                {i + 1}
-                            </span>
-                            <div style={{ flex: 1, minWidth: 0 }}>
-                                <div style={{
-                                    fontSize: '0.78rem', fontWeight: 700,
-                                    color: 'var(--color-primary-text)',
-                                    overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
-                                }}>
-                                    {p.title}
-                                </div>
-                                <div style={{ fontSize: '0.68rem', color: 'var(--color-muted-text)', marginTop: 2 }}>
-                                    <Eye size={10} style={{ display: 'inline', marginRight: 3 }} />
-                                    {fmtNum(p.views)} views
-                                </div>
-                            </div>
-                        </button>
-                    ))}
-                </div>
-            </div>
-        </div>
-    );
-}
 
 // Main Component
 export default function Project() {
@@ -1005,55 +893,13 @@ export default function Project() {
     const accentGrad = 'linear-gradient(135deg,#6366f1,#8b5cf6)';
 
     return (
-        <div style={{
+        <div className="text-foreground" style={{
             height: '100%', overflowY: 'auto', backgroundColor: 'var(--color-app-bg)',
-            color: 'var(--color-primary-text)', fontFamily: 'Geist, Inter, sans-serif',
+            fontFamily: 'Geist, Inter, sans-serif',
         }}>
-            <style>{`
-                @keyframes heroPulse {
-                    0%,100% { opacity:0.55; transform:scale(1); }
-                    50%     { opacity:0.75; transform:scale(1.06); }
-                }
-                @keyframes heroGlow {
-                    0%,100% { opacity:0.4; transform:scale(1) translateY(0); }
-                    50%     { opacity:0.65; transform:scale(1.08) translateY(-8px); }
-                }
-                @keyframes fadeSlideUp {
-                    from { opacity:0; transform:translateY(16px); }
-                    to   { opacity:1; transform:translateY(0); }
-                }
-                @keyframes shimmer {
-                    0%   { background-position: -200% center; }
-                    100% { background-position:  200% center; }
-                }
-                .proj-card-anim { animation: fadeSlideUp 0.35s ease-out both; }
-                .search-focus:focus { outline:none; box-shadow: 0 0 0 3px rgba(99,102,241,0.25); }
-                .hero-title-grad {
-                    background: linear-gradient(135deg, #fff 0%, #e0e7ff 35%, #a5f3fc 65%, #818cf8 100%);
-                    background-size: 200% auto;
-                    -webkit-background-clip: text;
-                    -webkit-text-fill-color: transparent;
-                    background-clip: text;
-                    animation: shimmer 6s linear infinite;
-                }
-                .hero-stat-card {
-                    transition: transform 0.2s, border-color 0.2s;
-                }
-                .hero-stat-card:hover {
-                    transform: translateY(-2px);
-                    border-color: rgba(99,102,241,0.35) !important;
-                }
-                .hero-cat-chip {
-                    transition: background 0.2s, transform 0.2s, border-color 0.2s;
-                    cursor: default;
-                }
-                .hero-cat-chip:hover {
-                    transform: translateY(-2px);
-                }
-            `}</style>
 
             {/* Hero Section */}
-            <div className="relative overflow-hidden border-b bg-white dark:bg-black border-black/[0.06] dark:border-white/[0.06]" style={{minHeight:'340px'}}>
+            <div className="relative overflow-hidden border-b bg-card dark:bg-black border-black/[0.06] dark:border-white/[0.06]" style={{minHeight:'340px'}}>
                 {/* Centre top glow */}
                 <div className="absolute -top-20 left-1/2 -translate-x-1/2 w-[600px] h-[360px] rounded-full pointer-events-none" style={{background:'radial-gradient(ellipse,rgba(99,102,241,0.28) 0%,transparent 70%)',filter:'blur(60px)',animation:'heroGlow 8s ease-in-out infinite'}} />
                 {/* Teal glow left */}
@@ -1062,31 +908,52 @@ export default function Project() {
                 <div className="absolute top-1/2 -right-32 -translate-y-1/2 w-[360px] h-[360px] rounded-full pointer-events-none" style={{background:'radial-gradient(circle,rgba(139,92,246,0.4) 0%,transparent 65%)',filter:'blur(80px)',animation:'heroPulse 9s ease-in-out 1.5s infinite'}} />
 
                 <div className="relative z-10 text-center px-6 pt-12 pb-10 max-w-4xl mx-auto">
+                    {/* Pill badge */}
+                    <div style={{
+                        display: 'inline-flex', alignItems: 'center', gap: 7,
+                        padding: '5px 14px', borderRadius: 999,
+                        background: 'rgba(255,255,255,0.055)',
+                        border: '1px solid rgba(255,255,255,0.1)',
+                        fontSize: '0.68rem', fontWeight: 700,
+                        color: 'rgba(255,255,255,0.5)',
+                        letterSpacing: '0.12em', textTransform: 'uppercase',
+                        marginBottom: 20, backdropFilter: 'blur(8px)',
+                    }}>
+                        <Sparkles size={10} style={{ color: '#06b6d4' }} />
+                        AI Research Projects
+                    </div>
+
                     {/* Title */}
-                    <h1 className="text-5xl md:text-[3.75rem] font-black tracking-tight leading-none text-white mb-3">
+                    <h1 className="text-5xl md:text-[3.75rem] font-black tracking-tight leading-none courses-hero-title-grad mb-3">
                         Projects
                     </h1>
 
-                    <p className="hero-title-grad text-[1.05rem] md:text-xl font-semibold leading-snug max-w-lg mx-auto mb-8">
-                        Build Real AI Systems. Solve Real Problems.
+                    <p style={{ margin: '0 auto 28px', fontSize: '0.95rem', color: 'rgba(255,255,255,0.62)', lineHeight: 1.7, maxWidth: 460 }}>
+                        Build real AI systems — from NLP and computer vision to data science and beyond.
                     </p>
 
-                    {/* Stat cards row */}
-                    <div className="flex items-stretch justify-center gap-3 flex-wrap mb-9">
+                    {/* Stat chips */}
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, flexWrap: 'wrap' }}>
                         {[
-                            { icon: <Brain size={18} className="text-indigo-400"/>, value: PROJECTS_DATA.length, label: 'Problems', accent: 'rgba(99,102,241,0.15)', border: 'rgba(99,102,241,0.2)' },
-                            { icon: <Target size={18} className="text-cyan-400"/>, value: ALL_TAGS.filter(t=>t!=='Advanced').length, label: 'Topics', accent: 'rgba(6,182,212,0.12)', border: 'rgba(6,182,212,0.2)' },
-                            { icon: <Eye size={18} className="text-violet-400"/>, value: fmtNum(PROJECTS_DATA.reduce((s,p)=>s+p.views,0)), label: 'Total Views', accent: 'rgba(139,92,246,0.12)', border: 'rgba(139,92,246,0.2)' },
-                            { icon: <Star size={18} className="text-amber-400"/>, value: PROJECTS_DATA.filter(p=>p.featured).length, label: 'Featured', accent: 'rgba(245,158,11,0.12)', border: 'rgba(245,158,11,0.2)' },
-                        ].map(({ icon, value, label, accent, border }) => (
-                            <div key={label} className="hero-stat-card flex flex-col items-center gap-0.5 px-4 py-2 rounded-xl backdrop-blur-md" style={{background:accent, border:`1px solid ${border}`, minWidth:'76px'}}>
-                                {React.cloneElement(icon, { size: 14 })}
-                                <span className="text-base font-black text-white leading-none">{value}</span>
-                                <span className="text-[0.6rem] font-semibold text-white/40 uppercase tracking-wide">{label}</span>
+                            { icon: <Brain size={13} />,   label: `${PROJECTS_DATA.length} Projects` },
+                            { icon: <Target size={13} />,  label: `${ALL_TAGS.filter(t=>t!=='Advanced').length} Topics` },
+                            { icon: <Eye size={13} />,     label: `${fmtNum(PROJECTS_DATA.reduce((s,p)=>s+p.views,0))} Views` },
+                            { icon: <Star size={13} />,    label: `${PROJECTS_DATA.filter(p=>p.featured).length} Featured` },
+                        ].map(({ icon, label }) => (
+                            <div key={label} style={{
+                                display: 'inline-flex', alignItems: 'center', gap: 6,
+                                padding: '6px 14px', borderRadius: 999,
+                                background: 'rgba(255,255,255,0.055)',
+                                border: '1px solid rgba(255,255,255,0.09)',
+                                fontSize: '0.76rem', fontWeight: 600,
+                                color: 'rgba(255,255,255,0.6)',
+                                backdropFilter: 'blur(8px)',
+                            }}>
+                                <span style={{ color: 'rgba(255,255,255,0.55)' }}>{icon}</span>
+                                {label}
                             </div>
                         ))}
                     </div>
-
                 </div>
             </div>
 
@@ -1094,16 +961,14 @@ export default function Project() {
             <div className={`border-b sticky top-0 z-50 px-6 py-3 backdrop-blur-xl ${
                 isDark ? 'bg-[#09090f]/80 border-white/[0.07]' : 'bg-white/90 border-black/[0.06]'
             }`}>
-                <div className="w-[70%] mx-auto flex items-center gap-2.5 flex-wrap">
+                <div className="page-container flex items-center gap-2.5 flex-wrap">
                     {/* Filters toggle */}
                     <button
                         onClick={() => setShowFilters(f => !f)}
                         className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl text-[0.78rem] font-bold transition-all ${
                             showFilters
-                                ? 'bg-indigo-500/20 border border-indigo-400/40 text-indigo-400'
-                                : isDark
-                                    ? 'bg-white/[0.07] border border-white/[0.08] text-white/50 hover:bg-white/10'
-                                    : 'bg-black/[0.05] border border-black/[0.07] text-gray-500 hover:bg-black/[0.08]'
+                                ? 'bg-primary/20 border border-primary/40 text-primary'
+                                : 'bg-muted border border-border text-muted-foreground hover:bg-muted/80'
                         }`}
                     >
                         <SlidersHorizontal size={13} />
@@ -1122,29 +987,25 @@ export default function Project() {
                         <select
                             value={sortBy}
                             onChange={e => setSortBy(e.target.value)}
-                            className={`pr-8 pl-3 py-1.5 rounded-xl text-[0.78rem] font-semibold appearance-none cursor-pointer ${
-                                isDark ? 'bg-white/[0.07] border border-white/[0.08] text-white/80' : 'bg-black/[0.05] border border-black/[0.07] text-gray-700'
-                            }`}
+                            className="pr-8 pl-3 py-1.5 rounded-xl text-[0.78rem] font-semibold appearance-none cursor-pointer bg-muted border border-border text-foreground/80"
                         >
                             {SORT_OPTIONS.map(o => (
                                 <option key={o.value} value={o.value}>{o.label}</option>
                             ))}
                         </select>
-                        <ChevronDown size={13} className={`absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none ${isDark ? 'text-white/40' : 'text-gray-400'}`} />
+                        <ChevronDown size={13} className="absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none text-muted-foreground/70" />
                     </div>
                 </div>
 
                 {/* Active filters panel */}
                 {showFilters && (
-                    <div className={`w-[70%] mx-auto mt-2.5 px-4 py-3 rounded-2xl flex flex-wrap gap-2 items-center ${
-                        isDark ? 'bg-white/[0.04] border border-white/[0.06]' : 'bg-black/[0.03] border border-black/[0.05]'
-                    }`}>
-                        <span className={`text-[0.72rem] font-bold mr-1 ${isDark ? 'text-white/40' : 'text-gray-400'}`}>Active filters:</span>
-                        {activeTags.length === 0 && <span className={`text-[0.78rem] italic ${isDark ? 'text-white/30' : 'text-gray-400'}`}>None selected</span>}
+                    <div className="page-container mt-2.5 px-4 py-3 rounded-2xl flex flex-wrap gap-2 items-center bg-muted border border-border">
+                        <span className="text-[0.72rem] font-bold mr-1 text-muted-foreground/70">Active filters:</span>
+                        {activeTags.length === 0 && <span className="text-[0.78rem] italic text-muted-foreground/70">None selected</span>}
                         {activeTags.map(tag => (
                             <div key={tag} className="flex items-center gap-1">
                                 <TagPill tag={tag} small active />
-                                <button onClick={() => toggleTag(tag)} className={`p-0.5 rounded-full ${isDark ? 'text-white/40 hover:text-white/70' : 'text-gray-400 hover:text-gray-600'}`}><X size={11}/></button>
+                                <button onClick={() => toggleTag(tag)} className="p-0.5 rounded-full text-muted-foreground/70 hover:text-muted-foreground"><X size={11}/></button>
                             </div>
                         ))}
                         {activeTags.length > 0 && (
@@ -1155,7 +1016,7 @@ export default function Project() {
             </div>
 
             {/* Main Content */}
-            <div className="w-[70%] mx-auto px-6 py-8 pb-16 grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_280px] gap-7">
+            <div className="page-container" style={{ padding: '32px 24px 64px' }}>
                 {/* Left: projects grid */}
                 <div>
                     {/* Reset row */}
@@ -1175,17 +1036,15 @@ export default function Project() {
                         <div className={`p-[2px] rounded-2xl transition-all duration-300 ${
                             search
                                 ? 'bg-gradient-to-r from-indigo-500 via-cyan-400 to-violet-500 bg-[length:300%] animate-[searchGradient_3s_linear_infinite] shadow-[0_8px_32px_-8px_rgba(6,182,212,0.3)]'
-                                : isDark ? 'bg-white/[0.06]' : 'bg-black/[0.06]'
+                                : 'bg-border'
                         }`}>
                             <div className={`flex items-center rounded-[14px] px-5 py-3 ${
                                 isDark ? 'bg-[#0e0e14]' : 'bg-white'
                             }`}>
-                                <Search size={18} className={`flex-shrink-0 transition-colors duration-300 ${search ? 'text-cyan-400' : isDark ? 'text-white/30' : 'text-gray-400'}`}/>
+                                <Search size={18} className={`flex-shrink-0 transition-colors duration-300 ${search ? 'text-cyan-400' : 'text-muted-foreground/50'}`}/>
                                 <input
                                     ref={searchRef}
-                                    className={`flex-1 px-4 bg-transparent border-none outline-none text-[0.95rem] search-focus ${
-                                        isDark ? 'text-[#e4e1ea] placeholder:text-white/25' : 'text-gray-900 placeholder:text-gray-400'
-                                    }`}
+                                    className="flex-1 px-4 bg-transparent border-none outline-none text-[0.95rem] search-focus text-foreground placeholder:text-muted-foreground/40"
                                     value={search}
                                     onChange={e => setSearch(e.target.value)}
                                     placeholder="Search projects, tags, tech stack..."
@@ -1201,20 +1060,18 @@ export default function Project() {
 
                     {/* Grid */}
                     {filtered.length > 0 ? (
-                        <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-5" style={{ gridAutoRows: '1fr' }}>
+                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5" style={{ gridAutoRows: '1fr' }}>
                             {filtered.map((project, idx) => (
-                                <div key={project.id} className="proj-card-anim h-full" style={{ animationDelay: `${idx * 50}ms` }}>
+                                <div key={project.id} className="proj-card-anim h-full min-h-[260px]" style={{ animationDelay: `${idx * 50}ms` }}>
                                     <ProjectCard project={project} isDark={isDark} onClick={() => setSelectedProject(project)} />
                                 </div>
                             ))}
                         </div>
                     ) : (
-                        <div className={`text-center py-20 rounded-3xl border ${
-                            isDark ? 'bg-[#1b1b21] border-white/[0.06]' : 'bg-white border-black/[0.06]'
-                        }`}>
+                        <div className="text-center py-20 rounded-3xl border bg-card border-border">
                             <div className="text-5xl mb-4">🔍</div>
-                            <h3 className={`text-lg font-extrabold mb-2 ${ isDark ? 'text-[#e4e1ea]' : 'text-gray-900'}`}>No projects found</h3>
-                            <p className={`text-[0.9rem] mb-5 ${ isDark ? 'text-white/40' : 'text-gray-500'}`}>Try adjusting your search or filters</p>
+                            <h3 className="text-lg font-extrabold mb-2 text-foreground">No projects found</h3>
+                            <p className="text-[0.9rem] mb-5 text-muted-foreground">Try adjusting your search or filters</p>
                             <button
                                 onClick={() => { setSearch(''); setActiveTags([]); }}
                                 className="px-6 py-2.5 rounded-xl font-bold text-[0.85rem] text-white bg-gradient-to-r from-indigo-500 to-violet-500 shadow-lg shadow-indigo-500/30 hover:scale-105 transition-transform"
@@ -1224,15 +1081,6 @@ export default function Project() {
                         </div>
                     )}
                 </div>
-
-                {/* Right: sidebar */}
-                <aside>
-                    <Sidebar
-                        isDark={isDark}
-                        projects={PROJECTS_DATA}
-                        onProjectClick={setSelectedProject}
-                    />
-                </aside>
             </div>
 
             {/* Modal */}

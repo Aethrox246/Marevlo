@@ -98,43 +98,35 @@ export default function ProjectComments({ projectId, isDark }) {
                 <MessageSquare size={13} />
                 Discussion
                 {!loading && (
-                    <span className={`ml-1 px-2 py-0.5 rounded-full text-[0.65rem] font-bold ${
-                        isDark ? 'bg-white/[0.08] text-white/40' : 'bg-gray-200 text-gray-500'
-                    }`}>{comments.length}</span>
+                    <span className="ml-1 px-2 py-0.5 rounded-full text-[0.65rem] font-bold bg-muted text-muted-foreground">{comments.length}</span>
                 )}
             </div>
 
             {/* Comment list */}
             <div className="space-y-3">
                 {loading && (
-                    <div className={`text-[0.82rem] ${isDark ? 'text-white/30' : 'text-gray-400'}`}>Loading comments…</div>
+                    <div className="text-[0.82rem] text-muted-foreground/70">Loading comments…</div>
                 )}
                 {!loading && comments.length === 0 && (
-                    <div className={`rounded-2xl p-8 text-center border border-dashed ${
-                        isDark ? 'border-white/[0.08] text-white/25' : 'border-gray-300 text-gray-400'
-                    }`}>
+                    <div className="rounded-2xl p-8 text-center border border-dashed border-border text-muted-foreground/70">
                         <MessageSquare size={28} className="mx-auto mb-2 opacity-30" />
                         <p className="text-[0.83rem] font-medium">No comments yet.</p>
                         <p className="text-[0.75rem] mt-1">Be the first to share your approach or ask a question.</p>
                     </div>
                 )}
                 {comments.map(c => (
-                    <div key={c.id} className={`flex gap-3 p-4 rounded-xl border ${
-                        isDark ? 'bg-[#1b1b21] border-white/[0.06]' : 'bg-gray-50 border-gray-200'
-                    }`}>
+                    <div key={c.id} className="flex gap-3 p-4 rounded-xl border bg-muted border-border">
                         <Avatar name={c.authorName} />
                         <div className="flex-1 min-w-0">
                             <div className="flex items-baseline gap-2 mb-1.5">
-                                <span className={`text-[0.8rem] font-bold ${isDark ? 'text-white/85' : 'text-gray-800'}`}>
+                                <span className="text-[0.8rem] font-bold text-foreground">
                                     {c.authorName}
                                 </span>
-                                <span className={`text-[0.7rem] ${isDark ? 'text-white/25' : 'text-gray-400'}`}>
+                                <span className="text-[0.7rem] text-muted-foreground/70">
                                     {timeAgo(c.createdAt)}
                                 </span>
                             </div>
-                            <p className={`text-[0.85rem] leading-relaxed whitespace-pre-wrap break-words ${
-                                isDark ? 'text-white/65' : 'text-gray-600'
-                            }`}>{c.text}</p>
+                            <p className="text-[0.85rem] leading-relaxed whitespace-pre-wrap break-words text-muted-foreground">{c.text}</p>
                         </div>
                     </div>
                 ))}
@@ -143,9 +135,7 @@ export default function ProjectComments({ projectId, isDark }) {
 
             {/* Compose area */}
             {user ? (
-                <div className={`rounded-2xl border overflow-hidden ${
-                    isDark ? 'bg-[#1b1b21] border-white/[0.07]' : 'bg-white border-gray-200'
-                }`}>
+                <div className="rounded-2xl border overflow-hidden bg-card border-border">
                     <div className="flex gap-3 p-4">
                         <Avatar name={user?.full_name || user?.username || user?.email} />
                         <textarea
@@ -155,18 +145,14 @@ export default function ProjectComments({ projectId, isDark }) {
                             placeholder="Share your approach, ask a question, or give feedback… (Ctrl+Enter to send)"
                             rows={3}
                             maxLength={1000}
-                            className={`flex-1 resize-none text-[0.85rem] leading-relaxed bg-transparent outline-none placeholder:opacity-40 ${
-                                isDark ? 'text-white/80' : 'text-gray-700'
-                            }`}
+                             className="flex-1 resize-none text-[0.85rem] leading-relaxed bg-transparent outline-none placeholder:opacity-40 text-foreground/80"
                         />
                     </div>
                     {error && (
                         <p className="px-4 pb-2 text-[0.75rem] text-red-400">{error}</p>
                     )}
-                    <div className={`flex items-center justify-between px-4 py-3 border-t ${
-                        isDark ? 'border-white/[0.06]' : 'border-gray-100'
-                    }`}>
-                        <span className={`text-[0.7rem] ${isDark ? 'text-white/25' : 'text-gray-400'}`}>
+                    <div className="flex items-center justify-between px-4 py-3 border-t border-border">
+                        <span className="text-[0.7rem] text-muted-foreground/70">
                             {text.length}/1000 · Ctrl+Enter to post
                         </span>
                         <button
@@ -178,9 +164,7 @@ export default function ProjectComments({ projectId, isDark }) {
                     </div>
                 </div>
             ) : (
-                <div className={`rounded-2xl p-5 text-center border ${
-                    isDark ? 'bg-[#1b1b21] border-white/[0.07] text-white/35' : 'bg-gray-50 border-gray-200 text-gray-400'
-                }`}>
+                <div className="rounded-2xl p-5 text-center border bg-muted border-border text-muted-foreground/70">
                     <LogIn size={18} className="mx-auto mb-2 opacity-50" />
                     <p className="text-[0.82rem]">Log in to join the discussion.</p>
                 </div>

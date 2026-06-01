@@ -155,7 +155,7 @@ export default function InteractiveCodeBlock({ initialCode, language = 'python' 
                     {/* Copy Button */}
                     <button
                         onClick={copyCode}
-                        className="p-2 rounded-lg transition-all hover:bg-neutral-500/10 text-neutral-500 active:scale-90"
+                        className="p-2 rounded-lg transition-all hover:bg-neutral-500/10 text-muted-foreground active:scale-90"
                         title="Copy Code"
                     >
                         {copied ? <Check size={14} className="text-emerald-500" /> : <Copy size={14} />}

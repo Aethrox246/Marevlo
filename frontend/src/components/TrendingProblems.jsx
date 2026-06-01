@@ -65,7 +65,7 @@ export default function TrendingProblems() {
                     }}>
                         <Flame size={15} />
                     </span>
-                    <span style={{ color: 'var(--color-primary-text)' }}>Trending Problems</span>
+                    <span className="text-foreground">Trending Problems</span>
                 </h3>
                 <div className="space-y-3">
                     {topProblems.map((problem, index) => {
@@ -79,8 +79,8 @@ export default function TrendingProblems() {
                                 onMouseLeave={e => e.currentTarget.style.backgroundColor = 'var(--color-surface-hover)'}
                             >
                                 <div className="flex items-center gap-2 overflow-hidden">
-                                    <span style={{ color: 'var(--color-muted-text)', fontSize: '0.7rem', fontWeight: 700, width: 24, flexShrink: 0 }}>#{index + 1}</span>
-                                    <span className="truncate" style={{ color: 'var(--color-primary-text)', fontSize: '0.82rem', fontWeight: 600 }}>{problem.title}</span>
+                                    <span className="text-muted-foreground" style={{ fontSize: '0.7rem', fontWeight: 700, width: 24, flexShrink: 0 }}>#{index + 1}</span>
+                                    <span className="truncate text-foreground" style={{ fontSize: '0.82rem', fontWeight: 600 }}>{problem.title}</span>
                                 </div>
                                 <span style={{
                                     fontSize: '0.65rem', fontWeight: 700, letterSpacing: '0.05em',
@@ -97,7 +97,7 @@ export default function TrendingProblems() {
                     className="w-full mt-4 text-xs font-bold py-2.5 rounded-xl transition-all duration-200 flex items-center justify-center gap-1"
                     style={{
                         background: 'linear-gradient(135deg, rgba(99,102,241,0.12), rgba(139,92,246,0.12))',
-                        color: '#6366f1',
+                        color: 'var(--primary)',
                         border: '1px solid rgba(99,102,241,0.25)'
                     }}
                     onMouseEnter={e => {

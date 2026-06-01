@@ -3,6 +3,7 @@ import { BrowserRouter as Router, Routes, Route, useNavigate, useParams, useLoca
 
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { ThemeProvider } from './context/ThemeContext';
+import { MotionConfig } from 'framer-motion';
 import { MiraContextProvider, MiraWidget } from './components/mira';
 import { ToastProvider, useToast } from './components/Toast';
 
@@ -85,7 +86,11 @@ function MiraRouteGate() {
 function HomeHandler() {
     const { user } = useAuth();
     const navigate = useNavigate();
-    return <LandingPage onStart={() => navigate(user ? '/problems' : '/signup')} onExplore={() => navigate(user ? '/feed' : '/signup')} />;
+    return (
+        <MotionConfig reducedMotion="user">
+            <LandingPage onStart={() => navigate(user ? '/problems' : '/signup')} onExplore={() => navigate(user ? '/feed' : '/signup')} />
+        </MotionConfig>
+    );
 }
 
 function LoginWrapper() {
@@ -149,7 +154,7 @@ function IDEWrapper() {
     }, [problem]);
 
     if (loading) {
-        return <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', color: 'var(--color-muted-text)' }}>Loading problem…</div>;
+        return <div className="text-muted-foreground" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%' }}>Loading problem…</div>;
     }
 
     return <IDE problem={problem} judgeTestCases={judgeTestCases} onBack={() => navigate('/problems')} onSolved={() => addPoints(50)} onNext={handleNext} />;

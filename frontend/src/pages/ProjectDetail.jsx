@@ -82,18 +82,18 @@ function OverviewTab({ project, isDark }) {
     return (
         <div className="space-y-6">
             {/* Long description */}
-            <div className={`rounded-2xl p-6 ${isDark ? 'bg-[#1b1b21]' : 'bg-gray-50'}`}>
+            <div className="rounded-2xl p-6 bg-muted">
                 <SectionHeading icon={BookOpen}>About This Project</SectionHeading>
-                <p className={`text-[0.9rem] leading-[1.85] ${isDark ? 'text-white/70' : 'text-gray-600'}`}>
+                <p className="text-[0.9rem] leading-[1.85] text-muted-foreground">
                     {project.longDescription}
                 </p>
             </div>
 
             {/* Research Question */}
             {project.question && (
-                <div className="rounded-2xl p-6 border-l-4 border-indigo-500 bg-indigo-500/[0.07] border border-indigo-500/20">
+                <div className="rounded-2xl p-6 border-l-4 border-primary bg-primary/[0.07] border border-primary/20">
                     <SectionHeading icon={Target}>Research Question</SectionHeading>
-                    <p className={`text-[0.88rem] leading-[1.8] italic font-medium ${isDark ? 'text-indigo-200' : 'text-indigo-900'}`}>
+                    <p className="text-[0.88rem] leading-[1.8] italic font-medium text-primary">
                         {project.question}
                     </p>
                 </div>
@@ -107,12 +107,12 @@ function MethodologyTab({ project, isDark }) {
     return (
         <div className="space-y-4">
             {(project.methodology || []).map((step, i) => (
-                <div key={i} className={`flex gap-4 p-5 rounded-2xl ${isDark ? 'bg-[#1b1b21]' : 'bg-gray-50'}`}>
+                <div key={i} className="flex gap-4 p-5 rounded-2xl bg-muted">
                     <div className="w-8 h-8 rounded-xl flex-shrink-0 flex items-center justify-center text-[0.7rem] font-black text-white bg-gradient-to-br from-indigo-500 to-violet-500 shadow-lg shadow-indigo-500/30 mt-0.5">
                         {i + 1}
                     </div>
                     <div>
-                        <p className={`text-[0.88rem] leading-[1.75] ${isDark ? 'text-white/70' : 'text-gray-600'}`}>{step}</p>
+                        <p className="text-[0.88rem] leading-[1.75] text-muted-foreground">{step}</p>
                     </div>
                 </div>
             ))}
@@ -151,32 +151,28 @@ function DataTab({ project, isDark }) {
                         {project.datasets.map((ds, i) => {
                             const cmd = cliCommand(ds);
                             return (
-                                <div key={i} className={`p-4 rounded-xl border transition-all ${
-                                    isDark ? 'bg-[#1b1b21] border-white/[0.06]' : 'bg-gray-50 border-gray-200'
-                                }`}>
+                                <div key={i} className="p-4 rounded-xl border bg-muted border-border transition-all">
                                     {/* Row 1: icon + name + source badge */}
                                     <div className="flex items-start gap-3 mb-3">
                                         <Database size={15} className="text-cyan-400 flex-shrink-0 mt-0.5" />
                                         <div className="flex-1 min-w-0">
                                             <div className="flex items-center gap-2 mb-1 flex-wrap">
-                                                <span className={`text-[0.83rem] font-bold ${isDark ? 'text-white/90' : 'text-gray-800'}`}>{ds.name}</span>
+                                                <span className="text-[0.83rem] font-bold text-foreground">{ds.name}</span>
                                                 <span className="text-[0.62rem] font-bold px-1.5 py-0.5 rounded bg-cyan-500/15 text-cyan-400">{ds.source}</span>
                                             </div>
-                                            <p className={`text-[0.78rem] leading-relaxed ${isDark ? 'text-white/45' : 'text-gray-500'}`}>{ds.desc}</p>
+                                            <p className="text-[0.78rem] leading-relaxed text-muted-foreground">{ds.desc}</p>
                                         </div>
                                     </div>
 
                                     {/* Row 2: CLI command + action buttons */}
                                     <div className="flex items-center gap-2 flex-wrap">
                                         {cmd && (
-                                            <div className={`flex items-center gap-2 flex-1 min-w-0 px-3 py-1.5 rounded-lg font-mono text-[0.72rem] border ${
-                                                isDark ? 'bg-black/30 border-white/[0.08] text-white/50' : 'bg-gray-100 border-gray-300 text-gray-500'
-                                            }`}>
+                                            <div className="flex items-center gap-2 flex-1 min-w-0 px-3 py-1.5 rounded-lg font-mono text-[0.72rem] border bg-muted border-border text-muted-foreground">
                                                 <Terminal size={11} className="flex-shrink-0" />
                                                 <span className="truncate">{cmd}</span>
                                                 <button
                                                     onClick={() => copy(cmd, `cli-${i}`)}
-                                                    className={`flex-shrink-0 ml-auto transition-colors ${copied === `cli-${i}` ? 'text-emerald-400' : isDark ? 'text-white/30 hover:text-white/60' : 'text-gray-400 hover:text-gray-600'}`}
+                                                    className={`flex-shrink-0 ml-auto transition-colors ${copied === `cli-${i}` ? 'text-emerald-400' : 'text-muted-foreground/70 hover:text-muted-foreground'}`}
                                                     title="Copy command">
                                                     {copied === `cli-${i}` ? <Check size={12} /> : <Copy size={12} />}
                                                 </button>
@@ -200,7 +196,7 @@ function DataTab({ project, isDark }) {
             {project.dataExplanation && (
                 <div className="rounded-2xl p-5 border-l-4 border-amber-400 bg-amber-400/[0.06] border border-amber-400/20">
                     <SectionHeading icon={FileText} color="text-amber-400">Understanding the Data</SectionHeading>
-                    <p className={`text-[0.88rem] leading-[1.8] ${isDark ? 'text-white/65' : 'text-gray-600'}`}>{project.dataExplanation}</p>
+                    <p className="text-[0.88rem] leading-[1.8] text-muted-foreground">{project.dataExplanation}</p>
                 </div>
             )}
         </div>
@@ -217,9 +213,9 @@ function EvaluationTab({ project, isDark }) {
                     <SectionHeading icon={BarChart2} color="text-emerald-400">Evaluation Criteria</SectionHeading>
                     <div className="space-y-2.5">
                         {project.evaluation.map((c, i) => (
-                            <div key={i} className={`flex items-start gap-3 p-4 rounded-xl ${isDark ? 'bg-[#1b1b21]' : 'bg-gray-50'}`}>
+                            <div key={i} className="flex items-start gap-3 p-4 rounded-xl bg-muted">
                                 <CheckCircle size={15} className="text-emerald-400 flex-shrink-0 mt-0.5" />
-                                <span className={`text-[0.88rem] leading-relaxed ${isDark ? 'text-white/70' : 'text-gray-600'}`}>{c}</span>
+                                <span className="text-[0.88rem] leading-relaxed text-muted-foreground">{c}</span>
                             </div>
                         ))}
                     </div>
@@ -230,7 +226,7 @@ function EvaluationTab({ project, isDark }) {
             {project.minimumScore && (
                 <div className="rounded-2xl p-5 border-l-4 border-emerald-400 bg-emerald-400/[0.06] border border-emerald-400/20">
                     <SectionHeading icon={Target} color="text-emerald-400">Minimum Score Required</SectionHeading>
-                    <p className={`font-mono text-[0.88rem] font-bold leading-relaxed ${isDark ? 'text-emerald-300' : 'text-emerald-700'}`}>
+                    <p className="font-mono text-[0.88rem] font-bold leading-relaxed text-emerald-500">
                         {project.minimumScore}
                     </p>
                 </div>
@@ -245,9 +241,9 @@ function PapersTab({ project, isDark }) {
         <div className="space-y-3">
             <SectionHeading icon={GraduationCap} color="text-violet-400">Research Papers Referenced</SectionHeading>
             {(project.papers || []).map((p, i) => (
-                <div key={i} className={`flex items-start gap-3 p-4 rounded-xl border ${isDark ? 'bg-[#1b1b21] border-white/[0.05]' : 'bg-gray-50 border-gray-200'}`}>
+                <div key={i} className="flex items-start gap-3 p-4 rounded-xl border bg-muted border-border">
                     <ChevronRight size={14} className="text-violet-400 flex-shrink-0 mt-0.5" />
-                    <span className={`text-[0.88rem] leading-relaxed ${isDark ? 'text-white/65' : 'text-gray-600'}`}>{p}</span>
+                    <span className="text-[0.88rem] leading-relaxed text-muted-foreground">{p}</span>
                 </div>
             ))}
         </div>
@@ -306,10 +302,6 @@ export default function ProjectDetail({ project, isDark, onClose }) {
 
     return (
         <div className="fixed inset-0 z-[1000] flex flex-col overflow-hidden" style={{ animation: 'detailFadeIn 0.2s ease-out' }}>
-            <style>{`
-                @keyframes detailFadeIn { from { opacity:0; } to { opacity:1; } }
-                @keyframes detailSlideIn { from { opacity:0; transform:translateY(20px); } to { opacity:1; transform:translateY(0); } }
-            `}</style>
 
             {/* ── Gradient Hero Header ─────────────────── */}
             <div className={`relative flex-shrink-0 bg-gradient-to-br ${accent} overflow-hidden`} style={{ minHeight: 220 }}>
@@ -360,7 +352,7 @@ export default function ProjectDetail({ project, isDark, onClose }) {
             </div>
 
             {/* ── Sticky Tab Nav ───────────────────────── */}
-            <div className={`flex-shrink-0 border-b z-10 ${isDark ? 'bg-[#131319] border-white/[0.07]' : 'bg-white border-gray-200'}`}>
+            <div className="flex-shrink-0 border-b border-border z-10 bg-card">
                 <div className="max-w-6xl mx-auto flex items-center gap-0 px-6 overflow-x-auto">
                     {TABS.map(({ id, label, icon: Icon }) => (
                         <button
@@ -368,8 +360,8 @@ export default function ProjectDetail({ project, isDark, onClose }) {
                             onClick={() => setActiveTab(id)}
                             className={`flex items-center gap-2 px-4 py-3.5 text-[0.8rem] font-semibold border-b-2 transition-all whitespace-nowrap ${
                                 activeTab === id
-                                    ? 'border-indigo-500 text-indigo-400'
-                                    : `border-transparent ${isDark ? 'text-white/40 hover:text-white/70' : 'text-gray-400 hover:text-gray-700'}`
+                                    ? 'border-primary text-indigo-400'
+                                    : `border-transparent text-muted-foreground/70 hover:text-foreground`
                             }`}
                         >
                             <Icon size={13} />{label}
@@ -379,7 +371,7 @@ export default function ProjectDetail({ project, isDark, onClose }) {
             </div>
 
             {/* ── Main scrollable body ─────────────────── */}
-            <div className={`flex-1 overflow-y-auto ${isDark ? 'bg-[#0e0e14]' : 'bg-gray-100'}`}>
+            <div className={`flex-1 overflow-y-auto ${isDark ? 'bg-[#0e0e14]' : 'bg-muted'}`}>
                 <div className="max-w-6xl mx-auto px-6 py-8 grid grid-cols-1 lg:grid-cols-[1fr_300px] gap-8">
 
                     {/* Left: tab content */}
@@ -398,21 +390,17 @@ export default function ProjectDetail({ project, isDark, onClose }) {
                                 <ExternalLink size={15} /> {launching ? 'Opening…' : 'Open Notebook'}
                             </button>
                             <a href={project.githubUrl}
-                                className={`flex items-center justify-center gap-2 w-full py-3 rounded-xl font-bold text-[0.85rem] transition-all no-underline hover:scale-[1.02] ${
-                                    isDark ? 'bg-white text-black hover:bg-gray-100' : 'bg-gray-900 text-white hover:bg-gray-800'
-                                }`}>
+                className="flex items-center justify-center gap-2 w-full py-3 rounded-xl font-bold text-[0.85rem] transition-all no-underline hover:scale-[1.02] bg-foreground text-background hover:bg-foreground/90">
                                 <Github size={15} /> View on GitHub
                             </a>
                             <a href="#"
-                                className={`flex items-center justify-center gap-2 w-full py-3 rounded-xl font-bold text-[0.85rem] transition-all no-underline hover:scale-[1.02] border ${
-                                    isDark ? 'bg-white/[0.05] border-white/[0.08] text-white/70 hover:bg-white/10' : 'bg-white border-gray-200 text-gray-600 hover:bg-gray-50'
-                                }`}>
+                                className="flex items-center justify-center gap-2 w-full py-3 rounded-xl font-bold text-[0.85rem] transition-all no-underline hover:scale-[1.02] border bg-card border-border text-muted-foreground hover:bg-muted">
                                 <Download size={15} /> Download
                             </a>
                         </div>
 
                         {/* Stats card */}
-                        <div className={`rounded-2xl overflow-hidden border ${isDark ? 'bg-[#1b1b21] border-white/[0.07]' : 'bg-white border-gray-200'}`}>
+                        <div className="rounded-2xl overflow-hidden border bg-card border-border">
                             <div className={`h-1 w-full bg-gradient-to-r ${accent}`} />
                             <div className="flex divide-x divide-white/[0.06]">
                                 <StatPill icon={Eye}   value={fmtNum(project.views)} label="Views"  color="text-cyan-400" />
@@ -422,23 +410,21 @@ export default function ProjectDetail({ project, isDark, onClose }) {
                         </div>
 
                         {/* Tags */}
-                        <div className={`rounded-2xl p-4 border ${isDark ? 'bg-[#1b1b21] border-white/[0.07]' : 'bg-white border-gray-200'}`}>
-                            <p className={`text-[0.65rem] font-black uppercase tracking-widest mb-3 ${isDark ? 'text-white/35' : 'text-gray-400'}`}>Tags</p>
+                        <div className="rounded-2xl p-4 border bg-card border-border">
+                            <p className="text-[0.65rem] font-black uppercase tracking-widest mb-3 text-muted-foreground/70">Tags</p>
                             <div className="flex flex-wrap gap-2">
                                 {project.tags.map(t => <Tag key={t} tag={t} />)}
                             </div>
                         </div>
 
                         {/* Tech Stack */}
-                        <div className={`rounded-2xl p-4 border ${isDark ? 'bg-[#1b1b21] border-white/[0.07]' : 'bg-white border-gray-200'}`}>
-                            <div className={`flex items-center gap-2 mb-3 text-[0.65rem] font-black uppercase tracking-widest ${isDark ? 'text-white/35' : 'text-gray-400'}`}>
+                        <div className="rounded-2xl p-4 border bg-card border-border">
+                            <div className="flex items-center gap-2 mb-3 text-[0.65rem] font-black uppercase tracking-widest text-muted-foreground/70">
                                 <Cpu size={11} /> Tech Stack
                             </div>
                             <div className="flex flex-wrap gap-2">
                                 {project.techStack.map(t => (
-                                    <span key={t} className={`font-mono text-[0.75rem] font-semibold px-2.5 py-1 rounded-lg border ${
-                                        isDark ? 'bg-white/[0.05] border-white/[0.07] text-white/70' : 'bg-gray-50 border-gray-200 text-gray-600'
-                                    }`}>{t}</span>
+                                    <span key={t} className="font-mono text-[0.75rem] font-semibold px-2.5 py-1 rounded-lg border bg-muted border-border text-muted-foreground">{t}</span>
                                 ))}
                             </div>
                         </div>

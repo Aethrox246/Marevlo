@@ -4,9 +4,8 @@ import { useAuth } from '../context/AuthContext';
 import { useTheme } from '../context/ThemeContext';
 
 function ProgressBar({ pct, color }) {
-    const { isDark } = useTheme();
     return (
-        <div style={{ height: '8px', borderRadius: '9999px', background: isDark ? '#262626' : '#f5f5f5', overflow: 'hidden' }}>
+        <div style={{ height: '8px', borderRadius: '9999px', background: 'var(--muted)', overflow: 'hidden' }}>
             <div style={{
                 height: '100%', borderRadius: '9999px',
                 width: `${Math.min(pct, 100)}%`,
@@ -20,10 +19,10 @@ function ProgressBar({ pct, color }) {
 function LockedJobBoard({ problemsPct, problemsCompleted, problemsTotal, coursesPct, lessonsCompleted, lessonsTotal }) {
     const { isDark } = useTheme();
     const navigate = useNavigate();
-    const surface = isDark ? '#1a1a1a' : '#ffffff';
-    const border = isDark ? '#2a2a2a' : '#e5e5e5';
-    const muted = isDark ? '#737373' : '#a3a3a3';
-    const text = isDark ? '#f5f5f5' : '#171717';
+    const surface = 'var(--card)';
+    const border = 'var(--border)';
+    const muted = 'var(--muted-foreground)';
+    const text = 'var(--foreground)';
 
     return (
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', padding: '24px', background: 'var(--color-app-bg)' }}>
@@ -32,7 +31,7 @@ function LockedJobBoard({ problemsPct, problemsCompleted, problemsTotal, courses
                     <div style={{
                         display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
                         width: '64px', height: '64px', borderRadius: '16px',
-                        background: isDark ? '#262626' : '#f5f5f5',
+                        background: 'var(--muted)',
                         border: `1px solid ${border}`, marginBottom: '16px',
                     }}>
                         <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke={muted} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -85,7 +84,7 @@ function LockedJobBoard({ problemsPct, problemsCompleted, problemsTotal, courses
                     </button>
                     <button
                         onClick={() => navigate('/courses')}
-                        style={{ flex: 1, padding: '11px 0', borderRadius: '10px', fontWeight: 600, fontSize: '14px', border: 'none', background: isDark ? '#ffffff' : '#000000', color: isDark ? '#000000' : '#ffffff', cursor: 'pointer' }}
+                        style={{ flex: 1, padding: '11px 0', borderRadius: '10px', fontWeight: 600, fontSize: '14px', border: 'none', background: 'var(--foreground)', color: 'var(--background)', cursor: 'pointer' }}
                     >
                         Go to Courses
                     </button>
@@ -118,7 +117,7 @@ export default function JobBoardGuard({ children }) {
 
     if (status === undefined) {
         return (
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', color: 'var(--color-muted-text)', fontSize: '14px' }}>
+            <div className="text-muted-foreground" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', fontSize: '14px' }}>
                 Checking access…
             </div>
         );

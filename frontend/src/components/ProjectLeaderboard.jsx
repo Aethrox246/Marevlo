@@ -109,28 +109,22 @@ export default function ProjectLeaderboard({ projectId, minimumScore, isDark }) 
                 <Trophy size={13} />
                 Leaderboard
                 {!loading && (
-                    <span className={`ml-1 px-2 py-0.5 rounded-full text-[0.65rem] font-bold ${
-                        isDark ? 'bg-white/[0.08] text-white/40' : 'bg-gray-200 text-gray-500'
-                    }`}>{entries.length} submissions</span>
+                    <span className="ml-1 px-2 py-0.5 rounded-full text-[0.65rem] font-bold bg-muted text-muted-foreground">{entries.length} submissions</span>
                 )}
             </div>
 
             {/* Minimum score banner */}
             {minimumScore && (
-                <div className={`rounded-xl p-3.5 border-l-4 border-emerald-400 bg-emerald-400/[0.06] border border-emerald-400/20 text-[0.8rem] ${isDark ? 'text-emerald-300' : 'text-emerald-700'}`}>
+                <div className="rounded-xl p-3.5 border-l-4 border-emerald-400 bg-emerald-400/[0.06] border border-emerald-400/20 text-[0.8rem] text-emerald-500">
                     <span className="font-bold uppercase tracking-widest text-[0.65rem] block mb-1 text-emerald-400">Target to Beat</span>
                     {minimumScore}
                 </div>
             )}
 
             {/* Table */}
-            <div className={`rounded-2xl border overflow-hidden ${
-                isDark ? 'bg-[#1b1b21] border-white/[0.07]' : 'bg-white border-gray-200'
-            }`}>
+            <div className="rounded-2xl border overflow-hidden bg-card border-border">
                 {/* Table header */}
-                <div className={`grid grid-cols-[40px_1fr_100px_auto] gap-3 px-4 py-2.5 text-[0.65rem] font-black uppercase tracking-widest border-b ${
-                    isDark ? 'border-white/[0.06] text-white/25' : 'border-gray-100 text-gray-400'
-                }`}>
+                <div className="grid grid-cols-[40px_1fr_100px_auto] gap-3 px-4 py-2.5 text-[0.65rem] font-black uppercase tracking-widest border-b border-border text-muted-foreground/70">
                     <span>#</span>
                     <span>Name</span>
                     <span className="text-right">Score</span>
@@ -138,11 +132,11 @@ export default function ProjectLeaderboard({ projectId, minimumScore, isDark }) 
                 </div>
 
                 {loading && (
-                    <div className={`px-4 py-6 text-[0.82rem] ${isDark ? 'text-white/25' : 'text-gray-400'}`}>Loading…</div>
+                    <div className="px-4 py-6 text-[0.82rem] text-muted-foreground/70">Loading…</div>
                 )}
 
                 {!loading && entries.length === 0 && (
-                    <div className={`px-4 py-8 text-center ${isDark ? 'text-white/25' : 'text-gray-400'}`}>
+                    <div className="px-4 py-8 text-center text-muted-foreground/70">
                         <Trophy size={28} className="mx-auto mb-2 opacity-20" />
                         <p className="text-[0.83rem]">No submissions yet. Be the first!</p>
                     </div>
@@ -157,26 +151,26 @@ export default function ProjectLeaderboard({ projectId, minimumScore, isDark }) 
                             key={entry.id}
                             className={`grid grid-cols-[40px_1fr_100px_auto] gap-3 items-center px-4 py-3 border-b last:border-0 transition-colors ${
                                 isMe
-                                    ? isDark ? 'bg-indigo-500/[0.08] border-indigo-500/10' : 'bg-indigo-50 border-indigo-100'
-                                    : isDark ? 'border-white/[0.04] hover:bg-white/[0.02]' : 'border-gray-50 hover:bg-gray-50'
+                                    ? 'bg-primary/[0.08] border-primary/10'
+                                    : 'border-border hover:bg-muted'
                             }`}>
                             {/* Rank */}
-                            <span className={`text-[0.8rem] font-black text-center ${rowStyle ? rowStyle.text : isDark ? 'text-white/30' : 'text-gray-400'}`}>
+                            <span className={`text-[0.8rem] font-black text-center ${rowStyle ? rowStyle.text : 'text-muted-foreground/70'}`}>
                                 {rowStyle ? rowStyle.label : `${i + 1}`}
                             </span>
 
                             {/* Name + notes */}
                             <div className="min-w-0">
                                 <div className="flex items-center gap-1.5">
-                                    <span className={`text-[0.83rem] font-bold truncate ${isDark ? 'text-white/85' : 'text-gray-800'}`}>
+                                    <span className="text-[0.83rem] font-bold truncate text-foreground">
                                         {entry.authorName}
                                     </span>
                                     {isMe && (
-                                        <span className="text-[0.6rem] font-black bg-indigo-500/20 text-indigo-400 px-1.5 py-0.5 rounded-full whitespace-nowrap">You</span>
+                                        <span className="text-[0.6rem] font-black bg-primary/20 text-primary px-1.5 py-0.5 rounded-full whitespace-nowrap">You</span>
                                     )}
                                 </div>
                                 {entry.notes && (
-                                    <p className={`text-[0.72rem] truncate mt-0.5 ${isDark ? 'text-white/30' : 'text-gray-500'}`}>
+                                    <p className="text-[0.72rem] truncate mt-0.5 text-muted-foreground">
                                         {entry.notes}
                                     </p>
                                 )}
@@ -193,7 +187,7 @@ export default function ProjectLeaderboard({ projectId, minimumScore, isDark }) 
                             </div>
 
                             {/* Time */}
-                            <span className={`text-[0.7rem] whitespace-nowrap text-right ${isDark ? 'text-white/25' : 'text-gray-400'}`}>
+                            <span className="text-[0.7rem] whitespace-nowrap text-right text-muted-foreground/70">
                                 {timeAgo(entry.submittedAt)}
                             </span>
                         </div>
@@ -203,22 +197,20 @@ export default function ProjectLeaderboard({ projectId, minimumScore, isDark }) 
 
             {/* Submit form */}
             {user ? (
-                <div className={`rounded-2xl border p-5 space-y-4 ${
-                    isDark ? 'bg-[#1b1b21] border-white/[0.07]' : 'bg-white border-gray-200'
-                }`}>
-                    <p className={`text-[0.7rem] font-black uppercase tracking-widest ${isDark ? 'text-white/35' : 'text-gray-400'}`}>
+                <div className="rounded-2xl border p-5 space-y-4 bg-card border-border">
+                    <p className="text-[0.7rem] font-black uppercase tracking-widest text-muted-foreground/70">
                         {userEntry ? 'Update Your Score' : 'Submit Your Score'}
                     </p>
 
                     {userEntry && (
-                        <div className={`text-[0.78rem] px-3 py-2 rounded-lg ${isDark ? 'bg-indigo-500/10 text-indigo-300' : 'bg-indigo-50 text-indigo-700'}`}>
+                        <div className="text-[0.78rem] px-3 py-2 rounded-lg bg-primary/10 text-primary">
                             Your current score: <strong>{(userEntry.score * 100).toFixed(1)}%</strong>. Submitting again will overwrite it.
                         </div>
                     )}
 
                     <div className="flex gap-3 flex-wrap">
                         <div className="flex flex-col gap-1">
-                            <label className={`text-[0.68rem] font-bold uppercase tracking-widest ${isDark ? 'text-white/30' : 'text-gray-400'}`}>
+                            <label className="text-[0.68rem] font-bold uppercase tracking-widest text-muted-foreground/70">
                                 Primary Score (0–1)
                             </label>
                             <input
@@ -227,13 +219,11 @@ export default function ProjectLeaderboard({ projectId, minimumScore, isDark }) 
                                 value={score}
                                 onChange={e => setScore(e.target.value)}
                                 placeholder="e.g. 0.872"
-                                className={`w-36 px-3 py-2 rounded-lg text-[0.85rem] font-mono border outline-none focus:ring-1 focus:ring-indigo-500 ${
-                                    isDark ? 'bg-black/20 border-white/[0.1] text-white/80' : 'bg-gray-50 border-gray-300 text-gray-700'
-                                }`}
+                                className="w-36 px-3 py-2 rounded-lg text-[0.85rem] font-mono border outline-none focus:ring-1 focus:ring-primary bg-muted border-border text-foreground/80"
                             />
                         </div>
                         <div className="flex flex-col gap-1 flex-1" style={{ minWidth: 160 }}>
-                            <label className={`text-[0.68rem] font-bold uppercase tracking-widest ${isDark ? 'text-white/30' : 'text-gray-400'}`}>
+                            <label className="text-[0.68rem] font-bold uppercase tracking-widest text-muted-foreground/70">
                                 Method / Notes (optional)
                             </label>
                             <input
@@ -242,9 +232,7 @@ export default function ProjectLeaderboard({ projectId, minimumScore, isDark }) 
                                 onChange={e => setNotes(e.target.value)}
                                 maxLength={500}
                                 placeholder="e.g. RoBERTa + SMOTE, no external data"
-                                className={`w-full px-3 py-2 rounded-lg text-[0.85rem] border outline-none focus:ring-1 focus:ring-indigo-500 ${
-                                    isDark ? 'bg-black/20 border-white/[0.1] text-white/80' : 'bg-gray-50 border-gray-300 text-gray-700'
-                                }`}
+                                className="w-full px-3 py-2 rounded-lg text-[0.85rem] border outline-none focus:ring-1 focus:ring-primary bg-muted border-border text-foreground/80"
                             />
                         </div>
                     </div>
@@ -255,14 +243,12 @@ export default function ProjectLeaderboard({ projectId, minimumScore, isDark }) 
                     <button
                         onClick={handleSubmit}
                         disabled={!score || submitting}
-                        className="flex items-center gap-2 px-5 py-2 rounded-lg text-[0.82rem] font-bold bg-amber-500 text-black hover:bg-amber-400 transition-colors disabled:opacity-40 disabled:cursor-not-allowed">
+                        className="flex items-center gap-2 px-5 py-2 rounded-lg text-[0.82rem] font-bold bg-accent text-black hover:bg-amber-400 transition-colors disabled:opacity-40 disabled:cursor-not-allowed">
                         <Trophy size={14} />{submitting ? 'Submitting…' : userEntry ? 'Update Score' : 'Submit to Leaderboard'}
                     </button>
                 </div>
             ) : (
-                <div className={`rounded-2xl p-5 text-center border ${
-                    isDark ? 'bg-[#1b1b21] border-white/[0.07] text-white/35' : 'bg-gray-50 border-gray-200 text-gray-400'
-                }`}>
+                <div className="rounded-2xl p-5 text-center border bg-muted border-border text-muted-foreground/70">
                     <LogIn size={18} className="mx-auto mb-2 opacity-50" />
                     <p className="text-[0.82rem]">Log in to submit your score to the leaderboard.</p>
                 </div>
