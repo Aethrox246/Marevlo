@@ -134,7 +134,7 @@ export default function UserSearch({ onUserSelected, onBack }) {
                             >
                                 New conversation
                             </h2>
-                            <p className="text-xs mt-0.5 font-medium" style={{ color: 'var(--color-muted-text)' }}>
+                            <p className="text-xs mt-0.5 font-medium text-muted-foreground">
                                 Find a classmate to chat with
                             </p>
                         </div>
@@ -164,18 +164,16 @@ export default function UserSearch({ onUserSelected, onBack }) {
                                 value={searchQuery}
                                 onChange={(e) => setSearchQuery(e.target.value)}
                                 autoFocus
-                                className="flex-1 py-3 text-sm focus:outline-none bg-transparent"
-                                style={{ color: 'var(--color-primary-text)' }}
+                                className="flex-1 py-3 text-sm focus:outline-none bg-transparent text-foreground"
                             />
                             {loading && searchQuery.length >= 2 ? (
-                                <Loader size={14} className="flex-shrink-0 animate-spin" style={{ color: '#6366f1' }} />
+                                <Loader size={14} className="flex-shrink-0 animate-spin" style={{ color: 'var(--primary)' }} />
                             ) : (
                                 <kbd
-                                    className="hidden sm:flex items-center gap-1 px-1.5 py-1 rounded-lg text-[10px] font-medium flex-shrink-0"
+                                    className="hidden sm:flex items-center gap-1 px-1.5 py-1 rounded-lg text-[10px] font-medium flex-shrink-0 text-muted-foreground"
                                     style={{
                                         background: 'var(--color-surface)',
                                         border: '1px solid var(--color-border)',
-                                        color: 'var(--color-muted-text)',
                                         fontFamily: 'inherit',
                                     }}
                                 >
@@ -198,7 +196,7 @@ export default function UserSearch({ onUserSelected, onBack }) {
                     </div>
 
                     {searchQuery.length > 0 && searchQuery.length < 2 && (
-                        <p className="text-[11px] mt-2 ml-1" style={{ color: 'var(--color-muted-text)' }}>
+                        <p className="text-[11px] mt-2 ml-1 text-muted-foreground">
                             Type at least 2 characters…
                         </p>
                     )}
@@ -246,12 +244,11 @@ export default function UserSearch({ onUserSelected, onBack }) {
                         </div>
                         <div>
                             <h3
-                                className="font-bold text-base mb-1.5 tracking-tight"
-                                style={{ color: 'var(--color-primary-text)' }}
+                                className="font-bold text-base mb-1.5 tracking-tight text-foreground"
                             >
                                 Start a conversation
                             </h3>
-                            <p className="text-sm leading-relaxed" style={{ color: 'var(--color-muted-text)', maxWidth: '220px' }}>
+                            <p className="text-sm leading-relaxed text-muted-foreground" style={{ maxWidth: '220px' }}>
                                 Search by username to find classmates and start chatting
                             </p>
                         </div>
@@ -265,13 +262,13 @@ export default function UserSearch({ onUserSelected, onBack }) {
                             className="w-14 h-14 rounded-2xl flex items-center justify-center"
                             style={{ background: 'var(--color-surface-hover)', border: '1px solid var(--color-border)' }}
                         >
-                            <AlertCircle size={24} style={{ color: 'var(--color-muted-text)', opacity: 0.5 }} />
+                            <AlertCircle size={24} className="text-muted-foreground" style={{ opacity: 0.5 }} />
                         </div>
                         <div>
-                            <h3 className="font-semibold text-sm mb-1" style={{ color: 'var(--color-primary-text)' }}>
+                            <h3 className="font-semibold text-sm mb-1 text-foreground">
                                 No results for "{searchQuery}"
                             </h3>
-                            <p className="text-xs" style={{ color: 'var(--color-muted-text)' }}>
+                            <p className="text-xs text-muted-foreground">
                                 Try a different username
                             </p>
                         </div>
@@ -281,7 +278,7 @@ export default function UserSearch({ onUserSelected, onBack }) {
                 {/* Results */}
                 {results.length > 0 && (
                     <div className="p-3 space-y-1">
-                        <p className="px-2 pb-2 text-[11px] font-semibold uppercase tracking-wider" style={{ color: 'var(--color-muted-text)' }}>
+                        <p className="px-2 pb-2 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
                             {results.length} result{results.length !== 1 ? 's' : ''}
                         </p>
                         {results.map((searchUser, idx) => (
@@ -323,10 +320,10 @@ export default function UserSearch({ onUserSelected, onBack }) {
 
                                 {/* Info */}
                                 <div className="flex-1 min-w-0">
-                                    <h3 className="font-semibold text-sm truncate" style={{ color: 'var(--color-primary-text)' }}>
+                                    <h3 className="font-semibold text-sm truncate text-foreground">
                                         {searchUser.username}
                                     </h3>
-                                    <p className="text-xs truncate mt-0.5 font-medium" style={{ color: 'var(--color-muted-text)' }}>
+                                    <p className="text-xs truncate mt-0.5 font-medium text-muted-foreground">
                                         @{searchUser.username}
                                     </p>
                                 </div>
