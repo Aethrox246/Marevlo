@@ -473,15 +473,6 @@ const ProblemPanel = memo(({ problem, onBack, onActiveLadderChange, solvedLadder
 
     return (
         <div style={{ width: '100%', height: '100%', display: 'flex', flexDirection: 'column', borderRight: '1px solid var(--color-border)', background: 'var(--color-surface)' }}>
-            <style>{`
-                .pp-scroll::-webkit-scrollbar{width:6px} .pp-scroll::-webkit-scrollbar-track{background:transparent}
-                .pp-scroll::-webkit-scrollbar-thumb{background-color:var(--color-border);border-radius:6px;border:1px solid transparent;background-clip:padding-box}
-                .pp-scroll::-webkit-scrollbar-thumb:hover{background-color:var(--color-muted-text)}
-                @keyframes pp-pulse{0%{transform:scale(.85);box-shadow:0 0 0 0 rgba(16,185,129,.4)}70%{transform:scale(1);box-shadow:0 0 0 5px rgba(16,185,129,0)}100%{transform:scale(.85);box-shadow:0 0 0 0 rgba(16,185,129,0)}}
-                @keyframes pp-up{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:translateY(0)}}
-                .pp-float{animation:pp-up .3s ease-out forwards}
-                details>summary{list-style:none} details>summary::-webkit-details-marker{display:none}
-            `}</style>
 
             {/* Tabs */}
             {!readerMode && <TabBar activeTab={activeTab} onTabChange={(t) => { setActiveTab(t); setReaderMode(null); }} tabs={tabs} />}

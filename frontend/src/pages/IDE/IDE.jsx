@@ -672,15 +672,15 @@ export default function IDE({ problem, judgeTestCases = [], onBack, onNext, onSo
                         </button>
                     </div>
                     <div className="h-16 bg-neutral-900 border-t border-neutral-800 flex items-center justify-around shrink-0 z-40">
-                        <button onClick={() => setActiveMobileTab('problem')} className={`flex flex-col items-center gap-1 p-2 ${activeMobileTab === 'problem' ? 'text-white' : 'text-neutral-500'}`}>
+                        <button onClick={() => setActiveMobileTab('problem')} className={`flex flex-col items-center gap-1 p-2 ${activeMobileTab === 'problem' ? 'text-white' : 'text-muted-foreground'}`}>
                             <FileText size={20} />
                             <span className="text-[10px] font-medium">Problem</span>
                         </button>
-                        <button onClick={() => setActiveMobileTab('editor')} className={`flex flex-col items-center gap-1 p-2 ${activeMobileTab === 'editor' ? 'text-white' : 'text-neutral-500'}`}>
+                        <button onClick={() => setActiveMobileTab('editor')} className={`flex flex-col items-center gap-1 p-2 ${activeMobileTab === 'editor' ? 'text-white' : 'text-muted-foreground'}`}>
                             <Code size={20} />
                             <span className="text-[10px] font-medium">Code</span>
                         </button>
-                        <button onClick={() => setActiveMobileTab('testcases')} className={`flex flex-col items-center gap-1 p-2 ${activeMobileTab === 'testcases' ? 'text-white' : 'text-neutral-500'}`}>
+                        <button onClick={() => setActiveMobileTab('testcases')} className={`flex flex-col items-center gap-1 p-2 ${activeMobileTab === 'testcases' ? 'text-white' : 'text-muted-foreground'}`}>
                             <Terminal size={20} />
                             <span className="text-[10px] font-medium">Testcases</span>
                         </button>

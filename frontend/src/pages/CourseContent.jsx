@@ -7,6 +7,7 @@ import {
   Maximize2, Minimize2, AlertTriangle,
   LayoutGrid, X, Clock,
 } from "lucide-react";
+import { useTheme } from "../context/ThemeContext";
 import { COURSE_HTML_MAP, formatTitle, getGroup, getGroupSiblings } from "../data/courseMap";
 
 // ─── Constants ────────────────────────────────────────────────────────────────
@@ -110,23 +111,6 @@ function injectFontSize(doc, size) {
 }
 
 // ─── Custom hooks ─────────────────────────────────────────────────────────────
-
-function useTheme() {
-  const [isDark, setIsDark] = useState(
-    () => document.documentElement.classList.contains("dark")
-  );
-  useEffect(() => {
-    const observer = new MutationObserver(() =>
-      setIsDark(document.documentElement.classList.contains("dark"))
-    );
-    observer.observe(document.documentElement, {
-      attributes: true,
-      attributeFilter: ["class"],
-    });
-    return () => observer.disconnect();
-  }, []);
-  return isDark;
-}
 
 function useLockBodyScroll() {
   useEffect(() => {
@@ -466,7 +450,7 @@ export default function CourseContent() {
   }, [id]);
 
   // Hooks
-  const isDark              = useTheme();
+  const { isDark }          = useTheme();
   useLockBodyScroll();
   const { status, readTime } = useCourseData(htmlFile);
   const injectStyles        = useIframeStyles(iframeRef, { isDark, fontSize, isLoaded });
@@ -760,33 +744,6 @@ export default function CourseContent() {
           }}
         />
       )}
-
-      <style>{`
-        @keyframes cc-spin    { to { transform: rotate(360deg); } }
-        @keyframes cc-slide-in { from { transform: translateX(100%); } to { transform: translateX(0); } }
-        @keyframes cc-fade-in  { from { opacity: 0; } to { opacity: 1; } }
-
-        .cc-back-btn    { transition: filter 140ms ease, transform 100ms ease; }
-        .cc-back-btn:hover  { filter: brightness(1.14); }
-        .cc-back-btn:active { transform: scale(0.97); }
-
-        .cc-icon-btn { transition: background 140ms ease, border-color 140ms ease, color 140ms ease; }
-        .cc-icon-btn:hover { background: var(--color-surface-hover) !important; color: var(--color-primary-text) !important; }
-
-        .cc-compact-btn { transition: background 140ms ease, border-color 140ms ease; }
-        .cc-compact-btn:hover:not(:disabled) { background: var(--color-surface-hover) !important; border-color: rgba(99,102,241,0.4) !important; }
-
-        .cc-map-overlay { animation: cc-fade-in 180ms ease; }
-        .cc-map-panel   { animation: cc-slide-in 260ms cubic-bezier(0.22, 1, 0.36, 1); }
-
-        .cc-map-item { transition: background 120ms ease; }
-        .cc-map-item:hover { background: var(--color-surface-hover) !important; }
-
-        .cc-map-scroll::-webkit-scrollbar       { width: 3px; }
-        .cc-map-scroll::-webkit-scrollbar-track { background: transparent; }
-        .cc-map-scroll::-webkit-scrollbar-thumb { background: var(--color-border); border-radius: 3px; }
-        .cc-map-scroll::-webkit-scrollbar-thumb:hover { background: var(--color-muted-text); }
-      `}</style>
     </div>
   );
 }

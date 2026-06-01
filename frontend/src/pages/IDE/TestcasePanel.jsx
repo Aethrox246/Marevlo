@@ -55,12 +55,6 @@ const TestcasePanel = ({
 
     return (
         <div style={{ display: 'flex', flexDirection: 'column', height: '100%', background: 'var(--color-surface)' }}>
-            <style>{`
-                .tc-scroll::-webkit-scrollbar{display:none}
-                .tc-scroll{-ms-overflow-style:none;scrollbar-width:none}
-                @keyframes tc-pulse{0%,100%{opacity:1}50%{opacity:.55}}
-                .tc-running{animation:tc-pulse 1.2s ease-in-out infinite}
-            `}</style>
 
             {/* Header: Tabs + Run/Submit */}
             <div style={{

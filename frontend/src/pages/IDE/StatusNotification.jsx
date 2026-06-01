@@ -20,7 +20,7 @@ const StatusNotification = ({
                         </div>
                         <div className="flex-1">
                             <h3 className="text-white font-bold text-lg mb-1">Accepted! 🎉</h3>
-                            <p className="text-neutral-400 text-sm mb-4">Your solution passed all test cases.</p>
+                            <p className="text-muted-foreground/70 text-sm mb-4">Your solution passed all test cases.</p>
                             <button
                                 onClick={onNext}
                                 className="w-full flex items-center justify-center gap-2 py-2.5 px-4 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg font-bold text-sm transition-all shadow-lg hover:shadow-xl"
@@ -44,10 +44,10 @@ const StatusNotification = ({
                         </div>
                         <div className="flex-1">
                             <h3 className="text-white font-bold text-lg mb-1">Wrong Answer</h3>
-                            <p className="text-neutral-400 text-sm mb-3">Your code didn't produce the expected output. Try again!</p>
+                            <p className="text-muted-foreground/70 text-sm mb-3">Your code didn't produce the expected output. Try again!</p>
                             <button
                                 onClick={onDismiss}
-                                className="text-xs font-semibold text-neutral-400 hover:text-white transition-colors"
+                                className="text-xs font-semibold text-muted-foreground/70 hover:text-white transition-colors"
                             >
                                 Dismiss
                             </button>
@@ -68,7 +68,7 @@ const StatusNotification = ({
                         </div>
                         <div className="flex-1">
                             <h3 className="text-white font-bold text-lg mb-1">Wrong Answer</h3>
-                            <p className="text-neutral-400 text-sm mb-3">Still incorrect. Keep trying or skip to the next problem.</p>
+                            <p className="text-muted-foreground/70 text-sm mb-3">Still incorrect. Keep trying or skip to the next problem.</p>
                             <div className="flex gap-2">
                                 <button
                                     onClick={onDismiss}

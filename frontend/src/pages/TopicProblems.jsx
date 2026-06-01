@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { ArrowLeft, ArrowRight, BookOpen, Target, ChevronDown } from 'lucide-react';
+import { ArrowLeft, ArrowRight, BookOpen, Target, ChevronDown, Search } from 'lucide-react';
 import { loadAllTopics } from '../utils/topicsLoader';
 import { useTheme } from '../context/ThemeContext';
 
@@ -32,6 +32,7 @@ export default function TopicProblems() {
     const [topic, setTopic] = useState(null);
     const [loading, setLoading] = useState(true);
     const [filter, setFilter] = useState('All');
+    const [searchQuery, setSearchQuery] = useState('');
 
     useEffect(() => {
         loadAllTopics()
@@ -45,9 +46,14 @@ export default function TopicProblems() {
 
     const problems = topic?.problems || [];
 
-    const filtered = filter === 'All'
-        ? problems
-        : problems.filter(p => p.difficulty === filter);
+    const filtered = (() => {
+        let list = filter === 'All' ? problems : problems.filter(p => p.difficulty === filter);
+        if (searchQuery.trim()) {
+            const q = searchQuery.toLowerCase();
+            list = list.filter(p => p.title.toLowerCase().includes(q));
+        }
+        return list;
+    })();
 
     const counts = {
         All:    problems.length,
@@ -83,23 +89,43 @@ export default function TopicProblems() {
                 </button>
                 <span style={{ color: 'var(--color-border)' }}>/</span>
                 <span className="text-sm font-bold text-foreground">
-                    {loading ? '…' : (topic?.icon + ' ' + topic?.name)}
+                    {loading ? '…' : topic?.name}
                 </span>
             </div>
 
-            <div style={{ width: '90%', margin: '0 auto', padding: '32px 0 64px' }}>
+            <div className="page-container" style={{ padding: '32px 0 64px' }}>
 
                 {/* Topic hero */}
-                <div className="mb-8">
-                    <div className="flex items-center gap-3 mb-2">
-                        <span style={{ fontSize: 36 }}>{topic?.icon}</span>
-                        <div>
-                            <h1 className="text-3xl font-black tracking-tight text-foreground">
-                                {loading ? 'Loading…' : topic?.name}
-                            </h1>
-                            <p className="text-sm mt-0.5 text-muted-foreground">
-                                {counts.All} problems · {counts.Easy} easy · {counts.Medium} medium · {counts.Hard} hard
-                            </p>
+                <div className="relative overflow-hidden rounded-2xl mb-8 border" style={{ borderColor: 'var(--color-border)', background: isDark ? '#0d0d14' : 'var(--card)' }}>
+                    {/* Glow blobs */}
+                    <div className="absolute -top-10 left-1/2 -translate-x-1/2 w-[400px] h-[200px] rounded-full pointer-events-none" style={{ background: 'radial-gradient(ellipse,rgba(99,102,241,0.25) 0%,transparent 70%)', filter: 'blur(50px)', animation: 'heroGlow 8s ease-in-out infinite' }} />
+                    <div className="absolute top-1/2 -left-16 -translate-y-1/2 w-[260px] h-[260px] rounded-full pointer-events-none" style={{ background: 'radial-gradient(circle,rgba(6,182,212,0.3) 0%,transparent 65%)', filter: 'blur(60px)', animation: 'heroPulse 7s ease-in-out infinite' }} />
+                    <div className="absolute top-1/2 -right-16 -translate-y-1/2 w-[260px] h-[260px] rounded-full pointer-events-none" style={{ background: 'radial-gradient(circle,rgba(139,92,246,0.2) 0%,transparent 65%)', filter: 'blur(60px)', animation: 'heroPulse 9s ease-in-out 1.5s infinite' }} />
+
+                    <div style={{ position: 'relative', zIndex: 1, padding: '32px 32px 28px' }}>
+                        <h1 className="courses-hero-title-grad" style={{ fontSize: 'clamp(2rem, 4vw, 2.8rem)', fontWeight: 900, letterSpacing: '-0.03em', lineHeight: 1.1, marginBottom: 16 }}>
+                            {loading ? 'Loading…' : topic?.name}
+                        </h1>
+                        {/* Colored stat chips */}
+                        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                            {[
+                                { label: `${counts.All} Problems`,  color: '#6366f1' },
+                                { label: `${counts.Easy} Easy`,     color: '#10b981' },
+                                { label: `${counts.Medium} Medium`, color: '#f59e0b' },
+                                { label: `${counts.Hard} Hard`,     color: '#ef4444' },
+                            ].map(({ label, color }) => (
+                                <span key={label} style={{
+                                    display: 'inline-flex', alignItems: 'center',
+                                    padding: '4px 12px', borderRadius: 999,
+                                    background: color + '15',
+                                    border: `1px solid ${color}35`,
+                                    fontSize: '0.72rem', fontWeight: 700,
+                                    color: color,
+                                    backdropFilter: 'blur(8px)',
+                                }}>
+                                    {label}
+                                </span>
+                            ))}
                         </div>
                     </div>
                 </div>
@@ -136,6 +162,31 @@ export default function TopicProblems() {
                     })}
                 </div>
 
+                {/* Search bar */}
+                <div style={{ position: 'relative', marginBottom: 20 }}>
+                    <Search size={14} style={{ position: 'absolute', left: 14, top: '50%', transform: 'translateY(-50%)', color: 'var(--color-muted-text)', pointerEvents: 'none' }} />
+                    <input
+                        type="text"
+                        placeholder="Search problems…"
+                        value={searchQuery}
+                        onChange={e => setSearchQuery(e.target.value)}
+                        style={{
+                            width: '100%',
+                            paddingLeft: 38, paddingRight: 16,
+                            paddingTop: 10, paddingBottom: 10,
+                            borderRadius: 12,
+                            border: '1px solid var(--color-border)',
+                            background: 'var(--color-surface)',
+                            color: 'var(--foreground)',
+                            fontSize: '0.875rem',
+                            outline: 'none',
+                            transition: 'border-color 0.2s',
+                        }}
+                        onFocus={e => e.target.style.borderColor = 'rgba(99,102,241,0.5)'}
+                        onBlur={e => e.target.style.borderColor = 'var(--color-border)'}
+                    />
+                </div>
+
                 {/* Problem list */}
                 <div
                     className="rounded-2xl overflow-hidden"
@@ -167,6 +218,7 @@ export default function TopicProblems() {
                             )
                             : filtered.map((problem, idx) => {
                                 const dc = difficultyConfig[problem.difficulty] || difficultyConfig.Hard;
+                                const rowAccent = problem.difficulty === 'Easy' ? '#10b981' : problem.difficulty === 'Medium' ? '#f59e0b' : '#ef4444';
                                 return (
                                     <button
                                         key={problem.id}
@@ -175,9 +227,17 @@ export default function TopicProblems() {
                                         style={{
                                             gridTemplateColumns: '48px 1fr 110px 60px',
                                             borderTop: idx > 0 ? '1px solid var(--color-border)' : 'none',
+                                            borderLeft: '3px solid transparent',
+                                            transition: 'all 0.15s ease',
                                         }}
-                                        onMouseEnter={e => { e.currentTarget.style.background = 'var(--color-surface-hover)'; }}
-                                        onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; }}
+                                        onMouseEnter={e => {
+                                            e.currentTarget.style.background = 'var(--color-surface-hover)';
+                                            e.currentTarget.style.borderLeftColor = rowAccent;
+                                        }}
+                                        onMouseLeave={e => {
+                                            e.currentTarget.style.background = 'transparent';
+                                            e.currentTarget.style.borderLeftColor = 'transparent';
+                                        }}
                                     >
                                         {/* Number */}
                                         <span
