@@ -2,7 +2,7 @@ import React, { useMemo, memo, useState, useEffect, Fragment } from 'react';
 import {
     ThumbsUp, ThumbsDown, Lock, ChevronDown, Lightbulb, Code,
     BookOpen, Clock, HardDrive, Sparkles, Zap, BrainCircuit, Bug,
-    Maximize2, ArrowLeft, Eye, Layers, Target, AlertTriangle,
+    Maximize2, Minimize2, ArrowLeft, Eye, Layers, Target, AlertTriangle,
     Link2, ListOrdered, Hash, Cpu, GraduationCap, Puzzle, ArrowRight, BarChart2
 } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
@@ -396,6 +396,20 @@ const getDifficultyColor = (d) => ({ Easy: '#10b981', Medium: '#f59e0b', Hard: '
 const VizFrame = memo(({ topicKey, vizFile, exampleIndex }) => {
     const [status, setStatus] = useState('loading'); // 'loading' | 'ok' | 'error'
     const [html, setHtml] = useState(null);
+    const [expanded, setExpanded] = useState(false);
+
+    // Close the maximized view with Escape, and lock body scroll while open.
+    useEffect(() => {
+        if (!expanded) return;
+        const onKey = (e) => { if (e.key === 'Escape') setExpanded(false); };
+        window.addEventListener('keydown', onKey);
+        const prevOverflow = document.body.style.overflow;
+        document.body.style.overflow = 'hidden';
+        return () => {
+            window.removeEventListener('keydown', onKey);
+            document.body.style.overflow = prevOverflow;
+        };
+    }, [expanded]);
 
     useEffect(() => {
         let cancelled = false;
@@ -403,10 +417,48 @@ const VizFrame = memo(({ topicKey, vizFile, exampleIndex }) => {
         loadVizHtml(topicKey, vizFile).then(content => {
             if (cancelled) return;
             if (content && typeof content === 'string' && content.length > 0) {
-                // Inject the example index so the .htm can read it without a query string.
-                // The .htm uses URLSearchParams(window.location.search) — we shim that to
-                // return the right value by injecting a script before any other script.
-                const shim = `<script>(function(){var p=new URLSearchParams();p.set('example','${exampleIndex}');var orig=URLSearchParams;window.URLSearchParams=function(s){return (s===undefined||s===window.location.search)?p:new orig(s);};})();<\/script>`;
+                // Lock this frame to a single example.
+                //  1. Shim URLSearchParams so .htm files that read ?example get the right index.
+                //  2. After the .htm's own init runs, click the matching example button so the
+                //     frame shows ONLY that example (the .htm files default to example 1 and
+                //     otherwise only switch via their in-iframe buttons).
+                //  3. Hide ONLY the preset Example switch buttons — keep the custom Load input
+                //     so users can type their own input and test it. The React side owns which
+                //     example each frame shows, so the preset switchers are redundant.
+                //  4. Inject a global polish stylesheet (same palette, just prettier):
+                //     floating cards, smooth transitions, glow on active cells, subtle bg depth.
+                //     Targets the shared class conventions used across the viz files.
+                const shim = `<style>
+button[onclick*="loadExample"]{display:none!important}
+/* Floating cards — lift panels off the pure-black background */
+.info-cell,.info-panel,.log-panel,.action-panel,.result-display,.status-bar,.visual-container,.panel,.stack-container,.tiles-wrapper,.array-section,.string-display,.tree-container,.list-wrapper,.graph-area,.stack-area{
+  border:1px solid rgba(255,255,255,0.07)!important;
+  box-shadow:0 2px 10px rgba(0,0,0,0.6), inset 0 1px 0 rgba(255,255,255,0.045)!important;
+}
+/* Smooth transitions — algorithm steps glide instead of snapping */
+.info-cell,.dot,.result-display,[class*="tile"],[class*="cell"],[class*="node"],[class*="bar"]{
+  transition:background-color .25s ease, box-shadow .25s ease, transform .2s ease, color .25s ease, border-color .25s ease!important;
+}
+/* Glow on the active/highlighted element */
+.active,.highlight,.current,.visited,.found,.match,.pivot,.selected,.comparing,.processing{
+  box-shadow:0 0 14px rgba(255,255,255,0.22)!important;
+  filter:brightness(1.08);
+  transform:scale(1.03);
+}
+/* Subtle background depth — still reads as pure black */
+body{background:radial-gradient(115% 85% at 50% 0%, #0c0c0e 0%, #000 55%) fixed!important;}
+<\/style><script>(function(){
+var EX=${exampleIndex};
+var p=new URLSearchParams();p.set('example',String(EX));
+var orig=URLSearchParams;
+window.URLSearchParams=function(s){return (s===undefined||s===window.location.search)?p:new orig(s);};
+function pickExample(){
+  var btns=[].slice.call(document.querySelectorAll('button')).filter(function(b){return (b.getAttribute('onclick')||'').indexOf('loadExample')!==-1;});
+  var b=btns[EX]||btns[btns.length-1];
+  if(b){b.click();}
+}
+window.addEventListener('load',function(){setTimeout(pickExample,0);});
+})();<\/script>`;
                 const patched = content.replace(/<head>/i, `<head>${shim}`);
                 setHtml(patched);
                 setStatus('ok');
@@ -419,13 +471,22 @@ const VizFrame = memo(({ topicKey, vizFile, exampleIndex }) => {
         return () => { cancelled = true; };
     }, [topicKey, vizFile, exampleIndex]);
 
+    const frameHeight = expanded ? '100%' : 580;
+
     return (
-        <div style={{
+        <div style={expanded ? {
+            position: 'fixed',
+            inset: 0,
+            zIndex: 1000,
+            background: '#000000',
+            display: 'flex',
+            flexDirection: 'column',
+        } : {
             marginTop: 8,
             borderRadius: 10,
             overflow: 'hidden',
             border: '1px solid var(--color-border)',
-            background: '#0d1117',
+            background: '#000000',
             boxShadow: '0 4px 16px rgba(0,0,0,0.18)',
             position: 'relative',
         }}>
@@ -434,6 +495,7 @@ const VizFrame = memo(({ topicKey, vizFile, exampleIndex }) => {
                 background: 'color-mix(in srgb, #818cf8 8%, var(--color-surface))',
                 borderBottom: '1px solid var(--color-border)',
                 display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8,
+                flexShrink: 0,
             }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                     <BarChart2 size={12} style={{ color: '#818cf8' }} />
@@ -441,11 +503,27 @@ const VizFrame = memo(({ topicKey, vizFile, exampleIndex }) => {
                         Visualization · Example {exampleIndex + 1}
                     </span>
                 </div>
+                <button
+                    onClick={() => setExpanded(v => !v)}
+                    title={expanded ? 'Exit fullscreen (Esc)' : 'Maximize'}
+                    aria-label={expanded ? 'Exit fullscreen' : 'Maximize'}
+                    style={{
+                        display: 'flex', alignItems: 'center', gap: 5,
+                        background: 'var(--color-surface-hover)',
+                        color: '#818cf8',
+                        border: '1px solid color-mix(in srgb, #818cf8 30%, transparent)',
+                        padding: '3px 9px', borderRadius: 6, fontSize: 11, fontWeight: 600,
+                        cursor: 'pointer', outline: 'none',
+                    }}
+                >
+                    {expanded ? <Minimize2 size={12} /> : <Maximize2 size={12} />}
+                    {expanded ? 'Exit' : 'Max'}
+                </button>
             </div>
 
             {/* Loading overlay */}
             {status === 'loading' && (
-                <div style={{ height: 580, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#8b949e', fontSize: 12, gap: 8 }}>
+                <div style={{ height: frameHeight, flex: expanded ? 1 : 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#8b949e', fontSize: 12, gap: 8 }}>
                     <div style={{ width: 14, height: 14, border: '2px solid #30363d', borderTopColor: '#818cf8', borderRadius: '50%', animation: 'pp-spin 0.8s linear infinite' }} />
                     Loading visualization…
                 </div>
@@ -453,7 +531,7 @@ const VizFrame = memo(({ topicKey, vizFile, exampleIndex }) => {
 
             {/* Error state — no bundled file found */}
             {status === 'error' && (
-                <div style={{ height: 580, padding: 14, fontSize: 12, color: '#ef4444', background: 'rgba(239,68,68,0.06)', display: 'flex', flexDirection: 'column', gap: 6, justifyContent: 'center', alignItems: 'center', textAlign: 'center' }}>
+                <div style={{ height: frameHeight, flex: expanded ? 1 : 'none', padding: 14, fontSize: 12, color: '#ef4444', background: 'rgba(239,68,68,0.06)', display: 'flex', flexDirection: 'column', gap: 6, justifyContent: 'center', alignItems: 'center', textAlign: 'center' }}>
                     <div style={{ fontWeight: 700 }}>✗ No visualization available</div>
                     <div style={{ color: '#8b949e' }}>
                         Missing: <code style={{ fontFamily: 'monospace' }}>{topicKey}/{vizFile}</code>
@@ -467,9 +545,10 @@ const VizFrame = memo(({ topicKey, vizFile, exampleIndex }) => {
                     style={{
                         width: '100%',
                         minWidth: 0,
-                        height: 580,
+                        height: frameHeight,
+                        flex: expanded ? 1 : 'none',
                         border: 'none',
-                        background: '#0d1117',
+                        background: '#000000',
                         display: 'block',
                     }}
                     title={`Visualization Example ${exampleIndex + 1}`}

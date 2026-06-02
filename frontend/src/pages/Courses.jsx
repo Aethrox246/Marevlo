@@ -373,35 +373,6 @@ const COURSE_TREE_BASE = [
                             { id: 'rag-track9-0', label: '9.0 RAG to Agent', description: 'From RAG pipelines to agents.', icon: Cpu, isLeaf: true, duration: '30m', level: 'Advanced' },
                         ],
                     },
-                    { id: 'rag-module-0', label: 'Module 0', description: 'Introduction to RAG fundamentals.', icon: BookOpen, isLeaf: true, duration: '30m', level: 'Beginner' },
-                    { id: 'rag-module-1', label: 'Module 1', description: 'Core RAG concepts and architecture.', icon: Layers, isLeaf: true, duration: '30m', level: 'Beginner' },
-                    { id: 'rag-module-2', label: 'Module 2', description: 'Embeddings: How text becomes vectors.', icon: Search, isLeaf: true, duration: '30m', level: 'Beginner' },
-                    { id: 'rag-module-3', label: 'Module 3', description: 'Vector databases for storing and querying embeddings.', icon: Database, isLeaf: true, duration: '30m', level: 'Beginner' },
-                    { id: 'rag-module-4', label: 'Module 4', description: 'Ingestion pipeline: loading, parsing, and processing documents.', icon: FileText, isLeaf: true, duration: '30m', level: 'Intermediate' },
-                    { id: 'rag-module-5', label: 'Module 5', description: 'Chunking strategies for optimal retrieval.', icon: Brain, isLeaf: true, duration: '30m', level: 'Intermediate' },
-                    {
-                        id: 'rag-module-6',
-                        label: 'Module 6',
-                        description: 'Retrieval methods: sparse, dense, and learned sparse.',
-                        icon: Zap,
-                        gradient: 'linear-gradient(135deg, #06b6d4, #10b981)',
-                        lineGradient: 'from-cyan-500 via-teal-500 to-emerald-500',
-                        tag: 'Explore',
-                        tagColor: '#06b6d4',
-                        children: [
-                            { id: 'rag-module-6a', label: '6A', description: 'Sparse Retrieval: BM25 and term-based methods.', icon: BookOpen, isLeaf: true, duration: '30m', level: 'Intermediate' },
-                            { id: 'rag-module-6b', label: '6B', description: 'Dense Retrieval: Bi-Encoders, DPR, ColBERT.', icon: Layers, isLeaf: true, duration: '30m', level: 'Intermediate' },
-                            { id: 'rag-module-6c', label: '6C', description: 'Learned Sparse retrieval and Decision Matrix.', icon: Search, isLeaf: true, duration: '30m', level: 'Intermediate' },
-                        ],
-                    },
-                    { id: 'rag-module-7', label: 'Module 7', description: 'Hybrid Search and Reciprocal Rank Fusion (RRF).', icon: Globe, isLeaf: true, duration: '30m', level: 'Intermediate' },
-                    { id: 'rag-module-8', label: 'Module 8', description: 'Reranking: refining retrieval results for precision.', icon: Code2, isLeaf: true, duration: '30m', level: 'Intermediate' },
-                    { id: 'rag-module-9', label: 'Module 9', description: 'Generation: Prompting, Grounding, and Hallucination.', icon: Cpu, isLeaf: true, duration: '30m', level: 'Advanced' },
-                    { id: 'rag-module-10', label: 'Module 10', description: 'Advanced RAG Patterns for complex use cases.', icon: Network, isLeaf: true, duration: '30m', level: 'Advanced' },
-                    { id: 'rag-module-11', label: 'Module 11', description: 'Structured RAG over tables, SQL, and knowledge graphs.', icon: GitBranch, isLeaf: true, duration: '30m', level: 'Advanced' },
-                    { id: 'rag-module-12', label: 'Module 12', description: 'Agentic RAG: autonomous reasoning and tool use.', icon: FlaskConical, isLeaf: true, duration: '30m', level: 'Advanced' },
-                    { id: 'rag-module-13', label: 'Module 13', description: 'Production RAG: scaling, monitoring, and deployment.', icon: Sparkles, isLeaf: true, duration: '30m', level: 'Advanced' },
-                    { id: 'rag-module-14', label: 'Module 14', description: 'Evaluation: measuring what matters in RAG systems.', icon: ServerCog, isLeaf: true, duration: '30m', level: 'Advanced' },
                 ],
             },
             {
@@ -418,88 +389,6 @@ const COURSE_TREE_BASE = [
                 level: 'Intermediate',
             },
             {
-                id: 'multimodal-rag',
-                label: 'Multimodal RAG',
-                description: 'Build RAG systems that understand and retrieve from images, video, audio, and text.',
-                icon: Image,
-                gradient: 'linear-gradient(135deg, #06b6d4, #10b981)',
-                lineGradient: 'from-cyan-500 via-teal-500 to-emerald-500',
-                tag: 'Deep Dive',
-                tagColor: '#06b6d4',
-                children: [
-                    {
-                        id: 'mrag-agentic-ai',
-                        label: 'Agentic AI',
-                        description: 'Build agentic multimodal RAG workflows with tool-use, planning, and iterative reasoning.',
-                        icon: Cpu,
-                        isLeaf: false,
-                        duration: '4h',
-                        level: 'Intermediate',
-                        children: [
-                            { id: 'mrag-agentic-ai-module-1', label: 'Module 1', description: 'Data formats and representations for agentic pipelines.', icon: FileText, isLeaf: true, duration: '30m', level: 'Beginner' },
-                            { id: 'mrag-agentic-ai-module-2', label: 'Module 2', description: 'JSON schema design and validation for structured outputs.', icon: Layers, isLeaf: true, duration: '30m', level: 'Beginner' },
-                            { id: 'mrag-agentic-ai-module-3', label: 'Module 3', description: 'XML + Markdown patterns for robust tool I/O.', icon: ScanText, isLeaf: true, duration: '30m', level: 'Intermediate' },
-                            { id: 'mrag-agentic-ai-module-4', label: 'Module 4', description: 'BAML and Pydantic: typed, reliable LLM outputs.', icon: Brain, isLeaf: true, duration: '30m', level: 'Intermediate' },
-                            { id: 'mrag-agentic-ai-module-5', label: 'Module 5', description: 'Jinja2 templating for prompts and structured generation.', icon: Sparkles, isLeaf: true, duration: '30m', level: 'Intermediate' },
-                            { id: 'mrag-agentic-ai-module-6', label: 'Module 6', description: 'CI/CD and deployment basics for agentic systems.', icon: ServerCog, isLeaf: true, duration: '30m', level: 'Advanced' },
-                        ],
-                    },
-                    {
-                        id: 'mrag-multiagent',
-                        label: 'Multiagent',
-                        description: 'Design multi-agent multimodal systems for collaboration, routing, and orchestration.',
-                        icon: GitBranch,
-                        isLeaf: false,
-                        duration: '6h',
-                        level: 'Intermediate',
-                        category: 'Agentic AI',
-                        children: [
-                            { id: 'mrag-multiagent-module-0', label: 'Module 0', description: 'Module 0 content.', icon: BookOpen, isLeaf: true, duration: '30m', level: 'Beginner' },
-                            { id: 'mrag-multiagent-module-1', label: 'Module 1', description: 'Module 1 content.', icon: Layers, isLeaf: true, duration: '30m', level: 'Beginner' },
-                            { id: 'mrag-multiagent-module-2', label: 'Module 2', description: 'Module 2 content.', icon: Search, isLeaf: true, duration: '30m', level: 'Intermediate' },
-                            { id: 'mrag-multiagent-module-3', label: 'Module 3', description: 'Module 3 content.', icon: Database, isLeaf: true, duration: '30m', level: 'Intermediate' },
-                            { id: 'mrag-multiagent-module-4', label: 'Module 4', description: 'Module 4 content.', icon: FileText, isLeaf: true, duration: '30m', level: 'Intermediate' },
-                            { id: 'mrag-multiagent-module-5', label: 'Module 5', description: 'Module 5 content.', icon: Brain, isLeaf: true, duration: '30m', level: 'Intermediate' },
-                            { id: 'mrag-multiagent-module-6', label: 'Module 6', description: 'Module 6 content.', icon: Zap, isLeaf: true, duration: '30m', level: 'Advanced' },
-                            { id: 'mrag-multiagent-module-7', label: 'Module 7', description: 'Module 7 content.', icon: Globe, isLeaf: true, duration: '30m', level: 'Advanced' },
-                            { id: 'mrag-multiagent-module-9', label: 'Module 9', description: 'Module 9 content.', icon: Cpu, isLeaf: true, duration: '30m', level: 'Advanced' },
-                            { id: 'mrag-multiagent-module-10', label: 'Module 10', description: 'Module 10 content.', icon: Network, isLeaf: true, duration: '30m', level: 'Advanced' },
-                            { id: 'mrag-multiagent-module-11', label: 'Module 11', description: 'Module 11 content.', icon: GitBranch, isLeaf: true, duration: '30m', level: 'Advanced' },
-                            { id: 'mrag-multiagent-module-12', label: 'Module 12', description: 'Module 12 content.', icon: Lock, isLeaf: true, duration: '30m', level: 'Advanced' },
-                            { id: 'mrag-multiagent-module-13', label: 'Module 13', description: 'Module 13 content.', icon: Sparkles, isLeaf: true, duration: '30m', level: 'Advanced' },
-                        ],
-                    },
-                    {
-                        id: 'mrag-evaluation',
-                        label: 'Evaluation',
-                        description: 'Evaluate multimodal RAG systems with comprehensive metrics and benchmarks.',
-                        icon: FlaskConical,
-                        isLeaf: false,
-                        duration: '40m',
-                        level: 'Intermediate',
-                        children: [
-                            { id: 'eval-module-0', label: 'Module 0', description: 'Module 0 content.', icon: BookOpen, isLeaf: true, duration: '30m', level: 'Beginner' },
-                            { id: 'eval-module-1', label: 'Module 1', description: 'Module 1 content.', icon: Layers, isLeaf: true, duration: '30m', level: 'Beginner' },
-                            { id: 'eval-module-2', label: 'Module 2', description: 'Module 2 content.', icon: Search, isLeaf: true, duration: '30m', level: 'Beginner' },
-                            { id: 'eval-module-3', label: 'Module 3', description: 'Module 3 content.', icon: Database, isLeaf: true, duration: '30m', level: 'Beginner' },
-                            { id: 'eval-module-4', label: 'Module 4', description: 'Module 4 content.', icon: FileText, isLeaf: true, duration: '30m', level: 'Intermediate' },
-                            { id: 'eval-module-5', label: 'Module 5', description: 'Module 5 content.', icon: Brain, isLeaf: true, duration: '30m', level: 'Intermediate' },
-                            { id: 'eval-module-6', label: 'Module 6', description: 'Module 6 content.', icon: Zap, isLeaf: true, duration: '30m', level: 'Intermediate' },
-                            { id: 'eval-module-7', label: 'Module 7', description: 'Module 7 content.', icon: Globe, isLeaf: true, duration: '30m', level: 'Intermediate' },
-                            { id: 'eval-module-8', label: 'Module 8', description: 'Module 8 content.', icon: Code2, isLeaf: true, duration: '30m', level: 'Intermediate' },
-                            { id: 'eval-module-9', label: 'Module 9', description: 'Module 9 content.', icon: Cpu, isLeaf: true, duration: '30m', level: 'Intermediate' },
-                            { id: 'eval-module-10', label: 'Module 10', description: 'Module 10 content.', icon: Network, isLeaf: true, duration: '30m', level: 'Advanced' },
-                            { id: 'eval-module-11', label: 'Module 11', description: 'Module 11 content.', icon: GitBranch, isLeaf: true, duration: '30m', level: 'Advanced' },
-                            { id: 'eval-module-12', label: 'Module 12', description: 'Module 12 content.', icon: FlaskConical, isLeaf: true, duration: '30m', level: 'Advanced' },
-                            { id: 'eval-module-13', label: 'Module 13', description: 'Module 13 content.', icon: Sparkles, isLeaf: true, duration: '30m', level: 'Advanced' },
-                            { id: 'eval-module-14', label: 'Module 14', description: 'Module 14 content.', icon: ServerCog, isLeaf: true, duration: '30m', level: 'Advanced' },
-                            { id: 'eval-module-15', label: 'Module 15', description: 'Module 15 content.', icon: BookOpen, isLeaf: true, duration: '30m', level: 'Advanced' },
-                            { id: 'eval-genai-reference', label: 'GenAI Evaluation Reference', description: 'Comprehensive reference for GenAI evaluation methodologies.', icon: Brain, isLeaf: true, duration: '30m', level: 'Advanced' },
-                        ],
-                    },
-                ],
-            },
-            {
                 id: 'transformers',
                 label: 'Transformers',
                 description: 'Master the Transformer architecture — attention, BERT, GPT, LLaMA, ViT, MoE, SSMs, and beyond.',
@@ -511,6 +400,29 @@ const COURSE_TREE_BASE = [
                 duration: '12h',
                 isLeaf: false,
                 level: 'Advanced',
+            {
+                id: 'langgraph',
+                label: 'LangGraph',
+                description: 'Build stateful, multi-agent applications with LangGraph — the graph framework for agentic AI.',
+                icon: GitBranch,
+                gradient: 'linear-gradient(135deg, #ec4899 0%, #f43f5e 50%, #8b5cf6 100%)',
+                lineGradient: 'from-pink-500 via-rose-500 to-violet-500',
+                tag: 'Advanced',
+                tagColor: '#ec4899',
+                isLeaf: false,
+                duration: '4h 30m',
+                level: 'Advanced',
+                children: [
+                    { id: 'langgraph-module-1', label: 'Module 1', description: 'Module 1 — Introduction and fundamentals.', icon: BookOpen, isLeaf: true, duration: '20m', level: 'Beginner' },
+                    { id: 'langgraph-module-2', label: 'Module 2', description: 'Module 2 — Core concepts and basics.', icon: Network, isLeaf: true, duration: '35m', level: 'Beginner' },
+                    { id: 'langgraph-module-3', label: 'Module 3', description: 'Module 3 — Building blocks and structures.', icon: Database, isLeaf: true, duration: '30m', level: 'Intermediate' },
+                    { id: 'langgraph-module-4', label: 'Module 4', description: 'Module 4 — Advanced patterns and techniques.', icon: Cpu, isLeaf: true, duration: '45m', level: 'Intermediate' },
+                    { id: 'langgraph-module-5', label: 'Module 5', description: 'Module 5 — Complex implementations.', icon: GitBranch, isLeaf: true, duration: '50m', level: 'Advanced' },
+                    { id: 'langgraph-module-6', label: 'Module 6', description: 'Module 6 — Optimization and scaling.', icon: ServerCog, isLeaf: true, duration: '40m', level: 'Advanced' },
+                    { id: 'langgraph-module-7', label: 'Module 7', description: 'Module 7 — Real-world applications.', icon: Zap, isLeaf: true, duration: '35m', level: 'Intermediate' },
+                    { id: 'langgraph-module-8', label: 'Module 8', description: 'Module 8 — Capstone and deployment.', icon: Code2, isLeaf: true, duration: '55m', level: 'Advanced' },
+                ],
+            },
                 children: [
                     {
                         id: 'transformer-module-0', label: 'Module 0', description: 'Foundations — attention refresher and the core transformer block.', icon: BookOpen, isLeaf: false, duration: '1h', level: 'Intermediate',
@@ -871,7 +783,6 @@ const COURSE_TREE_BASE = [
                 children: [
                     { id: 'matplotlib', label: 'Matplotlib', description: 'The foundation of Python plotting — fine-grained control over every chart element.', icon: Zap, isLeaf: true, duration: '5h', level: 'Beginner' },
                     { id: 'seaborn', label: 'Seaborn', description: 'Statistical visualization built on Matplotlib — beautiful plots with minimal code.', icon: Sparkles, isLeaf: true, duration: '4h', level: 'Intermediate' },
-                    { id: 'plotly', label: 'Plotly', description: 'Interactive, web-ready charts and dashboards with Plotly and Dash.', icon: Globe, isLeaf: true, duration: '5h', level: 'Intermediate' },
                 ],
             },
             {
@@ -1016,26 +927,6 @@ const COURSE_TREE_BASE = [
         ],
     },
     {
-        id: 'langgraph',
-        label: 'LangGraph',
-        description: 'Build stateful, multi-agent applications with LangGraph — the graph framework for agentic AI.',
-        icon: GitBranch,
-        gradient: 'linear-gradient(135deg, #ec4899 0%, #f43f5e 50%, #8b5cf6 100%)',
-        lineGradient: 'from-pink-500 via-rose-500 to-violet-500',
-        tag: 'New 🌟',
-        tagColor: '#ec4899',
-        children: [
-            { id: 'langgraph-module-1', label: 'Module 1', description: 'Module 1 — Introduction and fundamentals.', icon: BookOpen, isLeaf: true, duration: '20m', level: 'Beginner' },
-            { id: 'langgraph-module-2', label: 'Module 2', description: 'Module 2 — Core concepts and basics.', icon: Network, isLeaf: true, duration: '35m', level: 'Beginner' },
-            { id: 'langgraph-module-3', label: 'Module 3', description: 'Module 3 — Building blocks and structures.', icon: Database, isLeaf: true, duration: '30m', level: 'Intermediate' },
-            { id: 'langgraph-module-4', label: 'Module 4', description: 'Module 4 — Advanced patterns and techniques.', icon: Cpu, isLeaf: true, duration: '45m', level: 'Intermediate' },
-            { id: 'langgraph-module-5', label: 'Module 5', description: 'Module 5 — Complex implementations.', icon: GitBranch, isLeaf: true, duration: '50m', level: 'Advanced' },
-            { id: 'langgraph-module-6', label: 'Module 6', description: 'Module 6 — Optimization and scaling.', icon: ServerCog, isLeaf: true, duration: '40m', level: 'Advanced' },
-            { id: 'langgraph-module-7', label: 'Module 7', description: 'Module 7 — Real-world applications.', icon: Zap, isLeaf: true, duration: '35m', level: 'Intermediate' },
-            { id: 'langgraph-module-8', label: 'Module 8', description: 'Module 8 — Capstone and deployment.', icon: Code2, isLeaf: true, duration: '55m', level: 'Advanced' },
-        ],
-    },
-    {
         id: 'api-security',
         label: 'API Security',
         description: 'Secure your APIs end-to-end — auth, threat modeling, OWASP API Top 10, and production hardening.',
@@ -1117,16 +1008,6 @@ function CourseCard({ node, onDrillDown, onStartLeaf }) {
     const leafCount = isFolder ? countLeaves(node) : 0;
     const lvl = LEVEL_COLORS[node.level] ?? LEVEL_COLORS['Intermediate'];
     
-    // Check if this is an Agentic AI module with IPYNB support
-    const hasDepthContent = node.id && (
-        node.id === 'mrag-agentic-ai-module-1' ||
-        node.id === 'mrag-agentic-ai-module-2' ||
-        node.id === 'mrag-agentic-ai-module-3' ||
-        node.id === 'mrag-agentic-ai-module-4' ||
-        node.id === 'mrag-agentic-ai-module-5' ||
-        node.id === 'mrag-agentic-ai-module-6'
-    );
-
     const handleMouseMove = (e) => {
         if (!cardRef.current) return;
         const rect = cardRef.current.getBoundingClientRect();
@@ -1255,75 +1136,30 @@ function CourseCard({ node, onDrillDown, onStartLeaf }) {
                         )}
                     </div>
 
-                    {/* CTA button(s) - dual buttons for Agentic AI modules */}
-                    {!isFolder && hasDepthContent ? (
-                        <div className="flex items-center gap-2">
-                            <button
-                                onClick={(e) => {
-                                    e.stopPropagation();
-                                    onStartLeaf(node, 'conceptual');
-                                }}
-                                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all duration-200"
-                                style={{
-                                    background: 'var(--color-surface-hover)',
-                                    color: 'var(--color-primary-text)',
-                                    border: '1px solid rgba(99,102,241,0.3)',
-                                }}
-                                onMouseEnter={(e) => {
-                                    e.currentTarget.style.background = 'linear-gradient(135deg,#6366f1,#06b6d4)';
-                                    e.currentTarget.style.color = '#fff';
-                                    e.currentTarget.style.boxShadow = '0 4px 12px rgba(99,102,241,0.35)';
-                                }}
-                                onMouseLeave={(e) => {
-                                    e.currentTarget.style.background = 'var(--color-surface-hover)';
-                                    e.currentTarget.style.color = 'var(--color-primary-text)';
-                                    e.currentTarget.style.boxShadow = 'none';
-                                }}
-                            >
-                                <FileText size={13} /> Conceptual
-                            </button>
-                            <button
-                                onClick={(e) => {
-                                    e.stopPropagation();
-                                    onStartLeaf(node, 'depth');
-                                }}
-                                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all duration-200"
-                                style={{
-                                    background: 'var(--color-surface-hover)',
-                                    color: 'var(--color-primary-text)',
-                                    border: '1px solid rgba(139,92,246,0.3)',
-                                }}
-                                onMouseEnter={(e) => {
-                                    e.currentTarget.style.background = 'linear-gradient(135deg,#4f46e5,#6366f1)';
-                                    e.currentTarget.style.color = '#fff';
-                                    e.currentTarget.style.boxShadow = '0 4px 12px rgba(99,102,241,0.35)';
-                                }}
-                                onMouseLeave={(e) => {
-                                    e.currentTarget.style.background = 'var(--color-surface-hover)';
-                                    e.currentTarget.style.color = 'var(--color-primary-text)';
-                                    e.currentTarget.style.boxShadow = 'none';
-                                }}
-                            >
-                                <BookOpen size={13} /> Depth
-                            </button>
-                        </div>
-                    ) : (
-                        <button
-                            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all duration-200"
-                            style={{
-                                background: hovered
-                                    ? (node.gradient || 'linear-gradient(135deg,#6366f1,#8b5cf6)')
-                                    : 'var(--color-surface-hover)',
-                                color: hovered ? '#fff' : 'var(--color-primary-text)',
-                                boxShadow: hovered ? '0 4px 12px rgba(99,102,241,0.35)' : 'none',
-                            }}
-                        >
-                            {isFolder
-                                ? <><ChevronRight size={13} /> Explore</>
-                                : <><Play size={13} fill="currentColor" /> Start</>
+                    {/* CTA button */}
+                    <button
+                        className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all duration-200"
+                        style={{
+                            background: hovered
+                                ? (node.gradient || 'linear-gradient(135deg,#6366f1,#8b5cf6)')
+                                : 'var(--color-surface-hover)',
+                            color: hovered ? '#fff' : 'var(--color-primary-text)',
+                            boxShadow: hovered ? '0 4px 12px rgba(99,102,241,0.35)' : 'none',
+                        }}
+                        onClick={(e) => {
+                            e.stopPropagation();
+                            if (isFolder) {
+                                onDrillDown(node);
+                            } else {
+                                onStartLeaf(node);
                             }
-                        </button>
-                    )}
+                        }}
+                    >
+                        {isFolder
+                            ? <><ChevronRight size={13} /> Explore</>
+                            : <><Play size={13} fill="currentColor" /> Start</>
+                        }
+                    </button>
                 </div>
             </div>
         </div>
