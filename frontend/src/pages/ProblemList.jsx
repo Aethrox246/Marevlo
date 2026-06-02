@@ -56,8 +56,8 @@ function FeatureCard({ icon, title, desc, color, horizontal = false }) {
                 />
                 <div style={{ fontSize: 20, flexShrink: 0, position: 'relative', zIndex: 2, lineHeight: 1 }}>{icon}</div>
                 <div style={{ position: 'relative', zIndex: 2 }}>
-                    <div className="text-xs font-bold mb-0.5" style={{ color: 'var(--color-primary-text)' }}>{title}</div>
-                    <div className="text-xs leading-relaxed" style={{ color: 'var(--color-muted-text)' }}>{desc}</div>
+                    <div className="text-xs font-bold mb-0.5 text-foreground">{title}</div>
+                    <div className="text-xs leading-relaxed text-muted-foreground">{desc}</div>
                 </div>
             </div>
         );
@@ -79,8 +79,8 @@ function FeatureCard({ icon, title, desc, color, horizontal = false }) {
             />
             <div style={{ position: 'relative', zIndex: 2 }}>
                 <div className="text-xl mb-2">{icon}</div>
-                <div className="text-sm font-bold mb-1" style={{ color: 'var(--color-primary-text)' }}>{title}</div>
-                <div className="text-xs leading-relaxed" style={{ color: 'var(--color-muted-text)' }}>{desc}</div>
+                <div className="text-sm font-bold mb-1 text-foreground">{title}</div>
+                <div className="text-xs leading-relaxed text-muted-foreground">{desc}</div>
             </div>
         </div>
     );
@@ -118,7 +118,7 @@ const topicAccentPairs = [
 
 function SkeletonCard() {
     return (
-        <div className="rounded-2xl overflow-hidden animate-pulse" style={{ border: '1px solid var(--color-border)', background: 'var(--color-surface)' }}>
+        <div className="rounded-2xl overflow-hidden animate-pulse" style={{ border: '1px solid var(--border)', background: 'var(--card)' }}>
             <div style={{ height: 4, background: 'var(--color-surface-hover)' }} />
             <div className="p-5 flex flex-col gap-3">
                 <div className="w-10 h-10 rounded-xl" style={{ background: 'var(--color-surface-hover)' }} />
@@ -148,18 +148,19 @@ function TopicCard({ topic, accent, accentPair, onClick }) {
             onMouseEnter={() => setHovered(true)}
             onMouseLeave={() => setHovered(false)}
             style={{
-                background:    'var(--color-surface)',
-                border:        `1px solid ${hovered ? accent + '66' : 'var(--color-border)'}`,
-                borderRadius:  20,
+                background:    'var(--card)',
+                border:        `1px solid ${hovered ? accent + '66' : 'var(--border)'}`,
+                borderRadius:  16,
                 overflow:      'hidden',
                 cursor:        'pointer',
                 transition:    'all 0.22s ease',
                 transform:     hovered ? 'translateY(-5px)' : 'translateY(0)',
-                boxShadow:     hovered ? `0 16px 40px ${accent}28, 0 0 0 1px ${accent}22` : '0 1px 4px rgba(0,0,0,0.05)',
+                boxShadow:     hovered ? `0 16px 40px ${accent}28, 0 0 0 1px ${accent}22` : '0 2px 8px rgba(0,0,0,0.04)',
                 textAlign:     'left',
                 display:       'flex',
                 flexDirection: 'column',
                 width:         '100%',
+                minHeight:     'unset',
             }}
         >
             {/* Gradient top bar */}
@@ -172,7 +173,7 @@ function TopicCard({ topic, accent, accentPair, onClick }) {
                     <ArrowRight
                         size={16}
                         style={{
-                            color: hovered ? accent : 'var(--color-muted-text)',
+                            color: hovered ? accent : 'var(--muted-foreground)',
                             transition: 'all 0.2s',
                             transform: hovered ? 'translateX(3px)' : 'translateX(0)',
                         }}
@@ -180,38 +181,35 @@ function TopicCard({ topic, accent, accentPair, onClick }) {
                 </div>
 
                 {/* Name + count */}
-                <div style={{ fontWeight: 800, fontSize: '0.97rem', color: 'var(--color-primary-text)', marginBottom: 3, lineHeight: 1.3 }}>
+                <div className="text-foreground" style={{ fontWeight: 800, fontSize: '0.97rem', marginBottom: 3, lineHeight: 1.3 }}>
                     {topic.name}
                 </div>
-                <div style={{ fontSize: '0.72rem', color: 'var(--color-muted-text)', marginBottom: 14 }}>
+                <div className="text-muted-foreground" style={{ fontSize: '0.72rem', marginBottom: 14 }}>
                     {count} problems
                 </div>
 
-                {/* Difficulty dots */}
-                <div style={{ display: 'flex', gap: 8, marginBottom: 14, flexWrap: 'wrap' }}>
+                {/* Difficulty breakdown */}
+                <div style={{ display: 'flex', gap: 10, marginBottom: 14, flexWrap: 'wrap' }}>
                     {easy > 0 && (
-                        <span style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: '0.65rem', fontWeight: 700, color: '#10b981' }}>
-                            <span style={{ width: 7, height: 7, borderRadius: '50%', background: '#10b981', display: 'inline-block', flexShrink: 0 }} />
+                        <span className="text-muted-foreground" style={{ fontSize: '0.65rem', fontWeight: 600 }}>
                             {easy} Easy
                         </span>
                     )}
                     {medium > 0 && (
-                        <span style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: '0.65rem', fontWeight: 700, color: '#f59e0b' }}>
-                            <span style={{ width: 7, height: 7, borderRadius: '50%', background: '#f59e0b', display: 'inline-block', flexShrink: 0 }} />
+                        <span className="text-muted-foreground" style={{ fontSize: '0.65rem', fontWeight: 600 }}>
                             {medium} Med
                         </span>
                     )}
                     {hard > 0 && (
-                        <span style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: '0.65rem', fontWeight: 700, color: '#ef4444' }}>
-                            <span style={{ width: 7, height: 7, borderRadius: '50%', background: '#ef4444', display: 'inline-block', flexShrink: 0 }} />
+                        <span className="text-muted-foreground" style={{ fontSize: '0.65rem', fontWeight: 600 }}>
                             {hard} Hard
                         </span>
                     )}
                 </div>
 
                 {/* Progress bar */}
-                <div style={{ marginTop: 'auto' }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.62rem', color: 'var(--color-muted-text)', marginBottom: 5, fontWeight: 600 }}>
+                <div style={{ marginTop: 12 }}>
+                    <div className="text-muted-foreground" style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.62rem', marginBottom: 5, fontWeight: 600 }}>
                         <span>0 solved</span>
                         <span>{count} total</span>
                     </div>
@@ -232,7 +230,7 @@ function FeatureSidebar() {
     return (
         <div
             className="rounded-2xl overflow-hidden"
-            style={{ background: 'var(--color-surface)', border: '1px solid var(--color-border)' }}
+            style={{ background: 'var(--card)', border: '1px solid var(--border)' }}
         >
             {/* Gradient top bar */}
             <div style={{ height: 3, background: 'linear-gradient(90deg, #6366f1, #06b6d4, #10b981)' }} />
@@ -241,13 +239,13 @@ function FeatureSidebar() {
                 {/* Header */}
                 <div className="flex items-center gap-2 mb-1">
                     <span style={{ fontSize: 16 }}>🧠</span>
-                    <h2 className="text-sm font-bold" style={{ color: 'var(--color-primary-text)' }}>
+                    <h2 className="text-sm font-bold text-foreground">
                         Learn Smarter, Not Faster
                     </h2>
                 </div>
-                <p className="text-xs mb-4" style={{ color: 'var(--color-muted-text)', lineHeight: 1.6 }}>
+                <p className="text-xs mb-4 text-muted-foreground" style={{ lineHeight: 1.6 }}>
                     Every problem comes with multiple approaches, each broken into{' '}
-                    <strong style={{ color: 'var(--color-primary-text)' }}>6 ladder levels</strong> — from the full problem down to the foundational concept.
+                    <strong className="text-foreground">6 ladder levels</strong> — from the full problem down to the foundational concept.
                 </p>
 
                 {/* Ladder visual */}
@@ -256,8 +254,8 @@ function FeatureSidebar() {
                     style={{ background: 'var(--color-surface-hover)', border: '1px solid var(--color-border)' }}
                 >
                     <div
-                        className="text-xs font-semibold mb-2"
-                        style={{ color: 'var(--color-muted-text)', letterSpacing: '0.05em', textTransform: 'uppercase' }}
+                        className="text-xs font-semibold mb-2 text-muted-foreground"
+                        style={{ letterSpacing: '0.05em', textTransform: 'uppercase' }}
                     >
                         Ladder System
                     </div>
@@ -272,8 +270,8 @@ function FeatureSidebar() {
                                         display: 'flex', alignItems: 'center', justifyContent: 'center',
                                         fontSize: 9, fontWeight: 800,
                                         background: rung.state === 'solved' ? '#f59e0b' : rung.state === 'unlocked' ? '#10b981' : 'var(--color-surface)',
-                                        color: rung.state === 'locked' ? 'var(--color-muted-text)' : '#fff',
-                                        border: rung.state === 'locked' ? '1.5px dashed var(--color-muted-text)' : 'none',
+                                        color: rung.state === 'locked' ? 'var(--muted-foreground)' : '#fff',
+                                        border: rung.state === 'locked' ? '1.5px dashed var(--muted-foreground)' : 'none',
                                         boxShadow: rung.state === 'solved' ? '0 0 8px rgba(245,158,11,0.35)' : 'none',
                                         transition: 'all 0.3s',
                                     }}>
@@ -281,7 +279,7 @@ function FeatureSidebar() {
                                     </div>
                                     <span className="text-center" style={{
                                         fontSize: 7,
-                                        color: rung.state === 'solved' ? '#f59e0b' : rung.state === 'unlocked' ? '#10b981' : 'var(--color-muted-text)',
+                                        color: rung.state === 'solved' ? '#f59e0b' : rung.state === 'unlocked' ? '#10b981' : 'var(--muted-foreground)',
                                         fontWeight: 600, maxWidth: 52, lineHeight: 1.3,
                                     }}>
                                         {rung.label}<br />{rung.type}
@@ -299,7 +297,7 @@ function FeatureSidebar() {
                     </div>
 
                     {/* Legend */}
-                    <div className="mt-2.5 flex items-center gap-3" style={{ fontSize: 9, color: 'var(--color-muted-text)' }}>
+                    <div className="mt-2.5 flex items-center gap-3 text-muted-foreground" style={{ fontSize: 9 }}>
                         <span className="flex items-center gap-1">
                             <span style={{ width: 7, height: 7, borderRadius: '50%', background: '#f59e0b', display: 'inline-block' }} /> Solved
                         </span>
@@ -307,7 +305,7 @@ function FeatureSidebar() {
                             <span style={{ width: 7, height: 7, borderRadius: '50%', background: '#10b981', display: 'inline-block' }} /> Unlocked
                         </span>
                         <span className="flex items-center gap-1">
-                            <span style={{ width: 7, height: 7, borderRadius: '50%', border: '1.5px dashed var(--color-muted-text)', display: 'inline-block' }} /> Locked
+                            <span style={{ width: 7, height: 7, borderRadius: '50%', border: '1.5px dashed var(--muted-foreground)', display: 'inline-block' }} /> Locked
                         </span>
                     </div>
                 </div>
@@ -324,9 +322,31 @@ function FeatureSidebar() {
 }
 
 export default function ProblemList({ onSelect }) {
-    const [topics, setTopics] = useState([]);
-    const [loading, setLoading] = useState(true);
+    const [topics, setTopics]                 = useState([]);
+const [expandedTopics, setExpandedTopics] = useState(() => {
+    const saved = sessionStorage.getItem('problemListExpandedTopics');
+    return saved ? JSON.parse(saved) : { arrays: true };
+});
+    const [visibleCounts, setVisibleCounts] = useState(() => {
+    const saved = sessionStorage.getItem('problemListVisibleCounts');
+    return saved ? JSON.parse(saved) : { arrays: 10 };
+});
+    const [loading, setLoading]               = useState(true);
     const navigate = useNavigate();
+
+    useEffect(() => {
+    sessionStorage.setItem(
+        'problemListExpandedTopics',
+        JSON.stringify(expandedTopics)
+    );
+}, [expandedTopics]);
+
+useEffect(() => {
+    sessionStorage.setItem(
+        'problemListVisibleCounts',
+        JSON.stringify(visibleCounts)
+    );
+}, [visibleCounts]);
 
     useEffect(() => {
         loadAllTopics()
@@ -339,19 +359,9 @@ export default function ProblemList({ onSelect }) {
 
     return (
         <div className="flex-1 overflow-y-auto custom-scrollbar">
-            <style>{`
-                @keyframes heroPulse {
-                    0%,100% { opacity:0.55; transform:scale(1); }
-                    50%     { opacity:0.75; transform:scale(1.06); }
-                }
-                @keyframes heroGlow {
-                    0%,100% { opacity:0.4; transform:scale(1) translateY(0); }
-                    50%     { opacity:0.65; transform:scale(1.08) translateY(-8px); }
-                }
-            `}</style>
 
             {/* Hero — unchanged */}
-            <div className="relative overflow-hidden border-b bg-white dark:bg-black border-black/[0.06] dark:border-white/[0.06]" style={{ minHeight: '340px' }}>
+            <div className="relative overflow-hidden border-b bg-card dark:bg-black border-black/[0.06] dark:border-white/[0.06]" style={{ minHeight: '340px' }}>
                 <div className="absolute -top-20 left-1/2 -translate-x-1/2 w-[600px] h-[360px] rounded-full pointer-events-none" style={{ background: 'radial-gradient(ellipse,rgba(99,102,241,0.28) 0%,transparent 70%)', filter: 'blur(60px)', animation: 'heroGlow 8s ease-in-out infinite' }} />
                 <div className="absolute top-1/2 -left-32 -translate-y-1/2 w-[380px] h-[380px] rounded-full pointer-events-none" style={{ background: 'radial-gradient(circle,rgba(6,182,212,0.45) 0%,transparent 65%)', filter: 'blur(80px)', animation: 'heroPulse 7s ease-in-out infinite' }} />
                 <div className="absolute top-1/2 -right-32 -translate-y-1/2 w-[360px] h-[360px] rounded-full pointer-events-none" style={{ background: 'radial-gradient(circle,rgba(99,102,241,0.22) 0%,transparent 65%)', filter: 'blur(80px)', animation: 'heroPulse 9s ease-in-out 1.5s infinite' }} />
@@ -412,20 +422,89 @@ export default function ProblemList({ onSelect }) {
                 </div>
             </div>
 
-            {/* Two-column layout */}
-            <div
-                style={{
-                    display: 'grid',
-                    gridTemplateColumns: '7fr 3fr',
-                    gap: 24,
-                    width: '70%',
-                    margin: '0 auto',
-                    padding: '32px 0 48px',
-                    alignItems: 'start',
-                }}
-            >
-                {/* Left — topic card grid (70%) */}
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 16 }}>
+            {/* How it works — shown before the topic cards */}
+            <div className="page-container" style={{ paddingTop: 32 }}>
+                <div
+                    className="rounded-2xl overflow-hidden mb-8"
+                    style={{ border: '1px solid var(--border)', background: 'var(--card)' }}
+                >
+                    {/* Gradient top line */}
+                    <div style={{ height: 3, background: 'linear-gradient(90deg, #6366f1, #06b6d4, #10b981)' }} />
+
+                    <div className="p-6">
+                        {/* Header */}
+                        <div className="flex items-center gap-2 mb-1">
+                            <span style={{ fontSize: 18 }}>🧠</span>
+                            <h2 className="text-base font-bold text-foreground">Learn Smarter, Not Faster</h2>
+                        </div>
+                        <p className="text-sm text-muted-foreground mb-5" style={{ lineHeight: 1.65, maxWidth: 640 }}>
+                            Every problem comes with multiple approaches, each broken into{' '}
+                            <strong className="text-foreground">6 ladder levels</strong> — from the full problem down to the foundational concept.
+                        </p>
+
+                        {/* Ladder visual */}
+                        <div
+                            className="rounded-xl p-4 mb-5"
+                            style={{ background: 'var(--muted)', border: '1px solid var(--border)' }}
+                        >
+                            <div className="text-xs font-bold uppercase tracking-widest text-muted-foreground mb-3">Ladder System</div>
+                            <div className="flex items-center gap-1 overflow-x-auto pb-1">
+                                {LADDER_RUNGS.map((rung, i, arr) => (
+                                    <React.Fragment key={rung.label}>
+                                        <div className="flex flex-col items-center gap-1.5 flex-shrink-0">
+                                            <div style={{
+                                                width: 36, height: 36, borderRadius: '50%',
+                                                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                                fontSize: 11, fontWeight: 800,
+                                                background: rung.state === 'solved' ? '#f59e0b' : rung.state === 'unlocked' ? '#10b981' : 'var(--muted)',
+                                                color: rung.state === 'locked' ? 'var(--muted-foreground)' : '#fff',
+                                                border: rung.state === 'locked' ? '1.5px dashed var(--border)' : 'none',
+                                                boxShadow: rung.state === 'solved' ? '0 0 12px rgba(245,158,11,0.4)' : rung.state === 'unlocked' ? '0 0 12px rgba(16,185,129,0.35)' : 'none',
+                                            }}>
+                                                {rung.state === 'solved' ? '✓' : rung.state === 'unlocked' ? rung.label : '🔒'}
+                                            </div>
+                                            <div className="text-center" style={{ fontSize: 9, fontWeight: 700, lineHeight: 1.3, maxWidth: 60 }}>
+                                                <div style={{ color: rung.state === 'solved' ? '#f59e0b' : rung.state === 'unlocked' ? '#10b981' : 'var(--muted-foreground)' }}>{rung.label}</div>
+                                                <div className="text-muted-foreground">{rung.type}</div>
+                                            </div>
+                                        </div>
+                                        {i < arr.length - 1 && (
+                                            <div style={{
+                                                flex: 1, height: 2, minWidth: 12,
+                                                background: rung.state === 'solved' ? '#f59e0b' : rung.state === 'unlocked' ? '#10b981' : 'var(--border)',
+                                                borderRadius: 2,
+                                            }} />
+                                        )}
+                                    </React.Fragment>
+                                ))}
+                            </div>
+                            {/* Legend */}
+                            <div className="flex items-center gap-4 mt-3 text-muted-foreground" style={{ fontSize: 10 }}>
+                                <span className="flex items-center gap-1.5">
+                                    <span style={{ width: 8, height: 8, borderRadius: '50%', background: '#f59e0b', display: 'inline-block' }} /> Solved
+                                </span>
+                                <span className="flex items-center gap-1.5">
+                                    <span style={{ width: 8, height: 8, borderRadius: '50%', background: '#10b981', display: 'inline-block' }} /> Unlocked
+                                </span>
+                                <span className="flex items-center gap-1.5">
+                                    <span style={{ width: 8, height: 8, borderRadius: '50%', border: '1.5px dashed var(--muted-foreground)', display: 'inline-block' }} /> Locked
+                                </span>
+                            </div>
+                        </div>
+
+                        {/* Feature cards — 3 columns */}
+                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                            {FEATURES.map(f => (
+                                <FeatureCard key={f.title} {...f} horizontal />
+                            ))}
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            {/* Cards grid — full-width, matching Courses page layout */}
+            <div className="page-container" style={{ paddingBottom: 48 }}>
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
                     {loading
                         ? Array.from({ length: 9 }).map((_, i) => <SkeletonCard key={i} />)
                         : topics.map((topic, ti) => (
@@ -439,11 +518,6 @@ export default function ProblemList({ onSelect }) {
                         ))
                     }
                 </div>
-
-                {/* Right — sticky feature sidebar (30%) */}
-                <aside style={{ position: 'sticky', top: 16 }}>
-                    <FeatureSidebar />
-                </aside>
             </div>
         </div>
     );

@@ -53,20 +53,9 @@ export default function AboutUs() {
 
     return (
         <div
-            className="min-h-full w-full overflow-y-auto"
-            style={{ backgroundColor: 'var(--color-app-bg)', color: 'var(--color-primary-text)' }}
+            className="min-h-full w-full overflow-y-auto text-foreground"
+            style={{ backgroundColor: 'var(--color-app-bg)' }}
         >
-            <style>{`
-                @keyframes aboutOrbPulse {
-                    0%, 100% { opacity: 0.5; transform: scale(1); }
-                    50%      { opacity: 0.7; transform: scale(1.07); }
-                }
-                @keyframes aboutFadeUp {
-                    from { opacity: 0; transform: translateY(14px); }
-                    to   { opacity: 1; transform: translateY(0); }
-                }
-                .about-card-enter { animation: aboutFadeUp 0.4s ease-out both; }
-            `}</style>
 
             {/* Hero Section — same dark design as Projects & Courses */}
             <div style={{
@@ -153,11 +142,10 @@ export default function AboutUs() {
             {/* Mission */}
             <div style={{ maxWidth: 860, margin: '0 auto', padding: '60px 24px 0' }}>
                 <div
-                    className="about-card-enter"
+                    className="about-card-enter bg-card"
                     style={{
                         borderRadius: 24, padding: '40px 44px',
                         textAlign: 'center',
-                        backgroundColor: 'var(--color-surface)',
                         border: '1px solid var(--color-border)',
                         position: 'relative', overflow: 'hidden',
                         boxShadow: isDark ? '0 4px 40px rgba(0,0,0,0.4)' : '0 4px 40px rgba(0,0,0,0.06)',
@@ -176,13 +164,13 @@ export default function AboutUs() {
                     }}>
                         <Heart size={22} color="#fff" />
                     </div>
-                    <h2 style={{
+                    <h2 className="text-foreground" style={{
                         margin: '0 0 14px', fontSize: '1.55rem', fontWeight: 800,
-                        color: 'var(--color-primary-text)', letterSpacing: '-0.03em',
+                        letterSpacing: '-0.03em',
                     }}>
                         Our Mission
                     </h2>
-                    <p style={{ fontSize: '1rem', lineHeight: 1.75, color: 'var(--color-muted-text)', margin: 0 }}>
+                    <p className="text-muted-foreground" style={{ fontSize: '1rem', lineHeight: 1.75, margin: 0 }}>
                         We believe every developer deserves access to world-class learning resources, a supportive community,
                         and the tools to land their dream job. Marevlo brings all of that together into one seamless platform —
                         making the journey from beginner to professional both exciting and achievable.
@@ -190,10 +178,10 @@ export default function AboutUs() {
                 </div>
 
                 {/* Values Grid */}
-                <h2 style={{
+                <h2 className="text-foreground" style={{
                     textAlign: 'center', margin: '56px 0 28px',
                     fontSize: '1.8rem', fontWeight: 900,
-                    color: 'var(--color-primary-text)', letterSpacing: '-0.03em',
+                    letterSpacing: '-0.03em',
                 }}>
                     What We Stand For
                 </h2>
@@ -205,11 +193,10 @@ export default function AboutUs() {
                     {values.map(({ icon: Icon, title, description, color }, i) => (
                         <div
                             key={title}
-                            className="about-card-enter"
+                            className="about-card-enter bg-card"
                             style={{
                                 animationDelay: `${i * 60}ms`,
                                 borderRadius: 20, padding: '24px 22px',
-                                backgroundColor: 'var(--color-surface)',
                                 border: '1px solid var(--color-border)',
                                 transition: 'transform 0.22s ease, box-shadow 0.22s ease',
                                 position: 'relative', overflow: 'hidden',
@@ -237,15 +224,14 @@ export default function AboutUs() {
                             }}>
                                 {React.createElement(Icon, { size: 19, style: { color } })}
                             </div>
-                            <h3 style={{
+                            <h3 className="text-foreground" style={{
                                 margin: '0 0 8px', fontSize: '1rem', fontWeight: 800,
-                                color: 'var(--color-primary-text)', letterSpacing: '-0.01em',
+                                letterSpacing: '-0.01em',
                             }}>
                                 {title}
                             </h3>
-                            <p style={{
+                            <p className="text-muted-foreground" style={{
                                 margin: 0, fontSize: '0.83rem', lineHeight: 1.65,
-                                color: 'var(--color-muted-text)',
                             }}>
                                 {description}
                             </p>
@@ -255,7 +241,7 @@ export default function AboutUs() {
 
                 {/* Footer note */}
                 <div style={{ marginTop: 56, marginBottom: 40, textAlign: 'center' }}>
-                    <p style={{ fontSize: '0.85rem', color: 'var(--color-muted-text)' }}>
+                    <p className="text-muted-foreground" style={{ fontSize: '0.85rem' }}>
                         Built with ❤️ by the Marevlo team · {new Date().getFullYear()}
                     </p>
                 </div>

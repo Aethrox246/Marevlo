@@ -12,17 +12,17 @@ export const TAG_COLORS = {
 
 export const PAPER_HTML_MAP = {
     budgetmem: '/ResearchPapers/budgetmem.html',
-    diskann: '/ResearchPapers/diskann%20(1).html',
-    dytopo: '/ResearchPapers/dytopo%20(1).html',
+    diskann: '/ResearchPapers/diskann.html',
+    dytopo: '/ResearchPapers/dytopo.html',
     graphmem: '/ResearchPapers/graphmem.html',
-    experts: '/ResearchPapers/experts%20(1).html',
-    hnsw: '/ResearchPapers/hnsw%20(1).html',
-    orch: '/ResearchPapers/orch%20(1).html',
-    procmem: '/ResearchPapers/procmem%20(1).html',
-    roma: '/ResearchPapers/roma%20(1).html',
-    adapt: '/ResearchPapers/adapt%20(1).html',
-    crave: '/ResearchPapers/crave%20(1).html',
-    resa: '/ResearchPapers/resa%20(1).html',
+    experts: '/ResearchPapers/experts.html',
+    hnsw: '/ResearchPapers/hnsw.html',
+    orch: '/ResearchPapers/orch.html',
+    procmem: '/ResearchPapers/procmem.html',
+    roma: '/ResearchPapers/roma.html',
+    adapt: '/ResearchPapers/adapt.html',
+    crave: '/ResearchPapers/crave.html',
+    resa: '/ResearchPapers/resa.html',
 };
 
 export const ALL_TAGS = ['RL', 'gen AI', 'Agentic AI', 'Software Engineering', 'AI', 'computer vision', 'Maths', 'Recommender system', 'Time series'];
@@ -30,7 +30,7 @@ export const ALL_TAGS = ['RL', 'gen AI', 'Agentic AI', 'Software Engineering', '
 export const PAPERS = [
     {
         id: 1,
-        title: 'BudgetMem — Query-Aware Budget-Tier Routing for Runtime Agent Memory',
+        title: 'BudgetMem Query-Aware Budget-Tier Routing for Runtime Agent Memory',
         authors: ['Zhang, Y.', 'Liu, X.', 'Wang, Z.'],
         year: 2026,
         venue: 'arXiv',
@@ -43,7 +43,7 @@ export const PAPERS = [
     },
     {
         id: 2,
-        title: 'DiskANN — Fast Accurate Billion-point Nearest Neighbor Search on a Single Node',
+        title: 'DiskANN Fast Accurate Billion-point Nearest Neighbor Search on a Single Node',
         authors: ['Subramanya, S.', 'Devvrit, F.', 'Simhadri, H. V.'],
         year: 2019,
         venue: 'NeurIPS',
@@ -56,7 +56,7 @@ export const PAPERS = [
     },
     {
         id: 3,
-        title: 'DyTopo — Dynamic Topology Routing for Multi-Agent Reasoning via Semantic Matching',
+        title: 'DyTopo Dynamic Topology Routing for Multi-Agent Reasoning via Semantic Matching',
         authors: ['Lu, C.', 'Wang, H.', 'Chen, L.'],
         year: 2026,
         venue: 'arXiv',
@@ -69,7 +69,7 @@ export const PAPERS = [
     },
     {
         id: 4,
-        title: 'Graph-based Agent Memory — Taxonomy, Techniques, Applications',
+        title: 'Graph-based Agent Memory Taxonomy, Techniques, Applications',
         authors: ['Yang, Q.', 'Kumar, R.', 'Patel, S.'],
         year: 2026,
         venue: 'arXiv',
@@ -108,7 +108,7 @@ export const PAPERS = [
     },
     {
         id: 7,
-        title: 'ORCH — Many Analyses, One Merge',
+        title: 'ORCH Many Analyses, One Merge',
         authors: ['Zhou, H.', 'Chan, H. Y.'],
         year: 2026,
         venue: 'arXiv',
@@ -121,7 +121,7 @@ export const PAPERS = [
     },
     {
         id: 8,
-        title: 'ProcMEM — Learning Reusable Procedural Memory via Non-Parametric PPO',
+        title: 'ProcMEM Learning Reusable Procedural Memory via Non-Parametric PPO',
         authors: ['Agent Learning Team'],
         year: 2026,
         venue: 'arXiv',
@@ -134,7 +134,7 @@ export const PAPERS = [
     },
     {
         id: 9,
-        title: 'ROMA — Recursive Open Meta-Agent Framework for Long-Horizon Multi-Agent Systems',
+        title: 'ROMA Recursive Open Meta-Agent Framework for Long-Horizon Multi-Agent Systems',
         authors: ['Alzu\'bi, O.', 'Karaman, S.', 'Newman, P.'],
         year: 2026,
         venue: 'arXiv',
@@ -147,7 +147,7 @@ export const PAPERS = [
     },
     {
         id: 10,
-        title: 'Adaptation of Agentic AI — Post-Training, Memory, Skills',
+        title: 'Adaptation of Agentic AI Post-Training, Memory, Skills',
         authors: ['Jiang, P.', 'Lin, J.', 'Shi, Z.'],
         year: 2026,
         venue: 'arXiv',

@@ -1,10 +1,11 @@
-import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import React from 'react';
+import { useNavigate, useLocation } from 'react-router-dom';
 import {
     ArrowUpRight, ArrowLeft, Search, Brain, BookOpen, Layers,
     Database, GitBranch, Network, Cpu, FlaskConical, Zap,
     Sparkles, Clock, Play, Code2, Server, ChevronRight, Home
 } from 'lucide-react';
+import { useTheme } from '../context/ThemeContext';
 
 //  RESEARCH COURSE DATA
 
@@ -21,6 +22,7 @@ const RESEARCH_COURSES = [
         accentSecondary: '#818cf8',
         accentTertiary: '#06b6d4',
         bgGradient: 'linear-gradient(145deg, #0d0221 0%, #1a0533 45%, #0f0a2e 100%)',
+        lightBgGradient: 'linear-gradient(145deg, #f5f3ff 0%, #ede9fe 45%, #f0f9ff 100%)',
         orbColor1: 'rgba(99,102,241,0.55)',
         orbColor2: 'rgba(6,182,212,0.35)',
         shadowColor: 'rgba(99,102,241,0.45)',
@@ -48,6 +50,7 @@ const RESEARCH_COURSES = [
         accentSecondary: '#a78bfa',
         accentTertiary: '#ec4899',
         bgGradient: 'linear-gradient(145deg, #0f0520 0%, #1e0835 45%, #140728 100%)',
+        lightBgGradient: 'linear-gradient(145deg, #faf5ff 0%, #f3e8ff 45%, #fdf4ff 100%)',
         orbColor1: 'rgba(139,92,246,0.55)',
         orbColor2: 'rgba(236,72,153,0.35)',
         shadowColor: 'rgba(139,92,246,0.45)',
@@ -77,6 +80,7 @@ const RESEARCH_COURSES = [
         accentSecondary: '#a78bfa',
         accentTertiary: '#6366f1',
         bgGradient: 'linear-gradient(145deg, #120522 0%, #22083a 45%, #16082b 100%)',
+        lightBgGradient: 'linear-gradient(145deg, #f5f3ff 0%, #ede9fe 45%, #f3e8ff 100%)',
         orbColor1: 'rgba(124,58,237,0.52)',
         orbColor2: 'rgba(99,102,241,0.28)',
         shadowColor: 'rgba(124,58,237,0.42)',
@@ -111,72 +115,34 @@ const LEVEL_COLORS = {
 
 export default function ResearchCourses() {
     const navigate = useNavigate();
-    const [expandedCourse, setExpandedCourse] = useState(null);
-    const selectedCourse = RESEARCH_COURSES.find((course) => course.id === expandedCourse);
+    const { isDark } = useTheme();
+    const location = useLocation();
+    const courseIdFromUrl = React.useMemo(() => {
+        const segments = location.pathname.split('/').filter(Boolean);
+        if (segments[0] !== 'research' || segments[1] !== 'courses' || segments.length < 3) return null;
+        return segments[2];
+    }, [location.pathname]);
+    const selectedCourse = RESEARCH_COURSES.find((course) => course.id === courseIdFromUrl) || null;
     const SelectedIcon = selectedCourse?.icon;
+
+    // Theme-aware helpers
+    const titleColor   = isDark ? '#eeeeff'                  : 'var(--foreground)';
+    const descColor    = isDark ? 'rgba(200,200,240,0.75)'   : 'var(--muted-foreground)';
+    const descColorAlt = isDark ? 'rgba(200,200,240,0.55)'   : 'var(--muted-foreground)';
+    const chipBg       = isDark ? 'rgba(255,255,255,0.08)'   : 'rgba(0,0,0,0.05)';
+    const chipBorder   = isDark ? 'rgba(255,255,255,0.15)'   : 'rgba(0,0,0,0.1)';
+    const chipText     = isDark ? 'rgba(255,255,255,0.8)'    : 'var(--foreground)';
+    const chipTextAlt  = isDark ? 'rgba(200,200,240,0.7)'    : 'var(--muted-foreground)';
+    const chipBgSm     = isDark ? 'rgba(255,255,255,0.04)'   : 'rgba(0,0,0,0.04)';
+    const chipBorderSm = isDark ? 'rgba(255,255,255,0.08)'   : 'rgba(0,0,0,0.08)';
+    const modTitleClr  = isDark ? '#ffffff'                  : 'var(--foreground)';
+    const modDurClr    = isDark ? 'rgba(255,255,255,0.75)'   : 'var(--muted-foreground)';
+    const bg = (c) => isDark ? c.bgGradient : c.lightBgGradient;
 
     return (
         <>
-            <style>{`
-                @keyframes rcOrb {
-                    0%,100% { transform: translate(0,0) scale(1); }
-                    33%     { transform: translate(30px,-40px) scale(1.2); }
-                    66%     { transform: translate(-20px,20px) scale(0.85); }
-                }
-                @keyframes rcShimmer {
-                    0%   { transform: translateX(-120%) skewX(-15deg); }
-                    100% { transform: translateX(320%) skewX(-15deg); }
-                }
-                @keyframes rcScan {
-                    0%   { transform: translateY(-100%); opacity: 0; }
-                    10%  { opacity: 1; }
-                    90%  { opacity: 1; }
-                    100% { transform: translateY(800%); opacity: 0; }
-                }
-                @keyframes rcFloat {
-                    0%,100% { transform: translateY(0); }
-                    50%     { transform: translateY(-8px); }
-                }
-                .rc-card {
-                    transition: transform 0.45s cubic-bezier(.34,1.56,.64,1), box-shadow 0.45s ease;
-                    cursor: pointer;
-                }
-                .rc-card-1:hover {
-                    transform: translateY(-8px) scale(1.005);
-                    box-shadow: 0 40px 100px rgba(99,102,241,0.45) !important;
-                }
-                .rc-card-2:hover {
-                    transform: translateY(-8px) scale(1.005);
-                    box-shadow: 0 40px 100px rgba(139,92,246,0.45) !important;
-                }
-                .rc-card-3:hover {
-                    transform: translateY(-8px) scale(1.005);
-                    box-shadow: 0 40px 100px rgba(124,58,237,0.42) !important;
-                }
-                .rc-card:hover .rc-shimmer {
-                    animation: rcShimmer 0.75s ease forwards;
-                }
-                .rc-part-label {
-                    font-size: 10px; font-weight: 700; letter-spacing: 0.2em;
-                    text-transform: uppercase; display: flex; align-items: center; gap: 8px;
-                    margin-bottom: 12px;
-                }
-                .rc-part-label::after {
-                    content: ''; flex: 1; height: 1px;
-                    background: linear-gradient(90deg, currentColor, transparent);
-                    opacity: 0.25;
-                }
-                .rc-module-row {
-                    transition: all 0.25s ease;
-                    cursor: pointer;
-                }
-                .rc-module-row:hover {
-                    background: rgba(255,255,255,0.04) !important;
-                    transform: translateX(4px);
-                }
-            `}</style>
 
-            <div className="overflow-y-auto h-full" style={{ backgroundColor: 'var(--color-app-bg)', color: 'var(--color-primary-text)' }}>
+            <div className="overflow-y-auto h-full text-foreground" style={{ backgroundColor: 'var(--color-app-bg)' }}>
                 <div style={{ maxWidth: '1160px', margin: '0 auto', padding: '40px 24px 96px' }}>
 
                     {/* Back button */}
@@ -216,14 +182,14 @@ export default function ResearchCourses() {
                                 Research Curriculum
                             </span>
                         </div>
-                        <h1 style={{
+                        <h1 className="text-foreground" style={{
                             fontSize: 'clamp(2.2rem,5vw,3.8rem)', fontWeight: 900,
                             lineHeight: 1.06, letterSpacing: '-0.03em',
-                            marginBottom: '16px', color: 'var(--color-primary-text)'
+                            marginBottom: '16px'
                         }}>
                             Research Courses
                         </h1>
-                        <p style={{ color: 'var(--color-muted-text)', fontSize: '1.05rem', maxWidth: '520px', lineHeight: 1.7 }}>
+                        <p className="text-muted-foreground" style={{ fontSize: '1.05rem', maxWidth: '520px', lineHeight: 1.7 }}>
                             Deep, focused courses tied to the research that's reshaping how we build AI systems. Each course is self-contained and hands-on.
                         </p>
                     </div>
@@ -232,7 +198,7 @@ export default function ResearchCourses() {
                     {selectedCourse ? (
                         <>
                             <button
-                                onClick={() => setExpandedCourse(null)}
+                                onClick={() => navigate('/research/courses')}
                                 style={{
                                     display: 'flex', alignItems: 'center', gap: '8px',
                                     marginBottom: '36px', padding: '10px 18px',
@@ -261,7 +227,7 @@ export default function ResearchCourses() {
                                     className={`rc-card ${selectedCourse.hoverClass}`}
                                     style={{
                                         position: 'relative', overflow: 'hidden',
-                                        borderRadius: '24px', background: selectedCourse.bgGradient,
+                                        borderRadius: '24px', background: bg(selectedCourse),
                                         boxShadow: `0 16px 48px ${selectedCourse.shadowColor.replace('0.45', '0.15')}`,
                                         padding: '24px', minHeight: '280px',
                                     }}
@@ -295,43 +261,40 @@ export default function ResearchCourses() {
                                             </span>
                                         </div>
                                         <h2 style={{
-                                            fontSize: '1.7rem', fontWeight: 900, color: '#eeeeff',
+                                            fontSize: '1.7rem', fontWeight: 900, color: titleColor,
                                             lineHeight: 1.06, marginBottom: '10px', letterSpacing: '-0.02em'
                                         }}>{selectedCourse.label}</h2>
-                                        <p style={{ fontSize: '0.92rem', color: 'rgba(200,200,240,0.75)', lineHeight: 1.7, maxWidth: '500px' }}>
+                                        <p style={{ fontSize: '0.92rem', color: descColor, lineHeight: 1.7, maxWidth: '500px' }}>
                                             {selectedCourse.description}
                                         </p>
                                         <div style={{ display: 'flex', gap: '18px', marginTop: '18px', flexWrap: 'wrap' }}>
                                             <div style={{
                                                 display: 'flex', alignItems: 'center', gap: '6px',
                                                 padding: '8px 14px', borderRadius: '999px',
-                                                background: 'rgba(255,255,255,0.08)',
-                                                border: '1px solid rgba(255,255,255,0.15)',
+                                                background: chipBg, border: `1px solid ${chipBorder}`,
                                             }}>
                                                 <BookOpen size={13} color={selectedCourse.accentSecondary} />
-                                                <span style={{ fontSize: '0.78rem', fontWeight: 600, color: 'rgba(255,255,255,0.8)' }}>
+                                                <span style={{ fontSize: '0.78rem', fontWeight: 600, color: chipText }}>
                                                     {selectedCourse.modules.length} modules
                                                 </span>
                                             </div>
                                             <div style={{
                                                 display: 'flex', alignItems: 'center', gap: '6px',
                                                 padding: '8px 14px', borderRadius: '999px',
-                                                background: 'rgba(255,255,255,0.08)',
-                                                border: '1px solid rgba(255,255,255,0.15)',
+                                                background: chipBg, border: `1px solid ${chipBorder}`,
                                             }}>
                                                 <Sparkles size={13} color={selectedCourse.accentSecondary} />
-                                                <span style={{ fontSize: '0.78rem', fontWeight: 600, color: 'rgba(255,255,255,0.8)' }}>
+                                                <span style={{ fontSize: '0.78rem', fontWeight: 600, color: chipText }}>
                                                     Agentic AI
                                                 </span>
                                             </div>
                                             <div style={{
                                                 display: 'flex', alignItems: 'center', gap: '6px',
                                                 padding: '8px 14px', borderRadius: '999px',
-                                                background: 'rgba(255,255,255,0.08)',
-                                                border: '1px solid rgba(255,255,255,0.15)',
+                                                background: chipBg, border: `1px solid ${chipBorder}`,
                                             }}>
                                                 <Clock size={13} color={selectedCourse.accentSecondary} />
-                                                <span style={{ fontSize: '0.78rem', fontWeight: 600, color: 'rgba(255,255,255,0.8)' }}>
+                                                <span style={{ fontSize: '0.78rem', fontWeight: 600, color: chipText }}>
                                                     ~{selectedCourse.modules.length * 25}m total
                                                 </span>
                                             </div>
@@ -350,10 +313,10 @@ export default function ResearchCourses() {
                                         }}>
                                             Course Modules
                                         </div>
-                                        <h2 style={{ fontSize: '2rem', fontWeight: 900, margin: 0, color: '#eeeeff' }}>
+                                        <h2 style={{ fontSize: '2rem', fontWeight: 900, margin: 0, color: titleColor }}>
                                             {selectedCourse.label} Modules
                                         </h2>
-                                        <p style={{ marginTop: '10px', fontSize: '0.95rem', color: 'rgba(200,200,240,0.7)', maxWidth: '620px', lineHeight: 1.7 }}>
+                                        <p style={{ marginTop: '10px', fontSize: '0.95rem', color: chipTextAlt, maxWidth: '620px', lineHeight: 1.7 }}>
                                             Select a module card to jump into the lesson. This is the same card-driven experience as Courses.
                                         </p>
                                     </div>
@@ -364,7 +327,9 @@ export default function ResearchCourses() {
                                 {selectedCourse.modules.map((mod, index) => {
                                     const ModIcon = mod.icon;
                                     const lvl = LEVEL_COLORS[mod.level] || LEVEL_COLORS.Intermediate;
-                                    const modGradient = `linear-gradient(135deg, ${selectedCourse.accentPrimary}22, ${selectedCourse.accentTertiary}18)`;
+                                    const modGradient = isDark
+                                        ? `linear-gradient(135deg, ${selectedCourse.accentPrimary}22, ${selectedCourse.accentTertiary}18)`
+                                        : `linear-gradient(135deg, ${selectedCourse.accentPrimary}12, ${selectedCourse.accentTertiary}0C)`;
 
                                     return (
                                         <div
@@ -430,7 +395,7 @@ export default function ResearchCourses() {
 
                                                 {/* Title and level */}
                                                 <h3 style={{
-                                                    fontSize: '1.15rem', fontWeight: 800, color: '#ffffff', marginBottom: '8px',
+                                                    fontSize: '1.15rem', fontWeight: 800, color: modTitleClr, marginBottom: '8px',
                                                     lineHeight: 1.3, letterSpacing: '-0.01em'
                                                 }}>
                                                     {mod.label}
@@ -439,7 +404,7 @@ export default function ResearchCourses() {
                                                 {/* Duration and level info */}
                                                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginTop: '10px', flexWrap: 'wrap' }}>
                                                     <span style={{
-                                                        fontSize: '0.85rem', color: 'rgba(255,255,255,0.75)', fontWeight: 500,
+                                                        fontSize: '0.85rem', color: modDurClr, fontWeight: 500,
                                                         display: 'flex', alignItems: 'center', gap: '4px'
                                                     }}>
                                                         {mod.duration}
@@ -489,13 +454,13 @@ export default function ResearchCourses() {
                                                 if (course.id === 'recommender-system') {
                                                     navigate('/research/track/recommender-system');
                                                 } else {
-                                                    setExpandedCourse(course.id);
+                                                    navigate(`/research/courses/${course.id}`);
                                                 }
                                             }}
                                             style={{
                                                 position: 'relative', overflow: 'hidden',
                                                 borderRadius: '24px', minHeight: '300px',
-                                                background: course.bgGradient,
+                                                background: bg(course),
                                                 boxShadow: `0 16px 48px ${course.shadowColor.replace('0.45', '0.15')}`,
                                                 display: 'flex', flexDirection: 'column',
                                                 justifyContent: 'space-between', padding: '24px',
@@ -530,10 +495,10 @@ export default function ResearchCourses() {
                                                     </span>
                                                 </div>
                                                 <h2 style={{
-                                                    fontSize: '1.45rem', fontWeight: 900, color: '#eeeeff',
+                                                    fontSize: '1.45rem', fontWeight: 900, color: titleColor,
                                                     lineHeight: 1.12, marginBottom: '8px', letterSpacing: '-0.02em'
                                                 }}>{course.label}</h2>
-                                                <p style={{ fontSize: '0.8rem', color: 'rgba(200,200,240,0.55)', lineHeight: 1.65, maxWidth: '300px' }}>
+                                                <p style={{ fontSize: '0.8rem', color: descColorAlt, lineHeight: 1.65, maxWidth: '300px' }}>
                                                     {course.description}
                                                 </p>
                                             </div>
@@ -541,22 +506,20 @@ export default function ResearchCourses() {
                                                 <div style={{
                                                     display: 'flex', alignItems: 'center', gap: '6px',
                                                     padding: '6px 14px', borderRadius: '10px',
-                                                    background: 'rgba(255,255,255,0.04)',
-                                                    border: '1px solid rgba(255,255,255,0.08)',
+                                                    background: chipBgSm, border: `1px solid ${chipBorderSm}`,
                                                 }}>
                                                     <BookOpen size={13} color={course.accentSecondary} />
-                                                    <span style={{ fontSize: '0.78rem', fontWeight: 600, color: 'rgba(200,200,240,0.7)' }}>
+                                                    <span style={{ fontSize: '0.78rem', fontWeight: 600, color: chipTextAlt }}>
                                                         {course.modules.length} modules
                                                     </span>
                                                 </div>
                                                 <div style={{
                                                     display: 'flex', alignItems: 'center', gap: '6px',
                                                     padding: '6px 14px', borderRadius: '10px',
-                                                    background: 'rgba(255,255,255,0.04)',
-                                                    border: '1px solid rgba(255,255,255,0.08)',
+                                                    background: chipBgSm, border: `1px solid ${chipBorderSm}`,
                                                 }}>
                                                     <Sparkles size={13} color={course.accentSecondary} />
-                                                    <span style={{ fontSize: '0.78rem', fontWeight: 600, color: 'rgba(200,200,240,0.7)' }}>
+                                                    <span style={{ fontSize: '0.78rem', fontWeight: 600, color: chipTextAlt }}>
                                                         Agentic AI
                                                     </span>
                                                 </div>

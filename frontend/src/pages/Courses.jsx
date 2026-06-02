@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import {
     ChevronRight, Play, BookOpen, Layers, Brain,
@@ -1039,8 +1039,8 @@ function CourseCard({ node, onDrillDown, onStartLeaf }) {
             ref={cardRef}
             className="relative flex flex-col rounded-2xl overflow-hidden cursor-pointer"
             style={{
-                backgroundColor: 'var(--color-surface)',
-                border: `1px solid ${hovered ? 'rgba(99,102,241,0.4)' : 'var(--color-border)'}`,
+                backgroundColor: 'var(--card)',
+                border: `1px solid ${hovered ? 'rgba(99,102,241,0.4)' : 'var(--border)'}`,
                 boxShadow: hovered ? '0 30px 60px rgba(0,0,0,0.12), 0 0 20px rgba(99,102,241,0.15)' : '0 2px 8px rgba(0,0,0,0.04)',
                 transform: transform,
                 transition: hovered ? 'box-shadow 0.3s ease, border 0.3s ease, transform 0.1s ease-out' : 'all 0.5s ease',
@@ -1098,13 +1098,13 @@ function CourseCard({ node, onDrillDown, onStartLeaf }) {
 
                 {/* Title */}
                 <h4 className="text-base font-bold leading-snug transition-colors duration-200"
-                    style={{ color: hovered ? '#6366f1' : 'var(--color-primary-text)' }}>
+                    style={{ color: hovered ? 'var(--primary)' : 'var(--foreground)' }}>
                     {node.label}
                 </h4>
 
                 {/* Description */}
                 <p className="text-sm leading-relaxed line-clamp-2 flex-1"
-                    style={{ color: 'var(--color-muted-text)' }}>
+                    style={{ color: 'var(--muted-foreground)' }}>
                     {node.description || 'Explore this topic to learn more.'}
                 </p>
 
@@ -1125,17 +1125,18 @@ function CourseCard({ node, onDrillDown, onStartLeaf }) {
                     {/* Meta info */}
                     <div className="flex items-center gap-3">
                         {node.duration && (
-                            <span className="flex items-center gap-1" style={{ fontSize: '0.72rem', color: 'var(--color-muted-text)' }}>
+                            <span className="flex items-center gap-1" style={{ fontSize: '0.72rem', color: 'var(--muted-foreground)' }}>
                                 <Clock size={11} /> {node.duration}
                             </span>
                         )}
                         {isFolder && (
-                            <span className="flex items-center gap-1" style={{ fontSize: '0.72rem', color: 'var(--color-muted-text)' }}>
+                            <span className="flex items-center gap-1" style={{ fontSize: '0.72rem', color: 'var(--muted-foreground)' }}>
                                 <BookOpen size={11} /> {leafCount} lesson{leafCount !== 1 ? 's' : ''}
                             </span>
                         )}
                     </div>
 
+<<<<<<< HEAD
                     {/* CTA button */}
                     <button
                         className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all duration-200"
@@ -1152,6 +1153,74 @@ function CourseCard({ node, onDrillDown, onStartLeaf }) {
                                 onDrillDown(node);
                             } else {
                                 onStartLeaf(node);
+=======
+                    {/* CTA button(s) - dual buttons for Agentic AI modules */}
+                    {!isFolder && hasDepthContent ? (
+                        <div className="flex items-center gap-2">
+                            <button
+                                onClick={(e) => {
+                                    e.stopPropagation();
+                                    onStartLeaf(node, 'conceptual');
+                                }}
+                                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all duration-200"
+                                style={{
+                                    background: 'var(--muted)',
+                                    color: 'var(--foreground)',
+                                    border: '1px solid rgba(99,102,241,0.3)',
+                                }}
+                                onMouseEnter={(e) => {
+                                    e.currentTarget.style.background = 'linear-gradient(135deg,#6366f1,#06b6d4)';
+                                    e.currentTarget.style.color = '#fff';
+                                    e.currentTarget.style.boxShadow = '0 4px 12px rgba(99,102,241,0.35)';
+                                }}
+                                onMouseLeave={(e) => {
+                                    e.currentTarget.style.background = 'var(--muted)';
+                                    e.currentTarget.style.color = 'var(--foreground)';
+                                    e.currentTarget.style.boxShadow = 'none';
+                                }}
+                            >
+                                <FileText size={13} /> Conceptual
+                            </button>
+                            <button
+                                onClick={(e) => {
+                                    e.stopPropagation();
+                                    onStartLeaf(node, 'depth');
+                                }}
+                                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all duration-200"
+                                style={{
+                                    background: 'var(--muted)',
+                                    color: 'var(--foreground)',
+                                    border: '1px solid rgba(139,92,246,0.3)',
+                                }}
+                                onMouseEnter={(e) => {
+                                    e.currentTarget.style.background = 'linear-gradient(135deg,#4f46e5,#6366f1)';
+                                    e.currentTarget.style.color = '#fff';
+                                    e.currentTarget.style.boxShadow = '0 4px 12px rgba(99,102,241,0.35)';
+                                }}
+                                onMouseLeave={(e) => {
+                                    e.currentTarget.style.background = 'var(--muted)';
+                                    e.currentTarget.style.color = 'var(--foreground)';
+                                    e.currentTarget.style.boxShadow = 'none';
+                                }}
+                            >
+                                <BookOpen size={13} /> Depth
+                            </button>
+                        </div>
+                    ) : (
+                        <button
+                            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all duration-200"
+                            style={{
+                                background: hovered
+                                    ? (node.gradient || 'linear-gradient(135deg,#6366f1,#8b5cf6)')
+                                    : 'var(--muted)',
+                                color: hovered ? '#fff' : 'var(--foreground)',
+                                boxShadow: hovered ? '0 4px 12px rgba(99,102,241,0.35)' : 'none',
+                            }}
+                        >
+                            {isFolder
+                                ? <><ChevronRight size={13} /> Explore</>
+                                : <><Play size={13} fill="currentColor" /> Start</>
+>>>>>>> 1e161207cd41710ddd35a1d2d145dca80f8d8894
                             }
                         }}
                     >
@@ -1202,25 +1271,25 @@ function Breadcrumb({ path, onNavigate }) {
             <button
                 onClick={() => onNavigate([])}
                 className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all duration-200"
-                style={{ background: 'var(--color-surface-hover)', color: 'var(--color-muted-text)' }}
-                onMouseEnter={e => e.currentTarget.style.color = 'var(--color-primary-text)'}
-                onMouseLeave={e => e.currentTarget.style.color = 'var(--color-muted-text)'}
+                style={{ background: 'var(--muted)', color: 'var(--muted-foreground)' }}
+                onMouseEnter={e => e.currentTarget.style.color = 'var(--foreground)'}
+                onMouseLeave={e => e.currentTarget.style.color = 'var(--muted-foreground)'}
             >
                 <Home size={12} /> All Courses
             </button>
 
             {path.map((crumb, i) => (
                 <React.Fragment key={crumb.id}>
-                    <ChevronRight size={12} style={{ color: 'var(--color-muted-text)', flexShrink: 0 }} />
+                    <ChevronRight size={12} style={{ color: 'var(--muted-foreground)', flexShrink: 0 }} />
                     <button
                         onClick={() => onNavigate(path.slice(0, i + 1).map(c => c.id))}
                         className="px-3 py-1.5 rounded-lg text-xs font-semibold transition-all duration-200"
                         style={{
-                            background: i === path.length - 1 ? 'rgba(99,102,241,0.12)' : 'var(--color-surface-hover)',
-                            color: i === path.length - 1 ? '#6366f1' : 'var(--color-muted-text)',
+                            background: i === path.length - 1 ? 'rgba(99,102,241,0.12)' : 'var(--muted)',
+                            color: i === path.length - 1 ? 'var(--primary)' : 'var(--muted-foreground)',
                         }}
-                        onMouseEnter={e => { if (i < path.length - 1) e.currentTarget.style.color = 'var(--color-primary-text)'; }}
-                        onMouseLeave={e => { if (i < path.length - 1) e.currentTarget.style.color = 'var(--color-muted-text)'; }}
+                        onMouseEnter={e => { if (i < path.length - 1) e.currentTarget.style.color = 'var(--foreground)'; }}
+                        onMouseLeave={e => { if (i < path.length - 1) e.currentTarget.style.color = 'var(--muted-foreground)'; }}
                     >
                         {crumb.label}
                     </button>
@@ -1241,6 +1310,21 @@ export default function Courses() {
     const [activeLevels, setActiveLevels] = useState([]);
     const [showLevelFilters, setShowLevelFilters] = useState(false);
     const searchRef = useRef(null);
+
+    const urlPathIds = React.useMemo(() => {
+        const segments = location.pathname.split('/').filter(Boolean);
+        if (segments[0] !== 'courses' || segments.length < 2) return [];
+        return segments.slice(1);
+    }, [location.pathname]);
+
+    useEffect(() => {
+        if (urlPathIds.length > 0) {
+            setPathIds(urlPathIds);
+            return;
+        }
+
+        setPathIds(location.state?.pathIds || []);
+    }, [location.pathname, location.state, urlPathIds]);
 
     // Keyboard shortcut: Cmd/Ctrl+K → focus search
     React.useEffect(() => {
@@ -1310,13 +1394,21 @@ export default function Courses() {
     // Root category node (for hero)
     const rootCatNode = pathIds.length ? findNode(COURSE_TREE, [pathIds[0]]) : null;
 
+    const syncCourseUrl = (ids) => {
+        const nextPath = ids.length ? `/courses/${ids.join('/')}` : '/courses';
+        navigate(nextPath, { state: { pathIds: ids } });
+    };
+
     const handleDrillDown = (node) => {
-        setPathIds(prev => [...prev, node.id]);
+        const nextIds = [...pathIds, node.id];
+        setPathIds(nextIds);
+        syncCourseUrl(nextIds);
         window.scrollTo({ top: 0, behavior: 'smooth' });
     };
 
     const handleNavigate = (ids) => {
         setPathIds(ids);
+        syncCourseUrl(ids);
         window.scrollTo({ top: 0, behavior: 'smooth' });
     };
 
@@ -1330,42 +1422,17 @@ export default function Courses() {
 
     return (
         <div className="min-h-screen w-full overflow-y-auto custom-scrollbar"
-            style={{ backgroundColor: 'var(--color-app-bg)', color: 'var(--color-primary-text)' }}>
-
-            <style>{`
-                @keyframes searchGradientTracer {
-                    0% { background-position: 0% 50%; }
-                    50% { background-position: 100% 50%; }
-                    100% { background-position: 0% 50%; }
-                }
-                @keyframes heroPulse {
-                    0%,100% { opacity:0.55; transform:scale(1); }
-                    50%     { opacity:0.75; transform:scale(1.06); }
-                }
-                @keyframes heroGlow {
-                    0%,100% { opacity:0.4; transform:scale(1) translateY(0); }
-                    50%     { opacity:0.65; transform:scale(1.08) translateY(-8px); }
-                }
-                @keyframes shimmer {
-                    0%   { background-position: -200% center; }
-                    100% { background-position:  200% center; }
-                }
-                .courses-hero-title-grad {
-                    background: linear-gradient(135deg, #fff 0%, #e0e7ff 35%, #a5f3fc 65%, #818cf8 100%);
-                    background-size: 200% auto;
-                    -webkit-background-clip: text;
-                    -webkit-text-fill-color: transparent;
-                    background-clip: text;
-                    animation: shimmer 6s linear infinite;
-                }
-                .courses-stat-card { transition: transform 0.2s, border-color 0.2s; }
-                .courses-stat-card:hover { transform: translateY(-2px); border-color: rgba(99,102,241,0.35) !important; }
-                .search-focus:focus { outline:none; }
-            `}</style>
+            style={{ backgroundColor: 'var(--background)', color: 'var(--foreground)' }}>
 
             {/* Hero Section — full-width, outside container */}
             {!pathIds.length && (
-                <div className="relative overflow-hidden border-b bg-white dark:bg-black border-black/[0.06] dark:border-white/[0.06]" style={{minHeight:'340px'}}>
+                <div className="relative overflow-hidden border-b bg-card dark:bg-black border-black/[0.06] dark:border-white/[0.06]" style={{minHeight:'340px'}}>
+                    {/* Centre top glow */}
+                    <div className="absolute -top-20 left-1/2 -translate-x-1/2 w-[600px] h-[360px] rounded-full pointer-events-none" style={{background:'radial-gradient(ellipse,rgba(99,102,241,0.28) 0%,transparent 70%)',filter:'blur(60px)',animation:'heroGlow 8s ease-in-out infinite'}} />
+                    {/* Teal glow left */}
+                    <div className="absolute top-1/2 -left-32 -translate-y-1/2 w-[380px] h-[380px] rounded-full pointer-events-none" style={{background:'radial-gradient(circle,rgba(6,182,212,0.45) 0%,transparent 65%)',filter:'blur(80px)',animation:'heroPulse 7s ease-in-out infinite'}} />
+                    {/* Indigo glow right */}
+                    <div className="absolute top-1/2 -right-32 -translate-y-1/2 w-[360px] h-[360px] rounded-full pointer-events-none" style={{background:'radial-gradient(circle,rgba(99,102,241,0.22) 0%,transparent 65%)',filter:'blur(80px)',animation:'heroPulse 9s ease-in-out 1.5s infinite'}} />
                     {/* Centre top glow */}
                     <div className="absolute -top-20 left-1/2 -translate-x-1/2 w-[600px] h-[360px] rounded-full pointer-events-none" style={{background:'radial-gradient(ellipse,rgba(99,102,241,0.28) 0%,transparent 70%)',filter:'blur(60px)',animation:'heroGlow 8s ease-in-out infinite'}} />
                     {/* Teal glow left */}
@@ -1424,7 +1491,7 @@ export default function Courses() {
                 </div>
             )}
 
-            <div className="relative z-10 py-8 sm:py-12" style={{ width: '70%', margin: '0 auto' }}>
+            <div className="page-container relative z-10 py-8 sm:py-12">
 
                 {/* Breadcrumb (when inside a folder and not searching) */}
                 {pathIds.length > 0 && !filteredResults && (
@@ -1442,17 +1509,17 @@ export default function Courses() {
                         <button
                             onClick={() => handleNavigate(pathIds.slice(0, -1))}
                             className="p-2 rounded-xl transition-all duration-200"
-                            style={{ background: 'var(--color-surface)', border: '1px solid var(--color-border)' }}
+                            style={{ background: 'var(--card)', border: '1px solid var(--border)' }}
                             onMouseEnter={e => e.currentTarget.style.background = 'rgba(99,102,241,0.1)'}
-                            onMouseLeave={e => e.currentTarget.style.background = 'var(--color-surface)'}
+                            onMouseLeave={e => e.currentTarget.style.background = 'var(--card)'}
                         >
                             <ArrowLeft size={16} style={{ color: '#6366f1' }} />
                         </button>
                         <div>
-                            <h2 className="text-xl font-extrabold" style={{ color: 'var(--color-primary-text)', letterSpacing: '-0.02em' }}>
+                            <h2 className="text-xl font-extrabold" style={{ color: 'var(--foreground)', letterSpacing: '-0.02em' }}>
                                 {parentNode.label}
                             </h2>
-                            <p style={{ fontSize: '0.8rem', color: 'var(--color-muted-text)' }}>
+                            <p style={{ fontSize: '0.8rem', color: 'var(--muted-foreground)' }}>
                                 {countLeaves(parentNode)} lesson{countLeaves(parentNode) !== 1 ? 's' : ''} in this section
                             </p>
                         </div>
@@ -1464,20 +1531,20 @@ export default function Courses() {
                     <div>
                         <div className="mb-6 flex items-center justify-between">
                             <h3 className="text-lg font-bold flex items-center gap-2">
-                                <Search size={18} className="text-indigo-500" />
+                                <Search size={18} className="text-primary" />
                                 Search Results ({filteredResults.length})
                             </h3>
-                            <button onClick={() => { setSearch(''); setActiveLevels([]); }} className="text-sm text-indigo-500 hover:underline font-semibold">
+                            <button onClick={() => { setSearch(''); setActiveLevels([]); }} className="text-sm text-primary hover:underline font-semibold">
                                 Clear search
                             </button>
                         </div>
                         {filteredResults.length === 0 ? (
-                            <div className="text-center py-20 rounded-2xl" style={{ border: '1px dashed var(--color-border)', background: 'rgba(99,102,241,0.03)' }}>
-                                <div style={{ width: 64, height: 64, borderRadius: '50%', margin: '0 auto 16px', background: 'var(--color-surface-hover)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                            <div className="text-center py-20 rounded-2xl" style={{ border: '1px dashed var(--border)', background: 'rgba(99,102,241,0.03)' }}>
+                                <div style={{ width: 64, height: 64, borderRadius: '50%', margin: '0 auto 16px', background: 'var(--muted)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                                     <Search size={28} className="text-muted-text" />
                                 </div>
                                 <h3 className="text-xl font-bold mb-2">No matches found</h3>
-                                <p style={{ color: 'var(--color-muted-text)', fontSize: '0.9rem' }}>Try different keywords or check your level filters.</p>
+                                <p style={{ color: 'var(--muted-foreground)', fontSize: '0.9rem' }}>Try different keywords or check your level filters.</p>
                             </div>
                         ) : (
                             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
@@ -1494,12 +1561,12 @@ export default function Courses() {
                         )}
                     </div>
                 ) : currentItems.length === 0 ? (
-                    <div className="text-center py-20 rounded-2xl" style={{ border: '1px dashed var(--color-border)', background: 'rgba(99,102,241,0.03)' }}>
+                    <div className="text-center py-20 rounded-2xl" style={{ border: '1px dashed var(--border)', background: 'rgba(99,102,241,0.03)' }}>
                         <div style={{ width: 64, height: 64, borderRadius: '50%', margin: '0 auto 16px', background: 'linear-gradient(135deg,#6366f1,#8b5cf6)', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 8px 24px rgba(99,102,241,0.35)' }}>
                             <BookOpen size={28} color="#fff" />
                         </div>
-                        <h3 className="text-xl font-bold mb-2" style={{ color: 'var(--color-primary-text)' }}>No courses yet</h3>
-                        <p style={{ color: 'var(--color-muted-text)', fontSize: '0.9rem' }}>Courses are being added. Check back soon!</p>
+                        <h3 className="text-xl font-bold mb-2" style={{ color: 'var(--foreground)' }}>No courses yet</h3>
+                        <p style={{ color: 'var(--muted-foreground)', fontSize: '0.9rem' }}>Courses are being added. Check back soon!</p>
                     </div>
                 ) : (
                     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
@@ -1516,7 +1583,7 @@ export default function Courses() {
                 )}
 
                 <div className="mt-12 text-center">
-                    <p style={{ color: 'var(--color-muted-text)', fontSize: '0.85rem' }}>More courses coming soon ✨</p>
+                    <p style={{ color: 'var(--muted-foreground)', fontSize: '0.85rem' }}>More courses coming soon ✨</p>
                 </div>
             </div>
         </div>

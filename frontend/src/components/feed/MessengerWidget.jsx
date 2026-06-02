@@ -83,8 +83,7 @@ export default function MessengerWidget() {
                 >
                     {/* Header */}
                     <div
-                        className="p-4 border-b flex justify-between items-center"
-                        style={{ borderColor: 'var(--color-border)' }}
+                        className="p-4 border-b border-border flex justify-between items-center"
                     >
                         <h3 className="font-bold text-base flex items-center gap-2">
                             <div className="relative flex h-3 w-3">
@@ -93,7 +92,7 @@ export default function MessengerWidget() {
                                 <span className="relative inline-flex rounded-full h-3 w-3"
                                     style={{ backgroundColor: '#10b981' }}></span>
                             </div>
-                            <span style={{ color: 'var(--color-primary-text)' }}>Messages</span>
+                            <span className="text-foreground">Messages</span>
                         </h3>
                         <button
                             onClick={() => setIsOpen(false)}
@@ -105,16 +104,15 @@ export default function MessengerWidget() {
                     </div>
 
                     {/* Search */}
-                    <div className="p-3 border-b" style={{ borderColor: 'var(--color-border)' }}>
+                    <div className="p-3 border-b border-border">
                         <div className="relative">
-                            <Search size={16} className="absolute left-3 top-2.5" style={{ color: 'var(--color-muted-text)' }} />
+                            <Search size={16} className="absolute left-3 top-2.5 text-muted-foreground" />
                             <input
                                 type="text"
                                 placeholder="Search chats..."
-                                className="w-full pl-9 pr-3 py-2 text-sm rounded-lg focus:outline-none transition-all"
+                                className="w-full pl-9 pr-3 py-2 text-sm rounded-lg focus:outline-none transition-all text-foreground"
                                 style={{
                                     backgroundColor: 'var(--color-surface-hover)',
-                                    color: 'var(--color-primary-text)',
                                     border: '1.5px solid var(--color-border)'
                                 }}
                             />
@@ -126,13 +124,13 @@ export default function MessengerWidget() {
                         {loading && chats.length === 0 ? (
                             <div className="p-8 flex flex-col items-center justify-center text-center">
                                 <div className="animate-spin inline-block w-5 h-5 border-2 border-current border-t-transparent rounded-full"
-                                    style={{ color: '#6366f1' }}></div>
+                                    style={{ color: 'var(--primary)' }}></div>
                             </div>
                         ) : chats.length === 0 ? (
                             <div className="p-8 flex flex-col items-center justify-center text-center">
                                 <MessageSquare size={32} className="mb-3 opacity-30" />
-                                <h4 className="text-sm font-bold mb-1" style={{ color: 'var(--color-primary-text)' }}>No chats yet</h4>
-                                <p className="text-xs" style={{ color: 'var(--color-muted-text)' }}>
+                                <h4 className="text-sm font-bold mb-1 text-foreground">No chats yet</h4>
+                                <p className="text-xs text-muted-foreground">
                                     Start a conversation with someone
                                 </p>
                             </div>
@@ -147,8 +145,7 @@ export default function MessengerWidget() {
                                         <div
                                             key={chat.id}
                                             onClick={() => handleChatClick(otherUserId)}
-                                            className="p-3 rounded-xl cursor-pointer transition-all flex items-center gap-2"
-                                            style={{ backgroundColor: 'var(--color-surface)' }}
+                                            className="p-3 rounded-xl cursor-pointer transition-all flex items-center gap-2 bg-card"
                                             onMouseEnter={e => e.currentTarget.style.backgroundColor = 'rgba(99,102,241,0.1)'}
                                             onMouseLeave={e => e.currentTarget.style.backgroundColor = 'var(--color-surface)'}
                                         >
@@ -165,7 +162,7 @@ export default function MessengerWidget() {
                                                 <h4 className="text-sm font-semibold truncate">
                                                     {otherUsername}
                                                 </h4>
-                                                <p className="text-xs truncate" style={{ color: 'var(--color-muted-text)' }}>
+                                                <p className="text-xs truncate text-muted-foreground">
                                                     {chat.last_message_preview || 'No message'}
                                                 </p>
                                             </div>
@@ -188,8 +185,7 @@ export default function MessengerWidget() {
 
                     {/* Footer */}
                     <div
-                        className="p-3 border-t text-center"
-                        style={{ borderColor: 'var(--color-border)' }}
+                        className="p-3 border-t border-border text-center"
                     >
                         <button
                             onClick={handleOpenMessages}

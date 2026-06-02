@@ -3,6 +3,7 @@ import { BrowserRouter as Router, Routes, Route, useNavigate, useParams, useLoca
 
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { ThemeProvider } from './context/ThemeContext';
+import { MotionConfig } from 'framer-motion';
 import { MiraContextProvider, MiraWidget } from './components/mira';
 import { ToastProvider, useToast } from './components/Toast';
 
@@ -48,12 +49,13 @@ export default function App() {
                                     <Route path="/signup" element={<SignupWrapper />} />
                                     <Route path="/problems" element={<ProblemWrapper />} />
                                     <Route path="/problems/:topicId" element={<TopicProblems />} />
+                                    <Route path="/problems/:topicId/:id" element={<IDEWrapper />} />
                                     <Route path="/ide" element={<IDEWrapper />} />
                                     <Route path="/ide/:id" element={<IDEWrapper />} />
                                     <Route path="/feed" element={<FeedWrapper />} />
                                     <Route path="/messages" element={<MessagesWrapper />} />
                                     <Route path="/project" element={<Project />} />
-                                    <Route path="/courses" element={<Courses />} />
+                                    <Route path="/courses/*" element={<Courses />} />
                                     <Route path="/course/:id" element={<CourseContent />} />
                                     <Route path="/jobs" element={<JobBoardGuard><JobBoard /></JobBoardGuard>} />
                                     <Route path="/plan" element={<Plan />} />
@@ -62,7 +64,7 @@ export default function App() {
                                     <Route path="/research" element={<Research />} />
                                     <Route path="/research/papers" element={<ResearchPapers />} />
                                     <Route path="/research/paper/:slug" element={<ResearchPaperContent />} />
-                                    <Route path="/research/courses" element={<ResearchCourses />} />
+                                    <Route path="/research/courses/*" element={<ResearchCourses />} />
                                     <Route path="/research/track/recommender-system" element={<T3TrackLanding />} />
                                     <Route path="/research/course/:id" element={<ResearchCourseContent />} />
                                 </Route>
@@ -85,7 +87,11 @@ function MiraRouteGate() {
 function HomeHandler() {
     const { user } = useAuth();
     const navigate = useNavigate();
-    return <LandingPage onStart={() => navigate(user ? '/problems' : '/signup')} onExplore={() => navigate(user ? '/feed' : '/signup')} />;
+    return (
+        <MotionConfig reducedMotion="user">
+            <LandingPage onStart={() => navigate(user ? '/problems' : '/signup')} onExplore={() => navigate(user ? '/feed' : '/signup')} />
+        </MotionConfig>
+    );
 }
 
 function LoginWrapper() {
@@ -120,25 +126,33 @@ function MessagesWrapper() {
 function IDEWrapper() {
     const { addPoints } = useAuth();
     const navigate = useNavigate();
-    const { id } = useParams();
+    const { id, topicId } = useParams();
     const [problem, setProblem] = React.useState(null);
     const [allProblems, setAllProblems] = React.useState([]);
     const [loading, setLoading] = React.useState(true);
 
     React.useEffect(() => {
         loadAllTopics().then(topics => {
-            const flat = topics.flatMap(t => t.problems);
+            const flat = topicId
+                ? (topics.find(t => t.id === topicId)?.problems || [])
+                : topics.flatMap(t => t.problems);
             setAllProblems(flat);
             const found = flat.find(p => String(p.id) === id);
             setProblem(found ? { ...found._raw, _vizFile: found._vizFile, _topicKey: found._topicKey } : null);
             setLoading(false);
         }).catch(() => setLoading(false));
-    }, [id]);
+    }, [id, topicId]);
 
     const handleNext = () => {
         const currentIndex = allProblems.findIndex(p => String(p.id) === id);
-        const next = currentIndex >= 0 && currentIndex < allProblems.length - 1 ? allProblems[currentIndex + 1] : null;
-        navigate(next ? `/ide/${next.id}` : '/problems');
+        const nextProblem = currentIndex >= 0 && currentIndex < allProblems.length - 1
+            ? allProblems[currentIndex + 1]
+            : null;
+        if (nextProblem) {
+            navigate(topicId ? `/problems/${topicId}/${nextProblem.id}` : `/ide/${nextProblem.id}`);
+        } else {
+            navigate(topicId ? `/problems/${topicId}` : '/problems');
+        }
     };
 
     const judgeTestCases = React.useMemo(() => {
@@ -149,8 +163,14 @@ function IDEWrapper() {
     }, [problem]);
 
     if (loading) {
-        return <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', color: 'var(--color-muted-text)' }}>Loading problem…</div>;
+        return <div className="text-muted-foreground" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%' }}>Loading problem…</div>;
     }
 
-    return <IDE problem={problem} judgeTestCases={judgeTestCases} onBack={() => navigate('/problems')} onSolved={() => addPoints(50)} onNext={handleNext} />;
+    return <IDE
+        problem={problem}
+        judgeTestCases={judgeTestCases}
+        onBack={() => navigate(topicId ? `/problems/${topicId}` : '/problems')}
+        onSolved={() => addPoints(50)}
+        onNext={handleNext}
+    />;
 }

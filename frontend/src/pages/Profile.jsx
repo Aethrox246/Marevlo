@@ -26,7 +26,7 @@ const palette = {
    the result reads correctly in BOTH light and dark mode. Use this instead
    of hex+alpha tints (`${c}1a`) which look wrong on light backgrounds. */
 const tint = (color, pct = 10) =>
-    `color-mix(in srgb, ${color} ${pct}%, var(--color-surface))`;
+    `color-mix(in srgb, ${color} ${pct}%, var(--card))`;
 
 /* Mirror of Backend BADGE_CATALOGUE so we can render LOCKED badges
    client-side with progress hints. Real Lucide icons (no emoji) and
@@ -75,11 +75,11 @@ function Tag({ children, color = palette.brand, icon: Icon }) {
 function SectionCard({ children, style }) {
     return (
         <div style={{
-            background: 'var(--color-surface)',
-            border: '1px solid var(--color-border)',
+            background: 'var(--card)',
+            border: '1px solid var(--border)',
             borderRadius: 20,
             padding: 22,
-            boxShadow: '0 4px 32px color-mix(in srgb, var(--color-primary-text) 4%, transparent), 0 1px 4px color-mix(in srgb, var(--color-primary-text) 6%, transparent)',
+            boxShadow: '0 4px 32px color-mix(in srgb, var(--foreground) 4%, transparent), 0 1px 4px color-mix(in srgb, var(--foreground) 6%, transparent)',
             ...style,
         }}>
             {children}
@@ -98,7 +98,7 @@ function SectionTitle({ children, icon: Icon, accentColor = palette.brand, actio
             }}>
                 {React.createElement(Icon, { size: 14, style: { color: accentColor } })}
             </div>
-            <span style={{ fontWeight: 700, fontSize: '0.9rem', color: 'var(--color-primary-text)', flex: 1 }}>{children}</span>
+            <span style={{ fontWeight: 700, fontSize: '0.9rem', color: 'var(--foreground)', flex: 1 }}>{children}</span>
             {action}
         </div>
     );
@@ -107,9 +107,9 @@ function SectionTitle({ children, icon: Icon, accentColor = palette.brand, actio
 function InlineInput({ value, onChange, placeholder, multiline, rows = 4, type = 'text', list, max }) {
     const shared = {
         width: '100%', borderRadius: 12, padding: '10px 14px',
-        fontSize: '0.85rem', color: 'var(--color-primary-text)',
+        fontSize: '0.85rem', color: 'var(--foreground)',
         background: 'var(--color-input-bg)',
-        border: '1.5px solid var(--color-border)',
+        border: '1.5px solid var(--border)',
         outline: 'none', transition: 'border-color 0.2s',
         fontFamily: 'inherit',
         resize: multiline ? 'vertical' : undefined,
@@ -119,7 +119,7 @@ function InlineInput({ value, onChange, placeholder, multiline, rows = 4, type =
         colorScheme: type === 'date' ? 'light dark' : undefined,
     };
     const focus = (e) => (e.currentTarget.style.borderColor = palette.brand);
-    const blur = (e) => (e.currentTarget.style.borderColor = 'var(--color-border)');
+    const blur = (e) => (e.currentTarget.style.borderColor = 'var(--border)');
 
     return multiline
         ? <textarea value={value || ''} onChange={onChange} placeholder={placeholder} rows={rows}
@@ -177,7 +177,7 @@ function AvatarRing({ src, initials, xpInLevel, level, onClick, loading, hovered
                 style={{ position: 'absolute', inset: 0, transform: 'rotate(-90deg)' }}
             >
                 <circle cx={ringSize/2} cy={ringSize/2} r={radius}
-                    fill="none" stroke="var(--color-border)" strokeWidth={STROKE} />
+                    fill="none" stroke="var(--border)" strokeWidth={STROKE} />
                 <circle cx={ringSize/2} cy={ringSize/2} r={radius}
                     fill="none"
                     stroke="var(--color-accent)"
@@ -226,7 +226,7 @@ function AvatarRing({ src, initials, xpInLevel, level, onClick, loading, hovered
                 minWidth: 28, height: 22, padding: '0 7px',
                 borderRadius: 11,
                 background: 'var(--color-accent)',
-                border: '2px solid var(--color-surface)',
+                border: '2px solid var(--card)',
                 display: 'flex', alignItems: 'center', justifyContent: 'center',
                 fontSize: '0.7rem', fontWeight: 800, color: '#fff',
                 boxShadow: `0 2px 8px color-mix(in srgb, var(--color-accent) 40%, transparent)`,
@@ -239,7 +239,7 @@ function AvatarRing({ src, initials, xpInLevel, level, onClick, loading, hovered
  
 /* ────────────────────────────────────────────────────────────────────────
    MESH BANNER — deterministic but theme-aware. Uses HSL hues seeded from
-   user.id for personality, layered over `var(--color-surface-hover)` so it
+   user.id for personality, layered over `var(--muted)` so it
    sits naturally on the active theme. Hue range constrained to blue→violet
    so it stays in brand territory (no rainbow).
    ──────────────────────────────────────────────────────────────────────── */
@@ -254,12 +254,12 @@ function MeshBanner({ seed = 1 }) {
                 radial-gradient(ellipse at 18% 30%, hsl(${h1} 75% 55% / 0.32), transparent 55%),
                 radial-gradient(ellipse at 82% 60%, hsl(${h2} 70% 55% / 0.30), transparent 60%),
                 radial-gradient(ellipse at 50% 100%, hsl(${h3} 70% 55% / 0.22), transparent 65%),
-                var(--color-surface-hover)
+                var(--muted)
             `,
         }}>
             <div style={{
                 position: 'absolute', inset: 0,
-                background: 'linear-gradient(180deg, transparent 60%, color-mix(in srgb, var(--color-app-bg) 35%, transparent))',
+                background: 'linear-gradient(180deg, transparent 60%, color-mix(in srgb, var(--background) 35%, transparent))',
             }} />
         </div>
     );
@@ -314,10 +314,10 @@ function TodayPanel({ streak, todayActive, onCta }) {
                 <Icon size={22} style={{ color }} />
             </div>
             <div style={{ flex: 1, minWidth: 200 }}>
-                <div style={{ fontSize: '0.98rem', fontWeight: 800, color: 'var(--color-primary-text)', marginBottom: 3 }}>
+                <div style={{ fontSize: '0.98rem', fontWeight: 800, color: 'var(--foreground)', marginBottom: 3 }}>
                     {title}
                 </div>
-                <div style={{ fontSize: '0.78rem', color: 'var(--color-muted-text)', lineHeight: 1.45 }}>
+                <div style={{ fontSize: '0.78rem', color: 'var(--muted-foreground)', lineHeight: 1.45 }}>
                     {sub}
                 </div>
             </div>
@@ -358,11 +358,11 @@ function StatStrip({ stats }) {
             display: 'grid',
             gridTemplateColumns: 'repeat(auto-fit, minmax(120px, 1fr))',
             gap: 8,
-            background: 'var(--color-surface)',
-            border: '1px solid var(--color-border)',
+            background: 'var(--card)',
+            border: '1px solid var(--border)',
             borderRadius: 16,
             padding: 10,
-            boxShadow: '0 2px 12px color-mix(in srgb, var(--color-primary-text) 4%, transparent)',
+            boxShadow: '0 2px 12px color-mix(in srgb, var(--foreground) 4%, transparent)',
         }}>
             {items.map(({ icon: ItemIcon, value, label, color }) => (
                 <div key={label} style={{
@@ -377,10 +377,10 @@ function StatStrip({ stats }) {
                         {React.createElement(ItemIcon, { size: 14, style: { color } })}
                     </div>
                     <div style={{ minWidth: 0 }}>
-                        <div style={{ fontSize: '1rem', fontWeight: 800, color: 'var(--color-primary-text)', lineHeight: 1.1 }}>
+                        <div style={{ fontSize: '1rem', fontWeight: 800, color: 'var(--foreground)', lineHeight: 1.1 }}>
                             {value}
                         </div>
-                        <div style={{ fontSize: '0.62rem', fontWeight: 700, color: 'var(--color-muted-text)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>
+                        <div style={{ fontSize: '0.62rem', fontWeight: 700, color: 'var(--muted-foreground)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>
                             {label}
                         </div>
                     </div>
@@ -400,14 +400,14 @@ function XpBar({ xp, level, nextReward }) {
     return (
         <div>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
-                <span style={{ fontSize: '0.72rem', fontWeight: 700, color: 'var(--color-muted-text)' }}>
+                <span style={{ fontSize: '0.72rem', fontWeight: 700, color: 'var(--muted-foreground)' }}>
                     Level {level}
                 </span>
                 <span style={{ fontSize: '0.72rem', fontWeight: 700, color: 'var(--color-accent)' }}>
                     {xpInLevel} / 100 XP
                 </span>
             </div>
-            <div style={{ position: 'relative', height: 8, borderRadius: 999, background: 'var(--color-surface-hover)', overflow: 'visible' }}>
+            <div style={{ position: 'relative', height: 8, borderRadius: 999, background: 'var(--muted)', overflow: 'visible' }}>
                 <div style={{
                     height: '100%', width: `${pct}%`, borderRadius: 999,
                     background: `linear-gradient(90deg, var(--color-accent), color-mix(in srgb, var(--color-accent) 60%, white))`,
@@ -417,12 +417,12 @@ function XpBar({ xp, level, nextReward }) {
                 {[25, 50, 75].map(t => (
                     <div key={t} style={{
                         position: 'absolute', top: 0, bottom: 0, left: `${t}%`,
-                        width: 1, background: 'var(--color-border)',
+                        width: 1, background: 'var(--border)',
                     }} />
                 ))}
             </div>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 6, gap: 8, flexWrap: 'wrap' }}>
-                <span style={{ fontSize: '0.65rem', color: 'var(--color-muted-text)' }}>
+                <span style={{ fontSize: '0.65rem', color: 'var(--muted-foreground)' }}>
                     {(100 - xpInLevel)} XP to Level {level + 1}
                 </span>
                 {nextReward && (
@@ -454,7 +454,7 @@ function AchievementsGrid({ earned, stats }) {
 
     return (
         <>
-            <div style={{ fontSize: '0.7rem', color: 'var(--color-muted-text)', marginBottom: 10, fontWeight: 600 }}>
+            <div style={{ fontSize: '0.7rem', color: 'var(--muted-foreground)', marginBottom: 10, fontWeight: 600 }}>
                 {earnedCount} of {total} earned
             </div>
             <div style={{
@@ -489,8 +489,8 @@ function BadgeTile({ badge, earned, earnedAt, progress }) {
                 position: 'relative',
                 display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6,
                 padding: '14px 6px 10px', borderRadius: 12, cursor: 'default',
-                background: earned ? tint(badge.color, hov ? 18 : 10) : 'var(--color-surface-hover)',
-                border: `1.5px solid ${earned ? (hov ? badge.color + '90' : badge.color + '50') : 'var(--color-border)'}`,
+                background: earned ? tint(badge.color, hov ? 18 : 10) : 'var(--muted)',
+                border: `1.5px solid ${earned ? (hov ? badge.color + '90' : badge.color + '50') : 'var(--border)'}`,
                 boxShadow: earned && hov ? `0 4px 16px ${badge.color}40` : 'none',
                 transform: hov ? 'translateY(-3px)' : 'translateY(0)',
                 transition: 'all 0.22s cubic-bezier(0.34,1.2,0.64,1)',
@@ -500,21 +500,21 @@ function BadgeTile({ badge, earned, earnedAt, progress }) {
             <div style={{
                 width: 36, height: 36, borderRadius: 10,
                 background: earned ? tint(badge.color, 18) : 'transparent',
-                border: earned ? `1px solid ${badge.color}50` : '1px solid var(--color-border)',
+                border: earned ? `1px solid ${badge.color}50` : '1px solid var(--border)',
                 display: 'flex', alignItems: 'center', justifyContent: 'center',
             }}>
-                <Icon size={18} style={{ color: earned ? badge.color : 'var(--color-muted-text)' }} />
+                <Icon size={18} style={{ color: earned ? badge.color : 'var(--muted-foreground)' }} />
             </div>
             <span style={{
                 fontSize: '0.6rem', fontWeight: 700, textAlign: 'center', lineHeight: 1.25,
-                color: earned ? badge.color : 'var(--color-muted-text)',
+                color: earned ? badge.color : 'var(--muted-foreground)',
             }}>
                 {badge.label}
             </span>
             {!earned && progress > 0 && progress < 1 && (
                 <div style={{
                     position: 'absolute', bottom: 4, left: 8, right: 8,
-                    height: 3, borderRadius: 999, background: 'var(--color-border)', overflow: 'hidden',
+                    height: 3, borderRadius: 999, background: 'var(--border)', overflow: 'hidden',
                 }}>
                     <div style={{ height: '100%', width: `${progress * 100}%`, background: badge.color, transition: 'width 0.6s ease' }} />
                 </div>
@@ -523,11 +523,11 @@ function BadgeTile({ badge, earned, earnedAt, progress }) {
                 <div style={{
                     position: 'absolute', top: 4, right: 4,
                     width: 14, height: 14, borderRadius: '50%',
-                    background: 'var(--color-surface)',
-                    border: '1px solid var(--color-border)',
+                    background: 'var(--card)',
+                    border: '1px solid var(--border)',
                     display: 'flex', alignItems: 'center', justifyContent: 'center',
                 }}>
-                    <Lock size={7} style={{ color: 'var(--color-muted-text)' }} />
+                    <Lock size={7} style={{ color: 'var(--muted-foreground)' }} />
                 </div>
             )}
         </div>
@@ -554,12 +554,12 @@ function SkillChip({ label, xp, color }) {
                 transition: 'all 0.18s',
             }}
         >
-            <span style={{ fontSize: '0.78rem', fontWeight: 700, color: 'var(--color-primary-text)' }}>{label}</span>
+            <span style={{ fontSize: '0.78rem', fontWeight: 700, color: 'var(--foreground)' }}>{label}</span>
             <span style={{ display: 'inline-flex', gap: 2 }}>
                 {[1,2,3,4,5].map(i => (
                     <span key={i} style={{
                         width: 5, height: 5, borderRadius: '50%',
-                        background: i <= dots ? color : 'var(--color-border)',
+                        background: i <= dots ? color : 'var(--border)',
                     }} />
                 ))}
             </span>
@@ -573,7 +573,7 @@ function SkillChip({ label, xp, color }) {
 function VibePicker({ onPick }) {
     return (
         <div>
-            <p style={{ fontSize: '0.78rem', color: 'var(--color-muted-text)', marginBottom: 12 }}>
+            <p style={{ fontSize: '0.78rem', color: 'var(--muted-foreground)', marginBottom: 12 }}>
                 No bio yet. Pick a vibe to start with — you can edit it.
             </p>
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
@@ -586,14 +586,14 @@ function VibePicker({ onPick }) {
                             style={{
                                 display: 'inline-flex', alignItems: 'center', gap: 8,
                                 padding: '10px 14px', borderRadius: 12,
-                                background: 'var(--color-surface-hover)',
-                                border: '1px solid var(--color-border)',
-                                color: 'var(--color-primary-text)',
+                                background: 'var(--muted)',
+                                border: '1px solid var(--border)',
+                                color: 'var(--foreground)',
                                 fontSize: '0.82rem', fontWeight: 600, cursor: 'pointer',
                                 transition: 'all 0.15s',
                             }}
                             onMouseEnter={e => { e.currentTarget.style.borderColor = palette.brand + '70'; e.currentTarget.style.background = tint(palette.brand, 10); }}
-                            onMouseLeave={e => { e.currentTarget.style.borderColor = 'var(--color-border)'; e.currentTarget.style.background = 'var(--color-surface-hover)'; }}
+                            onMouseLeave={e => { e.currentTarget.style.borderColor = 'var(--border)'; e.currentTarget.style.background = 'var(--muted)'; }}
                         >
                             <VIcon size={14} style={{ color: palette.brand }} />
                             {v.label}
@@ -614,9 +614,9 @@ function LinkRow({ label, href, color, icon: Icon }) {
     if (!href) return (
         <div style={{
             padding: '10px 14px', borderRadius: 12,
-            color: 'var(--color-muted-text)', fontSize: '0.8rem', fontStyle: 'italic',
-            background: 'var(--color-surface-hover)',
-            border: '1px dashed var(--color-border)',
+            color: 'var(--muted-foreground)', fontSize: '0.8rem', fontStyle: 'italic',
+            background: 'var(--muted)',
+            border: '1px dashed var(--border)',
         }}>
             {label} not added
         </div>
@@ -628,15 +628,15 @@ function LinkRow({ label, href, color, icon: Icon }) {
             style={{
                 display: 'flex', alignItems: 'center', justifyContent: 'space-between',
                 padding: '10px 14px', borderRadius: 12, textDecoration: 'none',
-                background: hov ? tint(color, 12) : 'var(--color-surface-hover)',
+                background: hov ? tint(color, 12) : 'var(--muted)',
                 border: `1px solid ${hov ? color + '55' : 'transparent'}`,
                 transition: 'all 0.2s',
             }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                {Icon ? <Icon size={16} style={{ color: hov ? color : 'var(--color-primary-text)', flexShrink: 0 }} /> : <div style={{ width: 8, height: 8, borderRadius: '50%', background: color }} />}
-                <span style={{ fontSize: '0.85rem', fontWeight: 600, color: hov ? color : 'var(--color-primary-text)' }}>{label}</span>
+                {Icon ? <Icon size={16} style={{ color: hov ? color : 'var(--foreground)', flexShrink: 0 }} /> : <div style={{ width: 8, height: 8, borderRadius: '50%', background: color }} />}
+                <span style={{ fontSize: '0.85rem', fontWeight: 600, color: hov ? color : 'var(--foreground)' }}>{label}</span>
             </div>
-            <ArrowUpRight size={14} style={{ color: hov ? color : 'var(--color-muted-text)' }} />
+            <ArrowUpRight size={14} style={{ color: hov ? color : 'var(--muted-foreground)' }} />
         </a>
     );
 }
@@ -647,7 +647,7 @@ function LinkRow({ label, href, color, icon: Icon }) {
    stats fill the otherwise-empty right half meaningfully.
    ──────────────────────────────────────────────────────────────────────── */
 const cellBg = (count) => {
-    if (count === 0) return 'var(--color-surface-hover)';
+    if (count === 0) return 'var(--muted)';
     if (count <= 2) return tint(palette.brand, 25);
     if (count <= 5) return tint(palette.brand, 55);
     return palette.brand;
@@ -690,7 +690,7 @@ function ActivityFullWidth({ activityData }) {
                 </div>
                 <div style={{
                     display: 'flex', alignItems: 'center', gap: 6,
-                    marginTop: 14, fontSize: '0.7rem', color: 'var(--color-muted-text)',
+                    marginTop: 14, fontSize: '0.7rem', color: 'var(--muted-foreground)',
                     maxWidth: 600,
                 }}>
                     <span>Less</span>
@@ -722,7 +722,7 @@ function ActivityStat({ label, value, color }) {
             background: tint(color, 8),
             border: `1px solid ${color}35`,
         }}>
-            <div style={{ fontSize: '0.6rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.07em', color: 'var(--color-muted-text)', marginBottom: 3 }}>{label}</div>
+            <div style={{ fontSize: '0.6rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.07em', color: 'var(--muted-foreground)', marginBottom: 3 }}>{label}</div>
             <div style={{ fontSize: '0.95rem', fontWeight: 800, color }}>{value}</div>
         </div>
     );
@@ -759,8 +759,8 @@ function ResumeRow({ resumeUrl, resumeName, onUpload, onDelete, loading }) {
                     padding: '5px 10px', borderRadius: 8,
                     fontSize: '0.7rem', fontWeight: 700,
                     background: 'transparent',
-                    color: 'var(--color-muted-text)',
-                    border: '1px solid var(--color-border)',
+                    color: 'var(--muted-foreground)',
+                    border: '1px solid var(--border)',
                     cursor: 'pointer',
                     opacity: loading ? 0.6 : 1,
                 }}>
@@ -778,26 +778,26 @@ function ResumeRow({ resumeUrl, resumeName, onUpload, onDelete, loading }) {
         <button onClick={onUpload} disabled={loading} style={{
             display: 'flex', alignItems: 'center', justifyContent: 'space-between',
             padding: '10px 14px', borderRadius: 12,
-            background: 'var(--color-surface-hover)',
-            border: '1px dashed var(--color-border)',
+            background: 'var(--muted)',
+            border: '1px dashed var(--border)',
             cursor: loading ? 'wait' : 'pointer',
             width: '100%', textAlign: 'left',
-            color: 'var(--color-primary-text)',
+            color: 'var(--foreground)',
             opacity: loading ? 0.7 : 1,
             transition: 'all 0.15s',
         }}
             onMouseEnter={e => { if (!loading) { e.currentTarget.style.borderColor = palette.brand + '70'; e.currentTarget.style.background = tint(palette.brand, 8); }}}
-            onMouseLeave={e => { e.currentTarget.style.borderColor = 'var(--color-border)'; e.currentTarget.style.background = 'var(--color-surface-hover)'; }}
+            onMouseLeave={e => { e.currentTarget.style.borderColor = 'var(--border)'; e.currentTarget.style.background = 'var(--muted)'; }}
         >
             <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                <FileText size={16} style={{ color: 'var(--color-muted-text)' }} />
+                <FileText size={16} style={{ color: 'var(--muted-foreground)' }} />
                 <span style={{ fontSize: '0.85rem', fontWeight: 600 }}>
                     {loading ? 'Uploading...' : 'Upload resume'}
                 </span>
             </div>
             {loading
-                ? <Loader size={14} style={{ color: 'var(--color-muted-text)', animation: 'spin 1s linear infinite' }} />
-                : <ArrowUpRight size={14} style={{ color: 'var(--color-muted-text)' }} />}
+                ? <Loader size={14} style={{ color: 'var(--muted-foreground)', animation: 'spin 1s linear infinite' }} />
+                : <ArrowUpRight size={14} style={{ color: 'var(--muted-foreground)' }} />}
         </button>
     );
 }
@@ -962,13 +962,13 @@ export default function Profile() {
         .map(([label, xp], i) => ({ label, xp, color: SKILL_COLORS[i % SKILL_COLORS.length] }));
 
     return (
-        <div style={{ minHeight: '100vh', background: 'var(--color-app-bg)', color: 'var(--color-primary-text)', overflowY: 'auto', position: 'relative' }}
+        <div style={{ minHeight: '100vh', background: 'var(--background)', color: 'var(--foreground)', overflowY: 'auto', position: 'relative' }}
              className="custom-scrollbar">
 
             {/* Toast */}
             <div style={{
                 position: 'fixed', bottom: 30, right: 30, zIndex: 100,
-                background: 'var(--color-surface)', border: `1px solid ${palette.success}55`,
+                background: 'var(--card)', border: `1px solid ${palette.success}55`,
                 padding: '12px 20px', borderRadius: 12,
                 boxShadow: `0 8px 32px ${palette.success}30`,
                 display: 'flex', alignItems: 'center', gap: 10,
@@ -979,9 +979,8 @@ export default function Profile() {
                 <div style={{ width: 24, height: 24, borderRadius: '50%', background: tint(palette.success, 18), display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                     <CheckCircle size={14} style={{ color: palette.success }} />
                 </div>
-                <span style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--color-primary-text)' }}>Profile saved successfully</span>
+                <span style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--foreground)' }}>Profile saved successfully</span>
             </div>
-            <style>{`@keyframes spin { from{transform:rotate(0deg)} to{transform:rotate(360deg)} }`}</style>
 
             <div style={{ position: 'fixed', inset: 0, zIndex: 0, pointerEvents: 'none', overflow: 'hidden' }}>
                 <div className="profile-orb profile-orb-1" />
@@ -994,9 +993,9 @@ export default function Profile() {
                 {/* ═════ HERO ═════ */}
                 <div className="profile-fade-in" style={{
                     borderRadius: 24, overflow: 'hidden', marginBottom: 16,
-                    border: '1px solid var(--color-border)',
-                    background: 'var(--color-surface)',
-                    boxShadow: '0 8px 40px color-mix(in srgb, var(--color-primary-text) 5%, transparent), 0 2px 8px color-mix(in srgb, var(--color-primary-text) 6%, transparent)',
+                    border: '1px solid var(--border)',
+                    background: 'var(--card)',
+                    boxShadow: '0 8px 40px color-mix(in srgb, var(--foreground) 5%, transparent), 0 2px 8px color-mix(in srgb, var(--foreground) 6%, transparent)',
                     position: 'relative',
                 }}>
                     <MeshBanner seed={user?.id || 1} />
@@ -1006,16 +1005,16 @@ export default function Profile() {
                             style={{
                                 position: 'absolute', top: 14, right: 14, zIndex: 2,
                                 width: 36, height: 36, borderRadius: 10,
-                                background: 'var(--color-surface)',
-                                border: '1px solid var(--color-border)',
+                                background: 'var(--card)',
+                                border: '1px solid var(--border)',
                                 display: 'flex', alignItems: 'center', justifyContent: 'center',
                                 cursor: 'pointer', transition: 'all 0.15s',
-                                boxShadow: '0 2px 8px color-mix(in srgb, var(--color-primary-text) 8%, transparent)',
+                                boxShadow: '0 2px 8px color-mix(in srgb, var(--foreground) 8%, transparent)',
                             }}
                             onMouseEnter={e => { e.currentTarget.style.background = tint(palette.brand, 12); e.currentTarget.style.borderColor = palette.brand + '55'; }}
-                            onMouseLeave={e => { e.currentTarget.style.background = 'var(--color-surface)'; e.currentTarget.style.borderColor = 'var(--color-border)'; }}
+                            onMouseLeave={e => { e.currentTarget.style.background = 'var(--card)'; e.currentTarget.style.borderColor = 'var(--border)'; }}
                         >
-                            <Edit2 size={15} style={{ color: 'var(--color-primary-text)' }} />
+                            <Edit2 size={15} style={{ color: 'var(--foreground)' }} />
                         </button>
                     )}
 
@@ -1054,17 +1053,17 @@ export default function Profile() {
                                             <InlineInput value={form.dob}     onChange={e => set('dob', e.target.value)}     placeholder="Date of birth" type="date" max={new Date().toISOString().split('T')[0]} />
                                         </div>
                                         <InlineInput value={form.location} onChange={e => set('location', e.target.value)} placeholder="Location" />
-                                    </div>
+                                    </div> 
                                     : <div>
                                         <div style={{ display: 'flex', alignItems: 'baseline', gap: 10, flexWrap: 'wrap', marginBottom: 2 }}>
-                                            <h1 style={{ fontSize: '1.55rem', fontWeight: 800, color: 'var(--color-primary-text)', lineHeight: 1.15, letterSpacing: '-0.02em', margin: 0 }}>
+                                            <h1 style={{ fontSize: '1.55rem', fontWeight: 800, color: 'var(--foreground)', lineHeight: 1.15, letterSpacing: '-0.02em', margin: 0 }}>
                                                 {dp.name || user?.username || 'Set your name'}
                                             </h1>
-                                            <span style={{ fontSize: '0.85rem', color: 'var(--color-muted-text)', fontWeight: 600 }}>
+                                            <span style={{ fontSize: '0.85rem', color: 'var(--muted-foreground)', fontWeight: 600 }}>
                                                 {handle}
                                             </span>
                                         </div>
-                                        <p style={{ fontSize: '0.88rem', color: 'var(--color-muted-text)', margin: '0 0 10px' }}>
+                                        <p style={{ fontSize: '0.88rem', color: 'var(--muted-foreground)', margin: '0 0 10px' }}>
                                             {dp.headline}
                                         </p>
                                         <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
@@ -1083,8 +1082,8 @@ export default function Profile() {
                                                     padding: '4px 10px', borderRadius: 999,
                                                     fontSize: '0.7rem', fontWeight: 600,
                                                     background: 'transparent',
-                                                    color: 'var(--color-muted-text)',
-                                                    border: '1px dashed var(--color-border)',
+                                                    color: 'var(--muted-foreground)',
+                                                    border: '1px dashed var(--border)',
                                                     cursor: 'pointer',
                                                 }}>+ Add school, company, or location</button>
                                             )}
@@ -1097,8 +1096,8 @@ export default function Profile() {
                                 <div style={{ display: 'flex', gap: 8, alignItems: 'flex-end', flexShrink: 0, paddingBottom: 4 }}>
                                     <button onClick={cancel} style={{
                                         padding: '9px 16px', borderRadius: 12, fontSize: '0.82rem', fontWeight: 600,
-                                        border: '1px solid var(--color-border)',
-                                        color: 'var(--color-muted-text)', background: 'transparent', cursor: 'pointer',
+                                        border: '1px solid var(--border)',
+                                        color: 'var(--muted-foreground)', background: 'transparent', cursor: 'pointer',
                                     }}>Cancel</button>
                                     <button onClick={save} disabled={saveLoading} style={{
                                         padding: '9px 20px', borderRadius: 12, fontSize: '0.82rem', fontWeight: 700,
@@ -1116,7 +1115,7 @@ export default function Profile() {
                             )}
                         </div>
 
-                        <div style={{ marginTop: 22, paddingTop: 18, borderTop: '1px solid var(--color-border)' }}>
+                        <div style={{ marginTop: 22, paddingTop: 18, borderTop: '1px solid var(--border)' }}>
                             <XpBar xp={displayStats.xp} level={displayStats.level} nextReward={nextReward} />
                         </div>
                     </div>
@@ -1147,8 +1146,8 @@ export default function Profile() {
                 {/* ═════ TABS ═════ */}
                 <div className="profile-fade-in-delay-2" style={{
                     display: 'flex', padding: 5, marginBottom: 18,
-                    background: 'var(--color-surface)', border: '1px solid var(--color-border)', borderRadius: 16,
-                    boxShadow: '0 2px 12px color-mix(in srgb, var(--color-primary-text) 4%, transparent)',
+                    background: 'var(--card)', border: '1px solid var(--border)', borderRadius: 16,
+                    boxShadow: '0 2px 12px color-mix(in srgb, var(--foreground) 4%, transparent)',
                     position: 'relative',
                 }}>
                     <div style={{
@@ -1169,7 +1168,7 @@ export default function Profile() {
                                 flex: 1, padding: '10px 14px', borderRadius: 11, border: 'none', cursor: 'pointer',
                                 fontWeight: active ? 700 : 600, fontSize: '0.82rem',
                                 background: 'transparent',
-                                color: active ? 'var(--color-accent)' : 'var(--color-muted-text)',
+                                color: active ? 'var(--color-accent)' : 'var(--muted-foreground)',
                                 display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
                                 transition: 'color 0.2s',
                                 position: 'relative', zIndex: 1,
@@ -1189,14 +1188,14 @@ export default function Profile() {
                                 {isEditing
                                     ? <InlineInput multiline value={form.bio} onChange={e => set('bio', e.target.value)} placeholder="Tell us about yourself..." />
                                     : (dp.bio
-                                        ? <p style={{ fontSize: '0.88rem', lineHeight: 1.7, color: 'var(--color-primary-text)', margin: 0 }}>
+                                        ? <p style={{ fontSize: '0.88rem', lineHeight: 1.7, color: 'var(--foreground)', margin: 0 }}>
                                             {dp.bio}
                                         </p>
                                         : <VibePicker onPick={pickVibe} />
                                     )
                                 }
 
-                                <div style={{ marginTop: 22, paddingTop: 18, borderTop: '1px solid var(--color-border)', display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: 10 }}>
+                                <div style={{ marginTop: 22, paddingTop: 18, borderTop: '1px solid var(--border)', display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: 10 }}>
                                     {[
                                         { label: 'Email',         value: dp.email || '—' },
                                         { label: 'Location',      value: dp.location || '—' },
@@ -1206,9 +1205,9 @@ export default function Profile() {
                                         { label: 'Date of birth', value: formatDob(dp.dob) },
                                         { label: 'Member since',  value: memberYear },
                                     ].map(({ label, value }) => (
-                                        <div key={label} style={{ padding: '10px 12px', borderRadius: 10, background: 'var(--color-surface-hover)', border: '1px solid var(--color-border)' }}>
-                                            <div style={{ fontSize: '0.6rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.07em', color: 'var(--color-muted-text)', marginBottom: 3 }}>{label}</div>
-                                            <div style={{ fontSize: '0.82rem', fontWeight: 600, color: 'var(--color-primary-text)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{value}</div>
+                                        <div key={label} style={{ padding: '10px 12px', borderRadius: 10, background: 'var(--muted)', border: '1px solid var(--border)' }}>
+                                            <div style={{ fontSize: '0.6rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.07em', color: 'var(--muted-foreground)', marginBottom: 3 }}>{label}</div>
+                                            <div style={{ fontSize: '0.82rem', fontWeight: 600, color: 'var(--foreground)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{value}</div>
                                         </div>
                                     ))}
                                 </div>
@@ -1221,15 +1220,15 @@ export default function Profile() {
                                 {SKILLS.length === 0
                                     ? <div style={{
                                         padding: 18, borderRadius: 12,
-                                        background: 'var(--color-surface-hover)',
-                                        border: '1px dashed var(--color-border)',
+                                        background: 'var(--muted)',
+                                        border: '1px dashed var(--border)',
                                         textAlign: 'center',
                                     }}>
-                                        <Code2 size={22} style={{ color: 'var(--color-muted-text)', opacity: 0.6, margin: '0 auto 8px' }} />
-                                        <p style={{ fontSize: '0.82rem', color: 'var(--color-muted-text)', margin: '0 0 4px' }}>
+                                        <Code2 size={22} style={{ color: 'var(--muted-foreground)', opacity: 0.6, margin: '0 auto 8px' }} />
+                                        <p style={{ fontSize: '0.82rem', color: 'var(--muted-foreground)', margin: '0 0 4px' }}>
                                             No skill XP yet
                                         </p>
-                                        <p style={{ fontSize: '0.72rem', color: 'var(--color-muted-text)', opacity: 0.7, margin: 0 }}>
+                                        <p style={{ fontSize: '0.72rem', color: 'var(--muted-foreground)', opacity: 0.7, margin: 0 }}>
                                             Solve problems — your topic XP shows up here as 1–5 dot levels.
                                         </p>
                                     </div>
@@ -1238,11 +1237,11 @@ export default function Profile() {
                                     </div>
                                 }
 
-                                <div style={{ marginTop: 18, paddingTop: 14, borderTop: '1px solid var(--color-border)' }}>
-                                    <div style={{ fontSize: '0.65rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em', color: 'var(--color-muted-text)', marginBottom: 8 }}>
+                                <div style={{ marginTop: 18, paddingTop: 14, borderTop: '1px solid var(--border)' }}>
+                                    <div style={{ fontSize: '0.65rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em', color: 'var(--muted-foreground)', marginBottom: 8 }}>
                                         How levels work
                                     </div>
-                                    <p style={{ fontSize: '0.76rem', lineHeight: 1.55, color: 'var(--color-muted-text)', margin: 0 }}>
+                                    <p style={{ fontSize: '0.76rem', lineHeight: 1.55, color: 'var(--muted-foreground)', margin: 0 }}>
                                         Each topic earns XP from solved problems. 5 dots = mastery ({SKILL_MASTERY_XP} XP).
                                         Hover a chip to see exact XP.
                                     </p>
@@ -1270,7 +1269,7 @@ export default function Profile() {
                                         />
                                     </div>
                                     : <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-                                        <LinkRow label="GitHub"   href={dp.github}   color="var(--color-primary-text)" icon={Github} />
+                                        <LinkRow label="GitHub"   href={dp.github}   color="var(--foreground)" icon={Github} />
                                         <LinkRow label="LinkedIn" href={dp.linkedin} color="#0a66c2" icon={Linkedin} />
                                         <ResumeRow
                                             resumeUrl={dp.resumeUrl}
@@ -1298,17 +1297,6 @@ export default function Profile() {
                     </div>
                 </div>
             </div>
-
-            <style>{`
-                .profile-grid {
-                    display: grid;
-                    grid-template-columns: 1fr 340px;
-                    gap: 18px;
-                }
-                @media (max-width: 840px) {
-                    .profile-grid { grid-template-columns: 1fr; }
-                }
-            `}</style>
         </div>
     );
 }

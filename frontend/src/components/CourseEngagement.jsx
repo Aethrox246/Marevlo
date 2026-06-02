@@ -86,17 +86,18 @@ function CommentCard({ comment, currentUser, onDelete }) {
       <Avatar name={comment.author || '?'} />
       <div style={{ flex: 1, minWidth: 0 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
-          <span style={{ fontWeight: 700, fontSize: '0.82rem', color: 'var(--color-primary-text)' }}>
+          <span className="text-foreground" style={{ fontWeight: 700, fontSize: '0.82rem' }}>
             {comment.author}
           </span>
           <span
             title={fullDate(comment.created_at || comment.time)}
-            style={{ fontSize: '0.72rem', color: 'var(--color-muted-text)', cursor: 'default' }}
+            className="text-muted-foreground"
+            style={{ fontSize: '0.72rem', cursor: 'default' }}
           >
             {timeAgo(comment.created_at || comment.time)}
           </span>
         </div>
-        <p style={{ fontSize: '0.875rem', color: 'var(--color-primary-text)', lineHeight: 1.6, margin: 0, wordBreak: 'break-word' }}>
+        <p className="text-foreground" style={{ fontSize: '0.875rem', lineHeight: 1.6, margin: 0, wordBreak: 'break-word' }}>
           {comment.content}
         </p>
       </div>
@@ -321,22 +322,6 @@ export default function CourseEngagement({ courseId }) {
 
   return (
     <>
-      <style>{`
-        @keyframes ceSlideUp {
-          from { opacity: 0; transform: translateX(-50%) translateY(14px); }
-          to   { opacity: 1; transform: translateX(-50%) translateY(0); }
-        }
-        .ce-login-hint { animation: ceSlideUp 0.25s ease; }
-        .ce-textarea:focus {
-          outline: 2px solid #8b5cf6 !important;
-          outline-offset: 0;
-          border-color: #8b5cf6 !important;
-        }
-        .ce-react-btn:focus-visible {
-          outline: 2px solid #8b5cf6;
-          outline-offset: 3px;
-        }
-      `}</style>
     <div
       style={{
         maxWidth: '100%',
@@ -356,8 +341,8 @@ export default function CourseEngagement({ courseId }) {
 
       {/* REACTIONS SECTION */}
       <div
+        className="bg-card"
         style={{
-          background: 'var(--color-surface)',
           border: '1px solid var(--color-border)',
           borderRadius: 20,
           padding: '28px 32px',
@@ -367,10 +352,10 @@ export default function CourseEngagement({ courseId }) {
         {/* Top gradient bar */}
         <div style={{ height: 3, background: 'linear-gradient(90deg, #6366f1, #8b5cf6, #06b6d4)', borderRadius: '20px 20px 0 0', margin: '-28px -32px 20px' }} />
 
-        <p style={{ fontSize: '0.9rem', fontWeight: 700, color: 'var(--color-primary-text)', margin: '0 0 6px' }}>
+        <p className="text-foreground" style={{ fontSize: '0.9rem', fontWeight: 700, margin: '0 0 6px' }}>
           Was this lesson helpful?
         </p>
-        <p style={{ fontSize: '0.78rem', color: 'var(--color-muted-text)', margin: '0 0 20px' }}>
+        <p className="text-muted-foreground" style={{ fontSize: '0.78rem', margin: '0 0 20px' }}>
           Your feedback helps improve the course for everyone.
         </p>
 
@@ -449,7 +434,7 @@ export default function CourseEngagement({ courseId }) {
                 <span style={{ fontSize: '0.7rem', color: '#10b981', fontWeight: 700 }}>
                   {likePercent}% found this helpful
                 </span>
-                <span style={{ fontSize: '0.7rem', color: 'var(--color-muted-text)' }}>
+                <span className="text-muted-foreground" style={{ fontSize: '0.7rem' }}>
                   {totalReactions} rating{totalReactions !== 1 ? 's' : ''}
                 </span>
               </div>
@@ -465,7 +450,7 @@ export default function CourseEngagement({ courseId }) {
               </div>
             </div>
           ) : (
-            <span style={{ fontSize: '0.75rem', color: 'var(--color-muted-text)', fontStyle: 'italic', flex: 1 }}>
+            <span className="text-muted-foreground" style={{ fontSize: '0.75rem', fontStyle: 'italic', flex: 1 }}>
               Be the first to rate this lesson!
             </span>
           )}
@@ -474,9 +459,9 @@ export default function CourseEngagement({ courseId }) {
         {/* Not logged in hint */}
         {!token && (
           <div style={{ marginTop: 14, display: 'flex', alignItems: 'center', gap: 6 }}>
-            <LogIn size={13} style={{ color: '#6366f1' }} />
-            <span style={{ fontSize: '0.75rem', color: 'var(--color-muted-text)' }}>
-              <span style={{ color: '#6366f1', fontWeight: 700 }}>Sign in</span> to rate this lesson
+            <LogIn size={13} style={{ color: 'var(--primary)' }} />
+            <span className="text-muted-foreground" style={{ fontSize: '0.75rem' }}>
+              <span style={{ color: 'var(--primary)', fontWeight: 700 }}>Sign in</span> to rate this lesson
             </span>
           </div>
         )}
@@ -496,8 +481,8 @@ export default function CourseEngagement({ courseId }) {
 
       {/* COMMENTS SECTION */}
       <div
+        className="bg-card"
         style={{
-          background: 'var(--color-surface)',
           border: '1px solid var(--color-border)',
           borderRadius: 20,
           overflow: 'hidden',
@@ -525,7 +510,7 @@ export default function CourseEngagement({ courseId }) {
             }}>
               <MessageCircle size={15} color="#fff" />
             </span>
-            <span style={{ fontWeight: 700, fontSize: '0.9rem', color: 'var(--color-primary-text)' }}>
+            <span className="text-foreground" style={{ fontWeight: 700, fontSize: '0.9rem' }}>
               Community Discussion
             </span>
             {comments.length > 0 && (
@@ -540,8 +525,8 @@ export default function CourseEngagement({ courseId }) {
           </div>
           <ChevronDown
             size={18}
+            className="text-muted-foreground"
             style={{
-              color: 'var(--color-muted-text)',
               transform: commentsOpen ? 'rotate(0deg)' : 'rotate(-90deg)',
               transition: 'transform 0.3s',
             }}
@@ -564,7 +549,7 @@ export default function CourseEngagement({ courseId }) {
                 <div style={{ flex: 1 }}>
                   <textarea
                     ref={textareaRef}
-                    className="ce-textarea"
+                    className="ce-textarea text-foreground"
                     value={commentInput}
                     onChange={e => setCommentInput(e.target.value)}
                     onKeyDown={handleKeyDown}
@@ -576,7 +561,6 @@ export default function CourseEngagement({ courseId }) {
                       borderRadius: 14, resize: 'none',
                       border: `1.5px solid ${overLimit ? '#ef4444' : commentInput ? '#8b5cf6' : 'var(--color-border)'}`,
                       background: 'var(--color-surface-hover)',
-                      color: 'var(--color-primary-text)',
                       fontSize: '0.875rem', lineHeight: 1.6,
                       outline: 'none', transition: 'border-color 0.2s',
                       fontFamily: 'inherit', boxSizing: 'border-box',
@@ -640,10 +624,10 @@ export default function CourseEngagement({ courseId }) {
                 }}>
                   <MessageCircle size={24} style={{ color: '#8b5cf6' }} />
                 </div>
-                <p style={{ fontWeight: 700, color: 'var(--color-primary-text)', fontSize: '0.9rem', margin: '0 0 6px' }}>
+                <p className="text-foreground" style={{ fontWeight: 700, fontSize: '0.9rem', margin: '0 0 6px' }}>
                   No comments yet
                 </p>
-                <p style={{ color: 'var(--color-muted-text)', fontSize: '0.8rem', margin: 0 }}>
+                <p className="text-muted-foreground" style={{ fontSize: '0.8rem', margin: 0 }}>
                   Be the first to start the discussion!
                 </p>
               </div>

@@ -13,7 +13,11 @@ export function ToastProvider({ children }) {
         }, duration);
     }, []);
 
-    const bg = { success: '#22c55e', error: '#ef4444', info: '#3b82f6' };
+    const bg = {
+        success: 'var(--color-success, #22c55e)',
+        error: 'var(--destructive)',
+        info: 'var(--primary)',
+    };
 
     return (
         <ToastContext.Provider value={showToast}>
@@ -33,7 +37,6 @@ export function ToastProvider({ children }) {
                     </div>
                 ))}
             </div>
-            <style>{`@keyframes toast-slide-up { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }`}</style>
         </ToastContext.Provider>
     );
 }

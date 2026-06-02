@@ -128,7 +128,7 @@ export default function QuizModal({ quiz, onClose }) {
                 </button>
                 <button
                   onClick={onClose}
-                  className="flex items-center gap-2 px-6 py-3 rounded-xl bg-indigo-500 hover:bg-indigo-400 text-white shadow-lg shadow-indigo-500/25 transition-all font-semibold"
+                  className="flex items-center gap-2 px-6 py-3 rounded-xl bg-primary hover:bg-indigo-400 text-white shadow-lg shadow-indigo-500/25 transition-all font-semibold"
                 >
                   Continue Course <ChevronRight size={16} />
                 </button>
@@ -176,7 +176,7 @@ export default function QuizModal({ quiz, onClose }) {
                 <button
                   disabled={!selectedAnswers[currentIndex]}
                   onClick={handleNext}
-                  className="flex items-center gap-2 px-6 py-3 rounded-xl bg-indigo-500 disabled:opacity-30 disabled:hover:bg-indigo-500 hover:bg-indigo-400 text-white font-bold tracking-wide transition-all shadow-lg shadow-indigo-500/20"
+                  className="flex items-center gap-2 px-6 py-3 rounded-xl bg-primary disabled:opacity-30 disabled:hover:bg-primary hover:bg-indigo-400 text-white font-bold tracking-wide transition-all shadow-lg shadow-indigo-500/20"
                 >
                   {currentIndex === totalQuestions - 1 ? "Submit Quiz" : "Next Question"} <ChevronRight size={16} />
                 </button>

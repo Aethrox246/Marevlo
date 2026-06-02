@@ -1,11 +1,13 @@
 import React, { useState } from 'react';
 import { ArrowRight, User, Mail, Lock, X, Github, Globe } from 'lucide-react';
 import { getFirebaseAuth } from '../lib/firebase';
+import { useTheme } from '../context/ThemeContext';
 import AuthVisual from '../components/AuthVisual';
 
 const API = import.meta.env.VITE_API_URL;
 
 export default function Signup({ onLogin, onSignupSuccess }) {
+    const { isDark } = useTheme();
     const [formData, setFormData] = useState({
         name: '',
         email: '',
@@ -47,14 +49,32 @@ export default function Signup({ onLogin, onSignupSuccess }) {
             return;
         }
 
+        const payload = {
+            username: formData.name.trim().replace(/\s+/g, '_'),  // Replace spaces with underscores
+            email: formData.email,
+            password: formData.password,
+        };
+
         try {
+            // Ensure username meets backend requirements: 3-50 chars, letters/numbers/underscore
+            const rawUsername = formData.name || (formData.email ? formData.email.split('@')[0] : '');
+            const username = rawUsername
+                .trim()
+                .replace(/\s+/g, '_')
+                .replace(/[^A-Za-z0-9_]/g, '');
+
+            if (username.length < 3) {
+                throw new Error('Choose a username (3+ chars, letters/numbers/_).');
+            }
+
             const response = await fetch(`${API}/auth/signup`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
                     email: formData.email,
-                    username: formData.name || (formData.email ? formData.email.split('@')[0] : ''),
+                    username,
                     password: formData.password,
+                    heard_from: localStorage.getItem('heardFrom')
                 }),
             });
 
@@ -80,11 +100,16 @@ export default function Signup({ onLogin, onSignupSuccess }) {
             const { auth, googleProvider, signInWithPopup } = await getFirebaseAuth();
             const result = await signInWithPopup(auth, googleProvider);
             const idToken = await result.user.getIdToken();
+            const displayName = result.user.displayName;
 
             const response = await fetch(`${API}/auth/google`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ id_token: idToken }),
+                body: JSON.stringify({ id_token: idToken, heard_from: localStorage.getItem('heardFrom'),}),
+                body: JSON.stringify({
+    id_token: idToken,
+    display_name: displayName
+}),
             });
 
             if (!response.ok) {
@@ -136,30 +161,36 @@ export default function Signup({ onLogin, onSignupSuccess }) {
         return 'Strong';
     };
 
+    // ── Theme-aware class helpers (form column adapts to light/dark) ──
+    const labelCls = 'block text-sm font-medium text-muted-foreground';
+    const inputCls = 'block w-full rounded-xl border py-3 pl-11 pr-4 sm:text-sm sm:leading-6 transition-all focus:border-primary focus:ring-1 focus:ring-primary border-border bg-muted text-foreground placeholder:text-muted-foreground';
+    const iconCls = 'text-muted-foreground';
+    const socialBtnCls = 'flex w-full items-center justify-center gap-3 rounded-xl px-3 py-2.5 border transition-all bg-card text-foreground hover:bg-muted border-border';
+
     return (
-        <div className="min-h-[calc(100vh-64px)] flex bg-[#050505] text-white selection:bg-violet-500/30">
+        <div className={`min-h-[calc(100vh-64px)] flex selection:bg-primary/30 text-foreground ${isDark ? 'bg-[#050505]' : 'bg-background'}`}>
             <div className="flex-1 flex flex-col justify-center py-12 px-4 sm:px-6 lg:flex-none lg:px-20 xl:px-24 relative z-10 w-full lg:w-1/2 max-w-[600px]">
-                
+
                 {/* Background ambient glow setup */}
                 <div className="absolute top-0 left-0 w-full h-full overflow-hidden pointer-events-none">
-                    <div className="absolute -top-40 -left-40 w-96 h-96 bg-violet-600/10 rounded-full blur-[100px]"></div>
-                    <div className="absolute bottom-0 right-0 w-64 h-64 bg-emerald-600/10 rounded-full blur-[100px]"></div>
+                    <div className="absolute -top-40 -left-40 w-96 h-96 rounded-full blur-[100px] bg-primary/10"></div>
+                    <div className="absolute bottom-0 right-0 w-64 h-64 rounded-full blur-[100px] bg-secondary/10"></div>
                 </div>
 
                 <div className="mx-auto w-full max-w-sm lg:w-96 relative">
                     <div className="mb-8">
-                        <h2 className="text-4xl font-extrabold tracking-tight text-white mb-2">Create an account</h2>
-                        <p className="text-white/50 text-base">
+                        <h2 className="text-4xl font-extrabold tracking-tight mb-2 text-foreground">Create an account</h2>
+                        <p className="text-muted-foreground text-base">
                             Join the community of top-tier developers.
                         </p>
                     </div>
 
                     <form className="space-y-5" onSubmit={handleSubmit}>
                         <div>
-                            <label className="block text-sm font-medium text-white/70">Full Name</label>
+                            <label className={labelCls}>Full Name</label>
                             <div className="mt-2 relative">
                                 <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
-                                    <User size={18} className="text-white/30" />
+                                    <User size={18} className={iconCls} />
                                 </div>
                                 <input
                                     name="name"
@@ -167,17 +198,17 @@ export default function Signup({ onLogin, onSignupSuccess }) {
                                     required
                                     value={formData.name}
                                     onChange={handleChange}
-                                    className="block w-full rounded-xl border border-white/10 bg-white/5 py-3 pl-11 pr-4 text-white shadow-sm placeholder:text-white/30 focus:border-violet-500 focus:ring-1 focus:ring-violet-500 sm:text-sm sm:leading-6 transition-all"
+                                    className={inputCls}
                                     placeholder="Your Name"
                                 />
                             </div>
                         </div>
 
                         <div>
-                            <label className="block text-sm font-medium text-white/70">Email address</label>
+                            <label className={labelCls}>Email address</label>
                             <div className="mt-2 relative">
                                 <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
-                                    <Mail size={18} className="text-white/30" />
+                                    <Mail size={18} className={iconCls} />
                                 </div>
                                 <input
                                     name="email"
@@ -185,17 +216,17 @@ export default function Signup({ onLogin, onSignupSuccess }) {
                                     required
                                     value={formData.email}
                                     onChange={handleChange}
-                                    className="block w-full rounded-xl border border-white/10 bg-white/5 py-3 pl-11 pr-4 text-white shadow-sm placeholder:text-white/30 focus:border-violet-500 focus:ring-1 focus:ring-violet-500 sm:text-sm sm:leading-6 transition-all"
+                                    className={inputCls}
                                     placeholder="you@company.com"
                                 />
                             </div>
                         </div>
 
                         <div>
-                            <label className="block text-sm font-medium text-white/70">Password</label>
+                            <label className={labelCls}>Password</label>
                             <div className="mt-2 relative">
                                 <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
-                                    <Lock size={18} className="text-white/30" />
+                                    <Lock size={18} className={iconCls} />
                                 </div>
                                 <input
                                     name="password"
@@ -203,34 +234,34 @@ export default function Signup({ onLogin, onSignupSuccess }) {
                                     required
                                     value={formData.password}
                                     onChange={handleChange}
-                                    className="block w-full rounded-xl border border-white/10 bg-white/5 py-3 pl-11 pr-4 text-white shadow-sm placeholder:text-white/30 focus:border-violet-500 focus:ring-1 focus:ring-violet-500 sm:text-sm sm:leading-6 transition-all"
+                                    className={inputCls}
                                     placeholder="••••••••"
                                 />
                             </div>
                             {/* Password Strength Indicator */}
                             {formData.password && (
-                                <div className="mt-3 bg-white/[0.02] p-3 rounded-xl border border-white/5">
+                                <div className="mt-3 p-3 rounded-xl border bg-muted border-border">
                                     <div className="flex items-center gap-1 mb-2">
-                                        <div className={`h-1 flex-1 rounded-full transition-all duration-500 ${passwordStrength >= 1 ? strengthColor() : 'bg-white/10'}`}></div>
-                                        <div className={`h-1 flex-1 rounded-full transition-all duration-500 ${passwordStrength >= 2 ? strengthColor() : 'bg-white/10'}`}></div>
-                                        <div className={`h-1 flex-1 rounded-full transition-all duration-500 ${passwordStrength >= 3 ? strengthColor() : 'bg-white/10'}`}></div>
-                                        <div className={`h-1 flex-1 rounded-full transition-all duration-500 ${passwordStrength >= 4 ? strengthColor() : 'bg-white/10'}`}></div>
+                                        <div className={`h-1 flex-1 rounded-full transition-all duration-500 ${passwordStrength >= 1 ? strengthColor() : 'bg-border'}`}></div>
+                                        <div className={`h-1 flex-1 rounded-full transition-all duration-500 ${passwordStrength >= 2 ? strengthColor() : 'bg-border'}`}></div>
+                                        <div className={`h-1 flex-1 rounded-full transition-all duration-500 ${passwordStrength >= 3 ? strengthColor() : 'bg-border'}`}></div>
+                                        <div className={`h-1 flex-1 rounded-full transition-all duration-500 ${passwordStrength >= 4 ? strengthColor() : 'bg-border'}`}></div>
                                     </div>
                                     <div className="flex justify-between text-xs font-semibold">
-                                        <span className={`${passwordStrength < 3 ? 'text-white/40' : 'text-emerald-400'}`}>
+                                        <span className={`${passwordStrength < 3 ? 'text-muted-foreground' : 'text-emerald-500'}`}>
                                             Strength: {strengthText()}
                                         </span>
-                                        <span className="text-white/30 font-mono text-[10px]">Min 8 chars, 1 num & sym</span>
+                                        <span className="font-mono text-[10px] text-muted-foreground">Min 8 chars, 1 num & sym</span>
                                     </div>
                                 </div>
                             )}
                         </div>
 
                         <div>
-                            <label className="block text-sm font-medium text-white/70">Confirm Password</label>
+                            <label className={labelCls}>Confirm Password</label>
                             <div className="mt-2 relative">
                                 <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
-                                    <Lock size={18} className="text-white/30" />
+                                    <Lock size={18} className={iconCls} />
                                 </div>
                                 <input
                                     name="confirmPassword"
@@ -238,14 +269,14 @@ export default function Signup({ onLogin, onSignupSuccess }) {
                                     required
                                     value={formData.confirmPassword}
                                     onChange={handleChange}
-                                    className="block w-full rounded-xl border border-white/10 bg-white/5 py-3 pl-11 pr-4 text-white shadow-sm placeholder:text-white/30 focus:border-violet-500 focus:ring-1 focus:ring-violet-500 sm:text-sm sm:leading-6 transition-all"
+                                    className={inputCls}
                                     placeholder="••••••••"
                                 />
                             </div>
                         </div>
 
                         {passwordError && (
-                            <div className="rounded-xl bg-red-900/20 p-3 text-red-400 text-sm flex items-center gap-2 border border-red-500/30">
+                            <div className="rounded-xl bg-red-500/10 p-3 text-red-500 text-sm flex items-center gap-2 border border-red-500/30">
                                 <X size={16} /> {passwordError}
                             </div>
                         )}
@@ -253,7 +284,7 @@ export default function Signup({ onLogin, onSignupSuccess }) {
                         <div>
                             <button
                                 type="submit"
-                                className="flex w-full justify-center items-center rounded-xl bg-gradient-to-r from-violet-600 to-indigo-600 px-3 py-3.5 text-sm font-bold leading-6 text-white shadow-[0_0_20px_rgba(139,92,246,0.3)] hover:shadow-[0_0_25px_rgba(139,92,246,0.5)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-violet-600 transition-all hover:scale-[1.02] active:scale-[0.98]"
+                                className="flex w-full justify-center items-center rounded-xl bg-gradient-to-r from-primary to-secondary px-3 py-3.5 text-sm font-bold leading-6 text-primary-foreground shadow-lg hover:shadow-xl focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary transition-all hover:scale-[1.02] active:scale-[0.98]"
                             >
                                 Create Account <ArrowRight size={16} className="ml-2 mt-0.5" />
                             </button>
@@ -263,17 +294,17 @@ export default function Signup({ onLogin, onSignupSuccess }) {
                     <div className="mt-8">
                         <div className="relative">
                             <div className="absolute inset-0 flex items-center" aria-hidden="true">
-                                <div className="w-full border-t border-white/10" />
+                                <div className="w-full border-t border-border" />
                             </div>
                             <div className="relative flex justify-center text-sm font-medium leading-6">
-                                <span className="bg-[#050505] px-6 text-white/40 rounded-full">Or sign up with</span>
+                                <span className={`px-6 rounded-full text-muted-foreground ${isDark ? 'bg-[#050505]' : 'bg-background'}`}>Or sign up with</span>
                             </div>
                         </div>
                         <div className="mt-6 grid grid-cols-2 gap-4">
                             <button
                                 type="button"
                                 onClick={handleGitHubSignup}
-                                className="flex w-full items-center justify-center gap-3 rounded-xl bg-white/5 px-3 py-2.5 text-white hover:bg-white/10 border border-white/10 transition-all shadow-sm"
+                                className={socialBtnCls}
                             >
                                 <Github size={20} />
                                 <span className="text-sm font-semibold">GitHub</span>
@@ -282,7 +313,7 @@ export default function Signup({ onLogin, onSignupSuccess }) {
                                 type="button"
                                 onClick={handleGoogleSignup}
                                 disabled={googleLoading}
-                                className="flex w-full items-center justify-center gap-3 rounded-xl bg-white/5 px-3 py-2.5 text-white hover:bg-white/10 border border-white/10 transition-all shadow-sm disabled:opacity-50"
+                                className={`${socialBtnCls} disabled:opacity-50`}
                             >
                                 <Globe size={20} className="text-blue-400" />
                                 <span className="text-sm font-semibold">{googleLoading ? 'Signing up...' : 'Google'}</span>
@@ -290,9 +321,9 @@ export default function Signup({ onLogin, onSignupSuccess }) {
                         </div>
                     </div>
 
-                    <p className="mt-10 text-center text-sm text-white/50">
+                    <p className="mt-10 text-center text-sm text-muted-foreground">
                         Already have an account?{' '}
-                        <button onClick={onLogin} className="font-bold leading-6 text-violet-400 hover:text-violet-300">
+                        <button onClick={onLogin} className="font-bold leading-6 text-primary hover:text-primary/80">
                             Sign in
                         </button>
                     </p>

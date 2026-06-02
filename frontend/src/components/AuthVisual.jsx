@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { useTheme } from '../context/ThemeContext';
 
 // ─── Animated Typing Code Editor ────────────────────────────────────────────
 const SNIPPETS = [
@@ -46,7 +47,10 @@ const SNIPPETS = [
     },
 ];
 
-const TOKEN_COLORS = { kw: '#c084fc', fn: '#67e8f9', str: '#fcd34d', comment: '#555', p: '#e2e8f0' };
+const TOKEN_COLORS = {
+    dark: { kw: '#c084fc', fn: '#67e8f9', str: '#fcd34d', comment: '#6b7280', p: '#e2e8f0' },
+    light: { kw: '#7c3aed', fn: '#0891b2', str: '#b45309', comment: '#94a3b8', p: '#1e293b' },
+};
 
 // ─── Graph Nodes for BFS Viz ────────────────────────────────────────────────
 const GRAPH_NODES = [
@@ -56,7 +60,7 @@ const GRAPH_NODES = [
 const GRAPH_EDGES = [['A', 'B'], ['A', 'C'], ['B', 'D'], ['C', 'D'], ['C', 'E']];
 
 // ─── Mini BFS Visualization ─────────────────────────────────────────────────
-function MiniGraphViz({ step, accent }) {
+function MiniGraphViz({ step, accent, isDark }) {
     const visitOrder = ['A', 'B', 'C', 'D', 'E'];
     const numVisited = step >= 3 ? Math.min(step - 2, visitOrder.length) : 0;
     const visited = visitOrder.slice(0, numVisited);
@@ -70,7 +74,7 @@ function MiniGraphViz({ step, accent }) {
                 const active = visited.includes(a) && visited.includes(b);
                 return (
                     <line key={a + b} x1={nA.x} y1={nA.y} x2={nB.x} y2={nB.y}
-                        stroke={active ? `${accent}90` : 'rgba(255,255,255,0.07)'}
+                        stroke={active ? `${accent}90` : (isDark ? 'rgba(255,255,255,0.07)' : 'rgba(15,23,42,0.1)')}
                         strokeWidth={active ? 2.5 : 1.5}
                         style={{ transition: 'all 0.5s' }} />
                 );
@@ -78,7 +82,8 @@ function MiniGraphViz({ step, accent }) {
             {GRAPH_NODES.map(({ id, x, y }) => {
                 const isVisited = visited.includes(id);
                 const isCurrent = id === current;
-                const fill = isCurrent ? accent : isVisited ? '#22c55e' : 'rgba(255,255,255,0.06)';
+                const fill = isCurrent ? accent : isVisited ? '#22c55e' : (isDark ? 'rgba(255,255,255,0.06)' : 'rgba(15,23,42,0.04)');
+                const idleStroke = isDark ? 'rgba(255,255,255,0.12)' : 'rgba(15,23,42,0.12)';
                 return (
                     <g key={id}>
                         {isCurrent && (
@@ -86,10 +91,10 @@ function MiniGraphViz({ step, accent }) {
                                 style={{ animation: 'authPing 1.2s ease-out infinite' }} />
                         )}
                         <circle cx={x} cy={y} r={14} fill={fill}
-                            stroke={isCurrent ? accent : isVisited ? '#22c55e' : 'rgba(255,255,255,0.12)'}
+                            stroke={isCurrent ? accent : isVisited ? '#22c55e' : idleStroke}
                             strokeWidth={isCurrent ? 2.5 : 2}
                             style={{ filter: isVisited || isCurrent ? `drop-shadow(0 0 8px ${fill})` : 'none', transition: 'all 0.5s' }} />
-                        <text x={x} y={y + 4} textAnchor="middle" fill={isVisited || isCurrent ? '#fff' : '#555'}
+                        <text x={x} y={y + 4} textAnchor="middle" fill={isVisited || isCurrent ? '#fff' : (isDark ? '#555' : '#64748b')}
                             fontSize="10" fontWeight="800">{id}</text>
                     </g>
                 );
@@ -99,7 +104,7 @@ function MiniGraphViz({ step, accent }) {
 }
 
 // ─── Mini Array Viz (Two Sum) ───────────────────────────────────────────────
-function MiniArrayViz({ step, accent }) {
+function MiniArrayViz({ step, accent, isDark }) {
     const arr = [2, 7, 11, 15];
     const scanning = step >= 3 ? Math.min(step - 2, arr.length) : 0;
     const found = scanning >= 2;
@@ -107,7 +112,7 @@ function MiniArrayViz({ step, accent }) {
     return (
         <div className="flex flex-col gap-2">
             <div className="flex items-center gap-1.5">
-                <span className="text-[9px] text-neutral-500 font-mono w-10 shrink-0">arr =</span>
+                <span className="text-[9px] text-muted-foreground font-mono w-10 shrink-0">arr =</span>
                 <div className="flex gap-1 relative">
                     {arr.map((n, i) => {
                         const isMatch = found && (i === 0 || i === 1);
@@ -115,9 +120,9 @@ function MiniArrayViz({ step, accent }) {
                         return (
                             <div key={i} className="w-9 h-9 rounded-lg flex items-center justify-center text-xs font-bold border transition-all duration-500"
                                 style={{
-                                    background: isMatch ? `${accent}30` : isScanned ? 'rgba(255,255,255,0.06)' : 'rgba(255,255,255,0.02)',
-                                    borderColor: isMatch ? accent : isScanned ? 'rgba(255,255,255,0.12)' : 'rgba(255,255,255,0.05)',
-                                    color: isMatch ? '#fff' : isScanned ? '#ccc' : '#555',
+                                    background: isMatch ? `${accent}26` : isScanned ? (isDark ? 'rgba(255,255,255,0.06)' : 'rgba(15,23,42,0.04)') : (isDark ? 'rgba(255,255,255,0.02)' : 'rgba(255,255,255,0.65)'),
+                                    borderColor: isMatch ? accent : isScanned ? (isDark ? 'rgba(255,255,255,0.12)' : 'rgba(15,23,42,0.12)') : (isDark ? 'rgba(255,255,255,0.05)' : 'rgba(15,23,42,0.08)'),
+                                    color: isMatch ? (isDark ? '#fff' : '#312e81') : isScanned ? (isDark ? '#ccc' : '#334155') : (isDark ? '#555' : '#64748b'),
                                     boxShadow: isMatch ? `0 0 12px ${accent}50` : 'none',
                                     transform: isMatch ? 'scale(1.1)' : 'scale(1)',
                                 }}>
@@ -140,21 +145,21 @@ function MiniArrayViz({ step, accent }) {
 }
 
 // ─── Mini DP Table Viz (Fibonacci) ──────────────────────────────────────────
-function MiniDPViz({ step, accent }) {
+function MiniDPViz({ step, accent, isDark }) {
     const fib = [0, 1, 1, 2, 3, 5, 8];
     const filled = step >= 3 ? Math.min(step - 1, fib.length) : 0;
 
     return (
         <div className="flex flex-col gap-2">
             <div className="flex items-center gap-1">
-                <span className="text-[9px] text-neutral-500 font-mono w-10 shrink-0">dp =</span>
+                <span className="text-[9px] text-muted-foreground font-mono w-10 shrink-0">dp =</span>
                 <div className="flex gap-0.5">
                     {fib.map((v, i) => (
                         <div key={i} className="w-7 h-7 rounded flex items-center justify-center text-[10px] font-bold border transition-all duration-500"
                             style={{
-                                background: i < filled ? `${accent}${i === filled - 1 ? '30' : '15'}` : 'rgba(255,255,255,0.02)',
-                                borderColor: i < filled ? `${accent}60` : 'rgba(255,255,255,0.05)',
-                                color: i < filled ? '#fff' : '#444',
+                                background: i < filled ? `${accent}${i === filled - 1 ? '26' : '15'}` : (isDark ? 'rgba(255,255,255,0.02)' : 'rgba(255,255,255,0.65)'),
+                                borderColor: i < filled ? `${accent}60` : (isDark ? 'rgba(255,255,255,0.05)' : 'rgba(15,23,42,0.08)'),
+                                color: i < filled ? (isDark ? '#fff' : '#334155') : (isDark ? '#444' : '#94a3b8'),
                                 boxShadow: i === filled - 1 ? `0 0 10px ${accent}40` : 'none',
                             }}>
                             {i < filled ? v : '·'}
@@ -172,10 +177,10 @@ function MiniDPViz({ step, accent }) {
 }
 
 // ─── Viz Picker ─────────────────────────────────────────────────────────────
-function SnippetViz({ idx, step, accent }) {
-    if (idx === 0) return <MiniArrayViz step={step} accent={accent} />;
-    if (idx === 1) return <MiniGraphViz step={step} accent={accent} />;
-    return <MiniDPViz step={step} accent={accent} />;
+function SnippetViz({ idx, step, accent, isDark }) {
+    if (idx === 0) return <MiniArrayViz step={step} accent={accent} isDark={isDark} />;
+    if (idx === 1) return <MiniGraphViz step={step} accent={accent} isDark={isDark} />;
+    return <MiniDPViz step={step} accent={accent} isDark={isDark} />;
 }
 
 // ─── Floating Stats ─────────────────────────────────────────────────────────
@@ -190,11 +195,22 @@ const STATS = [
 // ═══════════════════════════════════════════════════════════════════════════
 
 export default function AuthVisual() {
+    const { isDark } = useTheme();
     const [snippetIdx, setSnippetIdx] = useState(0);
     const [visibleLines, setVisibleLines] = useState(0);
     const [phase, setPhase] = useState('typing');
     const timerRef = useRef(null);
     const snippet = SNIPPETS[snippetIdx];
+    const tokenColors = isDark ? TOKEN_COLORS.dark : TOKEN_COLORS.light;
+    const visualBg = isDark ? '#050510' : '#f8fafc';
+    const gridLine = isDark ? 'rgba(255,255,255,0.02)' : 'rgba(15,23,42,0.055)';
+    const terminalBg = isDark ? '#0a0a1a' : 'rgba(255,255,255,0.88)';
+    const titleBg = isDark ? 'rgba(255,255,255,0.02)' : 'rgba(248,250,252,0.9)';
+    const outputBg = isDark ? 'rgba(255,255,255,0.01)' : 'rgba(248,250,252,0.8)';
+    const inactiveDot = isDark ? '#333' : '#cbd5e1';
+    const terminalShadow = isDark
+        ? `0 0 50px ${snippet.accent}15, 0 25px 50px rgba(0,0,0,0.5)`
+        : `0 20px 60px rgba(15,23,42,0.12), 0 0 45px ${snippet.accent}12`;
 
     // Reset on snippet change
     useEffect(() => {
@@ -217,18 +233,8 @@ export default function AuthVisual() {
     }, [phase, visibleLines, snippet.lines.length]);
 
     return (
-        <div className="relative hidden w-0 flex-1 lg:flex items-center justify-center overflow-hidden" style={{ background: '#050510' }}>
+        <div className="relative hidden w-0 flex-1 lg:flex items-center justify-center overflow-hidden transition-colors duration-300" style={{ background: visualBg }}>
             {/* ── Keyframes ── */}
-            <style>{`
-                @keyframes authPing { 0% { r: 14; opacity: 0.6; } 100% { r: 28; opacity: 0; } }
-                @keyframes authSlideUp { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
-                @keyframes authCodeSlide { from { opacity: 0; transform: translateX(-12px); } to { opacity: 1; transform: translateX(0); } }
-                @keyframes authCursorBlink { 0%, 100% { opacity: 1; } 50% { opacity: 0; } }
-                @keyframes authFloat { 0%, 100% { transform: translateY(0px); } 50% { transform: translateY(-12px); } }
-                @keyframes authShimmer { 0% { background-position: -200% center; } 100% { background-position: 200% center; } }
-                @keyframes authGlowPulse { 0%, 100% { opacity: 0.3; transform: scale(1); } 50% { opacity: 0.5; transform: scale(1.05); } }
-                @keyframes authOrbitSlow { 0% { transform: rotate(0deg) translateX(180px) rotate(0deg); } 100% { transform: rotate(360deg) translateX(180px) rotate(-360deg); } }
-            `}</style>
 
             {/* ── Ambient Background ── */}
             <div className="absolute inset-0">
@@ -240,7 +246,7 @@ export default function AuthVisual() {
                     style={{ background: 'radial-gradient(circle, rgba(6,182,212,0.15), transparent 70%)', animation: 'authGlowPulse 5s ease-in-out 1s infinite' }} />
                 {/* Grid overlay */}
                 <div className="absolute inset-0" style={{
-                    backgroundImage: 'linear-gradient(rgba(255,255,255,0.02) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.02) 1px, transparent 1px)',
+                    backgroundImage: `linear-gradient(${gridLine} 1px, transparent 1px), linear-gradient(90deg, ${gridLine} 1px, transparent 1px)`,
                     backgroundSize: '48px 48px'
                 }} />
             </div>
@@ -259,10 +265,10 @@ export default function AuthVisual() {
 
                 {/* ── Terminal Editor ── */}
                 <div className="rounded-2xl overflow-hidden border shadow-2xl"
-                    style={{ background: '#0a0a1a', borderColor: `${snippet.accent}30`, boxShadow: `0 0 50px ${snippet.accent}15, 0 25px 50px rgba(0,0,0,0.5)`, transition: 'border-color 1s, box-shadow 1s' }}>
+                    style={{ background: terminalBg, borderColor: `${snippet.accent}30`, boxShadow: terminalShadow, transition: 'background 0.3s, border-color 1s, box-shadow 1s' }}>
 
                     {/* Title bar */}
-                    <div className="flex items-center justify-between px-4 py-2.5 border-b" style={{ borderColor: `${snippet.accent}20`, background: 'rgba(255,255,255,0.02)' }}>
+                    <div className="flex items-center justify-between px-4 py-2.5 border-b" style={{ borderColor: `${snippet.accent}20`, background: titleBg }}>
                         <div className="flex gap-1.5">
                             <div className="w-2.5 h-2.5 rounded-full bg-red-500/60" />
                             <div className="w-2.5 h-2.5 rounded-full bg-yellow-500/60" />
@@ -276,7 +282,7 @@ export default function AuthVisual() {
                             {SNIPPETS.map((s, i) => (
                                 <button key={i} onClick={() => setSnippetIdx(i)}
                                     className="rounded-full transition-all duration-300 cursor-pointer hover:scale-150"
-                                    style={{ width: i === snippetIdx ? 16 : 6, height: 6, background: i === snippetIdx ? s.accent : '#333' }} />
+                                    style={{ width: i === snippetIdx ? 16 : 6, height: 6, background: i === snippetIdx ? s.accent : inactiveDot }} />
                             ))}
                         </div>
                     </div>
@@ -285,10 +291,10 @@ export default function AuthVisual() {
                     <div className="px-4 py-4 font-mono text-[12px] leading-6 min-h-[180px]">
                         {snippet.lines.slice(0, visibleLines).map((line, li) => (
                             <div key={`${snippetIdx}-${li}`} className="flex" style={{ paddingLeft: `${line.indent * 1.2}rem`, animation: `authCodeSlide 0.25s ease-out ${li * 30}ms both` }}>
-                                <span className="text-neutral-700 select-none mr-3 text-[10px] w-4 text-right">{li + 1}</span>
+                                <span className="text-foreground/80 select-none mr-3 text-[10px] w-4 text-right">{li + 1}</span>
                                 <span>
                                     {line.tokens.map((tok, ti) => (
-                                        <span key={ti} style={{ color: TOKEN_COLORS[tok.t] || '#e2e8f0', fontStyle: tok.t === 'comment' ? 'italic' : 'normal' }}>{tok.v}</span>
+                                        <span key={ti} style={{ color: tokenColors[tok.t] || tokenColors.p, fontStyle: tok.t === 'comment' ? 'italic' : 'normal' }}>{tok.v}</span>
                                     ))}
                                     {li === visibleLines - 1 && phase === 'typing' && (
                                         <span className="inline-block w-[2px] h-[1em] ml-0.5 align-middle rounded-sm"
@@ -300,12 +306,12 @@ export default function AuthVisual() {
                     </div>
 
                     {/* Live Output Panel */}
-                    <div className="border-t px-4 py-3" style={{ borderColor: `${snippet.accent}15`, background: 'rgba(255,255,255,0.01)' }}>
+                    <div className="border-t px-4 py-3" style={{ borderColor: `${snippet.accent}15`, background: outputBg }}>
                         <div className="flex items-center gap-2 mb-2.5">
                             <div className="w-1.5 h-1.5 rounded-full"
                                 style={{ background: phase === 'done' ? '#22c55e' : snippet.accent, animation: phase === 'typing' ? 'authGlowPulse 1s ease-in-out infinite' : 'none' }} />
                             <span className="text-[9px] font-bold tracking-[0.15em] uppercase"
-                                style={{ color: phase === 'done' ? '#22c55e' : '#666' }}>
+                                style={{ color: phase === 'done' ? '#22c55e' : (isDark ? '#666' : '#64748b') }}>
                                 {phase === 'typing' ? 'Running...' : '✓ Output'}
                             </span>
                             <div className="flex-1 h-px relative overflow-hidden" style={{ background: `${snippet.accent}10` }}>
@@ -317,7 +323,7 @@ export default function AuthVisual() {
                                 )}
                             </div>
                         </div>
-                        <SnippetViz idx={snippetIdx} step={visibleLines} accent={snippet.accent} />
+                        <SnippetViz idx={snippetIdx} step={visibleLines} accent={snippet.accent} isDark={isDark} />
                     </div>
 
                     {/* Topic badge */}
@@ -326,7 +332,7 @@ export default function AuthVisual() {
                             <span className="w-1 h-1 rounded-full animate-pulse" style={{ background: snippet.accent }} />
                             {snippet.label}
                         </span>
-                        <span className="text-[10px] text-neutral-700 font-mono">marevlo.ai</span>
+                        <span className="text-[10px] text-foreground/80 font-mono">marevlo.ai</span>
                     </div>
                 </div>
 
@@ -339,14 +345,14 @@ export default function AuthVisual() {
                                 animation: `authFloat 3s ease-in-out ${i * 0.4}s infinite`
                             }}>
                             <div className="text-lg font-extrabold tracking-tight" style={{ color: stat.color }}>{stat.value}</div>
-                            <div className="text-[9px] font-bold text-neutral-600 uppercase tracking-widest">{stat.label}</div>
+                            <div className="text-[9px] font-bold text-muted-foreground uppercase tracking-widest">{stat.label}</div>
                         </div>
                     ))}
                 </div>
 
                 {/* ── Tagline ── */}
                 <div className="text-center mt-5">
-                    <p className="text-[11px] text-neutral-600 font-medium">
+                    <p className="text-[11px] text-muted-foreground font-medium">
                         Master algorithms. Build projects. Land jobs.
                     </p>
                 </div>

@@ -406,35 +406,8 @@ export default function T3TrackLanding() {
 
     return (
         <>
-            <style>{`
-                .t3-grid {
-                    display: grid;
-                    grid-template-columns: repeat(3, minmax(0, 1fr));
-                    gap: 18px;
-                }
-                .t3-tab {
-                    border-radius: 999px;
-                    padding: 9px 14px;
-                    font-size: 12px;
-                    font-weight: 700;
-                    letter-spacing: 0.06em;
-                    text-transform: uppercase;
-                    cursor: pointer;
-                    transition: all 0.2s ease;
-                }
-                @media (max-width: 1080px) {
-                    .t3-grid {
-                        grid-template-columns: repeat(2, minmax(0, 1fr));
-                    }
-                }
-                @media (max-width: 720px) {
-                    .t3-grid {
-                        grid-template-columns: 1fr;
-                    }
-                }
-            `}</style>
 
-            <div className="overflow-y-auto h-full" style={{ backgroundColor: 'var(--color-app-bg)', color: 'var(--color-primary-text)' }}>
+            <div className="overflow-y-auto h-full text-foreground" style={{ backgroundColor: 'var(--color-app-bg)' }}>
                 <div style={{ maxWidth: '1160px', margin: '0 auto', padding: '40px 24px 96px' }}>
 
                     <button
@@ -552,18 +525,16 @@ export default function T3TrackLanding() {
                     </div>
 
                     <div style={{ marginBottom: '18px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '12px', flexWrap: 'wrap' }}>
-                        <h2 style={{
+                        <h2 className="text-foreground" style={{
                             margin: 0,
                             fontSize: '1.18rem',
                             letterSpacing: '-0.01em',
-                            color: 'var(--color-primary-text)',
                         }}>
                             {tabContent[activeTab].label}
                         </h2>
-                        <span style={{
+                        <span className="text-muted-foreground" style={{
                             fontFamily: "'JetBrains Mono', monospace",
                             fontSize: '12px',
-                            color: 'var(--color-muted-text)',
                             border: '1px solid rgba(255,255,255,0.2)',
                             borderRadius: '999px',
                             padding: '5px 10px',

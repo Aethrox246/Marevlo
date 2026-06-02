@@ -1,22 +1,37 @@
 import React from 'react';
-import { NavLink } from 'react-router-dom';
-import { useTheme } from '../context/ThemeContext';
+import { useLocation, useNavigate } from 'react-router-dom';
+import { motion } from 'framer-motion';
 
-export default function NavItem({ icon: Icon, label, to }) {
-    const { isDark } = useTheme();
+export default function NavItem({ label, to, onNavigate }) {
+    const location = useLocation();
+    const navigate = useNavigate();
+
+    // Match nested routes too: "/research" stays active on "/research/papers".
+    // "/" only matches exactly so the logo route doesn't light up everywhere.
+    const isActive = to === '/'
+        ? location.pathname === '/'
+        : location.pathname === to || location.pathname.startsWith(to + '/');
+
+    const handleClick = () => {
+        navigate(to);
+        onNavigate?.();
+    };
 
     return (
-        <NavLink
-            to={to}
-            className="group relative flex items-center gap-2.5 px-4 py-2.5 rounded-xl transition-all duration-200 font-medium text-sm hover:scale-105"
-            style={({ isActive }) => ({
-                backgroundColor: isActive ? (isDark ? '#ffffff' : '#000000') : 'transparent',
-                color: isActive ? (isDark ? '#000000' : '#ffffff') : 'var(--color-muted-text)',
-                boxShadow: isActive ? '0 4px 6px -1px rgba(0,0,0,0.1)' : 'none',
-            })}
+        <button
+            onClick={handleClick}
+            aria-current={isActive ? 'page' : undefined}
+            className={`group relative px-4 py-2.5 rounded-xl text-sm font-medium tracking-wide transition-colors duration-200 ${isActive ? 'text-foreground' : 'text-muted-foreground hover:text-foreground'}`}
         >
-            {Icon && <Icon size={18} className="relative z-10 transition-transform duration-300 group-hover:scale-110" />}
-            <span className="relative z-10 tracking-wide">{label}</span>
-        </NavLink>
+            {label}
+            {isActive && (
+                <motion.span
+                    layoutId="nav-underline"
+                    className="absolute bottom-1 left-4 right-4 h-0.5 rounded-full"
+                    style={{ background: 'linear-gradient(90deg, var(--primary), var(--secondary))' }}
+                    transition={{ type: 'spring', stiffness: 400, damping: 32 }}
+                />
+            )}
+        </button>
     );
 }
