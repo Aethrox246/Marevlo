@@ -1,13 +1,11 @@
 import React, { useState } from 'react';
 import { ArrowRight, User, Mail, Lock, X, Github, Globe } from 'lucide-react';
 import { getFirebaseAuth } from '../lib/firebase';
-import { useTheme } from '../context/ThemeContext';
 import AuthVisual from '../components/AuthVisual';
 
 const API = import.meta.env.VITE_API_URL;
 
 export default function Signup({ onLogin, onSignupSuccess }) {
-    const { isDark } = useTheme();
     const [formData, setFormData] = useState({
         name: '',
         email: '',
@@ -168,14 +166,8 @@ export default function Signup({ onLogin, onSignupSuccess }) {
     const socialBtnCls = 'flex w-full items-center justify-center gap-3 rounded-xl px-3 py-2.5 border transition-all bg-card text-foreground hover:bg-muted border-border';
 
     return (
-        <div className={`min-h-[calc(100vh-64px)] flex selection:bg-primary/30 text-foreground ${isDark ? 'bg-[#050505]' : 'bg-background'}`}>
+        <div className="min-h-[calc(100vh-64px)] flex selection:bg-primary/30 text-foreground bg-background">
             <div className="flex-1 flex flex-col justify-center py-12 px-4 sm:px-6 lg:flex-none lg:px-20 xl:px-24 relative z-10 w-full lg:w-1/2 max-w-[600px]">
-
-                {/* Background ambient glow setup */}
-                <div className="absolute top-0 left-0 w-full h-full overflow-hidden pointer-events-none">
-                    <div className="absolute -top-40 -left-40 w-96 h-96 rounded-full blur-[100px] bg-primary/10"></div>
-                    <div className="absolute bottom-0 right-0 w-64 h-64 rounded-full blur-[100px] bg-secondary/10"></div>
-                </div>
 
                 <div className="mx-auto w-full max-w-sm lg:w-96 relative">
                     <div className="mb-8">
@@ -297,7 +289,7 @@ export default function Signup({ onLogin, onSignupSuccess }) {
                                 <div className="w-full border-t border-border" />
                             </div>
                             <div className="relative flex justify-center text-sm font-medium leading-6">
-                                <span className={`px-6 rounded-full text-muted-foreground ${isDark ? 'bg-[#050505]' : 'bg-background'}`}>Or sign up with</span>
+                                <span className="px-6 rounded-full text-muted-foreground bg-background">Or sign up with</span>
                             </div>
                         </div>
                         <div className="mt-6 grid grid-cols-2 gap-4">

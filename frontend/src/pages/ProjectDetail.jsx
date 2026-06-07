@@ -371,7 +371,7 @@ export default function ProjectDetail({ project, isDark, onClose }) {
             </div>
 
             {/* ── Main scrollable body ─────────────────── */}
-            <div className={`flex-1 overflow-y-auto ${isDark ? 'bg-[#0e0e14]' : 'bg-muted'}`}>
+            <div className={`flex-1 overflow-y-auto ${isDark ? 'bg-background' : 'bg-muted'}`}>
                 <div className="max-w-6xl mx-auto px-6 py-8 grid grid-cols-1 lg:grid-cols-[1fr_300px] gap-8">
 
                     {/* Left: tab content */}

@@ -34,7 +34,7 @@ const SNIPPETS = [
     {
         label: 'DP · Fibonacci',
         file: 'fib_dp.py',
-        accent: '#f59e0b',
+        accent: '#6366f1',
         lines: [
             { indent: 0, tokens: [{ t: 'comment', v: '# Fibonacci — O(n) with DP' }] },
             { indent: 0, tokens: [{ t: 'kw', v: 'def' }, { t: 'p', v: ' ' }, { t: 'fn', v: 'fib' }, { t: 'p', v: '(n):' }] },
@@ -187,7 +187,7 @@ function SnippetViz({ idx, step, accent, isDark }) {
 const STATS = [
     { value: '12k+', label: 'Developers', color: '#8b5cf6' },
     { value: '500+', label: 'Problems', color: '#06b6d4' },
-    { value: '50+', label: 'Courses', color: '#10b981' },
+    { value: '50+', label: 'Courses', color: '#6366f1' },
 ];
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -202,15 +202,15 @@ export default function AuthVisual() {
     const timerRef = useRef(null);
     const snippet = SNIPPETS[snippetIdx];
     const tokenColors = isDark ? TOKEN_COLORS.dark : TOKEN_COLORS.light;
-    const visualBg = isDark ? '#050510' : '#f8fafc';
-    const gridLine = isDark ? 'rgba(255,255,255,0.02)' : 'rgba(15,23,42,0.055)';
-    const terminalBg = isDark ? '#0a0a1a' : 'rgba(255,255,255,0.88)';
+    const visualBg = isDark ? '#0a0b0f' : '#f8fafc';
+    const gridLine = isDark ? 'rgba(148,163,184,0.05)' : 'rgba(15,23,42,0.055)';
+    const terminalBg = isDark ? '#0d0d0d' : 'rgba(255,255,255,0.88)';
     const titleBg = isDark ? 'rgba(255,255,255,0.02)' : 'rgba(248,250,252,0.9)';
     const outputBg = isDark ? 'rgba(255,255,255,0.01)' : 'rgba(248,250,252,0.8)';
     const inactiveDot = isDark ? '#333' : '#cbd5e1';
     const terminalShadow = isDark
-        ? `0 0 50px ${snippet.accent}15, 0 25px 50px rgba(0,0,0,0.5)`
-        : `0 20px 60px rgba(15,23,42,0.12), 0 0 45px ${snippet.accent}12`;
+        ? '0 20px 45px rgba(0,0,0,0.45)'
+        : '0 20px 50px rgba(15,23,42,0.12)';
 
     // Reset on snippet change
     useEffect(() => {
@@ -236,29 +236,12 @@ export default function AuthVisual() {
         <div className="relative hidden w-0 flex-1 lg:flex items-center justify-center overflow-hidden transition-colors duration-300" style={{ background: visualBg }}>
             {/* ── Keyframes ── */}
 
-            {/* ── Ambient Background ── */}
-            <div className="absolute inset-0">
-                {/* Primary glow */}
-                <div className="absolute top-1/4 left-1/3 w-[500px] h-[500px] rounded-full blur-[150px]"
-                    style={{ background: `radial-gradient(circle, ${snippet.accent}25, transparent 70%)`, animation: 'authGlowPulse 4s ease-in-out infinite', transition: 'background 1s' }} />
-                {/* Secondary glow */}
-                <div className="absolute bottom-1/4 right-1/4 w-[350px] h-[350px] rounded-full blur-[120px]"
-                    style={{ background: 'radial-gradient(circle, rgba(6,182,212,0.15), transparent 70%)', animation: 'authGlowPulse 5s ease-in-out 1s infinite' }} />
-                {/* Grid overlay */}
-                <div className="absolute inset-0" style={{
-                    backgroundImage: `linear-gradient(${gridLine} 1px, transparent 1px), linear-gradient(90deg, ${gridLine} 1px, transparent 1px)`,
-                    backgroundSize: '48px 48px'
-                }} />
-            </div>
-
-            {/* ── Orbiting Particles ── */}
-            <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-0 h-0">
-                {[0, 1, 2].map(i => (
-                    <div key={i} className="absolute" style={{ animation: `authOrbitSlow ${20 + i * 8}s linear infinite`, animationDelay: `${i * -7}s` }}>
-                        <div className="w-1.5 h-1.5 rounded-full" style={{ background: snippet.accent, boxShadow: `0 0 8px ${snippet.accent}80`, transition: 'background 1s, box-shadow 1s' }} />
-                    </div>
-                ))}
-            </div>
+            {/* ── Ambient Background: subtle grid only (matches the landing hero) ── */}
+            <div className="absolute inset-0" aria-hidden="true" style={{
+                backgroundImage: `linear-gradient(${gridLine} 1px, transparent 1px), linear-gradient(90deg, ${gridLine} 1px, transparent 1px)`,
+                backgroundSize: '44px 44px',
+                maskImage: 'radial-gradient(circle at center, black 20%, transparent 90%)',
+            }} />
 
             {/* ── Main Content ── */}
             <div className="relative z-10 w-full max-w-md px-8">

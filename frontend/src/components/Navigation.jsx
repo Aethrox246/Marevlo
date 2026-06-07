@@ -179,11 +179,14 @@ export default function Navigation() {
                                 </button>
                                 <button
                                     onClick={handleGetStartedClick}
-                                    className="px-5 py-2.5 rounded-xl text-sm font-bold transition-all shadow-lg hover:-translate-y-0.5"
-                                    style={{ backgroundColor: isDark ? '#ffffff' : '#000000', color: isDark ? '#000000' : '#ffffff' }}
+                                    className="group inline-flex items-center gap-1.5 px-5 py-2.5 rounded-xl text-sm font-bold text-white whitespace-nowrap transition-all duration-200 hover:-translate-y-0.5 hover:shadow-[0_8px_24px_rgba(99,102,241,0.45)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--primary)]"
+                                    style={{
+                                        background: 'linear-gradient(135deg, #6366f1, #06b6d4)',
+                                        boxShadow: '0 4px 16px rgba(99,102,241,0.35)',
+                                    }}
                                 >
                                     Get Started
-                                    <ArrowRight size={15} className="transition-transform duration-200 group-hover:translate-x-0.5" />
+                                    <ArrowRight size={15} className="transition-transform duration-200 group-hover:translate-x-1" />
                                 </button>
                             </div>
                         )}

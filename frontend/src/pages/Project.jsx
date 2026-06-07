@@ -899,26 +899,12 @@ export default function Project() {
         }}>
 
             {/* Hero Section */}
-            <div className="relative overflow-hidden border-b bg-card dark:bg-black border-black/[0.06] dark:border-white/[0.06]" style={{minHeight:'340px'}}>
-                {/* Centre top glow */}
-                <div className="absolute -top-20 left-1/2 -translate-x-1/2 w-[600px] h-[360px] rounded-full pointer-events-none" style={{background:'radial-gradient(ellipse,rgba(99,102,241,0.28) 0%,transparent 70%)',filter:'blur(60px)',animation:'heroGlow 8s ease-in-out infinite'}} />
-                {/* Teal glow left */}
-                <div className="absolute top-1/2 -left-32 -translate-y-1/2 w-[380px] h-[380px] rounded-full pointer-events-none" style={{background:'radial-gradient(circle,rgba(6,182,212,0.45) 0%,transparent 65%)',filter:'blur(80px)',animation:'heroPulse 7s ease-in-out infinite'}} />
-                {/* Violet glow right */}
-                <div className="absolute top-1/2 -right-32 -translate-y-1/2 w-[360px] h-[360px] rounded-full pointer-events-none" style={{background:'radial-gradient(circle,rgba(139,92,246,0.4) 0%,transparent 65%)',filter:'blur(80px)',animation:'heroPulse 9s ease-in-out 1.5s infinite'}} />
+            <div className="relative overflow-hidden border-b bg-card dark:bg-background border-black/[0.06] dark:border-white/[0.06]" style={{minHeight:'340px'}}>
+                <div className="absolute inset-0 pointer-events-none" aria-hidden="true" style={{backgroundImage:'linear-gradient(rgba(148,163,184,0.05) 1px, transparent 1px), linear-gradient(90deg, rgba(148,163,184,0.05) 1px, transparent 1px)',backgroundSize:'44px 44px',maskImage:'radial-gradient(circle at center, black 20%, transparent 90%)'}} />
 
                 <div className="relative z-10 text-center px-6 pt-12 pb-10 max-w-4xl mx-auto">
                     {/* Pill badge */}
-                    <div style={{
-                        display: 'inline-flex', alignItems: 'center', gap: 7,
-                        padding: '5px 14px', borderRadius: 999,
-                        background: 'rgba(255,255,255,0.055)',
-                        border: '1px solid rgba(255,255,255,0.1)',
-                        fontSize: '0.68rem', fontWeight: 700,
-                        color: 'rgba(255,255,255,0.5)',
-                        letterSpacing: '0.12em', textTransform: 'uppercase',
-                        marginBottom: 20, backdropFilter: 'blur(8px)',
-                    }}>
+                    <div className="page-hero-badge">
                         <Sparkles size={10} style={{ color: '#06b6d4' }} />
                         AI Research Projects
                     </div>
@@ -928,7 +914,7 @@ export default function Project() {
                         Projects
                     </h1>
 
-                    <p style={{ margin: '0 auto 28px', fontSize: '0.95rem', color: 'rgba(255,255,255,0.62)', lineHeight: 1.7, maxWidth: 460 }}>
+                    <p className="page-hero-sub">
                         Build real AI systems — from NLP and computer vision to data science and beyond.
                     </p>
 
@@ -940,79 +926,13 @@ export default function Project() {
                             { icon: <Eye size={13} />,     label: `${fmtNum(PROJECTS_DATA.reduce((s,p)=>s+p.views,0))} Views` },
                             { icon: <Star size={13} />,    label: `${PROJECTS_DATA.filter(p=>p.featured).length} Featured` },
                         ].map(({ icon, label }) => (
-                            <div key={label} style={{
-                                display: 'inline-flex', alignItems: 'center', gap: 6,
-                                padding: '6px 14px', borderRadius: 999,
-                                background: 'rgba(255,255,255,0.055)',
-                                border: '1px solid rgba(255,255,255,0.09)',
-                                fontSize: '0.76rem', fontWeight: 600,
-                                color: 'rgba(255,255,255,0.6)',
-                                backdropFilter: 'blur(8px)',
-                            }}>
-                                <span style={{ color: 'rgba(255,255,255,0.55)' }}>{icon}</span>
+                            <div key={label} className="page-hero-chip">
+                                <span>{icon}</span>
                                 {label}
                             </div>
                         ))}
                     </div>
                 </div>
-            </div>
-
-            {/* Filter Bar */}
-            <div className={`border-b sticky top-0 z-50 px-6 py-3 backdrop-blur-xl ${
-                isDark ? 'bg-[#09090f]/80 border-white/[0.07]' : 'bg-white/90 border-black/[0.06]'
-            }`}>
-                <div className="page-container flex items-center gap-2.5 flex-wrap">
-                    {/* Filters toggle */}
-                    <button
-                        onClick={() => setShowFilters(f => !f)}
-                        className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl text-[0.78rem] font-bold transition-all ${
-                            showFilters
-                                ? 'bg-primary/20 border border-primary/40 text-primary'
-                                : 'bg-muted border border-border text-muted-foreground hover:bg-muted/80'
-                        }`}
-                    >
-                        <SlidersHorizontal size={13} />
-                        Filters {activeTags.length > 0 && `(${activeTags.length})`}
-                    </button>
-
-                    {/* Tags */}
-                    <div className="flex gap-1.5 flex-wrap flex-1">
-                        {ALL_TAGS.map(tag => (
-                            <TagPill key={tag} tag={tag} small clickable active={activeTags.includes(tag)} onClick={() => toggleTag(tag)} />
-                        ))}
-                    </div>
-
-                    {/* Sort */}
-                    <div className="relative">
-                        <select
-                            value={sortBy}
-                            onChange={e => setSortBy(e.target.value)}
-                            className="pr-8 pl-3 py-1.5 rounded-xl text-[0.78rem] font-semibold appearance-none cursor-pointer bg-muted border border-border text-foreground/80"
-                        >
-                            {SORT_OPTIONS.map(o => (
-                                <option key={o.value} value={o.value}>{o.label}</option>
-                            ))}
-                        </select>
-                        <ChevronDown size={13} className="absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none text-muted-foreground/70" />
-                    </div>
-                </div>
-
-                {/* Active filters panel */}
-                {showFilters && (
-                    <div className="page-container mt-2.5 px-4 py-3 rounded-2xl flex flex-wrap gap-2 items-center bg-muted border border-border">
-                        <span className="text-[0.72rem] font-bold mr-1 text-muted-foreground/70">Active filters:</span>
-                        {activeTags.length === 0 && <span className="text-[0.78rem] italic text-muted-foreground/70">None selected</span>}
-                        {activeTags.map(tag => (
-                            <div key={tag} className="flex items-center gap-1">
-                                <TagPill tag={tag} small active />
-                                <button onClick={() => toggleTag(tag)} className="p-0.5 rounded-full text-muted-foreground/70 hover:text-muted-foreground"><X size={11}/></button>
-                            </div>
-                        ))}
-                        {activeTags.length > 0 && (
-                            <button onClick={() => setActiveTags([])} className="ml-2 text-[0.72rem] font-bold text-red-400 hover:text-red-300 transition-colors">Clear all</button>
-                        )}
-                    </div>
-                )}
             </div>
 
             {/* Main Content */}
@@ -1039,7 +959,7 @@ export default function Project() {
                                 : 'bg-border'
                         }`}>
                             <div className={`flex items-center rounded-[14px] px-5 py-3 ${
-                                isDark ? 'bg-[#0e0e14]' : 'bg-white'
+                                isDark ? 'bg-[#14161d]' : 'bg-white'
                             }`}>
                                 <Search size={18} className={`flex-shrink-0 transition-colors duration-300 ${search ? 'text-cyan-400' : 'text-muted-foreground/50'}`}/>
                                 <input

@@ -400,29 +400,6 @@ const COURSE_TREE_BASE = [
                 duration: '12h',
                 isLeaf: false,
                 level: 'Advanced',
-            {
-                id: 'langgraph',
-                label: 'LangGraph',
-                description: 'Build stateful, multi-agent applications with LangGraph — the graph framework for agentic AI.',
-                icon: GitBranch,
-                gradient: 'linear-gradient(135deg, #ec4899 0%, #f43f5e 50%, #8b5cf6 100%)',
-                lineGradient: 'from-pink-500 via-rose-500 to-violet-500',
-                tag: 'Advanced',
-                tagColor: '#ec4899',
-                isLeaf: false,
-                duration: '4h 30m',
-                level: 'Advanced',
-                children: [
-                    { id: 'langgraph-module-1', label: 'Module 1', description: 'Module 1 — Introduction and fundamentals.', icon: BookOpen, isLeaf: true, duration: '20m', level: 'Beginner' },
-                    { id: 'langgraph-module-2', label: 'Module 2', description: 'Module 2 — Core concepts and basics.', icon: Network, isLeaf: true, duration: '35m', level: 'Beginner' },
-                    { id: 'langgraph-module-3', label: 'Module 3', description: 'Module 3 — Building blocks and structures.', icon: Database, isLeaf: true, duration: '30m', level: 'Intermediate' },
-                    { id: 'langgraph-module-4', label: 'Module 4', description: 'Module 4 — Advanced patterns and techniques.', icon: Cpu, isLeaf: true, duration: '45m', level: 'Intermediate' },
-                    { id: 'langgraph-module-5', label: 'Module 5', description: 'Module 5 — Complex implementations.', icon: GitBranch, isLeaf: true, duration: '50m', level: 'Advanced' },
-                    { id: 'langgraph-module-6', label: 'Module 6', description: 'Module 6 — Optimization and scaling.', icon: ServerCog, isLeaf: true, duration: '40m', level: 'Advanced' },
-                    { id: 'langgraph-module-7', label: 'Module 7', description: 'Module 7 — Real-world applications.', icon: Zap, isLeaf: true, duration: '35m', level: 'Intermediate' },
-                    { id: 'langgraph-module-8', label: 'Module 8', description: 'Module 8 — Capstone and deployment.', icon: Code2, isLeaf: true, duration: '55m', level: 'Advanced' },
-                ],
-            },
                 children: [
                     {
                         id: 'transformer-module-0', label: 'Module 0', description: 'Foundations — attention refresher and the core transformer block.', icon: BookOpen, isLeaf: false, duration: '1h', level: 'Intermediate',
@@ -489,6 +466,29 @@ const COURSE_TREE_BASE = [
                             { id: 'transformer-7-3', label: '7.3 Production Stack', description: 'Serving, quantisation, and deploying transformers at scale.', icon: Cpu, isLeaf: true, duration: '30m', level: 'Advanced' },
                         ],
                     },
+                ],
+            },
+            {
+                id: 'langgraph',
+                label: 'LangGraph',
+                description: 'Build stateful, multi-agent applications with LangGraph — the graph framework for agentic AI.',
+                icon: GitBranch,
+                gradient: 'linear-gradient(135deg, #ec4899 0%, #f43f5e 50%, #8b5cf6 100%)',
+                lineGradient: 'from-pink-500 via-rose-500 to-violet-500',
+                tag: 'Advanced',
+                tagColor: '#ec4899',
+                isLeaf: false,
+                duration: '4h 30m',
+                level: 'Advanced',
+                children: [
+                    { id: 'langgraph-module-1', label: 'Module 1', description: 'Module 1 — Introduction and fundamentals.', icon: BookOpen, isLeaf: true, duration: '20m', level: 'Beginner' },
+                    { id: 'langgraph-module-2', label: 'Module 2', description: 'Module 2 — Core concepts and basics.', icon: Network, isLeaf: true, duration: '35m', level: 'Beginner' },
+                    { id: 'langgraph-module-3', label: 'Module 3', description: 'Module 3 — Building blocks and structures.', icon: Database, isLeaf: true, duration: '30m', level: 'Intermediate' },
+                    { id: 'langgraph-module-4', label: 'Module 4', description: 'Module 4 — Advanced patterns and techniques.', icon: Cpu, isLeaf: true, duration: '45m', level: 'Intermediate' },
+                    { id: 'langgraph-module-5', label: 'Module 5', description: 'Module 5 — Complex implementations.', icon: GitBranch, isLeaf: true, duration: '50m', level: 'Advanced' },
+                    { id: 'langgraph-module-6', label: 'Module 6', description: 'Module 6 — Optimization and scaling.', icon: ServerCog, isLeaf: true, duration: '40m', level: 'Advanced' },
+                    { id: 'langgraph-module-7', label: 'Module 7', description: 'Module 7 — Real-world applications.', icon: Zap, isLeaf: true, duration: '35m', level: 'Intermediate' },
+                    { id: 'langgraph-module-8', label: 'Module 8', description: 'Module 8 — Capstone and deployment.', icon: Code2, isLeaf: true, duration: '55m', level: 'Advanced' },
                 ],
             },
             {
@@ -1136,7 +1136,6 @@ function CourseCard({ node, onDrillDown, onStartLeaf }) {
                         )}
                     </div>
 
-<<<<<<< HEAD
                     {/* CTA button */}
                     <button
                         className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all duration-200"
@@ -1153,74 +1152,6 @@ function CourseCard({ node, onDrillDown, onStartLeaf }) {
                                 onDrillDown(node);
                             } else {
                                 onStartLeaf(node);
-=======
-                    {/* CTA button(s) - dual buttons for Agentic AI modules */}
-                    {!isFolder && hasDepthContent ? (
-                        <div className="flex items-center gap-2">
-                            <button
-                                onClick={(e) => {
-                                    e.stopPropagation();
-                                    onStartLeaf(node, 'conceptual');
-                                }}
-                                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all duration-200"
-                                style={{
-                                    background: 'var(--muted)',
-                                    color: 'var(--foreground)',
-                                    border: '1px solid rgba(99,102,241,0.3)',
-                                }}
-                                onMouseEnter={(e) => {
-                                    e.currentTarget.style.background = 'linear-gradient(135deg,#6366f1,#06b6d4)';
-                                    e.currentTarget.style.color = '#fff';
-                                    e.currentTarget.style.boxShadow = '0 4px 12px rgba(99,102,241,0.35)';
-                                }}
-                                onMouseLeave={(e) => {
-                                    e.currentTarget.style.background = 'var(--muted)';
-                                    e.currentTarget.style.color = 'var(--foreground)';
-                                    e.currentTarget.style.boxShadow = 'none';
-                                }}
-                            >
-                                <FileText size={13} /> Conceptual
-                            </button>
-                            <button
-                                onClick={(e) => {
-                                    e.stopPropagation();
-                                    onStartLeaf(node, 'depth');
-                                }}
-                                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all duration-200"
-                                style={{
-                                    background: 'var(--muted)',
-                                    color: 'var(--foreground)',
-                                    border: '1px solid rgba(139,92,246,0.3)',
-                                }}
-                                onMouseEnter={(e) => {
-                                    e.currentTarget.style.background = 'linear-gradient(135deg,#4f46e5,#6366f1)';
-                                    e.currentTarget.style.color = '#fff';
-                                    e.currentTarget.style.boxShadow = '0 4px 12px rgba(99,102,241,0.35)';
-                                }}
-                                onMouseLeave={(e) => {
-                                    e.currentTarget.style.background = 'var(--muted)';
-                                    e.currentTarget.style.color = 'var(--foreground)';
-                                    e.currentTarget.style.boxShadow = 'none';
-                                }}
-                            >
-                                <BookOpen size={13} /> Depth
-                            </button>
-                        </div>
-                    ) : (
-                        <button
-                            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all duration-200"
-                            style={{
-                                background: hovered
-                                    ? (node.gradient || 'linear-gradient(135deg,#6366f1,#8b5cf6)')
-                                    : 'var(--muted)',
-                                color: hovered ? '#fff' : 'var(--foreground)',
-                                boxShadow: hovered ? '0 4px 12px rgba(99,102,241,0.35)' : 'none',
-                            }}
-                        >
-                            {isFolder
-                                ? <><ChevronRight size={13} /> Explore</>
-                                : <><Play size={13} fill="currentColor" /> Start</>
->>>>>>> 1e161207cd41710ddd35a1d2d145dca80f8d8894
                             }
                         }}
                     >
@@ -1426,33 +1357,13 @@ export default function Courses() {
 
             {/* Hero Section — full-width, outside container */}
             {!pathIds.length && (
-                <div className="relative overflow-hidden border-b bg-card dark:bg-black border-black/[0.06] dark:border-white/[0.06]" style={{minHeight:'340px'}}>
-                    {/* Centre top glow */}
-                    <div className="absolute -top-20 left-1/2 -translate-x-1/2 w-[600px] h-[360px] rounded-full pointer-events-none" style={{background:'radial-gradient(ellipse,rgba(99,102,241,0.28) 0%,transparent 70%)',filter:'blur(60px)',animation:'heroGlow 8s ease-in-out infinite'}} />
-                    {/* Teal glow left */}
-                    <div className="absolute top-1/2 -left-32 -translate-y-1/2 w-[380px] h-[380px] rounded-full pointer-events-none" style={{background:'radial-gradient(circle,rgba(6,182,212,0.45) 0%,transparent 65%)',filter:'blur(80px)',animation:'heroPulse 7s ease-in-out infinite'}} />
-                    {/* Indigo glow right */}
-                    <div className="absolute top-1/2 -right-32 -translate-y-1/2 w-[360px] h-[360px] rounded-full pointer-events-none" style={{background:'radial-gradient(circle,rgba(99,102,241,0.22) 0%,transparent 65%)',filter:'blur(80px)',animation:'heroPulse 9s ease-in-out 1.5s infinite'}} />
-                    {/* Centre top glow */}
-                    <div className="absolute -top-20 left-1/2 -translate-x-1/2 w-[600px] h-[360px] rounded-full pointer-events-none" style={{background:'radial-gradient(ellipse,rgba(99,102,241,0.28) 0%,transparent 70%)',filter:'blur(60px)',animation:'heroGlow 8s ease-in-out infinite'}} />
-                    {/* Teal glow left */}
-                    <div className="absolute top-1/2 -left-32 -translate-y-1/2 w-[380px] h-[380px] rounded-full pointer-events-none" style={{background:'radial-gradient(circle,rgba(6,182,212,0.45) 0%,transparent 65%)',filter:'blur(80px)',animation:'heroPulse 7s ease-in-out infinite'}} />
-                    {/* Indigo glow right */}
-                    <div className="absolute top-1/2 -right-32 -translate-y-1/2 w-[360px] h-[360px] rounded-full pointer-events-none" style={{background:'radial-gradient(circle,rgba(99,102,241,0.22) 0%,transparent 65%)',filter:'blur(80px)',animation:'heroPulse 9s ease-in-out 1.5s infinite'}} />
+                <div className="relative overflow-hidden border-b bg-card dark:bg-background border-black/[0.06] dark:border-white/[0.06]" style={{minHeight:'340px'}}>
+                    {/* Subtle grid backdrop (matches the landing hero — calm, no glow) */}
+                    <div className="absolute inset-0 pointer-events-none" aria-hidden="true" style={{backgroundImage:'linear-gradient(rgba(148,163,184,0.05) 1px, transparent 1px), linear-gradient(90deg, rgba(148,163,184,0.05) 1px, transparent 1px)',backgroundSize:'44px 44px',maskImage:'radial-gradient(circle at center, black 20%, transparent 90%)'}} />
 
                     <div className="relative z-10 text-center px-6 pt-12 pb-10 max-w-4xl mx-auto">
                         {/* Pill badge */}
-                        <div style={{
-                            display: 'inline-flex', alignItems: 'center', gap: 7,
-                            padding: '5px 14px', borderRadius: 999,
-                            background: 'rgba(255,255,255,0.055)',
-                            border: '1px solid rgba(255,255,255,0.1)',
-                            fontSize: '0.68rem', fontWeight: 700,
-                            color: 'rgba(255,255,255,0.5)',
-                            letterSpacing: '0.12em', textTransform: 'uppercase',
-                            marginBottom: 20,
-                            backdropFilter: 'blur(8px)',
-                        }}>
+                        <div className="page-hero-badge">
                             <GraduationCap size={10} style={{ color: '#06b6d4' }} />
                             Structured Curriculum
                         </div>
@@ -1461,7 +1372,7 @@ export default function Courses() {
                             Course Library
                         </h1>
 
-                        <p style={{ margin: '0 auto 28px', fontSize: '0.95rem', color: 'rgba(255,255,255,0.62)', lineHeight: 1.7, maxWidth: 460 }}>
+                        <p className="page-hero-sub">
                             Explore structured learning paths — from Python basics to production AI systems.
                         </p>
 
@@ -1473,16 +1384,8 @@ export default function Courses() {
                                 { icon: <Sparkles size={13} />,  label: 'All Levels' },
                                 { icon: <Zap size={13} />,       label: 'New Courses Weekly' },
                             ].map(({ icon, label }) => (
-                                <div key={label} style={{
-                                    display: 'inline-flex', alignItems: 'center', gap: 6,
-                                    padding: '6px 14px', borderRadius: 999,
-                                    background: 'rgba(255,255,255,0.055)',
-                                    border: '1px solid rgba(255,255,255,0.09)',
-                                    fontSize: '0.76rem', fontWeight: 600,
-                                    color: 'rgba(255,255,255,0.6)',
-                                    backdropFilter: 'blur(8px)',
-                                }}>
-                                    <span style={{ color: 'rgba(255,255,255,0.55)' }}>{icon}</span>
+                                <div key={label} className="page-hero-chip">
+                                    <span>{icon}</span>
                                     {label}
                                 </div>
                             ))}
