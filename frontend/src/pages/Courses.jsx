@@ -400,29 +400,6 @@ const COURSE_TREE_BASE = [
                 duration: '12h',
                 isLeaf: false,
                 level: 'Advanced',
-            {
-                id: 'langgraph',
-                label: 'LangGraph',
-                description: 'Build stateful, multi-agent applications with LangGraph — the graph framework for agentic AI.',
-                icon: GitBranch,
-                gradient: 'linear-gradient(135deg, #ec4899 0%, #f43f5e 50%, #8b5cf6 100%)',
-                lineGradient: 'from-pink-500 via-rose-500 to-violet-500',
-                tag: 'Advanced',
-                tagColor: '#ec4899',
-                isLeaf: false,
-                duration: '4h 30m',
-                level: 'Advanced',
-                children: [
-                    { id: 'langgraph-module-1', label: 'Module 1', description: 'Module 1 — Introduction and fundamentals.', icon: BookOpen, isLeaf: true, duration: '20m', level: 'Beginner' },
-                    { id: 'langgraph-module-2', label: 'Module 2', description: 'Module 2 — Core concepts and basics.', icon: Network, isLeaf: true, duration: '35m', level: 'Beginner' },
-                    { id: 'langgraph-module-3', label: 'Module 3', description: 'Module 3 — Building blocks and structures.', icon: Database, isLeaf: true, duration: '30m', level: 'Intermediate' },
-                    { id: 'langgraph-module-4', label: 'Module 4', description: 'Module 4 — Advanced patterns and techniques.', icon: Cpu, isLeaf: true, duration: '45m', level: 'Intermediate' },
-                    { id: 'langgraph-module-5', label: 'Module 5', description: 'Module 5 — Complex implementations.', icon: GitBranch, isLeaf: true, duration: '50m', level: 'Advanced' },
-                    { id: 'langgraph-module-6', label: 'Module 6', description: 'Module 6 — Optimization and scaling.', icon: ServerCog, isLeaf: true, duration: '40m', level: 'Advanced' },
-                    { id: 'langgraph-module-7', label: 'Module 7', description: 'Module 7 — Real-world applications.', icon: Zap, isLeaf: true, duration: '35m', level: 'Intermediate' },
-                    { id: 'langgraph-module-8', label: 'Module 8', description: 'Module 8 — Capstone and deployment.', icon: Code2, isLeaf: true, duration: '55m', level: 'Advanced' },
-                ],
-            },
                 children: [
                     {
                         id: 'transformer-module-0', label: 'Module 0', description: 'Foundations — attention refresher and the core transformer block.', icon: BookOpen, isLeaf: false, duration: '1h', level: 'Intermediate',
@@ -489,6 +466,29 @@ const COURSE_TREE_BASE = [
                             { id: 'transformer-7-3', label: '7.3 Production Stack', description: 'Serving, quantisation, and deploying transformers at scale.', icon: Cpu, isLeaf: true, duration: '30m', level: 'Advanced' },
                         ],
                     },
+                ],
+            },
+            {
+                id: 'langgraph',
+                label: 'LangGraph',
+                description: 'Build stateful, multi-agent applications with LangGraph — the graph framework for agentic AI.',
+                icon: GitBranch,
+                gradient: 'linear-gradient(135deg, #ec4899 0%, #f43f5e 50%, #8b5cf6 100%)',
+                lineGradient: 'from-pink-500 via-rose-500 to-violet-500',
+                tag: 'Advanced',
+                tagColor: '#ec4899',
+                isLeaf: false,
+                duration: '4h 30m',
+                level: 'Advanced',
+                children: [
+                    { id: 'langgraph-module-1', label: 'Module 1', description: 'Module 1 — Introduction and fundamentals.', icon: BookOpen, isLeaf: true, duration: '20m', level: 'Beginner' },
+                    { id: 'langgraph-module-2', label: 'Module 2', description: 'Module 2 — Core concepts and basics.', icon: Network, isLeaf: true, duration: '35m', level: 'Beginner' },
+                    { id: 'langgraph-module-3', label: 'Module 3', description: 'Module 3 — Building blocks and structures.', icon: Database, isLeaf: true, duration: '30m', level: 'Intermediate' },
+                    { id: 'langgraph-module-4', label: 'Module 4', description: 'Module 4 — Advanced patterns and techniques.', icon: Cpu, isLeaf: true, duration: '45m', level: 'Intermediate' },
+                    { id: 'langgraph-module-5', label: 'Module 5', description: 'Module 5 — Complex implementations.', icon: GitBranch, isLeaf: true, duration: '50m', level: 'Advanced' },
+                    { id: 'langgraph-module-6', label: 'Module 6', description: 'Module 6 — Optimization and scaling.', icon: ServerCog, isLeaf: true, duration: '40m', level: 'Advanced' },
+                    { id: 'langgraph-module-7', label: 'Module 7', description: 'Module 7 — Real-world applications.', icon: Zap, isLeaf: true, duration: '35m', level: 'Intermediate' },
+                    { id: 'langgraph-module-8', label: 'Module 8', description: 'Module 8 — Capstone and deployment.', icon: Code2, isLeaf: true, duration: '55m', level: 'Advanced' },
                 ],
             },
             {
@@ -1007,6 +1007,8 @@ function CourseCard({ node, onDrillDown, onStartLeaf }) {
     const isFolder = !node.isLeaf;
     const leafCount = isFolder ? countLeaves(node) : 0;
     const lvl = LEVEL_COLORS[node.level] ?? LEVEL_COLORS['Intermediate'];
+    // Leaf nodes flagged with `hasDepthContent: true` get dual Conceptual/Depth buttons.
+    const hasDepthContent = !!node.hasDepthContent;
     
     const handleMouseMove = (e) => {
         if (!cardRef.current) return;
@@ -1136,25 +1138,7 @@ function CourseCard({ node, onDrillDown, onStartLeaf }) {
                         )}
                     </div>
 
-<<<<<<< HEAD
-                    {/* CTA button */}
-                    <button
-                        className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all duration-200"
-                        style={{
-                            background: hovered
-                                ? (node.gradient || 'linear-gradient(135deg,#6366f1,#8b5cf6)')
-                                : 'var(--color-surface-hover)',
-                            color: hovered ? '#fff' : 'var(--color-primary-text)',
-                            boxShadow: hovered ? '0 4px 12px rgba(99,102,241,0.35)' : 'none',
-                        }}
-                        onClick={(e) => {
-                            e.stopPropagation();
-                            if (isFolder) {
-                                onDrillDown(node);
-                            } else {
-                                onStartLeaf(node);
-=======
-                    {/* CTA button(s) - dual buttons for Agentic AI modules */}
+                    {/* CTA button(s) - dual Conceptual/Depth for nodes with depth content, else single */}
                     {!isFolder && hasDepthContent ? (
                         <div className="flex items-center gap-2">
                             <button
@@ -1216,19 +1200,21 @@ function CourseCard({ node, onDrillDown, onStartLeaf }) {
                                 color: hovered ? '#fff' : 'var(--foreground)',
                                 boxShadow: hovered ? '0 4px 12px rgba(99,102,241,0.35)' : 'none',
                             }}
+                            onClick={(e) => {
+                                e.stopPropagation();
+                                if (isFolder) {
+                                    onDrillDown(node);
+                                } else {
+                                    onStartLeaf(node);
+                                }
+                            }}
                         >
                             {isFolder
                                 ? <><ChevronRight size={13} /> Explore</>
                                 : <><Play size={13} fill="currentColor" /> Start</>
->>>>>>> 1e161207cd41710ddd35a1d2d145dca80f8d8894
                             }
-                        }}
-                    >
-                        {isFolder
-                            ? <><ChevronRight size={13} /> Explore</>
-                            : <><Play size={13} fill="currentColor" /> Start</>
-                        }
-                    </button>
+                        </button>
+                    )}
                 </div>
             </div>
         </div>

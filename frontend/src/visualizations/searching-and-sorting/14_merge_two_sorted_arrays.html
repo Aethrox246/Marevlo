@@ -3,519 +3,541 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Merge Two Sorted Arrays - Visualization</title>
+    <title>Merge Two Sorted Arrays</title>
     <style>
         :root {
-            --bg-page: #000000;
-            --bg-surface: #161b22;
-            --bg-input: #000000;
-            --border-main: #30363d;
-            --btn-bg: #21262d;
-            --btn-hover: #2d333b;
-            --text-main: #c9d1d9;
-            --text-dim: #8b949e;
-            --text-log: #58a6ff;
-            --accent-orange: #e3b341;
-            --accent-blue: #388bfd;
-            --accent-green: #3fb950;
-            --accent-red: #f85149;
-            --accent-purple: #a371f7;
+            --bg-page: #070b14;
+            --bg-surface: rgba(255, 255, 255, 0.045);
+            --bg-input: rgba(255, 255, 255, 0.04);
+            --border-main: rgba(255, 255, 255, 0.10);
+            --btn-bg: rgba(255, 255, 255, 0.05);
+            --btn-hover: rgba(255, 255, 255, 0.10);
+            --text-main: #e8eefb;
+            --text-dim: #8b98b3;
+            --accent-orange: #f5a524;   /* arr B / pointer j             */
+            --accent-blue:   #06b6d4;    /* arr A / pointer i / chrome    */
+            --accent-green:  #22c55e;    /* settled into merged result    */
+            --accent-red:    #f43f5e;    /* (unused / errors)             */
+            --accent-purple: #a855f7;    /* drain phase                   */
+            --mono: ui-monospace, 'SF Mono', 'Cascadia Code', 'Courier New', monospace;
+            --sans: 'Inter', system-ui, -apple-system, 'Segoe UI', sans-serif;
+            --shell: 900px;
         }
 
         * { box-sizing: border-box; }
+        html, body { overflow-x: hidden; }
         body {
-            background-color: var(--bg-page);
-            color: var(--text-main);
-            font-family: system-ui, -apple-system, sans-serif;
-            margin: 0;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            min-height: 100vh;
-            padding-bottom: 40px;
+            background:
+                radial-gradient(1100px 600px at 15% -10%, rgba(6, 182, 212, 0.10), transparent 60%),
+                radial-gradient(900px 600px at 100% 10%, rgba(168, 85, 247, 0.10), transparent 55%),
+                linear-gradient(160deg, #070b14 0%, #0b1120 55%, #0a0f1c 100%);
+            background-attachment: fixed;
+            color: var(--text-main); font-family: var(--sans); margin: 0;
+            display: flex; flex-direction: column; align-items: center; min-height: 100vh;
+            padding-bottom: 48px; -webkit-font-smoothing: antialiased;
         }
+        body::before, body::after { content: ''; position: fixed; border-radius: 50%; filter: blur(70px); pointer-events: none; z-index: 0; opacity: 0.45; }
+        body::before { width: 380px; height: 380px; top: 8%; left: -120px; background: radial-gradient(circle, rgba(6,182,212,0.30), transparent 70%); }
+        body::after  { width: 420px; height: 420px; bottom: 4%; right: -140px; background: radial-gradient(circle, rgba(168,85,247,0.22), transparent 70%); }
+        body > * { position: relative; z-index: 1; }
 
-        /* ROW 1: INPUT BAR */
         .input-bar {
-            width: 100%;
-            background-color: var(--bg-surface);
-            padding: 12px 16px;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            gap: 8px;
-            border-bottom: 1px solid var(--border-main);
-            flex-wrap: wrap;
+            width: 100%; background: rgba(10, 15, 28, 0.55);
+            backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px);
+            padding: 14px 16px; display: flex; justify-content: center; align-items: center; gap: 10px;
+            border-bottom: 1px solid var(--border-main); flex-wrap: wrap; position: sticky; top: 0; z-index: 50;
         }
-        label.ui-label { font-family: 'Courier New', monospace; font-size: 13px; color: var(--text-dim); margin-bottom: 4px; display: block; text-align: center; }
+        label.ui-label, .ui-label { font-family: var(--mono); font-size: 13px; color: var(--text-dim); letter-spacing: 0.2px; }
         input[type="text"] {
-            background: var(--bg-input);
-            border: 1px solid var(--border-main);
-            color: var(--text-main);
-            height: 32px;
-            border-radius: 6px;
-            padding: 0 10px;
-            font-size: 13px;
+            background: var(--bg-input); border: 1px solid var(--border-main); color: var(--text-main);
+            height: 34px; border-radius: 9px; padding: 0 12px; font-size: 13px; font-family: var(--mono);
+            transition: border-color 0.2s, box-shadow 0.2s, background 0.2s;
         }
-        .arr-input { width: 220px; }
+        .arr-input { width: 170px; }
+        input:focus { outline: none; border-color: var(--accent-blue); box-shadow: 0 0 0 3px rgba(6,182,212,0.18); background: rgba(6,182,212,0.06); }
 
         button {
-            height: 32px; border-radius: 6px; padding: 0 14px; background: var(--btn-bg);
-            border: 1px solid var(--border-main); color: var(--text-main); font-size: 13px; cursor: pointer;
-            transition: background 0.2s ease;
+            height: 34px; border-radius: 9px; padding: 0 14px; background: var(--btn-bg);
+            border: 1px solid var(--border-main); color: var(--text-main); font-size: 13px; font-weight: 600; cursor: pointer;
+            transition: transform 0.15s ease, background 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease;
         }
-        button:hover { background: var(--btn-hover); }
+        button:hover { background: var(--btn-hover); border-color: rgba(6, 182, 212, 0.5); box-shadow: 0 0 18px rgba(6, 182, 212, 0.18); transform: translateY(-1px); }
+        button:active { transform: translateY(0); }
+        #play-btn { background: linear-gradient(135deg, rgba(6,182,212,0.22), rgba(6,182,212,0.10)); border-color: rgba(6, 182, 212, 0.45); color: #a5f3fc; min-width: 80px; }
 
-        /* ROW 2: ARRAY TILES */
-        .visual-container { margin-top: 30px; display: flex; flex-direction: column; align-items: center; gap: 30px; width: 100%; }
-        
-        .array-section { display: flex; flex-direction: column; align-items: center; width: 100%; }
-        .tiles-wrapper { display: flex; gap: 12px; flex-wrap: wrap; justify-content: center; max-width: 800px; min-height: 70px; position: relative;}
-        
-        .tile-unit { display: flex; flex-direction: column; align-items: center; gap: 4px; position: relative; }
-        .tile {
-            min-width: 48px; height: 48px; display: flex; align-items: center; justify-content: center;
-            border-radius: 6px; font-size: 16px; font-weight: 600; font-family: 'Courier New', monospace;
-            transition: all 0.3s ease; border: 2px solid var(--border-main); background: #21262d;
-            color: var(--text-main);
-        }
-        .tile-index { font-size: 11px; color: var(--text-dim); font-family: monospace; }
-        
-        /* Highlight States */
-        .tile.search-space { background: #0d2244; border-color: var(--accent-blue); }
-        .tile.candidate-1 { background: #0d2244; border-color: var(--accent-blue); color: var(--accent-blue); transform: scale(1.15); box-shadow: 0 0 12px rgba(56, 139, 253, 0.4); z-index: 2; }
-        .tile.candidate-2 { background: #2a1600; border-color: var(--accent-orange); color: var(--accent-orange); transform: scale(1.15); box-shadow: 0 0 12px rgba(227, 179, 65, 0.4); z-index: 2; }
-        .tile.winning { background: #0f2a1a; border-color: var(--accent-green); color: var(--accent-green); transform: scale(1.1); box-shadow: 0 0 8px var(--accent-green); z-index: 3;}
-        .tile.eliminated { opacity: 0.2; background: #161b22; border-color: var(--border-main); color: var(--text-dim); }
+        .shell { width: var(--shell); max-width: 95%; margin: 24px auto 0; display: flex; flex-direction: column; gap: 16px; }
 
-        /* Pointers */
-        .ptr-container { display: flex; flex-direction: column; align-items: center; position: absolute; bottom: -50px; gap: 2px; font-size: 11px; font-family: monospace; font-weight: bold; transition: all 0.3s; }
-        .ptr-i { color: var(--accent-blue); }
-        .ptr-j { color: var(--accent-orange); }
-        .ptr-arrow { font-size: 16px; line-height: 10px; margin-bottom: 2px; color: var(--text-dim); }
+        .title-row { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+        .title-row h1 { font-size: 18px; font-weight: 800; margin: 0; letter-spacing: 0.2px; }
+        .title-row .sub { color: var(--text-dim); font-weight: 500; font-size: 13px; }
+        .step-badge { font-family: var(--mono); font-size: 12px; font-weight: 700; color: #a5f3fc; background: rgba(6,182,212,0.12); border: 1px solid rgba(6,182,212,0.3); padding: 4px 10px; border-radius: 999px; white-space: nowrap; }
+        .progress-track { height: 4px; width: 100%; background: rgba(255,255,255,0.07); border-radius: 999px; overflow: hidden; margin-top: -6px; }
+        .progress-fill { height: 100%; width: 0%; border-radius: 999px; background: linear-gradient(90deg, var(--accent-blue), var(--accent-purple)); box-shadow: 0 0 12px rgba(6,182,212,0.5); transition: width 0.45s cubic-bezier(0.34,1.1,0.64,1); }
 
-        /* ROW 3: PANEL */
-        .action-panel {
-            margin-top: 50px; background: var(--bg-surface); border: 1px solid var(--border-main);
-            border-radius: 6px; padding: 12px 20px; width: 680px; text-align: center; font-family: monospace; min-height: 70px;
-            display: flex; flex-direction: column; justify-content: center; font-size: 15px; line-height: 1.5;
-        }
+        .narration { background: var(--bg-surface); border: 1px solid rgba(6,182,212,0.22); border-radius: 12px; padding: 12px 18px; font-family: var(--mono); font-size: 14px; line-height: 1.5; color: #cfe9f5; min-height: 48px; display: flex; align-items: center; gap: 10px; transition: border-color 0.3s, background 0.3s; }
+        .narration::before { content: '\25B8'; color: var(--accent-blue); font-size: 13px; }
+        .narration.done { border-color: rgba(34,197,94,0.4); background: rgba(34,197,94,0.06); }
+        .narration.done::before { content: '\2713'; color: var(--accent-green); }
+        .narration code { background: rgba(6,182,212,0.14); color: #7dd3fc; padding: 1px 6px; border-radius: 5px; font-size: 12.5px; }
+        .narration b { color: #fff; }
 
-        /* ROW 4: INFO PANEL */
-        .info-panel { margin-top: 10px; display: flex; gap: 10px; flex-wrap: wrap; justify-content: center; }
-        .info-cell {
-            background: var(--bg-surface); border: 1px solid var(--border-main); border-radius: 6px;
-            padding: 8px 14px; display: flex; flex-direction: column; align-items: center; min-width: 90px; gap: 4px;
-        }
-        .info-label { font-size: 11px; color: var(--text-dim); }
-        .info-value { font-family: monospace; font-size: 15px; font-weight: 700; text-align: center; }
+        .stage-card { background: var(--bg-surface); border: 1px solid var(--border-main); border-radius: 18px; backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); box-shadow: 0 12px 38px rgba(0,0,0,0.4); overflow: hidden; }
+        .stage-screen { position: relative; margin: 14px; border-radius: 14px; background: radial-gradient(700px 300px at 50% -10%, rgba(6,182,212,0.08), transparent 70%), #090d18; padding: 40px 24px 30px; border: 1px solid rgba(255,255,255,0.06); display: flex; flex-direction: column; align-items: center; gap: 30px; overflow-x: auto; min-height: 320px; }
 
-        /* ROW 5: RESULT DISPLAY */
-        .result-display { margin-top: 10px; display: flex; flex-direction: column; align-items: center; }
-        #res-val { font-size: 18px; color: var(--text-dim); font-family: monospace; transition: all 0.3s; font-weight: bold; }
-        .pop { animation: popAnim 400ms ease; color: var(--accent-green) !important; font-size: 24px !important; text-shadow: 0 0 12px var(--accent-green); }
+        .rail-block { display: flex; flex-direction: column; align-items: center; gap: 8px; }
+        .rail-label { font-family: var(--mono); font-size: 11px; font-weight: 700; letter-spacing: 1px; text-transform: uppercase; color: var(--text-dim); }
+        .rail-label.a { color: #67e8f9; }
+        .rail-label.b { color: #ffd591; }
+        .rail-label.r { color: #86efac; }
+        .arr-rail { position: relative; display: flex; gap: 9px; min-height: 56px; }
+        .arr-rail.empty { align-items: center; justify-content: center; }
+        .rail-empty { font-family: var(--mono); font-size: 12px; color: var(--text-dim); opacity: 0.7; }
 
-        @keyframes popAnim { 0%{transform:scale(1)} 50%{transform:scale(1.15)} 100%{transform:scale(1)} }
+        .cell { width: 52px; height: 52px; border-radius: 13px; display: flex; align-items: center; justify-content: center; position: relative;
+            font-family: var(--mono); font-weight: 800; font-size: 19px; will-change: transform;
+            border: 2px solid var(--border-main); background: rgba(255,255,255,0.05); color: var(--text-main);
+            transition: background 0.35s, border-color 0.35s, color 0.35s, box-shadow 0.35s, transform 0.3s, opacity 0.35s; }
+        .cell .ci { position: absolute; top: -20px; left: 0; right: 0; text-align: center; font-size: 11px; color: var(--text-dim); font-weight: 700; }
+        .cell.consumed { opacity: 0.22; border-color: rgba(255,255,255,0.12); }
+        .cell.active-a { border-color: var(--accent-blue); background: rgba(6,182,212,0.14); color: #a5f3fc; box-shadow: 0 0 22px rgba(6,182,212,0.5); transform: translateY(-3px) scale(1.06); z-index: 3; }
+        .cell.active-b { border-color: var(--accent-orange); background: rgba(245,165,36,0.16); color: #ffd591; box-shadow: 0 0 22px rgba(245,165,36,0.55); transform: translateY(-3px) scale(1.06); z-index: 3; }
+        .cell.taken { border-color: var(--accent-green); background: rgba(34,197,94,0.12); box-shadow: 0 0 16px rgba(34,197,94,0.4); }
 
-        /* ROW 6: STATUS BAR */
-        .status-bar { margin-top: 8px; font-size: 13px; color: var(--text-dim); height: 1.2em; text-align: center; width: 600px;}
+        /* merged result cells */
+        .cell.merged { border-color: var(--accent-green); background: linear-gradient(180deg, rgba(47,224,143,0.92), rgba(33,194,117,0.92)); color: #06251a; box-shadow: 0 0 18px rgba(34,197,94,0.45); }
+        .cell.merged.fresh { animation: cellPop 0.42s cubic-bezier(0.34,1.4,0.64,1); }
+        .cell.merged .src-tag { position: absolute; bottom: -19px; left: 0; right: 0; text-align: center; font-size: 10px; font-weight: 800; letter-spacing: 0.5px; }
+        @keyframes cellPop { 0% { transform: translateY(-14px) scale(0.6); opacity: 0; } 60% { transform: translateY(2px) scale(1.08); opacity: 1; } 100% { transform: translateY(0) scale(1); opacity: 1; } }
 
-        /* ROW 7: CONTROLS */
-        .controls { margin-top: 24px; display: flex; align-items: center; gap: 8px; }
-        input[type="range"] { accent-color: var(--accent-blue); width: 100px; cursor: pointer; }
+        /* gliding pointer pills below each source rail */
+        .bptr { position: absolute; left: 0; top: 100%; margin-top: 7px; display: flex; flex-direction: column; align-items: center; opacity: 0; pointer-events: none; will-change: transform; z-index: 6; }
+        .bptr .tag { font-family: var(--mono); font-size: 11px; font-weight: 800; padding: 3px 9px; border-radius: 8px; white-space: nowrap; }
+        .bptr .stalk { width: 2px; height: 14px; }
+        .bptr.i .tag { background: var(--accent-blue);   color: #04222a; box-shadow: 0 0 14px rgba(6,182,212,0.6); }  .bptr.i .stalk { background: var(--accent-blue); }
+        .bptr.j .tag { background: var(--accent-orange); color: #3a2400; box-shadow: 0 0 14px rgba(245,165,36,0.6); } .bptr.j .stalk { background: var(--accent-orange); }
 
-        /* ROW 8: LEGEND */
-        .legend { margin-top: 12px; display: flex; gap: 16px; flex-wrap: wrap; justify-content: center; max-width: 800px; }
-        .legend-item { display: flex; align-items: center; font-size: 12px; color: var(--text-dim); }
-        .dot { width: 10px; height: 10px; border-radius: 2px; margin-right: 6px; display: inline-block; }
+        .compare-glyph { font-family: var(--mono); font-size: 22px; font-weight: 800; color: var(--text-dim); min-width: 24px; text-align: center; }
 
-        /* ROW 9: LOG PANEL */
-        .log-panel {
-            margin-top: 12px; background: var(--bg-page); border: 1px solid var(--border-main);
-            border-radius: 6px; padding: 12px 16px; width: 700px; max-width: 90%; height: 120px;
-            overflow-y: auto; font-family: 'Courier New', monospace; font-size: 13px;
-        }
+        .action-stage { position: relative; min-height: 78px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px; }
+        .action-word { font-family: var(--mono); font-weight: 800; font-size: 18px; letter-spacing: 0.4px; min-height: 22px; text-align: center; transition: color 0.3s; }
+        #confetti { position: absolute; inset: 0; overflow: visible; pointer-events: none; }
+        .confetti-piece { position: absolute; top: 0; left: 50%; width: 8px; height: 13px; border-radius: 2px; opacity: 0; animation: confettiFall ease-out forwards; }
+
+        .controls { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; justify-content: center; }
+        .controls .kbd-hint { font-size: 11px; color: var(--text-dim); font-family: var(--mono); margin-left: 4px; }
+        .kbd { background: rgba(255,255,255,0.07); border: 1px solid var(--border-main); border-radius: 5px; padding: 1px 6px; font-size: 10px; }
+        input[type="range"] { accent-color: var(--accent-blue); width: 110px; cursor: pointer; }
+
+        .details-toggle { align-self: center; height: 32px; padding: 0 16px; border-radius: 999px; cursor: pointer; background: rgba(255,255,255,0.04); border: 1px solid var(--border-main); color: var(--text-dim); font-family: var(--mono); font-size: 12px; font-weight: 600; display: inline-flex; align-items: center; gap: 8px; transition: color 0.2s, border-color 0.2s, background 0.2s; }
+        .details-toggle:hover { color: var(--text-main); border-color: rgba(6,182,212,0.4); background: rgba(6,182,212,0.06); }
+        .details-toggle .chev { transition: transform 0.3s ease; }
+        .details-wrap.open .details-toggle .chev { transform: rotate(180deg); }
+        .details-body { display: grid; grid-template-rows: 0fr; transition: grid-template-rows 0.4s ease; }
+        .details-wrap.open .details-body { grid-template-rows: 1fr; }
+        .details-inner { overflow: hidden; min-height: 0; }
+        .details-grid { display: flex; flex-direction: column; gap: 14px; padding-top: 14px; }
+
+        .panel-card { background: var(--bg-surface); border: 1px solid var(--border-main); border-radius: 16px; backdrop-filter: blur(10px); box-shadow: 0 8px 30px rgba(0,0,0,0.35); }
+        .panel-head { display: flex; align-items: center; gap: 8px; padding: 11px 16px; border-bottom: 1px solid var(--border-main); font-size: 11px; font-weight: 700; letter-spacing: 1.2px; text-transform: uppercase; color: var(--text-dim); }
+        .panel-head .pip { width: 7px; height: 7px; border-radius: 50%; background: var(--accent-blue); box-shadow: 0 0 8px var(--accent-blue); }
+        .code-body { padding: 12px 6px 14px; font-family: var(--mono); font-size: 12.5px; line-height: 1.7; }
+        .code-line { display: flex; gap: 12px; padding: 1px 16px; border-left: 2px solid transparent; transition: background 0.3s, border-color 0.3s; white-space: pre; }
+        .code-line .lno { color: #4b5772; width: 16px; text-align: right; user-select: none; }
+        .code-line .src { color: #c4cee0; }
+        .code-line .kw { color: #c792ea; }
+        .code-line .fn { color: #82aaff; }
+        .code-line.active { background: rgba(6,182,212,0.12); border-left-color: var(--accent-blue); }
+        .code-line.active .src, .code-line.active .lno { color: #e8eefb; }
+
+        .state-strip { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; padding: 0 2px; }
+        .pill { display: inline-flex; align-items: center; gap: 6px; font-family: var(--mono); font-size: 12px; color: var(--text-dim); background: rgba(255,255,255,0.04); border: 1px solid var(--border-main); border-radius: 999px; padding: 4px 11px; }
+        .pill b { color: var(--text-main); font-weight: 800; }
+        .pill.i b { color: var(--accent-blue); } .pill.j b { color: var(--accent-orange); } .pill.merged b { color: var(--accent-green); }
+
+        .log-panel { border-radius: 14px; padding: 12px 16px; height: 110px; overflow-y: auto; font-family: var(--mono); font-size: 12.5px; line-height: 1.5; background: var(--bg-surface); border: 1px solid var(--border-main); }
+        .log-panel::-webkit-scrollbar { width: 8px; }
+        .log-panel::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.12); border-radius: 8px; }
+
+        @keyframes confettiFall { 0%{ opacity:1; transform: translate(-50%, 0) rotate(0deg); } 100%{ opacity:0; transform: translate(calc(-50% + var(--x)), 220px) rotate(var(--rot)); } }
+        @media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation-duration: 0.001ms !important; animation-iteration-count: 1 !important; transition-duration: 0.001ms !important; } }
     </style>
 </head>
 <body>
 
     <div class="input-bar">
-        <label class="ui-label" style="display:inline; margin:0;">arr1 =</label>
+        <label class="ui-label">A =</label>
         <input type="text" id="arr1-input" class="arr-input" placeholder="1, 3, 5">
-        <label class="ui-label" style="display:inline; margin:0; margin-left:10px;">arr2 =</label>
+        <label class="ui-label">B =</label>
         <input type="text" id="arr2-input" class="arr-input" placeholder="2, 4, 6">
-        <button onclick="loadCustom()" style="margin-left:8px;">Load</button>
-        <button onclick="loadExample([1, 3, 5], [2, 4, 6])">Ex 1</button>
-        <button onclick="loadExample([10, 20], [5, 15, 25])">Ex 2</button>
+        <button onclick="loadCustom()">Merge</button>
+        <span class="ui-label" style="opacity:.5">|</span>
+        <button onclick="loadExample(0)">Ex 1</button>
+        <button onclick="loadExample(1)">Ex 2</button>
     </div>
 
-    <div class="visual-container">
-        <div class="array-section">
-            <span class="ui-label">arr1 (Sorted)</span>
-            <div class="tiles-wrapper" id="tiles-arr1"></div>
+    <div class="shell">
+        <div class="title-row">
+            <h1>Merge Two Sorted Arrays <span class="sub">&middot; two pointers &middot; take the smaller front each step &middot; O(m + n)</span></h1>
+            <span class="step-badge" id="step-badge">Step 1 / 1</span>
         </div>
-        
-        <div class="array-section" style="margin-top: 10px;">
-            <span class="ui-label">arr2 (Sorted)</span>
-            <div class="tiles-wrapper" id="tiles-arr2"></div>
+        <div class="progress-track"><div class="progress-fill" id="progress-fill"></div></div>
+
+        <div class="narration" id="main-panel">&mdash;</div>
+
+        <div class="stage-card">
+            <div class="stage-screen">
+                <div class="rail-block">
+                    <span class="rail-label a">Array A</span>
+                    <div class="arr-rail" id="rail-a"></div>
+                </div>
+                <div class="rail-block">
+                    <span class="rail-label b">Array B</span>
+                    <div class="arr-rail" id="rail-b"></div>
+                </div>
+                <div class="rail-block">
+                    <span class="rail-label r">Merged result</span>
+                    <div class="arr-rail" id="rail-r"></div>
+                </div>
+            </div>
         </div>
 
-        <div class="array-section" style="margin-top: 20px;">
-            <span class="ui-label">Merged Array Result</span>
-            <div class="tiles-wrapper" id="tiles-res" style="min-height: 60px;"></div>
+        <div class="action-stage">
+            <div id="confetti"></div>
+            <div class="action-word" id="action-word"></div>
+        </div>
+
+        <div class="controls">
+            <button onclick="resetSim()">&#8634; Reset</button>
+            <button onclick="prevStep()">&#8592; Back</button>
+            <button onclick="togglePlay()" id="play-btn">Play</button>
+            <button onclick="nextStep()">Next &#8594;</button>
+            <span class="ui-label" style="margin-left:6px; font-size:11px">Speed</span>
+            <input type="range" id="speed" min="0" max="2" value="1">
+            <span class="kbd-hint"><span class="kbd">&#8592;</span> <span class="kbd">&#8594;</span> step &middot; <span class="kbd">space</span> play</span>
+        </div>
+
+        <div class="details-wrap" id="details-wrap">
+            <button class="details-toggle" onclick="toggleDetails()" aria-expanded="false">
+                <span id="details-label">Show code, state &amp; log</span> <span class="chev">&#9662;</span>
+            </button>
+            <div class="details-body">
+                <div class="details-inner">
+                    <div class="details-grid">
+                        <div class="state-strip">
+                            <span class="pill i">i <b id="st-i">0</b></span>
+                            <span class="pill">A[i] <b id="st-ai">&mdash;</b></span>
+                            <span class="pill j">j <b id="st-j">0</b></span>
+                            <span class="pill">B[j] <b id="st-bj">&mdash;</b></span>
+                            <span class="pill merged">merged <b id="st-len">0</b></span>
+                        </div>
+                        <div class="panel-card">
+                            <div class="panel-head"><span class="pip"></span> Algorithm</div>
+                            <div class="code-body" id="code-panel"></div>
+                        </div>
+                        <div class="log-panel" id="log"></div>
+                    </div>
+                </div>
+            </div>
         </div>
     </div>
-
-    <div class="action-panel" id="main-panel">—</div>
-
-    <div class="info-panel">
-        <div class="info-cell">
-            <span class="info-label">pointer i</span>
-            <span class="info-value" id="val-i" style="color: var(--accent-blue);">—</span>
-        </div>
-        <div class="info-cell">
-            <span class="info-label">arr1[i]</span>
-            <span class="info-value" id="val-arri" style="color: var(--accent-blue);">—</span>
-        </div>
-        <div class="info-cell">
-            <span class="info-label">pointer j</span>
-            <span class="info-value" id="val-j" style="color: var(--accent-orange);">—</span>
-        </div>
-        <div class="info-cell">
-            <span class="info-label">arr2[j]</span>
-            <span class="info-value" id="val-arrj" style="color: var(--accent-orange);">—</span>
-        </div>
-    </div>
-
-    <div class="result-display">
-        <span class="ui-label" style="margin-bottom: 4px;">merge status</span>
-        <span id="res-val">—</span>
-    </div>
-
-    <div class="status-bar" id="status-text"></div>
-
-    <div class="controls">
-        <button onclick="reset()">↺ Reset</button>
-        <button onclick="back()">← Back</button>
-        <button onclick="togglePlay()" id="play-btn">Play</button>
-        <button onclick="next()">Next →</button>
-        <div class="controls" style="margin-top:0">
-            <span class="ui-label" style="margin-right:4px; font-size:11px">Speed</span>
-            <input type="range" id="speed-slider" min="0" max="2" value="1">
-        </div>
-    </div>
-
-    <div class="legend">
-        <div class="legend-item"><span class="dot" style="background:var(--bg-surface); border:1px solid var(--accent-blue)"></span> arr1 Element</div>
-        <div class="legend-item"><span class="dot" style="background:var(--bg-surface); border:1px solid var(--accent-orange)"></span> arr2 Element</div>
-        <div class="legend-item"><span class="dot" style="background:var(--bg-surface); border:1px solid var(--border-main); opacity:0.3"></span> Processed / Pushed</div>
-        <div class="legend-item"><span class="dot" style="background:var(--accent-green); border:1px solid var(--accent-green)"></span> Merged Order</div>
-    </div>
-
-    <div class="log-panel" id="log"></div>
 
     <script>
-        let arr1 = [1, 3, 5];
-        let arr2 = [2, 4, 6];
+        'use strict';
+
+        // ───────── Motion engine ─────────
+        const REDUCED = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+        const FRAME = 1000 / 60;
+        function sampleSpring(stiffness, damping, mass) {
+            const dt = 1 / 60; let x = 1, v = 0; const out = [];
+            for (let i = 0; i < 240; i++) { const a = (-stiffness * x - damping * v) / mass; v += a * dt; x += v * dt; out.push(1 - x); if (Math.abs(x) < 0.0015 && Math.abs(v) < 0.0015) break; }
+            out.push(1); return out;
+        }
+        const SPRING_POS = sampleSpring(320, 30, 1);
+        const durOf = (a) => a.length * FRAME;
+        const Motion = {
+            glide(el, x) {
+                const prev = el._x; el.style.opacity = '1';
+                const commit = `translateX(${x.toFixed(2)}px) translateX(-50%)`;
+                if (REDUCED || prev == null || Math.abs(x - prev) < 0.5) { el._x = x; el.style.transform = commit; return; }
+                const dx = x - prev;
+                const kf = SPRING_POS.map(p => ({ transform: `translateX(${(prev + dx * p).toFixed(2)}px) translateX(-50%)` }));
+                el.animate(kf, { duration: durOf(SPRING_POS), easing: 'linear' });
+                el._x = x; el.style.transform = commit;
+            },
+        };
+
+        // ───────── State ─────────
+        let arrA = [1, 3, 5];
+        let arrB = [2, 4, 6];
         let steps = [];
-        let stepIndex = 0;
+        let stepIdx = 0;
         let timer = null;
-        const delays = [2000, 1000, 500];
+        let confettiArmed = true;
+        const delays = [1500, 800, 380];
+        const cellA = {};   // index -> cell element for rail A
+        const cellB = {};   // index -> cell element for rail B
+        const cellR = {};   // index -> cell element for merged rail
+        const ptrEls = {};  // 'i' | 'j' -> pointer pill
 
-        function init() { loadExample([1, 3, 5], [2, 4, 6]); }
-
-        function loadExample(newArr1, newArr2) {
-            arr1 = [...newArr1].sort((a,b)=>a-b); // Ensure strictly sorted per problem
-            arr2 = [...newArr2].sort((a,b)=>a-b);
-            document.getElementById('arr1-input').value = arr1.join(', ');
-            document.getElementById('arr2-input').value = arr2.join(', ');
-            generateSteps();
-            reset();
+        const CODE = [
+            [['kw','def '],['fn','merge'],['src','(A, B):']],
+            [['src','  i, j = 0, 0']],
+            [['src','  merged = []']],
+            [['kw','  while '],['src','i < len(A) and j < len(B):']],
+            [['kw','    if '],['src','A[i] <= B[j]:']],
+            [['src','      merged.append(A[i]); i += 1']],
+            [['kw','    else'],['src',':']],
+            [['src','      merged.append(B[j]); j += 1']],
+            [['kw','  while '],['src','i < len(A): merged.append(A[i]); i += 1']],
+            [['kw','  while '],['src','j < len(B): merged.append(B[j]); j += 1']],
+            [['kw','  return '],['src','merged']],
+        ];
+        function buildCodePanel() {
+            const panel = document.getElementById('code-panel'); panel.innerHTML = '';
+            CODE.forEach((tokens, i) => {
+                const line = document.createElement('div'); line.className = 'code-line'; line.dataset.line = i;
+                const lno = document.createElement('span'); lno.className = 'lno'; lno.textContent = i + 1; line.appendChild(lno);
+                const src = document.createElement('span');
+                tokens.forEach(([cls, txt]) => { const s = document.createElement('span'); s.className = cls; s.textContent = txt; src.appendChild(s); });
+                line.appendChild(src); panel.appendChild(line);
+            });
+        }
+        function highlightCode(a) { document.querySelectorAll('.code-line').forEach(el => el.classList.toggle('active', a && a.includes(+el.dataset.line))); }
+        function toggleDetails() {
+            const wrap = document.getElementById('details-wrap'); const open = wrap.classList.toggle('open');
+            wrap.querySelector('.details-toggle').setAttribute('aria-expanded', open ? 'true' : 'false');
+            document.getElementById('details-label').textContent = open ? 'Hide code, state & log' : 'Show code, state & log';
         }
 
-        function loadCustom() {
-            const valStr1 = document.getElementById('arr1-input').value;
-            const valStr2 = document.getElementById('arr2-input').value;
-            const parsedArr1 = valStr1.split(',').map(x => parseInt(x.trim())).filter(x => !isNaN(x));
-            const parsedArr2 = valStr2.split(',').map(x => parseInt(x.trim())).filter(x => !isNaN(x));
-            
-            if (parsedArr1.length > 0 || parsedArr2.length > 0) {
-                loadExample(parsedArr1.slice(0, 15), parsedArr2.slice(0, 15)); // limit size
-            } else {
-                alert("Please enter valid numbers for the arrays.");
-            }
-        }
-
+        // ───────── step generation ─────────
         function generateSteps() {
             steps = [];
-            const n1 = arr1.length;
-            const n2 = arr2.length;
-            let i = 0;
-            let j = 0;
-            let merged = [];
+            const A = arrA, B = arrB;
+            const n1 = A.length, n2 = B.length;
+            // snapshot factory: capture immutable state for this step
+            const snap = (extra) => Object.assign({
+                a: [...A], b: [...B], i: 0, j: 0,
+                merged: [], src: [],            // merged values + source labels ('A'|'B')
+                fresh: -1,                       // index in merged just appended (for pop anim)
+                done: false, confetti: false
+            }, extra);
 
-            const getArrStates = (currI, currJ, isFinal = false) => {
-                const s1 = arr1.map((_, idx) => {
-                    if (isFinal || idx < i) return 'eliminated';
-                    if (idx === currI) return 'candidate-1';
-                    return 'search-space';
-                });
-                const s2 = arr2.map((_, idx) => {
-                    if (isFinal || idx < j) return 'eliminated';
-                    if (idx === currJ) return 'candidate-2';
-                    return 'search-space';
-                });
-                return { s1, s2 };
-            };
+            let i = 0, j = 0;
+            const merged = [], src = [];
 
-            // STEP 0: INIT
-            steps.push({
-                type: 'init', i: i, j: j, val1: '—', val2: '—', res: [...merged],
-                states: getArrStates(i, j),
-                panel: `<b>Merge Two Sorted Arrays</b><br>We use two pointers: <code>i</code> for arr1 and <code>j</code> for arr2.<br>Initialize <code>i = 0</code>, <code>j = 0</code>, and an empty merged array.`,
-                statusText: `Ready. Click Play to begin.`,
-                log: `Starting Merge Process.\narr1 = [${arr1.join(', ')}]\narr2 = [${arr2.join(', ')}]\nInitialize pointers i=0, j=0.`,
-                logColor: 'var(--text-dim)'
-            });
+            steps.push(snap({ i, j, merged: [], src: [], code: [0, 1, 2], action: 'START', actionColor: 'var(--accent-blue)',
+                panel: `Merge two <b>sorted</b> arrays: A (${n1}) and B (${n2}). Two pointers <code>i=0</code> and <code>j=0</code> walk the fronts; <code>merged</code> starts empty.`,
+                log: `init  i=0 j=0  A=[${A.join(',')}] B=[${B.join(',')}]` }));
 
             while (i < n1 && j < n2) {
-                let v1 = arr1[i];
-                let v2 = arr2[j];
-
-                // EVALUATE
-                steps.push({
-                    type: 'eval', i: i, j: j, val1: v1, val2: v2, res: [...merged],
-                    states: getArrStates(i, j),
-                    panel: `Compare current elements:<br><code>arr1[${i}] == ${v1}</code> vs <code>arr2[${j}] == ${v2}</code>.`,
-                    statusText: `Comparing arr1[${i}] and arr2[${j}]...`,
-                    log: `\nCompare arr1[${i}]=${v1} with arr2[${j}]=${v2}.`,
-                    logColor: 'var(--text-main)'
-                });
+                const v1 = A[i], v2 = B[j];
+                // compare step
+                steps.push(snap({ i, j, merged: [...merged], src: [...src], code: [3, 4], action: `compare A[${i}]=${v1} vs B[${j}]=${v2}`, actionColor: 'var(--accent-blue)',
+                    compareA: i, compareB: j,
+                    panel: `Look at the fronts: <code>A[${i}]=${v1}</code> and <code>B[${j}]=${v2}</code>. The smaller one is next in sorted order.`,
+                    log: `compare A[${i}]=${v1} ${v1 <= v2 ? '<=' : '>'} B[${j}]=${v2}` }));
 
                 if (v1 <= v2) {
-                    merged.push(v1);
-                    steps.push({
-                        type: 'push1', i: i, j: j, val1: v1, val2: v2, res: [...merged],
-                        states: getArrStates(i, j),
-                        panel: `<span style="color:var(--accent-blue)"><code>${v1} <= ${v2}</code></span>.<br>Append <code>arr1[${i}]</code> to the merged array.<br>Increment pointer <code>i</code>.`,
-                        statusText: `Appended ${v1} from arr1. Incrementing i.`,
-                        log: `  ${v1} <= ${v2}. Append ${v1} to merged array. i++.`,
-                        logColor: 'var(--accent-blue)'
-                    });
+                    merged.push(v1); src.push('A');
                     i++;
+                    steps.push(snap({ i, j, merged: [...merged], src: [...src], fresh: merged.length - 1, code: [4, 5], action: `take ${v1} from A`, actionColor: 'var(--accent-blue)',
+                        takeA: i - 1,
+                        panel: `<code>${v1} &#8804; ${v2}</code> &#8594; append <b>A[${i - 1}]=${v1}</b> to merged, then advance <code>i = ${i}</code>.`,
+                        log: `take A[${i - 1}]=${v1} -> merged  (i=${i})` }));
                 } else {
-                    merged.push(v2);
-                    steps.push({
-                        type: 'push2', i: i, j: j, val1: v1, val2: v2, res: [...merged],
-                        states: getArrStates(i, j),
-                        panel: `<span style="color:var(--accent-orange)"><code>${v1} > ${v2}</code></span>.<br>Append <code>arr2[${j}]</code> to the merged array.<br>Increment pointer <code>j</code>.`,
-                        statusText: `Appended ${v2} from arr2. Incrementing j.`,
-                        log: `  ${v1} > ${v2}. Append ${v2} to merged array. j++.`,
-                        logColor: 'var(--accent-orange)'
-                    });
+                    merged.push(v2); src.push('B');
                     j++;
+                    steps.push(snap({ i, j, merged: [...merged], src: [...src], fresh: merged.length - 1, code: [6, 7], action: `take ${v2} from B`, actionColor: 'var(--accent-orange)',
+                        takeB: j - 1,
+                        panel: `<code>${v1} &gt; ${v2}</code> &#8594; append <b>B[${j - 1}]=${v2}</b> to merged, then advance <code>j = ${j}</code>.`,
+                        log: `take B[${j - 1}]=${v2} -> merged  (j=${j})` }));
                 }
             }
 
-            // EXHAUSTION PHASES
+            // drain whichever still has elements
             if (i < n1) {
-                steps.push({
-                    type: 'exhaust1-start', i: i, j: j, val1: arr1[i], val2: '—', res: [...merged],
-                    states: getArrStates(i, -1),
-                    panel: `Pointer <code>j</code> has reached the end of arr2.<br>Append all remaining elements from arr1 to the merged array.`,
-                    statusText: `arr2 exhausted. Appending remaining arr1 elements.`,
-                    log: `\narr2 is exhausted (j = ${n2}). Copying remaining elements from arr1.`,
-                    logColor: 'var(--text-dim)'
-                });
-
+                steps.push(snap({ i, j, merged: [...merged], src: [...src], code: [8], action: 'B exhausted', actionColor: 'var(--accent-purple)',
+                    panel: `<code>j</code> reached the end of B. Everything left in A is already larger &#8594; <b>drain A</b> straight into merged.`,
+                    log: `B exhausted (j=${n2}) -> drain rest of A` }));
                 while (i < n1) {
-                    let v1 = arr1[i];
-                    merged.push(v1);
-                    steps.push({
-                        type: 'exhaust1', i: i, j: j, val1: v1, val2: '—', res: [...merged],
-                        states: getArrStates(i, -1),
-                        panel: `Appending remaining element <code>arr1[${i}] == ${v1}</code>.`,
-                        statusText: `Appended ${v1} from arr1.`,
-                        log: `  Append ${v1}. i++.`,
-                        logColor: 'var(--accent-blue)'
-                    });
-                    i++;
+                    const v1 = A[i]; merged.push(v1); src.push('A'); i++;
+                    steps.push(snap({ i, j, merged: [...merged], src: [...src], fresh: merged.length - 1, code: [8], action: `drain ${v1} from A`, actionColor: 'var(--accent-blue)',
+                        takeA: i - 1,
+                        panel: `Append remaining <b>A[${i - 1}]=${v1}</b>, advance <code>i = ${i}</code>.`,
+                        log: `drain A[${i - 1}]=${v1} -> merged  (i=${i})` }));
                 }
             } else if (j < n2) {
-                steps.push({
-                    type: 'exhaust2-start', i: i, j: j, val1: '—', val2: arr2[j], res: [...merged],
-                    states: getArrStates(-1, j),
-                    panel: `Pointer <code>i</code> has reached the end of arr1.<br>Append all remaining elements from arr2 to the merged array.`,
-                    statusText: `arr1 exhausted. Appending remaining arr2 elements.`,
-                    log: `\narr1 is exhausted (i = ${n1}). Copying remaining elements from arr2.`,
-                    logColor: 'var(--text-dim)'
-                });
-
+                steps.push(snap({ i, j, merged: [...merged], src: [...src], code: [9], action: 'A exhausted', actionColor: 'var(--accent-purple)',
+                    panel: `<code>i</code> reached the end of A. Everything left in B is already larger &#8594; <b>drain B</b> straight into merged.`,
+                    log: `A exhausted (i=${n1}) -> drain rest of B` }));
                 while (j < n2) {
-                    let v2 = arr2[j];
-                    merged.push(v2);
-                    steps.push({
-                        type: 'exhaust2', i: i, j: j, val1: '—', val2: v2, res: [...merged],
-                        states: getArrStates(-1, j),
-                        panel: `Appending remaining element <code>arr2[${j}] == ${v2}</code>.`,
-                        statusText: `Appended ${v2} from arr2.`,
-                        log: `  Append ${v2}. j++.`,
-                        logColor: 'var(--accent-orange)'
-                    });
-                    j++;
+                    const v2 = B[j]; merged.push(v2); src.push('B'); j++;
+                    steps.push(snap({ i, j, merged: [...merged], src: [...src], fresh: merged.length - 1, code: [9], action: `drain ${v2} from B`, actionColor: 'var(--accent-orange)',
+                        takeB: j - 1,
+                        panel: `Append remaining <b>B[${j - 1}]=${v2}</b>, advance <code>j = ${j}</code>.`,
+                        log: `drain B[${j - 1}]=${v2} -> merged  (j=${j})` }));
                 }
             }
 
-            // FINAL STEP
-            steps.push({
-                type: 'final', i: i, j: j, val1: '—', val2: '—', res: [...merged],
-                states: getArrStates(-1, -1, true),
-                panel: `<span style="color:var(--accent-green)">Both arrays are fully processed.</span><br>The merged array is complete and fully sorted!`,
-                complete: true,
-                finalStr: 'Complete',
-                statusText: `Merge complete.`,
-                log: `\nAll elements processed. Merge complete. ✓`,
-                logColor: 'var(--accent-green)', bold: true
-            });
+            steps.push(snap({ i, j, merged: [...merged], src: [...src], code: [10], action: '✓ MERGED', actionColor: 'var(--accent-green)', done: true, confetti: true,
+                panel: `Both arrays are consumed. The <span style="color:var(--accent-green)">merged</span> array <code>[${merged.join(', ')}]</code> is fully sorted &#8594; <b>${merged.length}</b> elements.`,
+                log: `done  merged=[${merged.join(',')}]` }));
+        }
+
+        // ───────── render ─────────
+        function cellCenterX(map, i) { const el = map[i]; return el ? el.offsetLeft + el.offsetWidth / 2 : 0; }
+
+        function syncRail(rail, map, values, classifier) {
+            const used = new Set();
+            for (let i = 0; i < values.length; i++) {
+                used.add(String(i));
+                let el = map[i];
+                if (!el) { el = document.createElement('div'); el.className = 'cell'; el.innerHTML = `<span class="ci"></span><span class="cv"></span>`; map[i] = el; rail.appendChild(el); }
+                el.querySelector('.ci').textContent = i;
+                el.querySelector('.cv').textContent = values[i];
+                classifier(el, i);
+            }
+            Object.keys(map).forEach(k => { if (!used.has(k)) { map[k].remove(); delete map[k]; } });
+            rail.classList.toggle('empty', values.length === 0);
+            // empty placeholder
+            let ph = rail.querySelector('.rail-empty');
+            if (values.length === 0) { if (!ph) { ph = document.createElement('span'); ph.className = 'rail-empty'; ph.textContent = '(empty)'; rail.appendChild(ph); } }
+            else if (ph) ph.remove();
         }
 
         function renderStep(idx) {
-            const step = steps[idx];
-            if (!step) return;
+            stepIdx = idx; const step = steps[idx]; if (!step) return;
+            const railA = document.getElementById('rail-a');
+            const railB = document.getElementById('rail-b');
+            const railR = document.getElementById('rail-r');
 
-            // Render Arr 1
-            const arr1Container = document.getElementById('tiles-arr1');
-            arr1Container.innerHTML = '';
-            if(arr1.length === 0) arr1Container.innerHTML = '<div style="color:var(--text-dim); font-size:13px; padding:10px;">[Empty]</div>';
-            step.states.s1.forEach((state, idx) => {
-                const wrapper = document.createElement('div');
-                wrapper.className = 'tile-unit';
-                const tile = document.createElement('div');
-                tile.className = `tile ${state}`;
-                tile.innerText = arr1[idx];
-                const idxLabel = document.createElement('div');
-                idxLabel.className = 'tile-index';
-                idxLabel.innerText = `[${idx}]`;
-                wrapper.append(tile, idxLabel);
-
-                if (!step.complete && step.i === idx && step.i < arr1.length) {
-                    const ptr = document.createElement('div');
-                    ptr.className = 'ptr-container';
-                    ptr.innerHTML = '<div class="ptr-arrow">↑</div><div class="ptr-i">i</div>';
-                    wrapper.appendChild(ptr);
-                }
-                arr1Container.appendChild(wrapper);
+            // Array A cells
+            syncRail(railA, cellA, step.a, (el, i) => {
+                let cls = 'cell';
+                if (i < step.i) cls += ' consumed';
+                else if (i === step.compareA || i === step.takeA) cls += (i === step.takeA ? ' taken' : ' active-a');
+                el.className = cls;
+            });
+            // Array B cells
+            syncRail(railB, cellB, step.b, (el, i) => {
+                let cls = 'cell';
+                if (i < step.j) cls += ' consumed';
+                else if (i === step.compareB || i === step.takeB) cls += (i === step.takeB ? ' taken' : ' active-b');
+                el.className = cls;
+            });
+            // Merged result cells
+            syncRail(railR, cellR, step.merged, (el, i) => {
+                el.className = 'cell merged' + (i === step.fresh ? ' fresh' : '');
+                let tag = el.querySelector('.src-tag');
+                if (!tag) { tag = document.createElement('span'); tag.className = 'src-tag'; el.appendChild(tag); }
+                const from = step.src[i];
+                tag.textContent = from || '';
+                tag.style.color = from === 'A' ? 'var(--accent-blue)' : 'var(--accent-orange)';
             });
 
-            // Render Arr 2
-            const arr2Container = document.getElementById('tiles-arr2');
-            arr2Container.innerHTML = '';
-            if(arr2.length === 0) arr2Container.innerHTML = '<div style="color:var(--text-dim); font-size:13px; padding:10px;">[Empty]</div>';
-            step.states.s2.forEach((state, idx) => {
-                const wrapper = document.createElement('div');
-                wrapper.className = 'tile-unit';
-                const tile = document.createElement('div');
-                tile.className = `tile ${state}`;
-                tile.innerText = arr2[idx];
-                const idxLabel = document.createElement('div');
-                idxLabel.className = 'tile-index';
-                idxLabel.innerText = `[${idx}]`;
-                wrapper.append(tile, idxLabel);
+            // pointer pills under A and B (hidden once that array is fully consumed)
+            placePtr(railA, cellA, 'i', step.i < step.a.length ? step.i : null);
+            placePtr(railB, cellB, 'j', step.j < step.b.length ? step.j : null);
 
-                if (!step.complete && step.j === idx && step.j < arr2.length) {
-                    const ptr = document.createElement('div');
-                    ptr.className = 'ptr-container';
-                    ptr.innerHTML = '<div class="ptr-arrow">↑</div><div class="ptr-j">j</div>';
-                    wrapper.appendChild(ptr);
-                }
-                arr2Container.appendChild(wrapper);
-            });
+            const mp = document.getElementById('main-panel');
+            mp.innerHTML = step.panel || '&mdash;';
+            mp.classList.toggle('done', !!step.done);
+            const aw = document.getElementById('action-word'); aw.textContent = step.action || ''; aw.style.color = step.actionColor || 'var(--text-dim)';
+            highlightCode(step.code);
 
-            // Render Res
-            const resContainer = document.getElementById('tiles-res');
-            resContainer.innerHTML = '';
-            if (step.res.length === 0) {
-                 resContainer.innerHTML = '<div style="color:var(--text-dim); font-size:13px; padding:10px;">[Empty]</div>';
-            } else {
-                step.res.forEach((val, idx) => {
-                    const wrapper = document.createElement('div');
-                    wrapper.className = 'tile-unit';
-                    const tile = document.createElement('div');
-                    tile.className = `tile winning`;
-                    tile.innerText = val;
-                    const idxLabel = document.createElement('div');
-                    idxLabel.className = 'tile-index';
-                    idxLabel.innerText = `[${idx}]`;
-                    wrapper.append(tile, idxLabel);
-                    resContainer.appendChild(wrapper);
-                });
-            }
+            if (step.confetti) { if (confettiArmed) { fireConfetti(); confettiArmed = false; } } else confettiArmed = true;
 
-            document.getElementById('main-panel').innerHTML = step.panel;
-            document.getElementById('val-i').innerText = step.i < arr1.length ? step.i : (arr1.length === 0 ? '—' : 'end');
-            document.getElementById('val-j').innerText = step.j < arr2.length ? step.j : (arr2.length === 0 ? '—' : 'end');
-            document.getElementById('val-arri').innerText = step.val1;
-            document.getElementById('val-arrj').innerText = step.val2;
+            document.getElementById('st-i').textContent = step.i < step.a.length ? step.i : (step.a.length ? 'end' : '—');
+            document.getElementById('st-j').textContent = step.j < step.b.length ? step.j : (step.b.length ? 'end' : '—');
+            document.getElementById('st-ai').textContent = step.i < step.a.length ? step.a[step.i] : '—';
+            document.getElementById('st-bj').textContent = step.j < step.b.length ? step.b[step.j] : '—';
+            document.getElementById('st-len').textContent = step.merged.length;
+            document.getElementById('step-badge').textContent = `Step ${idx + 1} / ${steps.length}`;
+            document.getElementById('progress-fill').style.width = `${(idx / Math.max(1, steps.length - 1)) * 100}%`;
 
-            const resVal = document.getElementById('res-val');
-            resVal.innerText = step.complete ? step.finalStr : 'In Progress';
-            resVal.className = step.complete ? 'pop' : '';
-
-            document.getElementById('status-text').innerText = step.statusText;
-
-            const logPanel = document.getElementById('log');
-            logPanel.innerHTML = '';
-            for (let k = 0; k <= idx; k++) {
-                if (steps[k].log) {
-                    const line = document.createElement('div');
-                    line.style.marginBottom = '2px';
-                    line.style.whiteSpace = 'pre-wrap';
-                    if (steps[k].logColor) line.style.color = steps[k].logColor;
-                    if (steps[k].bold) line.style.fontWeight = 'bold';
-                    line.innerText = steps[k].log;
-                    logPanel.appendChild(line);
-                }
-            }
-            logPanel.scrollTop = logPanel.scrollHeight;
+            const logEl = document.getElementById('log');
+            logEl.innerHTML = steps.slice(0, idx + 1).map(s => `<div style="margin:3px 0;white-space:pre-wrap;">${s.log}</div>`).join('');
+            logEl.scrollTop = logEl.scrollHeight;
         }
 
-        function next() {
-            if (stepIndex < steps.length - 1) {
-                stepIndex++;
-                renderStep(stepIndex);
-            } else pause();
+        function placePtr(rail, map, name, i) {
+            let pill = ptrEls[name];
+            if (!pill) {
+                pill = document.createElement('div'); pill.className = 'bptr ' + name;
+                pill.innerHTML = `<div class="stalk"></div><div class="tag">${name}</div>`;
+                rail.appendChild(pill); ptrEls[name] = pill;
+            } else if (pill.parentElement !== rail) {
+                rail.appendChild(pill);
+            }
+            if (i == null || !map[i]) { pill.style.opacity = '0'; pill._x = null; return; }
+            Motion.glide(pill, cellCenterX(map, i));
         }
 
-        function back() {
-            if (stepIndex > 0) {
-                stepIndex--;
-                renderStep(stepIndex);
+        function fireConfetti() {
+            const host = document.getElementById('confetti'); if (!host || REDUCED) return;
+            const colors = ['#22c55e', '#06b6d4', '#a855f7', '#f5a524', '#f43f5e'];
+            for (let i = 0; i < 38; i++) {
+                const p = document.createElement('div'); p.className = 'confetti-piece';
+                p.style.setProperty('--x', ((Math.random() * 2 - 1) * 220) + 'px');
+                p.style.setProperty('--rot', ((Math.random() * 720 - 360)) + 'deg');
+                p.style.background = colors[i % colors.length];
+                p.style.animationDuration = (0.9 + Math.random() * 0.8) + 's';
+                p.style.animationDelay = (Math.random() * 0.15) + 's';
+                host.appendChild(p); setTimeout(() => p.remove(), 1900);
             }
         }
 
-        function reset() {
-            pause();
-            stepIndex = 0;
-            renderStep(0);
-        }
-
+        // ───────── controls ─────────
+        function nextStep() { if (stepIdx < steps.length - 1) renderStep(stepIdx + 1); else pause(); }
+        function prevStep() { if (stepIdx > 0) renderStep(stepIdx - 1); }
+        function resetSim() { pause(); renderStep(0); }
         function togglePlay() {
             const btn = document.getElementById('play-btn');
-            if (timer) pause();
-            else {
-                btn.innerText = 'Pause';
-                if (stepIndex >= steps.length - 1) stepIndex = 0;
-                timer = setInterval(next, delays[document.getElementById('speed-slider').value]);
+            if (timer) { pause(); return; }
+            btn.textContent = 'Pause';
+            if (stepIdx >= steps.length - 1) renderStep(0);
+            timer = setInterval(() => { if (stepIdx < steps.length - 1) nextStep(); else pause(); }, delays[document.getElementById('speed').value]);
+        }
+        function pause() { clearInterval(timer); timer = null; document.getElementById('play-btn').textContent = 'Play'; }
+
+        function clearDom() {
+            [cellA, cellB, cellR].forEach(map => Object.keys(map).forEach(k => { map[k].remove(); delete map[k]; }));
+            Object.keys(ptrEls).forEach(k => { ptrEls[k].remove(); delete ptrEls[k]; });
+            confettiArmed = true;
+        }
+        function loadData(a, b) { pause(); arrA = a; arrB = b; clearDom(); generateSteps(); renderStep(0); }
+        function parseArr(id) {
+            return (document.getElementById(id).value || '')
+                .split(',').map(s => parseInt(s.trim(), 10)).filter(n => !isNaN(n))
+                .slice(0, 9).sort((x, y) => x - y);
+        }
+        function loadCustom() {
+            const a = parseArr('arr1-input');
+            const b = parseArr('arr2-input');
+            if (a.length || b.length) {
+                document.getElementById('arr1-input').value = a.join(', ');
+                document.getElementById('arr2-input').value = b.join(', ');
+                loadData(a, b);
             }
         }
-
-        function pause() {
-            clearInterval(timer);
-            timer = null;
-            document.getElementById('play-btn').innerText = 'Play';
+        function loadExample(n) {
+            const ex = [{ a: [1, 3, 5], b: [2, 4, 6] }, { a: [10, 20], b: [5, 15, 25] }][n];
+            document.getElementById('arr1-input').value = ex.a.join(', ');
+            document.getElementById('arr2-input').value = ex.b.join(', ');
+            loadData(ex.a, ex.b);
         }
 
-        window.onload = init;
+        document.addEventListener('keydown', (e) => {
+            const tag = (e.target.tagName || '').toLowerCase(); if (tag === 'input' || tag === 'textarea') return;
+            if (e.key === 'ArrowRight') { e.preventDefault(); pause(); nextStep(); }
+            else if (e.key === 'ArrowLeft') { e.preventDefault(); pause(); prevStep(); }
+            else if (e.key === ' ') { e.preventDefault(); togglePlay(); }
+        });
+        ['arr1-input', 'arr2-input'].forEach(id => document.getElementById(id).addEventListener('keydown', (e) => { if (e.key === 'Enter') loadCustom(); }));
+        window.addEventListener('resize', () => renderStep(stepIdx));
+
+        buildCodePanel();
+        window.onload = () => loadExample(0);
     </script>
 </body>
 </html>
