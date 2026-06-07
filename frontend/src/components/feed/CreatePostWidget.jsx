@@ -1,5 +1,5 @@
 import React, { useState, useRef } from 'react';
-import { Image, Calendar, Newspaper, X } from 'lucide-react';
+import { Image, Calendar, Newspaper, X, Loader2 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 
 const MAX_IMAGES = 10;
@@ -12,6 +12,8 @@ export default function CreatePostWidget({ onPost, onOpenEventModal, onOpenArtic
     const [images, setImages] = useState([]);
     const [uploading, setUploading] = useState(false);
     const fileInputRef = useRef(null);
+
+    const initial = (user?.name?.[0] || 'U').toUpperCase();
 
     const handleImageSelect = (e) => {
         const picked = Array.from(e.target.files || []);
@@ -71,37 +73,53 @@ export default function CreatePostWidget({ onPost, onOpenEventModal, onOpenArtic
 
     const canSubmit = !uploading && (content.trim() || images.length > 0);
 
-    return (
-        <div className="bg-card border border-border p-4 rounded-xl shadow-sm relative overflow-hidden group hover:border-border transition-all duration-300">
-            <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-transparent via-neutral-500/50 to-transparent opacity-0 group-hover:opacity-100 transition-opacity"></div>
+    // Shared style for the composer "action" buttons (Media / Event / Article)
+    const composerAction = "flex items-center gap-2 px-3 py-2 rounded-lg text-muted-foreground hover:text-foreground hover:bg-[var(--color-surface-hover)] transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--primary)]";
 
-            <div className="flex gap-4 mb-4">
-                <div className="w-12 h-12 rounded-full bg-black flex items-center justify-center font-bold text-white text-lg shrink-0 border-2 border-surface shadow-md">
-                    {user ? user.name[0].toUpperCase() : "U"}
+    return (
+        <div className="bg-card border border-border rounded-2xl shadow-sm p-4 sm:p-5 relative overflow-hidden group transition-shadow duration-300 hover:shadow-md">
+            {/* Brand accent that reveals on hover */}
+            <div
+                aria-hidden="true"
+                className="absolute top-0 left-0 right-0 h-[3px] opacity-0 group-focus-within:opacity-100 group-hover:opacity-100 transition-opacity duration-300"
+                style={{ background: 'linear-gradient(90deg, #6366f1, #06b6d4)' }}
+            />
+
+            <div className="flex gap-3 sm:gap-4 mb-4">
+                <div
+                    className="w-11 h-11 sm:w-12 sm:h-12 rounded-full flex items-center justify-center font-bold text-white text-lg shrink-0 shadow-md ring-2 ring-white/10"
+                    style={{ background: 'linear-gradient(135deg, #6366f1, #06b6d4)' }}
+                    aria-hidden="true"
+                >
+                    {initial}
                 </div>
-                <div className="flex-1">
+                <div className="flex-1 min-w-0">
+                    <label htmlFor="composer-textarea" className="sr-only">Write a post</label>
                     <textarea
+                        id="composer-textarea"
                         value={content}
                         onChange={(e) => setContent(e.target.value)}
                         placeholder="What's on your mind?"
-                        className="w-full bg-transparent border border-border rounded-xl px-4 py-3 text-sm text-foreground focus:ring-1 focus:ring-black focus:border-black outline-none placeholder-muted-text min-h-[80px] resize-none transition-all focus:bg-muted"
+                        className="w-full bg-transparent border border-border rounded-xl px-4 py-3 text-[15px] text-foreground outline-none placeholder:text-muted-foreground min-h-[84px] resize-none transition-colors duration-200 focus:border-[var(--primary)] focus:ring-2 focus:ring-[color-mix(in_srgb,var(--primary)_30%,transparent)] focus:bg-[var(--color-surface-hover)]"
                     />
                 </div>
             </div>
 
             {/* Selected images preview — horizontal scroll for multi-image */}
             {images.length > 0 && (
-                <div className="mb-4 ml-16 mr-2 flex gap-2 overflow-x-auto pb-2">
+                <div className="mb-4 sm:ml-16 mr-1 flex gap-2 overflow-x-auto pb-2">
                     {images.map((img, idx) => (
                         <div key={idx} className="relative shrink-0">
                             <img
                                 src={img.previewUrl}
-                                alt={`Preview ${idx + 1}`}
-                                className="w-32 h-32 object-cover rounded-xl border border-white/10"
+                                alt={`Selected attachment ${idx + 1} of ${images.length}`}
+                                className="w-28 h-28 sm:w-32 sm:h-32 object-cover rounded-xl border border-border"
                             />
                             <button
+                                type="button"
                                 onClick={() => removeImage(idx)}
-                                className="absolute top-1 right-1 p-1 bg-black/60 rounded-full text-white hover:bg-black/80 transition-colors"
+                                aria-label={`Remove attachment ${idx + 1}`}
+                                className="absolute top-1.5 right-1.5 p-1 bg-black/60 rounded-full text-white hover:bg-black/80 transition-colors duration-200"
                             >
                                 <X size={14} />
                             </button>
@@ -110,15 +128,16 @@ export default function CreatePostWidget({ onPost, onOpenEventModal, onOpenArtic
                 </div>
             )}
 
-            <div className="flex justify-between items-center px-2 pt-2 border-t border-border">
-                <div className="flex gap-1 md:gap-2">
+            <div className="flex justify-between items-center gap-2 px-1 pt-3 border-t border-border">
+                <div className="flex gap-1">
                     <button
+                        type="button"
                         onClick={() => fileInputRef.current?.click()}
                         disabled={uploading || images.length >= MAX_IMAGES}
-                        className="flex items-center gap-2 px-3 py-2 text-muted-foreground hover:bg-muted rounded-lg transition-colors group hover:text-foreground disabled:opacity-50 disabled:cursor-not-allowed"
+                        className={composerAction}
                     >
-                        <Image size={18} className="text-muted-foreground group-hover:text-foreground group-hover:scale-110 transition-transform" />
-                        <span className="text-xs font-bold hidden md:inline">
+                        <Image size={18} className="shrink-0" />
+                        <span className="text-xs font-bold hidden sm:inline">
                             Media{images.length > 0 ? ` (${images.length}/${MAX_IMAGES})` : ''}
                         </span>
                     </button>
@@ -131,31 +150,30 @@ export default function CreatePostWidget({ onPost, onOpenEventModal, onOpenArtic
                         onChange={handleImageSelect}
                     />
 
-                    <button
-                        onClick={onOpenEventModal}
-                        className="flex items-center gap-2 px-3 py-2 text-muted-foreground hover:bg-muted rounded-lg transition-colors group hover:text-foreground"
-                    >
-                        <Calendar size={18} className="text-muted-foreground group-hover:text-foreground group-hover:scale-110 transition-transform" />
-                        <span className="text-xs font-bold hidden md:inline">Event</span>
+                    <button type="button" onClick={onOpenEventModal} className={composerAction}>
+                        <Calendar size={18} className="shrink-0" />
+                        <span className="text-xs font-bold hidden sm:inline">Event</span>
                     </button>
 
-                    <button
-                        onClick={onOpenArticleModal}
-                        className="flex items-center gap-2 px-3 py-2 text-muted-foreground hover:bg-muted rounded-lg transition-colors group hover:text-foreground"
-                    >
-                        <Newspaper size={18} className="text-muted-foreground group-hover:text-foreground group-hover:scale-110 transition-transform" />
-                        <span className="text-xs font-bold hidden md:inline">Article</span>
+                    <button type="button" onClick={onOpenArticleModal} className={composerAction}>
+                        <Newspaper size={18} className="shrink-0" />
+                        <span className="text-xs font-bold hidden sm:inline">Article</span>
                     </button>
                 </div>
 
                 <button
+                    type="button"
                     onClick={handleSubmit}
                     disabled={!canSubmit}
-                    className={`px-6 py-2 rounded-full font-bold text-sm transition-all duration-300 ${canSubmit
-                        ? 'bg-black text-white hover:bg-neutral-800 shadow-md hover:-translate-y-0.5'
-                        : 'bg-muted text-muted-foreground/70 cursor-not-allowed'
-                        }`}
+                    className="px-6 py-2 rounded-full font-bold text-sm text-white shadow-md transition-all duration-200 flex items-center gap-2 enabled:hover:-translate-y-0.5 enabled:hover:shadow-lg disabled:opacity-50 disabled:cursor-not-allowed focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--primary)]"
+                    style={{
+                        background: canSubmit
+                            ? 'linear-gradient(135deg, #6366f1, #06b6d4)'
+                            : 'var(--color-border)',
+                        boxShadow: canSubmit ? '0 4px 14px rgba(99,102,241,0.35)' : 'none',
+                    }}
                 >
+                    {uploading && <Loader2 size={15} className="animate-spin" />}
                     {uploading ? 'Uploading…' : 'Post'}
                 </button>
             </div>

@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { motion, useInView, useReducedMotion, useMotionValue, useSpring, useTransform } from 'framer-motion';
-import { ChevronRight, Layers, Users, Briefcase, Code, Terminal, Globe, ArrowUpRight, CheckCircle2, Zap, MessageSquare, Brain, Cpu, GitBranch } from 'lucide-react';
+import { ChevronRight, Layers, Users, Briefcase, Code, Terminal, Globe, ArrowUpRight, CheckCircle2, Zap, MessageSquare, Brain, Cpu, GitBranch, Film, Map, Puzzle, Lightbulb, TrendingUp, Target, Rocket, GraduationCap, Eye, Hammer, Wrench, Lock, Unlock, ListOrdered, Sparkles, Keyboard, Bot } from 'lucide-react';
 import { useTheme } from '../context/ThemeContext';
 import { MiraAvatar } from '../components/mira/MiraAvatar';
 
@@ -59,211 +59,20 @@ function tokenColor(type) {
     }
 }
 
-const BackgroundFx = React.memo(function BackgroundFx({ variant = 'hero' }) {
-    const canvasRef = useRef(null);
-
-    useEffect(() => {
-        const canvas = canvasRef.current;
-        if (!canvas) return;
-
-        const context = canvas.getContext('2d');
-        if (!context) return;
-
-        // Respect the OS "reduce motion" setting: skip the particle field
-        // entirely — no requestAnimationFrame loop, no listeners.
-        if (typeof window !== 'undefined' && window.matchMedia
-            && window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
-            return;
-        }
-
-        let cachedRect = { left: 0, top: 0, width: window.innerWidth, height: window.innerHeight };
-        const updateRect = () => {
-            const host = canvas.parentElement;
-            if (host) cachedRect = host.getBoundingClientRect();
-        };
-
-        const particleCount = variant === 'hero' ? 22 : 16;
-        const lineDistance = variant === 'hero' ? 140 : 120;
-        const mouseRadius = variant === 'hero' ? 150 : 120;
-        const dotColor = variant === 'hero' ? '45,168,224' : '99,102,241';
-        const lineColor = variant === 'hero' ? '100,160,220' : '129,140,248';
-
-        const mouse = { x: -9999, y: -9999 };
-        const handleMouseMove = (e) => {
-            mouse.x = e.clientX;
-            mouse.y = e.clientY;
-        };
-        const handleMouseLeave = () => {
-            mouse.x = -9999;
-            mouse.y = -9999;
-        };
-
-        window.addEventListener('mousemove', handleMouseMove);
-        window.addEventListener('mouseout', handleMouseLeave);
-
-        const particles = Array.from({ length: particleCount }, () => ({
-            x: Math.random() * window.innerWidth,
-            y: Math.random() * 500,
-            vx: (Math.random() - 0.5) * 0.24,
-            vy: (Math.random() - 0.5) * 0.24,
-            baseRadius: Math.random() * 1.0 + 0.45,
-            baseOpacity: Math.random() * 0.2 + 0.06,
-            phase: Math.random() * Math.PI * 2,
-        }));
-
-        let frame = 0;
-        let frameCount = 0;
-        let lastTime = performance.now();
-        let paused = false;
-        let width = 0;
-        let height = 0;
-
-        const handleVisibility = () => {
-            paused = document.hidden;
-        };
-        document.addEventListener('visibilitychange', handleVisibility);
-
-        const resize = () => {
-            updateRect();
-            width = Math.max(1, cachedRect.width);
-            height = Math.max(1, cachedRect.height);
-            const dpr = Math.min(window.devicePixelRatio || 1, 1.5);
-
-            canvas.width = Math.floor(width * dpr);
-            canvas.height = Math.floor(height * dpr);
-            canvas.style.width = `${width}px`;
-            canvas.style.height = `${height}px`;
-            context.setTransform(dpr, 0, 0, dpr, 0, 0);
-
-            for (const p of particles) {
-                p.x = Math.min(Math.max(p.x, -20), width + 20);
-                p.y = Math.min(Math.max(p.y, -20), height + 20);
-            }
-        };
-
-        const draw = (time) => {
-            frame = requestAnimationFrame(draw);
-            if (paused) return;
-
-            const dt = Math.min((time - lastTime) / 16.666, 3);
-            lastTime = time;
-            frameCount += 1;
-
-            const mouseX = mouse.x - cachedRect.left;
-            const mouseY = mouse.y - cachedRect.top;
-
-            context.clearRect(0, 0, width, height);
-
-            for (const p of particles) {
-                const dx = p.x - mouseX;
-                const dy = p.y - mouseY;
-                const distToMouse = Math.hypot(dx, dy);
-
-                if (distToMouse < mouseRadius && distToMouse > 0) {
-                    const force = (mouseRadius - distToMouse) / mouseRadius;
-                    p.x += (dx / distToMouse) * force * 2.2 * dt;
-                    p.y += (dy / distToMouse) * force * 2.2 * dt;
-                }
-
-                p.x += p.vx * dt;
-                p.y += p.vy * dt;
-
-                if (p.x < -20) p.x = width + 20;
-                if (p.x > width + 20) p.x = -20;
-                if (p.y < -20) p.y = height + 20;
-                if (p.y > height + 20) p.y = -20;
-
-                const pulse = Math.sin(time * 0.002 + p.phase) * 0.5 + 0.5;
-                const radius = p.baseRadius * (0.8 + pulse * 0.4);
-                const opacity = p.baseOpacity * (0.6 + pulse * 0.4);
-
-                context.beginPath();
-                context.arc(p.x, p.y, radius, 0, Math.PI * 2);
-                context.fillStyle = `rgba(${dotColor},${opacity})`;
-                context.fill();
-            }
-
-            context.beginPath();
-            context.lineWidth = variant === 'hero' ? 0.55 : 0.5;
-            context.strokeStyle = variant === 'hero' ? `rgba(${lineColor},0.12)` : `rgba(${lineColor},0.1)`;
-            for (let i = 0; i < particles.length; i++) {
-                for (let j = i + 1; j < particles.length; j++) {
-                    const dx = particles[i].x - particles[j].x;
-                    const dy = particles[i].y - particles[j].y;
-                    if (dx * dx + dy * dy < lineDistance * lineDistance) {
-                        context.moveTo(particles[i].x, particles[i].y);
-                        context.lineTo(particles[j].x, particles[j].y);
-                    }
-                }
-            }
-            context.stroke();
-        };
-
-        resize();
-        frame = requestAnimationFrame(draw);
-
-        window.addEventListener('resize', resize);
-        // NOTE: intentionally NOT listening to 'scroll' — updateRect calls
-        // getBoundingClientRect, and running that on every scroll event forces a
-        // layout reflow per frame (major scroll jank). The hero canvas sits at
-        // the top of the page, so a stale rect after scrolling is harmless.
-
-        return () => {
-            cancelAnimationFrame(frame);
-            window.removeEventListener('resize', resize);
-            window.removeEventListener('mousemove', handleMouseMove);
-            window.removeEventListener('mouseout', handleMouseLeave);
-            document.removeEventListener('visibilitychange', handleVisibility);
-        };
-    }, [variant]);
-
-    const orbPalette = variant === 'hero'
-        ? [
-            'radial-gradient(circle, rgba(56,189,248,0.26), rgba(56,189,248,0))',
-            'radial-gradient(circle, rgba(var(--primary-rgb),0.2), rgba(var(--primary-rgb),0))',
-            'radial-gradient(circle, rgba(168,85,247,0.16), rgba(168,85,247,0))',
-        ]
-        : [
-            'radial-gradient(circle, rgba(59,130,246,0.18), rgba(59,130,246,0))',
-            'radial-gradient(circle, rgba(var(--primary-rgb),0.16), rgba(var(--primary-rgb),0))',
-            'radial-gradient(circle, rgba(139,92,246,0.12), rgba(139,92,246,0))',
-        ];
-
+const BackgroundFx = React.memo(function BackgroundFx() {
+    // Clean, calm backdrop: just a subtle grid. No particle canvas, no glowing
+    // orbs — those read as "AI-generated". A faint grid adds structure without noise.
     return (
-        <>
-            <canvas
-                ref={canvasRef}
-                aria-hidden="true"
-                className="absolute inset-0 pointer-events-none"
-                style={{ opacity: variant === 'hero' ? 0.5 : 0.42 }}
-            />
-
-            <div className="absolute inset-0 pointer-events-none" aria-hidden="true">
-                <div
-                    className="absolute -top-16 -left-20 w-72 h-72 rounded-full blur-[80px]"
-                    style={{ background: orbPalette[0], animation: 'float 8s ease-in-out infinite' }}
-                />
-                <div
-                    className="absolute top-1/4 -right-20 w-80 h-80 rounded-full blur-[90px]"
-                    style={{ background: orbPalette[1], animation: 'float 10s ease-in-out infinite' }}
-                />
-                <div
-                    className="absolute -bottom-20 left-1/3 w-72 h-72 rounded-full blur-[90px]"
-                    style={{ background: orbPalette[2], animation: 'float 9s ease-in-out infinite' }}
-                />
-            </div>
-
-            <div
-                className="absolute inset-0 pointer-events-none"
-                aria-hidden="true"
-                style={{
-                    backgroundImage: 'linear-gradient(rgba(148,163,184,0.055) 1px, transparent 1px), linear-gradient(90deg, rgba(148,163,184,0.055) 1px, transparent 1px)',
-                    backgroundSize: '38px 38px',
-                    maskImage: 'radial-gradient(circle at center, black 25%, transparent 100%)',
-                    opacity: variant === 'hero' ? 0.24 : 0.18,
-                }}
-            />
-        </>
+        <div
+            className="absolute inset-0 pointer-events-none"
+            aria-hidden="true"
+            style={{
+                backgroundImage: 'linear-gradient(rgba(148,163,184,0.05) 1px, transparent 1px), linear-gradient(90deg, rgba(148,163,184,0.05) 1px, transparent 1px)',
+                backgroundSize: '44px 44px',
+                maskImage: 'radial-gradient(circle at center, black 20%, transparent 90%)',
+                opacity: 0.2,
+            }}
+        />
     );
 });
 
@@ -603,9 +412,9 @@ function HeroCodeStage({ children }) {
                 className="relative mx-auto"
                 style={{ transformStyle: 'preserve-3d', scale: 0.82, rotateX: reduce ? 0 : rotateX, rotateY: reduce ? 0 : rotateY }}
             >
-                {/* depth glow, pushed back on the Z axis */}
-                <div className="absolute inset-0 rounded-3xl blur-3xl opacity-30 pointer-events-none"
-                    style={{ background: 'linear-gradient(135deg, var(--primary), var(--secondary))', transform: 'translateZ(-80px)' }} />
+                {/* subtle depth shadow, pushed back on the Z axis */}
+                <div className="absolute inset-0 rounded-3xl blur-2xl opacity-10 pointer-events-none"
+                    style={{ background: 'var(--primary)', transform: 'translateZ(-80px)' }} />
 
                 {/* the code terminal on the front plane */}
                 <div style={{ transform: 'translateZ(24px)' }}>
@@ -617,8 +426,8 @@ function HeroCodeStage({ children }) {
                     <div key={c.code} className="absolute pointer-events-none select-none"
                         style={{ left: c.left, top: c.top, transform: `translateZ(${c.z}px)` }}>
                         <div style={{ animation: reduce ? 'none' : `float ${5 + c.z / 30}s ease-in-out ${c.delay}s infinite` }}>
-                            <div className="rounded-lg px-2.5 py-1.5 border shadow-xl"
-                                style={{ background: `${c.color}1a`, borderColor: `${c.color}55`, boxShadow: `0 10px 28px ${c.color}2b` }}>
+                            <div className="rounded-lg px-2.5 py-1.5 border"
+                                style={{ background: `${c.color}14`, borderColor: `${c.color}40`, boxShadow: '0 8px 20px rgba(0,0,0,0.18)' }}>
                                 <div className="font-mono text-xs font-bold leading-none" style={{ color: c.color }}>{c.code}</div>
                                 <div className="font-mono text-[9px] text-neutral-400 mt-0.5 leading-none">{c.tag}</div>
                             </div>
@@ -658,18 +467,10 @@ function TypingTerminal() {
             className="relative rounded-2xl overflow-hidden shadow-2xl border skew-y-1 hover:skew-y-0 transition-all duration-700"
             style={{
                 background: '#0d0d0d',
-                borderColor: `${snippet.color}40`,
-                boxShadow: `0 0 60px ${snippet.color}22, 0 25px 50px rgba(0,0,0,0.5)`,
+                borderColor: 'rgba(255,255,255,0.1)',
+                boxShadow: '0 20px 45px rgba(0,0,0,0.4)',
             }}
         >
-
-            {/* Glow orb */}
-            <div style={{
-                position: 'absolute', top: -60, right: -60, width: 180, height: 180,
-                borderRadius: '50%', background: `radial-gradient(circle, ${snippet.color}55, transparent 70%)`,
-                filter: 'blur(40px)', pointerEvents: 'none',
-                animation: 'glowOrbPulse 3s ease-in-out infinite',
-            }} />
 
             {/* Title bar */}
             <div className="flex items-center justify-between px-5 py-3 border-b" style={{ borderColor: `${snippet.color}25`, background: 'rgba(255,255,255,0.03)' }}>
@@ -797,17 +598,15 @@ function BFSVisualizer({ isDark = false }) {
     return (
         <div ref={rootRef} className="lg:col-span-5 rounded-3xl border overflow-hidden relative"
             style={{
-                background: isDark ? '#0d0d0d' : 'linear-gradient(145deg, #17223a, #222f4f)',
+                background: isDark ? '#14161d' : 'linear-gradient(145deg, #1a2440, #263457)',
                 borderColor: isDark ? 'rgba(var(--secondary-rgb),0.35)' : 'rgba(59,130,246,0.28)'
             }}>
-            <div className="absolute -top-10 -left-10 w-48 h-48 rounded-full blur-[60px] opacity-12 pointer-events-none"
-                style={{ background: 'radial-gradient(circle, var(--secondary), transparent)' }} />
             <div className="p-6 relative z-10">
 
                 {/* Header */}
                 <div className="flex items-center gap-2 mb-4">
-                    <div className="w-7 h-7 rounded-lg flex items-center justify-center text-sm"
-                        style={{ background: 'rgba(var(--secondary-rgb),0.15)', border: '1px solid rgba(var(--secondary-rgb),0.4)' }}>👁️</div>
+                    <div className="w-7 h-7 rounded-lg flex items-center justify-center"
+                        style={{ background: 'rgba(var(--secondary-rgb),0.15)', border: '1px solid rgba(var(--secondary-rgb),0.4)' }}><Eye className="w-4 h-4" style={{ color: 'var(--secondary)' }} strokeWidth={2} /></div>
                     <span className="text-xs font-bold tracking-widest uppercase" style={{ color: 'var(--secondary)' }}>Live Visualization</span>
                     <div className="ml-auto flex items-center gap-1.5">
                         <div className="w-1.5 h-1.5 rounded-full animate-pulse" style={{ background: paused ? '#f59e0b' : 'var(--secondary)' }} />
@@ -1017,12 +816,10 @@ function ResearchCard({ isDark = false }) {
     return (
         <div ref={rootRef} className="lg:col-span-3 rounded-3xl border overflow-hidden relative transition-all duration-500"
             style={{
-                background: isDark ? '#0d0d0d' : 'linear-gradient(145deg, #1a2440, #253255)',
+                background: isDark ? '#14161d' : 'linear-gradient(145deg, #1a2440, #263457)',
                 borderColor: `${cur.color}59`,
             }}>
 
-            <div className="absolute -bottom-10 -right-10 w-48 h-48 rounded-full blur-[60px] opacity-20 pointer-events-none transition-all duration-700"
-                style={{ background: `radial-gradient(circle, ${cur.color}, #6366f1)` }} />
 
             <div className="p-5 relative z-10 flex flex-col h-full">
                 {/* Header */}
@@ -1104,7 +901,7 @@ function AITutorCard({ isDark = false }) {
     return (
         <div className="lg:col-span-3 rounded-3xl border overflow-hidden relative transition-all duration-500"
             style={{
-                background: isDark ? '#0d0d0d' : 'linear-gradient(145deg, #1a2440, #253255)',
+                background: isDark ? '#14161d' : 'linear-gradient(145deg, #1a2440, #263457)',
                 borderColor: isPremium ? 'rgba(139,92,246,0.35)' : 'rgba(var(--secondary-rgb),0.3)'
             }}>
 
@@ -1194,7 +991,7 @@ function AITutorCard({ isDark = false }) {
 const APPROACHES = [
     {
         name: 'Brute Force',
-        emoji: '🔨',
+        icon: Hammer,
         tag: 'Simple',
         tagIcon: '○',
         time: 'O(n²)',
@@ -1216,7 +1013,7 @@ const APPROACHES = [
     },
     {
         name: 'Hash Map',
-        emoji: '⚡',
+        icon: Zap,
         tag: 'Optimal',
         tagIcon: '★',
         time: 'O(n)',
@@ -1239,7 +1036,7 @@ const APPROACHES = [
     },
     {
         name: 'Two Pointers',
-        emoji: '🎯',
+        icon: Target,
         tag: 'Sorted',
         tagIcon: '◈',
         time: 'O(n log n)',
@@ -1284,15 +1081,9 @@ function ApproachesCard({ isDark = false }) {
     return (
         <div ref={rootRef} className="lg:col-span-5 rounded-3xl relative overflow-hidden"
             style={{
-                background: isDark ? '#0d0d0d' : 'linear-gradient(145deg, #16213a, #1f2c49)',
+                background: isDark ? '#14161d' : 'linear-gradient(145deg, #1a2440, #263457)',
                 border: '1px solid rgba(255,255,255,0.07)'
             }}>
-
-            {/* Ambient glow blob */}
-            <div className="absolute -top-12 -right-12 w-48 h-48 rounded-full pointer-events-none transition-all duration-700"
-                style={{ background: `radial-gradient(circle, ${ap.accentFrom}30, transparent 70%)`, filter: 'blur(40px)' }} />
-            <div className="absolute -bottom-8 -left-8 w-32 h-32 rounded-full pointer-events-none"
-                style={{ background: `radial-gradient(circle, ${ap.accentTo}20, transparent 70%)`, filter: 'blur(30px)' }} />
 
             {/* Top accent line */}
             <div className="absolute top-0 left-0 right-0 h-px transition-all duration-700"
@@ -1302,8 +1093,8 @@ function ApproachesCard({ isDark = false }) {
 
                 {/* Header */}
                 <div className="flex items-center gap-2.5 mb-5">
-                    <div className="w-7 h-7 rounded-lg flex items-center justify-center text-sm"
-                        style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)' }}>💡</div>
+                    <div className="w-7 h-7 rounded-lg flex items-center justify-center"
+                        style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)' }}><Lightbulb className="w-4 h-4 text-amber-300" strokeWidth={2} /></div>
                     <span className="text-[11px] font-bold tracking-[0.15em] uppercase text-white/40">Multiple Approaches</span>
                     <div className="ml-auto flex items-center gap-1.5 px-2 py-0.5 rounded-md"
                         style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)' }}>
@@ -1335,7 +1126,7 @@ function ApproachesCard({ isDark = false }) {
                                 boxShadow: i === activeIdx ? `0 0 20px ${a.accentFrom}22, inset 0 1px 0 rgba(255,255,255,0.08)` : 'none',
                                 transform: i === activeIdx ? 'translateY(-1px)' : 'none',
                             }}>
-                            <span className="text-base leading-none">{a.emoji}</span>
+                            <a.icon className="w-[18px] h-[18px]" style={{ color: i === activeIdx ? a.accentFrom : 'rgba(255,255,255,0.4)' }} strokeWidth={2} />
                             <span className="text-[10px] leading-tight text-center">{a.name}</span>
                             {i === activeIdx && (
                                 <div className="absolute bottom-0 left-1/2 -translate-x-1/2 w-6 h-0.5 rounded-full"
@@ -1357,7 +1148,7 @@ function ApproachesCard({ isDark = false }) {
                     <div className="flex items-center justify-between px-4 py-3"
                         style={{ borderBottom: '1px solid rgba(255,255,255,0.06)', background: `linear-gradient(90deg, ${ap.accentFrom}12, ${ap.accentTo}08)` }}>
                         <div className="flex items-center gap-2">
-                            <span className="text-lg leading-none">{ap.emoji}</span>
+                            <ap.icon className="w-5 h-5" style={{ color: ap.accentFrom }} strokeWidth={2} />
                             <span className="text-sm font-extrabold text-white">{ap.name}</span>
                         </div>
                         <span className="text-[10px] font-bold px-2.5 py-1 rounded-full"
@@ -1416,8 +1207,8 @@ function ApproachesCard({ isDark = false }) {
                 {/* When to use */}
                 <div className="flex items-start gap-3 px-3.5 py-3 rounded-xl"
                     style={{ background: `linear-gradient(135deg, ${ap.accentFrom}10, ${ap.accentTo}08)`, border: `1px solid ${ap.accentFrom}25` }}>
-                    <div className="w-5 h-5 rounded-md flex items-center justify-center text-xs shrink-0 mt-0.5"
-                        style={{ background: ap.accentFrom + '20' }}>💬</div>
+                    <div className="w-5 h-5 rounded-md flex items-center justify-center shrink-0 mt-0.5"
+                        style={{ background: ap.accentFrom + '20' }}><MessageSquare className="w-3 h-3" style={{ color: ap.accentFrom }} strokeWidth={2.2} /></div>
                     <div>
                         <span className="text-[10px] font-bold tracking-wider uppercase block mb-0.5" style={{ color: ap.accentFrom }}>When to use</span>
                         <p className="text-[11px] text-white/50 leading-relaxed">{ap.when}</p>
@@ -1445,12 +1236,12 @@ function ApproachesCard({ isDark = false }) {
 
 // Ladders Card
 const LADDER_LEVELS = [
-    { level: 0, label: 'Basic Operation', emoji: '🧩', color: '#06b6d4', desc: 'The atomic action. e.g. "check if a key exists in a dict".' },
-    { level: 1, label: 'Building Block', emoji: '⚡', color: '#8b5cf6', desc: 'Combine basic ops. e.g. "scan one pass and track a value".' },
-    { level: 2, label: 'Core Logic', emoji: '💡', color: '#f59e0b', desc: 'The heart of the approach. e.g. "lookup complement and store index".' },
-    { level: 3, label: 'Key Sub-routine', emoji: '🔧', color: '#10b981', desc: 'Wrap the logic into a reusable sub-function.' },
-    { level: 4, label: 'Full Problem', emoji: '🎯', color: '#6366f1', desc: 'Assemble everything into the complete solution.' },
-    { level: 5, label: 'Optimised Variant', emoji: '🚀', color: '#ec4899', desc: 'Handle edge cases, constraints, and further optimisations.' },
+    { level: 0, label: 'Basic Operation', icon: Puzzle, color: '#06b6d4', desc: 'The atomic action. e.g. "check if a key exists in a dict".' },
+    { level: 1, label: 'Building Block', icon: Zap, color: '#8b5cf6', desc: 'Combine basic ops. e.g. "scan one pass and track a value".' },
+    { level: 2, label: 'Core Logic', icon: Lightbulb, color: '#f59e0b', desc: 'The heart of the approach. e.g. "lookup complement and store index".' },
+    { level: 3, label: 'Key Sub-routine', icon: Wrench, color: '#10b981', desc: 'Wrap the logic into a reusable sub-function.' },
+    { level: 4, label: 'Full Problem', icon: Target, color: '#6366f1', desc: 'Assemble everything into the complete solution.' },
+    { level: 5, label: 'Optimised Variant', icon: Rocket, color: '#ec4899', desc: 'Handle edge cases, constraints, and further optimisations.' },
 ];
 
 const LADDER_EXAMPLE = [
@@ -1487,15 +1278,9 @@ function LaddersCard({ isDark = false }) {
     return (
         <div ref={rootRef} className="lg:col-span-7 rounded-3xl relative overflow-hidden"
             style={{
-                background: isDark ? '#0d0d0d' : 'linear-gradient(145deg, #151f37, #1d2a48)',
+                background: isDark ? '#14161d' : 'linear-gradient(145deg, #1a2440, #263457)',
                 border: '1px solid rgba(255,255,255,0.07)'
             }}>
-
-            {/* Ambient glows */}
-            <div className="absolute top-0 right-0 w-96 h-64 rounded-full pointer-events-none"
-                style={{ background: `radial-gradient(circle, ${ap.color}18, transparent 65%)`, filter: 'blur(60px)', transform: 'translate(30%,-30%)' }} />
-            <div className="absolute bottom-0 left-0 w-64 h-48 rounded-full pointer-events-none"
-                style={{ background: 'radial-gradient(circle, #6366f118, transparent 65%)', filter: 'blur(40px)', transform: 'translate(-20%,30%)' }} />
 
             {/* Top accent */}
             <div className="absolute top-0 left-0 right-0 h-px"
@@ -1507,7 +1292,7 @@ function LaddersCard({ isDark = false }) {
                 <div className="flex flex-col sm:flex-row sm:items-center gap-4 mb-8">
                     <div className="flex items-center gap-3">
                         <div className="w-8 h-8 rounded-xl flex items-center justify-center"
-                            style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)' }}>🪜</div>
+                            style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)' }}><ListOrdered className="w-4 h-4 text-white/70" strokeWidth={2} /></div>
                         <div>
                             <div className="text-[11px] font-bold tracking-[0.15em] uppercase text-white/35">Inside Every Approach</div>
                             <div className="text-lg font-extrabold text-white leading-tight">The Ladder System</div>
@@ -1552,7 +1337,9 @@ function LaddersCard({ isDark = false }) {
                                                     boxShadow: isActive ? `0 0 16px ${lvl.color}60` : 'none',
                                                     transition: 'all 0.35s',
                                                 }}>
-                                                {isUnlocked ? lvl.emoji : '🔒'}
+                                                {isUnlocked
+                                                    ? <lvl.icon className="w-[18px] h-[18px]" strokeWidth={2} />
+                                                    : <Lock className="w-4 h-4" strokeWidth={2} />}
                                             </div>
                                             {/* Label */}
                                             <div className="min-w-0">
@@ -1570,14 +1357,14 @@ function LaddersCard({ isDark = false }) {
                             {/* Unlock button */}
                             {unlocked < LADDER_LEVELS.length && (
                                 <button onClick={handleUnlock}
-                                    className="w-full mt-4 py-2.5 rounded-xl text-xs font-bold flex items-center justify-center gap-2 transition-all duration-300 hover:-translate-y-0.5"
+                                    className="w-full mt-4 py-2.5 rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 transition-all duration-300 hover:-translate-y-0.5"
                                     style={{
                                         background: `linear-gradient(135deg, ${LADDER_LEVELS[unlocked].color}30, ${LADDER_LEVELS[unlocked].color}15)`,
                                         border: `1px solid ${LADDER_LEVELS[unlocked].color}50`,
                                         color: LADDER_LEVELS[unlocked].color,
                                         boxShadow: `0 4px 16px ${LADDER_LEVELS[unlocked].color}25`,
                                     }}>
-                                    ✦ Unlock L{unlocked} — {LADDER_LEVELS[unlocked].label}
+                                    <Unlock className="w-3.5 h-3.5" strokeWidth={2.2} /> Unlock L{unlocked} — {LADDER_LEVELS[unlocked].label}
                                 </button>
                             )}
                         </div>
@@ -1593,8 +1380,8 @@ function LaddersCard({ isDark = false }) {
                             {/* Card top bar */}
                             <div className="px-5 py-3.5 flex items-center gap-3"
                                 style={{ borderBottom: '1px solid rgba(255,255,255,0.06)', background: `linear-gradient(90deg, ${ap.color}15, transparent)` }}>
-                                <div className="w-9 h-9 rounded-xl flex items-center justify-center text-lg"
-                                    style={{ background: ap.color + '20', border: `1px solid ${ap.color}40` }}>{ap.emoji}</div>
+                                <div className="w-9 h-9 rounded-xl flex items-center justify-center"
+                                    style={{ background: ap.color + '20', border: `1px solid ${ap.color}40` }}><ap.icon className="w-[18px] h-[18px]" style={{ color: ap.color }} strokeWidth={2} /></div>
                                 <div>
                                     <div className="text-[10px] font-bold tracking-widest uppercase" style={{ color: ap.color }}>Level {ap.level} · {ap.label}</div>
                                     <div className="text-sm font-bold text-white">{ex.title}</div>
@@ -1646,16 +1433,16 @@ function LaddersCard({ isDark = false }) {
                         {/* Bottom row: 3 quick stat pills */}
                         <div className="grid grid-cols-3 gap-3">
                             {[
-                                { label: 'Levels per approach', value: '6', sub: 'L0 → L5', icon: '🪜', c: '#6366f1' },
-                                { label: 'Progressive unlock', value: '1 at a time', sub: 'earn your way up', icon: '🔓', c: '#10b981' },
-                                { label: 'Each level has', value: 'Tests + Hints', sub: 'with explanation', icon: '💡', c: '#f59e0b' },
-                            ].map(({ label, value, sub, icon, c }) => (
-                                <div key={label} className="rounded-2xl p-4 flex flex-col gap-1"
-                                    style={{ background: c + '08', border: `1px solid ${c}20` }}>
-                                    <span className="text-base">{icon}</span>
-                                    <div className="text-sm font-extrabold text-white">{value}</div>
-                                    <div className="text-[10px] font-semibold" style={{ color: c }}>{label}</div>
-                                    <div className="text-[9px] text-white/30">{sub}</div>
+                                { label: 'Levels per approach', value: '6', sub: 'L0 → L5', icon: ListOrdered, c: '#6366f1' },
+                                { label: 'Progressive unlock', value: '1 at a time', sub: 'earn your way up', icon: Unlock, c: '#10b981' },
+                                { label: 'Each level has', value: 'Tests + Hints', sub: 'with explanation', icon: Lightbulb, c: '#f59e0b' },
+                            ].map((stat) => (
+                                <div key={stat.label} className="rounded-2xl p-4 flex flex-col gap-1"
+                                    style={{ background: stat.c + '08', border: `1px solid ${stat.c}20` }}>
+                                    <stat.icon className="w-[18px] h-[18px]" style={{ color: stat.c }} strokeWidth={2} />
+                                    <div className="text-sm font-extrabold text-white">{stat.value}</div>
+                                    <div className="text-[10px] font-semibold" style={{ color: stat.c }}>{stat.label}</div>
+                                    <div className="text-[9px] text-white/30">{stat.sub}</div>
                                 </div>
                             ))}
                         </div>
@@ -1695,12 +1482,12 @@ function useActiveInView(threshold = 0.15) {
 
 // ─── FeaturesSection ────────────────────────────────────────────────────────
 const FEATURES = [
-    { emoji: '⌨️', title: 'Interactive In-Browser IDE',    desc: 'Write, run, and debug Python, JS, C++ and more — zero setup. Instant feedback with syntax highlighting.', color: '#6366f1', tags: ['Multi-language', 'Real-time output', 'Auto-complete'] },
-    { emoji: '🧠', title: 'MIRA — Your AI Tutor',         desc: 'Ask anything. MIRA adapts to your skill level, explains step-by-step, and never just hands you the answer.', color: '#8b5cf6', tags: ['Adaptive', 'Socratic method', '24/7 available'] },
-    { emoji: '🎬', title: 'Live Algorithm Visualizer',     desc: 'Watch BFS, DFS, sorting, and DP animate in real time — pause, step, rewind. Concepts click instantly.', color: '#06b6d4', tags: ['Step-by-step', 'Interactive', '50+ algorithms'] },
-    { emoji: '🤝', title: 'Community & Social Feed',       desc: 'Share solutions, get peer code reviews, follow top solvers, and celebrate milestones together.', color: '#10b981', tags: ['Code reviews', 'Discussions', 'Leaderboard'] },
-    { emoji: '🗺️', title: 'Structured Learning Paths',    desc: 'Follow expert-curated paths: DSA → System Design → ML. No more guessing what to study next.', color: '#f59e0b', tags: ['Curated', 'Progressive', 'Certified'] },
-    { emoji: '💼', title: 'Job Board',                     desc: 'Exclusive listings for junior-to-mid developers. Your Marevlo profile IS your portfolio.', color: '#ec4899', tags: ['Junior-friendly', 'Portfolio', 'Direct apply'] },
+    { icon: Terminal, title: 'Interactive In-Browser IDE',    desc: 'Write, run, and debug Python, JS, C++ and more — zero setup. Instant feedback with syntax highlighting.', color: '#6366f1', tags: ['Multi-language', 'Real-time output', 'Auto-complete'] },
+    { icon: Brain, title: 'MIRA — Your AI Tutor',         desc: 'Ask anything. MIRA adapts to your skill level, explains step-by-step, and never just hands you the answer.', color: '#8b5cf6', tags: ['Adaptive', 'Socratic method', '24/7 available'] },
+    { icon: Film, title: 'Live Algorithm Visualizer',     desc: 'Watch BFS, DFS, sorting, and DP animate in real time — pause, step, rewind. Concepts click instantly.', color: '#06b6d4', tags: ['Step-by-step', 'Interactive', '50+ algorithms'] },
+    { icon: Users, title: 'Community & Social Feed',       desc: 'Share solutions, get peer code reviews, follow top solvers, and celebrate milestones together.', color: '#6366f1', tags: ['Code reviews', 'Discussions', 'Leaderboard'] },
+    { icon: Map, title: 'Structured Learning Paths',    desc: 'Follow expert-curated paths: DSA → System Design → ML. No more guessing what to study next.', color: '#06b6d4', tags: ['Curated', 'Progressive', 'Certified'] },
+    { icon: Briefcase, title: 'Job Board',                     desc: 'Exclusive listings for junior-to-mid developers. Your Marevlo profile IS your portfolio.', color: '#6366f1', tags: ['Junior-friendly', 'Portfolio', 'Direct apply'] },
 ];
 
 function FeaturesSection({ isDark }) {
@@ -1731,7 +1518,7 @@ function FeaturesSection({ isDark }) {
                         <motion.div key={feat.title}
                             className="group relative p-6 rounded-3xl border overflow-hidden cursor-default"
                             style={{
-                                background: isDark ? 'linear-gradient(145deg,#0d0d0d,#111118)' : 'var(--card)',
+                                background: isDark ? 'linear-gradient(145deg,#14161d,#1a1d27)' : 'var(--card)',
                                 borderColor: isDark ? 'rgba(255,255,255,0.07)' : 'var(--border)',
                             }}
                             initial={{ opacity: 0, y: 40 }}
@@ -1745,9 +1532,9 @@ function FeaturesSection({ isDark }) {
                                 style={{ background: `radial-gradient(ellipse at top left, ${feat.color}10, transparent 60%)` }} />
                             <div className="absolute top-0 left-0 right-0 h-px opacity-0 group-hover:opacity-100 transition-opacity duration-500"
                                 style={{ background: `linear-gradient(90deg, transparent, ${feat.color}, transparent)` }} />
-                            <div className="w-12 h-12 rounded-2xl flex items-center justify-center text-2xl mb-4 transition-transform duration-500 group-hover:scale-110 group-hover:rotate-3"
+                            <div className="w-12 h-12 rounded-2xl flex items-center justify-center mb-4 transition-transform duration-500 group-hover:scale-110 group-hover:rotate-3"
                                 style={{ background: `${feat.color}15`, border: `1px solid ${feat.color}30` }}>
-                                {feat.emoji}
+                                <feat.icon className="w-6 h-6" style={{ color: feat.color }} strokeWidth={2} />
                             </div>
                             <h3 className="text-lg font-bold mb-2 text-foreground">{feat.title}</h3>
                             <p className="text-sm leading-relaxed mb-4 text-muted-foreground">{feat.desc}</p>
@@ -1816,7 +1603,7 @@ function MiraShowcaseSection() {
                                     <div className="text-sm font-bold text-white">MIRA</div>
                                     <div className="text-[10px] text-green-400 font-semibold">● Online · Adaptive AI Tutor</div>
                                 </div>
-                                <div className="ml-auto px-2.5 py-1 rounded-full text-[9px] font-bold" style={{ background: 'rgba(139,92,246,0.2)', color: '#a78bfa', border: '1px solid rgba(139,92,246,0.3)' }}>Premium ✨</div>
+                                <div className="ml-auto inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[9px] font-bold" style={{ background: 'rgba(139,92,246,0.2)', color: '#a78bfa', border: '1px solid rgba(139,92,246,0.3)' }}><Sparkles className="w-2.5 h-2.5" strokeWidth={2.5} />Premium</div>
                             </div>
 
                             {/* Chat area */}
@@ -1893,16 +1680,18 @@ function MiraShowcaseSection() {
                         </p>
                         <div className="space-y-4">
                             {[
-                                { icon: '🧩', title: 'Adapts to your level',   desc: 'Beginner-friendly or expert-mode — MIRA detects where you are and adjusts instantly.' },
-                                { icon: '💡', title: 'Hints, not answers',      desc: 'Builds genuine understanding so you can solve the next hard problem on your own.' },
-                                { icon: '📈', title: 'Tracks your progress',    desc: 'Identifies weak patterns and nudges you toward them before your next interview.' },
-                            ].map(({ icon, title, desc }) => (
-                                <div key={title} className="flex items-start gap-4 p-4 rounded-2xl border transition-all duration-300 hover:-translate-y-0.5"
+                                { icon: Puzzle, title: 'Adapts to your level',   desc: 'Beginner-friendly or expert-mode — MIRA detects where you are and adjusts instantly.' },
+                                { icon: Lightbulb, title: 'Hints, not answers',      desc: 'Builds genuine understanding so you can solve the next hard problem on your own.' },
+                                { icon: TrendingUp, title: 'Tracks your progress',    desc: 'Identifies weak patterns and nudges you toward them before your next interview.' },
+                            ].map((b) => (
+                                <div key={b.title} className="flex items-start gap-4 p-4 rounded-2xl border transition-all duration-300 hover:-translate-y-0.5"
                                     style={{ background: isDark ? 'rgba(139,92,246,0.05)' : 'rgba(139,92,246,0.04)', borderColor: 'rgba(139,92,246,0.14)' }}>
-                                    <span className="text-2xl flex-shrink-0">{icon}</span>
+                                    <span className="flex-shrink-0 w-9 h-9 rounded-xl flex items-center justify-center" style={{ background: 'rgba(139,92,246,0.12)', border: '1px solid rgba(139,92,246,0.25)' }}>
+                                        <b.icon className="w-[18px] h-[18px]" style={{ color: '#a78bfa' }} strokeWidth={2} />
+                                    </span>
                                     <div>
-                                        <div className="font-bold text-sm mb-1 text-foreground">{title}</div>
-                                        <div className="text-sm text-muted-foreground">{desc}</div>
+                                        <div className="font-bold text-sm mb-1 text-foreground">{b.title}</div>
+                                        <div className="text-sm text-muted-foreground">{b.desc}</div>
                                     </div>
                                 </div>
                             ))}
@@ -1921,16 +1710,9 @@ export default function LandingPage({ onStart, onExplore }) {
     return (
         <div className="overflow-y-auto h-full text-primary-text scroll-smooth bg-app-bg">
 
-            {/* Background Blobs */}
-            <div className="fixed inset-0 overflow-hidden pointer-events-none -z-10">
-                <div className="absolute -top-[10%] -left-[10%] w-[40%] h-[40%] rounded-full blur-[100px]" style={{ background: 'radial-gradient(circle,var(--primary),transparent)', animation: 'blob 12s ease-in-out infinite', opacity: isDark ? 0.10 : 0.05, willChange: 'transform' }} />
-                <div className="absolute top-[30%] -right-[8%] w-[32%] h-[32%] rounded-full blur-[90px]" style={{ background: 'radial-gradient(circle,var(--secondary),transparent)', animation: 'blob 15s ease-in-out 2s infinite', opacity: isDark ? 0.07 : 0.04, willChange: 'transform' }} />
-                <div className="absolute bottom-[10%] left-[20%] w-[28%] h-[28%] rounded-full blur-[80px]" style={{ background: 'radial-gradient(circle,#8b5cf6,transparent)', animation: 'blob 11s ease-in-out 4s infinite', opacity: isDark ? 0.05 : 0.03, willChange: 'transform' }} />
-            </div>
-
             {/* HERO */}
             <section className="relative pt-32 pb-36 px-4 overflow-hidden">
-                <BackgroundFx variant="hero" />
+                <BackgroundFx />
                 <div className="max-w-7xl mx-auto grid lg:grid-cols-2 gap-16 items-center relative z-10">
 
                     {/* Left: Copy — staggered entrance */}
@@ -1982,7 +1764,7 @@ export default function LandingPage({ onStart, onExplore }) {
                                     whileHover={{ y: -4, scale: 1.02 }}
                                     whileTap={{ scale: 0.97 }}
                                     transition={{ type: 'spring', stiffness: 400, damping: 17 }}
-                                    className="group px-8 py-4 text-white rounded-xl font-bold text-lg flex items-center justify-center relative overflow-hidden"
+                                    className="group px-8 py-4 text-white rounded-xl font-bold text-lg flex items-center justify-center relative overflow-hidden cursor-pointer"
                                     style={{ background: 'linear-gradient(135deg, var(--primary), var(--secondary))', boxShadow: '0 8px 32px rgba(var(--primary-rgb),0.35)' }}
                                 >
                                     <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-400"
@@ -1996,7 +1778,7 @@ export default function LandingPage({ onStart, onExplore }) {
                                     whileHover={{ y: -4, scale: 1.02 }}
                                     whileTap={{ scale: 0.97 }}
                                     transition={{ type: 'spring', stiffness: 400, damping: 17 }}
-                                    className="px-8 py-4 rounded-xl font-bold text-lg flex items-center justify-center transition-colors duration-200 hover:bg-muted"
+                                    className="px-8 py-4 rounded-xl font-bold text-lg flex items-center justify-center transition-colors duration-200 hover:bg-muted cursor-pointer"
                                     style={{ background: 'transparent', border: '1.5px solid var(--border)', color: 'var(--foreground)' }}
                                 >
                                     Explore Community
@@ -2004,44 +1786,17 @@ export default function LandingPage({ onStart, onExplore }) {
                             </div>
                         </motion.div>
 
-                        {/* Tags */}
-                        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.7, ease: [0.22, 1, 0.36, 1], delay: 0.45 }}>
-                            <div className="flex flex-wrap gap-2 mb-10">
+                        {/* Trust bullets — 3 max, keeps the hero focused */}
+                        <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.7, ease: [0.22, 1, 0.36, 1], delay: 0.45 }}>
+                            <div className="flex flex-wrap gap-x-6 gap-y-3">
                                 {[
-                                    { l: 'DSA', c: '#6366f1' },
-                                    { l: 'Algorithms', c: '#6366f1' },
-                                    { l: 'Data Structures', c: '#06b6d4' },
-                                    { l: 'System Design', c: '#6366f1' },
-                                    { l: 'Visualization', c: '#06b6d4' },
-                                    { l: 'Courses', c: '#06b6d4' },
-                                ].map(({ l, c }, i) => (
-                                    <span
-                                        key={l}
-                                        className="px-3 py-1 rounded-full text-xs font-semibold border transition-all hover:-translate-y-0.5 cursor-default"
-                                        style={{ background: `${c}10`, borderColor: `${c}30`, color: c, animation: `tagWobble ${3 + i * 0.4}s ease-in-out ${i * 0.2}s infinite` }}
-                                    >{l}</span>
-                                ))}
-                            </div>
-                        </motion.div>
-
-                        {/* Feature Promises */}
-                        <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.7, ease: [0.22, 1, 0.36, 1], delay: 0.55 }}>
-                            <div className="flex flex-wrap gap-2">
-                                {[
-                                    { label: 'Solve DSA the smart way', color: '#6366f1' },
-                                    { label: 'Visualize every concept', color: '#6366f1' },
-                                    { label: 'AI tutor available 24/7', color: '#8b5cf6' },
-                                    { label: 'Learn with a community', color: '#06b6d4' },
-                                ].map(({ label, color }) => (
-                                    <div
-                                        key={label}
-                                        className="flex items-center gap-2 px-3 py-2 rounded-full border transition-all hover:-translate-y-0.5"
-                                        style={{ background: `${color}05`, borderColor: `${color}20` }}
-                                    >
-                                        <svg width="10" height="8" viewBox="0 0 10 8" fill="none" className="flex-shrink-0">
-                                            <path d="M1 4L3.5 6.5L9 1" stroke={color} strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
-                                        </svg>
-                                        <span className="text-xs font-semibold whitespace-nowrap" style={{ color: `${color}CC` }}>{label}</span>
+                                    'Solve DSA the smart way',
+                                    'Visualize every concept',
+                                    'AI tutor available 24/7',
+                                ].map((label) => (
+                                    <div key={label} className="flex items-center gap-2">
+                                        <CheckCircle2 className="w-4 h-4 flex-shrink-0" style={{ color: 'var(--primary)' }} strokeWidth={2.2} />
+                                        <span className="text-sm font-medium text-muted-foreground">{label}</span>
                                     </div>
                                 ))}
                             </div>
@@ -2055,8 +1810,6 @@ export default function LandingPage({ onStart, onExplore }) {
                         animate={{ opacity: 1, y: 0, scale: 1 }}
                         transition={{ duration: 0.9, ease: [0.22, 1, 0.36, 1], delay: 0.4 }}
                     >
-                        <div className="absolute inset-0 rounded-3xl blur-3xl opacity-30 -z-10"
-                            style={{ background: 'linear-gradient(135deg, var(--primary), var(--secondary))', animation: 'float 8s ease-in-out infinite' }} />
                         <HeroCodeStage>
                             <TypingTerminal />
                         </HeroCodeStage>
@@ -2072,6 +1825,7 @@ export default function LandingPage({ onStart, onExplore }) {
                     <div className="text-center mb-16" style={{ animation: 'heroFadeUp 0.7s ease both', animationPlayState: 'running' }}>
                         <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full border mb-5"
                             style={{ background: 'rgba(var(--primary-rgb),0.06)', borderColor: 'rgba(var(--primary-rgb),0.2)' }}>
+                            <Layers className="w-3.5 h-3.5" style={{ color: 'var(--primary)' }} />
                             <span className="text-xs font-bold tracking-widest uppercase" style={{ color: 'var(--primary)' }}>Platform in Action</span>
                         </div>
                         <h2 className="text-5xl font-extrabold tracking-tighter mb-4 text-foreground">
@@ -2105,15 +1859,13 @@ export default function LandingPage({ onStart, onExplore }) {
                         {/* [4] Courses — PREMIUM DARK (col 4) */}
                         <div className="lg:col-span-4 rounded-3xl border overflow-hidden relative group hover:scale-[1.01] transition-transform duration-300"
                             style={{
-                                background: isDark ? '#0d0d0d' : 'linear-gradient(145deg, #1a2440, #263457)',
+                                background: isDark ? '#14161d' : 'linear-gradient(145deg, #1a2440, #263457)',
                                 borderColor: 'rgba(var(--primary-rgb),0.3)'
                             }}>
-                            <div className="absolute -bottom-16 -right-16 w-48 h-48 rounded-full blur-[60px] opacity-15 pointer-events-none"
-                                style={{ background: 'radial-gradient(circle, var(--primary), transparent)' }} />
                             <div className="p-6 relative z-10">
                                 <div className="flex items-center gap-2 mb-5">
-                                    <div className="w-7 h-7 rounded-lg flex items-center justify-center text-sm"
-                                        style={{ background: 'rgba(var(--primary-rgb),0.2)', border: '1px solid rgba(var(--primary-rgb),0.4)' }}>🎓</div>
+                                    <div className="w-7 h-7 rounded-lg flex items-center justify-center"
+                                        style={{ background: 'rgba(var(--primary-rgb),0.2)', border: '1px solid rgba(var(--primary-rgb),0.4)' }}><GraduationCap className="w-4 h-4" style={{ color: 'var(--primary)' }} strokeWidth={2} /></div>
                                     <span className="text-xs font-bold tracking-widest uppercase" style={{ color: 'var(--primary)' }}>Our Courses</span>
                                     <div className="ml-auto text-[10px] font-semibold text-neutral-500">4 tracks</div>
                                 </div>
@@ -2121,10 +1873,10 @@ export default function LandingPage({ onStart, onExplore }) {
                                 {/* Real Marevlo courses */}
                                 <div className="space-y-2.5">
                                     {[
-                                        { title: 'Generative AI', emoji: '🧠', tag: 'Hot 🔥', lessons: 28, bar: 'linear-gradient(135deg,#6366f1,#4f46e5)', tagC: '#6366f1', glow: '#6366f112' },
-                                        { title: 'Data Science', emoji: '📊', tag: 'New 🌟', lessons: 34, bar: 'linear-gradient(135deg,#06b6d4,#0891b2)', tagC: '#06b6d4', glow: '#06b6d412' },
-                                        { title: 'Clustering', emoji: '🔵', tag: 'New ✨', lessons: 12, bar: 'linear-gradient(135deg,#818cf8,#6366f1)', tagC: '#818cf8', glow: '#6366f10c' },
-                                        { title: 'LangGraph', emoji: '⚡', tag: 'New 🌟', lessons: 8, bar: 'linear-gradient(135deg,#22d3ee,#06b6d4)', tagC: '#22d3ee', glow: '#06b6d40c' },
+                                        { title: 'Generative AI', tag: 'Hot', lessons: 28, bar: 'linear-gradient(135deg,#6366f1,#4f46e5)', tagC: '#6366f1', glow: '#6366f112' },
+                                        { title: 'Data Science', tag: 'New', lessons: 34, bar: 'linear-gradient(135deg,#06b6d4,#0891b2)', tagC: '#06b6d4', glow: '#06b6d412' },
+                                        { title: 'Clustering', tag: 'New', lessons: 12, bar: 'linear-gradient(135deg,#818cf8,#6366f1)', tagC: '#818cf8', glow: '#6366f10c' },
+                                        { title: 'LangGraph', tag: 'New', lessons: 8, bar: 'linear-gradient(135deg,#22d3ee,#06b6d4)', tagC: '#22d3ee', glow: '#06b6d40c' },
                                     ].map(({ title, tag, lessons, bar, tagC, glow }) => (
                                         <div key={title}
                                             className="relative flex items-center gap-3 px-3 py-3 rounded-2xl cursor-pointer transition-all duration-200 hover:-translate-y-0.5"
@@ -2161,31 +1913,24 @@ export default function LandingPage({ onStart, onExplore }) {
                         {/* ROW 3: ALL PROBLEMS */}
 
                         {/* [6] DSA Problems — LARGE dark card moved to bottom (col 12) */}
-                        <div className="lg:col-span-12 rounded-[2rem] border overflow-hidden relative group hover:scale-[1.01] transition-transform duration-500 shadow-2xl"
+                        <div className="lg:col-span-12 rounded-[2rem] border overflow-hidden relative group transition-transform duration-300"
                             style={{
-                                background: isDark ? 'linear-gradient(145deg, #090914, #12122a)' : 'linear-gradient(145deg, #18243d, #243255)',
-                                borderColor: 'rgba(var(--primary-rgb),0.5)',
-                                boxShadow: isDark ? '0 20px 40px -10px rgba(var(--primary-rgb),0.15)' : '0 18px 36px -12px rgba(37,99,235,0.2)'
+                                background: isDark ? '#14161d' : 'linear-gradient(145deg, #1a2440, #263457)',
+                                borderColor: isDark ? 'rgba(255,255,255,0.08)' : 'rgba(255,255,255,0.12)',
+                                boxShadow: isDark ? '0 20px 45px -24px rgba(0,0,0,0.7)' : '0 18px 40px -22px rgba(15,23,42,0.3)'
                             }}>
-                            {/* Animated Background Gradients & Grids */}
-                            <div className="absolute inset-0 bg-[url('/noise.svg')] opacity-[0.03] mix-blend-overlay"></div>
-                            <div className="absolute top-0 right-0 w-full h-full bg-[radial-gradient(ellipse_at_top_right,_var(--tw-gradient-stops))] from-indigo-500/20 via-indigo-500/5 hover:via-indigo-500/10 to-transparent transition-colors duration-700"></div>
-                            <div className="absolute top-1/2 left-1/4 -translate-x-1/2 -translate-y-1/2 w-[600px] h-64 rounded-full blur-[100px] opacity-20 pointer-events-none animate-pulse"
-                                style={{ background: 'radial-gradient(circle, var(--primary), transparent)' }} />
-
                             <div className="p-8 md:p-12 relative z-10 flex flex-col md:flex-row gap-12 items-center">
                                 {/* Left desc */}
                                 <div className="flex-1 relative">
-                                    <div className="absolute -left-4 -top-4 w-20 h-20 bg-indigo-500/20 rounded-full blur-2xl"></div>
                                     <div className="flex items-center gap-3 mb-6">
                                         <div className="w-9 h-9 rounded-xl flex items-center justify-center text-sm shadow-inner overflow-hidden relative"
                                             style={{ background: 'rgba(var(--primary-rgb),0.2)', border: '1px solid rgba(var(--primary-rgb),0.5)' }}>
                                             <div className="absolute inset-0 bg-gradient-to-tr from-indigo-500/40 to-transparent"></div>
-                                            <span className="relative z-10 text-lg">🚀</span>
+                                            <Rocket className="relative z-10 w-4 h-4 text-white" strokeWidth={2} />
                                         </div>
                                         <span className="text-xs font-black tracking-[0.2em] uppercase bg-clip-text text-transparent bg-gradient-to-r from-indigo-300 to-cyan-400">Massive Question Bank</span>
                                     </div>
-                                    <h3 className="text-4xl md:text-5xl font-extrabold mb-5 tracking-tight text-transparent bg-clip-text bg-gradient-to-br from-white via-white to-white/60 leading-tight">
+                                    <h3 className="text-4xl md:text-5xl font-extrabold mb-5 tracking-tight text-white leading-tight">
                                         1,000+ Interactive<br />
                                         <span className="text-transparent bg-clip-text bg-gradient-to-r from-indigo-300 to-cyan-400">Challenges</span>
                                     </h3>
@@ -2204,7 +1949,7 @@ export default function LandingPage({ onStart, onExplore }) {
 
                                 {/* Right mini list */}
                                 <div className="flex-1 w-full relative pt-2">
-                                    <div className="absolute inset-x-0 bottom-0 h-40 bg-gradient-to-t from-[rgb(12,12,28)] to-transparent z-10 pointer-events-none rounded-b-3xl"></div>
+                                    <div className="absolute inset-x-0 bottom-0 h-40 bg-gradient-to-t from-[rgb(13,13,13)] to-transparent z-10 pointer-events-none rounded-b-3xl"></div>
 
                                     <div className="space-y-3 relative z-0">
                                         {[
@@ -2232,7 +1977,7 @@ export default function LandingPage({ onStart, onExplore }) {
                                         ))}
                                     </div>
                                     <div className="text-center pt-8 relative z-20">
-                                        <button className="group inline-flex items-center gap-2 px-6 py-3 rounded-full bg-indigo-500/10 border border-indigo-500/30 text-indigo-300 text-sm font-bold tracking-wide hover:bg-indigo-500/20 hover:text-white transition-all hover:scale-105 shadow-[0_0_20px_rgba(var(--primary-rgb),0.2)]">
+                                        <button className="group inline-flex items-center gap-2 px-6 py-3 rounded-full bg-indigo-500/10 border border-indigo-500/30 text-indigo-300 text-sm font-bold tracking-wide hover:bg-indigo-500/20 hover:text-white transition-all hover:-translate-y-0.5 cursor-pointer">
                                             <span>Explore All 1000+ Problems</span>
                                             <svg className="w-4 h-4 group-hover:translate-x-1 transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17 8l4 4m0 0l-4 4m4-4H3"></path></svg>
                                         </button>
@@ -2248,16 +1993,20 @@ export default function LandingPage({ onStart, onExplore }) {
             <FeaturesSection isDark={isDark} />
             <MiraShowcaseSection />
 
-            {/* HOW IT WORKS - REDESIGNED */}
+            {/* HOW IT WORKS */}
             <section className={`py-32 relative overflow-hidden ${isDark ? 'bg-black' : 'bg-primary/5'}`}>
-                {/* Background glow effects */}
-                <div className="absolute inset-0 bg-[url('/noise.svg')] opacity-[0.02] mix-blend-overlay"></div>
-                <div className="absolute top-0 right-1/4 w-[500px] h-[500px] rounded-full blur-[90px] pointer-events-none bg-indigo-600/10"></div>
-                <div className="absolute bottom-0 left-1/4 w-[600px] h-[600px] rounded-full blur-[100px] pointer-events-none bg-indigo-500/6"></div>
 
                 <div className="max-w-7xl mx-auto px-4 relative z-10">
-                    <div className="text-center mb-24">
-                        <h2 className={`text-4xl md:text-5xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r mb-6 tracking-tight ${isDark ? 'from-white via-indigo-100 to-indigo-300' : 'from-gray-900 via-indigo-700 to-indigo-500'}`}>Your Path to Mastery</h2>
+                    <div className="text-center mb-24 flex flex-col items-center">
+                        <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full border mb-5"
+                            style={{ background: 'rgba(var(--primary-rgb),0.06)', borderColor: 'rgba(var(--primary-rgb),0.2)' }}>
+                            <GitBranch className="w-3.5 h-3.5" style={{ color: 'var(--primary)' }} />
+                            <span className="text-xs font-bold tracking-widest uppercase" style={{ color: 'var(--primary)' }}>How it works</span>
+                        </div>
+                        <h2 className="text-4xl md:text-5xl font-extrabold mb-6 tracking-tight text-foreground">
+                            Your Path to{' '}
+                            <span style={{ background: 'linear-gradient(135deg, var(--primary), var(--secondary))', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', backgroundClip: 'text' }}>Mastery</span>
+                        </h2>
                         <p className="text-lg max-w-2xl mx-auto leading-relaxed text-muted-foreground">
                             A structured, scientifically-backed workflow designed to take you from novice to expert through consistent practice and AI-driven feedback.
                         </p>
@@ -2267,35 +2016,32 @@ export default function LandingPage({ onStart, onExplore }) {
                         {/* Staggered, overlapping animated floating cards */}
                         <div className="flex flex-col md:flex-row justify-center items-center gap-12 md:gap-0 relative z-10 md:h-[450px]">
                             {[
-                                { step: "01", title: "Set Goals", desc: "Define your level & identify weak algorithmic spots.", icon: "🎯", color: "#6366f1", anim: "animate-float-1", offset: "md:-mt-32 md:z-10" },
-                                { step: "02", title: "Practice", desc: "Solve adaptive challenges daily in our immersive IDE.", icon: "⌨️", color: "#4f46e5", anim: "animate-float-2", offset: "md:mt-32 md:-ml-8 md:z-20" },
-                                { step: "03", title: "Collaborate", desc: "Review multi-approach code with community peers.", icon: "🤝", color: "#3b82f6", anim: "animate-float-3", offset: "md:-mt-24 md:-ml-8 md:z-30" },
-                                { step: "04", title: "Succeed", desc: "Crush those hard interviews and get verified.", icon: "🚀", color: "#06b6d4", anim: "animate-float-4", offset: "md:mt-40 md:-ml-8 md:z-40" }
+                                { step: "01", title: "Set Goals", desc: "Define your level & identify weak algorithmic spots.", icon: Target, color: "#6366f1", anim: "animate-float-1", offset: "md:-mt-32 md:z-10" },
+                                { step: "02", title: "Practice", desc: "Solve adaptive challenges daily in our immersive IDE.", icon: Keyboard, color: "#4f46e5", anim: "animate-float-2", offset: "md:mt-32 md:-ml-8 md:z-20" },
+                                { step: "03", title: "Collaborate", desc: "Review multi-approach code with community peers.", icon: Users, color: "#3b82f6", anim: "animate-float-3", offset: "md:-mt-24 md:-ml-8 md:z-30" },
+                                { step: "04", title: "Succeed", desc: "Crush those hard interviews and get verified.", icon: Rocket, color: "#06b6d4", anim: "animate-float-4", offset: "md:mt-40 md:-ml-8 md:z-40" }
                             ].map((item, i) => (
-                                <div key={i} className={`relative group w-full max-w-[300px] md:w-[280px] p-8 md:p-10 rounded-[2.5rem] transition-all duration-700 hover:scale-[1.15] hover:z-50 ${item.anim} ${item.offset}`}
+                                <div key={i} className={`relative group w-full max-w-[300px] md:w-[280px] p-8 md:p-10 rounded-[2rem] transition-all duration-300 hover:-translate-y-2 hover:z-50 ${item.anim} ${item.offset}`}
                                     style={{
-                                        background: isDark
-                                            ? 'linear-gradient(145deg, rgba(20,20,20,0.8) 0%, rgba(0,0,0,0.95) 100%)'
-                                            : 'var(--card)',
-                                        border: `1px solid ${item.color}${isDark ? '50' : '40'}`,
+                                        background: isDark ? '#14161d' : 'var(--card)',
+                                        border: `1px solid ${isDark ? 'rgba(255,255,255,0.08)' : 'var(--border)'}`,
                                         boxShadow: isDark
-                                            ? `0 30px 60px -20px rgba(0,0,0,0.8), inset 0 0 20px ${item.color}15`
-                                            : `0 24px 50px -20px ${item.color}40, inset 0 0 20px ${item.color}0d`
+                                            ? '0 20px 40px -24px rgba(0,0,0,0.7)'
+                                            : '0 16px 36px -22px rgba(15,23,42,0.25)'
                                     }}>
 
-                                    {/* Intense Hover Aura */}
-                                    <div className="absolute inset-0 rounded-[2.5rem] opacity-0 group-hover:opacity-30 transition-opacity duration-700 pointer-events-none" style={{ background: `radial-gradient(circle at center, ${item.color}, transparent 70%)` }}></div>
-                                    <div className="absolute -inset-[2px] rounded-[2.6rem] opacity-0 group-hover:opacity-100 transition-opacity duration-1000 -z-10 blur-xl block" style={{ background: `linear-gradient(45deg, ${item.color}, transparent, ${item.color})`, animation: 'spinSlow 10s linear infinite' }}></div>
-
                                     {/* Number Badge */}
-                                    <div className={`absolute -top-6 -right-6 w-16 h-16 rounded-full flex flex-col items-center justify-center font-black text-xl text-white shadow-2xl border-4 ${isDark ? 'border-black' : 'border-white'} group-hover:rotate-[360deg] transition-transform duration-[1.5s] ease-in-out`}
-                                        style={{ background: `linear-gradient(135deg, ${item.color}, ${isDark ? '#000' : item.color + '99'})`, boxShadow: `0 10px 40px -5px ${item.color}` }}>
+                                    <div className={`absolute -top-5 -right-5 w-14 h-14 rounded-full flex items-center justify-center font-black text-lg text-white border-4 ${isDark ? 'border-black' : 'border-white'}`}
+                                        style={{ background: item.color }}>
                                         {item.step}
                                     </div>
 
                                     {/* Icon & Content */}
-                                    <div className="text-6xl mb-6 group-hover:-translate-y-4 group-hover:scale-125 transition-transform duration-500 drop-shadow-[0_10px_20px_rgba(0,0,0,0.5)]">{item.icon}</div>
-                    <h3 className="text-2xl font-black mb-3 tracking-tighter text-foreground" style={{ textShadow: isDark ? `0 0 20px ${item.color}40` : 'none' }}>{item.title}</h3>
+                                    <div className="mb-6 w-14 h-14 rounded-2xl flex items-center justify-center transition-transform duration-300 group-hover:-translate-y-1"
+                                        style={{ background: `${item.color}14`, border: `1px solid ${item.color}33` }}>
+                                        <item.icon className="w-7 h-7" style={{ color: item.color }} strokeWidth={2} />
+                                    </div>
+                                    <h3 className="text-2xl font-black mb-3 tracking-tighter text-foreground">{item.title}</h3>
                                     <p className="text-sm leading-relaxed font-medium transition-colors text-muted-foreground group-hover:text-foreground">{item.desc}</p>
                                 </div>
                             ))}
@@ -2327,7 +2073,7 @@ export default function LandingPage({ onStart, onExplore }) {
                         whileHover={{ scale: 1.06, y: -3 }}
                         whileTap={{ scale: 0.97 }}
                         transition={{ type: 'spring', stiffness: 350, damping: 18 }}
-                        className={`group relative inline-flex items-center justify-center px-10 py-5 text-xl md:text-2xl font-bold rounded-full overflow-hidden ${isDark ? 'bg-white text-black shadow-[0_0_40px_rgba(255,255,255,0.15)] hover:shadow-[0_0_60px_rgba(var(--primary-rgb),0.4)]' : 'bg-indigo-600 text-white shadow-[0_0_40px_rgba(var(--primary-rgb),0.2)] hover:shadow-[0_0_60px_rgba(var(--primary-rgb),0.4)]'}`}>
+                        className={`group relative inline-flex items-center justify-center px-10 py-5 text-xl md:text-2xl font-bold rounded-full overflow-hidden transition-shadow duration-300 cursor-pointer ${isDark ? 'bg-white text-black shadow-[0_12px_30px_-12px_rgba(0,0,0,0.6)] hover:shadow-[0_16px_36px_-12px_rgba(0,0,0,0.7)]' : 'bg-indigo-600 text-white shadow-[0_12px_30px_-12px_rgba(var(--primary-rgb),0.5)] hover:shadow-[0_16px_36px_-12px_rgba(var(--primary-rgb),0.6)]'}`}>
                         <div className={`absolute inset-0 bg-gradient-to-r opacity-0 group-hover:opacity-100 transition-opacity duration-500 ${isDark ? 'from-indigo-100 via-white to-purple-100' : 'from-indigo-500 via-indigo-600 to-purple-600'}`}></div>
                         <span className="relative z-10 flex items-center gap-3">
                             Start building for free

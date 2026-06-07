@@ -96,11 +96,9 @@ export default function TopicProblems() {
             <div className="page-container" style={{ padding: '32px 0 64px' }}>
 
                 {/* Topic hero */}
-                <div className="relative overflow-hidden rounded-2xl mb-8 border" style={{ borderColor: 'var(--color-border)', background: isDark ? '#0d0d14' : 'var(--card)' }}>
-                    {/* Glow blobs */}
-                    <div className="absolute -top-10 left-1/2 -translate-x-1/2 w-[400px] h-[200px] rounded-full pointer-events-none" style={{ background: 'radial-gradient(ellipse,rgba(99,102,241,0.25) 0%,transparent 70%)', filter: 'blur(50px)', animation: 'heroGlow 8s ease-in-out infinite' }} />
-                    <div className="absolute top-1/2 -left-16 -translate-y-1/2 w-[260px] h-[260px] rounded-full pointer-events-none" style={{ background: 'radial-gradient(circle,rgba(6,182,212,0.3) 0%,transparent 65%)', filter: 'blur(60px)', animation: 'heroPulse 7s ease-in-out infinite' }} />
-                    <div className="absolute top-1/2 -right-16 -translate-y-1/2 w-[260px] h-[260px] rounded-full pointer-events-none" style={{ background: 'radial-gradient(circle,rgba(139,92,246,0.2) 0%,transparent 65%)', filter: 'blur(60px)', animation: 'heroPulse 9s ease-in-out 1.5s infinite' }} />
+                <div className="relative overflow-hidden rounded-2xl mb-8 border" style={{ borderColor: 'var(--color-border)', background: isDark ? '#14161d' : 'var(--card)' }}>
+                    {/* Subtle grid backdrop (calm, matches the landing) */}
+                    <div className="absolute inset-0 pointer-events-none" aria-hidden="true" style={{ backgroundImage: 'linear-gradient(rgba(148,163,184,0.05) 1px, transparent 1px), linear-gradient(90deg, rgba(148,163,184,0.05) 1px, transparent 1px)', backgroundSize: '40px 40px', maskImage: 'radial-gradient(circle at center, black 20%, transparent 90%)' }} />
 
                     <div style={{ position: 'relative', zIndex: 1, padding: '32px 32px 28px' }}>
                         <h1 className="courses-hero-title-grad" style={{ fontSize: 'clamp(2rem, 4vw, 2.8rem)', fontWeight: 900, letterSpacing: '-0.03em', lineHeight: 1.1, marginBottom: 16 }}>

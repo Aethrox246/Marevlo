@@ -361,41 +361,24 @@ useEffect(() => {
         <div className="flex-1 overflow-y-auto custom-scrollbar">
 
             {/* Hero — unchanged */}
-            <div className="relative overflow-hidden border-b bg-card dark:bg-black border-black/[0.06] dark:border-white/[0.06]" style={{ minHeight: '340px' }}>
-                <div className="absolute -top-20 left-1/2 -translate-x-1/2 w-[600px] h-[360px] rounded-full pointer-events-none" style={{ background: 'radial-gradient(ellipse,rgba(99,102,241,0.28) 0%,transparent 70%)', filter: 'blur(60px)', animation: 'heroGlow 8s ease-in-out infinite' }} />
-                <div className="absolute top-1/2 -left-32 -translate-y-1/2 w-[380px] h-[380px] rounded-full pointer-events-none" style={{ background: 'radial-gradient(circle,rgba(6,182,212,0.45) 0%,transparent 65%)', filter: 'blur(80px)', animation: 'heroPulse 7s ease-in-out infinite' }} />
-                <div className="absolute top-1/2 -right-32 -translate-y-1/2 w-[360px] h-[360px] rounded-full pointer-events-none" style={{ background: 'radial-gradient(circle,rgba(99,102,241,0.22) 0%,transparent 65%)', filter: 'blur(80px)', animation: 'heroPulse 9s ease-in-out 1.5s infinite' }} />
+            <div className="relative overflow-hidden border-b bg-card dark:bg-background border-black/[0.06] dark:border-white/[0.06]" style={{ minHeight: '340px' }}>
+                <div className="absolute inset-0 pointer-events-none" aria-hidden="true" style={{ backgroundImage: 'linear-gradient(rgba(148,163,184,0.05) 1px, transparent 1px), linear-gradient(90deg, rgba(148,163,184,0.05) 1px, transparent 1px)', backgroundSize: '44px 44px', maskImage: 'radial-gradient(circle at center, black 20%, transparent 90%)' }} />
 
                 <div style={{ position: 'relative', zIndex: 1, textAlign: 'center', padding: '48px 24px 44px' }}>
-                    <div style={{
-                        display: 'inline-flex', alignItems: 'center', gap: 7,
-                        padding: '5px 14px', borderRadius: 999,
-                        background: 'rgba(255,255,255,0.055)',
-                        border: '1px solid rgba(255,255,255,0.1)',
-                        fontSize: '0.68rem', fontWeight: 700,
-                        color: 'rgba(255,255,255,0.5)',
-                        letterSpacing: '0.12em', textTransform: 'uppercase',
-                        marginBottom: 20, backdropFilter: 'blur(8px)',
-                    }}>
+                    <div className="page-hero-badge">
                         <Sparkles size={10} style={{ color: '#06b6d4' }} />
                         Algorithm Practice
                     </div>
 
-                    <h1 style={{
+                    <h1 className="courses-hero-title-grad" style={{
                         margin: '0 0 12px',
                         fontSize: 'clamp(2.8rem, 5vw, 3.75rem)',
                         fontWeight: 900, letterSpacing: '-0.04em', lineHeight: 1.1,
-                        color: '#ffffff',
                     }}>
                         Practice Problems
                     </h1>
 
-                    <p style={{
-                        margin: '0 auto 26px',
-                        fontSize: '0.93rem',
-                        color: 'rgba(255,255,255,0.62)',
-                        lineHeight: 1.7, maxWidth: 420,
-                    }}>
+                    <p className="page-hero-sub" style={{ marginBottom: 26, maxWidth: 420, fontSize: '0.93rem' }}>
                         Master data structures and algorithms — one problem at a time.
                     </p>
 
@@ -405,16 +388,8 @@ useEffect(() => {
                             { icon: <Target    size={13} />, label: `${loading ? '…' : topics.length} Topics`   },
                             { icon: <Zap      size={13} />, label: '6-Level Ladder' },
                         ].map(({ icon, label }) => (
-                            <div key={label} style={{
-                                display: 'inline-flex', alignItems: 'center', gap: 6,
-                                padding: '6px 14px', borderRadius: 999,
-                                background: 'rgba(255,255,255,0.055)',
-                                border: '1px solid rgba(255,255,255,0.09)',
-                                fontSize: '0.76rem', fontWeight: 600,
-                                color: 'rgba(255,255,255,0.6)',
-                                backdropFilter: 'blur(8px)',
-                            }}>
-                                <span style={{ color: 'rgba(255,255,255,0.55)' }}>{icon}</span>
+                            <div key={label} className="page-hero-chip">
+                                <span>{icon}</span>
                                 {label}
                             </div>
                         ))}

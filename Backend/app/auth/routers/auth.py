@@ -81,12 +81,6 @@ def google_login(
         ip=_client_ip(request),
         user_agent=request.headers.get("user-agent"),
     )
-    db,
-    id_token=body.id_token,
-    display_name=body.display_name,
-    ip=_client_ip(request),
-    user_agent=request.headers.get("user-agent"),
-)
 
 
 @router.post("/refresh", response_model=TokenPair)

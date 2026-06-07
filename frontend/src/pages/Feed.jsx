@@ -1,6 +1,7 @@
 import React, { useState, useRef, useCallback, useEffect } from 'react';
 import {
-    Zap, Newspaper, Image, Calendar, MapPin, PenTool, X, TrendingUp, Users, Plus, ArrowRight, Sparkles, Flame, Star
+    Zap, Newspaper, Image, Calendar, PenTool, X, Users, Sparkles, Flame,
+    Clock, CheckCircle2, AlertCircle, Info
 } from 'lucide-react';
 import FeedPost from '../components/feed/FeedPost';
 import CreatePostWidget from '../components/feed/CreatePostWidget';
@@ -10,11 +11,21 @@ import MessengerWidget from '../components/feed/MessengerWidget';
 const INITIAL_POSTS = [];
 const API_BASE = import.meta.env.VITE_API_URL;
 
+// Pointer-tilt is a fine-pointer, motion-OK enhancement only. On touch devices
+// or when the user prefers reduced motion we render a plain static wrapper.
+const TILT_ENABLED = typeof window !== 'undefined'
+    && window.matchMedia?.('(hover: hover) and (pointer: fine)').matches
+    && !window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
+
 function TiltCard({ children, intensity = 10 }) {
     const cardRef = useRef(null);
     const glareRef = useRef(null);
     const [hovered, setHovered] = useState(false);
     const [transform, setTransform] = useState('perspective(1000px) rotateX(0deg) rotateY(0deg) scale3d(1, 1, 1)');
+
+    if (!TILT_ENABLED) {
+        return <div className="relative">{children}</div>;
+    }
 
     const handleMouseMove = (e) => {
         if (!cardRef.current) return;
@@ -66,6 +77,7 @@ function TiltCard({ children, intensity = 10 }) {
 export default function Feed() {
     const token = localStorage.getItem('access_token');
     const [posts, setPosts] = useState(INITIAL_POSTS);
+    const [loading, setLoading] = useState(true);
     const [sortBy, setSortBy] = useState('latest');
     const [toast, setToast] = useState({ show: false, message: '', type: 'success' });
 
@@ -89,7 +101,8 @@ export default function Feed() {
     }, []);
 
     const fetchPosts = useCallback(async () => {
-        if (!token) return;
+        if (!token) { setLoading(false); return; }
+        setLoading(true);
         try {
             const response = await fetch(
                 `${API_BASE}/feed/posts?sort=${sortBy}`,
@@ -108,12 +121,26 @@ export default function Feed() {
         } catch (err) {
             console.error(err);
             showToast('Failed to load feed', 'error');
+        } finally {
+            setLoading(false);
         }
     }, [sortBy, token, showToast]);
 
     useEffect(() => {
         fetchPosts();
     }, [fetchPosts]);
+
+    // Close any open modal on Escape (standard dialog behavior)
+    useEffect(() => {
+        const onKey = (e) => {
+            if (e.key === 'Escape') {
+                setIsArticleModalOpen(false);
+                setIsEventModalOpen(false);
+            }
+        };
+        window.addEventListener('keydown', onKey);
+        return () => window.removeEventListener('keydown', onKey);
+    }, []);
 
     const createPost = useCallback(async (payload, successMessage) => {
         if (!token) {
@@ -373,7 +400,7 @@ export default function Feed() {
                 <div className="feed-orb feed-orb-3" />
             </div>
 
-            <div className="relative z-10 py-6 sm:py-8" style={{ width: '70%', margin: '0 auto' }}>
+            <div className="relative z-10 py-6 sm:py-8 mx-auto w-[92%] sm:w-[88%] lg:w-[78%] max-w-[1180px]">
                 <div className="grid grid-cols-1 lg:grid-cols-[1fr_340px] gap-6 lg:gap-8">
 
                     {/* LEFT COLUMN */}
@@ -448,29 +475,32 @@ export default function Feed() {
                             </div>
 
                             {/* Segmented sort control */}
-                            <div className="flex items-center gap-1 p-1 rounded-full" style={{
+                            <div role="tablist" aria-label="Sort posts" className="flex items-center gap-1 p-1 rounded-full" style={{
                                 backgroundColor: 'var(--card)',
                                 border: '1px solid var(--color-border)',
                                 boxShadow: '0 2px 8px rgba(99,102,241,0.08)'
                             }}>
                                 {[
-                                    { key: 'latest', label: '⏱ Latest', icon: null },
-                                    { key: 'top', label: '⚡ Trending', icon: null }
-                                ].map(({ key, label }) => (
+                                    { key: 'latest', label: 'Latest', icon: Clock },
+                                    { key: 'top', label: 'Trending', icon: Flame }
+                                ].map((opt) => (
                                     <button
-                                        key={key}
-                                        onClick={() => setSortBy(key)}
-                                        className="px-3 sm:px-4 py-1.5 rounded-full text-xs sm:text-sm font-semibold transition-all duration-200"
+                                        key={opt.key}
+                                        role="tab"
+                                        aria-selected={sortBy === opt.key}
+                                        onClick={() => setSortBy(opt.key)}
+                                        className="flex items-center gap-1.5 px-3 sm:px-4 py-1.5 rounded-full text-xs sm:text-sm font-semibold transition-all duration-200 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--primary)]"
                                         style={{
-                                            background: sortBy === key
+                                            background: sortBy === opt.key
                                                 ? 'linear-gradient(135deg, #6366f1, #06b6d4)'
                                                 : 'transparent',
-                                            color: sortBy === key ? '#fff' : 'var(--muted-foreground)',
-                                            boxShadow: sortBy === key ? '0 2px 10px rgba(99,102,241,0.4)' : 'none',
+                                            color: sortBy === opt.key ? '#fff' : 'var(--muted-foreground)',
+                                            boxShadow: sortBy === opt.key ? '0 2px 10px rgba(99,102,241,0.4)' : 'none',
                                             border: 'none',
                                         }}
                                     >
-                                        {label}
+                                        <opt.icon size={14} />
+                                        {opt.label}
                                     </button>
                                 ))}
                             </div>
@@ -478,7 +508,25 @@ export default function Feed() {
 
                         {/* Posts List */}
                         <div className="space-y-4">
-                            {posts.length === 0 ? (
+                            {loading ? (
+                                // Skeleton placeholders reserve layout space while the feed loads
+                                [0, 1, 2].map(i => (
+                                    <div key={i} className="bg-card border border-border rounded-2xl p-4 sm:p-5" aria-hidden="true">
+                                        <div className="flex items-center gap-3">
+                                            <div className="w-12 h-12 rounded-full feed-skel" />
+                                            <div className="flex-1 space-y-2">
+                                                <div className="h-3 w-1/3 rounded feed-skel" />
+                                                <div className="h-2.5 w-1/4 rounded feed-skel" />
+                                            </div>
+                                        </div>
+                                        <div className="mt-4 space-y-2">
+                                            <div className="h-3 w-full rounded feed-skel" />
+                                            <div className="h-3 w-5/6 rounded feed-skel" />
+                                            <div className="h-3 w-2/3 rounded feed-skel" />
+                                        </div>
+                                    </div>
+                                ))
+                            ) : posts.length === 0 ? (
                                 <div className="text-center py-16 sm:py-20 rounded-2xl" style={{
                                     border: '1px dashed var(--color-border)',
                                     background: 'linear-gradient(135deg, rgba(99,102,241,0.04) 0%, rgba(139,92,246,0.04) 100%)'
@@ -540,14 +588,10 @@ export default function Feed() {
                                     </div>
                                 </div>
                             ) : (
+                                // Order comes from the backend (?sort=) — don't re-sort/mutate state here
                                 posts
-                                    .sort((a, b) => sortBy === 'top' ? (b.likes - a.likes) : 0)
                                     .map(post => (
-                                        <div
-                                            key={post.id}
-                                            className="transition-all duration-300"
-                                            style={{ borderRadius: '1rem' }}
-                                        >
+                                        <div key={post.id}>
                                             <FeedPost
                                                 post={{ ...post, onAddComment: handleAddComment }}
                                                 onLike={handleLike}
@@ -656,6 +700,8 @@ export default function Feed() {
             {/* TOAST NOTIFICATION */}
             {toast.show && (
                 <div
+                    role="status"
+                    aria-live="polite"
                     className="fixed bottom-6 left-6 right-6 sm:left-auto sm:right-6 sm:w-80 z-50"
                     style={{
                         background: toast.type === 'error'
@@ -671,7 +717,11 @@ export default function Feed() {
                         display: 'flex', alignItems: 'center', gap: '0.75rem'
                     }}
                 >
-                    <span style={{ fontSize: '1.2rem' }}>{toast.type === 'error' ? '❌' : toast.type === 'info' ? 'ℹ️' : '✅'}</span>
+                    {toast.type === 'error'
+                        ? <AlertCircle size={20} className="shrink-0" />
+                        : toast.type === 'info'
+                            ? <Info size={20} className="shrink-0" />
+                            : <CheckCircle2 size={20} className="shrink-0" />}
                     <p className="text-sm font-semibold">{toast.message}</p>
                 </div>
             )}
@@ -679,8 +729,13 @@ export default function Feed() {
             {/* WRITE ARTICLE MODAL */}
             {isArticleModalOpen && (
                 <div className="fixed inset-0 z-50 flex items-center justify-center p-4 backdrop-blur-md"
-                    style={{ backgroundColor: 'rgba(0, 0, 0, 0.5)' }}>
+                    style={{ backgroundColor: 'rgba(0, 0, 0, 0.5)' }}
+                    onClick={() => setIsArticleModalOpen(false)}>
                     <div
+                        role="dialog"
+                        aria-modal="true"
+                        aria-labelledby="article-modal-title"
+                        onClick={(e) => e.stopPropagation()}
                         className="w-full max-w-2xl shadow-2xl flex flex-col max-h-[90vh] bg-card"
                         style={{
                             border: '1px solid var(--color-border)',
@@ -691,7 +746,7 @@ export default function Feed() {
                         {/* Modal header with gradient */}
                         <div style={{ height: 4, background: 'linear-gradient(90deg, #6366f1, #06b6d4)', borderRadius: '1.5rem 1.5rem 0 0' }} />
                         <div className="p-5 sm:p-6 flex justify-between items-center" style={{ borderBottom: '1px solid var(--color-border)' }}>
-                            <h2 className="text-xl font-bold flex items-center gap-2.5 text-foreground">
+                            <h2 id="article-modal-title" className="text-xl font-bold flex items-center gap-2.5 text-foreground">
                                 <span style={{
                                     display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
                                     width: 36, height: 36, borderRadius: '50%',
@@ -703,6 +758,7 @@ export default function Feed() {
                             </h2>
                             <button
                                 onClick={() => setIsArticleModalOpen(false)}
+                                aria-label="Close dialog"
                                 className="p-2 rounded-xl hover:opacity-70 transition-opacity"
                                 style={{ backgroundColor: 'var(--color-surface-hover)' }}
                             >
@@ -808,7 +864,7 @@ export default function Feed() {
                                     cursor: articleTitle.trim() && articleContent.trim() ? 'pointer' : 'not-allowed'
                                 }}
                             >
-                                Publish ✨
+                                <span className="inline-flex items-center gap-1.5"><Sparkles size={15} /> Publish</span>
                             </button>
                         </div>
                     </div>
@@ -818,8 +874,13 @@ export default function Feed() {
             {/* CREATE EVENT MODAL */}
             {isEventModalOpen && (
                 <div className="fixed inset-0 z-50 flex items-center justify-center p-4 backdrop-blur-md"
-                    style={{ backgroundColor: 'rgba(0, 0, 0, 0.5)' }}>
+                    style={{ backgroundColor: 'rgba(0, 0, 0, 0.5)' }}
+                    onClick={() => setIsEventModalOpen(false)}>
                     <div
+                        role="dialog"
+                        aria-modal="true"
+                        aria-labelledby="event-modal-title"
+                        onClick={(e) => e.stopPropagation()}
                         className="w-full max-w-lg shadow-2xl flex flex-col bg-card"
                         style={{
                             border: '1px solid var(--color-border)',
@@ -829,7 +890,7 @@ export default function Feed() {
                     >
                         <div style={{ height: 4, background: 'linear-gradient(90deg, #f43f5e, #ec4899)', borderRadius: '1.5rem 1.5rem 0 0' }} />
                         <div className="p-5 sm:p-6 flex justify-between items-center" style={{ borderBottom: '1px solid var(--color-border)' }}>
-                            <h2 className="text-xl font-bold flex items-center gap-2.5 text-foreground">
+                            <h2 id="event-modal-title" className="text-xl font-bold flex items-center gap-2.5 text-foreground">
                                 <span style={{
                                     display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
                                     width: 36, height: 36, borderRadius: '50%',
@@ -841,6 +902,7 @@ export default function Feed() {
                             </h2>
                             <button
                                 onClick={() => setIsEventModalOpen(false)}
+                                aria-label="Close dialog"
                                 className="p-2 rounded-xl hover:opacity-70 transition-opacity"
                                 style={{ backgroundColor: 'var(--color-surface-hover)' }}
                             >
@@ -925,7 +987,7 @@ export default function Feed() {
                                     cursor: eventTitle.trim() && eventDate ? 'pointer' : 'not-allowed'
                                 }}
                             >
-                                Create Event 🎉
+                                <span className="inline-flex items-center gap-1.5"><Calendar size={15} /> Create Event</span>
                             </button>
                         </div>
                     </div>
